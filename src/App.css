@@ -1,7 +1,9 @@
 .site-shell {
+  --top-nav-height: 72px;
+  --reader-sticky-gap: 1rem;
+  --reader-sticky-top: calc(var(--top-nav-height) + var(--reader-sticky-gap));
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
   background:
     radial-gradient(circle at 12% 14%, rgba(255, 213, 141, 0.3), transparent 34%),
     radial-gradient(circle at 88% 18%, rgba(132, 206, 186, 0.3), transparent 32%),
@@ -12,7 +14,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  height: 72px;
+  height: var(--top-nav-height);
   border-bottom: 1px solid rgba(29, 55, 68, 0.16);
   background: rgba(250, 252, 250, 0.84);
   backdrop-filter: blur(14px);
@@ -243,7 +245,8 @@
 .app-shell {
   display: grid;
   grid-template-columns: clamp(280px, 18vw, 320px) minmax(0, 1fr);
-  min-height: calc(100vh - 72px);
+  min-height: calc(100vh - var(--top-nav-height));
+  align-items: start;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 1px, transparent 1px 40px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0 1px, transparent 1px 40px),
@@ -252,10 +255,12 @@
 
 .notes-panel {
   position: sticky;
-  top: 72px;
+  top: var(--top-nav-height);
   align-self: start;
   min-height: 0;
-  max-height: calc(100vh - 72px);
+  height: calc(100vh - var(--top-nav-height));
+  max-height: calc(100vh - var(--top-nav-height));
+  overflow: hidden;
   border-right: 1px solid rgba(35, 53, 66, 0.18);
   backdrop-filter: blur(8px);
   padding: 1.35rem 1rem;
@@ -348,6 +353,7 @@
 }
 
 .note-list {
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -518,13 +524,13 @@
 
 .section-toc {
   position: sticky;
-  top: 88px;
+  top: var(--reader-sticky-top);
   min-width: 0;
   align-self: start;
 }
 
 .section-toc-inner {
-  max-height: calc(100vh - 110px);
+  max-height: calc(100vh - var(--reader-sticky-top) - var(--reader-sticky-gap));
   overflow-y: auto;
   border: 1px solid rgba(25, 58, 75, 0.18);
   border-radius: 8px;
