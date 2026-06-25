@@ -52,6 +52,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: /start mlsys/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /MLSYS1 · GPU 体系结构入门/i }));
 
     const initialHeading = await screen.findByRole('heading', {
       name: /mlsys1/i,

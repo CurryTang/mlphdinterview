@@ -1,3 +1,4 @@
+# MLSYS10 · 分布式训练并行范式
 
 > [!info] 概述
 > 本教程详细介绍深度学习中常见的并行训练范式，包括数据并行（Data Parallelism）、全分片数据并行（FSDP）、张量并行（Tensor Parallelism）和流水线并行（Pipeline Parallelism）。内容基于 Google DeepMind 的 Scaling Book 改编，并结合 GPU 硬件特性和 Hugging Face Picotron 框架的实际实现进行讲解。
@@ -1751,4 +1752,3 @@ reference
 - [Picotron Tutorial Playlist](https://www.youtube.com/playlist?list=PL-_armZiJvAnhcRr6yTJ0__f3Oi-LLi9S) — 配套视频教程
 
 ---
-

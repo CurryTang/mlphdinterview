@@ -1,3 +1,5 @@
+# MLSYS7 · Compute-Bound Kernel (1)
+
 ## 1. 引言：什么是 Compute-Bound Kernel
 
 Compute-bound kernel 是指其性能瓶颈在于 GPU 的计算单元（ALU/FPU/Tensor Core）处理能力，而非内存带宽。这类 kernel 的特征是：
@@ -1829,7 +1831,6 @@ def gemm_triton(a: torch.Tensor, b: torch.Tensor, alpha: float = 1.0) -> torch.T
 | Tensor Core      | 手动 WMMA API                 | `tl.dot()` 自动使用          |
 | Tile size 调优     | 手动尝试                        | `@triton.autotune` 自动搜索  |
 | 性能               | 手动优化可达 cuBLAS 90%+          | 通常达到 cuBLAS 80-90%       |
-
 
 
 

@@ -1,4 +1,6 @@
-## Q1 Basic environment construction and hello world kernel
+# MLSYS1 · GPU Architecture Basics
+
+## Q1 Basic environment setup and hello world kernel
 
 ```quiz
 title: Practice

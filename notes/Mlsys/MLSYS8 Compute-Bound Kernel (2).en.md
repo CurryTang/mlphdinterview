@@ -1,3 +1,5 @@
+# MLSYS8 · Compute-Bound Kernel (2)
+
 ## 4. Convolution Optimization
 
 ### 4.1 Core Idea: Map Convolution to Matrix Multiplication

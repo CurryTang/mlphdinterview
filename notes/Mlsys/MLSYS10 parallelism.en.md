@@ -1,3 +1,4 @@
+# MLSYS10 · Distributed Training Parallelism
 
 > [!info] Overview
 > This tutorial provides a detailed introduction to common parallel training paradigms in deep learning, including data parallelism, fully sharded data parallelism (FSDP), tensor parallelism, and pipeline parallelism. The material is adapted from Google DeepMind's Scaling Book and explained together with GPU hardware characteristics and practical implementations in the Hugging Face Picotron framework.

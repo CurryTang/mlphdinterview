@@ -1,3 +1,5 @@
+# MLSYS8 · Compute-Bound Kernel (2)
+
 ## 4. 卷积 (Convolution) 优化
 
 ### 4.1 核心思想：将卷积映射为矩阵乘法
@@ -403,4 +405,3 @@ tl.store(out_ptrs, acc.to(out_dtype), mask=mask_out)
 不同算子之间的差异几乎全在**第 2 步的语义解码**和**第 3 步内部的坐标→指针映射**。主框架不变，只插拔解码逻辑。卷积的 `kred → (c,r,s)` 是一个典型例子；attention 的 causal mask 是另一个。
 
 ---
-

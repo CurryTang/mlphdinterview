@@ -1,3 +1,4 @@
+# LLM八股 2 · RL Infra 自测 35 问
 
 > [!info] 使用说明
 > 本文档对应 [[MLSYS14 Post-Training Infra]] 的配套练习，题目来源：[@sheriyuo 的 RL Interview Questions 2026](https://x.com/sheriyuo/status/2063295181131247674)。共 35 题，按主题重排为 A–F 六个部分。点击 **▶ 显示答案** 展开解析，再次点击收起。

@@ -762,8 +762,17 @@
 }
 
 .markdown-body img {
+  display: block;
   max-width: 100%;
+  max-height: min(72vh, 760px);
+  width: auto;
+  height: auto;
+  margin: 1rem auto 1.2rem;
+  border: 1px solid rgba(24, 49, 63, 0.14);
   border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(31, 53, 66, 0.09);
+  object-fit: contain;
 }
 
 .markdown-body mark {

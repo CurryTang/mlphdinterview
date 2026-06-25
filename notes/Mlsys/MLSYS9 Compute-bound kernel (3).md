@@ -1,3 +1,5 @@
+# MLSYS9 · Compute-Bound Kernel (3)
+
 ## 5. Softmax 与归一化操作
 
 Softmax 和归一化操作包含**归约（reduction）**步骤——每个输出元素依赖同一行所有输入元素的全局统计量，这天然地限制了并行度。本章深入讲解 Online Softmax 算法（理解 Flash Attention 的关键前置知识），然后用 Triton 实现 Softmax、LayerNorm、RMSNorm。

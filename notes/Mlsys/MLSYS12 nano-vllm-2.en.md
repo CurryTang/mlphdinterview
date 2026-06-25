@@ -1,3 +1,5 @@
+# MLSYS12 · nano-vllm Reading Notes (2)
+
 ## nano-vllm Part 2: Inference engine system design
 
 > This chapter focuses on the **inference engine layer** design of nano-vllm - scheduling, memory management, model execution and attention calculation.

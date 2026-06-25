@@ -1,3 +1,5 @@
+# MLSYS9 · Compute-Bound Kernel (3)
+
 ## 5. Softmax and Normalization Operations
 
 Softmax and normalization operations involve **reduction** steps—each output element depends on the global statistics of all input elements in the same row, which inherently limits parallelism. This chapter explains the Online Softmax algorithm in depth (a key prerequisite for understanding Flash Attention), and then uses Triton to implement Softmax, LayerNorm, and RMSNorm.

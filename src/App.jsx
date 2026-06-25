@@ -14,11 +14,12 @@ const markdownModules = import.meta.glob('../notes/**/*.md', {
 });
 
 const mlsysNoteDefinitions = [
+  createTutorialDefinition('MLSYS Overview：学习路径与目录', 'MLSYS Overview.md', null),
   createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md'),
-  createTutorialDefinition('MLSYS2 · CUDA 编程模型', 'MLSYS2.md', 'MLSYS2.en.md'),
+  createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md'),
   createTutorialDefinition('MLSYS3 · Roofline Analysis', 'MLSYS3.md', 'MLSYS3.en.md'),
-  createTutorialDefinition('MLSYS4 · CUDA Reduce Kernel', 'MLSYS4.md', 'MLSYS4.en.md'),
-  createTutorialDefinition('MLSYS5 · Histogram & Scan', 'MLSYS5.md', 'MLSYS5.en.md'),
+  createTutorialDefinition('MLSYS4 · CUDA Reduce Kernel 完全指南', 'MLSYS4.md', 'MLSYS4.en.md'),
+  createTutorialDefinition('MLSYS5 · CUDA Parallel Primitives: Histogram & Scan', 'MLSYS5.md', 'MLSYS5.en.md'),
   createTutorialDefinition('MLSYS6 · Memory-Bound Kernel 优化', 'MLSYS6.md', 'MLSYS6.en.md'),
   createTutorialDefinition(
     'MLSYS7 · Compute-Bound Kernel (1)',
@@ -39,19 +40,9 @@ const mlsysNoteDefinitions = [
   createTutorialDefinition('MLSYS11 · nano-vllm 精读 (1)', 'MLSYS11 nano-vllm-1.md', 'MLSYS11 nano-vllm-1.en.md'),
   createTutorialDefinition('MLSYS12 · nano-vllm 精读 (2)', 'MLSYS12 nano-vllm-2.md', 'MLSYS12 nano-vllm-2.en.md'),
   createTutorialDefinition(
-    'MLSYS13 · 量化与精度',
+    'MLSYS13 · Low-bit Quantization 核心方法详解',
     'MLSYS13 Quantization and precision.md',
     'MLSYS13 Quantization and precision.en.md',
-  ),
-  createTutorialDefinition(
-    'MLSYS14 · Post-Training Infra：从 TRL 到 Forge',
-    'MLSYS14 Post-Training Infra.md',
-    'MLSYS14 Post-Training Infra.en.md',
-  ),
-  createTutorialDefinition(
-    'MLSYS15 · RL Infra 自测 35 问',
-    'MLSYS15 RL Infra 自测 35 问.md',
-    'MLSYS15 RL Infra 自测 35 问.en.md',
   ),
 ];
 
@@ -224,12 +215,39 @@ const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
   },
 }));
 
+const llmNoteDefinitions = [
+  createTutorialDefinition(
+    'LLM八股 1 · Post-Training Infra：从 TRL 到 Forge',
+    'MLSYS14 Post-Training Infra.md',
+    'MLSYS14 Post-Training Infra.en.md',
+  ),
+  createTutorialDefinition(
+    'LLM八股 2 · RL Infra 自测 35 问',
+    'MLSYS15 RL Infra 自测 35 问.md',
+    'MLSYS15 RL Infra 自测 35 问.en.md',
+  ),
+];
+
+const llmNotes = llmNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
 const noteSections = [
   {
     id: 'mlsys',
     title: 'MLSYS',
-    description: 'Machine learning systems interview notes',
+    description: 'GPU kernels, training systems, inference systems, and performance notes',
     notes: mlsysNotes,
+  },
+  {
+    id: 'llm',
+    title: 'LLM八股',
+    description: 'LLM post-training, RL infra, and framework interview notes',
+    notes: llmNotes,
   },
   {
     id: 'leetcode',
@@ -388,7 +406,8 @@ function splitObsidianTarget(rawContent) {
 function prettyLabel(rawTarget) {
   const [withoutAnchor] = rawTarget.split('#');
   const token = withoutAnchor.split('/').at(-1) ?? withoutAnchor;
-  return token.replace(/\.en\.md$/i, '').replace(/\.md$/i, '').trim() || rawTarget.trim();
+  const anchor = rawTarget.includes('#') ? cleanHeadingText(rawTarget.split('#').slice(1).join('#')) : '';
+  return token.replace(/\.en\.md$/i, '').replace(/\.md$/i, '').trim() || anchor || rawTarget.trim();
 }
 
 function resolveNoteId(rawTarget) {
@@ -415,6 +434,24 @@ function resolveNoteId(rawTarget) {
   }
 
   return null;
+}
+
+function resolveObsidianLink(target, alias) {
+  if (target.startsWith('#')) {
+    const heading = cleanHeadingText(target.slice(1));
+    if (!heading) {
+      return alias || '';
+    }
+
+    return `[${alias || heading}](#${slugify(heading)})`;
+  }
+
+  const noteId = resolveNoteId(target);
+  if (!noteId) {
+    return null;
+  }
+
+  return `[${alias || prettyLabel(target)}](#${encodeURIComponent(noteId)})`;
 }
 
 function resolveMediaUrl(rawTarget) {
@@ -1731,9 +1768,9 @@ function normalizeObsidianMarkdown(markdownText) {
       return '';
     }
 
-    const noteId = resolveNoteId(target);
-    if (noteId) {
-      return `[${alias || prettyLabel(target)}](#${encodeURIComponent(noteId)})`;
+    const resolvedLink = resolveObsidianLink(target, alias);
+    if (resolvedLink) {
+      return resolvedLink;
     }
 
     if (/^https?:\/\//i.test(target)) {

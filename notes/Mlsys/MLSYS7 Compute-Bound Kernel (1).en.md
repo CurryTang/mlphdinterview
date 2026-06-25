@@ -1,3 +1,5 @@
+# MLSYS7 · Compute-Bound Kernel (1)
+
 ## 1. Introduction: What Is a Compute-Bound Kernel
 
 A compute-bound kernel is one whose performance bottleneck is the throughput of the GPU's compute units (ALU/FPU/Tensor Core), rather than memory bandwidth. Such kernels typically have the following characteristics:
@@ -1829,7 +1831,6 @@ Notice that the comments in the code explicitly mark the five blueprint steps. C
 | Tensor Core | Manual WMMA API | Automatically used by `tl.dot()` |
 | Tile-size tuning | Manual trial and error | Automatic search via `@triton.autotune` |
 | Performance | Hand-tuned implementations can reach cuBLAS 90%+ | Typically reaches cuBLAS 80-90% |
-
 
 
 

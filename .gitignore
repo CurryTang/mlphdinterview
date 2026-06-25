@@ -28,6 +28,7 @@ docs/plans/
 
 # Notes publishing control: keep drafts local until ready
 notes/Mlsys/*
+!notes/Mlsys/MLSYS Overview.md
 !notes/Mlsys/MLSYS1.md
 !notes/Mlsys/MLSYS1.en.md
 !notes/Mlsys/MLSYS2.md

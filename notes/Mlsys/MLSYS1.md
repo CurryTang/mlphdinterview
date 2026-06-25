@@ -1,4 +1,6 @@
-## Q1 基础环境搭建与hello world kernel
+# MLSYS1 · GPU 体系结构入门
+
+## Q1 基础环境搭建与 hello world kernel
 
 ```quiz
 title: 练习题
@@ -90,7 +92,7 @@ b = torch.randn(1024, device='cuda')
 c = module.vector_add(a, b)
 ```
 
-## Q2 理解hello world kernel 
+## Q2 理解 hello world kernel
 
 ### GPU 硬件架构 Intro
 
