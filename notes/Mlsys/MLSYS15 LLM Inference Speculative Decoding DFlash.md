@@ -1,4 +1,4 @@
-# MLSYS15 · Inference：Speculative Decoding 到 DFlash
+# MLSYS17 · Inference：并行解码与草稿验证
 
 这篇讲一个推理系统里非常高频、也很容易被问深的主题：
 
@@ -22,13 +22,14 @@ Medusa / EAGLE / DFlash 到底差在哪里？
 3. [[#三、为什么它可以保持 target model 分布]]
 4. [[#四、加速来自哪里：一个可背的性能模型]]
 5. [[#五、从 Medusa 到 EAGLE-3：drafter 怎么变强]]
-6. [[#六、DFlash：Block Diffusion Speculative Decoding]]
-7. [[#七、Kernel 与系统调度层：推理不是一个 forward]]
-8. [[#八、Spec Decode 在 serving runtime 里怎么落地]]
-9. [[#九、SGLang / vLLM 里怎么开 DFlash]]
-10. [[#十、工程判断：什么时候开，什么时候别开]]
-11. [[#十一、面试问答与常见坑]]
-12. [[#参考资料]]
+6. [[#六、MTP：把 draft model 做进 target 旁边]]
+7. [[#七、DFlash：Block Diffusion Speculative Decoding]]
+8. [[#八、Kernel 与系统调度层：推理不是一个 forward]]
+9. [[#九、Spec Decode 在 serving runtime 里怎么落地]]
+10. [[#十、SGLang / vLLM 里怎么开 DFlash]]
+11. [[#十一、工程判断：什么时候开，什么时候别开]]
+12. [[#十二、面试问答与常见坑]]
+13. [[#参考资料]]
 
 ---
 
@@ -326,13 +327,208 @@ EAGLE 这一类方法的核心 tradeoff：
 
 ---
 
-## 六、DFlash：Block Diffusion Speculative Decoding
+## 六、MTP：把 draft model 做进 target 旁边
+
+MTP 是 Multi-Token Prediction。它可以是训练目标，也可以是 speculative decoding 的内置 drafter。
+
+最朴素的多 token 预测是：
+
+```text
+shared trunk hidden h_t
+  -> head_1 predicts token t+1
+  -> head_2 predicts token t+2
+  -> head_3 predicts token t+3
+```
+
+Gloeckle 等人的 MTP 论文强调的是训练收益：同一个位置预测多个未来 token，让训练信号更密，尤其在代码任务上更有帮助。推理时，这些额外 head 也可以给 speculative decoding 提供候选。
+
+DeepSeek-V3 / GLM-5 这类大模型里的 MTP 更接近一个 sequential MTP module，而不是几个独立 head。它会保留完整因果链：
+
+```text
+target backbone gives h_t
+
+MTP step 1:
+  input: h_t, token_t
+  output: draft token t+1
+
+MTP step 2:
+  input: updated MTP hidden, draft token t+1
+  output: draft token t+2
+
+MTP step 3:
+  input: updated MTP hidden, draft token t+2
+  output: draft token t+3
+```
+
+这样做比独立 head 更贵一点，但更像一个小的 target-adjacent drafter，候选质量通常更好。
+
+### 6.1 MTP 和 Medusa 的差别
+
+| 方法 | draft 来源 | 依赖 target hidden | draft 是否串行 | 主要代价 |
+|---|---|---|---|---|
+| Medusa | 多个 decoding heads | 是 | 多头并行 | head 训练、tree attention |
+| EAGLE | feature-level drafter | 是 | 仍然 autoregressive | drafter forward 与 feature plumbing |
+| MTP | target 旁边的 MTP module | 是 | 常见实现是 sequential | MTP layer、KV 共享、verify metadata |
+| DFlash | block diffusion drafter | 是 | block 内并行 | diffusion drafter 与 KV injection |
+
+面试里可以这样说：
+
+```text
+Medusa 更像加 head。
+EAGLE 更像预测 target feature。
+MTP 更像 target 自带一个小的未来-token drafter。
+DFlash 则尝试把 draft block 并行化。
+```
+
+### 6.2 MTP 的训练目标
+
+普通 next-token loss 是：
+
+$$
+\mathcal{L}_{NTP} = -\log p(x_{t+1} \mid x_{\le t})
+$$
+
+MTP 增加多个未来位置：
+
+$$
+\mathcal{L}_{MTP} =
+\sum_{d=1}^{D}
+-\log p_d(x_{t+d} \mid x_{\le t})
+$$
+
+如果是 sequential MTP module，第 `d` 步的状态会依赖前面 MTP step 的输入和隐藏状态，而不是所有 future heads 完全独立。这样做的动机是让第 `d` 个预测仍然尊重因果链：
+
+```text
+predict t+3 should know what was predicted for t+1 and t+2
+```
+
+训练时 MTP 不只是为了推理加速。它也会逼 backbone 形成更能预判未来 token 的 representation。DeepSeek-V3 技术报告把 MTP 同时作为训练目标和 speculative decoding 的基础。
+
+### 6.3 MTP 推理怎么接 speculative decoding
+
+MTP 作为 drafter 时，一轮大致是：
+
+```text
+1. target backbone decode 到当前位置，得到 hidden state
+2. MTP module 生成 k 个 candidate tokens
+3. target model verify 这 k 个 tokens
+4. rejection sampling 接受最长前缀并处理拒绝位置
+```
+
+伪代码：
+
+```python
+def mtp_spec_step(context, target, mtp, k):
+    hidden, target_kv = target.decode_last(context)
+
+    draft_tokens = []
+    mtp_state = mtp.init_from_target_hidden(hidden)
+    for _ in range(k):
+        logits, mtp_state = mtp.forward_one(mtp_state, draft_tokens[-1:])
+        token = sample(logits)
+        draft_tokens.append(token)
+
+    q_logits = target.verify(context, draft_tokens, kv_cache=target_kv)
+    accepted = rejection_sample(draft_tokens, q_logits)
+    return accepted
+```
+
+真实实现不会把 `target.decode_last` 和 `target.verify` 分得这么干净。runtime 会复用已有 KV cache，verify 时构造 `Q length = k + 1` 的短 prefill-like batch，并且只 commit accepted tokens。
+
+### 6.4 GLM-5.2：MTP with IndexShare and KVShare
+
+GLM-5.2 官方博客写了三个细节，值得单独记：
+
+```text
+1. MTP layer 也使用 IndexShare。
+2. multi-step MTP 中，第一步运行 indexer，后续 step 复用第一步 top-k indices。
+3. MTP 的 KV cache 只包含来自 target model hidden states 的 KV，不把后续 MTP hidden 混进去。
+```
+
+这就是博客里说的 KVShare。它解决一个训练和推理不一致的问题。
+
+如果没有这个处理，第二个 MTP step 的上下文会变成：
+
+```text
+kv1:4 from target model
+kv5   from MTP layer
+```
+
+训练时和推理时混合来源不一样，acceptance length 会受影响。
+
+GLM-5.2 的做法是：
+
+```text
+for MTP step 1:
+  use target hidden h1:4
+  compute indexer top-k
+
+for MTP step 2..D:
+  reuse step 1 KV cache
+  reuse step 1 top-k indices
+  MTP parameters are shared across steps
+```
+
+官方消融里，IndexShare + KVShare、rejection sampling、end-to-end TV loss 叠加后，coding 场景的 MTP acceptance length 从 4.56 提到 5.47，约 20%。
+
+### 6.5 代码里会看到什么
+
+Transformers 的 assisted generation 里，candidate generator 会先拿 candidate tokens，再让 target 对 `candidate_length + 1` 个 logits 做验证。采样模式下使用 speculative sampling：
+
+```python
+probability_ratio = p_target(candidate_token) / q_draft(candidate_token)
+accept = random() <= probability_ratio
+```
+
+如果拒绝，就从 residual distribution 采样：
+
+```python
+p_prime = clamp(p_target - q_draft, min=0)
+```
+
+这就是理论里的 rejection sampling 在工程代码里的形态。
+
+ATOM/vLLM 的 GLM sparse path 还要处理 MTP 的 sparse attention metadata。`_should_skip_index_topk` 对 MTP layer 有专门分支：
+
+```python
+if layer_id >= num_hidden_layers and index_share_for_mtp_iteration:
+    return True
+```
+
+metadata builder 看到 multi-token decode 时，会把一个请求的多个 decode token 展平成多个 single-token batch entries，扩展 `seq_lens` 和 `block_table`。这样 paged MQA logits、top-k、sparse MLA kernel 还能复用同一套接口。
+
+### 6.6 MTP 的系统瓶颈
+
+MTP 听起来只是多预测几个 token，但上线时会影响四个地方：
+
+| 模块 | 变化 |
+|---|---|
+| KV cache | 候选 token 可能要临时 cache，accepted 后才能 commit |
+| scheduler | 一轮 verify 会消耗多个 token budget |
+| attention metadata | decode 不再总是 query length 1 |
+| sampler | 需要 draft logprob 和 target logprob 对齐 |
+
+因此，MTP 的收益不是固定的。它依赖：
+
+```text
+acceptance length
+MTP module cost
+target verify efficiency
+KV cache headroom
+batch occupancy
+```
+
+如果 batch 已经很满，或者 MTP module 占用太多显存导致 KV cache 容量下降，端到端吞吐可能不升反降。
+
+---
+
+## 七、DFlash：Block Diffusion Speculative Decoding
 
 DFlash 的突破点是：
 
 > 传统 EAGLE / MTP 风格方法虽然让 drafter 变小了，但 draft token 仍然一个一个生成。DFlash 用 block diffusion drafter 一次并行生成一整块候选 token。
 
-### 6.1 从 autoregressive draft 到 block draft
+### 7.1 从 autoregressive draft 到 block draft
 
 传统 draft：
 
@@ -351,7 +547,7 @@ DFlash draft：
 
 也就是说，draft 阶段本身从串行变成更并行。这个变化对 latency 很关键，因为 spec decode 的总成本里有一项 `C_d`。如果 draft 本身串行，`k` 开大时 `C_d` 会涨；block diffusion 可以把多个 token 放到一个 denoising pass 里。
 
-### 6.2 KV injection：为什么 DFlash 不只是“另一个小模型”
+### 7.2 KV injection：为什么 DFlash 不只是“另一个小模型”
 
 DFlash 不是盲猜。它会把 target model 的 hidden states 注入到 draft model 的 KV cache，让 drafter 条件化在 target feature 上。
 
@@ -374,7 +570,7 @@ block diffusion drafter predicts token block
 | draft 太弱，接受率低 | 用 target hidden features 约束 drafter |
 | draft 太慢，成本高 | 用 block diffusion 并行生成 token block |
 
-### 6.3 Non-causal attention mask
+### 7.3 Non-causal attention mask
 
 普通 autoregressive decoder 的 attention mask 是 causal：
 
@@ -392,7 +588,7 @@ target features:   injected as conditioning context
 
 这就是为什么 DFlash 属于“speculative decoding algorithm”，但实现上已经接近一个专门的 diffusion-style draft module。
 
-### 6.4 Anchor 机制
+### 7.4 Anchor 机制
 
 vLLM speculators 文档里把 DFlash 的验证过程解释成 anchor-based speculative decoding。可以把它想成：
 
@@ -425,7 +621,7 @@ block 内 token 并行 draft
 多个 anchor / block 并行验证
 ```
 
-### 6.5 DFlash 怎么放进前面的性能模型
+### 7.5 DFlash 怎么放进前面的性能模型
 
 回到公式：
 
@@ -447,7 +643,7 @@ NVIDIA 2026 年 Blackwell 博客给出的公开结果显示，DFlash 在 gpt-oss
 
 ---
 
-## 七、Kernel 与系统调度层：推理不是一个 forward
+## 八、Kernel 与系统调度层：推理不是一个 forward
 
 前面讲的是 speculative decoding 的算法。真正的 inference 系统里，一次 decode step 至少有两层调度：
 
@@ -465,7 +661,7 @@ kernel scheduler:
 
 这就是为什么同一个 speculative algorithm，在 notebook 里能加速，放进 vLLM/SGLang 里却可能需要一堆 runtime 工作。
 
-### 7.1 Decode step 的真实数据流
+### 8.1 Decode step 的真实数据流
 
 普通 decode 不是简单调用 `model(input_id)`。一个 serving runtime 通常做下面这些事：
 
@@ -502,7 +698,7 @@ def decode_iteration(waiting, running, kv_allocator):
 
 面试里要能指出：**scheduler 决定 batch shape，batch shape 决定 kernel 效率**。Speculative decoding 改变了 step 粒度：一次 target verify 可能推进多个 token，因此 scheduler 不能再假设“每个 running request 每轮只追加 1 个 KV slot”。
 
-### 7.2 Paged KV Cache：为什么 decode 需要内存管理器
+### 8.2 Paged KV Cache：为什么 decode 需要内存管理器
 
 KV cache 大小近似：
 
@@ -547,7 +743,7 @@ verify 后：
 
 如果直接把所有 draft token 写进正式 KV，再回滚，会让 allocator、streaming、prefix cache 全部复杂化。
 
-### 7.3 CUDA-level：decode attention kernel 在做什么
+### 8.3 CUDA-level：decode attention kernel 在做什么
 
 下面是高度简化的 CUDA 视角。真实实现会有 tensor core、warp-level reduction、vectorized load、FlashAttention-style online softmax，但 mental model 是：
 
@@ -591,7 +787,7 @@ __global__ void paged_decode_attention(
 
 FlashInfer 这类 kernel library 的价值就在这里：它不是只给一个 attention kernel，而是给一套能适配不同 KV layout、不同 batch shape、不同 attention variant 的模板和 runtime 调度。
 
-### 7.4 FlashInfer 的 plan/run 模式
+### 8.4 FlashInfer 的 plan/run 模式
 
 FlashInfer 论文里一个很重要的系统点是：请求长度动态变化，但 CUDAGraph 喜欢静态 launch 配置。解决思路可以理解成两阶段：
 
@@ -625,7 +821,7 @@ for layer in layers:
 
 这类设计解释了一个常见现象：LLM inference 的优化不只是“写一个更快的 CUDA kernel”，而是 **kernel API、metadata format、scheduler、CUDAGraph replay** 一起设计。
 
-### 7.5 Prefill / Decode disaggregation
+### 8.5 Prefill / Decode disaggregation
 
 Prefill 和 decode 的硬件行为不同：
 
@@ -654,9 +850,9 @@ verify block 太长会不会拖慢别人的 ITL？
 
 ---
 
-## 八、Spec Decode 在 serving runtime 里怎么落地
+## 九、Spec Decode 在 serving runtime 里怎么落地
 
-### 8.1 Runtime 状态机
+### 9.1 Runtime 状态机
 
 一个支持 speculative decoding 的 request 通常不是单一 `RUNNING` 状态，而更像：
 
@@ -701,7 +897,7 @@ prefill requests
 
 调度器的本质是把这些不同形态的工作塞进同一批 GPU，让吞吐、TTFT、ITL、显存都不爆。
 
-### 8.2 Verify kernel 为什么接近 prefill
+### 9.2 Verify kernel 为什么接近 prefill
 
 验证 `k` 个 draft token 时，target 不是逐个 token 跑，而是输入：
 
@@ -728,7 +924,7 @@ attention mask = causal
 
 所以它会消耗更多 `max_num_batched_tokens`，也会引入更多 activation/logit 临时 buffer。线上如果只看 tokens/s，很容易忽略 verify 对其他请求 ITL 的挤压。
 
-### 8.3 DFlash 特别需要 hidden-state plumbing
+### 9.3 DFlash 特别需要 hidden-state plumbing
 
 DFlash 不只是“多一个 draft model”。它需要 target hidden features 作为条件：
 
@@ -751,7 +947,7 @@ DFlash drafter:
 
 这解释了为什么 DFlash/EAGLE 的生产化通常依赖 vLLM/SGLang 这类 runtime，而不是在 Transformers loop 上加几行 Python。
 
-### 8.4 正确性边界：lossless 不等于实现简单
+### 9.4 正确性边界：lossless 不等于实现简单
 
 Speculative decoding 的理论正确性依赖三个条件：
 
@@ -775,11 +971,11 @@ Speculative decoding 的理论正确性依赖三个条件：
 
 ---
 
-## 九、SGLang / vLLM 里怎么开 DFlash
+## 十、SGLang / vLLM 里怎么开 DFlash
 
 真实部署时你不会手写 `verify_prefix`。你会在 serving runtime 里打开对应 spec decode backend。
 
-### 9.1 SGLang 示例
+### 10.1 SGLang 示例
 
 以公开的 Qwen3-8B DFlash checkpoint 为例，SGLang 启动方式大致是：
 
@@ -805,7 +1001,7 @@ python -m sglang.launch_server \
 | `--attention-backend` | 是否用 FA3 等高效 attention backend |
 | `--mem-fraction-static` | 预留 KV / graph / runtime 内存 |
 
-### 9.2 vLLM 示例
+### 10.2 vLLM 示例
 
 vLLM 的 speculator 配置通常放在 JSON 参数里：
 
@@ -835,9 +1031,9 @@ vllm serve Qwen/Qwen3-8B \
 
 ---
 
-## 十、工程判断：什么时候开，什么时候别开
+## 十一、工程判断：什么时候开，什么时候别开
 
-### 10.1 适合开 speculative decoding 的场景
+### 11.1 适合开 speculative decoding 的场景
 
 | 场景 | 原因 |
 |---|---|
@@ -847,7 +1043,7 @@ vllm serve Qwen/Qwen3-8B \
 | batch 不总是打满 | spec decode 能把单请求 latency 拉低 |
 | drafter 很贴 target | acceptance length 稳定 |
 
-### 10.2 不一定适合的场景
+### 11.2 不一定适合的场景
 
 | 场景 | 风险 |
 |---|---|
@@ -857,7 +1053,7 @@ vllm serve Qwen/Qwen3-8B \
 | drafter 占显存太多 | KV cache 可用空间下降，反而降低并发 |
 | target/draft tokenizer 不一致 | correctness 和实现复杂度都危险 |
 
-### 10.3 线上必须看哪些指标
+### 11.3 线上必须看哪些指标
 
 ```text
 spec/acceptance_length_p50
@@ -882,7 +1078,7 @@ benchmark tokens/s 变高
 
 ---
 
-### 10.4 读论文时要带着系统问题读
+### 11.4 读论文时要带着系统问题读
 
 最近几条线可以这样连起来：
 
@@ -904,7 +1100,7 @@ KV commit/rollback、streaming correctness 和 p95 ITL 保护。
 
 ---
 
-## 十一、面试问答与常见坑
+## 十二、面试问答与常见坑
 
 ### Q1：Speculative decoding 为什么不是 distillation？
 
@@ -949,6 +1145,10 @@ GPU memory headroom
 - [Accelerating Large Language Model Decoding with Speculative Sampling](https://arxiv.org/abs/2302.01318)
 - [Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads](https://arxiv.org/abs/2401.10774)
 - [EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test](https://arxiv.org/abs/2503.01840)
+- [Better & Faster Large Language Models via Multi-token Prediction](https://arxiv.org/abs/2404.19737)
+- [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437)
+- [GLM-5.2 official blog](https://huggingface.co/blog/zai-org/glm-52-blog)
+- [IndexCache: Accelerating Sparse Attention via Cross-Layer Index Reuse](https://arxiv.org/abs/2603.12201)
 - [DFlash: Block Diffusion for Flash Speculative Decoding](https://arxiv.org/abs/2602.06036)
 - [FlashInfer: Efficient and Customizable Attention Engine for LLM Inference Serving](https://arxiv.org/abs/2501.01005)
 - [vLLM: Inside vLLM, Anatomy of a High-Throughput LLM Inference System](https://vllm.ai/blog/2025-09-05-anatomy-of-vllm)

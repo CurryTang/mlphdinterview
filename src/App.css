@@ -735,6 +735,26 @@
   background: rgba(116, 196, 220, 0.32);
 }
 
+.mermaid-diagram {
+  margin: 1rem 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid rgba(24, 49, 63, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(243, 250, 250, 0.92));
+  box-shadow: 0 8px 18px rgba(31, 53, 66, 0.09);
+  overflow-x: auto;
+  color: #1f3847;
+  font: 700 0.8rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.mermaid-diagram svg {
+  display: block;
+  max-width: 100%;
+  min-width: 520px;
+  height: auto;
+  margin-inline: auto;
+}
+
 .markdown-body table {
   width: 100%;
   margin: 1rem 0 1.15rem;

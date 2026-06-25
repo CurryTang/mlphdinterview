@@ -15,7 +15,7 @@
 3. [Kernel 优化](#kernel-优化)
 4. [训练与推理系统](#训练与推理系统)
 5. [精度与量化](#精度与量化)
-6. [Post-training / Inference / MoE](#post-training--inference--moe)
+6. [Post-training / Efficient Attention / KV Cache / Inference / MoE](#post-training--efficient-attention--kv-cache--inference--moe)
 7. [LLM八股 去哪里了](#llm八股-去哪里了)
 
 ## 学习主线
@@ -36,7 +36,7 @@ GPU architecture
 
 ```text
 MLSYS1 -> MLSYS2 -> MLSYS3 -> MLSYS4/5/6 -> MLSYS7/8/9
-       -> MLSYS10 -> MLSYS11/12 -> MLSYS13 -> MLSYS14/15/16
+       -> MLSYS10 -> MLSYS11/12 -> MLSYS13 -> MLSYS14/15/16/17/18
 ```
 
 如果你时间很紧，优先读：
@@ -51,8 +51,10 @@ MLSYS1 -> MLSYS2 -> MLSYS3 -> MLSYS4/5/6 -> MLSYS7/8/9
 | 推理系统 | [[MLSYS11 nano-vllm-1]], [[MLSYS12 nano-vllm-2]] |
 | 量化与精度 | [[MLSYS13 Quantization and precision]] |
 | Post-training / RL Infra | [[MLSYS14 Post-Training Infra]] |
-| 推理加速 | [[MLSYS15 LLM Inference Speculative Decoding DFlash]] |
-| MoE 系统 | [[MLSYS16 Modern MoE SonicMoE]] |
+| Efficient attention / 长上下文架构 | [[MLSYS15 Efficient Attention Modern Architectures|MLSYS15 Efficient Attention]] |
+| KV cache / 长上下文推理 | [[MLSYS15 KV Cache Prefix Caching IndexShare|MLSYS16 KV Cache]] |
+| 推理加速 | [[MLSYS15 LLM Inference Speculative Decoding DFlash|MLSYS17 Inference]] |
+| MoE 系统 | [[MLSYS16 Modern MoE SonicMoE|MLSYS18 MoE Systems]] |
 
 ## GPU 与 CUDA 基础
 
@@ -176,7 +178,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 - KV cache quantization
 - low precision training 的稳定性问题
 
-## Post-training / Inference / MoE
+## Post-training / Efficient Attention / KV Cache / Inference / MoE
 
 ### [[MLSYS14 Post-Training Infra|MLSYS14 · Post-Training Infra]]
 
@@ -186,7 +188,25 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 - veRL、slime、SkyRL、AReaL 等 RL infra 框架
 - SearchR1、terminal agent、sandbox 等 agentic RL 负载
 
-### [[MLSYS15 LLM Inference Speculative Decoding DFlash|MLSYS15 · Inference：Speculative Decoding 到 DFlash]]
+### [[MLSYS15 Efficient Attention Modern Architectures|MLSYS15 · Efficient Attention：现代长上下文架构]]
+
+这篇讲 2025 之后的 efficient attention 主线：
+
+- associative memory 视角下的 dense、linear、sparse、hybrid attention
+- DeepSeek DSA、DMA、DHSA 的 dynamic sparse routing
+- Qwen3-Next、Kimi Linear、MiniMax-M1 的 hybrid / recurrent attention 实现
+- prefill、decode、cache manager、spec decode 下的系统约束
+
+### [[MLSYS15 KV Cache Prefix Caching IndexShare|MLSYS16 · KV Cache：内存管理、前缀复用与 IndexShare]]
+
+这篇补上推理系统的 cache 层：
+
+- KV cache 到底存什么
+- PagedAttention、prefix cache、RadixAttention 的边界
+- KV cache 容量、量化、淘汰、传输
+- GLM-5.2 IndexShare / IndexCache 在 Transformers、ATOM/vLLM 里的实现路径
+
+### [[MLSYS15 LLM Inference Speculative Decoding DFlash|MLSYS17 · Inference：并行解码与草稿验证]]
 
 这篇继续推理系统主线，重点是 decode 加速：
 
@@ -194,7 +214,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 - Medusa、EAGLE、DFlash 的 drafter 设计
 - vLLM / SGLang 中如何打开和评估 spec decode
 
-### [[MLSYS16 Modern MoE SonicMoE|MLSYS16 · Modern MoE：SonicMoE]]
+### [[MLSYS16 Modern MoE SonicMoE|MLSYS18 · MoE Systems：路由、通信与 Kernel]]
 
 这篇属于训练/推理系统里的 MoE 专题：
 
@@ -218,7 +238,7 @@ LLM八股
 这样拆分后：
 
 ```text
-MLSYS = GPU / kernel / training / inference / precision / post-training / MoE systems
+MLSYS = GPU / kernel / training / inference / precision / post-training / attention / MoE systems
 LLM八股 = RL infra self-check / interview drills
 LeetCode = data structure & algorithm patterns
 ```

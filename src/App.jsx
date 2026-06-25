@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
@@ -50,12 +50,22 @@ const mlsysNoteDefinitions = [
     'MLSYS14 Post-Training Infra.en.md',
   ),
   createTutorialDefinition(
-    'MLSYS15 · Inference：Speculative Decoding 到 DFlash',
+    'MLSYS15 · Efficient Attention：现代长上下文架构',
+    'MLSYS15 Efficient Attention Modern Architectures.md',
+    null,
+  ),
+  createTutorialDefinition(
+    'MLSYS16 · KV Cache：内存管理与前缀复用',
+    'MLSYS15 KV Cache Prefix Caching IndexShare.md',
+    null,
+  ),
+  createTutorialDefinition(
+    'MLSYS17 · Inference：并行解码与草稿验证',
     'MLSYS15 LLM Inference Speculative Decoding DFlash.md',
     null,
   ),
   createTutorialDefinition(
-    'MLSYS16 · Modern MoE：SonicMoE 深入解析',
+    'MLSYS18 · MoE Systems：路由、通信与 Kernel',
     'MLSYS16 Modern MoE SonicMoE.md',
     null,
   ),
@@ -1593,7 +1603,11 @@ function buildIntervalTicks([min, max]) {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo)/.exec(className);
+
+  if (match?.[1] === 'mermaid') {
+    return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
+  }
 
   if (match?.[1] === 'topo-demo') {
     return <ForeignDictionaryTopoVisual />;
@@ -1620,6 +1634,71 @@ function MarkdownPre({ children, ...props }) {
   }
 
   return <CodeBlock className={className} source={extractPlainText(child?.props?.children)} {...props} />;
+}
+
+let mermaidLoader = null;
+
+async function getMermaid() {
+  if (!mermaidLoader) {
+    mermaidLoader = import('mermaid').then(({ default: mermaid }) => {
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'base',
+        themeVariables: {
+          background: 'transparent',
+          primaryColor: '#e9f3f5',
+          primaryTextColor: '#102735',
+          primaryBorderColor: '#2f7b94',
+          lineColor: '#315568',
+          secondaryColor: '#fff7e3',
+          tertiaryColor: '#f4fbf7',
+          fontFamily: '"IBM Plex Mono", "Courier New", monospace',
+        },
+      });
+      return mermaid;
+    });
+  }
+
+  return mermaidLoader;
+}
+
+function MermaidDiagram({ chart }) {
+  const containerRef = useRef(null);
+  const reactId = useId();
+  const diagramId = useMemo(() => `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`, [reactId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function renderDiagram() {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const mermaid = await getMermaid();
+      containerRef.current.innerHTML = '';
+
+      try {
+        const { svg } = await mermaid.render(diagramId, chart);
+        if (!cancelled && containerRef.current) {
+          containerRef.current.innerHTML = svg;
+        }
+      } catch {
+        if (!cancelled && containerRef.current) {
+          containerRef.current.textContent = 'Diagram failed to render.';
+        }
+      }
+    }
+
+    renderDiagram();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chart, diagramId]);
+
+  return <div className="mermaid-diagram" ref={containerRef} role="img" aria-label="Mermaid diagram" />;
 }
 
 function CodeBlock({ className = '', source = '' }) {
