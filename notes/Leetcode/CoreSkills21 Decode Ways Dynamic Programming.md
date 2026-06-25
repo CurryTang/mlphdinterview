@@ -825,6 +825,189 @@ for item in items:
 
 > 0/1 背包倒序，防止同一个物品重复使用；完全背包正序，主动允许同一个物品重复使用。
 
+## Kadane's Algorithm：最大子数组和
+
+Kadane 算法解决的是 Maximum Subarray：
+
+```text
+给定数组 nums，找到一个连续子数组，使它的和最大。
+```
+
+例如：
+
+```text
+nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]
+answer = 6
+
+最优子数组是 [4, -1, 2, 1]
+sum = 6
+```
+
+这题经常被当成贪心讲，但本质也可以看成非常简洁的一维 DP。
+
+## Kadane：状态定义
+
+定义状态：
+
+```text
+dp[i] = 必须以 nums[i] 结尾的最大连续子数组和
+```
+
+注意是“必须以 `i` 结尾”，不是“前 `i` 个元素里的最大答案”。这个定义让转移非常稳定。
+
+对于 `nums[i]`，只有两种选择：
+
+```text
+1. 接在前面的子数组后面：dp[i - 1] + nums[i]
+2. 从当前位置重新开始：nums[i]
+```
+
+所以状态方程：
+
+```text
+dp[i] = max(dp[i - 1] + nums[i], nums[i])
+```
+
+最终答案：
+
+```text
+answer = max(dp[i] for all i)
+```
+
+完整 DP 写法：
+
+```python
+from typing import List
+
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [0] * n
+        dp[0] = nums[0]
+        ans = nums[0]
+
+        for i in range(1, n):
+            dp[i] = max(dp[i - 1] + nums[i], nums[i])
+            ans = max(ans, dp[i])
+
+        return ans
+```
+
+## Kadane：为什么负数前缀可以丢掉
+
+如果当前累积和是负数：
+
+```text
+curSum < 0
+```
+
+那么它接到任何未来子数组前面，只会让未来的和变小。
+
+例如未来从 `x` 开始：
+
+```text
+curSum + x < x
+```
+
+所以负数前缀没有保留价值，可以直接从下一个位置重新开始。
+
+这就是 Kadane 里这句的含义：
+
+```python
+if curSum < 0:
+    curSum = 0
+```
+
+## Kadane：空间优化写法
+
+因为 `dp[i]` 只依赖 `dp[i - 1]`，所以不需要完整数组，只保留一个变量：
+
+```text
+curSum = 当前正在延续的子数组和
+maxSub = 到目前为止见过的最大子数组和
+```
+
+代码：
+
+```python
+from typing import List
+
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        maxSub = nums[0]
+        curSum = 0
+
+        for num in nums:
+            if curSum < 0:
+                curSum = 0
+            curSum += num
+            maxSub = max(maxSub, curSum)
+
+        return maxSub
+```
+
+为什么 `maxSub = nums[0]`，而不是 `0`？
+
+因为数组可能全是负数：
+
+```text
+nums = [-5, -2, -7]
+answer = -2
+```
+
+如果把答案初始化成 `0`，就会错误地返回空子数组。但题目要求子数组非空，所以必须用第一个元素初始化答案。
+
+## Kadane：手动走一遍
+
+用经典例子：
+
+```text
+nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]
+```
+
+过程：
+
+```text
+num   curSum after update   maxSub
+-2    -2                    -2
+ 1     1                     1      # 前面 curSum < 0，丢掉 -2
+-3    -2                     1
+ 4     4                     4      # 前面 curSum < 0，从 4 重新开始
+-1     3                     4
+ 2     5                     5
+ 1     6                     6
+-5     1                     6
+ 4     5                     6
+```
+
+最终答案是 `6`。
+
+## Kadane：和普通 DP 的关系
+
+Kadane 可以这样理解：
+
+```text
+完整 DP：
+dp[i] = max(dp[i - 1] + nums[i], nums[i])
+ans = max(ans, dp[i])
+
+空间优化：
+curSum = dp[i - 1]
+更新后 curSum = dp[i]
+```
+
+所以它不是魔法，本质就是：
+
+```text
+定义“以当前位置结尾”的状态，然后把 dp 数组压成一个变量。
+```
+
+这类题常见变形：
+
+- 最大乘积子数组：需要同时记录最大值和最小值，因为负数会翻转符号。
+- 环形最大子数组：需要比较普通最大子数组和 `total_sum - 最小子数组和`。
+- 买卖股票一次最大利润：可以看成维护历史最低买入价，也可以转成最大差分子数组。
+
 ## 常见坑
 
 - 没有先定义 `dp[i]` 的含义就开始写代码。
@@ -837,6 +1020,8 @@ for item in items:
 - 0/1 背包一维优化时用了正序，导致同一个物品被重复使用。
 - Target Sum 忘记先判断 `(target + total)` 是否为偶数。
 - Target Sum 忘记 `nums[i] = 0` 也会产生不同符号方案；背包计数写法会自然处理这个情况。
+- Kadane 把 `maxSub` 初始化成 `0`，导致全负数数组返回错误。
+- Kadane 忘记子数组必须连续，不能像子序列一样随意跳过中间元素。
 
 ## 复杂度
 
@@ -869,6 +1054,11 @@ Target Sum 0/1 背包：
 
 - 时间：通常 `O(number_of_items * capacity)`
 - 空间：一维优化后 `O(capacity)`
+
+Kadane 最大子数组和：
+
+- 时间：`O(n)`
+- 空间：完整 DP 为 `O(n)`，空间优化后为 `O(1)`
 
 ## 面试回答模板
 
