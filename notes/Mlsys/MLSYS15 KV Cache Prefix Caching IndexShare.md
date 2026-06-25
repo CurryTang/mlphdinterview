@@ -9,6 +9,7 @@ KV cache 省的是重复计算。
 PagedAttention 解决的是 KV cache 动态内存管理。
 Prefix cache 解决的是不同请求之间的公共前缀复用。
 IndexShare / IndexCache 解决的是 DSA sparse attention 里 indexer 重复选 top-k 的成本。
+Agent 场景里的 KV cache 问题，核心是多轮 LLM 调用和 tool call 之间的缓存生命周期。
 ```
 
 它们不是同一个问题，但真实 runtime 会把它们放在同一条 decode 路径里。
@@ -25,8 +26,9 @@ IndexShare / IndexCache 解决的是 DSA sparse attention 里 indexer 重复选 
 8. [[#八、DSA sparse attention：先选 token，再做 attention]]
 9. [[#九、GLM-5.2 IndexShare / IndexCache 源码精读]]
 10. [[#十、KV cache 与 MTP / speculative decoding]]
-11. [[#十一、面试题]]
-12. [[#参考资料]]
+11. [[#十一、Agent 场景里的 KV cache：从 prefix cache 到 ThunderAgent]]
+12. [[#十二、面试题]]
+13. [[#参考资料]]
 
 ---
 
@@ -570,7 +572,258 @@ KV cache 只保留来自 target model hidden states 的 kv1:4。
 
 ATOM 的 indexer metadata 里也能看到多 token decode 的处理：如果 `max_decode_len > 1`，它会把 multi-token decode request 展平成多个 single-token batch entry，再构造对应的 seq_lens 和 block table。这样底层 paged MQA logits / top-k kernel 仍然能按统一接口跑。
 
-## 十一、面试题
+## 十一、Agent 场景里的 KV cache：从 prefix cache 到 ThunderAgent
+
+普通 chat serving 里，一个 request 大致是：
+
+```text
+prefill prompt -> decode answer -> finish
+```
+
+Agent serving 不是这样。一个 coding agent / browser agent / scientific workflow 通常是：
+
+```text
+LLM turn 1 -> tool call -> LLM turn 2 -> tool call -> LLM turn 3 -> ...
+```
+
+每次 LLM turn 都会带上越来越长的 trajectory：
+
+```text
+system prompt
+task description
+previous reasoning
+tool command
+tool output
+new instruction
+```
+
+这让 KV cache 从“单次请求的加速结构”变成“整个 agent program 的状态”。如果 runtime 只按 request 调度，它只能看到一段段独立 LLM call，看不到这些 call 属于同一个 agent workflow。
+
+### 11.1 Agent 为什么容易把 KV cache 打爆
+
+Agent workload 有三个特点：
+
+| 特点 | 对 KV cache 的影响 |
+|---|---|
+| 多轮调用 | 每一轮都想复用前面 trajectory 的 KV |
+| tool call 间隔 | GPU 上的 KV blocks 可能在等 `pytest`、`docker exec`、`curl`，不产生 token |
+| context 快速增长 | 每次工具输出都会增加后续 prefill/decode 的 cache footprint |
+
+这会产生一个矛盾：
+
+```text
+保留 KV:
+  下一轮 LLM turn 命中 cache，少做 re-prefill
+  但 tool execution 期间 KV 占着 HBM 不产出 token
+
+释放 KV:
+  HBM 给别的 active request 用
+  但 tool 返回后要重新 prefill 整段 trajectory
+```
+
+在 agent 场景里，KV cache hit rate 本身不是唯一目标。一个长时间跑工具的 program 即使命中率很高，也可能把大量 HBM 闲置住，降低整体 throughput。
+
+### 11.2 Prefix cache 只能解决一部分问题
+
+Prefix cache 对 agent 有用，但边界很清楚：
+
+```text
+能解决:
+  多个 agent 共享 system prompt / repo summary / task prefix
+  同一个 agent 下一轮复用上一轮完整 trajectory prefix
+
+解决不了:
+  tool call 期间 KV 是否继续占 HBM
+  多个 agent workflow 在不同 GPU 节点上的 memory imbalance
+  Docker sandbox、network port、workspace disk 这些 tool resource 的生命周期
+```
+
+因此 agent infra 需要比 prefix cache 更高一层的抽象：把一串 LLM turns 和 tool calls 当成一个 program 来调度。
+
+### 11.3 ThunderAgent 的 program abstraction
+
+ThunderAgent 把 agentic workflow 抽象成 LLM Program。一个 program 不是单次 HTTP request，而是跨多次 model invocation 和 tool execution 的调度单元。
+
+Program 需要跟踪：
+
+```text
+program_id
+phase: reasoning / acting
+status: active / paused
+total tokens / context length
+KV cache footprint
+tool resources: docker sandbox, disk state, network ports
+```
+
+数据流可以画成：
+
+```mermaid
+flowchart LR
+  A["LLM turn<br/>reasoning"] --> B["tool call<br/>acting"]
+  B --> C["next LLM turn<br/>reasoning"]
+  C --> D["tool call<br/>acting"]
+
+  P["program scheduler"] --> A
+  P --> B
+  P --> C
+  P --> D
+  P --> K["KV cache residency"]
+  P --> T["tool resource lifecycle"]
+```
+
+这个抽象让 scheduler 能做 request-level router 做不到的判断：
+
+```text
+这个 program 当前在 reasoning，马上需要 GPU。
+那个 program 当前在 acting，可能在等测试跑完。
+如果 HBM 紧张，优先暂停 acting program，释放它的 KV。
+如果 tool 很快返回，保留 KV 可能更划算。
+如果 tool 已经等很久，继续 pin KV 可能只是浪费 HBM。
+```
+
+### 11.4 ThunderAgent 的调度逻辑
+
+ThunderAgent 的核心是 program-aware scheduler。它不是简单“永远保留 agent KV”，而是在 caching cost 和 recomputation cost 之间做权衡。
+
+```text
+Restore:
+  把 paused program 放回 active execution
+  选择有容量的 backend
+
+Pause:
+  把 active program 暂停
+  解绑 backend
+  允许释放或重建它的 KV cache
+```
+
+当某个 DP backend 的 program KV demand 超过 capacity 时，scheduler 触发 thrashing detection：
+
+```text
+if sum(active_program_kv_tokens) > backend_token_capacity:
+  pause some programs
+```
+
+它优先在 tool boundary 暂停 acting programs，因为这时候没有正在 decode 的 token，不需要打断一次 forward。Dynamo 的 ThunderAgent router 文档也把这个点讲得很直接：agent workload 是很多短 LLM call，中间夹 `docker exec`、`pytest`、`curl` 等非 GPU 工作；request-level router 看不到这些 turn 属于同一个 agent，所以无法在自然 pause point 做 backpressure。
+
+ThunderAgent 还用了 time-decay 直觉：
+
+```text
+tool 刚开始:
+  可能很快返回，保留 KV 以避免 re-prefill
+
+tool 等很久:
+  KV 长时间占 HBM 不产 token
+  降低这个 program 的 cache priority
+```
+
+这比固定 TTL 更合理。固定 TTL 只看时间阈值，不知道 program 的 context length、phase 和 backend memory pressure。
+
+### 11.5 跨节点 memory imbalance
+
+多 GPU / 多节点 serving 里，KV-aware routing 常见策略是：
+
+```text
+同一个 session 尽量回到之前的 GPU
+因为那台 GPU 上可能还有它的 KV cache
+```
+
+这能提高 locality，但 agent 场景里会出现另一种问题：某些 workflow context 长得很快，固定回同一台 GPU 后，一个节点满了，其他节点还有空。
+
+ThunderAgent 的处理是 global program-aware waiting queue：
+
+```text
+active program:
+  保留 locality，尽量少重算
+
+paused program:
+  KV 已经被释放或可重建
+  restore 时可以放到任何有容量的 backend
+```
+
+这里的判断很重要：一旦 program 已经 paused，它的 KV locality 价值下降，调度目标应该转向 memory balance 和吞吐。
+
+### 11.6 Tool resource 也是 cache lifecycle 的一部分
+
+Agent 的状态不止 KV cache。一个 coding agent 可能持有：
+
+```text
+Docker container
+workspace directory
+pytest process
+local server port
+browser session
+temporary files
+```
+
+如果只优化 KV cache，不管理 tool resource，长时间 rollout 会出现 disk leak、port leak、sandbox 堆积。ThunderAgent 把 tool resources 放进 program lifecycle：program terminate 后立即回收；下一步需要 tool 环境时，可以在 LLM reasoning 期间异步准备环境。
+
+这对 RL rollout 很重要。agentic RL 里 rollout 通常占 wall-clock 的大头，GPU 之外的 sandbox 和工具准备会直接影响样本吞吐。
+
+### 11.7 和 LMCache / KV offload 的关系
+
+ThunderAgent 不是替代 LMCache、PagedAttention、prefix cache。它更像上层 scheduler：
+
+| 层 | 解决的问题 |
+|---|---|
+| PagedAttention | 单个 engine 内的 KV block 分配 |
+| Prefix cache | 相同 token prefix 的 KV 复用 |
+| LMCache / CacheGen | 跨 engine、CPU、存储、网络的 KV 移动和持久化 |
+| ThunderAgent | agent program 级别决定何时保留、暂停、恢复、迁移 KV 和 tool resources |
+
+可以这样理解：
+
+```text
+PagedAttention 是页表。
+LMCache 是 KV 的存储和传输层。
+ThunderAgent 是知道 agent workflow 的调度层。
+```
+
+一个比较完整的 agent serving stack 会把它们组合起来：
+
+```text
+program scheduler
+  -> decide active / paused / migrated programs
+
+KV cache layer
+  -> store, lookup, move, evict KV blocks
+
+LLM engine
+  -> prefill / decode / verify
+
+tool manager
+  -> prepare, reuse, garbage collect sandboxes and ports
+```
+
+### 11.8 面试里怎么说
+
+问：agent workload 里 KV cache 为什么比普通 chat 更难管理？
+
+```text
+普通 chat:
+  request 连续占用 GPU，结束后释放
+
+agent:
+  LLM turns 和 tool calls 交替
+  tool call 期间 KV 占 HBM 但不产 token
+  下一轮又希望复用 KV，避免整段 trajectory re-prefill
+```
+
+问：为什么只做 KV-aware routing 不够？
+
+```text
+KV-aware routing 追求 locality。
+agent context 长度增长不均匀，固定回同一节点会造成 memory imbalance。
+当 program paused 后，KV locality 已经不再是最高优先级，restore 应该考虑全局容量。
+```
+
+问：ThunderAgent 的核心抽象是什么？
+
+```text
+LLM Program。
+它把多次 LLM request、tool call、KV footprint 和 tool resources 放进同一个生命周期里调度。
+```
+
+## 十二、面试题
 
 ### 1. KV cache 降低了什么复杂度？
 
@@ -639,3 +892,7 @@ GLM-5.2 在 DSA sparse attention 中让一组连续层复用同一个 Full layer
 - [GLM-5.2 official blog](https://huggingface.co/blog/zai-org/glm-52-blog)
 - [GLM-5 official repository](https://github.com/zai-org/GLM-5)
 - [ATOM GLM-5 recipe](https://github.com/ROCm/ATOM/blob/main/recipes/GLM-5.md)
+- [ThunderAgent: A Simple, Fast and Program-Aware Agentic Inference System](https://arxiv.org/abs/2602.13692)
+- [ThunderAgent Program Scheduler in NVIDIA Dynamo](https://docs.nvidia.com/dynamo/dev/user-guides/agents/thunder-agent-program-scheduler)
+- [ThunderAgent GitHub repository](https://github.com/ThunderAgent-org/ThunderAgent)
+- [LMCache: An Efficient KV Cache Layer for Enterprise-Scale LLM Inference](https://arxiv.org/abs/2510.09665)
