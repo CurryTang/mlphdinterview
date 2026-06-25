@@ -1,10 +1,10 @@
 # MLSYS Overview：学习路径与目录
 
-这页是 MLSYS 板块的入口。目标不是替代每篇笔记，而是帮你快速决定：
+MLSYS 板块按系统层次组织，从 GPU/CUDA 到 kernel、分布式训练、推理服务、post-training infra 和长上下文模型结构。入口页用于快速定位阅读顺序和前后依赖：
 
 ```text
 今天应该读哪一篇？
-这篇笔记在系统面试里解决什么问题？
+每篇笔记解决哪类系统问题？
 前后依赖关系是什么？
 ```
 
@@ -20,7 +20,7 @@
 
 ## 学习主线
 
-MLSYS 面试题通常按这条链路展开：
+MLSYS 系统问题通常按这条链路展开：
 
 ```text
 GPU architecture
@@ -129,7 +129,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 
 ### [[MLSYS9 Compute-bound kernel (3)|MLSYS9 · Compute-Bound Kernel (3)]]
 
-更接近面试里会追问的性能细节：
+更接近真实性能排查会碰到的细节：
 
 - occupancy
 - arithmetic intensity
@@ -182,7 +182,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 
 ### [[MLSYS14 Post-Training Infra|MLSYS14 · Post-Training Infra]]
 
-这篇仍然属于 MLSYS 主线，因为它讨论的是 post-training 的系统形态：
+Post-training 属于 MLSYS 主线，因为它讨论的是训练、推理和环境服务共同组成的系统形态：
 
 - rollout / training / reward / weight sync
 - veRL、slime、SkyRL、AReaL 等 RL infra 框架
@@ -190,7 +190,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 
 ### [[MLSYS15 Efficient Attention Modern Architectures|MLSYS15 · Efficient Attention：现代长上下文架构]]
 
-这篇讲 2025 之后的 efficient attention 主线：
+Efficient attention 主线：
 
 - associative memory 视角下的 dense、linear、sparse、hybrid attention
 - DeepSeek DSA、DMA、DHSA 的 dynamic sparse routing
@@ -199,7 +199,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 
 ### [[MLSYS15 KV Cache Prefix Caching IndexShare|MLSYS16 · KV Cache：内存管理、前缀复用与 IndexShare]]
 
-这篇补上推理系统的 cache 层：
+KV cache 课补上推理系统的 cache 层：
 
 - KV cache 到底存什么
 - PagedAttention、prefix cache、RadixAttention 的边界
