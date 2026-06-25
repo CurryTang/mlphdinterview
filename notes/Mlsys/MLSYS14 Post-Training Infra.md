@@ -124,7 +124,7 @@ On-policyness ─── 灵活性 (Agentic/Env)
 - veRL 分桶传输（packed=True）可将广播时间从 ~500ms 压缩到 **~20ms**（适用于较小模型）
 - AReaL 相比同步系统在相同 GPU 数量下实现 **2.77× 吞吐提升**
 
-这些数字的价值不在于背精确小数，而在于建立量级感。RL post-training 的 step time 往往由三段组成：
+这些数字的价值不在于精确小数，而在于建立量级感。RL post-training 的 step time 往往由三段组成：
 
 ```text
 rollout time + weight sync time + training update time
@@ -454,48 +454,143 @@ GPU 4-7:  [Training] [Training] [Training]... (持续训练)
 
 **核心创新：HybridFlow**
 
-```
-Single-controller（Python 端）:
-  rollout_data = rollout_engine.generate(batch)
-  advantages  = compute_advantages(rollout_data)
-  model.train(advantages)           ← 高层数据流，清晰可读
+veRL 的关键不是“又接了一个 vLLM”，而是把 RL post-training 表达成一个可编程的数据流图。高层由单个 Python controller 写算法逻辑，底层由 FSDP/Megatron/vLLM/SGLang 这些分布式 worker group 执行重计算。
 
-Multi-controller（各 worker 组）:
-  TP=4, PP=2 Megatron training workers   ← 实际执行
-  TP=8, PP=1 vLLM/SGLang rollout workers ← 实际执行
+```mermaid
+flowchart TD
+    P[Prompt Dataset] --> C[RLTrainer<br/>single-controller]
+    C -->|"generate_sequences"| R[Rollout WorkerGroup<br/>vLLM / SGLang / HF]
+    R -->|"response_ids + old_logprobs + masks"| C
+    C -->|"score"| RM[Reward / Verifier<br/>model or rule]
+    RM -->|"reward tensor"| C
+    C -->|"compute advantages<br/>GRPO / PPO / DAPO"| A[Advantage Stage]
+    A -->|"train batch"| T[Actor Trainer WorkerGroup<br/>FSDP / Megatron]
+    T -->|"new actor weights<br/>policy version"| C
+    C -->|"reshard + sync weights"| R
 ```
 
-**3D-HybridEngine**：colocate 下 rollout→training 的权重 reshard 流程：
+这张图里，`RLTrainer` 关心的是算法语义：哪些 prompt 进入 rollout、reward 怎么算、advantage 怎么归一化、什么时候训练、什么时候同步权重。`WorkerGroup` 关心的是分布式执行：FSDP rank 怎么 all-gather，Megatron TP/PP rank 怎么通信，vLLM/SGLang server 怎么 batch decode。
+
+veRL 的抽象可以拆成三层：
+
+| 层 | 负责什么 | 常见对象 |
+|---|---|---|
+| Algorithm layer | PPO/GRPO/DAPO 的数据流，reward、advantage、KL、clip | `RayPPOTrainer` / `RLTrainer` |
+| Role layer | actor、critic、ref、reward、rollout 各自是什么 worker group | actor rollout、actor train、critic、ref policy |
+| Engine layer | 真正跑模型的后端 | FSDP、Megatron、vLLM、SGLang、HF rollout |
+
+veRL 风格的 GRPO loop 可以这样理解：
+
+```python
+def verl_grpo_step(batch_prompts):
+    # 1. rollout worker group 生成 G 个 completion
+    rollout_batch = actor_rollout.generate_sequences(
+        prompts=batch_prompts,
+        n_samples_per_prompt=G,
+        policy_version=current_version,
+    )
+
+    # rollout_batch 里必须保留训练所需的 token 级信息
+    # response_ids, attention_mask, position_ids, old_logprobs, eos_mask
+
+    # 2. reward 可以是模型、规则、sandbox 或 verifier
+    rewards = reward_fn(rollout_batch)
+
+    # 3. GRPO 按 prompt group 做相对 advantage
+    advantages = group_normalize(
+        rewards=rewards,
+        group_ids=rollout_batch.prompt_ids,
+    )
+
+    train_batch = {
+        "input_ids": rollout_batch.full_token_ids,
+        "loss_mask": rollout_batch.response_mask,
+        "old_logprobs": rollout_batch.old_logprobs,
+        "advantages": advantages,
+        "policy_version": rollout_batch.policy_version,
+    }
+
+    # 4. trainer worker group 执行 SPMD 训练
+    metrics = actor_trainer.update_actor(train_batch)
+
+    # 5. 把训练态权重同步回 rollout engine
+    new_version = metrics["policy_version"]
+    sync_actor_weights(actor_trainer, actor_rollout, version=new_version)
+```
+
+这段伪代码的重点是：controller 写起来像普通 Python，但每一行背后都是分布式 worker group。`generate_sequences` 可能是多个 vLLM/SGLang server；`update_actor` 可能是 Megatron 的 TP/PP/DP rank；`sync_actor_weights` 可能需要从 ZeRO/FSDP/Megatron 分片布局转换到推理布局。
+
+**3D-HybridEngine** 解决 colocated 场景下的“同一批 GPU 一会儿训练、一会儿推理”的布局切换问题。训练态和推理态通常不是同一个并行方式：
+
+```text
+training layout:
+  FSDP / ZeRO shards, or Megatron TP x PP x DP
+
+rollout layout:
+  inference TP, paged KV cache, continuous batching
+```
+
+Colocated 时，一个 step 里会反复发生：
+
+```mermaid
+sequenceDiagram
+    participant T as Training Engine
+    participant H as HybridEngine
+    participant R as Rollout Engine
+
+    T->>T: backward + optimizer step
+    T->>H: expose sharded actor weights
+    H->>H: all-gather / reshard / bucket
+    H->>R: update rollout weights
+    R->>R: generate next rollout batch
+    R->>H: return tokens + logprobs
+    H->>T: pack train batch
+```
+
+权重 reshard 流程：
+
 1. 训练结束 → AllGather 参数（从 ZeRO/TP 分片还原）
 2. 按推理的 TP 切分 → 广播给推理侧进程
 3. 推理引擎加载新权重（reload 或 in-place update）
 
-**双后端**：同时支持 Megatron 和 FSDP，可选 vLLM 或 SGLang 做 rollout。
+**双训练后端与多 rollout 后端**：veRL 同时支持 FSDP / Megatron 训练后端，也可以接 vLLM / SGLang / HF rollout。这个设计适合研究和平台团队：同一套 PPO/GRPO 数据流可以换训练后端和 rollout 后端。
 
-**异步模式**：veRL 也支持 disaggregated + buffer 异步，但社区使用更多是 colocated 同步模式。
+| 组合 | 适用场景 |
+|---|---|
+| FSDP + vLLM | 中小 dense model，快速跑通，生态成熟 |
+| FSDP + SGLang | 需要 prefix sharing / structured generation，但模型还没大到必须 Megatron |
+| Megatron + vLLM | 大模型训练需要 TP/PP，rollout 侧走成熟 vLLM |
+| Megatron + SGLang | 大模型训练 + 复杂前缀共享或 agent-style rollout |
+
+**异步模式**：veRL 也支持 disaggregated + buffer 异步。异步时，controller 不再等当前 rollout 全部完成后才 train，而是从 buffer 中取已经完成的 samples；每条 sample 记录 policy version 和 old logprob，trainer 用 PPO/GRPO ratio 修正 staleness。
 
 **生态**：DAPO、PRIME、SkyRL、AceMath 等众多工作都基于 veRL fork 实现。
+
+veRL 的长处是通用和可组合：算法层容易改，后端也能换。代价是抽象层更多，debug 时要同时看 controller、Ray worker、training backend、rollout server 和 weight sync。
 
 ### 5.4 slime（THUDM/智谱）—— 做减法的哲学
 
 **定位**：「我们只做 SGLang 和 Megatron 之间的数据流胶水」。最终实际生产 GLM-4.5/4.6/4.7/GLM-5/GLM-5.1 的 RL 训练后端。
 
-**架构（三服务分离）**：
+**架构：Megatron + SGLang + Data Buffer**
 
-```
-┌───────────────┐   prompt/completion   ┌─────────────────┐
-│  Data Buffer  │ ◄──────────────────── │  Rollout Engine │
-│ (中间层，协调) │ ──────────────────── ►│  (SGLang 集群)  │
-└───────┬───────┘   training data       └─────────────────┘
-        │ packing + dispatch                     ▲
-        ▼                                        │ weight update
-┌───────────────┐                                │ (分桶 NCCL)
-│    Training   │ ────────────────────────────── ┘
-│   (Megatron)  │
-└───────────────┘
+slime 的选择更窄：训练侧默认 Megatron，rollout 侧默认 SGLang，中间用 Data Buffer 连接。它不试图抽象所有训练后端和推理后端，而是把复杂度压到两个成熟系统里：Megatron 负责大规模训练并行，SGLang 负责高吞吐 rollout、prefix cache、abort、weight update。
+
+```mermaid
+flowchart LR
+    D[Prompt / Dataset] --> B[Data Buffer<br/>sample store + packer + scheduler]
+    B -->|"prompt batch"| S[SGLang Rollout Cluster<br/>RadixAttention + batching]
+    S -->|"tokens + logprobs + request ids"| B
+    B -->|"reward / verifier / env feedback"| B
+    B -->|"packed train batch"| M[Megatron Trainer<br/>TP / PP / EP / CP]
+    M -->|"bucketed weight update"| S
+    M -->|"metrics + checkpoints"| B
 ```
 
-**数据流详解**（对应 Q34）：
+Data Buffer 是 slime 的核心。它不是简单队列，而是 RL 数据的边界层：rollout 完成前它知道哪些 request 还在飞；reward 完成后它知道哪些 samples 可训练；training 之前它把变长样本 pack 成 Megatron 能吃的 batch；异步模式下它还要控制 policy version 和 staleness。
+
+**数据流详解**：
+
 1. Rollout Engine（SGLang）生成 completion，附带 logprobs
 2. Data Buffer 收集 rollout 数据，做 reward 计算（可并行调用 reward server）
 3. Data Buffer 把数据 pack 成 Megatron 接受的格式，dispatch 给 training workers
@@ -503,14 +598,99 @@ Multi-controller（各 worker 组）:
 5. Megatron 更新权重后，通过分桶 NCCL 广播给 SGLang 集群
 6. SGLang 集群更新权重（`update_weights` API），继续下一批 rollout
 
-**同步 / 异步双模式**：
-- **同步**：等 rollout 全部完成再 train，再同步权重
-- **异步**：Data Buffer 是个持续运转的队列；training 和 rollout 解耦，用 IS 修正 staleness
+slime 的同步模式可以写成：
+
+```python
+def slime_sync_loop(prompts):
+    batch = data_buffer.sample_prompts(prompts)
+
+    rollout = sglang.generate(
+        batch,
+        return_logprobs=True,
+        policy_version=current_version,
+    )
+
+    scored = data_buffer.attach_rewards(rollout)
+    train_batch = data_buffer.pack_for_megatron(scored)
+
+    metrics = megatron.train_step(train_batch)
+
+    # 训练态权重 -> 推理态权重，分桶后推给 SGLang
+    buckets = megatron.export_weight_buckets()
+    sglang.update_weights(buckets, version=metrics["policy_version"])
+```
+
+异步模式里，Data Buffer 变成持续生产/消费的队列：
+
+```python
+async def slime_async_loop():
+    while True:
+        # rollout side: SGLang 持续生成
+        if data_buffer.need_more_samples():
+            launch_rollout_task(
+                prompts=data_buffer.next_prompts(),
+                policy_version=rollout_policy_version,
+            )
+
+        # reward side: verifier / sandbox / reward model 持续回填
+        for sample in finished_rollouts():
+            data_buffer.add(sample)
+
+        # training side: Megatron 持续消费 ready samples
+        if data_buffer.ready_tokens() >= train_token_budget:
+            train_batch = data_buffer.pack_for_megatron(
+                max_staleness=allowed_staleness,
+            )
+            metrics = megatron.train_step(train_batch)
+            maybe_sync_weights(metrics["policy_version"])
+```
+
+同步和异步的差别不是 API 名字，而是 Data Buffer 的语义：
+
+| 模式 | Data Buffer 行为 | 算法风险 | 系统收益 |
+|---|---|---|---|
+| 同步 | 一个 batch 完成后整体训练，staleness 约为 0 | 最接近 on-policy | 简单稳定，但 rollout/training 容易互等 |
+| 异步 | rollout、reward、train 并行推进，trainer 从 ready queue 取样本 | 样本可能来自旧 policy，需要 IS / clip / staleness bound | 减少 idle，隐藏 weight sync 和长尾 rollout |
 
 **关键设计选择**：
 - 不自己实现并行策略，完全使用 Megatron 的 TP/PP/EP/CP
 - 不包装 SGLang，直接暴露 SGLang 的所有参数（`--sglang-xxx` 前缀）
 - `OPSM masking`（Optimal Policy Sampling Mask）：只对最优行为的 token 计算梯度，对应 GRPO 里 group 内最高 reward 的序列
+
+slime 的参数设计也体现了这个思路：资源分配先决定训练 GPU 和 rollout GPU，然后分别加载 Megatron 和 SGLang，再配置 RL 超参。典型参数会包含：
+
+```bash
+--actor-num-nodes ...
+--actor-num-gpus-per-node ...
+--rollout-num-gpus ...
+--rollout-num-gpus-per-engine ...
+--train-backend megatron
+--colocate                 # 可选：训练和 rollout 共置
+--sglang-...               # 直接透传给 SGLang
+```
+
+**权重更新路径**是 slime 最核心的性能点之一。RL 和普通 serving 不同，policy 会频繁更新；如果每次都完整 reload checkpoint，rollout 集群会长期停顿。slime/SGLang 路线把参数更新做成在线 update：
+
+```text
+Megatron shards
+  -> gather / reorder by inference layout
+  -> bucket parameters
+  -> NCCL / in-place update to SGLang workers
+  -> mark rollout policy_version = k + 1
+```
+
+MoE 下还要处理 expert parallel：训练时每个 rank 只持有部分 experts，推理时 SGLang 的 expert layout 可能不同。这里不能只同步 dense layer；router、shared experts、routed experts、scale/quant metadata 都必须和推理侧 layout 对齐。
+
+**slime 和 veRL 的差别**
+
+| 维度 | veRL | slime |
+|---|---|---|
+| 框架目标 | 通用 RL dataflow，后端可替换 | Megatron + SGLang native，少抽象层 |
+| 控制方式 | Hybrid-controller，controller 负责算法图 | Ray 管资源和异步执行，Data Buffer 管样本生命周期 |
+| 训练后端 | FSDP / Megatron / 其他生态后端 | Megatron 优先 |
+| Rollout 后端 | vLLM / SGLang / HF 等 | SGLang 优先 |
+| 适合场景 | 算法研究、平台化、多后端组合 | 大 MoE、SGLang-native rollout、自定义数据生成 |
+| 主要代价 | 抽象层多，debug 跨组件 | 后端选择窄，对 Megatron/SGLang 栈依赖更深 |
 
 ### 5.5 AReaL（蚂蚁 & 清华 IIIS）—— 完全异步的代表
 
@@ -532,7 +712,7 @@ Multi-controller（各 worker 组）:
 
 **性能**：同等 GPU 数量下，相比同步系统实现 **2.77× 吞吐提升**。
 
-**AReaL vs slime 对 rollout 瓶颈的理解**（对应 Q32）：
+**AReaL vs slime 对 rollout 瓶颈的理解**：
 - slime：rollout 慢是因为生成时间本身长（token-by-token decode），解法是更好的推理引擎（SGLang）+ 分桶权重传输减少 dead time
 - AReaL：rollout 慢还因为 **long-tail 序列**拖慢了整批（最慢的一个序列决定批次延迟），解法是 interruptible rollout，让慢序列不阻塞整体
 
@@ -591,7 +771,7 @@ Agent 不需要知道训练框架的任何细节，只需要把生成的 traject
 
 ### 6.1 显存账本：GRPO 训练时显存里有几份模型？
 
-（对应 Q20）
+
 
 **不做任何优化的基准**：
 
@@ -622,7 +802,7 @@ Agent 不需要知道训练框架的任何细节，只需要把生成的 traject
 
 ### 6.2 长尾 Rollout 与对策
 
-（对应 Q23）
+
 
 **长尾问题**：在一批请求里，99% 的序列在 2K tokens 内完成，但 1% 的「超长序列」可能跑到 32K tokens 才结束。在同步系统里，整批数据必须等最慢的序列完成，导致大量 GPU 空转。
 
@@ -641,8 +821,6 @@ Agent 不需要知道训练框架的任何细节，只需要把生成的 traject
 
 ### 6.3 Continuous Batching 在 RL 里的新问题
 
-（对应 Q24/Q25）
-
 **Continuous batching 的基本原理**：传统 batching 等一批请求都完成才出结果；continuous batching 让完成的序列立刻释放 slot，新请求马上插入。这在推理服务中效果极好。
 
 **在 RL 里引入的新问题**：
@@ -653,7 +831,7 @@ Agent 不需要知道训练框架的任何细节，只需要把生成的 traject
 
 3. **KV cache 压力**：RL rollout 产生的序列比推理服务的序列平均更长，paged KV cache 的页面换出（eviction）更频繁，影响 throughput。
 
-**vLLM vs SGLang 的关键差异**（对应 Q24）：
+**vLLM vs SGLang 的关键差异**：
 
 | 特性 | vLLM | SGLang |
 |------|------|--------|
@@ -663,14 +841,12 @@ Agent 不需要知道训练框架的任何细节，只需要把生成的 traject
 | RL 专属优化 | update_weights API | update_weights + abort + prefix-resume |
 | 生态 | 更大，文档更全 | 更新，SGLang-native 框架（slime）加持 |
 
-**衡量利用率**（对应 Q25）：
+**衡量利用率**：
 - vLLM：`vllm_metrics`，关注 `gpu_cache_usage_perc`（KV 利用率）和 `num_running_seqs`
 - SGLang：`/get_server_info` 接口，关注 `cache_hit_rate`（前缀命中率）和 queue depth
 - RL 场景下，KV cache 利用率低（<50%）通常意味着 prompt 差异大，prefix 共享失效
 
 ### 6.4 异步 RL 的设计空间
-
-（对应 Q27/Q32/Q33）
 
 **为什么要异步？** 同步系统的时序：
 
@@ -692,7 +868,7 @@ Training:           [Train]──[Train]──[Train]──...
 Weight sync:              [Sync]──────[Sync]──────...
 ```
 
-**主流异步框架及其解法**（对应 Q27）：
+**主流异步框架及其解法**：
 
 | 框架 | 解决的核心瓶颈 | 机制 |
 |------|---------------|------|
@@ -702,7 +878,7 @@ Weight sync:              [Sync]──────[Sync]──────...
 | PipelineRL | weight sync overhead | 逐 forward pass 更新权重（per-forward-pass swap） |
 | PRIME-RL | 跨提供商的大 staleness | 版本跟踪 + depth bound + IS 修正三合一 |
 
-**AReaL vs slime 的根本分歧**（对应 Q32）：
+**AReaL vs slime 的根本分歧**：
 
 - **slime 视角**：rollout 的主要瓶颈是「权重同步期间的 dead time」和「推理引擎本身的效率」。解法是更快的权重传输（分桶 NCCL）+ 更好的推理引擎（SGLang）。不需要 interruptible rollout 这种复杂机制。
 
@@ -710,21 +886,19 @@ Weight sync:              [Sync]──────[Sync]──────...
 
 两种视角都对，针对不同的业务场景：slime 更适合平均长度适中的 RLVR 任务；AReaL 更适合长 CoT 推理和 agentic 任务。
 
-**Staleness 实践**（对应 Q33）：
+**Staleness 实践**：
 - AReaL 论文中，staleness ≤ 8 步时性能不受影响
 - 实践中，大多数异步框架控制均值 staleness 在 1–4 步
 - 完全不加控制的 staleness 会导致算法发散（相当于把 IS ratio clip 失效化）
 - 常见控制手段：buffer depth bound + 超时丢弃 + IS weight clip（$r_t$ clip 到 [0.1, 10]）
 
-**Partial rollout 下的 KV cache 问题**（对应 Q28）：
+**Partial rollout 下的 KV cache 问题**：
 
 AReaL 选择 **re-prefill**：中断序列，用新权重重新做 prefill，重建 KV cache，再继续 decode。不保留旧 policy 的 KV cache（会引入 KV 和权重的不一致）。
 
 这比「保留 KV cache + 继续 decode」更正确，因为旧 KV 是用旧 policy 的注意力参数算出来的，与新权重不匹配。代价是 prefill 的额外计算开销（通常可忽略，prefill 比 decode 快得多）。
 
 ### 6.5 Train–Inference Mismatch
-
-（对应 Q11/Q31）
 
 **什么是 mismatch？** 同一个 token 序列，训练侧（Megatron）计算的 logprob 与推理侧（vLLM/SGLang）生成时计算的 logprob 不一致。不一致会导致 IS ratio 出现虚假的大值，训练不稳定。
 
@@ -735,7 +909,7 @@ AReaL 选择 **re-prefill**：中断序列，用新权重重新做 prefill，重
 **来源二：精度差异**
 - 推理侧可能用 FP8，训练侧用 BF16；量化引入的舍入误差累积
 
-**来源三：Batch Invariance 问题**（对应 Q31 的确定性部分）
+**来源三：Batch Invariance 问题**
 
 **Batch invariance** 指：给定相同的输入 token，无论 batch size 是多少，logprob 应该完全相同。这在正确实现下是成立的，但有几种情况会破坏它：
 
@@ -751,7 +925,7 @@ AReaL 选择 **re-prefill**：中断序列，用新权重重新做 prefill，重
 
 ### 6.6 精度专题：INT8 vs FP8
 
-（对应 Q22）
+
 
 | 精度 | 比特数 | 硬件支持 | 典型场景 | 精度损失 |
 |------|--------|----------|----------|---------|
@@ -777,9 +951,7 @@ AReaL 选择 **re-prefill**：中断序列，用新权重重新做 prefill，重
 
 ### 6.7 MoE × RL
 
-（对应 Q11/Q19/Q29/Q30）
-
-**Expert Parallelism（EP）对吞吐的影响**（对应 Q29）：
+**Expert Parallelism（EP）对吞吐的影响**：
 
 EP 把不同的 expert 分布在不同 GPU 上，每个 GPU 只保留 $N_{\text{experts}} / N_{\text{EP}}$ 个 expert。Forward pass 需要做 AllToAll 通信（token 路由到持有目标 expert 的 GPU）。
 
@@ -788,7 +960,7 @@ EP 把不同的 expert 分布在不同 GPU 上，每个 GPU 只保留 $N_{\text{
 - 坏处：AllToAll 是一个 latency 很高的通信原语（所有 GPU 同步），在小 batch 下延迟显著
 - 经验规则：EP 在 batch size 足够大（每个 expert 至少 8-16 个 token）时才有收益
 
-**长上下文的 Compute-Communication Overlap**（对应 Q30）：
+**长上下文的 Compute-Communication Overlap**：
 
 长序列（CP，Context Parallelism）下，Attention 跨多 GPU 切分（Sequence Parallelism）。关键是把 all-gather / reduce-scatter 通信与矩阵乘法重叠：
 
@@ -797,7 +969,7 @@ EP 把不同的 expert 分布在不同 GPU 上，每个 GPU 只保留 $N_{\text{
 
 Megatron 在 PP + TP + CP + EP 完整组合下比 FSDP2 灵活得多，这是大规模 MoE RL 训练几乎都选 Megatron 的根本原因。
 
-**多节点 backpropagation**（对应 Q26）：
+**多节点 backpropagation**：
 
 大规模训练的反向传播跨越多个节点：
 - 梯度通过 `AllReduce`（DDP）或 `ReduceScatter + AllGather`（ZeRO/FSDP）聚合
@@ -809,7 +981,7 @@ Megatron 在 PP + TP + CP + EP 完整组合下比 FSDP2 灵活得多，这是大
 
 ## 七、选型决策树与展望
 
-### 7.1 Q35 直答：VeRL、TRL、Unsloth、AReaL、slime 选哪个？
+### 7.1 框架选择：veRL、TRL、Unsloth、AReaL、slime 选哪个？
 
 ```
 单机，≤70B，快速验证 idea
@@ -845,19 +1017,63 @@ Agentic RL，工具调用 + 多轮对话 + 自定义 scaffold
 
 ---
 
-## 八、代码级框架精读：slime、SkyRL 与 Sandbox
+## 八、系统级框架精读：slime、SkyRL 与 Sandbox
 
-前面讲的是抽象设计轴：同步/异步、colocate/disaggregate、训练后端、rollout 后端、权重同步。真正写系统时，面试官通常会继续问：
+前面讲的是抽象设计轴：同步/异步、colocate/disaggregate、训练后端、rollout 后端、权重同步。这里把 slime 和 SkyRL 放到同一张系统图里看：二者都要解决 trajectory 生成、token provenance、reward/环境交互、训练 batch 构造、权重同步和 staleness 控制，但切分边界完全不同。
 
-```text
-你说这个框架支持 agentic RL，那一条 trajectory 到底怎么从 sandbox 变成 loss？
-你说 fully async，那 buffer、staleness、weight sync 在代码里谁负责？
-你说 slime 和 SkyRL 都能做 RL infra，它们的边界有什么不同？
+### 8.1 系统总图：四个平面
+
+Agentic RL infra 可以拆成四个平面：
+
+| 平面 | 负责什么 | 典型状态 |
+|---|---|---|
+| Control plane | 调度 rollout、reward、train、weight sync、checkpoint | policy version、queue depth、staleness、worker health |
+| Data plane | 真正移动 prompt、tokens、logprobs、reward、loss mask | trajectory、sample、rollout group、train batch |
+| Weight plane | 把 trainer 的 actor 权重同步到 inference engine | weight shards、bucket、checkpoint、delta、version |
+| Environment plane | 管 tool、retriever、terminal、sandbox、verifier | env state、tool observation、test result、reward evidence |
+
+slime 和 SkyRL 的主要区别是系统边界：
+
+```mermaid
+flowchart TB
+    subgraph Slime["slime: backend-native RL substrate"]
+        SB[Data Buffer<br/>sample lifecycle + packing]
+        SS[SGLang Cluster<br/>rollout + prefix cache + weight update]
+        SM[Megatron Trainer<br/>TP / PP / EP / CP]
+        SE[Custom Generate<br/>agent / verifier / sandbox hooks]
+        SE --> SB
+        SB --> SS
+        SS --> SB
+        SB --> SM
+        SM -->|"bucketed weights"| SS
+    end
+
+    subgraph SkyRL["SkyRL: generator/env-native RL runtime"]
+        SC[Trainer / Orchestrator<br/>sync or fully async]
+        SG[GeneratorInterface<br/>trajectory boundary]
+        SI[Inference Client<br/>router + sessions + control plane]
+        SY[SkyRL-Gym / External Env<br/>search / terminal / sandbox]
+        ST[Training Backend<br/>FSDP / Megatron]
+        SC --> SG
+        SG --> SI
+        SG --> SY
+        SY --> SG
+        SG --> SC
+        SC --> ST
+        ST -->|"weights"| SI
+    end
 ```
 
-这一章按代码路径讲。目标不是背 API，而是能画出一条真实数据流。
+slime 的核心是“后端原生”：不把 Megatron 和 SGLang 包成最低公分母接口，而是直接利用它们各自的强项。SkyRL 的核心是“trajectory 原生”：把 generator 和 environment 做成明确边界，让 SearchR1、terminal agent、Harbor、Mini-SWE 这类多轮任务都能返回统一的训练数据结构。
 
-### 8.1 slime 的设计：Megatron + SGLang + Data Buffer
+用一句系统判断来区分：
+
+| 框架 | 系统重心 | 适合的复杂度 |
+|---|---|---|
+| slime | 大模型训练/rollout 后端如何高效耦合 | Megatron + SGLang，大 MoE，大规模 RLVR，自定义 generation |
+| SkyRL | 多轮环境如何稳定地产生可训练 trajectory | search、terminal、agent、fully async、外部 sandbox |
+
+### 8.2 slime 的设计：Megatron + SGLang + Data Buffer
 
 slime 的路线很明确：它不是一个“大而全”的 agent 框架，而是把 Megatron 训练、SGLang rollout、Data Buffer 和自定义 generation/reward hook 串成一个高性能 RL substrate。
 
@@ -906,7 +1122,7 @@ metadata
 
 这就是 slime 能支持很多 agentic 形态的原因：复杂性被放在 generation adapter / sandbox / verifier，而不是塞进 Megatron 训练 loop。
 
-### 8.2 slime 的 Agentic RL：custom_generate 不是“文本生成函数”
+### 8.3 slime 的 Agentic RL：custom_generate 不是“文本生成函数”
 
 slime 文档里 `--custom-generate-function-path` 的签名看起来很简单：
 
@@ -957,7 +1173,7 @@ sampled token ids are the training target
 
 也就是说，训练时不能把最终 conversation string 重新 tokenize 当作 response。必须使用 rollout 时模型实际采样出来的 `output_ids`，并且只有这些 token 的 `loss_mask=1`。
 
-### 8.3 String-in, Token-out：agent 轨迹为什么难训
+### 8.4 String-in, Token-out：agent 轨迹为什么难训
 
 工具调用 agent 的输入输出天然是字符串：
 
@@ -995,13 +1211,11 @@ $$
 
 slime coding-agent 示例里有一个关键 guard：如果后续 prompt 和之前保存的 sampled output 在 token 层面对不上，就保留上下文用于继续 agent，但不对无法证明 provenance 的 token 回传梯度。这是 agentic RL 的 correctness 核心。
 
-面试里可以这样概括：
+Agent 轨迹可以是 string-in，但训练目标必须是 token-out。任何从字符串重新 tokenize 恢复出来的“模型输出”都不可靠，因为 tokenizer、chat template、tool observation、compaction 都可能改变 token 边界。
 
-> Agent 轨迹可以是 string-in，但训练目标必须是 token-out。任何从字符串重新 tokenize 恢复出来的“模型输出”都不可靠，因为 tokenizer、chat template、tool observation、compaction 都可能改变 token 边界。
+### 8.5 SkyRL 的设计：GeneratorInterface 是系统边界
 
-### 8.4 SkyRL 的设计：GeneratorInterface 是系统边界
-
-SkyRL 走的是另一条路线：它把环境抽象做得更显式。核心接口是 `GeneratorInterface`：
+SkyRL 走的是另一条路线：它把环境抽象做得更显式。`GeneratorInterface` 不是普通 SDK 接口，而是 trainer 和 rollout runtime 之间的系统边界：
 
 ```python
 class GeneratorInterface:
@@ -1026,7 +1240,20 @@ class GeneratorInterface:
 
 这说明 SkyRL 的训练 loop 不关心你是单轮 GSM8K、多轮 SQL、LiveCodeBench，还是一个复杂 agent。只要 generator 最后返回这些字段，trainer 就能做 PPO/GRPO/DAPO 等算法。
 
-对应的数据流是：
+更高层看，SkyRL 把“生成 trajectory”从 trainer 里拆出来：
+
+```mermaid
+flowchart LR
+    T[Trainer<br/>PPO / GRPO / DAPO] -->|"GeneratorInput<br/>prompts + sampling config"| G[GeneratorInterface]
+    G -->|"generate turns"| I[Inference Engine<br/>vLLM / SGLang]
+    G -->|"step(action)"| E[Environment<br/>search / code / terminal]
+    E -->|"observation + reward + done"| G
+    G -->|"GeneratorOutput<br/>tokens + masks + rewards + logprobs"| T
+    T -->|"policy update"| W[Weight Sync]
+    W --> I
+```
+
+对应的 trainer 数据流是：
 
 ```text
 RayPPOTrainer
@@ -1040,7 +1267,7 @@ RayPPOTrainer
 
 其中最值得讲透的是 `SkyRLGymGenerator.agent_loop()`。
 
-### 8.5 SkyRLGymGenerator.agent_loop：一条 trajectory 怎么生成
+### 8.6 SkyRLGymGenerator.agent_loop：一条 trajectory 怎么生成
 
 SkyRL-Gym 约定每个 environment 有三个基本方法：
 
@@ -1085,7 +1312,7 @@ reward_next    = reward placed at response boundary
 
 这就是为什么 SkyRL 的 env 抽象比“写一个 reward function”强：环境不仅给 reward，还决定 observation 如何回到下一轮 prompt，最终影响 loss mask 和 credit assignment。
 
-### 8.6 SkyRL 的 inference 架构：data plane / control plane 分离
+### 8.7 SkyRL 的 inference 架构：data plane / control plane 分离
 
 SkyRL 新 inference path 把请求分成两类：
 
@@ -1103,19 +1330,25 @@ Control plane:
   -> fan-out 到每个 backend server
 ```
 
-图示：
+系统图：
 
-```text
-                  Trainer
-                     │
-                     ▼
-          RemoteInferenceClient
-             │              │
-             │ data plane   │ control plane
-             ▼              ▼
-          VLLMRouter     vLLM API servers
-             │              ▲
-             └──────────────┘
+```mermaid
+flowchart TB
+    T[Trainer / Generator]
+    C[RemoteInferenceClient]
+    R[Router<br/>session-aware routing]
+    B1[Backend 1<br/>vLLM/SGLang server]
+    B2[Backend 2<br/>vLLM/SGLang server]
+    B3[Backend N<br/>vLLM/SGLang server]
+
+    T --> C
+    C -- "data plane: generate / tokenize" --> R
+    R --> B1
+    R --> B2
+    R --> B3
+    C -- "control plane: pause / resume / sleep / update_weights" --> B1
+    C -- "control plane fan-out" --> B2
+    C -- "control plane fan-out" --> B3
 ```
 
 这个拆分背后的理由很具体：
@@ -1137,7 +1370,7 @@ turn 3: same prefix + more observation
 
 如果每个 turn 被随机路由到不同 backend，prefix cache 命中率会掉，agentic rollout 的吞吐会很差。这个点是 agent serving 和普通 single-turn serving 的关键区别。
 
-### 8.7 SkyRL fully async：按源码讲五个组件
+### 8.8 SkyRL fully async：五个控制组件
 
 SkyRL 的 fully async trainer 是 `FullyAsyncRayPPOTrainer`，继承同步的 `RayPPOTrainer`。它不是“开一个 async flag”这么简单，而是新增了五个控制组件：
 
@@ -1200,7 +1433,7 @@ drop stale sample -> 更 on-policy，但浪费长尾 rollout 成本
 keep stale sample -> 吞吐更高，但需要 IS / clip 控制 off-policy bias
 ```
 
-### 8.8 SkyRL 的 in-flight weight update
+### 8.9 SkyRL 的 in-flight weight update
 
 fully async 的关键不是“训练和生成并行”，而是训练后如何更新还在生成中的 inference engines。
 
@@ -1237,7 +1470,7 @@ trainer and inference share GPUs
 
 CUDA IPC 适合同机/同 GPU colocate；NCCL broadcast 适合 training 和 inference 分开的 GPU group。
 
-### 8.9 例子一：SkyRL + SearchR1，多轮检索 agent 怎么跑
+### 8.10 例子一：SkyRL + SearchR1，多轮检索 agent 怎么跑
 
 SearchR1 是理解 RL infra 的好例子，因为它比 GSM8K 多了一个真实环境：
 
@@ -1261,6 +1494,22 @@ Question
   -> model emits another <search>...</search> or final <answer>...</answer>
   -> environment compares final answer with ground truth
   -> reward = 1 or 0
+```
+
+系统视角下，SearchR1 把 retriever 放进 environment plane。模型 action、retriever observation、stop string、reward 和 token mask 都必须在同一条 trajectory 里对齐：
+
+```mermaid
+flowchart TB
+    D[SearchR1 Dataset<br/>question + ground truth] --> G[SkyRL Generator<br/>group by prompt]
+    G -->|"turn t prompt"| V[vLLM Engine<br/>policy version k]
+    V -->|"assistant tokens<br/>logprobs + stop tag"| P[Action Parser<br/>&lt;search&gt; or &lt;answer&gt;]
+    P -->|"search query"| R[Retriever Service<br/>FAISS / Pyserini / HTTP]
+    R -->|"documents"| O[Observation Builder<br/>&lt;information&gt;...&lt;/information&gt;]
+    O -->|"append user observation<br/>loss_mask=0"| G
+    P -->|"final answer"| E[Reward Verifier<br/>exact match / rule]
+    E -->|"reward + diagnostics"| B[Rollout Group<br/>tokens + masks + rewards + version]
+    B --> T[GRPO Trainer<br/>advantage by group]
+    T -->|"updated weights"| V
 ```
 
 SkyRL 里的对应代码路径：
@@ -1410,7 +1659,7 @@ environment.skyrl_gym.max_env_workers=256
 - GRPO group 内如果有失败样本，advantage 怎么算
 - observation 太长导致 `max_input_length` 爆掉
 
-### 8.10 例子二：SkyRL + Harbor / Mini-SWE，terminal agent 怎么跑
+### 8.11 例子二：SkyRL + Harbor / Mini-SWE，terminal agent 怎么跑
 
 Terminal agent 比 SearchR1 再难一档。SearchR1 的 tool 是“检索 API”，而 terminal agent 的 tool 是一个可变的操作系统环境：
 
@@ -1440,7 +1689,31 @@ examples/train/mini_swe_agent/
   Mini-SWE-Agent + SWE-Gym / SWE-Bench 风格代码修复任务
 ```
 
-#### 8.10.1 Harbor：把外部 terminal environment 接成 Generator
+Terminal agent 的系统边界更重：policy server 不直接碰文件系统，sandbox 不直接参与 optimizer。中间的 generator/adapter 要把每一轮 terminal interaction 转成可训练的 token records：
+
+```mermaid
+flowchart LR
+    subgraph Train["SkyRL training plane"]
+        T[Trainer<br/>PPO / GRPO]
+        I[Inference Server<br/>OpenAI-compatible policy API]
+        T -->|"weight update"| I
+    end
+
+    subgraph Env["Environment plane"]
+        H[Harbor / Mini-SWE Agent<br/>task lifecycle]
+        S[Dirty Sandbox<br/>repo + shell + tests]
+        C[Clean Verifier Sandbox<br/>apply final patch]
+        H -->|"run command / edit"| S
+        S -->|"stdout / diff / error"| H
+        H -->|"final patch"| C
+        C -->|"pass/fail + logs"| H
+    end
+
+    I <-->|"model actions<br/>tokens + logprobs"| H
+    H -->|"step-wise rollout_details<br/>prompt ids + completion ids + loss_mask + reward"| T
+```
+
+#### 8.11.1 Harbor：把外部 terminal environment 接成 Generator
 
 Harbor integration 的结构：
 
@@ -1531,7 +1804,7 @@ for t in range(n_turns):
 
 这段代码揭示 terminal-agent RL 的本质难点：**训练数据不是最终 transcript，而是每一轮模型实际生成 token、logprob、prompt snapshot、reward 的对齐表。**
 
-#### 8.10.2 Mini-SWE-Agent：代码修复 agent 怎么接进 SkyRL
+#### 8.11.2 Mini-SWE-Agent：代码修复 agent 怎么接进 SkyRL
 
 Mini-SWE-Agent integration 更接近 SWE-Bench：
 
@@ -1601,7 +1874,7 @@ response_ids, loss_mask, _ = get_response_ids_and_loss_mask_from_messages(
 
 这里 `messages[2:]` 去掉最初 system/user prompt；后面的 assistant 消息是模型动作，user 消息是工具 observation。正确的 loss mask 必须只训练 assistant token。否则模型会被训练去“生成 stdout、测试日志、文件内容观察”，这在算法上就是错的。
 
-### 8.11 RL infra 的具体难点：不是 PPO，而是数据真实性
+### 8.12 RL infra 的具体难点：不是 PPO，而是数据真实性
 
 用 SearchR1 和 terminal agent 对比后，可以把 RL infra 的难点讲得很具体。
 
@@ -1769,11 +2042,9 @@ Mini-SWE README 里提到 patch 太大可能触发 `ARG_MAX`、Podman UID、cont
 | loss mask coverage | 是否错误训练了 observation token |
 | staleness histogram | 异步 rollout 是否偏离当前 policy |
 
-面试时可以直接总结：
+RL infra 的难点不是会不会写 PPO loss，而是能不能稳定地产生可信、可训练、可追溯的 trajectories。SearchR1 暴露了多轮 tool observation、retriever latency 和 stop-string parsing；terminal agent 暴露了 sandbox、文件系统状态、评测可信度、长尾和 token provenance。训练框架真正要兜住的是这些系统边界。
 
-> RL infra 的难点不是会不会写 PPO loss，而是能不能稳定地产生可信、可训练、可追溯的 trajectories。SearchR1 暴露了多轮 tool observation、retriever latency 和 stop-string parsing；terminal agent 暴露了 sandbox、文件系统状态、评测可信度、长尾和 token provenance。训练框架真正要兜住的是这些系统边界。
-
-### 8.12 slime vs SkyRL：不是谁替代谁
+### 8.13 slime vs SkyRL：不是谁替代谁
 
 把两个框架放在同一张图里：
 
@@ -1786,11 +2057,9 @@ Mini-SWE README 里提到 patch 太大可能触发 `ARG_MAX`、Podman UID、cont
 | 环境抽象 | sandbox/harness/adapter 作为示例和库 | `skyrl-gym` 明确 Env API |
 | 适合场景 | 大模型 Megatron 路线、SGLang-heavy、GLM/DeepSeek 类 scale | 研究快速迭代、多 backend、agent/env 模块化 |
 
-面试回答可以这样说：
+slime 更像一个高性能 RL kernel：训练和 rollout 路线更固定，但能把 Megatron/SGLang 的能力吃深。SkyRL 更像一个模块化 RL OS：trainer、generator、gym env、agent dispatcher、inference client、Tinker backend 都是可替换模块。
 
-> slime 更像一个高性能 RL kernel：训练和 rollout 路线更固定，但能把 Megatron/SGLang 的能力吃深。SkyRL 更像一个模块化 RL OS：trainer、generator、gym env、agent dispatcher、inference client、Tinker backend 都是可替换模块。
-
-### 8.13 Sandbox 设计：安全、可复现、可扩展
+### 8.14 Sandbox 设计：安全、可复现、可扩展
 
 Agentic RL 的 sandbox 不是“跑代码的地方”这么简单，它同时承担四个责任：
 
@@ -1881,7 +2150,7 @@ training backend 和 weight update channel 合成一个稳定闭环？
 | MiniMax-M2 / Forge | agent-native RL 系统里，prefill/decode disaggregation、global KV cache pool、MTP speculative decoding、tool-use reward 都同时出现 | serving scheduler 会改变 rollout distribution |
 | ProRL Agent | rollout-as-a-service 把 agent execution 从 training cluster 中抽离 | training policy 与 rollout service 的版本一致性如何维护 |
 
-这里最值得背的是 **三个 invariants**：
+这里最重要的是 **三个 invariants**：
 
 ```text
 Invariant 1: token provenance
@@ -2079,7 +2348,7 @@ timeout / truncation
 
 这些机制都会影响 empirical training distribution。高质量的系统需要记录 scheduler-induced bias，而不是只记录总 tokens/s。
 
-### 9.5 本章要背的三个 invariants
+### 9.5 三个核心 invariants
 
 高质量 RL infra 的判断标准不是“支持 PPO/GRPO”，而是能不能守住三个 invariants：
 
@@ -2102,9 +2371,13 @@ Invariant 3: environment transition
 ## 参考资料
 
 - [HybridFlow: veRL 论文](https://arxiv.org/abs/2409.19256)
+- [veRL GitHub](https://github.com/verl-project/verl)
+- [veRL HybridFlow Programming Guide](https://verl.readthedocs.io/en/latest/hybrid_flow.html)
+- [veRL 0.7 release blog](https://verl.readthedocs.io/en/latest/blog/v0.7.html)
 - [AReaL 论文](https://arxiv.org/abs/2505.24298)
 - [slime 文档](https://thudm.github.io/slime/)（LMSYS Blog: [slime: An SGLang-Native Post-Training Framework](https://www.lmsys.org/blog/2025-07-09-slime/)）
 - [slime GitHub](https://github.com/THUDM/slime)
+- [slime Usage Guide](https://github.com/THUDM/slime/blob/main/docs/en/get_started/usage.md)
 - [SkyRL GitHub](https://github.com/novasky-ai/skyrl)
 - [SkyRL-Agent paper](https://arxiv.org/abs/2511.16108)
 - [SkyRL SearchR1 example](https://docs.skyrl.ai/docs/examples/search)
