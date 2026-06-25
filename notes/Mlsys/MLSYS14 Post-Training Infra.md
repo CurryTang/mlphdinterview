@@ -1,4 +1,4 @@
-# LLM八股 1 · Post-Training Infra：从 TRL 到 Forge
+# MLSYS14 · Post-Training Infra：从 TRL 到 Forge
 
 > [!info] 概述
 > 本教程从**系统工程视角**解析 LLM post-training 中的强化学习基础设施，覆盖 TRL、veRL、slime、AReaL、ROLL、Forge 等主流框架。算法部分只讲 PPO 与 GRPO 的关键设计决策，重点在「它们如何决定系统形态」。配套练习见 [[MLSYS15 RL Infra 自测 35 问]]。

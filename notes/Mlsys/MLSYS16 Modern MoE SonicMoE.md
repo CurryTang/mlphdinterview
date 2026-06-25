@@ -1,4 +1,4 @@
-# LLM八股 16 · Modern MoE：SonicMoE 深入解析
+# MLSYS16 · Modern MoE：SonicMoE 深入解析
 
 这篇讲 modern LLM MoE。目标不是背“MoE = 多个专家”，而是能讲清楚：
 

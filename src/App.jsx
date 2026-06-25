@@ -44,6 +44,21 @@ const mlsysNoteDefinitions = [
     'MLSYS13 Quantization and precision.md',
     'MLSYS13 Quantization and precision.en.md',
   ),
+  createTutorialDefinition(
+    'MLSYS14 · Post-Training Infra：从 TRL 到 Forge',
+    'MLSYS14 Post-Training Infra.md',
+    'MLSYS14 Post-Training Infra.en.md',
+  ),
+  createTutorialDefinition(
+    'MLSYS15 · Inference：Speculative Decoding 到 DFlash',
+    'MLSYS15 LLM Inference Speculative Decoding DFlash.md',
+    null,
+  ),
+  createTutorialDefinition(
+    'MLSYS16 · Modern MoE：SonicMoE 深入解析',
+    'MLSYS16 Modern MoE SonicMoE.md',
+    null,
+  ),
 ];
 
 const mlsysNotes = mlsysNoteDefinitions.map((definition) => ({
@@ -223,22 +238,7 @@ const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
 
 const llmNoteDefinitions = [
   createTutorialDefinition(
-    'LLM八股 14 · Post-Training Infra：从 TRL 到 Forge',
-    'MLSYS14 Post-Training Infra.md',
-    'MLSYS14 Post-Training Infra.en.md',
-  ),
-  createTutorialDefinition(
-    'LLM八股 15 · Inference：Speculative Decoding 到 DFlash',
-    'MLSYS15 LLM Inference Speculative Decoding DFlash.md',
-    null,
-  ),
-  createTutorialDefinition(
-    'LLM八股 16 · Modern MoE：SonicMoE 深入解析',
-    'MLSYS16 Modern MoE SonicMoE.md',
-    null,
-  ),
-  createTutorialDefinition(
-    'LLM八股 附录 · RL Infra 自测 35 问',
+    'LLM八股 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
   ),
@@ -262,7 +262,7 @@ const noteSections = [
   {
     id: 'llm',
     title: 'LLM八股',
-    description: 'LLM post-training, RL infra, and framework interview notes',
+    description: 'RL infra self-check questions and interview drills',
     notes: llmNotes,
   },
   {

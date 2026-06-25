@@ -15,7 +15,8 @@
 3. [Kernel 优化](#kernel-优化)
 4. [训练与推理系统](#训练与推理系统)
 5. [精度与量化](#精度与量化)
-6. [LLM八股 去哪里了](#llm八股-去哪里了)
+6. [Post-training / Inference / MoE](#post-training--inference--moe)
+7. [LLM八股 去哪里了](#llm八股-去哪里了)
 
 ## 学习主线
 
@@ -35,7 +36,7 @@ GPU architecture
 
 ```text
 MLSYS1 -> MLSYS2 -> MLSYS3 -> MLSYS4/5/6 -> MLSYS7/8/9
-       -> MLSYS10 -> MLSYS11/12 -> MLSYS13
+       -> MLSYS10 -> MLSYS11/12 -> MLSYS13 -> MLSYS14/15/16
 ```
 
 如果你时间很紧，优先读：
@@ -49,6 +50,9 @@ MLSYS1 -> MLSYS2 -> MLSYS3 -> MLSYS4/5/6 -> MLSYS7/8/9
 | 分布式训练 | [[MLSYS10 parallelism]] |
 | 推理系统 | [[MLSYS11 nano-vllm-1]], [[MLSYS12 nano-vllm-2]] |
 | 量化与精度 | [[MLSYS13 Quantization and precision]] |
+| Post-training / RL Infra | [[MLSYS14 Post-Training Infra]] |
+| 推理加速 | [[MLSYS15 LLM Inference Speculative Decoding DFlash]] |
+| MoE 系统 | [[MLSYS16 Modern MoE SonicMoE]] |
 
 ## GPU 与 CUDA 基础
 
@@ -172,9 +176,35 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 - KV cache quantization
 - low precision training 的稳定性问题
 
+## Post-training / Inference / MoE
+
+### [[MLSYS14 Post-Training Infra|MLSYS14 · Post-Training Infra]]
+
+这篇仍然属于 MLSYS 主线，因为它讨论的是 post-training 的系统形态：
+
+- rollout / training / reward / weight sync
+- veRL、slime、SkyRL、AReaL 等 RL infra 框架
+- SearchR1、terminal agent、sandbox 等 agentic RL 负载
+
+### [[MLSYS15 LLM Inference Speculative Decoding DFlash|MLSYS15 · Inference：Speculative Decoding 到 DFlash]]
+
+这篇继续推理系统主线，重点是 decode 加速：
+
+- speculative decoding 的 exact sampling
+- Medusa、EAGLE、DFlash 的 drafter 设计
+- vLLM / SGLang 中如何打开和评估 spec decode
+
+### [[MLSYS16 Modern MoE SonicMoE|MLSYS16 · Modern MoE：SonicMoE]]
+
+这篇属于训练/推理系统里的 MoE 专题：
+
+- router、top-k、capacity、load balance
+- expert parallel、all-to-all、grouped GEMM
+- SonicMoE 如何优化 fine-grained sparse MoE 的 kernel 和 activation memory
+
 ## LLM八股 去哪里了
 
-Post-training、RL Infra、推理加速、MoE 系统已经从 MLSYS 主线里拆出去，放到与 `MLSYS`、`LeetCode` 并行的新板块：
+`LLM八股` 板块现在只放自测/面试题型内容。系统性教程仍然放在 `MLSYS` 主线里。
 
 ```text
 LLM八股
@@ -183,15 +213,12 @@ LLM八股
 入口：
 
 - [打开 LLM八股板块](#llm)
-- [[MLSYS14 Post-Training Infra|LLM八股 14 · Post-Training Infra]]
-- [[MLSYS15 LLM Inference Speculative Decoding DFlash|LLM八股 15 · Inference：Speculative Decoding 到 DFlash]]
-- [[MLSYS16 Modern MoE SonicMoE|LLM八股 16 · Modern MoE：SonicMoE]]
-- [[MLSYS15 RL Infra 自测 35 问|LLM八股 附录 · RL Infra 自测 35 问]]
+- [[MLSYS15 RL Infra 自测 35 问|LLM八股 · RL Infra 自测 35 问]]
 
 这样拆分后：
 
 ```text
-MLSYS = GPU / kernel / training / inference / precision
-LLM八股 = post-training / RL infra / inference acceleration / MoE systems
+MLSYS = GPU / kernel / training / inference / precision / post-training / MoE systems
+LLM八股 = RL infra self-check / interview drills
 LeetCode = data structure & algorithm patterns
 ```

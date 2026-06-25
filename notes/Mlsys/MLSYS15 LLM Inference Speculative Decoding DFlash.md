@@ -1,4 +1,4 @@
-# LLM八股 15 · Inference：Speculative Decoding 到 DFlash
+# MLSYS15 · Inference：Speculative Decoding 到 DFlash
 
 这篇讲一个推理系统里非常高频、也很容易被问深的主题：
 
