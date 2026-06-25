@@ -1,4 +1,4 @@
-> For a better reading experience, please visit GitHub → Currytang → MLSYS_tutorial
+> For a better reading experience, please visit GitHub → Currytang → hitchhikers-guide-to-ml-phd-job-hunting
 > This lecture will be especially detailed, since I’ll be doing related research :)
 
 # Core Methods in Low-bit Quantization

@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const repoName = env.GITHUB_REPOSITORY?.split('/')[1];
-const fallbackBase = '/MLSYS_tutorial/';
+const fallbackBase = '/hitchhikers-guide-to-ml-phd-job-hunting/';
 const inferredProductionBase = repoName ? `/${repoName}/` : fallbackBase;
 
 // https://vite.dev/config/
