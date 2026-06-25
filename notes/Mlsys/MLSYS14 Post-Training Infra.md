@@ -1099,7 +1099,543 @@ trainer and inference share GPUs
 
 CUDA IPC 适合同机/同 GPU colocate；NCCL broadcast 适合 training 和 inference 分开的 GPU group。
 
-### 8.9 slime vs SkyRL：不是谁替代谁
+### 8.9 例子一：SkyRL + SearchR1，多轮检索 agent 怎么跑
+
+SearchR1 是理解 RL infra 的好例子，因为它比 GSM8K 多了一个真实环境：
+
+```text
+model action:
+  <search> query </search>
+
+environment observation:
+  <information> retrieved documents </information>
+
+model final answer:
+  <answer> entity/date/name </answer>
+```
+
+也就是说，一条 trajectory 不是单次 prompt-response，而是：
+
+```text
+Question
+  -> model thinks and emits <search>Best Buy Sound of Music S&P 500</search>
+  -> retriever returns <information>...</information>
+  -> model emits another <search>...</search> or final <answer>...</answer>
+  -> environment compares final answer with ground truth
+  -> reward = 1 or 0
+```
+
+SkyRL 里的对应代码路径：
+
+```text
+examples/train/search/run_search.sh
+examples/train/search/run_search_fully_async.sh
+examples/train/search/searchr1_dataset.py
+skyrl-gym/skyrl_gym/envs/search/env.py
+docs/content/docs/examples/search.mdx
+docs/content/docs/recipes/searchr1.mdx
+```
+
+最小使用流程可以拆成三步。
+
+**Step 1：准备 SearchR1 数据**
+
+```bash
+uv run --isolated examples/train/search/searchr1_dataset.py \
+  --local_dir ~/data/searchR1
+```
+
+处理后的数据是 parquet，大致包含：
+
+```text
+prompt / question
+reward_spec.ground_truth
+data_source
+metadata
+```
+
+训练框架并不关心“答案怎么判断”，它只把 `reward_spec` 交给 environment。Search environment 在结束时用 ground truth 算 reward。
+
+**Step 2：启动检索服务**
+
+SearchR1 需要一个本地 retrieval server。SkyRL 文档里单独建了 `retriever` conda 环境，因为 FAISS GPU、PyTorch、transformers、pyserini 这些依赖和训练环境不一定兼容。
+
+```bash
+conda create -n retriever python=3.10 -y
+conda activate retriever
+
+pip install transformers datasets pyserini huggingface_hub uvicorn fastapi
+conda install faiss-gpu==1.8.0 -c pytorch -c nvidia -y
+
+local_dir=~/data/searchR1
+python examples/train/search/searchr1_download.py --local_dir $local_dir
+cat $local_dir/part_* > $local_dir/e5_Flat.index
+gzip -d $local_dir/wiki-18.jsonl.gz
+
+bash examples/train/search/retriever/retrieval_launch.sh > retrieval_server.log
+```
+
+这个设计暴露了第一个真实 RL infra 难点：环境服务不是“免费”的。SkyRL 文档特别提醒，检索 server 大约会占用 GPU memory，而且把日志直接打到 terminal 可能导致 server response time spike。也就是说，rollout 吞吐不仅取决于 vLLM，还取决于 retriever 的 latency、日志 IO、GPU memory 竞争。
+
+**Step 3：启动 GRPO 训练**
+
+核心配置来自 `examples/train/search/run_search.sh`：
+
+```bash
+uv run --isolated --frozen --extra fsdp -m skyrl.train.entrypoints.main_base \
+  data.train_data="['${DATA_DIR}/train.parquet']" \
+  data.val_data="['${DATA_DIR}/validation.parquet']" \
+  trainer.algorithm.advantage_estimator="grpo" \
+  trainer.policy.model.path="Qwen/Qwen2.5-3B-Instruct" \
+  trainer.placement.colocate_all=true \
+  trainer.strategy=fsdp \
+  generator.inference_engine.backend=vllm \
+  generator.inference_engine.num_engines=4 \
+  generator.inference_engine.tensor_parallel_size=2 \
+  generator.inference_engine.async_engine=true \
+  generator.batched=false \
+  generator.n_samples_per_prompt=5 \
+  generator.max_turns=4 \
+  generator.sampling_params.stop='["</search>", "</answer>"]' \
+  environment.env_class="search" \
+  environment.skyrl_gym.max_env_workers=16 \
+  environment.skyrl_gym.search.search_url="http://127.0.0.1:8000/retrieve" \
+  environment.skyrl_gym.search.topk=3
+```
+
+几个参数要特别理解：
+
+| 参数 | 为什么重要 |
+|---|---|
+| `generator.max_turns=4` | 最多 4 轮模型输出；其中前 3 轮可以 search，最后必须 answer 或被截断 |
+| `stop=["</search>", "</answer>"]` | 每一轮生成必须在工具调用或最终答案处停止，否则 observation 无法插回下一轮 |
+| `generator.batched=false` | 多轮环境是 async rollout，不能把所有 prompt 当作一次普通 batch completion |
+| `n_samples_per_prompt=5` | GRPO 要同一个 prompt 的多条 sample 形成 group，计算相对 advantage |
+| `search_url` | 环境服务地址，是 rollout data plane 的一部分 |
+
+对应到 `SearchEnv.step()`，逻辑很短，但它就是 RL infra 的核心：
+
+```python
+def step(self, action):
+    self.turns += 1
+    self.chat_history.append({"role": "assistant", "content": action})
+
+    done = self._is_done(action)
+    reward = self._get_reward(action, done)
+    if done:
+        return observations=[], reward=reward, done=True
+
+    query = self._parse_action(action)          # parse <search>...</search>
+    observation = self._execute_tool("search", query)
+    observation = "<information>" + observation + "</information>"
+
+    self.chat_history.append({"role": "user", "content": observation})
+    return observations=[observation], reward=0, done=False
+```
+
+训练样本最终长这样：
+
+```text
+prompt_token_ids:
+  initial question
+
+response_ids:
+  assistant search tokens
+  observation tokens
+  assistant answer tokens
+
+loss_mask:
+  assistant model tokens = 1
+  retrieved information / user observation = 0
+
+reward:
+  intermediate turns = 0
+  final turn = exact match reward
+```
+
+如果打开 fully async 版本，`run_search_fully_async.sh` 还会多出这些系统参数：
+
+```bash
+trainer.fully_async.enabled=true
+trainer.fully_async.max_staleness_steps=8
+trainer.fully_async.num_parallel_generation_workers=$((128 * (MAX_STALENESS_STEPS + 1)))
+trainer.placement.colocate_all=false
+environment.skyrl_gym.max_env_workers=256
+```
+
+这说明 SearchR1 已经不是“算法 demo”。它会逼你处理：
+
+- retrieval server 是否成为 rollout bottleneck
+- 多轮请求是否能命中 prefix cache
+- generation worker 跑太快导致 sample stale
+- search latency 长尾导致 batch 迟迟凑不齐
+- GRPO group 内如果有失败样本，advantage 怎么算
+- observation 太长导致 `max_input_length` 爆掉
+
+### 8.10 例子二：SkyRL + Harbor / Mini-SWE，terminal agent 怎么跑
+
+Terminal agent 比 SearchR1 再难一档。SearchR1 的 tool 是“检索 API”，而 terminal agent 的 tool 是一个可变的操作系统环境：
+
+```text
+model action:
+  edit file / run command / inspect output / submit patch
+
+environment:
+  repo filesystem
+  shell
+  tests
+  package manager
+  time limit
+  sandbox provider
+
+reward:
+  tests passed / task resolved / verifier score
+```
+
+SkyRL 里有两条相关路径：
+
+```text
+examples/train_integrations/harbor/
+  Harbor / TerminalBench / CodeContest 风格任务
+
+examples/train/mini_swe_agent/
+  Mini-SWE-Agent + SWE-Gym / SWE-Bench 风格代码修复任务
+```
+
+#### 8.10.1 Harbor：把外部 terminal environment 接成 Generator
+
+Harbor integration 的结构：
+
+```text
+harbor_generator.py
+  HarborGenerator: bridges SkyRL <-> Harbor
+
+dataset.py
+  HarborTaskDataset: loads task directories
+
+prepare_harbor_dataset.py
+  downloads / prepares task data
+
+harbor_trial_config/default.yaml
+  sandbox, agent, terminal trial config
+
+run_codecontest.sh
+  training entrypoint
+```
+
+使用流程：
+
+```bash
+export WANDB_API_KEY=...
+export DAYTONA_API_KEY=...
+# or MODAL_TOKEN_ID / MODAL_TOKEN_SECRET, depending on sandbox provider
+
+uv run examples/train_integrations/harbor/prepare_harbor_dataset.py \
+  --dataset open-thoughts/CodeContests
+
+bash examples/train_integrations/harbor/run_codecontest.sh
+```
+
+HarborGenerator 的职责不是自己实现 terminal，而是把 SkyRL 的 inference engine 暴露成 OpenAI-compatible API，然后让 Harbor agent 通过这个 API 调模型：
+
+```python
+self.base_url = inference_engine_client.proxy_url
+self._harbor_trial_config_template["agent"]["model_name"] = \
+    f"hosted_vllm/{served_model_name}"
+self._harbor_trial_config_template["agent"]["kwargs"]["api_base"] = \
+    f"{self.base_url}/v1"
+```
+
+这是一种非常常见的 RL infra pattern：
+
+```text
+SkyRL owns:
+  policy weights
+  rollout inference server
+  logprobs / token ids
+  trainer / optimizer
+
+Harbor owns:
+  terminal task lifecycle
+  sandbox
+  agent execution
+  task reward
+```
+
+最关键的配置限制是：HarborGenerator 只支持 step-wise training。
+
+```python
+if not generator_cfg.step_wise_trajectories:
+    raise ValueError("HarborGenerator only supports step-wise training")
+```
+
+原因很现实：terminal agent 一条 trajectory 可能有很多轮，每一轮都有不同 prompt、completion、tool output。把整条轨迹压成一个巨大 response 不仅慢，而且 credit assignment 很差。Harbor 返回 `rollout_details` 后，SkyRL 把它 flatten 成每一轮一个训练样本：
+
+```text
+turn 1 prompt -> completion ids -> reward 0
+turn 2 prompt -> completion ids -> reward 0
+...
+last turn prompt -> completion ids -> final reward
+```
+
+对应代码里：
+
+```python
+for t in range(n_turns):
+    comp_ids = completion_token_ids_per_turn[t]
+    p_ids = prompt_token_ids_per_turn[t]
+    lp = logprobs_per_turn[t]
+
+    is_last = t == n_turns - 1
+    reward = traj.reward if is_last else 0.0
+    loss_mask = [1] * len(comp_ids)
+```
+
+这段代码揭示 terminal-agent RL 的本质难点：**训练数据不是最终 transcript，而是每一轮模型实际生成 token、logprob、prompt snapshot、reward 的对齐表。**
+
+#### 8.10.2 Mini-SWE-Agent：代码修复 agent 怎么接进 SkyRL
+
+Mini-SWE-Agent integration 更接近 SWE-Bench：
+
+```text
+1. 为一个 issue / problem statement 启动 sandbox repo
+2. agent 通过模型生成 shell/edit 动作
+3. agent 在 sandbox 里执行动作，得到 observation
+4. 最后生成 patch
+5. 在评测环境里运行测试
+6. reward = resolved ? 1 : 0
+```
+
+SkyRL 里的代码路径：
+
+```text
+examples/train/mini_swe_agent/mini_swe_generator.py
+examples/train/mini_swe_agent/mini_swe_utils.py
+examples/train/mini_swe_agent/swebench.yaml
+examples/train/mini_swe_agent/run_mini_swe_8B.sh
+examples/train/mini_swe_agent/run_mini_swe_30B.sh
+```
+
+它的 README 里使用方式是：
+
+```bash
+uv run --isolated examples/mini_swe_agent/preprocess_swegym.py \
+  --output_dir ~/data/swe_gym_subset
+
+bash examples/mini_swe_agent/run_mini_swe_8B.sh
+# or
+bash examples/mini_swe_agent/run_mini_swe_30B.sh
+```
+
+`MiniSweAgentGenerator` 里最重要的是 `init_and_run`：
+
+```python
+env = get_sb_environment(sweagent_config, instance, data_source)
+agent = DefaultAgentWithReminder(model, env, ...)
+exit_status, result = agent.run(instance["problem_statement"])
+
+result = evaluate_trajectory(instance, result, sweagent_config, data_source)
+reward = int(result["resolved"])
+save_traj(agent, path, result=result, reward=reward)
+```
+
+这条链路和 SearchR1 的区别非常明显：
+
+| 维度 | SearchR1 | Terminal / SWE agent |
+|---|---|---|
+| tool | retrieval API | shell / editor / filesystem / tests |
+| observation | retrieved text | stdout/stderr/file diff/test output |
+| state | chat history | chat history + filesystem state |
+| reward | answer exact match | patch 是否解决任务 |
+| 长尾 | search latency / answer length | dependency install、test runtime、agent loop、sandbox boot |
+| 安全风险 | 低，主要是请求服务 | 高，不可信命令、网络、文件系统、secret |
+
+Mini-SWE 还有一个细节很重要：它会把 agent messages 转成 SkyRL 可训练的 `response_ids` 和 `loss_mask`。
+
+```python
+response_messages = messages[2:]
+response_ids, loss_mask, _ = get_response_ids_and_loss_mask_from_messages(
+    response_messages,
+    tokenizer,
+    assistant_logprobs=None,
+)
+```
+
+这里 `messages[2:]` 去掉最初 system/user prompt；后面的 assistant 消息是模型动作，user 消息是工具 observation。正确的 loss mask 必须只训练 assistant token。否则模型会被训练去“生成 stdout、测试日志、文件内容观察”，这在算法上就是错的。
+
+### 8.11 RL infra 的具体难点：不是 PPO，而是数据真实性
+
+用 SearchR1 和 terminal agent 对比后，可以把 RL infra 的难点讲得很具体。
+
+#### 难点一：trajectory 是动态生成的，不是静态 dataset
+
+SFT 的样本通常是：
+
+```text
+prompt -> answer
+```
+
+RL infra 的样本是：
+
+```text
+prompt
+  -> model action
+  -> environment observation
+  -> model action
+  -> environment observation
+  -> final answer / patch
+  -> reward
+```
+
+每一步都可能改变下一步输入。SearchR1 的 search result 会改变下一轮 prompt；terminal agent 的 shell command 会改变 filesystem。训练框架必须记录完整过程，而不是只记录最后答案。
+
+#### 难点二：token provenance 必须可证明
+
+每个 token 要能回答：
+
+```text
+是谁生成的？
+是 policy 采样出来的，还是环境返回的？
+当时的 logprob 是多少？
+当时的 policy version 是多少？
+```
+
+SearchR1 里 `<information>...</information>` 不能训练；terminal 里 stdout/stderr/test log 也不能训练。真正参与 loss 的只有模型 action token。
+
+如果把整段 transcript 重新 tokenize，再全部当 response 训练，会有三个问题：
+
+1. observation token 被错误训练
+2. chat template 可能改变 token 边界
+3. rollout logprob 和训练 token 对不上
+
+这是 agentic RL 最容易被忽视、但最致命的 correctness 问题。
+
+#### 难点三：step-wise reward 和 credit assignment
+
+SearchR1 最终 answer 正确时，reward 通常只在最后一步出现：
+
+```text
+search turn 1: reward 0
+search turn 2: reward 0
+answer turn:   reward 1
+```
+
+Terminal agent 更极端：可能 30 轮命令后测试通过，最终 reward 才是 1。问题是：
+
+```text
+到底是哪一次 edit 有用？
+哪一次 command 是浪费？
+失败是因为模型不会，还是测试环境坏了？
+```
+
+SkyRL/Harbor 用 step-wise output 至少把每一轮拆开，让 trainer 可以对每个 turn 建样本。但 reward 仍然很 sparse。后续可以叠加：
+
+- verifier intermediate reward
+- tool-use format reward
+- per-turn progress reward
+- failed-test diagnostics reward
+- trajectory filtering
+
+#### 难点四：环境长尾会拖垮 GPU 利用率
+
+RL infra 的 GPU 不是一直在跑模型。它经常在等：
+
+```text
+retriever response
+sandbox boot
+pip install
+pytest
+git apply
+network request
+agent command timeout
+```
+
+SearchR1 的 fully async config 用很多 generation workers 和 `max_env_workers=256`，本质是在和环境长尾做斗争。Terminal agent 更需要 sandbox pool、warm reset、timeout、失败隔离，否则 GPU 会被少数慢任务拖住。
+
+一个真实系统会分两层限流：
+
+```text
+trainer staleness limit:
+  generation 不能领先 training 太多
+
+environment concurrency limit:
+  sandbox / retriever / verifier 不能被打爆
+```
+
+只做其中一个都不够。
+
+#### 难点五：on-policy 和吞吐互相冲突
+
+同步 RL 最干净：
+
+```text
+rollout with policy θ_t
+train on samples from θ_t
+sync weights
+next rollout
+```
+
+但 agent rollout 太慢，同步会浪费 GPU。Fully async 能提高吞吐：
+
+```text
+rollout keeps running
+training keeps updating
+weight sync happens periodically
+```
+
+代价是样本可能 stale：
+
+```text
+sample generated by θ_t
+training already at θ_{t+8}
+```
+
+这时必须记录 rollout logprobs、policy version、staleness，并用 IS/TIS、clip、drop stale sample 或降权来控制 bias。SearchR1 fully async 脚本里就出现了 `max_staleness_steps` 和 off-policy correction 配置，这不是装饰参数，而是异步 RL 的算法安全带。
+
+#### 难点六：评测可信度比 reward function 更重要
+
+Terminal agent 的 reward 很容易被污染：
+
+```text
+agent 改了测试
+agent 留下缓存
+agent 读到 secret
+agent 依赖网络上的答案
+agent 在 dirty workspace 通过，但 clean workspace 不通过
+```
+
+所以必须区分：
+
+```text
+dirty sandbox:
+  给 agent 探索、编辑、运行命令
+
+clean verifier sandbox:
+  只应用最终 patch，再独立运行测试
+```
+
+Mini-SWE README 里提到 patch 太大可能触发 `ARG_MAX`、Podman UID、context length、all-zero reward 等问题。这些看似杂项，其实都是 RL infra 的核心：一旦 reward pipeline 不可信，PPO/GRPO 再正确也没有意义。
+
+#### 难点七：可观测性必须是 token + environment 双维度
+
+普通 LLM 训练看 loss、reward、KL 还不够。Agentic RL 至少要看：
+
+| 指标 | 解释 |
+|---|---|
+| `generate/avg_num_turns` | agent 是否越跑越长，是否陷入工具循环 |
+| `generate/num_timeout_trajectories` | sandbox 或工具是否拖尾 |
+| `generate/trajectories_context_length_exceeded` | observation 是否太长 |
+| search latency p95/p99 | retriever 是否成为瓶颈 |
+| sandbox boot time | terminal task 是否被环境启动拖住 |
+| reward by stop_reason | 失败来自模型、超长、timeout 还是环境错误 |
+| loss mask coverage | 是否错误训练了 observation token |
+| staleness histogram | 异步 rollout 是否偏离当前 policy |
+
+面试时可以直接总结：
+
+> RL infra 的难点不是会不会写 PPO loss，而是能不能稳定地产生可信、可训练、可追溯的 trajectories。SearchR1 暴露了多轮 tool observation、retriever latency 和 stop-string parsing；terminal agent 暴露了 sandbox、文件系统状态、评测可信度、长尾和 token provenance。训练框架真正要兜住的是这些系统边界。
+
+### 8.12 slime vs SkyRL：不是谁替代谁
 
 把两个框架放在同一张图里：
 
@@ -1116,7 +1652,7 @@ CUDA IPC 适合同机/同 GPU colocate；NCCL broadcast 适合 training 和 infe
 
 > slime 更像一个高性能 RL kernel：训练和 rollout 路线更固定，但能把 Megatron/SGLang 的能力吃深。SkyRL 更像一个模块化 RL OS：trainer、generator、gym env、agent dispatcher、inference client、Tinker backend 都是可替换模块。
 
-### 8.10 Sandbox 设计：安全、可复现、可扩展
+### 8.13 Sandbox 设计：安全、可复现、可扩展
 
 Agentic RL 的 sandbox 不是“跑代码的地方”这么简单，它同时承担四个责任：
 
@@ -1345,9 +1881,13 @@ weight sync 时间占比多少？
 - [slime GitHub](https://github.com/THUDM/slime)
 - [SkyRL GitHub](https://github.com/novasky-ai/skyrl)
 - [SkyRL-Agent paper](https://arxiv.org/abs/2511.16108)
+- [SkyRL SearchR1 example](https://docs.skyrl.ai/docs/examples/search)
+- [SkyRL SearchR1 recipe](https://docs.skyrl.ai/docs/recipes/searchr1)
 - [SkyRL fully async training docs](https://docs.skyrl.ai/docs/tutorials/fully_async)
 - [SkyRL inference architecture docs](https://docs.skyrl.ai/docs/getting-started/inference_architecture)
 - [SkyRL-Agent project page](https://sky.cs.berkeley.edu/project/skyrl/)
+- [Search-R1 paper](https://arxiv.org/abs/2503.09516)
+- [SkyRL Harbor integration](https://docs.skyrl.ai/docs/harbor)
 - [ProRL Agent: Rollout-as-a-Service for RL Training of Multi-Turn LLM Agents](https://arxiv.org/html/2603.18815v1)
 - [Forge: MiniMax RL 框架](https://huggingface.co/blog/MiniMax-AI/forge-scalable-agent-rl-framework-and-algorithm)
 - [Keep the Tokens Flowing: 16 开源 RL 框架对比](https://huggingface.co/blog/async-rl-training-landscape)
