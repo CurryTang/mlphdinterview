@@ -202,6 +202,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Greedy', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 24 · Interval Problems',
+    'CoreSkills24 Interval Problems.md',
+    null,
+    { directory: 'Leetcode', category: 'Intervals', difficulty: 'Medium' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
@@ -1009,10 +1015,361 @@ function buildSegmentTreeLevels(leaves) {
   return levels;
 }
 
+const INTERVAL_VISUALS = {
+  'interval-merge-demo': {
+    title: 'Merge Intervals',
+    subtitle: 'Sort by start, then keep extending the current merged interval.',
+    domain: [0, 18],
+    intervals: [
+      { id: 'a', label: '[1, 3]', start: 1, end: 3 },
+      { id: 'b', label: '[2, 6]', start: 2, end: 6 },
+      { id: 'c', label: '[8, 10]', start: 8, end: 10 },
+      { id: 'd', label: '[15, 18]', start: 15, end: 18 },
+    ],
+    steps: [
+      {
+        title: 'Step 1 · sort by start',
+        note: '先按 start 排序，保证只需要和当前 merged interval 比较。',
+        active: ['a'],
+        result: [{ id: 'm1', label: 'current [1, 3]', start: 1, end: 3 }],
+        stats: [['current', '[1, 3]'], ['output', '[]']],
+      },
+      {
+        title: 'Step 2 · overlap, extend end',
+        note: '[2, 6] 的 start <= current end 3，所以合并成 [1, 6]。',
+        active: ['a', 'b'],
+        muted: ['a'],
+        result: [{ id: 'm1', label: 'merged [1, 6]', start: 1, end: 6 }],
+        stats: [['condition', '2 <= 3'], ['current', '[1, 6]']],
+      },
+      {
+        title: 'Step 3 · gap, flush current',
+        note: '[8, 10] 的 start > current end 6，说明前一段结束，输出 [1, 6]。',
+        active: ['c'],
+        result: [
+          { id: 'm1', label: 'output [1, 6]', start: 1, end: 6 },
+          { id: 'm2', label: 'current [8, 10]', start: 8, end: 10 },
+        ],
+        stats: [['condition', '8 > 6'], ['output', '[[1, 6]]']],
+      },
+      {
+        title: 'Step 4 · finish',
+        note: '最后没有重叠，依次输出剩余 current。',
+        active: ['d'],
+        result: [
+          { id: 'm1', label: '[1, 6]', start: 1, end: 6 },
+          { id: 'm2', label: '[8, 10]', start: 8, end: 10 },
+          { id: 'm3', label: '[15, 18]', start: 15, end: 18 },
+        ],
+        stats: [['answer', '[[1,6],[8,10],[15,18]]']],
+      },
+    ],
+  },
+  'interval-insert-demo': {
+    title: 'Insert Interval',
+    subtitle: 'Three zones: before newInterval, overlapping block, after newInterval.',
+    domain: [0, 17],
+    intervals: [
+      { id: 'a', label: '[1, 2]', start: 1, end: 2 },
+      { id: 'b', label: '[3, 5]', start: 3, end: 5 },
+      { id: 'c', label: '[6, 7]', start: 6, end: 7 },
+      { id: 'd', label: '[8, 10]', start: 8, end: 10 },
+      { id: 'e', label: '[12, 16]', start: 12, end: 16 },
+      { id: 'new', label: 'new [4, 8]', start: 4, end: 8, kind: 'new' },
+    ],
+    steps: [
+      {
+        title: 'Step 1 · append before zone',
+        note: '[1, 2] 完全在 newInterval 左边，直接进 output。',
+        active: ['a', 'new'],
+        result: [{ id: 'o1', label: 'output [1, 2]', start: 1, end: 2 }],
+        stats: [['rule', 'end < new.start'], ['output', '[[1,2]]']],
+      },
+      {
+        title: 'Step 2 · merge overlap block',
+        note: '[3,5], [6,7], [8,10] 都和 [4,8] 有交集，持续扩张 newInterval。',
+        active: ['b', 'c', 'd', 'new'],
+        muted: ['b', 'c', 'd'],
+        result: [
+          { id: 'o1', label: 'output [1, 2]', start: 1, end: 2 },
+          { id: 'm1', label: 'merged [3, 10]', start: 3, end: 10 },
+        ],
+        stats: [['merged start', 'min(4,3)=3'], ['merged end', 'max(8,10)=10']],
+      },
+      {
+        title: 'Step 3 · append after zone',
+        note: '[12,16] 完全在合并结果右边，先放入 [3,10]，再追加剩余区间。',
+        active: ['e'],
+        result: [
+          { id: 'o1', label: '[1, 2]', start: 1, end: 2 },
+          { id: 'm1', label: '[3, 10]', start: 3, end: 10 },
+          { id: 'o2', label: '[12, 16]', start: 12, end: 16 },
+        ],
+        stats: [['answer', '[[1,2],[3,10],[12,16]]']],
+      },
+    ],
+  },
+  'interval-rooms-demo': {
+    title: 'Meeting Rooms II',
+    subtitle: 'Sweep starts and ends; the answer is max active meetings.',
+    domain: [0, 30],
+    intervals: [
+      { id: 'a', label: '[0, 30]', start: 0, end: 30 },
+      { id: 'b', label: '[5, 10]', start: 5, end: 10 },
+      { id: 'c', label: '[15, 20]', start: 15, end: 20 },
+    ],
+    events: [
+      { time: 0, label: '+1' },
+      { time: 5, label: '+1' },
+      { time: 10, label: '-1' },
+      { time: 15, label: '+1' },
+      { time: 20, label: '-1' },
+      { time: 30, label: '-1' },
+    ],
+    steps: [
+      {
+        title: 't = 0 · first meeting starts',
+        note: 'active 从 0 变成 1，需要 1 个房间。',
+        active: ['a'],
+        marker: 0,
+        stats: [['active', '1'], ['max rooms', '1']],
+      },
+      {
+        title: 't = 5 · overlap appears',
+        note: '[5,10] 开始时 [0,30] 还没结束，active = 2。',
+        active: ['a', 'b'],
+        marker: 5,
+        stats: [['active', '2'], ['max rooms', '2']],
+      },
+      {
+        title: 't = 10 · one room freed',
+        note: '[5,10] 结束，active 回到 1。',
+        active: ['a'],
+        marker: 10,
+        stats: [['active', '1'], ['max rooms', '2']],
+      },
+      {
+        title: 't = 15 · another overlap',
+        note: '[15,20] 开始时 [0,30] 仍在进行，max rooms 仍然是 2。',
+        active: ['a', 'c'],
+        marker: 15,
+        stats: [['active', '2'], ['answer', '2']],
+      },
+    ],
+  },
+  'interval-query-demo': {
+    title: 'Minimum Interval to Include Each Query',
+    subtitle: 'Sort queries; push candidate intervals into a min heap by length.',
+    domain: [0, 7],
+    intervals: [
+      { id: 'a', label: '[1, 4] len 4', start: 1, end: 4 },
+      { id: 'b', label: '[2, 4] len 3', start: 2, end: 4 },
+      { id: 'c', label: '[3, 6] len 4', start: 3, end: 6 },
+      { id: 'd', label: '[4, 4] len 1', start: 4, end: 4 },
+    ],
+    queries: [2, 3, 4, 5],
+    steps: [
+      {
+        title: 'query = 2',
+        note: '加入 start <= 2 的区间：[1,4], [2,4]。最短覆盖区间是 [2,4]，长度 3。',
+        active: ['a', 'b'],
+        marker: 2,
+        result: [{ id: 'best', label: 'best [2,4]', start: 2, end: 4 }],
+        stats: [['heap top', 'len 3 [2,4]'], ['ans[2]', '3']],
+      },
+      {
+        title: 'query = 3',
+        note: '加入 [3,6]。heap 顶仍是 [2,4]，它覆盖 3。',
+        active: ['b', 'c'],
+        marker: 3,
+        result: [{ id: 'best', label: 'best [2,4]', start: 2, end: 4 }],
+        stats: [['heap top', 'len 3 [2,4]'], ['ans[3]', '3']],
+      },
+      {
+        title: 'query = 4',
+        note: '加入 [4,4]，长度 1，立刻成为最优答案。',
+        active: ['a', 'b', 'c', 'd'],
+        marker: 4,
+        result: [{ id: 'best', label: 'best [4,4]', start: 4, end: 4 }],
+        stats: [['heap top', 'len 1 [4,4]'], ['ans[4]', '1']],
+      },
+      {
+        title: 'query = 5',
+        note: '弹掉 end < 5 的区间，剩下 [3,6] 覆盖 5，长度 4。',
+        active: ['c'],
+        marker: 5,
+        result: [{ id: 'best', label: 'best [3,6]', start: 3, end: 6 }],
+        stats: [['removed', 'end < 5'], ['ans[5]', '4']],
+      },
+    ],
+  },
+};
+
+function IntervalPatternVisual({ kind }) {
+  const visual = INTERVAL_VISUALS[kind];
+  const [activeStep, setActiveStep] = useState(0);
+  const step = visual.steps[activeStep];
+  const active = new Set(step.active ?? []);
+  const muted = new Set(step.muted ?? []);
+  const domain = visual.domain;
+  const ticks = buildIntervalTicks(domain);
+
+  return (
+    <section className="interval-visual">
+      <header className="interval-visual-header">
+        <div>
+          <p className="eyebrow">Interval visual</p>
+          <h2>{visual.title}</h2>
+          <p>{visual.subtitle}</p>
+        </div>
+        <div className="interval-step-counter">
+          {activeStep + 1}<span>/ {visual.steps.length}</span>
+        </div>
+      </header>
+
+      <div className="interval-step-note">
+        <strong>{step.title}</strong>
+        <span>{step.note}</span>
+      </div>
+
+      <div className="interval-axis" aria-label={`${visual.title} timeline`}>
+        <div className="interval-axis-line">
+          {ticks.map((tick) => (
+            <span
+              className="interval-tick"
+              key={tick}
+              style={{ left: `${intervalPercent(tick, domain)}%` }}
+            >
+              {tick}
+            </span>
+          ))}
+          {step.marker !== undefined && (
+            <span
+              className="interval-marker"
+              style={{ left: `${intervalPercent(step.marker, domain)}%` }}
+            >
+              q={step.marker}
+            </span>
+          )}
+        </div>
+
+        <div className="interval-lanes">
+          {visual.intervals.map((interval) => (
+            <IntervalBar
+              domain={domain}
+              interval={interval}
+              isActive={active.has(interval.id)}
+              isMuted={muted.has(interval.id)}
+              key={interval.id}
+            />
+          ))}
+        </div>
+
+        {visual.queries && (
+          <div className="interval-query-row">
+            {visual.queries.map((query) => (
+              <span
+                className={query === step.marker ? 'active' : ''}
+                key={query}
+                style={{ left: `${intervalPercent(query, domain)}%` }}
+              >
+                {query}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {step.result && (
+          <div className="interval-result-lanes">
+            {step.result.map((interval) => (
+              <IntervalBar
+                domain={domain}
+                interval={{ ...interval, kind: 'result' }}
+                isActive
+                key={interval.id}
+              />
+            ))}
+          </div>
+        )}
+
+        {visual.events && (
+          <div className="interval-events">
+            {visual.events.map((event) => (
+              <span
+                className={event.time === step.marker ? 'active' : ''}
+                key={`${event.time}-${event.label}`}
+                style={{ left: `${intervalPercent(event.time, domain)}%` }}
+              >
+                {event.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="interval-stat-grid">
+        {(step.stats ?? []).map(([label, value]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <ol className="interval-step-list">
+        {visual.steps.map((candidate, index) => (
+          <li className={index === activeStep ? 'active' : ''} key={candidate.title}>
+            <button type="button" onClick={() => setActiveStep(index)}>
+              <span>{index + 1}</span>
+              {candidate.title.replace(/^Step \d+ · /, '')}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function IntervalBar({ domain, interval, isActive = false, isMuted = false }) {
+  const left = intervalPercent(interval.start, domain);
+  const right = intervalPercent(interval.end, domain);
+  const width = Math.max(right - left, 1.4);
+
+  return (
+    <div
+      className={`interval-bar ${interval.kind ?? ''} ${isActive ? 'active' : ''} ${isMuted ? 'muted' : ''}`}
+      style={{ left: `${left}%`, width: `${width}%` }}
+    >
+      <span>{interval.label}</span>
+    </div>
+  );
+}
+
+function intervalPercent(value, [min, max]) {
+  if (max === min) {
+    return 0;
+  }
+
+  return ((value - min) / (max - min)) * 100;
+}
+
+function buildIntervalTicks([min, max]) {
+  const width = max - min;
+  const step = width <= 8 ? 1 : Math.ceil(width / 6);
+  const ticks = [];
+  for (let value = min; value <= max; value += step) {
+    ticks.push(value);
+  }
+  if (ticks[ticks.length - 1] !== max) {
+    ticks.push(max);
+  }
+  return ticks;
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|topo-demo|bellman-demo|segment-tree-demo)/.exec(className);
+  const match = /language-(quiz|mcq|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo)/.exec(className);
 
   if (match?.[1] === 'topo-demo') {
     return <ForeignDictionaryTopoVisual />;
@@ -1024,6 +1381,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'segment-tree-demo') {
     return <SegmentTreeLISVisual />;
+  }
+
+  if (match?.[1]?.startsWith('interval-')) {
+    return <IntervalPatternVisual kind={match[1]} />;
   }
 
   if (match) {
