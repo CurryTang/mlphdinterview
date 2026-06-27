@@ -807,7 +807,7 @@ Parallel Scan (O(log L) steps):
 
 ### 3.6 Mamba1 Kernel 核心代码解析
 
-> 源码来自: https://github.com/state-spaces/mamba/tree/main/csrc/selective_scan/
+> Example source: https://github.com/state-spaces/mamba/tree/main/csrc/selective_scan/
 
 #### 核心文件结构
 
@@ -1046,4 +1046,3 @@ Mamba-1的parallel scan有个问题：**无法利用Tensor Core**
 │                                                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-

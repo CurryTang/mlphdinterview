@@ -171,7 +171,7 @@ Compute-bound 的入口，通常从 GEMM / matmul 思路开始。
 
 ### [[MLSYS13 Quantization and precision|MLSYS13 · 量化与精度]]
 
-这篇负责把 precision / quantization 串起来：
+精度与量化主线：
 
 - FP32 / FP16 / BF16 / FP8
 - weight-only quantization
@@ -208,7 +208,7 @@ KV cache 课补上推理系统的 cache 层：
 
 ### [[MLSYS15 LLM Inference Speculative Decoding DFlash|MLSYS17 · Inference：并行解码与草稿验证]]
 
-这篇继续推理系统主线，重点是 decode 加速：
+推理系统中的 decode 加速：
 
 - speculative decoding 的 exact sampling
 - Medusa、EAGLE、DFlash 的 drafter 设计
@@ -216,7 +216,7 @@ KV cache 课补上推理系统的 cache 层：
 
 ### [[MLSYS16 Modern MoE SonicMoE|MLSYS18 · MoE Systems：路由、通信与 Kernel]]
 
-这篇属于训练/推理系统里的 MoE 专题：
+训练与推理系统中的 MoE 专题：
 
 - router、top-k、capacity、load balance
 - expert parallel、all-to-all、grouped GEMM

@@ -289,7 +289,7 @@ DSA、DMA、DHSA 可以按“选择器训练位置和作用阶段”区分：DSA
 
 ## 五、Qwen3-Next：Gated DeltaNet 和周期性 full attention
 
-Qwen3-Next 不是纯 linear attention 模型。公开配置和实现里，它采用周期性 hybrid layout：
+Qwen3-Next 不是纯 linear attention 模型。配置和实现里，它采用周期性 hybrid layout：
 
 ```text
 repeat 12 times:
@@ -300,6 +300,16 @@ repeat 12 times:
 ```
 
 也就是 48 层里每 4 层有 1 层 full attention，其余 3 层用 Gated DeltaNet。
+
+这个 layout 的系统含义是：attention cost 被 hybrid / recurrent path 压下来，但每层后面的 FFN 仍然是 high-sparsity MoE。Qwen3-Next-80B-A3B 把长上下文效率拆成两条线同时优化：
+
+| 位置 | 设计 | 系统影响 |
+|---|---|---|
+| Attention | Gated DeltaNet + 周期性 Gated Attention | cache 不再只有 KV，还要管理 conv/recurrent states |
+| FFN | high-sparsity MoE | active FLOPs 降低，但 expert dispatch / all-to-all / grouped GEMM 成为瓶颈 |
+| Training / inference auxiliary | MTP | 提供额外 pretraining signal，并为 speculative decoding 留接口 |
+
+因此分析 Qwen3-Next 不能只看 attention kernel。长上下文吞吐来自 attention state、MoE active ratio、MTP 和 serving scheduler 的共同作用。
 
 ```mermaid
 flowchart TB

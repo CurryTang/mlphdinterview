@@ -1,6 +1,6 @@
 # MLSYS16 · KV Cache：内存管理、前缀复用与 GLM-5.2 IndexShare
 
-这篇补上推理系统里最常被追问的一层：KV cache 到底在存什么，为什么它会变成长上下文推理的主瓶颈，以及 GLM-5.2 的 IndexShare 到底共享了什么。
+KV cache 是推理系统里最常被追问的一层：它决定长上下文 decode 的显存占用、prefix reuse 的收益边界，以及 GLM-5.2 IndexShare 到底共享了什么。
 
 先给结论：
 
@@ -626,7 +626,7 @@ IndexCache 论文给了两个版本：
 
 GLM-5.2 是训练中引入 IndexShare，并从 mid-training 的 128K sequence length 开始训练。这比事后硬改 schedule 更稳。
 
-论文里还有一个值得记住的负结果：
+关键负结果：
 
 ```text
 只看 top-k overlap 或 attention output similarity，不足以找到最优 sharing pattern。
@@ -982,7 +982,6 @@ GLM-5.2 在 DSA sparse attention 中让一组连续层复用同一个 Full layer
 - [GLM-5.2 official blog](https://huggingface.co/blog/zai-org/glm-52-blog)
 - [GLM-5 official repository](https://github.com/zai-org/GLM-5)
 - [ATOM GLM-5 recipe](https://github.com/ROCm/ATOM/blob/main/recipes/GLM-5.md)
-- [s09g: Inference basic: KV Cache、Batching 与并行化](https://s09g.medium.com/inference-basic-kv-cache-batching-%E4%B8%8E%E5%B9%B6%E8%A1%8C%E5%8C%96-74fdcd184fac)
 - [ThunderAgent: A Simple, Fast and Program-Aware Agentic Inference System](https://arxiv.org/abs/2602.13692)
 - [ThunderAgent Program Scheduler in NVIDIA Dynamo](https://docs.nvidia.com/dynamo/dev/user-guides/agents/thunder-agent-program-scheduler)
 - [ThunderAgent GitHub repository](https://github.com/ThunderAgent-org/ThunderAgent)

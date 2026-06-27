@@ -1,16 +1,18 @@
 # A Hitchhiker's Guide to ML PhD Job Hunting
 
-This repository hosts an interview notes site. MLSYS notes and LeetCode Core Skills notes are published as parallel interview sections.
+This repository hosts an interview notes site. MLSYS, LLM, Quant, ML Coding, and LeetCode Core Skills notes are published as parallel interview sections.
 
 ## Live Site
 
 **GitHub Pages:** [https://currytang.github.io/hitchhikers-guide-to-ml-phd-job-hunting/](https://currytang.github.io/hitchhikers-guide-to-ml-phd-job-hunting/)
 
-The site publishes the curated MLSYS notes from `notes/Mlsys/` and LeetCode Core Skills notes from `notes/Leetcode/`. The frontend reader supports Chinese and English variants when both exist, and falls back to the available note when only one variant is present.
+The site publishes the curated MLSYS notes from `notes/Mlsys/`, Quant notes from `notes/quant/`, ML Coding notes from `notes/MLCoding/`, and LeetCode Core Skills notes from `notes/Leetcode/`. The frontend reader supports Chinese and English variants when both exist, and falls back to the available note when only one variant is present.
 
 ## Repository Layout
 
 - `notes/Mlsys/`: MLSYS interview note markdown files and local assets
+- `notes/quant/`: Quant probability and expectation interview notes
+- `notes/MLCoding/`: ML implementation and coding exercise notes
 - `notes/Leetcode/`: LeetCode Core Skills note markdown files
 - `src/`: React frontend for browsing and rendering interview sections
 - `docs/plans/`: design and implementation notes for repo changes

@@ -1,6 +1,6 @@
 # MLSYS17 · Inference：并行解码与草稿验证
 
-这篇讲一个推理系统里非常高频、也很容易被问深的主题：
+并行解码与草稿验证要回答四个系统问题：
 
 ```text
 为什么 LLM decode 很慢？
@@ -406,7 +406,7 @@ MTP step 3:
 | MTP | target 旁边的 MTP module | 是 | 常见实现是 sequential | MTP layer、KV 共享、verify metadata |
 | DFlash | block diffusion drafter | 是 | block 内并行 | diffusion drafter 与 KV injection |
 
-面试里可以这样说：
+四类 drafter 的一句话区别：
 
 ```text
 Medusa 更像加 head。
@@ -674,7 +674,7 @@ DFlash 主要做两件事：
   KV injection 让 draft distribution 更接近 target
 ```
 
-NVIDIA 2026 年 Blackwell 博客给出的公开结果显示，DFlash 在 gpt-oss-120b、Llama 3.1 8B、Qwen3、Gemma 等模型上相比传统 speculative decoding 有更高同并发吞吐加速；DFlash 论文和 vLLM/SGLang 文档也把它定位为 EAGLE-3 之后更强的 lossless speculative decoding 路线。
+DFlash 在 gpt-oss-120b、Llama 3.1 8B、Qwen3、Gemma 等模型上面向高并发 decode 展示出更高吞吐；DFlash 论文和 vLLM/SGLang 文档也把它定位为 EAGLE-3 之后更强的 lossless speculative decoding 路线。
 
 ---
 
@@ -1232,5 +1232,3 @@ GPU memory headroom
 - [z-lab/dflash GitHub](https://github.com/z-lab/dflash)
 - [Qwen3-8B-DFlash-b16 Hugging Face model card](https://huggingface.co/z-lab/Qwen3-8B-DFlash-b16)
 - [MiniMax-M2 Series Technical Report](https://arxiv.org/abs/2605.26494)
-- [s09g: Inference basic: KV Cache、Batching 与并行化](https://s09g.medium.com/inference-basic-kv-cache-batching-%E4%B8%8E%E5%B9%B6%E8%A1%8C%E5%8C%96-74fdcd184fac)
-- [s09g: Multi-Modal Inference / 文生图 Sora 系统设计](https://s09g.medium.com/%E6%96%87%E7%94%9F%E5%9B%BE-sora-%E7%B3%BB%E7%BB%9F%E8%AE%A1-2e42d2f4e387)

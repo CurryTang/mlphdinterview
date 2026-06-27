@@ -130,7 +130,7 @@ On-policyness ─── 灵活性 (Agentic/Env)
 rollout time + weight sync time + training update time
 ```
 
-如果权重同步是 20ms，它只是普通 overhead；如果同步是 7 秒，它已经足以吞掉一次短 rollout 的收益；如果同步到 20 秒级，系统就必须考虑异步、partial rollout、权重版本滞后和跨池调度。也就是说，模型越大，RL infra 越不能只讨论 PPO/GRPO 算法，必须讨论 weight movement。
+如果权重同步是 20ms，它只是普通 overhead；如果同步是 7 秒，它已经足以吞掉一次短 rollout 的收益；如果同步到 20 秒级，系统就必须考虑异步、partial rollout、权重版本滞后和跨池调度。模型越大，RL infra 越需要把 weight movement 纳入算法闭环。
 
 Qwen3-235B 和 Kimi-K2 的广播延迟说明了同一个问题：参数量扩大后，policy update 不再是 trainer 内部事件，而是整个 serving pool 的状态切换。同步式系统会在切换期间让 rollout worker 等新权重；异步式系统则允许 rollout worker 继续用旧权重生成，但 trainer 必须知道这些样本来自哪个 policy version。
 
@@ -568,6 +568,8 @@ sequenceDiagram
 
 veRL 的长处是通用和可组合：算法层容易改，后端也能换。代价是抽象层更多，debug 时要同时看 controller、Ray worker、training backend、rollout server 和 weight sync。
 
+MoE 训练时，veRL 的优势是把算法数据流和训练后端分开：中小模型可以用 FSDP 快速迭代，超大 MoE 可以切到 Megatron 后端，让 TP/PP/EP/CP 接管并行策略。它本身不把 MoE router correctness 自动变简单；系统仍然需要在 rollout batch 里保存足够 metadata，例如 policy version、old logprobs、loss mask，以及需要时的 expert routing 信息。
+
 ### 5.4 slime（THUDM/智谱）—— 做减法的哲学
 
 **定位**：「我们只做 SGLang 和 Megatron 之间的数据流胶水」。最终实际生产 GLM-4.5/4.6/4.7/GLM-5/GLM-5.1 的 RL 训练后端。
@@ -588,6 +590,8 @@ flowchart LR
 ```
 
 Data Buffer 是 slime 的核心。它不是简单队列，而是 RL 数据的边界层：rollout 完成前它知道哪些 request 还在飞；reward 完成后它知道哪些 samples 可训练；training 之前它把变长样本 pack 成 Megatron 能吃的 batch；异步模式下它还要控制 policy version 和 staleness。
+
+slime 对 MoE 更友好的地方在于边界更窄：训练侧固定围绕 Megatron，rollout 侧固定围绕 SGLang。Megatron 管 TP/PP/EP/CP 和 optimizer state，SGLang 管 prefix sharing、continuous batching 和 weight update。两个系统的组合减少了“任意 backend 两两适配”的复杂度，但也要求 Data Buffer 明确维护 rollout 产生的 token、logprob、reward、policy version、request id 和必要的 routing metadata。
 
 **数据流详解**：
 
@@ -918,10 +922,11 @@ AReaL 选择 **re-prefill**：中断序列，用新权重重新做 prefill，重
 2. **MoE 路由不一致**（最严重的 mismatch 来源）：推理时（vLLM）和训练时（Megatron）各自独立实现了 MoE 的 router（top-k gating）。浮点精度差异可能导致边界情况下 expert 选择不同，等于训练的是另一个 sequence 的 logprob。
 
 **解法**：
-- 「Keep Routing」：推理侧记录每个 token 的 expert routing 决策，训练侧重放（replay），强制使用相同的 routing。目前尚无开源框架实现。
-- 「Keep Sampling Mask」：推理侧记录 top-p/top-k 的截断 mask，训练侧对完整词表 logit 施加同样的 mask 再计算 logprob。同样尚无开源框架实现。
+- 「Keep Routing」：推理侧记录每个 token 的 expert routing 决策，训练侧重放（replay），强制使用相同的 routing。它把 MoE router 从隐式算子状态变成 trajectory metadata。
+- 「Keep Sampling Mask」：推理侧记录 top-p/top-k 的截断 mask，训练侧对完整词表 logit 施加同样的 mask 再计算 logprob。它处理的是 sampling distribution mismatch，而不是 router mismatch。
+- 「Sequence-level objective」：GSPO 用 response-level likelihood ratio 做 clipping，降低单 token logprob 抖动对更新的影响。在 hybrid attention + high-sparsity MoE 的 RL 训练里，它把 token-level router jitter 对更新的影响降到 sequence level。
 
-这两个问题是 DeepSeek-V3.2 规模的 MoE RL 训练的核心工程挑战。
+router replay、sampling mask 和 sequence-level ratio 分别对应三类工程挑战：专家选择一致性、采样分布一致性、以及 token-level ratio 噪声。
 
 ### 6.6 精度专题：INT8 vs FP8
 
@@ -968,6 +973,39 @@ EP 把不同的 expert 分布在不同 GPU 上，每个 GPU 只保留 $N_{\text{
 - **FSDP2 方案**：parameter prefetch 在 backward 时提前 AllGather 下一层的参数；SP 需要额外集成（不原生支持）
 
 Megatron 在 PP + TP + CP + EP 完整组合下比 FSDP2 灵活得多，这是大规模 MoE RL 训练几乎都选 Megatron 的根本原因。
+
+**MoE RL 的额外困难**：
+
+| 层次 | Dense RL | MoE RL |
+|---|---|---|
+| policy state | 权重版本 + sampling config | 权重版本 + sampling config + router/expert choice |
+| rollout logprob | 训练侧重新 forward 通常可复现 | router 精度、batch shape、backend 实现差异可能改变 expert |
+| batch shape | token 数决定 attention / MLP | token 数还决定每个 expert 的 grouped GEMM occupancy |
+| 并行策略 | TP/PP/DP/FSDP 已够用 | 通常还需要 EP/ETP，AllToAll 进入 critical path |
+| 异步训练 | 控制 policy lag | 同时控制 policy lag 和 router drift |
+
+Qwen3-Next-Thinking 暴露了一个重要方向：高稀疏 MoE + hybrid attention 下，RL 不一定只靠更强的 infra workaround。GSPO 把 token-level ratio 改成 sequence-level ratio，弱化单 token route 抖动对更新的影响；Routing Replay 则是系统侧强行复现 old policy 的 expert choice。两者的取舍是：
+
+```text
+Routing Replay:
+  保留 token-level PPO/GRPO 语义
+  增加 expert id metadata、通信和 kernel 接口复杂度
+
+GSPO:
+  改变优化目标到 sequence-level
+  降低对 token-level routing replay 的依赖
+  更适合 disaggregated / partial rollout / multi-turn RL
+```
+
+不同框架的处理方式也不同：
+
+| 框架 | 解决路径 |
+|---|---|
+| veRL | 用统一 PPO/GRPO 数据流承载 MoE metadata；大 MoE 切 Megatron 后端，rollout 可接 vLLM/SGLang |
+| slime | 固定 Megatron + SGLang，减少 backend 组合复杂度；Data Buffer 负责样本、版本、reward 和 weight update 边界 |
+| SkyRL | 用 `GeneratorOutput` / trajectory contract 保存 token provenance、loss mask、reward 与可选 expert routing 信息 |
+| AReaL | 把长尾 rollout 和 policy lag 作为一等问题；MoE 下仍要额外处理 router consistency |
+| GSPO-style algorithm | 从算法上减少 token-level ratio 对 router mismatch 的敏感性 |
 
 **多节点 backpropagation**：
 
@@ -1239,6 +1277,21 @@ class GeneratorInterface:
 ```
 
 这说明 SkyRL 的训练 loop 不关心你是单轮 GSM8K、多轮 SQL、LiveCodeBench，还是一个复杂 agent。只要 generator 最后返回这些字段，trainer 就能做 PPO/GRPO/DAPO 等算法。
+
+MoE 场景下，`rollout_expert_indices` 不是普通 debug log。它回答的是“old policy 生成这个 token 时到底走了哪些 experts”。如果训练侧要做 Routing Replay，或者至少要诊断 router drift，这个字段就是 rollout runtime 和 trainer 之间的 correctness contract：
+
+```text
+token provenance:
+  response_ids + loss_masks
+
+policy provenance:
+  rollout_logprobs + policy version
+
+router provenance:
+  rollout_expert_indices
+```
+
+这也是 SkyRL 这类 generator boundary 的价值：复杂 agent、search、terminal、MoE routing 都可以被压缩成 trainer 可验证的 trajectory schema，而不是让 trainer 猜字符串背后的执行历史。
 
 更高层看，SkyRL 把“生成 trajectory”从 trainer 里拆出来：
 
@@ -2133,7 +2186,7 @@ sandbox boot semaphore
 怎么把 PPO/GRPO 跑得更快？
 ```
 
-2026 的公开材料显示，问题已经变成：
+系统问题已经变成：
 
 ```text
 怎么把持续变化的 agent execution、inference runtime、sandbox/verifier、

@@ -1,7 +1,7 @@
 # LLM八股 2 · RL Infra 自测 35 问
 
 > [!info] 使用说明
-> 本文档对应 [[MLSYS14 Post-Training Infra]] 的配套练习，题目来源：[@sheriyuo 的 RL Interview Questions 2026](https://x.com/sheriyuo/status/2063295181131247674)。共 35 题，按主题重排为 A–F 六个部分。点击 **▶ 显示答案** 展开解析，再次点击收起。
+> 本文档对应 [[MLSYS14 Post-Training Infra]] 的配套练习，共 35 题，按主题重排为 A–F 六个部分。点击 **▶ 显示答案** 展开解析，再次点击收起。
 
 ---
 
@@ -219,7 +219,7 @@ $$
 
 **根本问题**：MoE 模型的 router（top-k gating）在推理侧（vLLM/SGLang）和训练侧（Megatron）各自独立实现，浮点精度差异会导致边界情况下 expert 选择不同——等于训练的是另一个 sequence 的 logprob。
 
-**两种主要 mismatch**：
+**三类主要处理方式**：
 
 1. **Router Inconsistency（路由不一致）**：推理时 token 被路由到 Expert A，训练时 forward pass 路由到 Expert B（因为两个实现的 softmax/top-k 浮点行为略有差异）。这导致 IS ratio 出现系统性偏差。
 
@@ -229,7 +229,9 @@ $$
 
    解法 → **Keep Sampling Mask**：推理侧记录 sampling mask（哪些 token 被截断），训练时对 logit 施加同样的 mask 再 softmax，保证 logprob 归一化与推理一致。
 
-**现状**：截至 2025 年中，两种解法均无开源框架实现，是 MoE RL 训练的核心工程挑战。
+3. **Token-level Ratio Noise**：高稀疏 MoE 的 router 抖动会让单 token logprob ratio 变噪，尤其在 GRPO/PPO 长训练中更明显。
+
+   解法 → **GSPO / Sequence-level ratio**：用 response-level likelihood ratio 做 clipping，降低单 token route 抖动对训练目标的影响。它不是 replay router，而是把优化目标从 token-level 改到 sequence-level。
 
 → [[MLSYS14 Post-Training Infra#6.5 Train–Inference Mismatch]]
 
@@ -374,7 +376,7 @@ $$
 <details class="exercise">
 <summary><span class="q-label">Q19</span> <span class="q-text">从 DeepSeek R1 到 V3.2 再到未来 V4，引入了哪些 RL 相关改进？MoE 里的 RL 有什么不同？</span></summary>
 
-**DeepSeek 的 RL 演进**（按公开信息整理）：
+**DeepSeek / MoE RL 的演进线索**：
 
 | 版本 | RL 相关改进 |
 |------|------------|
@@ -389,7 +391,7 @@ $$
 
 2. **Router 漂移**：RL 训练会改变 router 的参数，可能导致 expert load imbalance（少数 expert 被过度路由）。需要 auxiliary load balancing loss。
 
-3. **MoE Mismatch**（见 Q11）：router 不一致是 MoE RL 的核心工程问题。
+3. **MoE Mismatch**（见 Q11）：router 不一致是 MoE RL 的核心工程问题。Routing Replay 是系统侧解法；GSPO 是算法目标侧解法。
 
 4. **显存放大**：MoE 的 expert 参数总量远大于激活参数，EP 下每 GPU 显存不变但通信显著增加。RL 的显存压力（actor+ref+KV）与 EP 的通信压力叠加。
 
@@ -711,4 +713,6 @@ $$
 
 ---
 
-> 全部 35 题整理自 [@sheriyuo · RL Interview Questions 2026](https://x.com/sheriyuo/status/2063295181131247674)。返回主文档：[[MLSYS14 Post-Training Infra]]
+参考资料：[Sheriyuo · RL Interview Questions 2026](https://x.com/sheriyuo/status/2063295181131247674)
+
+返回主文档：[[MLSYS14 Post-Training Infra]]
