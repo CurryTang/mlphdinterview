@@ -162,9 +162,10 @@ sparse selector 负责在巨大历史里减少无效读取
 
 ### 2.1 2025+ 方法地图
 
+Associative Memory theory 在这里不是一条方法路线，而是读这些方法的坐标系：它解释为什么 softmax retrieval 和 compressed recurrent memory 的能力不同。下面这张表只列具体架构或系统路线。
+
 | 工作 / 路线 | 核心问题 | 状态形态 | 系统瓶颈 | 读论文时要追问 |
 |---|---|---|---|---|
-| Associative Memory theory | 为什么 softmax retrieval 和线性记忆能力不同 | token KV vs compressed state | retrieval SNR vs state size | 压缩状态会混入多少无关 memory |
 | DeepSeek DSA | 1M context 下不想每步读完整 MLA cache | KV 仍在，query 选 top-k | indexer + top-k + sparse MLA kernel | selector 成本是否小于省下的 KV 读流量 |
 | DMA / DHSA | 用动态 mask / routing 减少 attention work | mask / hierarchy indices | mask 训练、block 稀疏 kernel | 稀疏模式能否在 GPU 上真的变快 |
 | Qwen3-Next | 长上下文吞吐 + high-sparsity MoE | recurrent state + periodic full attention | mixed cache manager | spec decode 和 continuous batching 如何提交/回滚 state |
