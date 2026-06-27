@@ -396,6 +396,24 @@ const homeStats = [
   { value: '2', label: 'Languages' },
 ];
 
+const authorLinks = [
+  {
+    label: 'GitHub',
+    href: 'https://github.com/CurryTang',
+    value: 'github.com/CurryTang',
+  },
+  {
+    label: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/zhikai-chen-435252129',
+    value: 'Zhikai Chen',
+  },
+  {
+    label: 'Email',
+    href: 'mailto:chenzh85@msu.edu',
+    value: 'chenzh85@msu.edu',
+  },
+];
+
 function createTutorialDefinition(title, zhFileName, enFileName, options = {}) {
   const directory = options.directory ?? 'Mlsys';
   return {
@@ -2139,6 +2157,17 @@ function App() {
     setSelectedTutorialId(tutorialId);
   };
 
+  const navigateToAbout = () => {
+    setCurrentView('home');
+    setQuery('');
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    window.requestAnimationFrame(() => {
+      document.getElementById('about')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   useEffect(() => {
     if (currentView !== 'reader' || !selectedTutorial) {
       return;
@@ -2196,6 +2225,13 @@ function App() {
               {section.title}
             </button>
           ))}
+          <button
+            className="top-nav-link"
+            type="button"
+            onClick={navigateToAbout}
+          >
+            About
+          </button>
         </nav>
       </header>
 
@@ -2248,6 +2284,42 @@ function App() {
                   <span>{section.description}</span>
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section className="home-about" id="about" aria-labelledby="about-title">
+            <div className="section-heading">
+              <p className="eyebrow">About</p>
+              <h2 id="about-title">关于作者</h2>
+            </div>
+
+            <div className="about-panel">
+              <div className="about-copy">
+                <p>
+                  这个网站由 <strong>Zhikai Chen</strong> 维护，用来整理 MLSYS、LLM infra、ML coding、
+                  quant 和 LeetCode 面试复习笔记。
+                </p>
+                <p>
+                  作者目前正在找工作，并有 agent memory、agentic reinforcement learning、
+                  predictive foundation model 和 agentic security 方面的研究经验。如果您有合适的机会，
+                  欢迎通过 GitHub、LinkedIn 或 Email 联系。
+                </p>
+              </div>
+
+              <div className="about-links" aria-label="Author contact links">
+                {authorLinks.map((link) => (
+                  <a
+                    className="about-link"
+                    href={link.href}
+                    key={link.label}
+                    target={link.href.startsWith('http') ? '_blank' : undefined}
+                    rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+                  >
+                    <span>{link.label}</span>
+                    <strong>{link.value}</strong>
+                  </a>
+                ))}
+              </div>
             </div>
           </section>
         </main>

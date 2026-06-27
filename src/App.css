@@ -188,7 +188,7 @@
 .home-sections {
   max-width: 1180px;
   width: 100%;
-  margin: 0 auto 2rem;
+  margin: 0 auto;
   display: grid;
   gap: 1rem;
 }
@@ -240,6 +240,84 @@
   font: 700 0.75rem "IBM Plex Mono", "Courier New", monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.home-about {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto 2rem;
+  scroll-margin-top: calc(var(--top-nav-height) + 1rem);
+  display: grid;
+  gap: 1rem;
+}
+
+.about-panel {
+  border: 1px solid rgba(24, 49, 63, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(235, 246, 243, 0.72)),
+    linear-gradient(90deg, rgba(24, 49, 63, 0.04) 0 1px, transparent 1px 32px);
+  box-shadow: 0 14px 28px rgba(31, 53, 66, 0.1);
+  padding: clamp(1rem, 2vw, 1.4rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: clamp(1rem, 2.5vw, 1.8rem);
+  align-items: stretch;
+}
+
+.about-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.75rem;
+}
+
+.about-copy p {
+  margin: 0;
+  color: #203c4a;
+  font-size: clamp(0.96rem, 1.2vw, 1.06rem);
+  line-height: 1.78;
+}
+
+.about-copy strong {
+  color: #102735;
+}
+
+.about-links {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.about-link {
+  border: 1px solid rgba(24, 49, 63, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+  color: #18313f;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.82rem 0.9rem;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.about-link:hover,
+.about-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(13, 109, 143, 0.46);
+  box-shadow: 0 10px 20px rgba(31, 53, 66, 0.1);
+  outline: none;
+}
+
+.about-link span {
+  color: #8b4d2f;
+  font: 700 0.72rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.about-link strong {
+  color: #102735;
+  font: 700 1rem "Space Grotesk", "Avenir Next", sans-serif;
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -3051,6 +3129,15 @@
 
   .home-stat {
     min-height: 96px;
+  }
+
+  .home-about,
+  .home-sections {
+    max-width: calc(100vw - 2rem);
+  }
+
+  .about-panel {
+    grid-template-columns: 1fr;
   }
 
   .app-shell {

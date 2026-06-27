@@ -48,6 +48,25 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /^mlsys/i })).toBeInTheDocument();
   });
 
+  it('shows author contact details in the About section', () => {
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: /关于作者/ })).toBeInTheDocument();
+    expect(screen.getByText(/agent memory/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /githubgithub\.com\/currytang/i })).toHaveAttribute(
+      'href',
+      'https://github.com/CurryTang',
+    );
+    expect(screen.getByRole('link', { name: /linkedinzhikai chen/i })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/zhikai-chen-435252129',
+    );
+    expect(screen.getByRole('link', { name: /emailchenzh85@msu\.edu/i })).toHaveAttribute(
+      'href',
+      'mailto:chenzh85@msu.edu',
+    );
+  });
+
   it('keeps the same tutorial selected while switching languages in place', async () => {
     render(<App />);
 
