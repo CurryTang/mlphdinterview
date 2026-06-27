@@ -1732,6 +1732,13 @@ async function getMermaid() {
         startOnLoad: false,
         securityLevel: 'strict',
         theme: 'base',
+        flowchart: {
+          curve: 'basis',
+          htmlLabels: true,
+          nodeSpacing: 70,
+          rankSpacing: 85,
+          padding: 24,
+        },
         themeVariables: {
           background: 'transparent',
           primaryColor: '#e9f3f5',

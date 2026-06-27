@@ -817,6 +817,16 @@
   min-width: 520px;
   height: auto;
   margin-inline: auto;
+  overflow: visible;
+}
+
+.mermaid-canvas svg foreignObject {
+  overflow: visible;
+}
+
+.mermaid-canvas svg .nodeLabel,
+.mermaid-canvas svg .edgeLabel {
+  line-height: 1.25;
 }
 
 .compute-share-card {
