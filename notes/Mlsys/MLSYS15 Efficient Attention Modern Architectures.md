@@ -171,18 +171,19 @@ sparse selector 负责在巨大历史里减少无效读取
 | Kimi Linear | 用 KDA 强化 recurrent memory | chunk state + recurrent state | chunk kernel / recurrent kernel | 3:1 hybrid ratio 如何平衡 retrieval 和 bandwidth |
 | MiniMax-M1 | 长输出 reasoning / RL rollout | Lightning state + periodic softmax | 长 decode bandwidth + MoE dispatch | 输出 80K token 时 scheduler 怎么控 KV/state |
 
-一个实用判断是：
+一个实用判断是把方法先分成三类，再看真正的系统瓶颈：
 
-```text
-如果方法仍然需要完整 KV，只是少读:
-  重点看 sparse selector 和 sparse attention kernel。
+| 方法类型 | 典型例子 | 重点看什么 | 容易踩的坑 |
+|---|---|---|---|
+| **完整 KV，但少读** | DeepSeek DSA、动态 mask sparse attention | selector 成本、top-k/gather 开销、sparse attention kernel 是否真的快 | FLOPs 降了但 HBM 访问不连续，线上 latency 不一定降 |
+| **历史写进 recurrent state** | DeltaNet、KDA、Lightning Attention | state 容量、erase/gate/decay 机制、state lifecycle | decode 省带宽，但固定 state 可能丢精确事实检索能力 |
+| **Hybrid** | Qwen3-Next、Kimi Linear、MiniMax-M1 | paged KV、recurrent state、conv state、spec draft state 能否一起管理 | 模型结构稳了，但 runtime 复杂度明显上升 |
 
-如果方法把历史写进 recurrent state:
-  重点看 state 容量、遗忘机制、state lifecycle。
+第一类方法的核心不是“少存”，而是“少读”。例如 DSA 仍然保留历史 KV / MLA latent cache，只是每个 query 先用 lightweight indexer 选 top-k 历史 token。读论文时要追问：selector 本身要不要扫全历史？top-k 和 gather 是否能 batch 化？稀疏 kernel 的访存是否连续？如果这些问题处理不好，理论 FLOPs 下降不会等价于线上 latency 下降。
 
-如果方法是 hybrid:
-  重点看 runtime 能否同时管理 paged KV、recurrent state、spec draft state。
-```
+第二类方法把历史压进 recurrent state，适合长输出 decode、RL rollout 和 agent loop。KDA、Lightning、Gated DeltaNet 的共同收益是每步不再读完整 token KV；但固定 state 不是无限容量，关键要看写入时有没有 erase、gate、decay，能不能避免旧 memory 和新 memory 互相污染。系统上还要问 state 什么时候创建、更新、复制、回滚和释放。
+
+第三类 hybrid 是当前大模型更常见的折中：多数层用便宜 recurrent memory 降低带宽，少数 dense / MLA / softmax 层做 retrieval refresh。它的难点已经从单个 attention kernel 变成 runtime：同一个 request 可能同时有 paged KV、recurrent state、conv state；spec decode 失败时 draft token 的这些状态都要回滚；continuous batching 换 slot 时也必须跟着 request id 正确迁移。
 
 ---
 
