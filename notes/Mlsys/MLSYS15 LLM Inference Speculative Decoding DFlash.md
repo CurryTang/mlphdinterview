@@ -158,7 +158,63 @@ next context:
 输出:        q(d1), q(d2), q(d3), q(d4), q(next)
 ```
 
-虽然 draft 生成候选仍然是串行的，但 draft 很小，成本低。昂贵的 target 从“每 token 一次 forward”变成“每多个 token 一次 forward”。
+这里容易误解：加速不是因为 target verify 对“单个 token”更便宜。单看一次 target forward，verify 还要处理多个 draft token，工作量可能比单步 decode 更大。真正的收益来自 **target 把多个自回归步骤合成一次并行验证**。
+
+target-only decode 必须这样走：
+
+```text
+target step 1: context A B C -> sample y1
+target step 2: context A B C y1 -> sample y2
+target step 3: context A B C y1 y2 -> sample y3
+target step 4: context A B C y1 y2 y3 -> sample y4
+```
+
+每一步都依赖上一步采样出的 token，所以 GPU 不能提前算后面的 logits。Speculative decoding 先让 draft 给出 `d1 d2 d3 d4`，target 就可以把这些 token 当作已知输入，用 causal mask 一次算出每个位置在 target 分布下应该给出的概率：
+
+```text
+q1 = q(d1 | A B C)
+q2 = q(d2 | A B C d1)
+q3 = q(d3 | A B C d1 d2)
+q4 = q(d4 | A B C d1 d2 d3)
+q5 = q(next | A B C d1 d2 d3 d4)
+```
+
+这一步更像一个很短的 prefill，而不是连续跑四次 decode。它仍然遵守 causal mask；区别只是输入 token 已经由 draft 提前写出来了，所以 target 可以在一个 forward 里并行产生这些位置的 logits。
+
+系统层面，verify 变快来自几个摊薄效应：
+
+| 成本 | target-only decode | speculative verify |
+|---|---|---|
+| 自回归依赖 | 每个 token 必须等上一个 token 采样完成 | draft token 已知，多个位置一起验证 |
+| kernel launch / 调度 | 每 token 一轮 | 多个 token 合成一轮 |
+| 权重读取和 GEMM | 小 batch、小矩阵，GPU 利用率差 | sequence 维度变大，矩阵乘更饱满 |
+| KV cache | 每步读一次历史 KV | 一次 forward 内复用同一段历史 KV |
+
+所以更准确的说法是：
+
+```text
+draft propose 很便宜，但仍然串行；
+target verify 不一定比单 token decode 便宜；
+verify 的价值是用一次 target 调用推进多个 token。
+```
+
+回到上面的例子：
+
+```text
+context: A B C
+draft:   d1 d2 d3 d4
+
+target 一次算出 q1..q5
+验证从左到右进行：
+  d1 accepted
+  d2 accepted
+  d3 rejected
+
+输出只提交:
+  A B C d1 d2 x
+```
+
+`d3` 后面的 `d4` 虽然也被 target 算过，但因为前缀在 `d3` 处断了，`d4` 对应的上下文已经不再成立，必须丢掉。这里的 `x` 是拒绝位置按 target 修正分布重新采样出来的 token。runtime 也要同步做同一件事：只 commit accepted prefix 和 replacement token 的 KV，丢弃 rejected suffix 的 draft 状态。
 
 一个简化版代码：
 
