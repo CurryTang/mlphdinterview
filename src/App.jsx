@@ -2240,10 +2240,10 @@ function App() {
           <section className="home-hero">
             <div className="home-hero-copy">
               <p className="eyebrow">Interview Notes</p>
-              <h1>面试复习的系统化笔记库</h1>
+              <h1>ML PhD Job Hunting Field Notes</h1>
               <p>
-                用一个入口组织机器学习系统、推理基础设施、CUDA kernel 和 post-training infra。
-                每个板块都可以沉淀笔记、双语内容和可交互练习题。
+                面向机器学习系统与基础设施岗位的复习地图：从 CUDA kernel、分布式训练、
+                LLM inference 到 ML coding、quant 和算法练习，把高频知识点整理成可持续更新的笔记。
               </p>
               <div className="home-actions">
                 <button className="primary-action" type="button" onClick={() => navigateToSection('mlsys')}>

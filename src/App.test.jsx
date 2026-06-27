@@ -43,7 +43,7 @@ describe('App', () => {
   it('starts on a prominent home page with MLSYS navigation', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: /面试复习的系统化笔记库/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /ML PhD Job Hunting Field Notes/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start mlsys/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^mlsys/i })).toBeInTheDocument();
   });
