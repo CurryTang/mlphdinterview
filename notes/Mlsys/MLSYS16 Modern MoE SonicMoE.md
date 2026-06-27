@@ -180,14 +180,204 @@ MoE 的演进可以按四个问题来记：
 | DeepSeekMoE | fine-grained experts + shared experts | 专家切得更细，保留 shared expert |
 | DeepSeek-V3 / Kimi K2 / Qwen3-Next | frontier sparse MoE | 超大 total params，较小 active params，训练/推理系统压力更高 |
 
-DeepSeekMoE 的两个关键设计：
+### 3.1 GShard：把 MoE 从“算法层”推进到“自动分片系统”
+
+GShard 的重要性不只是 top-2 routing。它真正解决的问题是：Transformer 的 attention、embedding、非 MoE FFN 可以复制到每个设备上，但 expert 参数太大，必须按 expert 维度切到不同设备；同一个 block 里同时存在 replicated dense compute 和 sharded expert compute，编译器要自动插入跨设备通信。
+
+```mermaid
+flowchart LR
+  subgraph D0["Device 0"]
+    A0["Attention / LN / residual<br/>replicated weights"]
+    E0["Expert 0..k<br/>sharded weights"]
+  end
+  subgraph D1["Device 1"]
+    A1["Attention / LN / residual<br/>replicated weights"]
+    E1["Expert k+1..m<br/>sharded weights"]
+  end
+  subgraph D2["Device 2"]
+    A2["Attention / LN / residual<br/>replicated weights"]
+    E2["Expert m+1..n<br/>sharded weights"]
+  end
+
+  T["local token batch"] --> R["router top-2 + capacity"]
+  R --> P["dispatch mask / combine weights"]
+  P -->|"all-to-all tokens"| E0
+  P -->|"all-to-all tokens"| E1
+  P -->|"all-to-all tokens"| E2
+  E0 --> C["combine + unpermute"]
+  E1 --> C
+  E2 --> C
+  C --> O["residual output"]
+```
+
+GShard 的 Transformer 改法是隔一层替换 FFN：
+
+```text
+standard encoder layer:
+  self-attention -> dense FFN
+
+GShard MoE encoder layer:
+  self-attention -> MoE FFN
+
+placement:
+  attention / layernorm / residual: replicated
+  experts: sharded by expert dimension
+```
+
+GShard 的 routing 不是对全 batch 做一个全局顺序分配，而是把 token 分成多个 group，每个 group 独立做 top-2 gating，并给每个 expert 一个固定 capacity。这样做的原因很系统：TPU/XLA 需要静态 shape，expert 输入 buffer 不能因为 router 动态选择而无限变长。
+
+```python
+def gshard_group_top2(tokens, router_w, num_experts, capacity):
+    # tokens: [S, d], one group with S tokens
+    # capacity: per-expert buffer slots inside this group
+    gates = softmax(tokens @ router_w)          # [S, E]
+    mean_gate = gates.mean(dim=0)               # differentiable proxy for load
+    count = zeros(num_experts)                  # non-differentiable real load
+    combine = zeros(S, num_experts, capacity)   # weighted combine tensor
+    dispatch = zeros(S, num_experts, capacity)  # binary token dispatch tensor
+
+    # first expert is deterministic top-1, subject to capacity
+    for s in range(S):
+        e1, e2 = top2_indices(gates[s])
+        g1, g2 = gates[s, e1], gates[s, e2]
+        g1 = g1 / (g1 + g2)
+
+        slot = count[e1]
+        if slot < capacity:
+            dispatch[s, e1, slot] = 1
+            combine[s, e1, slot] = g1
+        count[e1] += 1
+
+    # auxiliary loss pushes differentiable router mass toward real token load
+    aux_loss = num_experts * sum((count / S) * mean_gate)
+
+    # second expert is stochastic: weak second choices may be dropped
+    for s in range(S):
+        e1, e2 = top2_indices(gates[s])
+        g1, g2 = gates[s, e1], gates[s, e2]
+        g2 = g2 / (g1 + g2)
+
+        slot = count[e2]
+        if slot < capacity and uniform(0, 1) < 2 * g2:
+            dispatch[s, e2, slot] = 1
+            combine[s, e2, slot] = g2
+        count[e2] += 1
+
+    return dispatch, combine, aux_loss
+```
+
+MoE forward 可以写成四个张量操作。GShard 论文里用 `G,S,E,C,M,H` 表示 group、group 内 token、expert、expert capacity、model dim、hidden dim：
+
+```text
+gates = softmax(einsum("GSM,ME->GSE", inputs, router_w))
+combine, dispatch = Top2Gating(gates)
+
+expert_inputs  = einsum("GSEC,GSM->EGCM", dispatch, inputs)
+expert_hidden  = relu(einsum("EGCM,EMH->EGCH", expert_inputs, w_in))
+expert_outputs = einsum("EGCH,EHM->GECM", expert_hidden, w_out)
+outputs        = einsum("GSEC,GECM->GSM", combine, expert_outputs)
+```
+
+这段写法的核心是把动态 routing 降成静态 tensor shape：
+
+| 张量 | 作用 | 系统含义 |
+|---|---|---|
+| `dispatch[G,S,E,C]` | token 是否进入某个 expert slot | 决定 all-to-all 发送什么 |
+| `combine[G,S,E,C]` | expert 输出按多少 gate weight 加回原 token | 决定 unpermute / reduce |
+| `capacity C` | 每个 group 内每个 expert 的最大 token 数 | 控制静态 buffer 与 dropped token |
+| `aux_loss` | 惩罚 router mass 和真实 token load 偏离 | 避免少数 expert 爆满 |
+
+所以 GShard 的系统抽象是：模型代码仍然像单机线性代数，sharding annotation 告诉编译器哪些维度要切，SPMD compiler 再把 dispatch/combine 变成跨设备 all-to-all。后来的 MoE runtime 仍然在重复这件事，只是把 `einsum + static buffer` 换成了更手写的 token sort、expert map、grouped GEMM 和 NCCL all-to-all。
+
+### 3.2 Switch Transformer：把 top-2 改成 top-1，牺牲一点表达换系统简单性
+
+Switch Transformer 的核心选择是 top-1 routing：
+
+```text
+router(x) = argmax softmax(x W_router)
+y = Expert_router(x)(x)
+```
+
+相对 GShard top-2，它少了一次 expert FFN、少了一份 token dispatch，也少了 combine 两个 expert 输出的逻辑。capacity 仍然存在：
+
+```text
+expert_capacity = tokens_per_batch / num_experts * capacity_factor
+```
+
+如果某个 expert 收到太多 token，超过 capacity 的 token 会被 drop，并通过 residual path 继续往后走。这个设计把问题变成一个更直接的 trade-off：
+
+| capacity factor | dropped token | padding / memory | 通信量 | 质量风险 |
+|---|---:|---:|---:|---|
+| 小 | 多 | 低 | 低 | token 没有经过 FFN |
+| 大 | 少 | 高 | 高 | 浪费 empty slots |
+
+Switch 的意义是证明 top-1 并不会天然训练失败。router 仍然可训练，因为被选中的 gate probability 会乘到 expert output 或进入 auxiliary load balancing loss；系统上则明显更规整，尤其适合当 expert 数继续增大时控制通信和 buffer。
+
+### 3.3 ST-MoE：把“能训起来”变成一等设计目标
+
+ST-MoE 关心的问题不是再把 expert 数堆大，而是 sparse model 的训练稳定性和 downstream transfer。稀疏模型常见的不稳定来自 router logits：softmax 前的 logit scale 变大后，少数 expert 概率尖峰会放大 load imbalance，训练 loss 可能突然 spike。
+
+ST-MoE 的 router z-loss 可以理解为约束 router logits 的 log-partition：
+
+```text
+z = logsumexp(router_logits)
+L_z = mean(z^2)
+```
+
+它和 load-balancing loss 的区别：
+
+| loss | 约束对象 | 解决的问题 |
+|---|---|---|
+| load balancing loss | token 分到各 expert 的比例 | 防止 expert collapse / idle |
+| router z-loss | router logits 的尺度 | 防止 routing 分布过尖、训练不稳定 |
+
+ST-MoE 的经验教训是：MoE 的质量不只取决于 FLOPs 和参数量。很多稳定化手段，比如更强 dropout、更小学习率、更紧 clipping，可以让 loss 不炸，但可能牺牲预训练质量。router z-loss 的价值在于用很小的额外计算约束 router，而不是粗暴降低整个模型的学习能力。
+
+### 3.4 Mixtral：decoder-only LLM MoE 的标准形态
+
+Mixtral 把 MoE 放进 decoder-only Transformer，每层 FFN 都替换成 MoE。每个 MoE layer 有 8 个 experts，每个 token 选 2 个：
+
+```text
+g = Softmax(Top2(x W_router))
+y = g_1 * SwiGLU_expert_1(x) + g_2 * SwiGLU_expert_2(x)
+```
+
+它和 GShard 的差异很关键：
+
+| 维度 | GShard | Mixtral |
+|---|---|---|
+| 模型形态 | encoder-decoder MT scale-up | decoder-only LLM |
+| MoE 位置 | 隔层替换 FFN | 每层 FFN 都是 MoE |
+| expert function | ReLU FFN | SwiGLU FFN |
+| routing | top-2 with more elaborate second expert handling | top-2 softmax over selected experts |
+| 系统重点 | automatic sharding / TPU SPMD | single/multi-GPU inference、EP、grouped GEMM |
+
+Mixtral 之后，工程问题从“编译器能不能自动切 expert”进一步变成“serving runtime 能不能在小 batch、decode-heavy、专家负载不均衡的情况下跑满”。这就是为什么 vLLM/SGLang/Triton MoE kernel 会强调 token align、expert sorting、quantized experts 和 fused grouped GEMM。
+
+### 3.5 DeepSeekMoE：专家更细，通用知识走 shared expert
+
+DeepSeekMoE 批评传统 MoE 的两个问题：
+
+```text
+knowledge hybridity:
+  expert 太粗，一个 expert 被迫学习很多不相干知识
+
+knowledge redundancy:
+  多个 routed experts 都要重复保存通用知识
+```
+
+它的两个关键设计是 fine-grained expert segmentation 和 shared expert isolation：
 
 ```text
 fine-grained expert segmentation:
-  把原来较大的 expert 切成更多更小的 experts，让 routing 更细
+  把一个大 expert 的 FFN intermediate dimension 切成 m 份
+  expert 数从 N 变成 mN
+  为保持计算量相近，top-K 也从 K 变成 mK
 
 shared expert isolation:
-  保留 shared experts，承载通用知识，routed experts 专注差异化模式
+  固定激活 Ks 个 shared experts
+  routed experts 只负责更专门的知识
+  为保持计算量，routed top-K 相应减少
 ```
 
 这让 MoE 更像：
@@ -198,7 +388,58 @@ shared dense path + many small sparse routed paths
 
 而不是早期那种“几个很大的专家二选一”。
 
-### 3.1 Qwen3-Next：high-sparsity MoE 与 hybrid attention 绑在一起设计
+```mermaid
+flowchart TB
+  X["token hidden state"] --> S["shared experts<br/>always active"]
+  X --> R["router over routed experts"]
+  R --> E1["small routed expert 7"]
+  R --> E2["small routed expert 19"]
+  R --> E3["small routed expert 41"]
+  S --> C["sum / weighted combine"]
+  E1 --> C
+  E2 --> C
+  E3 --> C
+  C --> Y["MoE FFN output"]
+```
+
+这个设计会改善 specialization，但系统压力也更大：expert 数更多以后，每个 expert 拿到的 token 更碎；top-k 更大以后 dispatch/combine 也更重；shared expert 虽然稳定了通用知识，但它是每个 token 都跑的 dense-ish 路径，kernel 不能只优化 routed expert。
+
+### 3.6 Frontier MoE：DeepSeek-V3 / Kimi K2 / Qwen3-Next 的共同压力
+
+Frontier MoE 不再只是“top-k 选几个 FFN”。它们同时改变 attention、routing、load balance、training objective 和 serving runtime。
+
+DeepSeek-V3 延续 DeepSeekMoE，并把 load balancing 从纯 auxiliary loss 推向 auxiliary-loss-free bias update：
+
+```python
+for each training_step:
+    # bias only changes routing decision, not the gate value used to weight FFN output
+    route_score = affinity_score + expert_bias
+    selected = topk(route_score, k=routed_k)
+    gate = normalize(affinity_score[selected])
+
+    run_selected_experts(selected, gate)
+
+    for expert in experts:
+        if load[expert] > target_load:
+            expert_bias[expert] -= gamma
+        else:
+            expert_bias[expert] += gamma
+```
+
+这和传统 load-balance loss 的差别是：传统方法把“均衡”直接写进 loss，可能和 language modeling objective 冲突；bias update 把均衡更多放到 routing 控制面，gate value 仍来自原 affinity score。
+
+Kimi K2、Qwen3-Next 这类模型把 sparse MoE 和长上下文 attention 一起设计。系统侧最难的是组合爆炸：
+
+| 组件 | 省下的东西 | 新问题 |
+|---|---|---|
+| high-sparsity MoE | active FFN FLOPs | expert microbatch 更碎、all-to-all tail 更明显 |
+| MLA / hybrid / recurrent attention | KV cache 或 attention FLOPs | cache manager 不再只有标准 KV block |
+| MTP / speculative decoding | decode token 数 | draft/verify 与 expert route、KV provenance 对齐 |
+| auxiliary-loss-free / sequence-wise balance | 减少 load-balance loss 对质量的干扰 | router control loop 需要监控全局 load |
+
+所以 frontier MoE 的系统设计重点从单层 MoE kernel 扩展为全链路调度：prefill/decode disaggregation、EP/TP/PP 混合并行、expert placement、KV/cache placement、speculative decoding 回滚，以及 RL/post-training 时 old-policy routing 的可复现性。
+
+### 3.7 Qwen3-Next：high-sparsity MoE 与 hybrid attention 绑在一起设计
 
 Qwen3-Next-80B-A3B 是一个很适合用来理解 frontier MoE 的例子：名字里的 `80B-A3B` 表示 total parameters 约 80B，而每个 token 激活的参数规模约 3B。这个设计不是单独把 dense FFN 换成 MoE，而是和长上下文架构一起重做：
 
@@ -225,7 +466,7 @@ Qwen3-Next block:
 
 Qwen3-Next 的公开指标给出两个量级判断：Base 版相对 Qwen3-32B-Base 在 downstream tasks 上用约 10% total training cost 达到更强效果，并在 32K 以上上下文获得约 10x inference throughput；Instruct 版在部分 benchmark 上接近 Qwen3-235B-A22B-Instruct-2507，同时支持 256K 长上下文任务。这些数字说明 MoE 的价值不只是“总参数更大”，而是把训练成本、长上下文吞吐和模型容量放到同一个效率目标里。
 
-### 3.2 Modern MoE research map
+### 3.8 Modern MoE research map
 
 MoE 系统可以按三层读：
 
