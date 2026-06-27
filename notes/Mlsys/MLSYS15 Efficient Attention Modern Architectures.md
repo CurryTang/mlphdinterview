@@ -29,7 +29,8 @@ hybrid attention 把上面几类放在同一个模型里，让不同层负责不
 7. [[#七、MiniMax-M1：Lightning Attention 的长输出系统]]
 8. [[#八、怎么选方案：按 workload 判断]]
 9. [[#九、系统设计追问]]
-10. [[#参考资料]]
+10. [[#十、练习题]]
+11. [[#参考资料]]
 
 ---
 
@@ -117,6 +118,30 @@ flowchart LR
 cheap recurrent layers 负责长程、低成本状态传播
 periodic dense / MLA layers 负责高精度 token retrieval
 sparse selector 负责在巨大历史里减少无效读取
+```
+
+### 2.1 2025+ 方法地图
+
+| 工作 / 路线 | 核心问题 | 状态形态 | 系统瓶颈 | 读论文时要追问 |
+|---|---|---|---|---|
+| Associative Memory theory | 为什么 softmax retrieval 和线性记忆能力不同 | token KV vs compressed state | retrieval SNR vs state size | 压缩状态会混入多少无关 memory |
+| DeepSeek DSA | 1M context 下不想每步读完整 MLA cache | KV 仍在，query 选 top-k | indexer + top-k + sparse MLA kernel | selector 成本是否小于省下的 KV 读流量 |
+| DMA / DHSA | 用动态 mask / routing 减少 attention work | mask / hierarchy indices | mask 训练、block 稀疏 kernel | 稀疏模式能否在 GPU 上真的变快 |
+| Qwen3-Next | 长上下文吞吐 + high-sparsity MoE | recurrent state + periodic full attention | mixed cache manager | spec decode 和 continuous batching 如何提交/回滚 state |
+| Kimi Linear | 用 KDA 强化 recurrent memory | chunk state + recurrent state | chunk kernel / recurrent kernel | 3:1 hybrid ratio 如何平衡 retrieval 和 bandwidth |
+| MiniMax-M1 | 长输出 reasoning / RL rollout | Lightning state + periodic softmax | 长 decode bandwidth + MoE dispatch | 输出 80K token 时 scheduler 怎么控 KV/state |
+
+一个实用判断是：
+
+```text
+如果方法仍然需要完整 KV，只是少读:
+  重点看 sparse selector 和 sparse attention kernel。
+
+如果方法把历史写进 recurrent state:
+  重点看 state 容量、遗忘机制、state lifecycle。
+
+如果方法是 hybrid:
+  重点看 runtime 能否同时管理 paged KV、recurrent state、spec draft state。
 ```
 
 ---
@@ -490,7 +515,7 @@ MiniMax-M1 的系统经验也很关键。长输出 RL 训练时，training kerne
 
 ## 八、怎么选方案：按 workload 判断
 
-把名字拿掉，只看 workload，可以这样判断：
+把名字拿掉，只看 workload，判断方式如下：
 
 | 场景 | 更合适的 attention | 原因 |
 |---|---|---|
@@ -522,6 +547,20 @@ MiniMax-M1: 我用 Lightning Attention 支撑长输出，再周期性插入 soft
 5. Spec decode 下，draft token 的 state 怎么回滚或提交？
 6. 训练和推理 kernel 的数值路径是否一致？
 7. Sparse selector 的 top-k / mask 开销是否真的小于省下的 attention 开销？
+
+### 8.3 Streaming/H2O 这类 KV eviction 放在哪里？
+
+StreamingLLM、H2O、SnapKV、PyramidKV 不是新的 token mixer，它们通常不改变 attention layer 的数学形式，而是改变 KV cache 保留策略。它们应该放在第 16 课的 KV cache 体系里理解：
+
+```text
+efficient attention architecture:
+  改模型层怎么混合历史信息
+
+KV eviction / compression:
+  模型层基本不变，改 runtime 保留哪些 KV
+```
+
+这一区分很重要。DSA / KDA / Lightning 需要模型结构或 kernel 配合；H2O / StreamingLLM 更像 serving runtime 的 cache policy。前者改变“attention 怎么算”，后者改变“attention 能看到哪些历史”。
 
 ---
 
@@ -665,6 +704,52 @@ efficient attention 关联:
   recurrent attention 减少 token-level KV
   sparse attention 减少每步读流量，但不一定减少存储
 ```
+
+---
+
+## 十、练习题
+
+<details class="exercise">
+<summary><span class="q-label">Q1</span> <span class="q-text">为什么 linear / delta attention 不能简单理解成“无限长上下文免费”？</span></summary>
+
+它把历史压成固定大小 recurrent state，decode 的显存和带宽成本确实更低，但多个 key-value 记忆会叠加在同一个状态里。softmax attention 保留 token-level KV，retrieval signal 可以更尖；compressed memory 容量有限，远距离事实检索可能被其他记忆干扰。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q2</span> <span class="q-text">DSA 和 KV eviction 的核心区别是什么？</span></summary>
+
+DSA 的 KV 仍然保留在 cache 里，每个 query 先用 indexer 选择要读的 top-k 历史 token，再做 sparse attention；KV eviction 是把部分 KV 不再保留或迁出。DSA 主要减少每步读流量，eviction 主要减少存储压力。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q3</span> <span class="q-text">为什么 Qwen3-Next / Kimi Linear / MiniMax-M1 都偏向 hybrid，而不是全 linear attention？</span></summary>
+
+全 recurrent state 的 decode 成本最低，但精确 token retrieval 不如 softmax KV。Hybrid 让多数层承担低成本状态传播，周期性 dense / MLA / softmax attention 做全局检索刷新。这样能同时控制长输出成本和 retrieval 质量。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q4</span> <span class="q-text">实现 hybrid attention runtime 时，cache manager 要多管理什么？</span></summary>
+
+普通 dense attention 只管理 paged KV block。Hybrid runtime 还要管理 recurrent state、conv state、不同 layer type 的 state table，以及 spec decode 下 draft token 的提交/回滚。continuous batching 重排 request 时，这些 state 都要和 request id 对齐。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q5</span> <span class="q-text">为什么 sparse attention 论文里的 FLOPs 降低不一定等于线上 latency 降低？</span></summary>
+
+线上 latency 还取决于 selector、top-k、gather、sparse kernel、memory coalescing 和 scheduler。若稀疏模式导致非连续读、kernel launch 增多或 batch shape 更碎，节省的 matmul FLOPs 可能被 HBM 读和调度开销吃掉。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q6</span> <span class="q-text">长输出 RL rollout 更适合关注哪类 attention 设计？</span></summary>
+
+重点关注 decode 每步状态读写成本。KDA、Lightning、Gated DeltaNet 这类 recurrent / hybrid attention 在长输出下能减少 token-level KV 读流量；但如果任务需要频繁回看 prompt 中的精确证据，还需要周期性 dense / MLA 层或 DSA 式 sparse retrieval 兜底。
+
+</details>
 
 ---
 

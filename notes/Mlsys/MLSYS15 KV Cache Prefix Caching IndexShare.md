@@ -27,7 +27,7 @@ Agent 场景里的 KV cache 问题，核心是多轮 LLM 调用和 tool call 之
 9. [[#九、GLM-5.2 IndexShare / IndexCache 源码精读]]
 10. [[#十、KV cache 与 MTP / speculative decoding]]
 11. [[#十一、Agent 场景里的 KV cache：从 prefix cache 到 ThunderAgent]]
-12. [[#十二、面试题]]
+12. [[#十二、练习题]]
 13. [[#参考资料]]
 
 ---
@@ -386,7 +386,17 @@ def sparse_k_gather_kernel(
 
 ## 七、KV cache 压缩、淘汰与传输
 
-KV cache 优化大致有四类。
+先区分两类问题：
+
+```text
+exact memory management:
+  不改变模型看到的 KV 内容，只改变显存分配、复用、搬运方式
+
+approximate cache reduction:
+  少存、少读或压缩部分 KV，通常会引入精度/召回风险
+```
+
+PagedAttention、prefix cache、vAttention 更接近第一类；StreamingLLM、H2O、SnapKV、PyramidKV、Quest、DuoAttention 更接近第二类。两类方法可以叠加，但系统风险完全不同：exact 方法主要怕碎片、并发和调度；approximate 方法还要证明任务精度不崩。
 
 ### 1. 更小的结构
 
@@ -398,18 +408,102 @@ FP8 KV cache 可以减半显存，但要处理 scale、quantization error、kern
 
 ### 3. 淘汰或稀疏保留
 
-H2O 保留 heavy hitter token 和最近 token。StreamingLLM 保留 attention sink 和滑动窗口。SnapKV 在 prefill 后根据 prompt attention 选择每个 head 更重要的 KV positions。
+StreamingLLM、H2O、SnapKV 这类方法都在回答同一个问题：
 
-这些方法能省显存，但通常不再是严格等价推理。面试里要说清楚：
+```text
+如果 cache budget 不够，哪些历史 token 最值得留下？
+```
+
+关键差异在于“重要性”怎么定义：
+
+| 方法 | 保留策略 | 粒度 | 是否训练 | 适合场景 | 主要风险 |
+|---|---|---|---|---|---|
+| Scissorhands | 历史上重要的 token 未来仍重要，按 persistence 采样/保留 | token | 否 | 固定 budget 的通用 KV 压缩 | 早期误判会持续影响后续 |
+| H2O | heavy hitter token + recent token | token | 否 | decode 过程中动态淘汰 KV | attention score 历史统计不一定等于未来 query 需要 |
+| StreamingLLM | attention sinks + sliding window | token | 否 | 无限 streaming / 长对话持续生成 | 不适合需要任意远距离精确 retrieval 的任务 |
+| SnapKV | prefill 后用 observation window 估计每个 head 的重要 positions | head × token | 否 | 长 prompt prefill 后进入 decode | prompt 后半段估计可能不覆盖后续 query |
+| PyramidKV | lower layers 保留更多 KV，higher layers 保留更少 KV | layer × token | 否 | 层间信息聚合明显的长上下文模型 | layer budget 需要校准，不是所有模型都同样适配 |
+| Quest | 用当前 query 估计哪些 KV page 重要，只加载 top pages | page | 否 | 主要瓶颈是 decode 读 KV 的 HBM bandwidth | 需要 page-level min/max metadata 和 sparse page kernel |
+| DuoAttention | retrieval heads 保留 full KV，streaming heads 用短 cache | head | 轻量校准 | 有明显 retrieval/streaming head 分工的模型 | 需要识别 head 类型，模型迁移要重新校准 |
+
+这个表的核心判断：
+
+```text
+StreamingLLM / H2O / SnapKV / PyramidKV:
+  减少“存多少 KV”
+
+Quest:
+  KV 可以还在，但减少“每步读多少 KV page”
+
+DuoAttention:
+  把“哪些 head 需要 full KV”变成校准问题
+```
+
+这些方法能省显存或 HBM 读流量，但通常不再是严格等价推理。回答系统设计题时要把 exact 和 approximate 分开：
 
 ```text
 PagedAttention / prefix cache 是 exact memory management。
 KV eviction / compression 通常是近似方法，除非只是无损编码或纯 dtype 改写。
 ```
 
+### 3.1 StreamingLLM vs H2O：为什么不是同一种淘汰
+
+StreamingLLM 的关键观察是 attention sink：模型即使在很长序列里，也会持续把一部分 attention 分给开头几个 token。它的 cache 结构通常是：
+
+```text
+[sink tokens] + [recent sliding window]
+```
+
+它适合“持续对话/流式生成”，目标是让模型在超过训练长度或服务长度时不崩。H2O 的核心是 heavy hitter oracle：历史 attention 里累计贡献大的 token 更可能继续重要，因此保留 heavy hitters 加最近 token。它更像在线 cache eviction policy。
+
+| 维度 | StreamingLLM | H2O |
+|---|---|---|
+| 保留对象 | attention sink + recent window | heavy hitters + recent window |
+| 重要性来源 | sink phenomenon + recency | accumulated attention contribution |
+| 更像什么 | streaming stability policy | online KV eviction policy |
+| 长距离检索 | 弱，除非答案在 sink/recent | 取决于 heavy hitter 是否捕捉到相关 token |
+
+### 3.2 SnapKV / PyramidKV / Quest：从 token 到 layer/page
+
+SnapKV、PyramidKV、Quest 的共同点是把“保留重要 token”做得更结构化：
+
+```text
+SnapKV:
+  per-head observation window -> select compressed KV positions
+
+PyramidKV:
+  lower layers need wider information flow
+  higher layers can use smaller cache budget
+
+Quest:
+  store page metadata
+  current query estimates top-K critical KV pages
+  sparse attention only loads selected pages
+```
+
+这三者对应三个系统粒度：
+
+| 粒度 | 代表 | 系统含义 |
+|---|---|---|
+| head × token | SnapKV | 不同 head 的重要 token 不同 |
+| layer × token | PyramidKV | 不同层的 cache budget 不该一样 |
+| page × query | Quest | decode 时最贵的是从 HBM 读 KV page |
+
 ### 4. 跨机传输和持久化
 
-CacheGen、LMCache 这类工作关注的是复用长上下文时，KV cache 很大，直接从远端拉 KV 可能比重算还慢。因此它们会压缩 KV bitstream、异步加载、边传输边解码或在带宽不够时选择部分重算。
+CacheGen、LMCache 这类工作不直接决定“保留哪个 token”，而是把 KV cache 当成跨请求、跨节点、跨会话的系统资源。它们关注的问题是：
+
+```text
+prefill 很贵，但 KV 也很大。
+复用 KV 是否比重算更划算，取决于网络带宽、压缩率、加载时机和命中率。
+```
+
+实际系统常用的判断顺序：
+
+1. 先用 prefix cache / routing 提高本地命中。
+2. 本地显存不够时，考虑 CPU/NVMe/off-node KV tier。
+3. 只有当传输压缩后的 KV 比重算便宜，才跨节点拉 KV。
+4. 对 agent 多轮会话，session-aware routing 往往比盲目远程拉 cache 更稳。
 
 ## 八、DSA sparse attention：先选 token，再做 attention
 
@@ -860,7 +954,7 @@ ThunderAgent 不是替代 LMCache、PagedAttention、prefix cache。它更像上
 | LMCache / CacheGen | 跨 engine、CPU、存储、网络的 KV 移动和持久化 |
 | ThunderAgent | agent program 级别决定何时保留、暂停、恢复、迁移 KV 和 tool resources |
 
-可以这样理解：
+理解方式：
 
 ```text
 PagedAttention 是页表。
@@ -884,7 +978,7 @@ tool manager
   -> prepare, reuse, garbage collect sandboxes and ports
 ```
 
-### 11.8 面试里怎么说
+### 11.8 Agent KV cache 的回答框架
 
 问：agent workload 里 KV cache 为什么比普通 chat 更难管理？
 
@@ -913,55 +1007,112 @@ LLM Program。
 它把多次 LLM request、tool call、KV footprint 和 tool resources 放进同一个生命周期里调度。
 ```
 
-## 十二、面试题
+## 十二、练习题
 
-### 1. KV cache 降低了什么复杂度？
+<details class="exercise">
+<summary><span class="q-label">Q1</span> <span class="q-text">KV cache 降低了什么复杂度？</span></summary>
 
 它避免重复计算历史 token 的 K/V projection。decode 每步仍然要让当前 query 读历史 K/V，所以 attention 的历史读流量仍随 sequence length 增长。
 
-### 2. 为什么 PagedAttention 能提高吞吐？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q2</span> <span class="q-text">为什么 PagedAttention 能提高吞吐？</span></summary>
 
 它减少 KV cache 内存浪费，让同样显存容纳更多活跃请求。吞吐提升主要来自更大 effective batch 和更少碎片，不是 attention 数学更快。
 
-### 3. Prefix cache 和 PagedAttention 有什么区别？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q3</span> <span class="q-text">Prefix cache 和 PagedAttention 有什么区别？</span></summary>
 
 PagedAttention 管理单个或多个请求的 KV block 分配。prefix cache 判断不同请求是否有相同 token 前缀，并复用已经算好的 KV blocks。
 
-### 4. 为什么 prefix cache 必须按 token 匹配？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q4</span> <span class="q-text">为什么 prefix cache 必须按 token 匹配？</span></summary>
 
 模型看到的是 token ids 和 positions。文本看起来一样不代表 tokenization 一样；position、RoPE offset、chat template 差异也会让 KV 不可复用。
 
-### 5. GQA/MQA 为什么能省 KV cache？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q5</span> <span class="q-text">GQA/MQA 为什么能省 KV cache？</span></summary>
 
 它减少 KV heads。query heads 可以多，KV heads 可以少，多个 query heads 共享同一组 K/V。
 
-### 6. MLA cache 和普通 KV cache 的差别？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q6</span> <span class="q-text">MLA cache 和普通 KV cache 的差别？</span></summary>
 
 普通 cache 存每个 KV head 的 K/V。MLA 存低秩 latent KV 和 RoPE slice，decode 时通过吸收或投影恢复 attention 所需计算。
 
-### 7. IndexShare 共享的是 KV cache 吗？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q7</span> <span class="q-text">IndexShare 共享的是 KV cache 吗？</span></summary>
 
 不是。它共享 DSA indexer 选出的 top-k token indices。主 MLA KV cache 仍按层维护；shared 层只是跳过自己的 indexer forward。
 
-### 8. IndexShare 为什么对 1M context 特别有用？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q8</span> <span class="q-text">IndexShare 为什么对 1M context 特别有用？</span></summary>
 
 DSA indexer 仍要对长上下文打分并 top-k。context 越长，indexer 成本越明显。跨层复用 indices 后，多数层可以跳过这段成本。
 
-### 9. IndexShare 的风险是什么？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q9</span> <span class="q-text">IndexShare 的风险是什么？</span></summary>
 
 某些层可能确实需要不同 token。简单均匀共享可能伤质量，所以 IndexCache 论文用校准集 loss 搜索 pattern，或者在训练中用 multi-layer distillation 让 retained indexer 服务多层。
 
-### 10. KV cache 量化为什么不总是免费收益？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q10</span> <span class="q-text">KV cache 量化为什么不总是免费收益？</span></summary>
 
 低精度会影响 attention score 或 value aggregation，还需要 scale 存储和支持对应 dtype 的 kernel。长上下文和 retrieval 任务对误差更敏感。
 
-### 11. spec decode 为什么会让 KV cache 管理更复杂？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q11</span> <span class="q-text">spec decode 为什么会让 KV cache 管理更复杂？</span></summary>
 
 候选 token 可能被拒绝。runtime 需要区分临时 KV、已接受 KV 和需要回滚的 KV，还要让 verify forward 支持多 token query。
 
-### 12. 面试里如何一句话解释 GLM-5.2 IndexShare？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q12</span> <span class="q-text">如何一句话解释 GLM-5.2 IndexShare？</span></summary>
 
 GLM-5.2 在 DSA sparse attention 中让一组连续层复用同一个 Full layer 的 top-k sparse indices，shared 层不再运行自己的 indexer，从而降低长上下文下 indexer dot product 和 top-k 的重复成本。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q13</span> <span class="q-text">StreamingLLM 和 H2O 的区别是什么？</span></summary>
+
+StreamingLLM 固定保留 attention sinks 和最近窗口，目标是让长流式生成稳定；H2O 根据历史 attention 累计贡献保留 heavy hitter token 和最近 token，更像在线 KV eviction。前者强调 sink phenomenon，后者强调 heavy-hitter persistence。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q14</span> <span class="q-text">Quest 为什么是 page-level 方法，而不是普通 token eviction？</span></summary>
+
+Quest 的目标是减少 decode 时从 HBM 读取 KV 的流量。它给 KV page 维护 metadata，用当前 query 估计哪些 pages 重要，只加载 top pages 做 attention。KV 可以仍然存在，省的是每步读全量 KV page 的带宽。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q15</span> <span class="q-text">DuoAttention 为什么按 head 分 full cache 和 streaming cache？</span></summary>
+
+因为不同 attention head 的功能不同。retrieval heads 负责远距离信息检索，需要 full KV；streaming heads 主要看 attention sinks 和最近 token，可以用常数长度 cache。这样比对所有 head 做同一种 eviction 更细。
+
+</details>
 
 ## 参考资料
 
@@ -976,7 +1127,11 @@ GLM-5.2 在 DSA sparse attention 中让一组连续层复用同一个 Full layer
 - [vAttention: Dynamic Memory Management for Serving LLMs without PagedAttention](https://arxiv.org/abs/2405.04437)
 - [H2O: Heavy-Hitter Oracle for Efficient Generative Inference](https://arxiv.org/abs/2306.14048)
 - [StreamingLLM: Efficient Streaming Language Models with Attention Sinks](https://arxiv.org/abs/2309.17453)
+- [Scissorhands: Exploiting the Persistence of Importance Hypothesis for LLM KV Cache Compression](https://arxiv.org/abs/2305.17118)
 - [SnapKV: LLM Knows What You are Looking for Before Generation](https://arxiv.org/abs/2404.14469)
+- [PyramidKV: Dynamic KV Cache Compression based on Pyramidal Information Funneling](https://arxiv.org/abs/2406.02069)
+- [Quest: Query-Aware Sparsity for Efficient Long-Context LLM Inference](https://arxiv.org/abs/2406.10774)
+- [DuoAttention: Efficient Long-Context LLM Inference with Retrieval and Streaming Heads](https://arxiv.org/abs/2410.10819)
 - [CacheGen: KV Cache Compression and Streaming for Fast LLM Serving](https://arxiv.org/abs/2310.07240)
 - [IndexCache: Accelerating Sparse Attention via Cross-Layer Index Reuse](https://arxiv.org/abs/2603.12201)
 - [GLM-5.2 official blog](https://huggingface.co/blog/zai-org/glm-52-blog)

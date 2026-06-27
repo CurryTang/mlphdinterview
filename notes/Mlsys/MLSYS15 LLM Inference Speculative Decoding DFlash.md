@@ -28,7 +28,7 @@ Medusa / EAGLE / DFlash 到底差在哪里？
 9. [[#九、Spec Decode 在 serving runtime 里怎么落地]]
 10. [[#十、SGLang / vLLM 里怎么开 DFlash]]
 11. [[#十一、工程判断：什么时候开，什么时候别开]]
-12. [[#十二、面试问答与常见坑]]
+12. [[#十二、练习题]]
 13. [[#参考资料]]
 
 ---
@@ -290,7 +290,7 @@ $$
 | 高温采样收益下降 | draft/target 分布差异变大，接受率下降 |
 | 长输出任务更受益 | decode 占比更高，节省空间更大 |
 
-面试里可以把 speculative decoding 说成：
+Speculative decoding 的一句话定义：
 
 ```text
 用 draft 的额外小成本，换 target model 的多 token 并行验证。
@@ -359,6 +359,18 @@ EAGLE 这一类方法的核心 tradeoff：
 ```
 
 这句话很重要，因为它正好引出 DFlash。
+
+### 5.3 Drafter taxonomy：从小模型到 block diffusion
+
+| 路线 | proposal 从哪里来 | draft 是否串行 | target 改动 | runtime 难点 | 适合判断 |
+|---|---|---|---|---|---|
+| Independent draft model | 单独小模型 | 是 | 否 | 双模型 KV、tokenizer/logprob 对齐 | 容易接入，但接受率常不稳 |
+| Medusa | target hidden 后接多 heads | 否，heads 可并行 | 需要加 heads | tree candidates、tree attention、head training | target 可改、希望少维护一个模型 |
+| EAGLE / EAGLE-3 | target feature 预测下一步 feature | 是 | 需要 feature plumbing | feature extraction、drafter autoregressive loop | 接受率高，仍受 draft 串行限制 |
+| MTP | target-adjacent multi-token module | 常见实现仍 sequential | 训练时加入 MTP | MTP state、KVShare、IndexShare、acceptance metadata | 预训练/推理一体化路线 |
+| DFlash | hidden-state conditioned block diffusion | block 内并行 | 需要 draft module | KV injection、anchor、non-causal mask、verify batch | draft 串行成本成为瓶颈时 |
+
+这张表的系统含义是：drafter 越贴近 target，接受率越高，但 runtime 要处理的隐藏状态、KV 生命周期和 metadata 越复杂。DFlash 的价值不是“又训练了一个小模型”，而是把 draft loop 从 token-by-token 推向 block-level parallel proposal。
 
 ---
 
@@ -586,7 +598,7 @@ DFlash draft：
 
 DFlash 不是盲猜。它会把 target model 的 hidden states 注入到 draft model 的 KV cache，让 drafter 条件化在 target feature 上。
 
-可以这样理解：
+理解方式：
 
 ```text
 target prefix hidden states
@@ -731,7 +743,7 @@ def decode_iteration(waiting, running, kv_allocator):
     scheduler.commit(batch, next_tokens)
 ```
 
-面试里要能指出：**scheduler 决定 batch shape，batch shape 决定 kernel 效率**。Speculative decoding 改变了 step 粒度：一次 target verify 可能推进多个 token，因此 scheduler 不能再假设“每个 running request 每轮只追加 1 个 KV slot”。
+关键判断：**scheduler 决定 batch shape，batch shape 决定 kernel 效率**。Speculative decoding 改变了 step 粒度：一次 target verify 可能推进多个 token，因此 scheduler 不能再假设“每个 running request 每轮只追加 1 个 KV slot”。
 
 Continuous batching 的核心不是“等一批请求凑齐再跑”，而是每个 decode iteration 都重新决定谁进入 batch。某个 request 生成 EOS 后可以立刻释放位置；只要 token budget 和 KV page budget 允许，新 request 就能插进下一轮。这个策略提升 GPU 利用率，但也引入一个常见冲突：长 prefill 插入 decode batch 时，会拖慢已有用户的下一个 token。
 
@@ -1153,7 +1165,7 @@ benchmark tokens/s 变高
 
 ### 11.4 读论文时要带着系统问题读
 
-最近几条线可以这样连起来：
+最近几条线的系统关系：
 
 | 论文/实现 | 你应该关注什么 |
 |---|---|
@@ -1163,7 +1175,7 @@ benchmark tokens/s 变高
 | DFlash | 用 block diffusion 降低 autoregressive draft cost，但要求 runtime 支持 hidden-state extraction 与 KV injection |
 | MiniMax-M2 系列 | agent RL serving 里 prefill/decode disaggregation、MTP spec decode、global KV cache pool 会一起出现 |
 
-高质量回答可以这样组织：
+回答结构：
 
 ```text
 DFlash 降低 draft 串行成本，提高 acceptance length；
@@ -1173,29 +1185,45 @@ KV commit/rollback、streaming correctness 和 p95 ITL 保护。
 
 ---
 
-## 十二、面试问答与常见坑
+## 十二、练习题
 
-### Q1：Speculative decoding 为什么不是 distillation？
+<details class="exercise">
+<summary><span class="q-label">Q1</span> <span class="q-text">Speculative decoding 为什么不是 distillation？</span></summary>
 
 Distillation 是让小模型学大模型，最终可能直接用小模型输出。Speculative decoding 的最终分布仍由 target model 决定，draft 只提出候选。候选会被 target 验证，必要时用 rejection sampling 修正。
 
-### Q2：为什么 target 一次 forward 可以验证多个 token？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q2</span> <span class="q-text">为什么 target 一次 forward 可以验证多个 token？</span></summary>
 
 因为给 target 输入 `context + draft_tokens` 后，transformer 会并行计算每个位置的 logits。第 `i` 个 draft token 是否合理，可以用它前一个位置的 target logits 来验证。
 
-### Q3：acceptance rate 和 acceptance length 有什么区别？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q3</span> <span class="q-text">acceptance rate 和 acceptance length 有什么区别？</span></summary>
 
 Acceptance rate 通常看 token 级接受比例；acceptance length 看一轮 verify 平均推进多少 token。系统加速更直接依赖 acceptance length，因为它决定 target forward 被 amortize 到多少输出 token 上。
 
-### Q4：DFlash 和 EAGLE 的一句话区别？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q4</span> <span class="q-text">DFlash 和 EAGLE 的一句话区别？</span></summary>
 
 EAGLE-3 仍是轻量 autoregressive drafter，只是用 target 多层 feature 提高候选质量。DFlash 用 block diffusion drafter 并行生成 token block，并通过 KV injection 条件化在 target hidden states 上，同时降低 draft latency 和提高接受率。
 
-### Q5：为什么说 DFlash 是 lossless？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q5</span> <span class="q-text">为什么说 DFlash 是 lossless？</span></summary>
 
 只要验证和 rejection sampling 遵循 target distribution，输出分布和 target-only decode 一致。DFlash 改的是候选生成方式，不改最终由 target 验证和修正的原则。
 
-### Q6：线上开 spec decode 的第一步是什么？
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q6</span> <span class="q-text">线上开 spec decode 的第一步是什么？</span></summary>
 
 先在真实 workload 上记录 baseline：
 
@@ -1209,6 +1237,36 @@ GPU memory headroom
 ```
 
 然后逐步打开 spec decode，比较 acceptance length、latency、memory、p95/p99，而不是只看单请求 demo。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q7</span> <span class="q-text">为什么 batch 很满时 speculative decoding 反而可能不划算？</span></summary>
+
+当 target decode batch 已经能把 GPU 填满时，spec decode 的额外 drafter forward、verify packing、KV 临时槽和回滚管理会吃掉收益。它最适合 target 单 token decode 受 launch / HBM / 小 batch 限制的场景。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q8</span> <span class="q-text">spec decode 的 KV commit / rollback 难点是什么？</span></summary>
+
+Draft tokens 只有 accepted prefix 能进入正式上下文。runtime 要区分 speculative slots 和 committed KV：accepted tokens 的 KV 可以提交，rejected suffix 的 KV 要释放或忽略。若直接写入正式 block table，prefix cache、streaming output 和 allocator 都会变复杂。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q9</span> <span class="q-text">MTP with KVShare 为什么强调 KV 来源一致？</span></summary>
+
+多步 MTP 生成 future token 时，如果后续 step 把 MTP hidden 自己写进 KV，会和训练/target verify 的上下文定义不一致。KVShare 让 MTP 使用来自 target hidden states 的 KV，避免 draft context 和 target context 语义偏移。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q10</span> <span class="q-text">DFlash 为什么需要 hidden-state plumbing？</span></summary>
+
+DFlash drafter 不是只看 token ids，它通过 KV injection 使用 target hidden features 作为条件。runtime 必须从 target 暴露 hidden states，把它们写进 drafter KV，并在 verify、streaming、scheduler 中维护这些额外状态。
+
+</details>
 
 ---
 
