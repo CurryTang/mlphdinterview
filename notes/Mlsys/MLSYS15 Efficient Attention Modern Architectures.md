@@ -347,13 +347,17 @@ $$
 3. forward 和 backward 复用同一套 skip 逻辑，所以训练时不会 materialize 完整 attention matrix，内存仍然是 FlashAttention 风格的 `O(n)` 工作流。
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "curve": "basis"}} }%%
 flowchart LR
-  V["value representations"] --> M["dynamic sparse mask"]
-  Q["query blocks"] --> T["tiled sparse attention"]
-  K["key blocks"] --> T
-  M --> T
-  T --> S["skip empty tiles<br/>load active tiles only"]
-  S --> O["output + backward gradients"]
+  value_features["Value features"] --> mask_generator["Trainable mask generator"]
+  position_bias["Position bias"] --> mask_generator
+  mask_generator --> sparse_mask["Sparse tile mask"]
+  query_blocks["Query blocks"] --> sparse_attention["Mask aware tiled attention"]
+  key_blocks["Key blocks"] --> sparse_attention
+  sparse_mask --> sparse_attention
+  sparse_attention --> tile_skip["Skip masked tiles"]
+  tile_skip --> active_load["Load active K/V tiles"]
+  active_load --> outputs["Output and backward gradients"]
 ```
 
 和 DSA 的差别：
