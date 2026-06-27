@@ -192,6 +192,35 @@ Associative Memory theory 在这里不是一条方法路线，而是读这些方
 
 DeepSeek-V3.2 把 Dynamic Sparse Attention 放在 MLA 框架下面。它不是简单 sliding window，也不是固定 block sparse。每个 query 会先经过一个 lightweight indexer，选出最值得看的历史 KV，再对这些选中的 KV 做 attention。
 
+<details class="exercise">
+<summary><span class="q-label">Review</span> <span class="q-text">MLA 是什么？为什么 DSA 要接在 MLA latent KV 上？</span></summary>
+
+MLA（Multi-head Latent Attention）可以理解成一种 **KV cache 压缩版 dense attention**。普通 MHA / GQA 在 decode 时为每个历史 token 保存 key 和 value；MLA 不直接缓存完整 per-head K/V，而是把 K/V 压到更低维的 latent 表示里，decode 时再从 latent 恢复出 attention 需要的部分。
+
+一个简化视角：
+
+```text
+普通 KV cache:
+  token_i -> K_i, V_i
+  decode 每步读很多完整 K/V
+
+MLA latent cache:
+  token_i -> c_i^{KV}
+  decode 每步读压缩 latent，再投影/恢复给 attention 使用
+```
+
+所以 MLA 解决的是 **每个 token 存得更省**，不是“每步少看 token”。如果上下文有 1M token，MLA 仍然可能要从大量历史 latent entry 里做 retrieval，只是每条 entry 比完整 KV 小。
+
+DSA 接在 MLA 下面的意义是：
+
+- MLA 先降低每条历史记录的 cache 体积；
+- DSA 再减少每个 query 实际读取的历史记录数量；
+- 两者叠加后，目标是同时降低 KV/cache footprint 和 decode HBM 读流量。
+
+因此 DSA 的 `top-k` 不是去选完整 per-head KV，而是选择历史的 MLA latent entry，再让主 attention 在这些选中的 latent entry 上完成 softmax retrieval。
+
+</details>
+
 数据流可以画成这样：
 
 ```mermaid
