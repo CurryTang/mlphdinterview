@@ -49,6 +49,68 @@ resize(new_cap):
 
 </details>
 
+<details class="solution">
+<summary>Python 写法与记忆点</summary>
+
+这题最容易混的是两个变量：
+
+```text
+n:
+  当前有效元素个数，也就是逻辑长度
+
+capacity:
+  底层数组真实分配的空间
+```
+
+`capacity` 可以大于 `n`。数组里 `n` 之后的位置只是预留空间，不属于当前有效数组。
+
+```python
+class DynamicArray:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.array = [0 for _ in range(self.capacity)]
+        self.n = 0
+
+    def get(self, i: int) -> int:
+        return self.array[i]
+
+    def set(self, i: int, n: int) -> None:
+        self.array[i] = n
+
+    def pushback(self, n: int) -> None:
+        if self.n == self.capacity:
+            self.resize()
+        self.array[self.n] = n
+        self.n += 1
+
+    def popback(self) -> int:
+        self.n -= 1
+        return self.array[self.n]
+
+    def resize(self) -> None:
+        self.capacity *= 2
+        new_array = [0 for _ in range(self.capacity)]
+        for i in range(self.n):
+            new_array[i] = self.array[i]
+        self.array = new_array
+
+    def getSize(self) -> int:
+        return self.n
+
+    def getCapacity(self) -> int:
+        return self.capacity
+```
+
+`popback` 是 lazy 的：不需要真的把底层数组里的值清成 `0`。只要 `self.n -= 1`，那个位置就已经不属于有效数组；下一次 `pushback` 会直接覆盖它。
+
+一句话记：
+
+```text
+capacity 管物理空间，n 管逻辑长度；popback 只移动 n，不清数组。
+```
+
+</details>
+
 ```quiz
 title: 练习 1
 question: Dynamic Array 的 pushback 为什么通常说是摊还 O(1)？
