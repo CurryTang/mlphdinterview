@@ -15,8 +15,7 @@
 6. [[#六、代价：状态没有消失，只是被移动了]]
 7. [[#七、LLM serving：为什么它更难]]
 8. [[#八、LLM 里的具体解决方案]]
-9. [[#九、怎么在面试里讲这个范式]]
-10. [[#十、练习题]]
+9. [[#九、练习题]]
 
 ---
 
@@ -1024,50 +1023,7 @@ offload / migration 成本 < 重新 prefill 成本
 
 ---
 
-## 九、怎么在面试里讲这个范式
-
-### 9.1 通用后端题
-
-遇到“怎么让服务可扩展 / stateless”时，可以按这个顺序答：
-
-```text
-1. Web/API replica 不保存不可丢失状态
-2. session 放 Redis / auth service，业务状态放 DB
-3. 文件放 object store，DB 保存 metadata
-4. 长任务放 queue，worker 执行，DB 保存 job state
-5. 所有写接口加 idempotency key，worker 用 lease + retry
-6. readiness/liveness 分开，shutdown 时 drain in-flight request
-7. autoscaling 按 QPS/latency 或 queue length
-8. state layer 需要单独做容量、一致性、容灾
-```
-
-### 9.2 LLM serving 题
-
-遇到“ChatGPT-like 服务怎么保持 stateless”时，不要说“把 KV cache 放 Redis”。更好的回答：
-
-```text
-API / control plane 尽量 stateless:
-  auth、quota、conversation metadata、request validation
-
-durable state 外置:
-  conversation DB、message log、model registry、billing events
-
-GPU data plane stateful-but-recoverable:
-  KV cache、paged block table、scheduler state、本地 prefix cache
-
-router 做 best-effort cache affinity:
-  cache hit 路由到有 KV 的 worker
-  cache miss 从 conversation history 重新 prefill
-
-如果规模更大:
-  prefix cache、paged KV、prefill/decode disaggregation、KV offload/migration
-```
-
-关键句：
-
-> LLM serving 不是 pure stateless。正确目标是让 API/control plane stateless，让 GPU data plane 的热状态可丢弃、可重算、可迁移，并把不可丢失的 conversation / billing / model metadata 外置。
-
-## 十、练习题
+## 九、练习题
 
 ```quiz
 title: 无状态设计范式 · Check 1
