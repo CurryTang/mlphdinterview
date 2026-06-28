@@ -2,6 +2,8 @@
 
 对应 CS336 Assignment 1：Section 2.1-2.4。
 
+使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+
 ## Exercise 1 · Unicode Probe
 
 <details class="exercise">
@@ -29,6 +31,36 @@ visible printing behavior
 - `ord` / `chr` 是 code point 层面的互逆。
 - `repr(x)` 和 `print(x)` 显示目的不同。
 - control character 可能存在但不可见。
+
+</details>
+
+<details class="solution">
+<summary>参考答案</summary>
+
+最小实现：
+
+```python
+def inspect_unicode_codepoint(cp: int) -> dict:
+    ch = chr(cp)
+    return {
+        "codepoint": f"U+{cp:04X}",
+        "character": ch,
+        "repr": repr(ch),
+        "utf8_bytes": list(ch.encode("utf-8")),
+        "utf8_hex": ch.encode("utf-8").hex(" "),
+        "is_printable": ch.isprintable(),
+    }
+```
+
+Sanity check：
+
+```python
+assert ord(chr(65)) == 65
+assert inspect_unicode_codepoint(0x41)["utf8_bytes"] == [65]
+assert inspect_unicode_codepoint(0x1F600)["utf8_bytes"] == [240, 159, 152, 128]
+```
+
+`print(ch)` 是面向人看的显示效果，control character 可能不可见；`repr(ch)` 是调试表示，会把换行、零宽字符这类内容暴露出来。
 
 </details>
 
@@ -69,6 +101,48 @@ invalid two-byte sequence raises or replaces
 
 </details>
 
+<details class="solution">
+<summary>参考答案</summary>
+
+实验函数：
+
+```python
+def compare_encodings(text: str):
+    rows = []
+    for enc in ["utf-8", "utf-16", "utf-32"]:
+        raw = text.encode(enc)
+        rows.append({
+            "encoding": enc,
+            "num_chars": len(text),
+            "num_bytes": len(raw),
+            "bytes": raw,
+            "roundtrip": raw.decode(enc),
+        })
+    return rows
+
+def decode_invalid(raw: bytes, encoding="utf-8"):
+    return {
+        "strict": _try_decode(raw, encoding, "strict"),
+        "replace": raw.decode(encoding, errors="replace"),
+        "ignore": raw.decode(encoding, errors="ignore"),
+    }
+
+def _try_decode(raw, encoding, errors):
+    try:
+        return raw.decode(encoding, errors=errors)
+    except UnicodeDecodeError as exc:
+        return type(exc).__name__
+```
+
+结论：
+
+- ASCII 在 UTF-8 下通常是 1 char = 1 byte。
+- CJK 和 emoji 在 UTF-8 下是多 byte；`len(text)` 和 `len(text.encode("utf-8"))` 不是一回事。
+- UTF-16 / UTF-32 通常有 BOM 或固定宽度开销，短英文不一定更省。
+- invalid byte sequence 应该显式决定用 `strict`、`replace` 还是 `ignore`，tokenizer/debug 工具里不要默默吞掉错误。
+
+</details>
+
 ## Exercise 3 · GPT-2 Style Pretokenizer
 
 <details class="exercise">
@@ -105,6 +179,43 @@ Sanity cases：
 "Doc1<|endoftext|>Doc2" never merges across document boundary
 repeated pre-token count accumulates frequency
 ```
+
+</details>
+
+<details class="solution">
+<summary>参考答案</summary>
+
+核心实现可以分三层：先按 special token 切边界，再对普通片段跑 GPT-2 regex，最后把每个 pre-token 转成 byte tuple 并累计频率。
+
+```python
+from collections import Counter
+import regex as re
+
+PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+def split_by_special(text, special_tokens):
+    if not special_tokens:
+        yield False, text
+        return
+
+    pattern = "(" + "|".join(re.escape(tok) for tok in sorted(special_tokens, key=len, reverse=True)) + ")"
+    for part in re.split(pattern, text):
+        if not part:
+            continue
+        yield part in special_tokens, part
+
+def pretoken_counts(text, special_tokens=None):
+    counts = Counter()
+    for is_special, part in split_by_special(text, special_tokens or []):
+        if is_special:
+            continue
+        for match in re.finditer(PAT, part):
+            token_bytes = match.group(0).encode("utf-8")
+            counts[tuple(bytes([b]) for b in token_bytes)] += 1
+    return counts
+```
+
+容易错的点是 special token 不能贡献 pair statistics，也不能让左右两边的普通文本跨边界合并。这里把 token 表示成 `tuple[bytes, ...]`，后面的 BPE merge 才能直接把相邻 `bytes` 拼成更长的 `bytes`。
 
 </details>
 

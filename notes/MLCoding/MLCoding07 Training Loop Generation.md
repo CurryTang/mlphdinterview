@@ -2,6 +2,8 @@
 
 对应 CS336 Assignment 1：Section 5-6。
 
+使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+
 ## Exercise 1 · Next-Token Batch Sampler
 
 <details class="exercise">
@@ -33,6 +35,47 @@ y: (batch_size, context_length)
 
 ```bash
 uv run pytest -k test_get_batch
+```
+
+</details>
+
+<details class="solution">
+<summary>参考答案</summary>
+
+next-token batch sampler 的输入是一维 token array，输出 `x` 和右移一位的 `y`。
+
+```python
+import numpy as np
+import torch
+
+def get_batch(dataset, batch_size, context_length, device):
+    # dataset can be np.ndarray / np.memmap / torch tensor
+    n = len(dataset)
+    starts = torch.randint(0, n - context_length, (batch_size,))
+
+    xs, ys = [], []
+    for s in starts.tolist():
+        chunk = dataset[s : s + context_length + 1]
+        if isinstance(chunk, np.ndarray):
+            chunk = torch.from_numpy(chunk.astype(np.int64))
+        else:
+            chunk = torch.as_tensor(chunk, dtype=torch.long)
+        xs.append(chunk[:-1])
+        ys.append(chunk[1:])
+
+    x = torch.stack(xs).to(device=device, dtype=torch.long)
+    y = torch.stack(ys).to(device=device, dtype=torch.long)
+    return x, y
+```
+
+为什么 start 最大是 `n - context_length - 1` 的等价形式：每个样本需要 `context_length + 1` 个 token，最后一个 token 是 target。上面 `torch.randint(0, n - context_length)` 的 high 是 exclusive，所以最大 start 是 `n - context_length - 1`。
+
+检查点：
+
+```python
+x, y = get_batch(np.arange(1000), 4, 8, "cpu")
+assert x.shape == y.shape == (4, 8)
+assert torch.all(y[:, :-1] == x[:, 1:])
 ```
 
 </details>
@@ -73,6 +116,46 @@ path and file-like object both work
 ```bash
 uv run pytest -k test_checkpointing
 ```
+
+</details>
+
+<details class="solution">
+<summary>参考答案</summary>
+
+checkpoint 至少要保存三件事：模型参数、optimizer state、当前 iteration。
+
+```python
+def save_checkpoint(model, optimizer, iteration, out):
+    payload = {
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "iteration": iteration,
+    }
+    torch.save(payload, out)
+
+def load_checkpoint(src, model, optimizer):
+    payload = torch.load(src, map_location="cpu")
+    model.load_state_dict(payload["model"])
+    optimizer.load_state_dict(payload["optimizer"])
+    return payload["iteration"]
+```
+
+如果要支持 file-like object，`torch.save` / `torch.load` 本身已经支持。关键 sanity test：
+
+```python
+save_checkpoint(model, opt, 123, path)
+old = {k: v.clone() for k, v in model.state_dict().items()}
+
+for p in model.parameters():
+    p.data.normal_()
+
+it = load_checkpoint(path, model, opt)
+assert it == 123
+for k, v in model.state_dict().items():
+    assert torch.equal(v, old[k])
+```
+
+训练 resume 时 optimizer state 很重要；只恢复 model 会让 AdamW moments 丢失，loss curve 可能出现明显跳变。
 
 </details>
 
@@ -125,6 +208,58 @@ Debug milestones：
 
 </details>
 
+<details class="solution">
+<summary>参考答案</summary>
+
+完整训练脚本的目标不是写一个很长的文件，而是把数据、模型、optimizer、scheduler、eval、checkpoint 接起来。最小 loop：
+
+```python
+for it in range(start_iter, max_iters):
+    lr = get_lr(it, max_lr, min_lr, warmup_iters, cosine_iters)
+    for group in optimizer.param_groups:
+        group["lr"] = lr
+
+    x, y = get_batch(train_tokens, batch_size, context_length, device)
+    logits = model(x)
+    loss = cross_entropy(logits, y)
+
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    clip_grad_norm(model.parameters(), max_grad_norm)
+    optimizer.step()
+
+    if it % log_interval == 0:
+        print({"iter": it, "loss": float(loss), "lr": lr})
+
+    if it % eval_interval == 0:
+        model.eval()
+        with torch.no_grad():
+            val_losses = []
+            for _ in range(eval_iters):
+                vx, vy = get_batch(val_tokens, batch_size, context_length, device)
+                val_losses.append(cross_entropy(model(vx), vy).item())
+        model.train()
+        print({"iter": it, "val_loss": sum(val_losses) / len(val_losses)})
+
+    if it % ckpt_interval == 0:
+        save_checkpoint(model, optimizer, it, ckpt_path)
+```
+
+调试顺序：
+
+1. 先 overfit 一个固定 minibatch，确认模型和 loss 能下降。
+2. 再接真实 dataloader，确认 batch shift 正确。
+3. 再打开 eval，确认用了 `torch.no_grad()`。
+4. 最后测试 checkpoint resume，确认 iteration 和 loss curve 不重置。
+
+常见 bug：
+
+- `optimizer.zero_grad()` 放在 `backward()` 后但 step 前遗漏。
+- eval 时忘记 `model.eval()` 或忘记切回 `model.train()`。
+- logging loss tensor 没 `.item()`，长期持有 computation graph。
+
+</details>
+
 ## Exercise 4 · Autoregressive Decoder
 
 <details class="exercise">
@@ -171,5 +306,59 @@ token count
 stop reason
 sampling parameters
 ```
+
+</details>
+
+<details class="solution">
+<summary>参考答案</summary>
+
+generation 每轮只用最后一个位置的 logits：
+
+```python
+@torch.no_grad()
+def generate(model, tokenizer, prompt, max_new_tokens, temperature=1.0, top_p=1.0, eos_token_id=None):
+    model.eval()
+    ids = tokenizer.encode(prompt)
+    tokens = torch.tensor([ids], dtype=torch.long, device=next(model.parameters()).device)
+
+    for _ in range(max_new_tokens):
+        idx_cond = tokens[:, -model.context_length:]
+        logits = model(idx_cond)[:, -1, :]
+
+        if temperature == 0:
+            next_id = torch.argmax(logits, dim=-1, keepdim=True)
+        else:
+            logits = logits / temperature
+            probs = torch.softmax(logits, dim=-1)
+            probs = top_p_filter(probs, top_p)
+            next_id = torch.multinomial(probs, num_samples=1)
+
+        tokens = torch.cat([tokens, next_id], dim=1)
+        if eos_token_id is not None and int(next_id.item()) == eos_token_id:
+            break
+
+    return tokenizer.decode(tokens[0].tolist())
+```
+
+top-p filter：
+
+```python
+def top_p_filter(probs, top_p):
+    if top_p >= 1.0:
+        return probs
+    sorted_probs, sorted_idx = torch.sort(probs, descending=True, dim=-1)
+    cdf = torch.cumsum(sorted_probs, dim=-1)
+    keep = cdf <= top_p
+    keep[..., 0] = True
+    filtered = torch.zeros_like(probs)
+    filtered.scatter_(dim=-1, index=sorted_idx, src=sorted_probs * keep)
+    return filtered / filtered.sum(dim=-1, keepdim=True)
+```
+
+注意：
+
+- context 超长时用最近 `context_length` 个 token。
+- `temperature=0` 通常走 greedy，不要除以 0。
+- top-p 后必须重新 normalize。
 
 </details>
