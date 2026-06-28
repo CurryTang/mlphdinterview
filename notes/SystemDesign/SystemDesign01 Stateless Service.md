@@ -15,9 +15,8 @@
 6. [[#六、代价：状态没有消失，只是被移动了]]
 7. [[#七、LLM serving：为什么它更难]]
 8. [[#八、LLM 里的具体解决方案]]
-9. [[#九、Agent / RL 系统里的可替换 worker]]
-10. [[#十、怎么在面试里讲这个范式]]
-11. [[#十一、练习题]]
+9. [[#九、怎么在面试里讲这个范式]]
+10. [[#十、练习题]]
 
 ---
 
@@ -882,7 +881,7 @@ messages
 tokenized prompt version
 model version
 sampling config
-tool trace
+request metadata
 final response
 ```
 
@@ -1022,85 +1021,12 @@ offload / migration 成本 < 重新 prefill 成本
 | KV cache | GPU worker / cache manager | 否 | 重新 prefill 或迁移恢复 |
 | prefix cache directory | router metadata / runtime | 否或软状态 | cache miss 后重算 |
 | streaming connection | API gateway / serving process | 否，短期连接状态 | client reconnect / retry |
-| tool trace | DB / event log | 是 | 用于审计和重放 |
 
 ---
 
-## 九、Agent / RL 系统里的可替换 worker
+## 九、怎么在面试里讲这个范式
 
-Agentic RL、red teaming、MLE agent、coding agent 这类系统也遵循同一个原则：
-
-```text
-worker 可以被复制、替换、杀掉
-trajectory / reward / checkpoint / task state 不能只在 worker 内存里
-```
-
-典型结构：
-
-```mermaid
-flowchart LR
-  TQ[Task Queue] --> RW[Rollout Workers]
-  RW --> ENV[Sandbox / Environment]
-  RW --> TS[(Trajectory Store)]
-  TS --> JW[Judge / Reward Workers]
-  JW --> RS[(Reward Log)]
-  RS --> TR[Trainer]
-  TR --> CKPT[(Checkpoint Store)]
-  CKPT --> RW
-```
-
-Rollout worker 的生命周期：
-
-```text
-1. 启动
-2. 从 checkpoint store / model registry 拉 policy
-3. 从 task queue 拿 task
-4. 创建 sandbox / environment
-5. 运行 agent trajectory
-6. 把 action、observation、reward input、tool logs 写入 trajectory store
-7. 标记 task succeeded / failed / retryable
-8. 继续拿下一个 task 或退出
-```
-
-不要这样设计：
-
-```text
-worker-3 内存里保存唯一 trajectories
-trainer 只能问 worker-3 要数据
-worker-3 挂了实验损坏
-```
-
-正确设计：
-
-```text
-trajectory 是 append-only event log
-reward 是可重算或有版本记录的结果
-checkpoint 是模型状态的 durable source
-task queue 支持 lease / retry
-sandbox 每次 run 后清理或快照恢复
-```
-
-Agent 系统和普通 Web 的区别是，状态不只是 DB row，还包括：
-
-```text
-prompt / action tokens
-tool observation
-stdout / stderr
-browser state
-file system diff
-reward model version
-policy version
-random seed
-environment image digest
-```
-
-如果这些不落到 durable storage，失败重试和训练复现实验都会出问题。
-
----
-
-## 十、怎么在面试里讲这个范式
-
-### 10.1 通用后端题
+### 9.1 通用后端题
 
 遇到“怎么让服务可扩展 / stateless”时，可以按这个顺序答：
 
@@ -1115,7 +1041,7 @@ environment image digest
 8. state layer 需要单独做容量、一致性、容灾
 ```
 
-### 10.2 LLM serving 题
+### 9.2 LLM serving 题
 
 遇到“ChatGPT-like 服务怎么保持 stateless”时，不要说“把 KV cache 放 Redis”。更好的回答：
 
@@ -1124,7 +1050,7 @@ API / control plane 尽量 stateless:
   auth、quota、conversation metadata、request validation
 
 durable state 外置:
-  conversation DB、message log、model registry、tool trace、billing events
+  conversation DB、message log、model registry、billing events
 
 GPU data plane stateful-but-recoverable:
   KV cache、paged block table、scheduler state、本地 prefix cache
@@ -1139,23 +1065,9 @@ router 做 best-effort cache affinity:
 
 关键句：
 
-> LLM serving 不是 pure stateless。正确目标是让 API/control plane stateless，让 GPU data plane 的热状态可丢弃、可重算、可迁移，并把不可丢失的 conversation / tool / billing / model metadata 外置。
+> LLM serving 不是 pure stateless。正确目标是让 API/control plane stateless，让 GPU data plane 的热状态可丢弃、可重算、可迁移，并把不可丢失的 conversation / billing / model metadata 外置。
 
-### 10.3 Agent / RL 题
-
-```text
-rollout worker 不拥有唯一轨迹
-task queue 提供 lease/retry
-trajectory store 保存 action/observation/reward input
-reward worker 可重算 reward，记录 reward version
-trainer 从 durable buffer 读数据
-checkpoint store 是 policy 状态来源
-sandbox 每次任务隔离，失败后清理
-```
-
----
-
-## 十一、练习题
+## 十、练习题
 
 ```quiz
 title: 无状态设计范式 · Check 1
