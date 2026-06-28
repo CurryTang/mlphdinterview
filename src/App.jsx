@@ -337,6 +337,57 @@ const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
   },
 }));
 
+const systemDesignNoteDefinitions = [
+  createTutorialDefinition(
+    'System Design · TODO',
+    'System Design TODO.md',
+    null,
+    { directory: 'SystemDesign', category: 'TODO', difficulty: 'TODO' },
+  ),
+];
+
+const systemDesignNotes = systemDesignNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
+const businessAlgorithmNoteDefinitions = [
+  createTutorialDefinition(
+    '业务算法八股 · TODO',
+    'Business Algorithm TODO.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'TODO', difficulty: 'TODO' },
+  ),
+];
+
+const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
+const mlInterviewNoteDefinitions = [
+  createTutorialDefinition(
+    'ML八股 · TODO',
+    'ML Interview TODO.md',
+    null,
+    { directory: 'MLInterview', category: 'TODO', difficulty: 'TODO' },
+  ),
+];
+
+const mlInterviewNotes = mlInterviewNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
 const noteSections = [
   {
     id: 'mlsys',
@@ -361,6 +412,24 @@ const noteSections = [
     title: 'ML Coding',
     description: 'From-scratch machine learning implementation exercises',
     notes: mlCodingNotes,
+  },
+  {
+    id: 'system-design',
+    title: 'System Design',
+    description: 'TODO: system design interview notes and architecture drills',
+    notes: systemDesignNotes,
+  },
+  {
+    id: 'business-algorithm',
+    title: '业务算法八股',
+    description: 'TODO: recommendation, search, ads, ranking, and experimentation basics',
+    notes: businessAlgorithmNotes,
+  },
+  {
+    id: 'ml-interview',
+    title: 'ML八股',
+    description: 'TODO: machine learning fundamentals and interview drills',
+    notes: mlInterviewNotes,
   },
   {
     id: 'leetcode',
