@@ -2396,24 +2396,13 @@ function App() {
         <div className="app-shell">
       <aside className="notes-panel">
         <header className="panel-header">
-          <p className="eyebrow">Interview Notes</p>
-          <h1>Interview Notebook</h1>
-          <p className="panel-meta">{noteSections.length} section · {tutorials.length} notes</p>
+          <p className="eyebrow">Current Section</p>
+          <h1>{selectedSection?.title ?? 'Notes'}</h1>
+          <p className="panel-meta">{activeSectionNotes.length} notes in this section</p>
+          {selectedSection?.description && (
+            <p className="panel-description">{selectedSection.description}</p>
+          )}
         </header>
-
-        <nav className="section-tabs" aria-label="Interview note sections">
-          {noteSections.map((section) => (
-            <button
-              key={section.id}
-              className={`section-tab ${selectedSection?.id === section.id ? 'active' : ''}`}
-              type="button"
-              onClick={() => navigateToSection(section.id)}
-            >
-              <span>{section.title}</span>
-              <small>{section.notes.length}</small>
-            </button>
-          ))}
-        </nav>
 
         <label className="search">
           <span>Search {selectedSection?.title ?? 'Notes'}</span>

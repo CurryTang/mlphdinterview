@@ -344,7 +344,15 @@
   padding: 1.35rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1rem;
+}
+
+.panel-header {
+  border: 1px solid rgba(35, 53, 66, 0.15);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.86rem;
+  box-shadow: 0 8px 18px rgba(31, 53, 66, 0.08);
 }
 
 .panel-header h1 {
@@ -369,43 +377,11 @@
   font-size: 0.9rem;
 }
 
-.section-tabs {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.section-tab {
-  border: 1px solid rgba(42, 67, 80, 0.2);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.58);
-  color: #18313f;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 0.62rem;
-  font-family: "IBM Plex Mono", "Courier New", monospace;
+.panel-description {
+  margin: 0.65rem 0 0;
+  color: #536b78;
   font-size: 0.78rem;
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.section-tab:hover {
-  transform: translateY(-1px);
-  border-color: rgba(22, 87, 110, 0.45);
-}
-
-.section-tab.active {
-  background: #18313f;
-  border-color: #18313f;
-  color: #f7fbfb;
-}
-
-.section-tab small {
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
-  padding: 0.05rem 0.4rem;
-  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .search {

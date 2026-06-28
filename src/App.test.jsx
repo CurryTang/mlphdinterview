@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -120,6 +120,21 @@ describe('App', () => {
     expect(await screen.findByText('Python')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     expect(screen.getByText('def')).toHaveClass('code-token', 'keyword');
+  });
+
+  it('keeps the reader sidebar scoped to the current section', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start mlsys/i }));
+
+    expect(await screen.findByRole('heading', { name: /MLSYS1/i })).toBeInTheDocument();
+
+    const sidebar = document.querySelector('.notes-panel');
+    expect(sidebar).not.toBeNull();
+    expect(within(sidebar).getByRole('heading', { name: 'MLSYS' })).toBeInTheDocument();
+    expect(within(sidebar).getByText('18 notes in this section')).toBeInTheDocument();
+    expect(within(sidebar).queryByText('LLM八股')).not.toBeInTheDocument();
+    expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
   });
 
   it('opens the LeetCode section from the top navigation', async () => {
