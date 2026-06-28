@@ -345,10 +345,10 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', category: 'Overview', difficulty: 'Intro' },
   ),
   createTutorialDefinition(
-    'System Design 1 · Stateless Service',
+    'System Design 1 · 无状态设计范式',
     'SystemDesign01 Stateless Service.md',
     null,
-    { directory: 'SystemDesign', category: 'Backend Fundamentals', difficulty: 'Medium' },
+    { directory: 'SystemDesign', category: 'Design Pattern', difficulty: 'Medium' },
   ),
 ];
 

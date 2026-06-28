@@ -153,6 +153,6 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
     expect(screen.getByText('2 notes in this section')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 1 · Stateless Service/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 1 · 无状态设计范式/i })).toBeInTheDocument();
   });
 });
