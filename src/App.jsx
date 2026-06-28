@@ -339,10 +339,16 @@ const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
 
 const systemDesignNoteDefinitions = [
   createTutorialDefinition(
-    'System Design · TODO',
-    'System Design TODO.md',
+    'System Design 0 · Overview',
+    'SystemDesign00 Overview.md',
     null,
-    { directory: 'SystemDesign', category: 'TODO', difficulty: 'TODO' },
+    { directory: 'SystemDesign', category: 'Overview', difficulty: 'Intro' },
+  ),
+  createTutorialDefinition(
+    'System Design 1 · Stateless Service',
+    'SystemDesign01 Stateless Service.md',
+    null,
+    { directory: 'SystemDesign', category: 'Backend Fundamentals', difficulty: 'Medium' },
   ),
 ];
 
@@ -416,7 +422,7 @@ const noteSections = [
   {
     id: 'system-design',
     title: 'System Design',
-    description: 'TODO: system design interview notes and architecture drills',
+    description: 'Backend system design, LLM serving, agent workflows, and infra interview drills',
     notes: systemDesignNotes,
   },
   {

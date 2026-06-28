@@ -145,4 +145,14 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
   });
+
+  it('opens the System Design section with the new overview notes', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+
+    expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
+    expect(screen.getByText('2 notes in this section')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 1 · Stateless Service/i })).toBeInTheDocument();
+  });
 });
