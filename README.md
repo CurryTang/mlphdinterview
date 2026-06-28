@@ -4,7 +4,7 @@ This repository hosts an interview notes site. MLSYS, LLM, Quant, ML Coding, Sys
 
 ## Live Site
 
-**GitHub Pages:** [https://currytang.github.io/hitchhikers-guide-to-ml-phd-job-hunting/](https://currytang.github.io/hitchhikers-guide-to-ml-phd-job-hunting/)
+**GitHub Pages:** [https://currytang.github.io/mlphdinterview/](https://currytang.github.io/mlphdinterview/)
 
 The site publishes the curated MLSYS notes from `notes/Mlsys/`, Quant notes from `notes/quant/`, ML Coding notes from `notes/MLCoding/`, TODO placeholders from `notes/SystemDesign/`, `notes/BusinessAlgorithm/`, and `notes/MLInterview/`, and LeetCode Core Skills notes from `notes/Leetcode/`. The frontend reader supports Chinese and English variants when both exist, and falls back to the available note when only one variant is present.
 

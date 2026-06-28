@@ -29,7 +29,7 @@ jobs:
         run: npm ci
       - name: Build site
         env:
-          VITE_BASE_PATH: /hitchhikers-guide-to-ml-phd-job-hunting/
+          VITE_BASE_PATH: /mlphdinterview/
         run: npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
