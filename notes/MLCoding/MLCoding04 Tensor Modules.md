@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 3.2-3.4.3。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Tensor Shape Gym
 
@@ -28,6 +28,25 @@ input shape
 output shape
 einsum / rearrange pattern
 toy sanity check
+```
+
+解题模板：
+
+```python
+def shape_gym():
+    x = ...      # e.g. (batch, seq, d_model)
+    W = ...      # e.g. (out_features, in_features)
+
+    y_linear = ...       # (..., in) x (out, in) -> (..., out)
+    heads = ...          # (B, T, D) -> (B, H, T, Dh)
+    merged = ...         # (B, H, T, Dh) -> (B, T, D)
+
+    assert ...
+    return {
+        "linear": y_linear.shape,
+        "heads": heads.shape,
+        "merged": merged.shape,
+    }
 ```
 
 </details>
@@ -98,6 +117,25 @@ forward(x) -> (..., out_features)
 uv run pytest -k test_linear
 ```
 
+解题模板：
+
+```python
+class Linear(nn.Module):
+    def __init__(self, in_features, out_features, device=None, dtype=None):
+        super().__init__()
+        self.weight = nn.Parameter(...)
+        ...  # truncated normal init
+
+    def forward(self, x):
+        """
+        Input:
+            x: (..., in_features)
+        Output:
+            (..., out_features)
+        """
+        return ...  # no nn.Linear / F.linear
+```
+
 </details>
 
 <details class="solution">
@@ -166,6 +204,25 @@ forward(token_ids) -> token_ids.shape + (embedding_dim,)
 uv run pytest -k test_embedding
 ```
 
+解题模板：
+
+```python
+class Embedding(nn.Module):
+    def __init__(self, num_embeddings, embedding_dim, device=None, dtype=None):
+        super().__init__()
+        self.weight = nn.Parameter(...)  # (num_embeddings, embedding_dim)
+        ...
+
+    def forward(self, token_ids):
+        """
+        Input:
+            integer tensor with arbitrary shape
+        Output:
+            token_ids.shape + (embedding_dim,)
+        """
+        return ...
+```
+
 </details>
 
 <details class="solution">
@@ -223,6 +280,26 @@ Sanity checks：
 all-zero input remains finite
 shape preserved
 scaling input mostly cancels after normalization
+```
+
+解题模板：
+
+```python
+class RMSNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-5, device=None, dtype=None):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(...)
+
+    def forward(self, x):
+        """
+        Normalize over the last dimension.
+        """
+        in_dtype = x.dtype
+        x_float = ...
+        rms = ...
+        y = ...
+        return ...
 ```
 
 </details>
@@ -287,6 +364,23 @@ then W2 down projection
 uv run pytest -k test_swiglu
 ```
 
+解题模板：
+
+```python
+class SwiGLU(nn.Module):
+    def __init__(self, d_model, d_ff=None, device=None, dtype=None):
+        super().__init__()
+        d_ff = ...  # around 8/3 * d_model, rounded to multiple of 64
+        self.w1 = ...  # gate projection
+        self.w3 = ...  # up projection
+        self.w2 = ...  # down projection
+
+    def forward(self, x):
+        gate = ...
+        up = ...
+        return ...
+```
+
 </details>
 
 <details class="solution">
@@ -348,6 +442,29 @@ forward(x, token_positions) -> same shape
 
 ```bash
 uv run pytest -k test_rope
+```
+
+解题模板：
+
+```python
+class RotaryPositionalEmbedding(nn.Module):
+    def __init__(self, theta, d_k, max_seq_len, device=None):
+        super().__init__()
+        ...  # precompute cos/sin buffers for positions and dim pairs
+
+    def forward(self, x, token_positions):
+        """
+        Input:
+            x: (..., seq_len, d_k)
+            token_positions: (..., seq_len)
+        Output:
+            same shape as x
+        """
+        x_even = ...
+        x_odd = ...
+        cos = ...
+        sin = ...
+        return ...
 ```
 
 </details>

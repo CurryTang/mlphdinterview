@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 4。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Cross-Entropy
 
@@ -30,6 +30,25 @@ return: scalar mean loss
 
 ```bash
 uv run pytest -k test_cross_entropy
+```
+
+解题模板：
+
+```python
+def cross_entropy(inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """
+    Input:
+        inputs: (..., vocab_size) logits
+        targets: (...) integer class ids
+    Output:
+        scalar mean cross entropy
+    """
+    logits = ...
+    y = ...
+    max_logits = ...
+    log_sum_exp = ...
+    correct_logits = ...
+    return ...
 ```
 
 </details>
@@ -92,6 +111,29 @@ steps = 10
 loss curve
 final loss
 converged / oscillated / diverged
+```
+
+解题模板：
+
+```python
+def run_sgd_lr(lr: float, steps: int = 10) -> list[float]:
+    """
+    Input:
+        lr and number of update steps
+    Output:
+        loss values over time
+    """
+    x = ...
+    losses = []
+    for step in range(steps):
+        loss = ...
+        grad = ...
+        x = ...
+        losses.append(...)
+    return losses
+
+def sweep_lrs(lrs):
+    return {lr: run_sgd_lr(lr) for lr in lrs}
 ```
 
 </details>
@@ -164,6 +206,28 @@ v: second moment
 
 ```bash
 uv run pytest -k test_adamw
+```
+
+解题模板：
+
+```python
+class AdamW(torch.optim.Optimizer):
+    def __init__(self, params, lr, betas, eps, weight_decay):
+        defaults = ...
+        super().__init__(params, defaults)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        for group in self.param_groups:
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                state = self.state[p]
+                ...  # initialize step, m, v
+                ...  # update biased moments
+                ...  # bias correction
+                ...  # decoupled weight decay
+                ...  # parameter update
 ```
 
 </details>
@@ -247,6 +311,27 @@ training time under MFU assumption
 - gradients 和 parameters 同量级。
 - backward pass 约为 forward FLOPs 的 2 倍。
 
+解题模板：
+
+```python
+def adamw_memory_accounting(num_params, param_bytes=2, grad_bytes=2, state_bytes=4):
+    """
+    Output:
+        memory bytes for params, grads, Adam moments, and total
+    """
+    return {
+        "parameters": ...,
+        "gradients": ...,
+        "adam_m": ...,
+        "adam_v": ...,
+        "total": ...,
+    }
+
+def estimate_training_time(total_tokens, flops_per_token, peak_flops, mfu):
+    total_flops = ...
+    return ...
+```
+
 </details>
 
 <details class="solution">
@@ -319,6 +404,23 @@ it > cosine_cycle_iters: min_lr
 uv run pytest -k test_get_lr_cosine_schedule
 ```
 
+解题模板：
+
+```python
+def get_lr(it, max_lr, min_lr, warmup_iters, cosine_cycle_iters):
+    """
+    Piecewise schedule:
+        warmup -> cosine decay -> min_lr
+    """
+    if ...:
+        return ...
+    if ...:
+        return ...
+    progress = ...
+    coeff = ...
+    return ...
+```
+
 </details>
 
 <details class="solution">
@@ -377,6 +479,26 @@ clip_grad_norm(parameters, max_l2_norm)
 
 ```bash
 uv run pytest -k test_gradient_clipping
+```
+
+解题模板：
+
+```python
+def clip_grad_norm(parameters, max_l2_norm, eps=1e-6):
+    """
+    Input:
+        iterable of parameters with .grad
+    Output:
+        original global grad norm
+    Side effect:
+        scale gradients in-place if norm is too large
+    """
+    grads = ...
+    total_norm = ...
+    scale = ...
+    for p in parameters:
+        ...
+    return total_norm
 ```
 
 </details>

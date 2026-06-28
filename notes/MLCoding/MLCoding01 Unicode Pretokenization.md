@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 2.1-2.4。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Unicode Probe
 
@@ -31,6 +31,28 @@ visible printing behavior
 - `ord` / `chr` 是 code point 层面的互逆。
 - `repr(x)` 和 `print(x)` 显示目的不同。
 - control character 可能存在但不可见。
+
+解题模板：
+
+```python
+def inspect_unicode_codepoint(cp: int) -> dict:
+    """
+    Input:
+        cp: Unicode code point, e.g. 65 or 0x1F600
+    Output:
+        metadata useful for debugging display vs encoding
+    """
+    ch = ...       # chr(cp)
+    utf8 = ...     # ch.encode("utf-8")
+    return {
+        "codepoint": ...,
+        "character": ...,
+        "repr": ...,
+        "utf8_bytes": ...,
+        "utf8_hex": ...,
+        "is_printable": ...,
+    }
+```
 
 </details>
 
@@ -97,6 +119,42 @@ Sanity cases：
 "こんにちは" byte length > character count
 single-byte decoding a multi-byte character is wrong
 invalid two-byte sequence raises or replaces
+```
+
+解题模板：
+
+```python
+def compare_encodings(text: str) -> list[dict]:
+    """
+    Input:
+        text: Python unicode string
+    Output:
+        rows comparing utf-8 / utf-16 / utf-32 byte length and round-trip
+    """
+    rows = []
+    for enc in ["utf-8", "utf-16", "utf-32"]:
+        raw = ...              # text.encode(enc)
+        rows.append({
+            "encoding": enc,
+            "num_chars": ...,
+            "num_bytes": ...,
+            "bytes": ...,
+            "roundtrip": ...,
+        })
+    return rows
+
+def decode_invalid(raw: bytes, encoding="utf-8") -> dict:
+    """
+    Input:
+        raw byte sequence, possibly malformed
+    Output:
+        strict / replace / ignore behavior
+    """
+    return {
+        "strict": ...,
+        "replace": ...,
+        "ignore": ...,
+    }
 ```
 
 </details>
@@ -178,6 +236,36 @@ Sanity cases：
 "some text that i'll pre-tokenize" matches PDF regex example
 "Doc1<|endoftext|>Doc2" never merges across document boundary
 repeated pre-token count accumulates frequency
+```
+
+解题模板：
+
+```python
+def split_by_special(text: str, special_tokens: list[str]):
+    """
+    Input:
+        raw text and special tokens
+    Output:
+        iterator of (is_special, segment)
+    """
+    ...
+
+def pretoken_counts(text: str, special_tokens: list[str] | None = None) -> dict:
+    """
+    Input:
+        raw text
+    Output:
+        Counter mapping tuple[bytes, ...] to frequency
+    """
+    counts = {}
+    for is_special, part in split_by_special(text, special_tokens or []):
+        if is_special:
+            ...                 # skip statistics
+        else:
+            for token in ...:    # regex matches
+                pieces = ...     # tuple(bytes([b]) for b in token.encode("utf-8"))
+                counts[pieces] = counts.get(pieces, 0) + 1
+    return counts
 ```
 
 </details>

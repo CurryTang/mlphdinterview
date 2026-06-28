@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 2.6-2.7。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Tokenizer Class
 
@@ -34,6 +34,37 @@ decode(ids: list[int]) -> str
 
 ```bash
 uv run pytest tests/test_tokenizer.py
+```
+
+解题模板：
+
+```python
+class Tokenizer:
+    def __init__(self, vocab: dict[int, bytes], merges: list[tuple[bytes, bytes]], special_tokens=None):
+        self.vocab = ...
+        self.inverse_vocab = ...
+        self.merge_rank = ...
+        self.special_tokens = ...
+        ...  # add special tokens to vocab if missing
+
+    @classmethod
+    def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
+        vocab = ...     # load int -> bytes
+        merges = ...    # load pair order
+        return cls(vocab, merges, special_tokens)
+
+    def encode(self, text: str) -> list[int]:
+        ids = []
+        ...  # split special tokens, pretokenize ordinary text, apply BPE
+        return ids
+
+    def encode_iterable(self, iterable):
+        for chunk in iterable:
+            yield from ...
+
+    def decode(self, ids: list[int]) -> str:
+        raw = ...       # concatenate token bytes
+        return ...      # utf-8 decode with replacement
 ```
 
 </details>
@@ -147,6 +178,29 @@ merge only applies inside one pre-token
 unknown text still encodable because byte vocab is complete
 ```
 
+解题模板：
+
+```python
+def trace_bpe_token(token: str, tokenizer: Tokenizer) -> list[int]:
+    """
+    Input:
+        one pre-token string, not a full document
+    Output:
+        final token ids, while printing each merge step
+    """
+    pieces = ...        # byte pieces
+    print("start:", pieces)
+    while True:
+        candidate_pairs = ...
+        best_pair = ... # lowest merge rank among current adjacent pairs
+        if best_pair is None:
+            break
+        pieces = ...    # merge best_pair
+        print(...)
+    ids = ...
+    return ids
+```
+
 </details>
 
 <details class="solution">
@@ -235,6 +289,28 @@ Iterator[int]
 - special token / document boundary 是天然 safe split。
 - 如果随意按字符数切 chunk，可能改变 pre-token 和 merge 结果。
 
+解题模板：
+
+```python
+def encode_iterable(self, iterable):
+    """
+    Input:
+        iterable of safe-boundary text chunks
+    Output:
+        lazy iterator of token ids
+    """
+    for chunk in iterable:
+        for token_id in self.encode(chunk):
+            yield token_id
+
+def encode_documents(self, docs):
+    """
+    Same idea, but docs are explicit tokenizer-safe boundaries.
+    """
+    for doc in docs:
+        yield from self.encode(doc)
+```
+
 </details>
 
 <details class="solution">
@@ -308,6 +384,34 @@ estimated time for 825GB corpus
 | OWT sample | TinyStories 10K | bytes/token |
 | OWT sample | OWT 32K | bytes/token |
 
+解题模板：
+
+```python
+def tokenizer_report(tokenizer: Tokenizer, text: str) -> dict:
+    """
+    Output:
+        compression and throughput metrics
+    """
+    raw = text.encode("utf-8")
+    start = ...
+    ids = tokenizer.encode(text)
+    elapsed = ...
+    return {
+        "num_bytes": ...,
+        "num_tokens": ...,
+        "bytes_per_token": ...,
+        "tokens_per_second": ...,
+        "bytes_per_second": ...,
+    }
+
+def compare_tokenizer_matrix(samples: dict, tokenizers: dict) -> list[dict]:
+    rows = []
+    for sample_name, text in samples.items():
+        for tok_name, tok in tokenizers.items():
+            rows.append({...})
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -376,6 +480,30 @@ np.ndarray dtype uint16
 vocab_size <= 65,536
 uint16 halves storage compared with int32
 token ids are non-negative integers
+```
+
+解题模板：
+
+```python
+def encode_to_array(tokenizer: Tokenizer, texts, out_path: str, dtype="uint16") -> dict:
+    """
+    Input:
+        iterable of text documents
+    Output:
+        saved numpy token-id array and metadata
+    """
+    ids = []
+    for text in texts:
+        ids.extend(...)
+    arr = ...
+    ...  # validate max id fits dtype
+    ...  # save arr
+    return {
+        "path": out_path,
+        "num_tokens": ...,
+        "dtype": ...,
+        "max_token_id": ...,
+    }
 ```
 
 </details>

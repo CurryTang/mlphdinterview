@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 5-6。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Next-Token Batch Sampler
 
@@ -35,6 +35,26 @@ y: (batch_size, context_length)
 
 ```bash
 uv run pytest -k test_get_batch
+```
+
+解题模板：
+
+```python
+def get_batch(dataset, batch_size: int, context_length: int, device):
+    """
+    Input:
+        dataset: 1D token id array
+    Output:
+        x, y: both (batch_size, context_length)
+        y is x shifted right by one token
+    """
+    starts = ...
+    xs, ys = [], []
+    for s in starts:
+        chunk = ...  # length context_length + 1
+        xs.append(...)
+        ys.append(...)
+    return ..., ...
 ```
 
 </details>
@@ -115,6 +135,29 @@ path and file-like object both work
 
 ```bash
 uv run pytest -k test_checkpointing
+```
+
+解题模板：
+
+```python
+def save_checkpoint(model, optimizer, iteration: int, out):
+    """
+    Save model state, optimizer state, and iteration.
+    """
+    payload = {
+        "model": ...,
+        "optimizer": ...,
+        "iteration": ...,
+    }
+    ...
+
+def load_checkpoint(src, model, optimizer) -> int:
+    """
+    Restore states and return saved iteration.
+    """
+    payload = ...
+    ...
+    return ...
 ```
 
 </details>
@@ -205,6 +248,34 @@ Debug milestones：
 | tiny model on tiny data | loss decreases smoothly |
 | validation eval | no gradient graph retained |
 | checkpoint resume | curve continues without reset |
+
+解题模板：
+
+```python
+def train(config):
+    model = ...
+    optimizer = ...
+    train_tokens, val_tokens = ...
+    start_iter = ...
+
+    for it in range(start_iter, config.max_iters):
+        lr = ...
+        ...  # set optimizer LR
+
+        x, y = ...
+        logits = ...
+        loss = ...
+
+        optimizer.zero_grad(set_to_none=True)
+        ...
+        ...  # gradient clipping
+        optimizer.step()
+
+        if it % config.eval_interval == 0:
+            val_loss = ...
+        if it % config.ckpt_interval == 0:
+            ...
+```
 
 </details>
 
@@ -305,6 +376,34 @@ generated text
 token count
 stop reason
 sampling parameters
+```
+
+解题模板：
+
+```python
+@torch.no_grad()
+def generate(model, tokenizer, prompt: str, max_new_tokens: int, temperature=1.0, top_p=1.0, eos_token_id=None):
+    """
+    Input:
+        prompt text and sampling parameters
+    Output:
+        generated text
+    """
+    ids = ...
+    tokens = ...
+    for _ in range(max_new_tokens):
+        idx_cond = ...
+        logits = ...
+        if temperature == 0:
+            next_id = ...
+        else:
+            probs = ...
+            probs = ...
+            next_id = ...
+        tokens = ...
+        if ...:
+            break
+    return ...
 ```
 
 </details>

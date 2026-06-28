@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 2.4-2.5。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Toy BPE Merge Simulator
 
@@ -43,6 +43,38 @@ newest newest newest newest newest newest
 ```
 
 目标：前几轮 merge 能复现 handout 结果。
+
+解题模板：
+
+```python
+from collections import Counter
+
+def count_pairs(pretoken_counts: dict[tuple[bytes, ...], int]) -> Counter:
+    """Output: Counter mapping adjacent byte-pair to weighted frequency."""
+    pair_counts = Counter()
+    for pieces, freq in pretoken_counts.items():
+        ...  # add freq for every adjacent pair
+    return pair_counts
+
+def merge_one_pretoken(pieces: tuple[bytes, ...], pair: tuple[bytes, bytes]) -> tuple[bytes, ...]:
+    """Output: pieces after non-overlapping replacement of pair."""
+    out = []
+    i = 0
+    while i < len(pieces):
+        ...  # if pieces[i:i+2] == pair, append merged bytes and skip 2
+    return tuple(out)
+
+def run_bpe_merges(pretoken_counts, num_merges):
+    """Output: (merges, updated_counts)."""
+    merges = []
+    counts = dict(pretoken_counts)
+    for _ in range(num_merges):
+        pair_counts = ...
+        winner = ...  # max by (frequency, pair)
+        merges.append(winner)
+        counts = ...  # rebuild counts after merge
+    return merges, counts
+```
 
 </details>
 
@@ -128,6 +160,35 @@ merges: list[tuple[bytes, bytes]]
 uv run pytest tests/test_train_bpe.py
 ```
 
+解题模板：
+
+```python
+def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]):
+    """
+    Input:
+        raw corpus path, target vocab size, special tokens
+    Output:
+        vocab: dict[int, bytes]
+        merges: list[tuple[bytes, bytes]]
+    """
+    vocab = {i: bytes([i]) for i in range(256)}
+    ...  # append special tokens to vocab
+
+    pretoken_counts = ...  # build counts with special-token boundaries
+    merges = []
+
+    while len(vocab) < vocab_size:
+        pair_counts = ...
+        if not pair_counts:
+            break
+        pair = ...          # deterministic winner
+        merges.append(pair)
+        vocab[len(vocab)] = ...
+        pretoken_counts = ...
+
+    return vocab, merges
+```
+
 </details>
 
 <details class="solution">
@@ -192,6 +253,39 @@ wall-clock time
 peak memory
 top bottleneck
 speedup after each optimization
+```
+
+解题模板：
+
+```python
+def profile_stage(name: str, fn, *args, **kwargs):
+    """Run one stage and return result + timing/memory metadata."""
+    ...
+
+def build_pair_index(pretoken_counts):
+    """
+    Output:
+        pair_counts: pair -> frequency
+        pair_to_pretokens: pair -> affected pre-token set
+    """
+    ...
+
+def update_after_merge(pretoken_counts, pair_counts, pair_to_pretokens, winner):
+    """
+    Only update pre-tokens containing winner.
+    """
+    affected = ...
+    for old_pieces in affected:
+        ...  # remove old pair contributions
+        new_pieces = ...
+        ...  # add new pair contributions
+    return pretoken_counts, pair_counts, pair_to_pretokens
+
+def benchmark_bpe_trainer(input_path):
+    rows = []
+    for version in ["naive", "parallel_pretok", "incremental_pairs"]:
+        ...  # record time, memory, speedup
+    return rows
 ```
 
 </details>
@@ -260,6 +354,33 @@ longest token
 profile bottleneck
 ```
 
+解题模板：
+
+```python
+def train_tinystories_tokenizer(data_path: str, out_dir: str):
+    """
+    Output artifacts:
+        vocab.json
+        merges.txt
+        report dict
+    """
+    vocab, merges = train_bpe(
+        input_path=data_path,
+        vocab_size=10_000,
+        special_tokens=["<|endoftext|>"],
+    )
+    ...  # serialize vocab and merges
+    report = {
+        "dataset": "TinyStories",
+        "vocab_size": 10_000,
+        "num_merges": ...,
+        "train_time_sec": ...,
+        "peak_rss_mb": ...,
+        "longest_tokens": ...,
+    }
+    return report
+```
+
 </details>
 
 <details class="solution">
@@ -314,6 +435,36 @@ vocab_size: 32_000
 | vocabulary diversity | lower | higher |
 | long tokens | simple words / names | URLs, markup, rare strings |
 | compression | easier | more variable |
+
+解题模板：
+
+```python
+def train_owt_tokenizer(data_path: str, out_dir: str):
+    """
+    Train a 32K OpenWebText tokenizer and return artifacts + diagnostics.
+    """
+    vocab, merges = train_bpe(
+        input_path=data_path,
+        vocab_size=32_000,
+        special_tokens=["<|endoftext|>"],
+    )
+    return {
+        "dataset": "OpenWebText",
+        "vocab_size": 32_000,
+        "num_merges": ...,
+        "bytes_per_token": ...,
+        "tokens_per_second": ...,
+        "longest_tokens": ...,
+        "most_frequent_tokens": ...,
+    }
+
+def compare_tokenizers(tinystories_tok, owt_tok, tinystories_sample, owt_sample):
+    """
+    Output:
+        table comparing bytes/token across tokenizer/data pairs.
+    """
+    ...
+```
 
 </details>
 

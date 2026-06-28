@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 3.4.4-3.5。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照代码骨架、边界条件和 sanity checks。
+使用方式：每题先看目标和验收标准，再按“解题模板”把 TODO 补完整；最后展开参考答案，对照边界条件、sanity checks 和实现细节。
 
 ## Exercise 1 · Stable Softmax
 
@@ -27,6 +27,23 @@ softmax(x, dim) -> same shape
 
 ```bash
 uv run pytest -k test_softmax_matches_pytorch
+```
+
+解题模板：
+
+```python
+def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
+    """
+    Input:
+        x: arbitrary shape tensor
+        dim: dimension to normalize
+    Output:
+        same shape, probabilities summing to 1 along dim
+    """
+    x_max = ...
+    shifted = ...
+    exp = ...
+    return ...
 ```
 
 </details>
@@ -88,6 +105,26 @@ output: (..., queries, d_v)
 ```bash
 uv run pytest -k test_scaled_dot_product_attention
 uv run pytest -k test_4d_scaled_dot_product_attention
+```
+
+解题模板：
+
+```python
+def scaled_dot_product_attention(Q, K, V, mask=None):
+    """
+    Input:
+        Q: (..., queries, d_k)
+        K: (..., keys, d_k)
+        V: (..., keys, d_v)
+        mask: (..., queries, keys), True means visible
+    Output:
+        (..., queries, d_v)
+    """
+    scores = ...
+    if mask is not None:
+        scores = ...
+    probs = ...
+    return ...
 ```
 
 </details>
@@ -154,6 +191,38 @@ output projection
 ```bash
 uv run pytest -k test_multihead_self_attention
 uv run pytest -k test_multihead_self_attention_with_rope
+```
+
+解题模板：
+
+```python
+class CausalMultiHeadSelfAttention(nn.Module):
+    def __init__(self, d_model, num_heads, rope=None, device=None, dtype=None):
+        super().__init__()
+        self.num_heads = ...
+        self.d_head = ...
+        self.q_proj = ...
+        self.k_proj = ...
+        self.v_proj = ...
+        self.o_proj = ...
+        self.rope = rope
+
+    def forward(self, x, token_positions=None):
+        """
+        Input:
+            x: (batch, seq, d_model)
+        Output:
+            same shape
+        """
+        q = ...  # project and split heads
+        k = ...
+        v = ...
+        if self.rope is not None:
+            q = ...
+            k = ...
+        mask = ...
+        out = ...
+        return ...
 ```
 
 </details>
@@ -224,6 +293,26 @@ out = y + FFN(RMSNorm(y))
 uv run pytest -k test_transformer_block
 ```
 
+解题模板：
+
+```python
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, rope=None, device=None, dtype=None):
+        super().__init__()
+        self.ln1 = ...
+        self.attn = ...
+        self.ln2 = ...
+        self.ffn = ...
+
+    def forward(self, x, token_positions=None):
+        """
+        Pre-norm residual block.
+        """
+        x = x + ...
+        x = x + ...
+        return x
+```
+
 </details>
 
 <details class="solution">
@@ -289,6 +378,33 @@ logits: (batch_size, sequence_length, vocab_size)
 
 ```bash
 uv run pytest -k test_transformer_lm
+```
+
+解题模板：
+
+```python
+class TransformerLM(nn.Module):
+    def __init__(self, vocab_size, context_length, num_layers, d_model, num_heads, d_ff, ...):
+        super().__init__()
+        self.context_length = context_length
+        self.token_embeddings = ...
+        self.rope = ...
+        self.layers = ...
+        self.ln_final = ...
+        self.lm_head = ...
+
+    def forward(self, token_ids):
+        """
+        Input:
+            token_ids: (batch, seq)
+        Output:
+            logits: (batch, seq, vocab_size)
+        """
+        positions = ...
+        x = ...
+        for layer in self.layers:
+            x = ...
+        return ...
 ```
 
 </details>
@@ -375,6 +491,29 @@ GPT-2 medium
 GPT-2 large
 GPT-2 XL
 GPT-2 XL with context_length = 16,384
+```
+
+解题模板：
+
+```python
+def transformer_accounting(vocab_size, context_length, num_layers, d_model, num_heads, d_ff):
+    """
+    Output:
+        parameter count and rough forward FLOPs by component
+    """
+    params = {
+        "embedding": ...,
+        "attention_per_layer": ...,
+        "ffn_per_layer": ...,
+        "norms_per_layer": ...,
+        "lm_head": ...,
+    }
+    flops = {
+        "qkv_o": ...,
+        "attention_qk_pv": ...,
+        "ffn": ...,
+    }
+    return {"params": params, "flops": flops}
 ```
 
 </details>

@@ -2,7 +2,7 @@
 
 对应 CS336 Assignment 1：Section 7。
 
-使用方式：每题先看目标和验收标准，确认自己知道要实现什么；再展开参考答案，对照实验设计、指标和结论写法。
+使用方式：每题先看目标和验收标准，再按“解题模板”补实验配置、指标和输出表；最后展开参考答案，对照实验设计和结论写法。
 
 ## Exercise 1 · Experiment Logger
 
@@ -33,6 +33,35 @@ generated samples
 CSV / JSONL / wandb run
 learning curve plot
 experiment log markdown
+```
+
+解题模板：
+
+```python
+class ExperimentLogger:
+    def __init__(self, path: str, config: dict):
+        self.path = path
+        self.config = config
+        self.run_id = ...
+        self.git_commit = ...
+
+    def log(self, step: int, **metrics):
+        row = {
+            "step": step,
+            "run_id": self.run_id,
+            "config": self.config,
+            "git_commit": self.git_commit,
+            **metrics,
+        }
+        ...
+
+def make_experiment_report(log_path: str) -> dict:
+    return {
+        "best_val_loss": ...,
+        "final_train_loss": ...,
+        "tokens_processed": ...,
+        "wall_clock": ...,
+    }
 ```
 
 </details>
@@ -105,6 +134,28 @@ divergence threshold
 edge-of-stability discussion
 ```
 
+解题模板：
+
+```python
+def run_lr_sweep(base_config, learning_rates: list[float]):
+    """
+    Output:
+        one row per LR with final loss, best val loss, divergence flag
+    """
+    rows = []
+    for lr in learning_rates:
+        config = {**base_config, "learning_rate": lr}
+        result = ...  # train/eval run
+        rows.append({
+            "lr": lr,
+            "final_train_loss": ...,
+            "best_val_loss": ...,
+            "diverged": ...,
+            "notes": ...,
+        })
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -170,6 +221,25 @@ GPU memory
 best LR per batch size
 ```
 
+解题模板：
+
+```python
+def run_batch_size_sweep(base_config, batch_sizes: list[int]):
+    rows = []
+    for bs in batch_sizes:
+        config = {**base_config, "batch_size": bs}
+        result = ...
+        rows.append({
+            "batch_size": bs,
+            "effective_batch_size": ...,
+            "tokens_per_sec": ...,
+            "step_time_ms": ...,
+            "max_memory_gb": ...,
+            "best_val_loss": ...,
+        })
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -217,6 +287,25 @@ sample text, at least 256 tokens or until EOS
 sampling config
 fluency comment
 two factors affecting quality
+```
+
+解题模板：
+
+```python
+def sample_checkpoint(model, tokenizer, prompts, temperatures, top_ps):
+    rows = []
+    for prompt in prompts:
+        for temperature in temperatures:
+            for top_p in top_ps:
+                text = generate(...)
+                rows.append({
+                    "prompt": prompt,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "sample": text,
+                    "comment": ...,
+                })
+    return rows
 ```
 
 </details>
@@ -275,6 +364,28 @@ activation / gradient norm observations
 normalization commentary
 ```
 
+解题模板：
+
+```python
+def run_remove_rmsnorm_ablation(base_config):
+    variants = [
+        {"name": "baseline_prenorm", "use_rmsnorm": True, "lr": base_config["lr"]},
+        {"name": "no_rmsnorm_same_lr", "use_rmsnorm": False, "lr": base_config["lr"]},
+        {"name": "no_rmsnorm_lower_lr", "use_rmsnorm": False, "lr": base_config["lr"] / 3},
+    ]
+    rows = []
+    for variant in variants:
+        result = ...
+        rows.append({
+            **variant,
+            "best_val_loss": ...,
+            "diverged": ...,
+            "grad_norm_p95": ...,
+            "activation_norm_p95": ...,
+        })
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -331,6 +442,25 @@ stability notes
 best LR if retuned
 ```
 
+解题模板：
+
+```python
+def run_norm_position_ablation(base_config):
+    variants = ["pre_norm", "post_norm", "post_norm_retuned_lr"]
+    rows = []
+    for variant in variants:
+        config = {**base_config, "block_type": variant}
+        result = ...
+        rows.append({
+            "variant": variant,
+            "lr": ...,
+            "best_val_loss": ...,
+            "stability": ...,
+            "notes": ...,
+        })
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -380,6 +510,26 @@ same tokenizer / data
 validation loss curve
 sample generation
 position information discussion
+```
+
+解题模板：
+
+```python
+def run_position_ablation(base_config):
+    variants = [
+        {"name": "rope", "use_rope": True},
+        {"name": "nope", "use_rope": False},
+    ]
+    rows = []
+    for variant in variants:
+        result = ...
+        rows.append({
+            "variant": variant["name"],
+            "best_val_loss": ...,
+            "sample_text": ...,
+            "long_context_behavior": ...,
+        })
+    return rows
 ```
 
 </details>
@@ -434,6 +584,28 @@ validation loss comparison
 gating discussion
 ```
 
+解题模板：
+
+```python
+def run_ffn_ablation(base_config):
+    variants = [
+        {"name": "swiglu", "ffn_type": "swiglu", "d_ff": ...},
+        {"name": "silu", "ffn_type": "silu", "d_ff": ...},
+    ]
+    rows = []
+    for variant in variants:
+        params = ...
+        result = ...
+        rows.append({
+            "variant": variant["name"],
+            "params": params,
+            "tokens_per_sec": ...,
+            "best_val_loss": ...,
+            "notes": ...,
+        })
+    return rows
+```
+
 </details>
 
 <details class="solution">
@@ -484,6 +656,23 @@ fluency analysis
 分析重点：
 
 OpenWebText 更杂、更长尾、更难压缩；同样模型和 compute budget 下，loss 和 generation quality 不能直接和 TinyStories 等价比较。
+
+解题模板：
+
+```python
+def run_openwebtext_experiment(config):
+    result = ...  # train on OWT
+    sample = ...  # generate text from selected prompts
+    return {
+        "dataset": "OpenWebText",
+        "tokenizer": ...,
+        "training_tokens": ...,
+        "best_val_loss": ...,
+        "tokens_per_sec": ...,
+        "generated_sample": sample,
+        "tinystories_comparison": ...,
+    }
+```
 
 </details>
 
@@ -538,6 +727,24 @@ final validation loss
 wall-clock-bounded learning curve
 description of modification
 evidence the modification helped
+```
+
+解题模板：
+
+```python
+def run_leaderboard_modification(base_config, modification_name: str):
+    baseline = ...
+    modified_config = apply_modification(base_config, modification_name)
+    modified = ...
+    return {
+        "modification": modification_name,
+        "baseline_val_loss": ...,
+        "modified_val_loss": ...,
+        "delta": ...,
+        "tokens_per_sec_delta": ...,
+        "evidence": ...,
+        "failure_modes": ...,
+    }
 ```
 
 </details>
