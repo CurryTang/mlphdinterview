@@ -408,6 +408,12 @@ const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
 
 const llmNoteDefinitions = [
   createTutorialDefinition(
+    'LLM八股 1 · World Model',
+    'LLMInterview01 World Model.md',
+    null,
+    { directory: 'LLMInterview', category: 'Models & Agents', difficulty: 'Placeholder' },
+  ),
+  createTutorialDefinition(
     '强化学习练习',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
@@ -583,7 +589,7 @@ const noteSections = [
   {
     id: 'llm',
     title: 'LLM八股',
-    description: 'RL infra self-check questions and interview drills',
+    description: 'LLM concepts, agent training, RL practice, and interview drills',
     notes: llmNotes,
   },
   {
