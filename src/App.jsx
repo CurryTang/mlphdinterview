@@ -13,6 +13,106 @@ const markdownModules = import.meta.glob('../notes/**/*.md', {
   query: '?url',
 });
 
+const isDraftMode = import.meta.env.DEV;
+
+const llmDraftOverviewContent = isDraftMode
+  ? `# LLM八股 Overview · JD 高频主题拆解
+
+## Motivation
+
+这组笔记先按岗位需求反推选题，而不是按教材目录铺开。口径是：排除 Python、PyTorch、语言、框架、infra、system、GPU、cloud，只保留算法、模型、训练、评测、安全和数据构造相关关键词。
+
+基数是 1,673 条算法相关 JD，计数是“提到该关键词的 JD 数”。高频信号集中在 eval、安全、实验设计、agent、检索记忆、alignment、RL、SFT、pre-training、优化、数据、多模态和 personalization。
+
+## 高频关键词
+
+| Rank | 关键词 | JD 数 | 典型方向 |
+| --- | --- | ---: | --- |
+| 1 | Evaluation / Benchmarks | 482 | eval、benchmark、回归测试、上线质量 |
+| 2 | LLM | 342 | 训练、适配、能力提升、应用集成 |
+| 3 | Computer Vision | 319 | 图像/视频理解、VLM、机器人/自动驾驶视觉 |
+| 4 | Safety | 306 | 风险控制、误用防护、安全评测、guardrail |
+| 5 | Experimentation | 301 | ablation、A/B、指标分析、实验设计 |
+| 6 | Autonomy / Robotics | 283 | 感知、规划、决策、控制 |
+| 7 | Agents | 282 | 工具使用、多步任务、软件操作、workflow |
+| 8 | RAG / Retrieval | 211 | embedding、语义搜索、知识库问答、上下文召回 |
+| 9 | NLP | 176 | 文本理解、生成、分类、对话 |
+| 10 | Reinforcement Learning | 160 | RLHF/RLAIF、策略优化、agent 行为优化 |
+| 11 | Alignment | 155 | 人类偏好、安全规则、产品目标、政策约束 |
+| 12 | Fine-tuning / SFT | 144 | SFT、LoRA、领域适配、任务适配 |
+| 13 | Optimization | 137 | 训练目标、排序策略、决策策略、质量优化 |
+| 14 | Reasoning | 126 | 多步推理、规划、代码/数学/工具能力 |
+| 15 | Data Curation / Datasets | 109 | 数据筛选、清洗、组织、覆盖面 |
+| 16 | Multimodal | 107 | VLM、语音、多模态 agent |
+| 17 | Foundation Models | 102 | 基础模型训练、扩展、评测、适配 |
+| 18 | Post-training | 96 | SFT、RLHF、偏好优化、agent 调优 |
+| 19 | Recommendation / Ranking | 92 | 推荐、排序、搜索结果优化、召回/ranker |
+| 20 | Speech / Audio | 90 | ASR、TTS、音频理解、voice agent |
+| 21 | Personalization | 80 | 用户建模、个性化 assistant、feed 排序 |
+| 22 | Planning | 75 | 任务规划、路径规划、多步决策 |
+| 23 | Search | 75 | query understanding、召回、排序 |
+| 24 | Simulation | 73 | 仿真训练、测试、验证 |
+| 25 | Model Behavior | 65 | 拒答、偏差、越狱、风险行为 |
+| 26 | Data Quality | 59 | 噪声过滤、一致性检查、质量指标 |
+| 27 | Causal Inference | 50 | 干预效果、实验解释、策略影响 |
+| 28 | Annotation / Labeling | 42 | label schema、人类反馈、标注质量 |
+| 29 | Transformers | 41 | transformer 建模、训练、适配 |
+| 30 | Red Teaming | 38 | 越狱、安全漏洞、滥用路径、失败案例 |
+
+## 1. Evaluation
+
+Placeholder：eval taxonomy、benchmark design、regression eval、online/offline eval、judge reliability、model behavior tracking。
+
+## 2. Safety
+
+Placeholder：policy、risk taxonomy、misuse prevention、jailbreak eval、red teaming、guardrail 设计。
+
+## 3. 统计实验设计
+
+Placeholder：A/B testing、ablation、power analysis、metric design、causal inference、实验解释。
+
+## 4. Agents
+
+Placeholder：tool use、planning、task decomposition、trajectory、environment feedback、failure recovery。
+
+## 5. Search & Memory
+
+Placeholder：RAG、retrieval、semantic search、memory store、query understanding、context construction。
+
+## 6. Alignment
+
+Placeholder：preference modeling、policy constraints、helpful/harmless/honest、model behavior shaping。
+
+## 7. RLVR & Agentic RL
+
+Placeholder：RLHF、RLAIF、RLVR、GRPO/PPO、verifiable reward、agent rollout、tool-use reward。
+
+## 8. SFT
+
+Placeholder：instruction tuning、LoRA、dataset mixture、format learning、domain adaptation、failure modes。
+
+## 9. Pre-training
+
+Placeholder：data mixture、scaling behavior、objective、curriculum、contamination、dedup。
+
+## 10. 优化器
+
+Placeholder：AdamW、learning rate schedule、weight decay、gradient clipping、stability、large-batch training。
+
+## 11. 数据
+
+Placeholder：data curation、data quality、annotation、labeling、synthetic data、filtering、coverage。
+
+## 12. 多模态
+
+Placeholder：VLM、speech/audio、video understanding、multimodal alignment、evaluation。
+
+## 13. Personalization
+
+Placeholder：user modeling、personalized ranking、assistant memory、preference adaptation、privacy boundary。
+`
+  : '';
+
 const mlsysNoteDefinitions = [
   createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md'),
   createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md'),
@@ -261,6 +361,24 @@ const llmNotes = llmNoteDefinitions.map((definition) => ({
   },
 }));
 
+const draftNoteDefinitions = isDraftMode
+  ? [
+      createDraftTutorialDefinition(
+        'LLM八股 Overview · JD 高频主题拆解',
+        'Draft LLM Interview Overview.md',
+        llmDraftOverviewContent,
+      ),
+    ]
+  : [];
+
+const draftNotes = draftNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createInlineVariant(definition.zhFileName, definition.content),
+    en: createInlineVariant('', undefined),
+  },
+}));
+
 const quantNoteDefinitions = [
   createTutorialDefinition(
     'Quant 1 · Markov Chains: Expected Time',
@@ -443,6 +561,16 @@ const noteSections = [
     description: 'Core data structure and algorithm interview drills',
     notes: leetcodeNotes,
   },
+  ...(isDraftMode
+    ? [
+        {
+          id: 'drafts',
+          title: '草稿区',
+          description: 'Local-only drafts. Visible in dev, hidden from production builds.',
+          notes: draftNotes,
+        },
+      ]
+    : []),
 ];
 
 const tutorials = noteSections.flatMap((section) =>
@@ -517,6 +645,32 @@ function createVariant(fileName, directory) {
     fileName,
     url: typeof url === 'string' ? url : null,
   };
+}
+
+function createInlineVariant(fileName, content) {
+  return {
+    fileName,
+    url: null,
+    content,
+  };
+}
+
+function createDraftTutorialDefinition(title, zhFileName, content) {
+  return {
+    id: zhFileName,
+    title,
+    fileName: zhFileName,
+    zhFileName,
+    enFileName: '',
+    directory: 'Drafts',
+    category: 'Draft',
+    difficulty: 'Draft',
+    content,
+  };
+}
+
+function variantHasContent(variant) {
+  return Boolean(variant?.url || typeof variant?.content === 'string');
 }
 
 function normalizePathToken(rawValue) {
@@ -2149,13 +2303,13 @@ function App() {
     tutorials.find((tutorial) => tutorial.id === selectedTutorialId) ?? filteredTutorials[0] ?? tutorials[0] ?? null;
 
   const activeLanguage =
-    selectedTutorial?.variants[language]?.url ? language : 'zh';
+    variantHasContent(selectedTutorial?.variants[language]) ? language : 'zh';
   const selectedVariant = selectedTutorial?.variants[activeLanguage] ?? null;
   const contentKey =
-    selectedTutorial && selectedVariant?.url ? `${selectedTutorial.id}:${activeLanguage}` : '';
+    selectedTutorial && selectedVariant ? `${selectedTutorial.id}:${activeLanguage}` : '';
 
   useEffect(() => {
-    if (!selectedVariant?.url || !contentKey) {
+    if (!selectedVariant?.url || selectedVariant?.content !== undefined || !contentKey) {
       return;
     }
 
@@ -2190,12 +2344,19 @@ function App() {
       });
   }, [contentByKey, contentKey, errorByKey, selectedVariant]);
 
-  const hasSelectedContent = contentKey
+  const selectedInlineContent = selectedVariant?.content;
+  const hasSelectedContent = selectedInlineContent !== undefined || (contentKey
     ? Object.prototype.hasOwnProperty.call(contentByKey, contentKey)
-    : false;
-  const selectedContent = hasSelectedContent ? contentByKey[contentKey] : '';
+    : false);
+  const selectedContent = selectedInlineContent !== undefined
+    ? selectedInlineContent
+    : hasSelectedContent
+      ? contentByKey[contentKey]
+      : '';
   const selectedError = contentKey ? errorByKey[contentKey] : '';
-  const selectedIsLoading = Boolean(selectedTutorial && selectedVariant?.url && !hasSelectedContent && !selectedError);
+  const selectedIsLoading = Boolean(
+    selectedTutorial && selectedVariant?.url && selectedInlineContent === undefined && !hasSelectedContent && !selectedError,
+  );
 
   const normalizedSelectedContent = useMemo(
     () => normalizeObsidianMarkdown(selectedContent),

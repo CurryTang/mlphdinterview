@@ -155,4 +155,16 @@ describe('App', () => {
     expect(screen.getByText('2 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 1 · 无状态设计范式/i })).toBeInTheDocument();
   });
+
+  it('shows local-only draft notes in development mode', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: '草稿区' }));
+
+    expect(await screen.findByRole('heading', { name: '草稿区' })).toBeInTheDocument();
+    expect(screen.getByText('1 notes in this section')).toBeInTheDocument();
+    expect(screen.getAllByText(/LLM八股 Overview · JD 高频主题拆解/).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('heading', { name: /Motivation/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /7\. RLVR & Agentic RL/ })).toBeInTheDocument();
+  });
 });
