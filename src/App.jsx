@@ -174,6 +174,419 @@ Placeholder：user modeling、personalized ranking、assistant memory、preferen
 `
   : '';
 
+const probabilityDraftContent = isDraftMode
+  ? `# Quant 草稿 · 概率基础公式与记忆框架
+
+> Draft：这一页先放概率面试里最常用的基础工具。内容按解题动作重排，不按截图顺序组织；后续可以继续加条件期望、Bayes、order statistics、Poisson process 和 martingale。
+
+## 0. 先按题型选工具
+
+很多概率题不是难在公式本身，而是难在判断应该用哪一个视角。可以先问四个问题：
+
+~~~mermaid
+flowchart TD
+  A[看到随机题] --> B{问的是概率还是期望}
+  B -->|概率| C{是否是多个事件的并集}
+  C -->|是| D[容斥 / 补集 / union bound]
+  C -->|否| E[条件概率 / Bayes / 分布计算]
+  B -->|期望| F{变量是否容易拆成指示变量}
+  F -->|是| G[线性期望]
+  F -->|否| H{是否是非负整数等待时间}
+  H -->|是| I[尾和公式]
+  H -->|否| J{是否是变换后的随机变量}
+  J -->|是| K[变量变换 / Jacobian]
+  J -->|否| L[按定义求和或积分]
+~~~
+
+一个实用记忆：
+
+| 题目关键词 | 第一反应 |
+| --- | --- |
+| 至少一个、任意一个、并集 | 容斥或补集 |
+| 平均值、总次数、贡献 | 期望定义或线性期望 |
+| 等多久、第一次成功 | geometric waiting time 或 first-step analysis |
+| 非负整数变量 | 尾和公式 |
+| $Y=g(X)$、密度变换 | 变量变换 |
+| 多维坐标变换 | Jacobian determinant |
+
+---
+
+## 1. 期望：先把随机变量写清楚
+
+期望是对所有可能取值做加权平均。离散随机变量：
+
+$$
+\mathbb{E}[X] = \sum_x x \cdot \mathbb{P}(X=x)
+$$
+
+连续随机变量：
+
+$$
+\mathbb{E}[X] = \int_{-\infty}^{\infty} x f_X(x)\,dx
+$$
+
+面试里更常用的是线性期望：
+
+$$
+\mathbb{E}\left[\sum_i X_i\right] = \sum_i \mathbb{E}[X_i]
+$$
+
+注意：线性期望不要求 $X_i$ 独立。很多计数题会把一个复杂变量拆成很多 indicator：
+
+$$
+X = I_1 + I_2 + \cdots + I_n
+$$
+
+然后：
+
+$$
+\mathbb{E}[X] = \sum_i \mathbb{P}(I_i=1)
+$$
+
+记忆图：
+
+~~~mermaid
+flowchart LR
+  A[复杂计数 X] --> B[拆成 indicator]
+  B --> C["X = I1 + I2 + ... + In"]
+  C --> D["E[X] = sum P(Ii = 1)"]
+  D --> E[不需要独立]
+~~~
+
+### 小例子
+
+10 个人随机入座，问坐在自己座位上的人数期望。令 $I_i$ 表示第 $i$ 个人坐对位置：
+
+$$
+\mathbb{E}[I_i] = \mathbb{P}(I_i=1)=\frac{1}{10}
+$$
+
+所以：
+
+$$
+\mathbb{E}\left[\sum_{i=1}^{10} I_i\right]
+= 10\cdot \frac{1}{10}=1
+$$
+
+---
+
+## 2. 尾和公式：不用先求完整分布
+
+如果 $N$ 是非负整数随机变量，那么：
+
+$$
+\mathbb{E}[N] = \sum_{k=1}^{\infty}\mathbb{P}(N\ge k)
+$$
+
+这个公式的直觉是：一个取值为 $N$ 的样本，会对前 $N$ 个门槛各贡献 1 次。
+
+~~~text
+N = 4
+
+threshold: 1  2  3  4  5  6 ...
+contrib:   1  1  1  1  0  0 ...
+sum = 4
+~~~
+
+对每个样本都成立，取期望后就是尾和公式。
+
+连续非负随机变量也有对应版本：
+
+$$
+\mathbb{E}[X] = \int_0^\infty \mathbb{P}(X>x)\,dx
+$$
+
+如果 $X$ 可以为负，则可以拆成正负两边：
+
+$$
+\mathbb{E}[X]
+=
+\int_0^\infty \mathbb{P}(X>x)\,dx
+-
+\int_0^\infty \mathbb{P}(X<-x)\,dx
+$$
+
+等价地，也可以用 CDF 写成：
+
+$$
+\mathbb{E}[X]
+=
+\int_0^\infty (1-F_X(x))\,dx
+-
+\int_{-\infty}^{0} F_X(x)\,dx
+$$
+
+### 什么时候用
+
+尾和公式适合这些题：
+
+- 问等待时间，但直接求 $P(N=n)$ 很麻烦。
+- 问最大值或覆盖时间，$P(N\ge k)$ 比 $P(N=k)$ 好写。
+- 问出现次数或持续长度，事件可以按门槛分层。
+
+---
+
+## 3. 独立重复试验的等待时间
+
+如果每次试验独立，事件成功概率为 $p$，等待第一次成功所需的试验次数记为 $T$，那么：
+
+$$
+\mathbb{P}(T>k)=(1-p)^k
+$$
+
+用尾和公式：
+
+$$
+\mathbb{E}[T]
+=
+\sum_{k=0}^{\infty}\mathbb{P}(T>k)
+=
+\sum_{k=0}^{\infty}(1-p)^k
+=
+\frac{1}{p}
+$$
+
+注意这里 $T$ 从 1 开始计数，所以尾和写成：
+
+$$
+\mathbb{E}[T]=\sum_{k=0}^{\infty}\mathbb{P}(T>k)
+$$
+
+也可以用 first-step analysis：
+
+$$
+E = p\cdot 1 + (1-p)(1+E)
+$$
+
+解得：
+
+$$
+E=\frac{1}{p}
+$$
+
+记忆图：
+
+~~~mermaid
+stateDiagram-v2
+  [*] --> Try
+  Try --> Done: success p
+  Try --> Try: fail 1-p, pay one more trial
+  Done --> [*]
+~~~
+
+---
+
+## 4. 容斥：并集不要重复数
+
+容斥处理的是多个事件的并集。两个事件时：
+
+$$
+\mathbb{P}(A\cup B)
+=
+\mathbb{P}(A)+\mathbb{P}(B)-\mathbb{P}(A\cap B)
+$$
+
+三个事件时：
+
+$$
+\mathbb{P}(A\cup B\cup C)
+=
+\mathbb{P}(A)+\mathbb{P}(B)+\mathbb{P}(C)
+-\mathbb{P}(A\cap B)-\mathbb{P}(A\cap C)-\mathbb{P}(B\cap C)
++\mathbb{P}(A\cap B\cap C)
+$$
+
+一般形式可以记成：
+
+$$
+\mathbb{P}\left(\bigcup_{i=1}^n A_i\right)
+=
+\sum_i \mathbb{P}(A_i)
+-
+\sum_{i<j}\mathbb{P}(A_i\cap A_j)
++
+\sum_{i<j<k}\mathbb{P}(A_i\cap A_j\cap A_k)
+-\cdots
+$$
+
+符号规律：
+
+~~~text
+单个事件:     加
+两个交集:     减
+三个交集:     加
+四个交集:     减
+...
+~~~
+
+可视化记忆：
+
+~~~mermaid
+flowchart LR
+  A[先把每个事件都加上] --> B[重叠区域被加多了]
+  B --> C[减掉两两交集]
+  C --> D[三重交集被减过头]
+  D --> E[加回三重交集]
+  E --> F[继续交替修正]
+~~~
+
+### 常见捷径：先算补集
+
+如果题目问“至少一个成功”，通常更容易写成：
+
+$$
+\mathbb{P}(\text{at least one success})
+=
+1-\mathbb{P}(\text{no success})
+$$
+
+容斥是通用方法，补集是很多“至少一个”题的简化版。
+
+---
+
+## 5. 一维变量变换：密度要乘伸缩因子
+
+设 $Y=g(X)$，其中 $g$ 单调且可逆。如果 $X$ 有密度 $f_X(x)$，那么：
+
+$$
+f_Y(y)
+=
+f_X(g^{-1}(y))\left|\frac{d}{dy}g^{-1}(y)\right|
+$$
+
+直觉：概率质量守恒。
+
+$$
+f_X(x)\,dx \approx f_Y(y)\,dy
+$$
+
+所以密度变换时，不只要把 $x$ 换成 $g^{-1}(y)$，还要乘上长度缩放因子：
+
+$$
+\left|\frac{dx}{dy}\right|
+$$
+
+记忆图：
+
+~~~mermaid
+flowchart LR
+  X["X space: small interval dx"] --> G["y = g(x)"]
+  G --> Y["Y space: interval dy"]
+  Y --> J["density adjusts by |dx/dy|"]
+~~~
+
+### 小例子
+
+如果 $Y=2X$，那么 $x=y/2$，并且：
+
+$$
+\left|\frac{dx}{dy}\right|=\frac12
+$$
+
+所以：
+
+$$
+f_Y(y)=f_X(y/2)\cdot \frac12
+$$
+
+区间被拉长 2 倍，密度就要压低一半。
+
+---
+
+## 6. 多维变量变换：Jacobian 是面积或体积缩放
+
+多维情况下，设：
+
+$$
+Y=g(X),\qquad X=h(Y)
+$$
+
+如果变换可逆，那么联合密度满足：
+
+$$
+f_Y(y)
+=
+f_X(h(y))\cdot
+\left|
+\det\left(
+\frac{\partial h(y)}{\partial y}
+\right)
+\right|
+$$
+
+这里的 determinant 是 Jacobian determinant。它表示局部面积、体积或高维体积的缩放比例。
+
+~~~mermaid
+flowchart LR
+  A["x-space small rectangle"] --> B["transform y = g(x)"]
+  B --> C["y-space parallelogram"]
+  C --> D["area scaling = |det J|"]
+  D --> E["density rescales inversely"]
+~~~
+
+常见例子是二维极坐标：
+
+$$
+x=r\cos\theta,\qquad y=r\sin\theta
+$$
+
+Jacobian determinant 是：
+
+$$
+\left|
+\det
+\begin{pmatrix}
+\frac{\partial x}{\partial r} & \frac{\partial x}{\partial \theta}\\
+\frac{\partial y}{\partial r} & \frac{\partial y}{\partial \theta}
+\end{pmatrix}
+\right|
+= r
+$$
+
+所以：
+
+$$
+dx\,dy = r\,dr\,d\theta
+$$
+
+这就是为什么极坐标积分里会多一个 $r$。
+
+---
+
+## 7. 复习卡片
+
+| 方法 | 公式 | 什么时候用 |
+| --- | --- | --- |
+| 期望定义 | $\mathbb{E}[X]=\sum_x xP(X=x)$ 或 $\int xf_X(x)dx$ | 分布已经清楚 |
+| 线性期望 | $\mathbb{E}[\sum_i X_i]=\sum_i\mathbb{E}[X_i]$ | 计数题、indicator 拆解 |
+| 尾和公式 | $\mathbb{E}[N]=\sum_{k\ge1}P(N\ge k)$ | 非负整数、等待时间、最大值 |
+| 几何等待 | $\mathbb{E}[T]=1/p$ | 独立重复试验直到成功 |
+| 容斥 | 加单项、减两两、加三重、交替 | 多事件并集 |
+| 一维变换 | $f_Y(y)=f_X(g^{-1}(y))|(g^{-1})'(y)|$ | $Y=g(X)$ |
+| 多维变换 | $f_Y(y)=f_X(h(y))|\det(\partial h/\partial y)|$ | 坐标变换、联合密度 |
+
+## 8. 最短记忆版
+
+~~~text
+期望题:
+  能拆 indicator 就拆 indicator。
+  不能拆但变量非负，就试 tail sum。
+
+等待题:
+  独立重复成功概率 p -> 1/p。
+  状态依赖 -> first-step analysis。
+
+并集题:
+  先想补集。
+  补集不好算，再用容斥。
+
+密度变换:
+  先反解原变量。
+  再乘 Jacobian。
+~~~
+`
+  : '';
+
 const mlsysNoteDefinitions = [
   createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md'),
   createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md'),
@@ -434,6 +847,11 @@ const draftNoteDefinitions = isDraftMode
         'LLM八股 Overview · JD 高频主题拆解',
         'Draft LLM Interview Overview.md',
         llmDraftOverviewContent,
+      ),
+      createDraftTutorialDefinition(
+        'Quant 草稿 · 概率基础公式与记忆框架',
+        'Draft Probability Basics.md',
+        probabilityDraftContent,
       ),
     ]
   : [];
