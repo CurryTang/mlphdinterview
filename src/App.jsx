@@ -633,6 +633,571 @@ $$
 `
   : '';
 
+const systemDesignDbScalingDraftContent = isDraftMode
+  ? `# System Design 草稿 · 数据库扩展三件套
+
+> Draft：这篇先作为 System Design pattern 记录。主线是主从复制、主主复制和数据分区，以及它们在 Feature Store / Embedding Store / Online KV Store 里的类比。
+
+## 0. 先判断压力来自哪里
+
+数据库扩展题不要一上来就说“加缓存”或“上分片”。先判断系统瓶颈：
+
+~~~mermaid
+flowchart TD
+  A[数据库压力] --> B{主要压力是什么}
+  B -->|读请求太多| C[主从复制 + 读写分离]
+  B -->|主库不可用风险| D[主主 / 主备 / 自动故障切换]
+  B -->|写请求太多| E[数据分区 / Sharding]
+  B -->|数据量太大| E
+  C --> F[代价: replication lag / stale read]
+  D --> G[代价: 冲突处理 / failover 复杂]
+  E --> H[代价: 跨分片查询 / rebalancing / hot shard]
+~~~
+
+可以先记住一句：
+
+| 模式 | 解决什么 | 不解决什么 |
+| --- | --- | --- |
+| 主从复制 | 读扩展、备份、读侧容灾 | 不扩展主库写入能力 |
+| 主主复制 | 主库故障时更快切换 | 不让写入能力线性翻倍 |
+| 数据分区 | 容量扩展、写入扩展、索引变小 | 增加查询路由和跨分片复杂度 |
+
+---
+
+## 1. 主从复制：用副本扩展读取和容灾能力
+
+主从复制的基本结构是：
+
+~~~text
+Primary / Master  ->  Replica / Slave
+~~~
+
+主库接收写入，从库复制主库数据。所有会修改数据的操作都进入主库：
+
+~~~text
+INSERT
+UPDATE
+DELETE
+CREATE TABLE
+ALTER TABLE
+~~~
+
+从库通常不直接接收业务写入，而是跟随主库的变更日志更新本地数据。
+
+### 1.1 复制链路怎么工作
+
+以 MySQL 为例，主从复制的核心是 binlog。主库执行数据修改后，会把变更写进 binary log；从库持续拉取主库 binlog 的增量，写入 relay log，再在本地重放这些操作。
+
+~~~mermaid
+sequenceDiagram
+  participant C as Client
+  participant P as Primary
+  participant B as Binlog
+  participant R as Replica
+  participant L as Relay Log
+
+  C->>P: write request
+  P->>P: execute mutation
+  P->>B: append change event
+  R->>B: pull changes after known position
+  R->>L: write relay log
+  R->>R: replay relay log
+~~~
+
+本质上是三步：
+
+~~~text
+主库记录变更；
+从库拉取变更；
+从库本地重放变更。
+~~~
+
+### 1.2 主从复制的用途
+
+主从复制最常见的用途有四个。
+
+第一，读写分离。写请求走主库，读请求分摊到多个从库：
+
+~~~text
+Write  -> Primary
+Read   -> Replica 1 / Replica 2 / Replica 3
+~~~
+
+例如：
+
+| 请求 | 路由 |
+| --- | --- |
+| 用户浏览商品 | Replica |
+| 用户查看订单列表 | Replica |
+| 用户修改地址 | Primary |
+| 用户下单付款 | Primary |
+
+这适合读多写少系统。需要强调：主从复制扩展的是读能力，不是写能力。
+
+第二，查询隔离。不同从库可以承担不同类型的读任务：
+
+~~~text
+Replica 1: 线上普通查询
+Replica 2: 报表查询
+Replica 3: 备份任务
+~~~
+
+这样慢查询、报表、备份不直接拖垮主库。
+
+第三，零停机备份。主库继续服务线上请求，从库执行备份任务。
+
+第四，从库故障转移。某个从库挂了，可以从读流量池摘掉，请求转向其他副本。
+
+### 1.3 核心代价：复制延迟
+
+主从复制通常是异步的。主库完成写入后可以先返回成功，不必等待所有从库都重放完成。
+
+这会带来 stale read：
+
+~~~text
+用户把昵称 Alice 改成 Bob
+  -> 写入 Primary 成功
+  -> 用户立刻刷新页面
+  -> 读请求被路由到 Replica
+  -> Replica 还没同步
+  -> 页面仍显示 Alice
+~~~
+
+所以主从复制的核心 trade-off 是：
+
+~~~text
+提高读取能力和可用性；
+但读副本可能短暂落后。
+~~~
+
+常见处理方式：
+
+| 场景 | 策略 |
+| --- | --- |
+| 刚写完立刻读自己的数据 | read-your-writes：短时间强制读主库 |
+| 可接受短暂旧数据 | 读从库 |
+| 强一致关键路径 | 写主库后读主库，或使用同步复制/多数派协议 |
+| 副本落后严重 | 从读池摘掉落后 replica |
+
+---
+
+## 2. 主主复制：高可用优先，不是写入翻倍
+
+主从复制里，主库是唯一写入口。主库挂了以后，需要选新主库、切流量、处理旧主库恢复后的状态。主主复制把两个节点都做成可写节点：
+
+~~~text
+Primary A  <->  Primary B
+~~~
+
+A 的写入复制到 B，B 的写入也复制到 A。这通常用于双机热备。
+
+~~~mermaid
+flowchart LR
+  C[Client] --> A[Primary A]
+  C --> B[Primary B]
+  A -- replicate changes --> B
+  B -- replicate changes --> A
+~~~
+
+### 2.1 如何避免复制循环
+
+如果 A 的写入复制到 B，B 又原样复制回 A，就会无限循环。MySQL 复制里每台服务器有 server-id，变更日志会记录事件来源。
+
+因此：
+
+~~~text
+A 产生事件 e
+  -> B 收到 e
+  -> B 看到 e 来自 A
+  -> B 不再把 e 当作自己的新事件复制回 A
+~~~
+
+### 2.2 为什么它不等于写扩展
+
+主主复制看起来有两个主库，但并不意味着写入能力翻倍。原因是两个节点最终都要保存完整数据集，也都要执行对方复制来的写入。
+
+写到 A：
+
+~~~text
+Client -> A
+A 执行写入
+A 写 binlog
+B 拉取并重放
+~~~
+
+写到 B：
+
+~~~text
+Client -> B
+B 执行写入
+B 写 binlog
+A 拉取并重放
+~~~
+
+最终 A 和 B 都要承担完整数据、完整索引、完整存储和复制写入。因此主主复制更适合被理解为高可用方案，而不是水平写扩展方案。
+
+### 2.3 主主复制的代价
+
+主主复制会引入：
+
+~~~text
+双边都保存完整数据；
+双边都执行所有写入；
+复制增加磁盘和网络 I/O；
+两边同时写同一行可能冲突；
+failover 和旧主恢复更复杂。
+~~~
+
+如果业务真的需要写扩展，通常要进入数据分区，而不是只靠两个 master。
+
+---
+
+## 3. 数据分区：用 Sharding 扩展容量和写入
+
+复制保存多份相同数据；分区保存不同数据。
+
+~~~text
+Replication: 每台机器有完整副本
+Sharding: 每台机器只保存一部分数据
+~~~
+
+如果单库数据太大，或者单个主库写入压力太高，就需要分片。
+
+### 3.1 基本思想
+
+假设用户表按 user_id 分为 4 个 shard：
+
+~~~text
+user_id % 4 = 0  ->  Shard 0
+user_id % 4 = 1  ->  Shard 1
+user_id % 4 = 2  ->  Shard 2
+user_id % 4 = 3  ->  Shard 3
+~~~
+
+访问 user_id = 123：
+
+~~~text
+123 % 4 = 3
+访问 Shard 3
+~~~
+
+这样每台机器只负责一部分用户，容量和写入压力都会被分散。
+
+### 3.2 Sharding key 是设计核心
+
+好的 sharding key 需要满足三件事。
+
+第一，查询时经常带这个 key。
+
+如果大部分查询是：
+
+~~~sql
+SELECT * FROM orders WHERE user_id = ?
+~~~
+
+那么 user_id 很自然。如果 sharding key 在查询里很少出现，就只能广播到所有 shard。
+
+第二，分布要均匀。
+
+按国家分片可能导致 US shard 过热；hash(user_id) 通常更均匀。
+
+第三，减少跨分片查询。
+
+理想查询：
+
+~~~text
+定位 shard -> 查询 -> 返回
+~~~
+
+跨分片查询：
+
+~~~mermaid
+flowchart TD
+  Q[Query] --> S0[Shard 0]
+  Q --> S1[Shard 1]
+  Q --> S2[Shard 2]
+  Q --> S3[Shard 3]
+  S0 --> M[Merge / Sort / Aggregate]
+  S1 --> M
+  S2 --> M
+  S3 --> M
+  M --> R[Response]
+~~~
+
+跨分片 join、跨分片事务、全局排序都会明显变复杂。
+
+### 3.3 分片的收益和代价
+
+收益：
+
+~~~text
+数据量分散到多台机器；
+写入压力分散到多个 shard；
+每个节点维护更小索引；
+单机存储和内存压力下降；
+可以通过增加 shard 扩容。
+~~~
+
+代价：
+
+~~~text
+跨分片查询复杂；
+跨分片事务复杂；
+全局唯一 ID 需要设计；
+扩容和数据迁移困难；
+应用层要处理路由、重试和部分失败。
+~~~
+
+一句话：
+
+~~~text
+复制让相同数据有更多副本；
+分片让不同机器承担不同数据。
+~~~
+
+---
+
+## 4. 复制和分片通常一起用
+
+真实系统里经常是每个 shard 内部再做主从复制：
+
+~~~mermaid
+flowchart TD
+  Router[Query Router] --> S0P[Shard 0 Primary]
+  Router --> S1P[Shard 1 Primary]
+  Router --> S2P[Shard 2 Primary]
+
+  S0P --> S0R1[Shard 0 Replica]
+  S0P --> S0R2[Shard 0 Replica]
+  S1P --> S1R1[Shard 1 Replica]
+  S1P --> S1R2[Shard 1 Replica]
+  S2P --> S2R1[Shard 2 Replica]
+  S2P --> S2R2[Shard 2 Replica]
+~~~
+
+这样同时获得：
+
+~~~text
+分片带来的容量和写入扩展；
+复制带来的读扩展、备份和高可用。
+~~~
+
+总结：
+
+~~~text
+复制解决多读、多副本、高可用；
+分片解决大数据量、高写入、单机容量瓶颈。
+~~~
+
+---
+
+## 5. Feature Store 里的对应设计
+
+Feature Store 可以理解为给模型服务提供在线特征的分布式状态系统。
+
+在线预测时，模型不只需要当前请求字段，还需要历史上下文，例如：
+
+| 场景 | 需要的特征 |
+| --- | --- |
+| 风控 | 用户过去 5 分钟交易次数、设备关联用户数、商户拒付率 |
+| 推荐 | 用户最近点击、物品曝光点击统计、用户物品交互历史 |
+| 广告 | 用户兴趣、广告主预算状态、实时点击率 |
+
+这些特征不能在请求时临时扫描日志计算，通常要提前 materialize 到 Online Feature Store。
+
+### 5.1 Feature Store 中的复制
+
+类比数据库：
+
+| 数据库 | Feature Store |
+| --- | --- |
+| Primary 接收写入 | feature primary 接收特征更新 |
+| Replica 复制数据 | feature replica 复制特征状态 |
+| 应用读副本 | model serving 读副本 |
+
+写入路径：
+
+~~~text
+feature computation / materialization -> feature primary
+~~~
+
+读取路径：
+
+~~~text
+model serving / feature service -> feature replicas
+~~~
+
+这就是特征系统里的读写分离：特征计算负责写，模型服务负责读。
+
+### 5.2 Feature Store 中的 stale feature
+
+数据库里有 stale read，Feature Store 里有 stale feature。
+
+~~~text
+用户刚连续支付失败 5 次；
+风险特征应该升高；
+feature primary 已更新；
+replica 尚未同步；
+模型从 replica 读到旧特征；
+风险被低估。
+~~~
+
+因此需要监控 freshness：
+
+~~~text
+特征最后更新时间；
+特征落后多久；
+是否超过模型可接受延迟；
+哪些 replica 已经落后。
+~~~
+
+不同特征 freshness 要求不同：
+
+| 特征类型 | 常见 freshness |
+| --- | --- |
+| 风控短窗口特征 | 秒级到几十秒 |
+| 推荐行为特征 | 分钟级 |
+| 商户长期统计 | 小时级 |
+| 用户画像 | 天级 |
+
+### 5.3 Feature Store 中的数据分区
+
+Feature Store 的 sharding key 通常是 entity key：
+
+~~~text
+user_id
+item_id
+merchant_id
+device_id
+tenant_id
+session_id
+~~~
+
+例如：
+
+| Feature group | Sharding key |
+| --- | --- |
+| user_features | user_id |
+| item_features | item_id |
+| merchant_features | merchant_id |
+| device_features | device_id |
+| user_item_features | hash(user_id, item_id) |
+
+一次风控请求可能需要：
+
+~~~text
+user_features:user_id=123
+merchant_features:merchant_id=888
+device_features:device_id=abc
+user_merchant_features:user_id=123,merchant_id=888
+~~~
+
+Feature Service 必须能根据请求里的 key 直接定位 shard，不能每次都广播所有节点。
+
+### 5.4 Feature Store 分片的代价
+
+第一，跨 entity 特征不适合在线临时聚合。
+
+例如：
+
+~~~text
+某城市过去 1 小时所有用户的平均交易金额；
+某品类最近 30 分钟整体点击率；
+全站最近 10 分钟支付失败率。
+~~~
+
+这些通常要通过 batch 或 streaming job 提前算好，再写回 Online Feature Store。
+
+第二，hot key 会导致负载不均衡：
+
+~~~text
+超级热门商品；
+大型商户；
+超大企业客户；
+高活跃用户。
+~~~
+
+处理方式包括：
+
+~~~text
+增加 replica；
+加缓存；
+热点 key 特殊拆分；
+热门 item feature 预加载到模型服务本地；
+对多次读取做 batch 和合并。
+~~~
+
+第三，多类特征来自不同 shard，更新时间可能不同。模型拿到的通常是近似一致的特征快照，而不是严格同一时刻的全局状态。
+
+### 5.5 更新日志和 checkpoint
+
+MySQL 主从复制依赖 binlog position。Feature Store 也有类似的增量同步位置：
+
+~~~text
+streaming job 处理到 Kafka offset X；
+batch materialization 处理到某个时间分区；
+feature group v7 同步到 checkpoint Y。
+~~~
+
+更新链路：
+
+~~~mermaid
+flowchart TD
+  A[Raw Events] --> B[Feature Computation]
+  B --> C[Feature Update Log / Checkpoint]
+  C --> D[Online Feature Store Primary]
+  D --> E[Online Feature Store Replicas]
+  E --> F[Model Serving]
+~~~
+
+这个 update log / checkpoint 在概念上类似数据库里的 binlog position：不是每次全量同步，而是记录处理进度，持续增量更新。
+
+---
+
+## 6. 面试回答模板
+
+如果题目问“数据库怎么扩展”，可以按这个顺序回答：
+
+~~~text
+1. 先判断瓶颈：读多、写多、数据大、还是可用性问题。
+2. 读多：主从复制 + 读写分离，但要处理 replication lag。
+3. 主库故障恢复：主备或主主，重点是 failover，不是写扩展。
+4. 写多或数据大：按业务访问模式选择 sharding key。
+5. 分片后要讨论跨分片查询、事务、全局 ID、迁移和热点。
+6. 真实系统通常是 shard 内复制，复制和分片组合使用。
+~~~
+
+如果题目是 Feature Store / Online KV / Embedding Store：
+
+~~~text
+1. 把它看成服务模型的分布式状态系统。
+2. entity key 决定分片。
+3. replica 承担低延迟读和高可用。
+4. freshness 等价于 ML 系统里的 replication lag。
+5. hot key、跨 entity 特征、checkpoint 是核心追问点。
+~~~
+
+## 7. 最短记忆版
+
+~~~text
+主从复制:
+  读扩展 + 备份 + 容灾
+  代价是 stale read
+
+主主复制:
+  高可用 + 快速切换
+  不是写入翻倍
+
+分片:
+  容量扩展 + 写扩展
+  代价是跨分片复杂
+
+Feature Store:
+  传统数据库扩展思想在 ML online state 上的复用
+~~~
+`
+  : '';
+
 const mlsysNoteDefinitions = [
   createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md'),
   createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md'),
@@ -898,6 +1463,11 @@ const draftNoteDefinitions = isDraftMode
         'Quant 草稿 · 概率基础公式与记忆框架',
         'Draft Probability Basics.md',
         probabilityDraftContent,
+      ),
+      createDraftTutorialDefinition(
+        'System Design 草稿 · 数据库扩展三件套',
+        'Draft System Design Database Scaling.md',
+        systemDesignDbScalingDraftContent,
       ),
     ]
   : [];

@@ -162,13 +162,17 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '草稿区' }));
 
     expect(await screen.findByRole('heading', { name: '草稿区' })).toBeInTheDocument();
-    expect(screen.getByText('2 notes in this section')).toBeInTheDocument();
+    expect(screen.getByText('3 notes in this section')).toBeInTheDocument();
     expect(screen.getAllByText(/LLM八股 Overview · JD 高频主题拆解/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Quant 草稿 · 概率基础公式与记忆框架/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 草稿 · 数据库扩展三件套/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Motivation/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /7\. RLVR & Agentic RL/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Quant 草稿 · 概率基础公式与记忆框架/i }));
     expect(await screen.findByRole('heading', { name: /先按题型选工具/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 草稿 · 数据库扩展三件套/i }));
+    expect(await screen.findByRole('heading', { name: /先判断压力来自哪里/ })).toBeInTheDocument();
   });
 });
