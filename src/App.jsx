@@ -633,7 +633,7 @@ $$
 `
   : '';
 
-const systemDesignDbScalingContent = String.raw`# System Design 02 · 数据库扩展三件套
+const systemDesignDbScalingContent = String.raw`# System Design 03 · 数据库扩展三件套
 
 这篇是一个基础 system design pattern：先用 QPS / IOPS / 存储容量做粗估，再讨论主从复制、主主复制和数据分区，以及它们在 Feature Store / Embedding Store / Online KV Store 里的类比。
 
@@ -1919,11 +1919,17 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'Design Pattern', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'System Design 2 · 数据库基本范式',
+    'SystemDesign02 Database Paradigms.md',
+    null,
+    { directory: 'SystemDesign', category: 'Database', difficulty: 'Medium' },
+  ),
   {
-    id: 'SystemDesign02 Database Scaling.md',
-    title: 'System Design 2 · 数据库扩展三件套',
-    fileName: 'SystemDesign02 Database Scaling.md',
-    zhFileName: 'SystemDesign02 Database Scaling.md',
+    id: 'SystemDesign03 Database Scaling.md',
+    title: 'System Design 3 · 数据库扩展三件套',
+    fileName: 'SystemDesign03 Database Scaling.md',
+    zhFileName: 'SystemDesign03 Database Scaling.md',
     enFileName: '',
     directory: 'SystemDesign',
     category: 'Design Pattern',

@@ -173,11 +173,16 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('3 notes in this section')).toBeInTheDocument();
+    expect(screen.getByText('4 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 1 · 无状态设计范式/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 2 · 数据库扩展三件套/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 2 · 数据库基本范式/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 3 · 数据库扩展三件套/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 2 · 数据库扩展三件套/i }));
+    fireEvent.click(screen.getByRole('button', { name: /System Design 2 · 数据库基本范式/i }));
+
+    expect(await screen.findByRole('heading', { name: /数据库基本范式/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 3 · 数据库扩展三件套/i }));
 
     expect(await screen.findByRole('heading', { name: /Feature Store 分片的代价/ })).toBeInTheDocument();
     expect(screen.getByText(/Push \/ active update/)).toBeInTheDocument();
