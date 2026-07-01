@@ -1,53 +1,36 @@
-# A Hitchhiker's Guide to ML PhD Job Hunting
+# ML PhD Interview Notes
 
-This repository hosts an interview notes site. MLSYS, LLM, Quant, ML Coding, System Design, business algorithm, ML fundamentals, and LeetCode Core Skills notes are published as parallel interview sections.
+Live site: [https://currytang.github.io/mlphdinterview/](https://currytang.github.io/mlphdinterview/)
 
-## Live Site
+## 中文
 
-**GitHub Pages:** [https://currytang.github.io/mlphdinterview/](https://currytang.github.io/mlphdinterview/)
+这是一个面向 ML / LLM 方向面试复习的笔记站。内容会持续整理成几个并行板块：
 
-The site publishes the curated MLSYS notes from `notes/Mlsys/`, Quant notes from `notes/quant/`, ML Coding notes from `notes/MLCoding/`, System Design notes from `notes/SystemDesign/`, TODO placeholders from `notes/BusinessAlgorithm/` and `notes/MLInterview/`, and LeetCode Core Skills notes from `notes/Leetcode/`. The frontend reader supports Chinese and English variants when both exist, and falls back to the available note when only one variant is present.
+- **MLSYS**：CUDA、GPU kernel、分布式训练、推理系统、KV cache、MoE、post-training infra
+- **LLM 八股**：world model、agent、RL / RLVR、alignment、data、evaluation 等主题
+- **Quant**：概率、期望、Markov chain、常见数学面试题
+- **ML Coding**：从 tokenizer、tensor module、attention 到 training loop 的实现练习
+- **System Design**：后端系统设计、LLM serving、feature store、agent infra
+- **业务算法八股**：推荐、搜索、广告、排序、实验设计等，正在补充
+- **ML 八股**：机器学习基础，正在补充
+- **LeetCode Core Skills**：数据结构、DP、图、贪心、数学、区间等核心题型
 
-## Repository Layout
+如果你发现内容有错误、表达不清楚、公式渲染问题，或者想补充更好的例题 / 面试题，欢迎提 issue 或 PR。纠错和贡献都很欢迎。
 
-- `notes/Mlsys/`: MLSYS interview note markdown files and local assets
-- `notes/quant/`: Quant probability and expectation interview notes
-- `notes/MLCoding/`: ML implementation and coding exercise notes
-- `notes/SystemDesign/`: backend, LLM serving, and agent infra system design notes
-- `notes/BusinessAlgorithm/`: TODO placeholders for business algorithm interview notes
-- `notes/MLInterview/`: TODO placeholders for ML fundamentals interview notes
-- `notes/Leetcode/`: LeetCode Core Skills note markdown files
-- `src/`: React frontend for browsing and rendering interview sections
-- `docs/plans/`: design and implementation notes for repo changes
+## English
 
-## Practice Blocks
+This is a personal interview-notes site for ML / LLM roles. The notes are organized into parallel sections:
 
-Markdown files can render interactive multiple-choice practice blocks with a fenced code block:
+- **MLSYS**: CUDA, GPU kernels, distributed training, inference systems, KV cache, MoE, post-training infra
+- **LLM Interview**: world models, agents, RL / RLVR, alignment, data, evaluation
+- **Quant**: probability, expectation, Markov chains, common math interview problems
+- **ML Coding**: implementation exercises from tokenizers and tensor modules to attention and training loops
+- **System Design**: backend design, LLM serving, feature stores, agent infrastructure
+- **Business Algorithms**: recommendation, search, ads, ranking, experimentation, still in progress
+- **ML Fundamentals**: core machine learning interview notes, still in progress
+- **LeetCode Core Skills**: data structures, DP, graphs, greedy, math, interval problems
 
-````
-```quiz
-title: Quick Check
-question: CUDA thread blocks are scheduled onto which hardware unit?
-answer: B
-A. Host compiler
-B. GPU SM
-C. Browser runtime
-explanation: Blocks are assigned to streaming multiprocessors.
-```
-````
-
-Use `mcq` instead of `quiz` if you prefer that fence name. The rendered block can be hidden, and option clicks show whether the selected answer is correct.
-
-Long-form answers can be kept collapsible with native Markdown/HTML details blocks:
-
-```html
-<details class="solution">
-<summary>展开解法</summary>
-
-Write the reference solution, pseudocode, and complexity analysis here.
-
-</details>
-```
+Corrections, issue reports, and contributions are welcome. If something is wrong, unclear, outdated, or missing a useful example, feel free to open an issue or PR.
 
 ## Local Development
 
@@ -56,16 +39,10 @@ npm install
 npm run dev
 ```
 
-## Verification
+## Checks
 
 ```bash
 npm test
 npm run lint
 npm run build
 ```
-
-## Deployment Notes
-
-GitHub Pages deployment is handled by `.github/workflows/deploy-pages.yml`.
-
-Vite infers the production base path from `GITHUB_REPOSITORY` in CI. If needed, override it with `VITE_BASE_PATH` during the build.
