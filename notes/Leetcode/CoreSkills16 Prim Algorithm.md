@@ -46,23 +46,3 @@ while heap and len(visited) < n:
 如果结束时 `visited` 少于 `n`，说明图不连通，没有覆盖所有点的 MST。
 
 </details>
-
-```quiz
-title: 练习 1
-question: Prim 算法每一步选择什么？
-answer: A
-A. 连接已访问集合到未访问节点的最小边
-B. 当前最长路径
-C. 入度为 0 的节点
-explanation: Prim 用局部最小边逐步扩展 MST。
-```
-
-```quiz
-title: 练习 2
-question: Prim 主要用于解决什么问题？
-answer: B
-A. 单源最短路
-B. 最小生成树
-C. 字符串匹配
-explanation: Prim 是经典 MST 算法。
-```

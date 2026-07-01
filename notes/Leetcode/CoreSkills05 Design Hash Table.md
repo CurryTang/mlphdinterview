@@ -46,26 +46,6 @@ put(key, value):
 
 </details>
 
-```quiz
-title: 练习 1
-question: 哈希表扩容后为什么需要 rehash？
-answer: B
-A. 为了让值变大
-B. capacity 改变后 key 对应的桶下标可能改变
-C. 为了把所有 key 排序
-explanation: 桶下标依赖 `hash(key) % capacity`，容量变化会改变映射。
-```
-
-```quiz
-title: 练习 2
-question: 链地址法如何处理哈希冲突？
-answer: A
-A. 同一个桶里保存多个 key-value
-B. 直接丢弃新 key
-C. 把数组改成二叉堆
-explanation: 链地址法让冲突元素共存于同一个桶。
-```
-
 ## NeetCode 例题：Group Anagrams
 
 这道题的目标是把所有字母异位词放到同一组。两个字符串是否属于同一组，不取决于字符顺序，只取决于每个字母出现了多少次。
@@ -121,7 +101,6 @@ flowchart LR
 from collections import defaultdict
 from typing import List
 
-
 class Solution:
     def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
         result = defaultdict(list)
@@ -142,13 +121,3 @@ class Solution:
 - 空间复杂度：`O(n * k)`，输出本身需要保存所有字符串；哈希表 key 额外是每组一个 26 维 tuple。
 
 </details>
-
-```quiz
-title: 练习 3
-question: Group Anagrams 为什么可以用 26 维字符频率 tuple 作为哈希表 key？
-answer: B
-A. 因为异位词排序后长度一定不同
-B. 因为小写英文字母表固定，频率向量能唯一表示每个字符串的字符 multiset
-C. 因为 tuple 会自动忽略字符出现次数
-explanation: 异位词拥有完全相同的字符计数。把 26 个字母的出现次数组成 tuple，就得到一个可哈希且固定长度的签名。
-```

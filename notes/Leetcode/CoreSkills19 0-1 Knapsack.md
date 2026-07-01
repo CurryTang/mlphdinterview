@@ -43,23 +43,3 @@ return dp[W]
 倒序保证 `dp[c - weight]` 还是上一轮物品处理完的状态，不会重复使用当前物品。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 0/1 背包一维 dp 中容量为什么要倒序遍历？
-answer: B
-A. 为了让数组有序
-B. 为了避免同一物品被重复选择
-C. 为了降低到 O(log n)
-explanation: 倒序保证当前物品只基于上一轮状态转移。
-```
-
-```quiz
-title: 练习 2
-question: 0/1 背包中每个物品最多能选几次？
-answer: A
-A. 1 次
-B. 无限次
-C. 必须选 2 次
-explanation: 0/1 表示不选或选一次。
-```

@@ -99,7 +99,6 @@ word2 = h r f
 from collections import defaultdict, deque
 from typing import List
 
-
 class Solution:
     def foreignDictionary(self, words: List[str]) -> str:
         graph = {char: set() for word in words for char in word}
@@ -154,33 +153,3 @@ class Solution:
 - 用 list 存邻居但没有去重，导致入度被重复增加。
 - 忘记把所有字符放进图，导致答案缺字符。
 - 认为答案必须唯一；题目通常允许返回任意一个合法拓扑序。
-
-```quiz
-title: 练习 1
-question: 拓扑排序要求图满足什么条件？
-answer: A
-A. 有向无环图
-B. 任意无向图
-C. 必须是完全图
-explanation: 有环依赖无法给出合法线性顺序。
-```
-
-```quiz
-title: 练习 2
-question: Foreign Dictionary 中，比较相邻两个单词时应该用哪一对字符建边？
-answer: B
-A. 所有位置不同的字符
-B. 第一个不同字符
-C. 最后一个不同字符
-explanation: 词典序在第一个差异处就已经决定大小，后面的字符不提供可靠约束。
-```
-
-```quiz
-title: 练习 3
-question: 输入 words = ["abc", "ab"] 为什么非法？
-answer: C
-A. c 的入度不是 0
-B. 两个单词长度不同
-C. 较短单词是较长单词的前缀，但较长单词排在前面
-explanation: 合法词典序中，前缀更短的单词必须排在较长单词前。
-```

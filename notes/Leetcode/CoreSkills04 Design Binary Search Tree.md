@@ -47,23 +47,3 @@ delete(root, key):
 双子树删除用中序后继替换，替换后还要从右子树里删除后继节点。
 
 </details>
-
-```quiz
-title: 练习 1
-question: BST 的中序遍历结果有什么性质？
-answer: A
-A. 按升序输出
-B. 按层序输出
-C. 总是随机输出
-explanation: 左-根-右正好符合 BST 的有序关系。
-```
-
-```quiz
-title: 练习 2
-question: 普通 BST 最坏情况下查找复杂度是多少？
-answer: C
-A. O(1)
-B. O(log n)
-C. O(n)
-explanation: 如果树退化成链表，查找可能要走完整条路径。
-```

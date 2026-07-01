@@ -311,33 +311,3 @@ Lazy propagation 用在区间更新，比如：
 在 LIS 这题里，我把数值坐标压缩成 rank。线段树第 `rank` 个叶子维护“以这个 rank 结尾的最长递增子序列长度”。处理当前 `rank` 时，先查询所有更小 rank 的最大值，也就是 `query(0, rank - 1)`，再加一得到当前长度，然后更新当前 rank。这样每个元素 `O(log n)`，总复杂度 `O(n log n)`。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 线段树最适合优化哪类操作？
-answer: A
-A. 动态数组上的区间查询和更新
-B. 单次全数组扫描
-C. 固定字符串的前缀比较
-explanation: 线段树的价值在于数组会被反复查询、反复更新，并且每次只需要区间聚合值。
-```
-
-```quiz
-title: 练习 2
-question: 在严格递增 LIS 的线段树写法中，当前 rank 应该查询哪个区间？
-answer: B
-A. [0, rank]
-B. [0, rank - 1]
-C. [rank, n - 1]
-explanation: 严格递增只能接在更小的值后面，不能包含当前 rank 对应的相等值。
-```
-
-```quiz
-title: 练习 3
-question: 单点更新后为什么要一路重算到根？
-answer: C
-A. 为了释放内存
-B. 为了重新排序所有叶子
-C. 因为祖先区间的聚合值都可能被这个叶子影响
-explanation: 叶子变化后，包含它的所有父区间缓存都可能变化，所以要沿父指针回溯更新。
-```

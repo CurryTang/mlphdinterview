@@ -651,33 +651,3 @@ heap stores active candidate intervals
 一句话总结：
 
 > 区间题不是背很多题，而是判断你在时间轴上维护的是 merged range、earliest end、active count，还是 candidate heap。
-
-```quiz
-title: 练习 1
-question: Merge Intervals 中，按 start 排序后判断两个区间是否重叠，最常用条件是什么？
-answer: B
-A. next.end <= current.start
-B. next.start <= current.end
-C. next.start >= current.end
-explanation: 按 start 排序后，只需要看后一个区间的 start 是否落在当前 merged interval 内。
-```
-
-```quiz
-title: 练习 2
-question: Non-overlapping Intervals 中，两个区间冲突时应该优先保留哪个？
-answer: A
-A. end 更小的区间
-B. start 更小的区间
-C. 长度更长的区间
-explanation: end 更小会给后续区间留下更多空间，这是贪心正确性的来源。
-```
-
-```quiz
-title: 练习 3
-question: Minimum Interval to Include Each Query 为什么要按 query 排序？
-answer: C
-A. 为了让答案自动有序
-B. 为了避免使用 heap
-C. 为了让 start <= query 的候选区间可以单调加入，end < query 的区间可以单调删除
-explanation: query 单调递增后，候选区间集合也能单调维护。
-```

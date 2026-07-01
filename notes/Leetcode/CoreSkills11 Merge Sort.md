@@ -46,23 +46,3 @@ merge(left, right):
 如果题目要求原数组排序，最后把临时数组写回原区间。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 归并排序的核心思想是什么？
-answer: B
-A. 每轮选择最小值
-B. 分治后合并有序子数组
-C. 使用哈希表计数
-explanation: 归并排序先递归排序子问题，再合并结果。
-```
-
-```quiz
-title: 练习 2
-question: 标准归并排序的额外空间复杂度通常是多少？
-answer: B
-A. O(1)
-B. O(n)
-C. O(n^2)
-explanation: 合并阶段通常需要辅助数组。
-```

@@ -75,7 +75,6 @@ cheapest-flights
 ```python
 from typing import List
 
-
 class Solution:
     def findCheapestPrice(
         self,
@@ -133,33 +132,3 @@ class Solution:
 - 忘记跳过 `prices[start] == INF` 的航班。
 - 提前返回 `dst` 的当前价格；Bellman-Ford 要等当前轮松弛完成。
 - 用普通 Dijkstra 的 `dist[city]` 压掉了“更贵但 stops 更少”的状态。
-
-```quiz
-title: 练习 1
-question: Cheapest Flights 中 k stops 对应最多多少条航班边？
-answer: B
-A. k 条
-B. k + 1 条
-C. 2k 条
-explanation: stops 是中转城市数量，航班段数比中转数多 1。
-```
-
-```quiz
-title: 练习 2
-question: 为什么 Bellman-Ford 每一轮要使用 next_prices = prices.copy()？
-answer: C
-A. 为了让空间复杂度变成 O(E)
-B. 为了支持负环检测
-C. 为了避免同一轮内连续使用多条边，超过当前轮允许的航班数
-explanation: 本轮只能从上一轮的结果出发，不能使用本轮刚更新出来的价格继续松弛。
-```
-
-```quiz
-title: 练习 3
-question: 优化版 Bellman-Ford 什么时候可以提前停止？
-answer: A
-A. 某一轮没有任何价格更新
-B. 第一次看到 dst 可达
-C. prices[src] 变成无穷大
-explanation: 如果一整轮没有变化，继续增加允许边数也不会产生更优价格。
-```

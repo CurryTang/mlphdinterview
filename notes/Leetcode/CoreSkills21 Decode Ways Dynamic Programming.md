@@ -1633,33 +1633,3 @@ DP 题可以这样讲：
 4. 根据递推依赖决定循环顺序。
 5. 先写完整 DP。
 6. 最后观察只依赖哪些状态，再做空间优化。
-
-```quiz
-title: 练习 1
-question: 写 DP 时第一步最应该明确什么？
-answer: B
-A. 使用哪种语言
-B. dp 状态的含义
-C. 是否能一行写完
-explanation: 状态定义决定递推、base case 和最终答案。
-```
-
-```quiz
-title: 练习 2
-question: 如果 dp[i] 依赖 dp[i+1] 和 dp[i+2]，循环通常应该怎么走？
-answer: A
-A. 从右往左
-B. 从左往右
-C. 随机遍历
-explanation: 必须先算出右侧依赖，才能计算当前状态。
-```
-
-```quiz
-title: 练习 3
-question: 什么时候适合做空间优化？
-answer: C
-A. 一开始就优化
-B. 递推还没写出来时
-C. 写出完整 DP 并确认每个状态只依赖少量旧状态后
-explanation: 先保证状态语义和递推正确，再压缩空间更稳。
-```

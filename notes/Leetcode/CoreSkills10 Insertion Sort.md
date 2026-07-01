@@ -44,23 +44,3 @@ for i in range(1, n):
 比较条件用 `>`，不要用 `>=`，这样相等元素不会互换，排序保持稳定。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 插入排序在数组已经有序时复杂度是多少？
-answer: A
-A. O(n)
-B. O(n log n)
-C. O(n^2 log n)
-explanation: 每个元素只需比较一次左右即可。
-```
-
-```quiz
-title: 练习 2
-question: 插入排序是否稳定？
-answer: A
-A. 稳定
-B. 不稳定
-C. 只能在链表上稳定
-explanation: 只移动严格大于 key 的元素时，相等元素相对顺序不变。
-```

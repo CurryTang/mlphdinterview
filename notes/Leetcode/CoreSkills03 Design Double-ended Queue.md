@@ -46,23 +46,3 @@ pushBack(x):
 扩容时按逻辑顺序复制 `data[(front+i)%old_capacity]` 到新数组的 `i`，然后把 `front` 重置为 0。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 循环数组中计算下标通常为什么要取模？
-answer: B
-A. 为了排序
-B. 为了让下标到达末尾后回到开头
-C. 为了删除重复元素
-explanation: 取模可以复用数组空间，形成逻辑上的环。
-```
-
-```quiz
-title: 练习 2
-question: pushFront 时 front 应该如何移动？
-answer: A
-A. 向前一格，并处理越界回绕
-B. 向后一格
-C. 保持不变，只修改尾指针
-explanation: 队头插入需要先空出新的头位置。
-```

@@ -418,23 +418,3 @@ need = 1
 一句话总结：
 
 > Hand of Straights 的 Greedy 不是“随便从小开始”，而是“最小牌没有前驱，所以被迫从小开始”。
-
-```quiz
-title: 练习 1
-question: Hand of Straights 里为什么当前最小牌必须作为顺子开头？
-answer: B
-A. 因为这样代码最短
-B. 因为它没有更小的前驱牌，无法出现在顺子中间或末尾
-C. 因为 heap 只能弹出最小值
-explanation: 贪心正确性来自强制选择，不是来自数据结构。
-```
-
-```quiz
-title: 练习 2
-question: 如果当前最小牌 first 有 need 张，接下来应该怎么扣？
-answer: C
-A. 只扣 first 一张
-B. 只扣 first + groupSize - 1 一张
-C. 对 first 到 first + groupSize - 1 每张牌都扣 need 张
-explanation: need 张 first 必须分别开 need 个顺子，所以后续每个连续牌面也都需要 need 张。
-```

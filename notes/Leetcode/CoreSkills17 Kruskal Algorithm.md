@@ -44,23 +44,3 @@ for u, v, w in edges:
 `union` 返回 true 才说明这条边连接了两个不同连通分量，可以加入 MST。
 
 </details>
-
-```quiz
-title: 练习 1
-question: Kruskal 用什么结构判断加入一条边是否成环？
-answer: B
-A. 栈
-B. Union-Find
-C. 单调队列
-explanation: 如果边两端已经连通，再加入就会成环。
-```
-
-```quiz
-title: 练习 2
-question: Kruskal 首先需要对什么排序？
-answer: A
-A. 边权
-B. 节点名称
-C. BFS 层数
-explanation: Kruskal 从最小权重边开始贪心选择。
-```

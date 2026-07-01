@@ -47,23 +47,3 @@ union(a, b):
 返回 `false` 表示两点本来就在同一集合，不能重复减少连通分量数。
 
 </details>
-
-```quiz
-title: 练习 1
-question: Union-Find 最适合解决哪类问题？
-answer: A
-A. 动态连通性
-B. 字符串匹配
-C. 数组排序稳定性
-explanation: 并查集能快速判断两个元素是否属于同一集合。
-```
-
-```quiz
-title: 练习 2
-question: 路径压缩的作用是什么？
-answer: B
-A. 删除所有节点
-B. 缩短 find 后续查询路径
-C. 把集合变成二叉搜索树
-explanation: 路径压缩让路径上的节点直接连到根。
-```

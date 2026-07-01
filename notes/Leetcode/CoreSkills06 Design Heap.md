@@ -48,23 +48,3 @@ pop():
 `heapify_down` 每次选择左右孩子中更小的那个，只有它比当前节点更小时才交换。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 最小堆的堆顶是什么？
-answer: A
-A. 当前最小元素
-B. 当前最大元素
-C. 最后插入的元素
-explanation: 最小堆要求父节点不大于子节点，因此根节点最小。
-```
-
-```quiz
-title: 练习 2
-question: 堆中 push 一个元素的时间复杂度通常是多少？
-answer: B
-A. O(1)
-B. O(log n)
-C. O(n^2)
-explanation: 新元素最多沿树高上浮，完全二叉树高度是 O(log n)。
-```

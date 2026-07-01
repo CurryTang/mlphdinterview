@@ -48,23 +48,3 @@ remove(index):
 头插就是 `insert(0, val)`；尾插可以维护 `tail` 优化，也可以遍历到末尾。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 单链表按下标 get(index) 的时间复杂度通常是多少？
-answer: B
-A. O(1)
-B. O(n)
-C. O(log n)
-explanation: 单链表不能随机访问，需要从头节点逐个向后走。
-```
-
-```quiz
-title: 练习 2
-question: dummy head 主要解决什么问题？
-answer: A
-A. 统一处理头节点插入和删除
-B. 让链表支持二分查找
-C. 自动把链表变成数组
-explanation: dummy head 让真实头节点也有前驱，减少分支判断。
-```

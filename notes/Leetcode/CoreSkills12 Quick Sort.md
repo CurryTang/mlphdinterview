@@ -52,23 +52,3 @@ partition(l, r):
 实际面试可以先随机选择 pivot 并换到 `r`，降低退化概率。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 快速排序最坏时间复杂度是多少？
-answer: C
-A. O(n)
-B. O(n log n)
-C. O(n^2)
-explanation: pivot 每次极度不平衡时会退化。
-```
-
-```quiz
-title: 练习 2
-question: 随机选择 pivot 的主要目的是什么？
-answer: A
-A. 降低遇到最坏划分的概率
-B. 保证稳定排序
-C. 消除递归栈
-explanation: 随机化让输入顺序不容易稳定触发最坏情况。
-```

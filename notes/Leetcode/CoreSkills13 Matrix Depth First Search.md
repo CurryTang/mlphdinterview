@@ -41,23 +41,3 @@ dfs(r, c):
 如果题目要统计连通块，外层遍历每个格子，遇到新的目标格子时计数加一并启动 DFS。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 网格 DFS 中 visited 应该在什么时候标记？
-answer: A
-A. 进入格子后尽早标记
-B. 所有邻居访问完再标记
-C. 永远不需要标记
-explanation: 尽早标记可以避免环或相邻格子重复递归。
-```
-
-```quiz
-title: 练习 2
-question: m 行 n 列网格完整 DFS 的时间复杂度通常是多少？
-answer: B
-A. O(m+n)
-B. O(mn)
-C. O(log mn)
-explanation: 每个格子最多被访问常数次。
-```

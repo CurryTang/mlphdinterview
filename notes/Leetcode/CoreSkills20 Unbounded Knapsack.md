@@ -43,23 +43,3 @@ return dp[W]
 如果题目是方案数，仍要先明确问的是组合数还是排列数；循环顺序会影响计数语义。
 
 </details>
-
-```quiz
-title: 练习 1
-question: 完全背包一维 dp 中容量通常如何遍历？
-answer: A
-A. 从小到大
-B. 从大到小
-C. 随机遍历
-explanation: 正序允许当前物品被重复使用。
-```
-
-```quiz
-title: 练习 2
-question: Unbounded Knapsack 与 0/1 Knapsack 的关键区别是什么？
-answer: B
-A. 是否使用数组
-B. 每个物品是否可以重复选择
-C. 是否必须用递归
-explanation: 完全背包允许同一物品选多次，0/1 背包最多一次。
-```
