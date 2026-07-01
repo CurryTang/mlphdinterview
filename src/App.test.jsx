@@ -28,6 +28,12 @@ describe('App', () => {
         'def can_jump(nums):',
         '    return True',
         '```',
+        '',
+        'Inline math $QK^T$ and display math:',
+        '',
+        '$$',
+        '\\sum_i x_i',
+        '$$',
       ].join('\n');
 
       return {
@@ -122,6 +128,21 @@ describe('App', () => {
     expect(screen.getByText('def')).toHaveClass('code-token', 'keyword');
   });
 
+  it('renders Markdown math through KaTeX without losing LaTeX commands', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start mlsys/i }));
+
+    expect(await screen.findByText(/Inline math/)).toBeInTheDocument();
+
+    const annotations = Array.from(document.querySelectorAll('annotation[encoding="application/x-tex"]')).map(
+      (node) => node.textContent,
+    );
+
+    expect(annotations).toContain('QK^T');
+    expect(annotations).toContain('\\sum_i x_i');
+  });
+
   it('keeps the reader sidebar scoped to the current section', async () => {
     render(<App />);
 
@@ -171,6 +192,11 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Quant 草稿 · 概率基础公式与记忆框架/i }));
     expect(await screen.findByRole('heading', { name: /先按题型选工具/ })).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll('annotation[encoding="application/x-tex"]')).some((node) =>
+        node.textContent?.includes('\\mathbb{E}[X]'),
+      ),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 草稿 · 数据库扩展三件套/i }));
     expect(await screen.findByRole('heading', { name: /基础概念：QPS、IOPS、吞吐和延迟/ })).toBeInTheDocument();

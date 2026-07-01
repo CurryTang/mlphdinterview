@@ -16,7 +16,7 @@ const markdownModules = import.meta.glob('../notes/**/*.md', {
 const isDraftMode = import.meta.env.DEV;
 
 const llmDraftOverviewContent = isDraftMode
-  ? `# LLM八股 Overview · JD 高频主题拆解
+  ? String.raw`# LLM八股 Overview · JD 高频主题拆解
 
 ## Motivation
 
@@ -175,7 +175,7 @@ Placeholder：user modeling、personalized ranking、assistant memory、preferen
   : '';
 
 const probabilityDraftContent = isDraftMode
-  ? `# Quant 草稿 · 概率基础公式与记忆框架
+  ? String.raw`# Quant 草稿 · 概率基础公式与记忆框架
 
 > Draft：这一页先放概率面试里最常用的基础工具。内容按解题动作重排，不按截图顺序组织；后续可以继续加条件期望、Bayes、order statistics、Poisson process 和 martingale。
 
@@ -634,7 +634,7 @@ $$
   : '';
 
 const systemDesignDbScalingDraftContent = isDraftMode
-  ? `# System Design 草稿 · 数据库扩展三件套
+  ? String.raw`# System Design 草稿 · 数据库扩展三件套
 
 > Draft：这篇先作为 System Design pattern 记录。主线是基础容量估算、主从复制、主主复制和数据分区，以及它们在 Feature Store / Embedding Store / Online KV Store 里的类比。
 
