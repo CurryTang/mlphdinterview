@@ -1960,6 +1960,13 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'Storage', difficulty: 'Medium' },
   ),
+  // Keep the glossary as the final System Design note even when new chapters are inserted.
+  createTutorialDefinition(
+    'System Design 99 · 高频术语整合',
+    'SystemDesign99 Glossary.md',
+    null,
+    { directory: 'SystemDesign', category: 'Glossary', difficulty: 'Reference' },
+  ),
 ];
 
 const systemDesignNotes = systemDesignNoteDefinitions.map((definition) => ({
@@ -3517,6 +3524,9 @@ function MermaidDiagram({ chart }) {
       }
 
       const mermaid = await getMermaid();
+      if (cancelled || !containerRef.current) {
+        return;
+      }
       containerRef.current.innerHTML = '';
 
       try {
