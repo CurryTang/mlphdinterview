@@ -121,15 +121,15 @@ shared state = durable / authoritative
 
 ```mermaid
 flowchart LR
-  C[Client] --> LB[Load Balancer]
-  LB --> W1[Web replica A]
-  LB --> W2[Web replica B]
-  LB --> W3[Web replica C]
-  W1 --> R[(Redis / Session Store)]
-  W2 --> DB[(Database)]
-  W3 --> OS[(Object Store)]
-  W1 --> Q[Queue]
-  Q --> WK[Worker Pool]
+  C["Client"] --> LB["Load Balancer"]
+  LB --> W1["Web replica A"]
+  LB --> W2["Web replica B"]
+  LB --> W3["Web replica C"]
+  W1 --> R[("Redis / Session Store")]
+  W2 --> DB[("Database")]
+  W3 --> OS[("Object Store")]
+  W1 --> Q["Queue"]
+  Q --> WK["Worker Pool"]
   WK --> DB
 ```
 
@@ -744,14 +744,14 @@ stateless control plane
 
 ```mermaid
 flowchart LR
-  C[Client] --> GW[API Gateway]
-  GW --> API[Stateless API Service]
-  API --> DB[(Conversation DB)]
-  API --> R[Router / Scheduler]
-  R --> G1[GPU Worker A<br/>KV cache local]
-  R --> G2[GPU Worker B<br/>KV cache local]
-  R --> G3[GPU Worker C<br/>KV cache local]
-  G1 --> OS[(Model Registry / Object Store)]
+  C["Client"] --> GW["API Gateway"]
+  GW --> API["Stateless API Service"]
+  API --> DB[("Conversation DB")]
+  API --> R["Router / Scheduler"]
+  R --> G1["GPU Worker A<br/>KV cache local"]
+  R --> G2["GPU Worker B<br/>KV cache local"]
+  R --> G3["GPU Worker C<br/>KV cache local"]
+  G1 --> OS[("Model Registry / Object Store")]
   G2 --> OS
   G3 --> OS
 ```
@@ -900,11 +900,11 @@ Prefix cache 把这段公共 prefix 的 KV 存下来，下次请求复用。
 
 ```mermaid
 flowchart TD
-  P[Prompt tokens] --> H[Prefix hash]
-  H --> D{Cache directory}
-  D -- hit --> K[Reuse prefix KV]
-  D -- miss --> F[Prefill prefix]
-  F --> S[Store KV blocks]
+  P["Prompt tokens"] --> H["Prefix hash"]
+  H --> D{"Cache directory"}
+  D -->|hit| K["Reuse prefix KV"]
+  D -->|miss| F["Prefill prefix"]
+  F --> S["Store KV blocks"]
   K --> Decode
   S --> Decode
 ```
@@ -956,10 +956,10 @@ prefix sharing 更自然
 
 ```mermaid
 flowchart LR
-  C[Request] --> R[Router]
-  R --> P[Prefill Pool]
-  P --> K[KV transfer / cache handle]
-  K --> D[Decode Pool]
+  C["Request"] --> R["Router"]
+  R --> P["Prefill Pool"]
+  P --> K["KV transfer / cache handle"]
+  K --> D["Decode Pool"]
   D --> C
 ```
 

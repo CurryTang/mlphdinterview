@@ -41,20 +41,20 @@ RDBMS 把 row、table、relation 和 constraint 放在中心。NoSQL 不是一�
 
 ```mermaid
 flowchart LR
-  A[Database choice] --> B[RDBMS]
-  A --> C[NoSQL]
-  A --> D[NewSQL]
-  B --> B1[entities]
-  B --> B2[relations]
-  B --> B3[constraints]
-  B --> B4[SQL composition]
-  C --> C1[access patterns]
-  C --> C2[partition key]
-  C --> C3[denormalized views]
-  C --> C4[local consistency boundary]
-  D --> D1[SQL + relations]
-  D --> D2[distributed transactions]
-  D --> D3[horizontal scale]
+  A["Database choice"] --> B["RDBMS"]
+  A --> C["NoSQL"]
+  A --> D["NewSQL"]
+  B --> B1["entities"]
+  B --> B2["relations"]
+  B --> B3["constraints"]
+  B --> B4["SQL composition"]
+  C --> C1["access patterns"]
+  C --> C2["partition key"]
+  C --> C3["denormalized views"]
+  C --> C4["local consistency boundary"]
+  D --> D1["SQL + relations"]
+  D --> D2["distributed transactions"]
+  D --> D3["horizontal scale"]
 ```
 
 ### 1.1 RDBMS 的基本单位：row + relation

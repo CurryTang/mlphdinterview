@@ -698,9 +698,9 @@ QPS = 10,000 requests/s
 
 ~~~mermaid
 flowchart LR
-  A[QPS: 每秒进来多少] --> D[Concurrency: 同时在系统里多少]
-  B[Latency: 每个请求待多久] --> D
-  D --> C[线程 / 连接 / 队列 / 内存压力]
+  A["QPS: 每秒进来多少"] --> D["Concurrency: 同时在系统里多少"]
+  B["Latency: 每个请求待多久"] --> D
+  D --> C["线程 / 连接 / 队列 / 内存压力"]
 ~~~
 
 ### 0.3 平均 QPS 和峰值 QPS
@@ -878,12 +878,12 @@ $$
 
 ~~~mermaid
 flowchart TD
-  A[估 QPS / storage / bandwidth / IOPS] --> B{单机能否承受}
-  B -->|读压力大| C[replica / cache / read pool]
-  B -->|写压力大| D[partition / queue / batch]
-  B -->|容量大| E[sharding / cold storage / retention]
-  B -->|延迟高| F[index / cache / async / locality]
-  B -->|峰值高| G[autoscale / rate limit / backpressure]
+  A["估 QPS / storage / bandwidth / IOPS"] --> B{"单机能否承受"}
+  B -->|读压力大| C["replica / cache / read pool"]
+  B -->|写压力大| D["partition / queue / batch"]
+  B -->|容量大| E["sharding / cold storage / retention"]
+  B -->|延迟高| F["index / cache / async / locality"]
+  B -->|峰值高| G["autoscale / rate limit / backpressure"]
 ~~~
 
 一个比较稳的回答顺序：
@@ -904,14 +904,14 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-  A[数据库压力] --> B{主要压力是什么}
-  B -->|读请求太多| C[主从复制 + 读写分离]
-  B -->|主库不可用风险| D[主主 / 主备 / 自动故障切换]
-  B -->|写请求太多| E[数据分区 / Sharding]
+  A["数据库压力"] --> B{"主要压力是什么"}
+  B -->|读请求太多| C["主从复制 + 读写分离"]
+  B -->|主库不可用风险| D["主主 / 主备 / 自动故障切换"]
+  B -->|写请求太多| E["数据分区 / Sharding"]
   B -->|数据量太大| E
-  C --> F[代价: replication lag / stale read]
-  D --> G[代价: 冲突处理 / failover 复杂]
-  E --> H[代价: 跨分片查询 / rebalancing / hot shard]
+  C --> F["代价: replication lag / stale read"]
+  D --> G["代价: 冲突处理 / failover 复杂"]
+  E --> H["代价: 跨分片查询 / rebalancing / hot shard"]
 ~~~
 
 可以先记住一句：
@@ -1053,10 +1053,10 @@ A 的写入复制到 B，B 的写入也复制到 A。这通常用于双机热备
 
 ~~~mermaid
 flowchart LR
-  C[Client] --> A[Primary A]
-  C --> B[Primary B]
-  A -- replicate changes --> B
-  B -- replicate changes --> A
+  C["Client"] --> A["Primary A"]
+  C --> B["Primary B"]
+  A -->|replicate changes| B
+  B -->|replicate changes| A
 ~~~
 
 ### 2.1 如何避免复制循环
@@ -1173,15 +1173,15 @@ SELECT * FROM orders WHERE user_id = ?
 
 ~~~mermaid
 flowchart TD
-  Q[Query] --> S0[Shard 0]
-  Q --> S1[Shard 1]
-  Q --> S2[Shard 2]
-  Q --> S3[Shard 3]
-  S0 --> M[Merge / Sort / Aggregate]
+  Q["Query"] --> S0["Shard 0"]
+  Q --> S1["Shard 1"]
+  Q --> S2["Shard 2"]
+  Q --> S3["Shard 3"]
+  S0 --> M["Merge / Sort / Aggregate"]
   S1 --> M
   S2 --> M
   S3 --> M
-  M --> R[Response]
+  M --> R["Response"]
 ~~~
 
 跨分片 join、跨分片事务、全局排序都会明显变复杂。
@@ -1223,16 +1223,16 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-  Router[Query Router] --> S0P[Shard 0 Primary]
-  Router --> S1P[Shard 1 Primary]
-  Router --> S2P[Shard 2 Primary]
+  Router["Query Router"] --> S0P["Shard 0 Primary"]
+  Router --> S1P["Shard 1 Primary"]
+  Router --> S2P["Shard 2 Primary"]
 
-  S0P --> S0R1[Shard 0 Replica]
-  S0P --> S0R2[Shard 0 Replica]
-  S1P --> S1R1[Shard 1 Replica]
-  S1P --> S1R2[Shard 1 Replica]
-  S2P --> S2R1[Shard 2 Replica]
-  S2P --> S2R2[Shard 2 Replica]
+  S0P --> S0R1["Shard 0 Replica"]
+  S0P --> S0R2["Shard 0 Replica"]
+  S1P --> S1R1["Shard 1 Replica"]
+  S1P --> S1R2["Shard 1 Replica"]
+  S2P --> S2R1["Shard 2 Replica"]
+  S2P --> S2R2["Shard 2 Replica"]
 ~~~
 
 这样同时获得：
@@ -1402,11 +1402,11 @@ hot key 的本质是：分片规则可能平均，但访问流量不平均。一
 
 ~~~mermaid
 flowchart LR
-  A[Feature Update] --> B{更新模式}
-  B -->|Push / active| C[主动刷新 hot cache / replica]
-  B -->|Pull / lazy| D[请求 miss / TTL 过期时再刷新]
-  C --> E[低读延迟 + 更高写放大]
-  D --> F[低写放大 + miss 时延迟更高]
+  A["Feature Update"] --> B{"更新模式"}
+  B -->|Push active| C["主动刷新 hot cache / replica"]
+  B -->|Pull lazy| D["请求 miss / TTL 过期时再刷新"]
+  C --> E["低读延迟 + 更高写放大"]
+  D --> F["低写放大 + miss 时延迟更高"]
 ~~~
 
 在推荐系统里，热门 item feature 往往适合 push 到 serving local cache；用户长尾特征更适合 pull + TTL，因为主动推所有用户特征会造成大量无效写入。
@@ -1427,11 +1427,11 @@ feature group v7 同步到 checkpoint Y。
 
 ~~~mermaid
 flowchart LR
-  A[Raw Events] --> B[Feature Computation]
-  B --> C[Feature Update Log / Checkpoint]
-  C --> D[Online Feature Store Primary]
-  D --> E[Online Feature Store Replicas]
-  E --> F[Model Serving]
+  A["Raw Events"] --> B["Feature Computation"]
+  B --> C["Feature Update Log / Checkpoint"]
+  C --> D["Online Feature Store Primary"]
+  D --> E["Online Feature Store Replicas"]
+  E --> F["Model Serving"]
 ~~~
 
 这个 update log / checkpoint 在概念上类似数据库里的 binlog position：不是每次全量同步，而是记录处理进度，持续增量更新。
