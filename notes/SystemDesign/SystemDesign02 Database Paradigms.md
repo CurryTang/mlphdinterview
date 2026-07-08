@@ -469,6 +469,107 @@ NoSQL = 没有事务 = 没有一致性
 跨对象一致性用幂等、重试、事件驱动、outbox、saga 或补偿处理。
 ```
 
+### 4.4 强一致和最终一致到底差在哪里
+
+这里的一致性说的是副本之间的可见性，不是 ACID 里那个“业务约束一致性”。
+
+假设同一份数据有三个副本：
+
+```text
+Replica A
+Replica B
+Replica C
+```
+
+客户端写入：
+
+```text
+user:123.name = "Bob"
+```
+
+强一致性要求：写入返回成功以后，后面的读请求不管读到哪个副本，都应该看到新值，或者系统必须把读请求路由到能保证新值的路径上。
+
+```text
+write Bob -> success
+
+read from A -> Bob
+read from B -> Bob
+read from C -> Bob
+```
+
+最终一致性弱在这里：写入可以先在一部分副本成功，然后后台慢慢传播到其他副本。系统保证的是“如果后面没有新的写入，所有副本最终会收敛到同一个值”，但不保证写成功后的下一次读一定看到新值。
+
+```text
+write Bob -> success
+
+immediately:
+  read from A -> Bob
+  read from B -> Alice
+  read from C -> Alice
+
+after replication catches up:
+  read from A -> Bob
+  read from B -> Bob
+  read from C -> Bob
+```
+
+这就是 stale read。用户刚更新头像，刷新页面却还看到旧头像；刚发了一条动态，自己马上刷新 feed 可能暂时看不到；刚写入一个事件，分析查询晚几秒才出现。这些都属于最终一致系统里常见的现象。
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Primary
+  participant Replica
+  Client->>Primary: write value = Bob
+  Primary-->>Client: success
+  Client->>Replica: read value
+  Replica-->>Client: old value = Alice
+  Primary-->>Replica: async replication
+  Client->>Replica: read later
+  Replica-->>Client: new value = Bob
+```
+
+为什么系统要接受这种语义？因为强一致通常要在写入或读取路径上做协调。
+
+| 语义 | 写入返回前通常要做什么 | 好处 | 代价 |
+| --- | --- | --- | --- |
+| 强一致 | 等 leader、quorum 或共识确认 | 读起来更像单机数据库，应用简单 | 写延迟更高，跨 region 更慢，故障时可用性更难 |
+| 最终一致 | 先写局部副本，异步传播 | 低延迟、高可用、吞吐高 | 可能读到旧值，应用要处理冲突和补偿 |
+
+所以最终一致不是“数据会错”。更准确地说，它允许系统在短时间内暴露旧状态，并把收敛、冲突解决、重试、幂等这些问题交给系统或应用一起处理。
+
+不同业务对它的接受程度完全不同：
+
+| 场景 | 能不能接受最终一致 | 原因 |
+| --- | --- | --- |
+| 用户头像、点赞数、浏览量 | 通常可以 | 短暂旧值不影响核心正确性 |
+| Feed、推荐、日志写入 | 通常可以 | 更看重吞吐和可用性 |
+| 库存扣减、支付、金融账本 | 通常不该依赖最终一致 | 旧读或重复写可能破坏业务不变量 |
+| 权限撤销、封禁状态 | 要谨慎 | 旧权限继续生效会带来安全风险 |
+
+NoSQL 常见的做法不是简单放弃一致性，而是把一致性缩小到更容易控制的边界：
+
+```text
+单 item 条件写:
+  例如 version = 7 时才更新到 version = 8
+
+单 partition 内原子更新:
+  把需要一起变化的数据放到同一个 partition
+
+read-your-writes:
+  用户写完后，自己的读请求走 leader 或 session-aware route
+
+异步修复:
+  后台 job 根据 event log、outbox 或 CDC 修正 serving view
+```
+
+一句话记：
+
+```text
+强一致关心“写成功以后，马上读是不是新值”。
+最终一致关心“系统最后会不会收敛到同一个值”。
+```
+
 ---
 
 ## 五、不要按 feature checklist 选数据库
