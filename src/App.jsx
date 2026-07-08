@@ -1769,6 +1769,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Strings', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 28 · Two Pointers',
+    'CoreSkills28 Two Pointers.md',
+    null,
+    { directory: 'Leetcode', category: 'Two Pointers', difficulty: 'Medium' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
