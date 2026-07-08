@@ -162,6 +162,92 @@ Object storage 的写法一般要偏向大对象：
 
 在 ML 系统里，这个选择很常见。训练时可以从 object store 拉 shard，本地做 cache；部署时从 object store 或 model registry 拉权重；离线 pipeline 把输出继续写回 object store。
 
+### 4.1 Object storage 和 database storage 的区别
+
+对象存储和数据库都能“存数据”，但它们不是同一类东西。
+
+Object storage 存的是完整对象：
+
+```text
+key -> bytes + metadata
+```
+
+例如：
+
+```text
+images/user-123/avatar.png
+datasets/run-7/shard-00012.parquet
+models/qwen/checkpoint-4000/model.safetensors
+logs/2026/07/08/app-0001.zst
+```
+
+数据库存储的是可查询、可更新、可约束的记录：
+
+```text
+table / collection / index -> rows / documents
+```
+
+例如：
+
+```text
+users(id, name, email)
+orders(id, user_id, status, amount)
+files(id, owner_id, object_key, size, created_at)
+```
+
+一个常见设计是：大文件放对象存储，文件的业务元数据放数据库。
+
+```mermaid
+flowchart LR
+  U["Upload request"] --> API["API service"]
+  API --> DB["Database: file_id, owner, object_key, status"]
+  API --> OBJ["Object store: raw bytes"]
+  DB --> R["query by user / status / time"]
+  OBJ --> D["download by object key"]
+```
+
+这样做的原因很简单：对象存储擅长保存大块字节，数据库擅长查记录和维护业务状态。
+
+| 维度 | Object / Blob storage | Database storage |
+|---|---|---|
+| 基本单位 | 一个对象，一段 bytes | row、document、index entry |
+| 访问方式 | 按 key 读写，整体 PUT/GET，支持 range read | 按主键、索引、条件查询、事务更新 |
+| 擅长 | 大文件、日志、图片、模型权重、数据集 shard | 用户、订单、权限、状态机、索引和查询 |
+| 查询能力 | 弱，通常只能按 key / prefix / metadata | 强，可以 filter、join、aggregate、排序 |
+| 更新方式 | 通常重写对象或写新版本 | 可以更新行、字段、索引和事务边界内的数据 |
+| 一致性重点 | 对象可见性、版本、etag、生命周期 | 事务、隔离级别、约束、复制延迟 |
+| 成本曲线 | 容量便宜，适合海量冷/温数据 | 查询和事务能力更强，但单位存储更贵 |
+
+所以不要把它们混用：
+
+```text
+不要把大视频、大 checkpoint 直接塞进数据库行里。
+数据库会变大、备份变慢、索引和缓存也会被污染。
+
+也不要只把 object_key 放在对象存储里，不建数据库元数据。
+否则很难做权限、搜索、状态管理、审计和删除流程。
+```
+
+更自然的组合是：
+
+```text
+Object store:
+  保存真实文件内容。
+
+Database:
+  保存谁上传的、属于哪个任务、当前状态、权限、object_key、版本、checksum。
+
+Background worker:
+  做异步转码、校验、清理、生命周期迁移。
+```
+
+设计时可以用一句话区分：
+
+```text
+对象存储负责“放东西”。
+数据库负责“知道这些东西是什么，以及现在处于什么状态”。
+```
+
 ---
 
 ## 五、HDFS：为大文件顺序读写设计
