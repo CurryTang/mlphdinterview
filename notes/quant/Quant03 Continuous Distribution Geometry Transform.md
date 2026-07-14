@@ -496,12 +496,10 @@ $$
 用图表示递推关系：
 
 ```mermaid
-flowchart TD
-  A["n-dimensional simplex: sum xi < t"] --> B["fix last coordinate xn = s"]
-  B --> C["remaining budget: t - s"]
-  C --> D["slice is an (n-1)-dimensional simplex"]
-  D --> E["slice volume: V_{n-1}(t-s)"]
-  E --> F["integrate s from 0 to t"]
+flowchart LR
+  A["固定 x_n = s"] --> B["剩余预算 t - s"]
+  B --> C["切片体积 V_{n-1}(t-s)"]
+  C --> D["对 s 从 0 到 t 积分"]
 ```
 
 现在做归纳。$n=1$ 时：
