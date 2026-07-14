@@ -262,4 +262,26 @@ describe('App', () => {
     expect(screen.getByText('n = 32')).toBeInTheDocument();
     expect(screen.getByText('目标：2/3 ≈ 0.6667')).toBeInTheDocument();
   });
+
+  it('opens the recursion chapter for the absent-minded passenger problem', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant07')
+          ? '# 递推法：健忘乘客登机\n\n答案是 $1/2$。'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+
+    expect(screen.getByText('7 notes in this section')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
+
+    expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Quant07 Recursion Absent-Minded Passenger.md')).toHaveLength(2);
+  });
 });

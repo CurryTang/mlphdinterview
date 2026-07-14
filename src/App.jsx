@@ -1867,6 +1867,12 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'Analysis & Probability', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'Quant 7 · 递推法：健忘乘客与状态压缩',
+    'Quant07 Recursion Absent-Minded Passenger.md',
+    null,
+    { directory: 'quant', category: 'Recursion', difficulty: 'Medium' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
