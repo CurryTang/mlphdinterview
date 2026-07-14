@@ -1861,6 +1861,12 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'Normal Distribution', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Quant 6 · 高维积分：大数定律与控制收敛',
+    'Quant06 High Dimensional Integral Dominated Convergence.md',
+    null,
+    { directory: 'quant', category: 'Analysis & Probability', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
@@ -3447,10 +3453,315 @@ function buildIntervalTicks([min, max]) {
   return ticks;
 }
 
+const INTEGRAL_N_LEVELS = [2, 4, 8, 16, 32, 64, 128];
+
+function projectIntegralPoint(x, y, z) {
+  return {
+    x: 100 + 430 * x + 150 * y,
+    y: 405 + 40 * x - 90 * y - 310 * z,
+  };
+}
+
+function ratioHeight(values) {
+  let sum = 0;
+  let squareSum = 0;
+
+  values.forEach((value) => {
+    sum += value;
+    squareSum += value * value;
+  });
+
+  return sum === 0 ? 0 : squareSum / sum;
+}
+
+function seededUniform(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildIntegralCloud(n, count = 190) {
+  const points = [];
+  let ratioTotal = 0;
+
+  for (let sampleIndex = 0; sampleIndex < count; sampleIndex += 1) {
+    const random = seededUniform(91_337 + sampleIndex * 7_919);
+    const values = Array.from({ length: n }, () => random());
+    const mean = values.reduce((total, value) => total + value, 0) / n;
+    const secondMoment = values.reduce((total, value) => total + value * value, 0) / n;
+    const ratio = ratioHeight(values);
+    const projected = projectIntegralPoint(mean, secondMoment, ratio);
+    ratioTotal += ratio;
+    points.push({
+      ...projected,
+      mean,
+      secondMoment,
+      ratio,
+      key: sampleIndex,
+    });
+  }
+
+  return {
+    points,
+    estimate: ratioTotal / count,
+  };
+}
+
+function buildIntegralSurface(gridSize = 12) {
+  const cells = [];
+
+  for (let yIndex = gridSize - 1; yIndex >= 0; yIndex -= 1) {
+    for (let xIndex = gridSize - 1; xIndex >= 0; xIndex -= 1) {
+      const x0 = xIndex / gridSize;
+      const x1 = (xIndex + 1) / gridSize;
+      const y0 = yIndex / gridSize;
+      const y1 = (yIndex + 1) / gridSize;
+      const corners = [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ];
+      const points = corners.map(([x, y]) => {
+        const height = x + y === 0 ? 0 : (x * x + y * y) / (x + y);
+        return projectIntegralPoint(x, y, height);
+      });
+      const averageHeight = corners.reduce((total, [x, y]) => (
+        total + (x + y === 0 ? 0 : (x * x + y * y) / (x + y))
+      ), 0) / corners.length;
+
+      cells.push({
+        key: `${xIndex}-${yIndex}`,
+        points: points.map((point) => `${point.x},${point.y}`).join(' '),
+        averageHeight,
+      });
+    }
+  }
+
+  return cells;
+}
+
+function IntegralAxis({ from, to, label, labelX, labelY }) {
+  return (
+    <g className="integral-axis">
+      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+      <circle cx={to.x} cy={to.y} r="3" />
+      <text x={labelX} y={labelY}>{label}</text>
+    </g>
+  );
+}
+
+function HighDimensionalIntegralVisual() {
+  const [mode, setMode] = useState('surface');
+  const [levelIndex, setLevelIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const n = INTEGRAL_N_LEVELS[levelIndex];
+  const surface = useMemo(() => buildIntegralSurface(), []);
+  const cloud = useMemo(() => buildIntegralCloud(n), [n]);
+  const origin = projectIntegralPoint(0, 0, 0);
+  const xEnd = projectIntegralPoint(1, 0, 0);
+  const yEnd = projectIntegralPoint(0, 1, 0);
+  const zEnd = projectIntegralPoint(0, 0, 1);
+  const target = projectIntegralPoint(0.5, 1 / 3, 2 / 3);
+
+  useEffect(() => {
+    if (!isPlaying || mode !== 'cloud') {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setLevelIndex((current) => (current + 1) % INTEGRAL_N_LEVELS.length);
+    }, 1300);
+
+    return () => window.clearInterval(timer);
+  }, [isPlaying, mode]);
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    if (nextMode === 'surface') {
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <section className="integral-visual" aria-label="高维积分动态三维可视化">
+      <header className="integral-visual-header">
+        <div>
+          <p className="eyebrow">Dynamic 3D intuition</p>
+          <h2>把积分看成“随机高度的平均值”</h2>
+          <p>先看二维曲面的平均高度，再观察维度增加时随机点如何收缩到极限点。</p>
+        </div>
+        <div className="integral-mode-toggle" role="group" aria-label="可视化视图">
+          <button
+            type="button"
+            className={mode === 'surface' ? 'active' : ''}
+            aria-pressed={mode === 'surface'}
+            onClick={() => switchMode('surface')}
+          >
+            n = 2 曲面
+          </button>
+          <button
+            type="button"
+            className={mode === 'cloud' ? 'active' : ''}
+            aria-pressed={mode === 'cloud'}
+            onClick={() => switchMode('cloud')}
+          >
+            n → ∞ 云团
+          </button>
+        </div>
+      </header>
+
+      <div className="integral-stage">
+        <svg viewBox="0 0 760 500" role="img" aria-labelledby="integral-visual-title integral-visual-desc">
+          <title id="integral-visual-title">
+            {mode === 'surface' ? '二元积分曲面' : `${n} 维随机样本的统计量点云`}
+          </title>
+          <desc id="integral-visual-desc">
+            {mode === 'surface'
+              ? '曲面高度是 x1 平方加 x2 平方除以 x1 加 x2，积分是单位正方形上曲面的平均高度。'
+              : `每个点由 ${n} 个独立均匀随机数生成，维数增加时点云趋近均值二分之一、二阶矩三分之一、比值三分之二。`}
+          </desc>
+
+          <g className="integral-base-grid" aria-hidden="true">
+            {[0.25, 0.5, 0.75, 1].map((tick) => {
+              const xFrom = projectIntegralPoint(tick, 0, 0);
+              const xTo = projectIntegralPoint(tick, 1, 0);
+              const yFrom = projectIntegralPoint(0, tick, 0);
+              const yTo = projectIntegralPoint(1, tick, 0);
+              return (
+                <Fragment key={tick}>
+                  <line x1={xFrom.x} y1={xFrom.y} x2={xTo.x} y2={xTo.y} />
+                  <line x1={yFrom.x} y1={yFrom.y} x2={yTo.x} y2={yTo.y} />
+                </Fragment>
+              );
+            })}
+          </g>
+
+          {mode === 'surface' ? (
+            <g className="integral-surface">
+              {surface.map((cell) => (
+                <polygon
+                  key={cell.key}
+                  points={cell.points}
+                  style={{ '--surface-height': cell.averageHeight }}
+                />
+              ))}
+            </g>
+          ) : (
+            <g className="integral-cloud">
+              <line className="integral-target-guide" x1={target.x} y1={target.y} x2={target.x} y2={origin.y} />
+              {cloud.points.map((point) => (
+                <circle
+                  key={point.key}
+                  cx={point.x}
+                  cy={point.y}
+                  r={n >= 32 ? 2.6 : 3.1}
+                  style={{ '--point-ratio': point.ratio }}
+                />
+              ))}
+              <circle className="integral-target-halo" cx={target.x} cy={target.y} r="15" />
+              <circle className="integral-target" cx={target.x} cy={target.y} r="5.5" />
+              <g className="integral-target-label" transform={`translate(${target.x + 18} ${target.y - 14})`}>
+                <rect x="0" y="-23" width="174" height="46" rx="7" />
+                <text x="10" y="-4">极限点 (1/2, 1/3, 2/3)</text>
+                <text x="10" y="14">LLN concentration</text>
+              </g>
+            </g>
+          )}
+
+          <IntegralAxis
+            from={origin}
+            to={xEnd}
+            label={mode === 'surface' ? 'x₁' : '样本均值  x̄ₙ'}
+            labelX={xEnd.x + 10}
+            labelY={xEnd.y + 8}
+          />
+          <IntegralAxis
+            from={origin}
+            to={yEnd}
+            label={mode === 'surface' ? 'x₂' : '二阶矩  qₙ'}
+            labelX={yEnd.x + 8}
+            labelY={yEnd.y - 8}
+          />
+          <IntegralAxis
+            from={origin}
+            to={zEnd}
+            label={mode === 'surface' ? '高度 f₂' : '比值  qₙ / x̄ₙ'}
+            labelX={zEnd.x - 4}
+            labelY={zEnd.y - 12}
+          />
+        </svg>
+
+        <aside className="integral-stage-note">
+          {mode === 'surface' ? (
+            <>
+              <span>二维切入</span>
+              <strong>积分 = 曲面的平均高度</strong>
+              <p>在单位正方形均匀撒点，每个点的高度是 f₂(x₁,x₂)。所有高度取平均，就是二重积分。</p>
+            </>
+          ) : (
+            <>
+              <span>当前维度</span>
+              <strong>n = {n}</strong>
+              <p>点云平均高度（固定随机样本）</p>
+              <b>{cloud.estimate.toFixed(4)}</b>
+              <small>目标：2/3 ≈ 0.6667</small>
+            </>
+          )}
+        </aside>
+      </div>
+
+      {mode === 'cloud' && (
+        <div className="integral-controls">
+          <button
+            type="button"
+            className="integral-play-button"
+            onClick={() => setIsPlaying((current) => !current)}
+            aria-label={isPlaying ? '暂停维度动画' : '播放维度动画'}
+          >
+            {isPlaying ? '暂停' : '播放'}
+          </button>
+          <label>
+            <span>维度 n</span>
+            <input
+              type="range"
+              min="0"
+              max={INTEGRAL_N_LEVELS.length - 1}
+              step="1"
+              value={levelIndex}
+              onChange={(event) => {
+                setLevelIndex(Number(event.target.value));
+                setIsPlaying(false);
+              }}
+              aria-label="选择积分维度"
+            />
+          </label>
+          <div className="integral-levels" aria-hidden="true">
+            {INTEGRAL_N_LEVELS.map((level, index) => (
+              <span className={index === levelIndex ? 'active' : ''} key={level}>{level}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <footer className="integral-visual-footer">
+        <span><i className="surface-key" /> 函数高度 / 样本点</span>
+        <span><i className="target-key" /> 大数定律极限</span>
+        <strong>{mode === 'surface' ? '先理解“平均高度”' : 'n 越大，云团越集中'}</strong>
+      </footer>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|high-dimensional-integral-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -3474,6 +3785,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'pow-demo') {
     return <BinaryPowVisual />;
+  }
+
+  if (match?.[1] === 'high-dimensional-integral-demo') {
+    return <HighDimensionalIntegralVisual />;
   }
 
   if (match) {

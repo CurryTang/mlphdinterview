@@ -235,4 +235,31 @@ describe('App', () => {
 
     expect(screen.queryByRole('button', { name: /System Design 草稿 · 数据库扩展三件套/i })).not.toBeInTheDocument();
   });
+
+  it('renders the high-dimensional integral visual and changes dimension', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant06')
+          ? '# 高维积分\n\n```high-dimensional-integral-demo\n```'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 6 · 高维积分/i }));
+
+    expect(await screen.findByRole('region', { name: '高维积分动态三维可视化' })).toBeInTheDocument();
+    expect(screen.getByText('积分 = 曲面的平均高度')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'n → ∞ 云团' }));
+    expect(screen.getByText('n = 2')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('slider', { name: '选择积分维度' }), { target: { value: '4' } });
+    expect(screen.getByText('n = 32')).toBeInTheDocument();
+    expect(screen.getByText('目标：2/3 ≈ 0.6667')).toBeInTheDocument();
+  });
 });
