@@ -94,55 +94,7 @@ flowchart LR
 
 它不是把所有 pair 都检查一遍，而是在每一步排除一整条边界。
 
-## 模式二：同向双指针，也就是滑动窗口
-
-滑动窗口通常有两个边界：
-
-```python
-left = 0
-
-for right in range(len(nums)):
-    add(nums[right])
-
-    while window_is_invalid():
-        remove(nums[left])
-        left += 1
-
-    update_answer()
-```
-
-这里 `right` 负责扩大窗口，`left` 负责在窗口不合法时收缩窗口。
-
-```text
-nums:  a  b  c  d  e  f  g
-             [ window ]
-              left  right
-```
-
-这种模式适合“连续子数组 / 子串”问题，因为窗口本身就是一个连续区间。
-
-```mermaid
-flowchart LR
-  A["right moves forward"] --> B["add new element"]
-  B --> C{"window valid"}
-  C -->|yes| D["record answer"]
-  C -->|no| E["move left forward"]
-  E --> F["remove old element"]
-  F --> C
-```
-
-滑动窗口里最重要的是写清楚 invariant，也就是窗口始终代表什么：
-
-```text
-window = nums[left:right + 1]
-窗口内维护哪些统计量？
-窗口什么时候合法？
-合法时更新答案，还是非法时更新答案？
-```
-
-很多错误不是指针错了，而是窗口含义没写清楚。
-
-## 模式三：快慢指针
+## 模式二：快慢指针
 
 快慢指针常见于链表、环检测、原地数组处理。
 
@@ -166,7 +118,7 @@ flowchart LR
 
 快慢指针也可以用在原地覆盖里，不过那时更常叫读写指针。
 
-## 模式四：读写指针
+## 模式三：读写指针
 
 读写指针适合原地修改数组：
 
@@ -203,39 +155,15 @@ nums[read] 是当前正在判断的元素
 每个指针只单调移动，不回头。
 ```
 
-以滑动窗口为例：
-
-```text
-right 从 0 走到 n - 1，最多走 n 次。
-left 也从 0 走到 n - 1，最多走 n 次。
-```
-
-所以总移动次数最多是：
-
-```text
-n + n = 2n
-```
-
-去掉常数，就是 `O(n)`。
-
-这也是为什么有些代码看起来像嵌套循环，实际不是 `O(n^2)`：
-
-```python
-left = 0
-for right in range(n):
-    while need_shrink():
-        left += 1
-```
-
-虽然 `while` 写在 `for` 里面，但 `left` 不会每轮从头开始。它整个算法期间最多移动 `n` 次。
-
-相向双指针也一样：
+以相向双指针为例：
 
 ```text
 left 只向右走
 right 只向左走
 两者最多合计移动 n 次
 ```
+
+快慢指针也是同样的摊还分析：即使 `fast` 每轮走两步，两个指针都不会回头，总移动次数仍然只是 $O(n)$。
 
 如果题目需要先排序，那么总复杂度通常是：
 
@@ -787,23 +715,18 @@ right -= 1
 
 可能会跳过答案。除非你能证明两边都可以安全丢掉。
 
-### 3. 滑动窗口没有维护统计量
-
-窗口题通常需要维护计数、sum、frequency map 或 distinct count。只移动指针但不更新这些状态，窗口合法性就会变脏。
-
-### 4. 忘记处理重复值
+### 3. 忘记处理重复值
 
 排序 + 双指针的题里，重复值经常影响去重。去重逻辑应该和指针移动放在一起想清楚。
 
-### 5. 指针不动导致死循环
+### 4. 指针不动导致死循环
 
-`while left < right` 里每一轮必须保证至少一个指针移动。滑动窗口里，`while window_is_invalid()` 也必须让窗口逐渐接近合法状态。
+`while left < right` 里每一轮必须保证至少一个指针移动，否则循环状态不会发生变化。
 
 ## 记忆版
 
 ```text
 排序数组，看相向双指针。
-连续区间，看滑动窗口。
 链表结构，看快慢指针。
 原地压缩，看读写指针。
 接雨水，看较矮的 leftMax / rightMax，先结算较矮侧。

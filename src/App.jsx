@@ -1775,6 +1775,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Two Pointers', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 29 · Sliding Window',
+    'CoreSkills29 Sliding Window.md',
+    null,
+    { directory: 'Leetcode', category: 'Sliding Window', difficulty: 'Medium' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
@@ -3423,6 +3429,247 @@ function BinaryPowVisual() {
   );
 }
 
+const SLIDING_WINDOW_VALUES = ['A', 'B', 'C', 'A', 'D', 'B'];
+
+const SLIDING_WINDOW_STEPS = [
+  {
+    phase: 'expand',
+    title: '右扩：加入 A',
+    detail: 'right 向右走一格，把新元素加入窗口状态。',
+    left: 0,
+    right: 0,
+    valid: true,
+    state: 'A × 1',
+    best: '—',
+  },
+  {
+    phase: 'record',
+    title: '合法：记录 A',
+    detail: '窗口合法；最长模板在收缩循环之后更新答案。',
+    left: 0,
+    right: 0,
+    valid: true,
+    state: 'A × 1',
+    best: 'A',
+  },
+  {
+    phase: 'expand',
+    title: '右扩：加入 B',
+    detail: 'right 永远只向右，增量加入 B，不重新扫描整个窗口。',
+    left: 0,
+    right: 1,
+    valid: true,
+    state: 'A × 1 · B × 1',
+    best: 'A',
+  },
+  {
+    phase: 'record',
+    title: '合法：记录 AB',
+    detail: '当前窗口 [left, right] 合法，best 从 1 更新为 2。',
+    left: 0,
+    right: 1,
+    valid: true,
+    state: 'A × 1 · B × 1',
+    best: 'AB',
+  },
+  {
+    phase: 'expand',
+    title: '右扩：加入 C',
+    detail: '状态仍然合法，窗口继续扩大。',
+    left: 0,
+    right: 2,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1',
+    best: 'AB',
+  },
+  {
+    phase: 'record',
+    title: '合法：记录 ABC',
+    detail: '窗口长度是 right - left + 1 = 3。',
+    left: 0,
+    right: 2,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1',
+    best: 'ABC',
+  },
+  {
+    phase: 'validate',
+    title: '加入 A 后条件失效',
+    detail: 'A 的频次变成 2。不要移动 right，也不要立刻记录答案；进入收缩循环。',
+    left: 0,
+    right: 3,
+    valid: false,
+    state: 'A × 2 · B × 1 · C × 1',
+    best: 'ABC',
+  },
+  {
+    phase: 'shrink',
+    title: '左缩：移除旧 A',
+    detail: '先从状态中删除 nums[left]，再执行 left += 1，直到窗口重新合法。',
+    left: 1,
+    right: 3,
+    removedIndex: 0,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1',
+    best: 'ABC',
+  },
+  {
+    phase: 'record',
+    title: '恢复合法：窗口 BCA',
+    detail: '最长模板在 while invalid 结束后记录；长度仍是 3，best 不变。',
+    left: 1,
+    right: 3,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1',
+    best: 'ABC',
+  },
+  {
+    phase: 'expand',
+    title: '右扩：加入 D',
+    detail: '窗口 BCAD 合法，right 再次只向右前进。',
+    left: 1,
+    right: 4,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1 · D × 1',
+    best: 'ABC',
+  },
+  {
+    phase: 'record',
+    title: '记录新的最优 BCAD',
+    detail: '当前长度 4 大于旧答案 3，更新 best。完整循环随后继续处理下一个 right。',
+    left: 1,
+    right: 4,
+    valid: true,
+    state: 'A × 1 · B × 1 · C × 1 · D × 1',
+    best: 'BCAD',
+  },
+];
+
+const SLIDING_PHASES = [
+  ['expand', '1 · 右扩', '加入 nums[right]'],
+  ['validate', '2 · 判断', '检查窗口条件'],
+  ['shrink', '3 · 左缩', 'while 触发就删除'],
+  ['record', '4 · 记录', '在正确时机更新'],
+];
+
+function SlidingWindowVisual() {
+  const [activeStep, setActiveStep] = useState(0);
+  const step = SLIDING_WINDOW_STEPS[activeStep];
+  const windowText = SLIDING_WINDOW_VALUES.slice(step.left, step.right + 1).join('');
+
+  return (
+    <section className="sliding-window-visual" aria-label="滑动窗口万能模板演示">
+      <header className="sliding-window-header">
+        <div>
+          <p className="eyebrow">Sliding window visual</p>
+          <h2>右扩、维护、左缩、记录</h2>
+          <p>示例状态是“窗口内不能出现重复字符”，但四拍循环可以替换成任何可增量维护的条件。</p>
+        </div>
+        <div className="sliding-window-counter">{activeStep + 1}<span>/ {SLIDING_WINDOW_STEPS.length}</span></div>
+      </header>
+
+      <div className="sliding-window-phases">
+        {SLIDING_PHASES.map(([id, label, detail]) => (
+          <div className={step.phase === id ? `active ${id}` : ''} key={id}>
+            <strong>{label}</strong>
+            <span>{detail}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="sliding-window-step-copy">
+        <strong>{step.title}</strong>
+        <span>{step.detail}</span>
+      </div>
+
+      <div className="sliding-window-array-wrap">
+        <div className="sliding-window-array" aria-label="滑动窗口数组">
+          {SLIDING_WINDOW_VALUES.map((value, index) => {
+            const inWindow = step.left <= index && index <= step.right;
+            const isLeft = index === step.left;
+            const isRight = index === step.right;
+            const isRemoved = index === step.removedIndex;
+            return (
+              <div
+                className={`sliding-window-cell ${inWindow ? 'in-window' : ''} ${isRemoved ? 'removed' : ''}`}
+                key={`${value}-${index}`}
+              >
+                <small>{index}</small>
+                <strong>{value}</strong>
+                <span>
+                  {isLeft && <b className="left">L</b>}
+                  {isRight && <b className="right">R</b>}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="sliding-window-state">
+        <div>
+          <span>当前窗口</span>
+          <strong>{windowText || '∅'}</strong>
+          <small>[{step.left}, {step.right}]</small>
+        </div>
+        <div>
+          <span>增量状态</span>
+          <strong>{step.state}</strong>
+          <small>只 add / remove 边界元素</small>
+        </div>
+        <div className={step.valid ? 'valid' : 'invalid'}>
+          <span>条件</span>
+          <strong>{step.valid ? '合法' : '不合法'}</strong>
+          <small>{step.valid ? '可以考虑记录' : '必须继续左缩'}</small>
+        </div>
+        <div>
+          <span>best</span>
+          <strong>{step.best}</strong>
+          <small>最长合法窗口</small>
+        </div>
+      </div>
+
+      <div className="sliding-window-timing">
+        <div>
+          <strong>求最长合法窗口</strong>
+          <span>while 不合法：左缩</span>
+          <em>while 结束后 update max</em>
+        </div>
+        <div>
+          <strong>求最短满足窗口</strong>
+          <span>while 合法：先记录，再左缩</span>
+          <em>在 while 内 update min</em>
+        </div>
+      </div>
+
+      <div className="sliding-window-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          上一步
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={SLIDING_WINDOW_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label="选择滑动窗口演示步骤"
+        />
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.min(SLIDING_WINDOW_STEPS.length - 1, current + 1))}
+          disabled={activeStep === SLIDING_WINDOW_STEPS.length - 1}
+        >
+          下一步
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const THREE_SUM_VALUES = [-4, -1, -1, 0, 1, 2];
 
 const THREE_SUM_STEPS = [
@@ -4163,7 +4410,7 @@ function HighDimensionalIntegralVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -4187,6 +4434,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'pow-demo') {
     return <BinaryPowVisual />;
+  }
+
+  if (match?.[1] === 'sliding-window-demo') {
+    return <SlidingWindowVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

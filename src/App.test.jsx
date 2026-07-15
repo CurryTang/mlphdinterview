@@ -165,12 +165,19 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
+    expect(screen.getByText('29 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
 
     expect(await screen.findByRole('heading', { name: /Two Pointers/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills28 Two Pointers.md')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+
+    expect(await screen.findByRole('heading', { name: /中文教程/i })).toBeInTheDocument();
+    expect(screen.getAllByText('CoreSkills29 Sliding Window.md')).toHaveLength(2);
   });
 
   it('renders the interactive 3Sum two-pointer walkthrough', async () => {
@@ -196,6 +203,33 @@ describe('App', () => {
 
     expect(screen.getByText('固定 -1，命中第一组')).toBeInTheDocument();
     expect(screen.getByText('[-1, -1, 2]')).toBeInTheDocument();
+  });
+
+  it('renders the standalone sliding window template visual', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills29')
+          ? '# Sliding Window\n\n```sliding-window-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+
+    const visual = await screen.findByRole('region', { name: '滑动窗口万能模板演示' });
+    expect(within(visual).getByText('右扩：加入 A')).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: '选择滑动窗口演示步骤' }), {
+      target: { value: '6' },
+    });
+
+    expect(within(visual).getByText('加入 A 后条件失效')).toBeInTheDocument();
+    expect(within(visual).getByText('不合法')).toBeInTheDocument();
   });
 
   it('renders the trapping rain water walkthrough and reaches six units', async () => {
