@@ -249,33 +249,126 @@ $$
 
 目标：求不含重复字符的最长连续子串长度。
 
-状态：每个字符在窗口中的出现次数。
+### 从枚举左端点开始
 
-非法条件：刚加入的字符频次大于 1。
+最直接的想法是：固定每一个 `left`，让 `right` 向右寻找从该位置出发的最长无重复子串。
 
 ```python
 class Solution:
     def lengthOfLongestSubstring(self, s: str) -> int:
-        count = {}
-        left = 0
-        answer = 0
+        max_length = 0
 
-        for right, char in enumerate(s):
-            count[char] = count.get(char, 0) + 1
+        for left in range(len(s)):
+            window = {s[left]}
+            right = left + 1
 
-            while count[char] > 1:
-                left_char = s[left]
-                count[left_char] -= 1
-                left += 1
+            while right < len(s) and s[right] not in window:
+                window.add(s[right])
+                right += 1
 
-            answer = max(answer, right - left + 1)
+            max_length = max(max_length, right - left)
 
-        return answer
+        return max_length
 ```
 
-为什么 `while` 只检查 `count[char] > 1`？
+这段代码能得到正确答案，但每换一个 `left`，都会重新创建 `window`，并让 `right` 从 `left + 1` 重新扫描。相同字符可能被反复访问：
 
-在加入新字符之前，旧窗口已经合法。唯一可能制造重复的就是刚加入的 `char`，所以只需要持续删除左端，直到它的频次回到 1。
+```text
+left = 0：扫描 s[0], s[1], s[2], ...
+left = 1：       扫描 s[1], s[2], ...
+left = 2：              扫描 s[2], ...
+```
+
+最坏情况下没有重复字符，工作量是：
+
+$$
+n+(n-1)+\cdots+1=O(n^2).
+$$
+
+原代码最后的 `left += 1` 可以删除。`left` 由 `for left in range(...)` 控制，每轮开始时都会被 `range` 的下一个值重新赋值，手动加一不会影响下一轮。
+
+### 填进最长合法窗口模板
+
+先把题意逐项翻译：
+
+| 万能模板中的槽位 | 本题填入的内容 |
+|---|---|
+| `state` | `window = set()`，保存当前窗口的字符 |
+| 新元素 | `s[right]` |
+| 非法条件 | `s[right] in window` |
+| `remove(left)` | `window.remove(s[left])` |
+| `add(right)` | `window.add(s[right])` |
+| `update answer` | `max_length = max(max_length, right - left + 1)` |
+
+填入以后得到：
+
+```python
+class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        window = set()
+        left = 0
+        max_length = 0
+
+        for right in range(len(s)):
+            while s[right] in window:
+                window.remove(s[left])
+                left += 1
+
+            window.add(s[right])
+            max_length = max(max_length, right - left + 1)
+
+        return max_length
+```
+
+下面的代码级可视化使用 `s = "abca"`。高亮行表示当前正在执行的模板步骤；注意遇到第二个 `a` 时，`right` 停住，只有 `left` 收缩：
+
+```longest-substring-demo
+```
+
+这里使用 `set`，所以采用的是**先检查、收缩，再加入**：
+
+```text
+while s[right] in window:
+    remove left
+add s[right]
+```
+
+因为集合只能表示“字符是否存在”，不能保存重复次数。如果想完全按照“先 add，再 while invalid”的万能模板，则把状态换成频次表：
+
+```python
+count[s[right]] += 1
+
+while count[s[right]] > 1:
+    count[s[left]] -= 1
+    left += 1
+```
+
+两种写法的窗口不变量相同：更新答案时，`s[left:right + 1]` 一定没有重复字符。
+
+### 为什么外层循环选择 right
+
+关键不是变量名字，而是谁能让旧窗口被下一轮复用。
+
+```text
+外层枚举 left：
+  left 换一次，window 清空，right 重新出发
+  同一个字符会被扫描很多次 -> O(n²)
+
+外层枚举 right：
+  right 每轮只前进一次，window 保留下来
+  重复时 left 只向右删除过期字符 -> O(n)
+```
+
+在整个算法中：
+
+```text
+right 最多移动 n 次
+left  最多移动 n 次
+```
+
+因此总指针移动次数不超过 $2n$。一句话记忆：
+
+> loop right 是在持续扩展同一个候选窗口；loop left 是为每个起点重新搜索一次终点。
 
 ---
 

@@ -232,6 +232,37 @@ describe('App', () => {
     expect(within(visual).getByText('不合法')).toBeInTheDocument();
   });
 
+  it('maps longest substring code to the sliding window template', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills29')
+          ? '# Sliding Window\n\n```longest-substring-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+
+    const visual = await screen.findByRole('region', { name: '最长无重复子串代码映射演示' });
+    expect(within(visual).getByText('同一行骨架，逐项填入本题条件')).toBeInTheDocument();
+    expect(within(visual).getByText('外层 loop right')).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: '选择最长无重复子串演示步骤' }), {
+      target: { value: '6' },
+    });
+
+    expect(within(visual).getByText('right = 3：候选 a 重复')).toBeInTheDocument();
+    expect(within(visual).getByText('候选字符已经存在')).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
+    expect(within(visual).getByText('移除旧 a，left 从 0 变成 1')).toBeInTheDocument();
+  });
+
   it('renders the trapping rain water walkthrough and reaches six units', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);

@@ -3670,6 +3670,266 @@ function SlidingWindowVisual() {
   );
 }
 
+const LONGEST_SUBSTRING_VALUES = ['a', 'b', 'c', 'a'];
+
+const LONGEST_SUBSTRING_TEMPLATE_LINES = [
+  ['loop', 'for right in range(len(items)):'],
+  ['while', '    while candidate_is_invalid(state):'],
+  ['remove', '        remove(state, items[left])'],
+  ['left', '        left += 1'],
+  ['add', '    add(state, items[right])'],
+  ['record', '    answer = max(answer, right - left + 1)'],
+];
+
+const LONGEST_SUBSTRING_FILLED_LINES = [
+  ['loop', 'for right in range(len(s)):'],
+  ['while', '    while s[right] in window:'],
+  ['remove', '        window.remove(s[left])'],
+  ['left', '        left += 1'],
+  ['add', '    window.add(s[right])'],
+  ['record', '    max_length = max(max_length, right - left + 1)'],
+];
+
+const LONGEST_SUBSTRING_STEPS = [
+  {
+    phase: '扩张',
+    title: 'right = 0：加入 a',
+    detail: 'a 不在 window 中，不需要收缩；执行 window.add(s[right])。',
+    left: 0,
+    right: 0,
+    includedRight: 0,
+    state: '{a}',
+    best: 0,
+    activeLines: ['add'],
+  },
+  {
+    phase: '记录',
+    title: '记录窗口 a',
+    detail: '窗口合法，长度是 0 - 0 + 1 = 1，max_length 更新为 1。',
+    left: 0,
+    right: 0,
+    includedRight: 0,
+    state: '{a}',
+    best: 1,
+    activeLines: ['record'],
+  },
+  {
+    phase: '扩张',
+    title: 'right = 1：复用窗口并加入 b',
+    detail: 'window 没有清空；在 {a} 上增量加入 b。',
+    left: 0,
+    right: 1,
+    includedRight: 1,
+    state: '{a, b}',
+    best: 1,
+    activeLines: ['loop', 'add'],
+  },
+  {
+    phase: '记录',
+    title: '记录窗口 ab',
+    detail: '长度是 1 - 0 + 1 = 2，max_length 更新为 2。',
+    left: 0,
+    right: 1,
+    includedRight: 1,
+    state: '{a, b}',
+    best: 2,
+    activeLines: ['record'],
+  },
+  {
+    phase: '扩张',
+    title: 'right = 2：继续加入 c',
+    detail: '仍然不重复，window 从 {a, b} 增量变成 {a, b, c}。',
+    left: 0,
+    right: 2,
+    includedRight: 2,
+    state: '{a, b, c}',
+    best: 2,
+    activeLines: ['loop', 'add'],
+  },
+  {
+    phase: '记录',
+    title: '记录窗口 abc',
+    detail: '长度是 2 - 0 + 1 = 3，max_length 更新为 3。',
+    left: 0,
+    right: 2,
+    includedRight: 2,
+    state: '{a, b, c}',
+    best: 3,
+    activeLines: ['record'],
+  },
+  {
+    phase: '检测',
+    title: 'right = 3：候选 a 重复',
+    detail: '新 a 还没有加入；while 发现 a 已在 window 中，因此 right 停住，开始移动 left。',
+    left: 0,
+    right: 3,
+    includedRight: 2,
+    candidate: true,
+    invalid: true,
+    state: '{a, b, c}',
+    best: 3,
+    activeLines: ['loop', 'while'],
+  },
+  {
+    phase: '收缩',
+    title: '移除旧 a，left 从 0 变成 1',
+    detail: '先 remove(s[left])，再 left += 1。候选 a 不再重复，while 结束。',
+    left: 1,
+    right: 3,
+    includedRight: 2,
+    candidate: true,
+    removedIndex: 0,
+    state: '{b, c}',
+    best: 3,
+    activeLines: ['remove', 'left'],
+  },
+  {
+    phase: '扩张',
+    title: '把候选 a 加入恢复后的窗口',
+    detail: '现在 window 是 {b, c}，可以安全加入 s[right]，窗口变成 bca。',
+    left: 1,
+    right: 3,
+    includedRight: 3,
+    state: '{a, b, c}',
+    best: 3,
+    activeLines: ['add'],
+  },
+  {
+    phase: '记录',
+    title: '记录窗口 bca，最优值仍是 3',
+    detail: '当前长度是 3 - 1 + 1 = 3。right 没有回头，window 也没有重建。',
+    left: 1,
+    right: 3,
+    includedRight: 3,
+    state: '{a, b, c}',
+    best: 3,
+    activeLines: ['record'],
+  },
+];
+
+function LongestSubstringVisual() {
+  const [activeStep, setActiveStep] = useState(0);
+  const step = LONGEST_SUBSTRING_STEPS[activeStep];
+  const windowText = step.includedRight >= step.left
+    ? LONGEST_SUBSTRING_VALUES.slice(step.left, step.includedRight + 1).join('')
+    : '∅';
+
+  const renderCode = (lines) => lines.map(([id, code]) => (
+    <span className={step.activeLines.includes(id) ? 'active' : ''} key={id}>
+      {code}
+    </span>
+  ));
+
+  return (
+    <section className="longest-substring-visual" aria-label="最长无重复子串代码映射演示">
+      <header className="longest-substring-header">
+        <div>
+          <p className="eyebrow">Template → concrete code</p>
+          <h2>同一行骨架，逐项填入本题条件</h2>
+          <p>拖动步骤，左边的抽象操作与右边的实际代码会同时高亮。</p>
+        </div>
+        <div className="longest-substring-counter">
+          {activeStep + 1}<span>/ {LONGEST_SUBSTRING_STEPS.length}</span>
+        </div>
+      </header>
+
+      <div className="longest-substring-code-map">
+        <div>
+          <strong>最长合法窗口模板</strong>
+          <pre><code>{renderCode(LONGEST_SUBSTRING_TEMPLATE_LINES)}</code></pre>
+        </div>
+        <div>
+          <strong>Longest Substring 填空结果</strong>
+          <pre><code>{renderCode(LONGEST_SUBSTRING_FILLED_LINES)}</code></pre>
+        </div>
+      </div>
+
+      <div className="longest-substring-step-copy">
+        <span>{step.phase}</span>
+        <strong>{step.title}</strong>
+        <p>{step.detail}</p>
+      </div>
+
+      <div className="longest-substring-array" aria-label="字符串 abca 的窗口状态">
+        {LONGEST_SUBSTRING_VALUES.map((value, index) => {
+          const inWindow = step.left <= index && index <= step.includedRight;
+          const isCandidate = step.candidate && index === step.right;
+          const isRemoved = index === step.removedIndex;
+          return (
+            <div
+              className={`longest-substring-cell ${inWindow ? 'in-window' : ''} ${isCandidate ? 'candidate' : ''} ${isRemoved ? 'removed' : ''}`}
+              key={`${value}-${index}`}
+            >
+              <small>{index}</small>
+              <strong>{value}</strong>
+              <span>
+                {index === step.left && <b className="left">L</b>}
+                {index === step.right && <b className="right">R</b>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="longest-substring-state">
+        <div>
+          <span>window</span>
+          <strong>{windowText}</strong>
+          <small>s[{step.left}:{step.includedRight + 1}]</small>
+        </div>
+        <div className={step.invalid ? 'invalid' : ''}>
+          <span>set state</span>
+          <strong>{step.state}</strong>
+          <small>{step.invalid ? '候选字符已经存在' : '窗口内没有重复'}</small>
+        </div>
+        <div>
+          <span>max_length</span>
+          <strong>{step.best}</strong>
+          <small>只在窗口合法时记录</small>
+        </div>
+      </div>
+
+      <div className="longest-substring-comparison">
+        <div>
+          <strong>外层 loop left</strong>
+          <code>abc… · bc… · c…</code>
+          <span>每个起点重建 set，right 反复扫描：O(n²)</span>
+        </div>
+        <div>
+          <strong>外层 loop right</strong>
+          <code>R → n 次 · L → 最多 n 次</code>
+          <span>窗口和 set 跨轮复用，总移动不超过 2n：O(n)</span>
+        </div>
+      </div>
+
+      <div className="longest-substring-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          上一步
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={LONGEST_SUBSTRING_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label="选择最长无重复子串演示步骤"
+        />
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.min(LONGEST_SUBSTRING_STEPS.length - 1, current + 1))}
+          disabled={activeStep === LONGEST_SUBSTRING_STEPS.length - 1}
+        >
+          下一步
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const THREE_SUM_VALUES = [-4, -1, -1, 0, 1, 2];
 
 const THREE_SUM_STEPS = [
@@ -4410,7 +4670,7 @@ function HighDimensionalIntegralVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -4438,6 +4698,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'sliding-window-demo') {
     return <SlidingWindowVisual />;
+  }
+
+  if (match?.[1] === 'longest-substring-demo') {
+    return <LongestSubstringVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

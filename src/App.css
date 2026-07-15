@@ -2131,6 +2131,314 @@
   accent-color: #21836a;
 }
 
+/* ── Longest substring / template mapping visual ── */
+.longest-substring-visual {
+  margin: 1.35rem auto;
+  max-width: min(100%, 960px);
+  border: 1px solid rgba(31, 67, 82, 0.2);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(208, 137, 57, 0.13), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 247, 247, 0.92));
+  box-shadow: 0 12px 28px rgba(31, 53, 66, 0.11);
+  overflow: hidden;
+}
+
+.longest-substring-header {
+  border-bottom: 1px solid rgba(31, 67, 82, 0.12);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.longest-substring-header h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #102f39;
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+}
+
+.longest-substring-header p:not(.eyebrow) {
+  max-width: 680px;
+  margin: 0;
+  color: #4c676f;
+  font-size: 0.86rem;
+}
+
+.longest-substring-counter {
+  min-width: 4.2rem;
+  border: 1px solid rgba(161, 99, 38, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #6e421d;
+  display: grid;
+  place-items: center;
+  padding: 0.55rem;
+  font: 800 1.35rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.longest-substring-counter span {
+  color: #846f60;
+  font: 700 0.67rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.longest-substring-code-map {
+  border-bottom: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: 0.88fr 1.12fr;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+}
+
+.longest-substring-code-map > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.longest-substring-code-map > div > strong {
+  color: #35545b;
+  font-size: 0.73rem;
+  letter-spacing: 0.02em;
+}
+
+.longest-substring-code-map pre {
+  margin: 0;
+  border: 1px solid rgba(27, 56, 67, 0.17);
+  border-radius: 7px;
+  background: #17333b;
+  overflow-x: auto;
+  padding: 0.55rem;
+}
+
+.longest-substring-code-map code {
+  display: block;
+  color: #d9e7e7;
+  font: 600 0.67rem/1.7 "IBM Plex Mono", "Courier New", monospace;
+}
+
+.longest-substring-code-map code span {
+  display: block;
+  min-width: max-content;
+  border-radius: 4px;
+  padding: 0 0.32rem;
+  white-space: pre;
+}
+
+.longest-substring-code-map code span.active {
+  background: #f3b969;
+  color: #2f2518;
+  box-shadow: inset 3px 0 #fff1c8;
+}
+
+.longest-substring-step-copy {
+  min-height: 82px;
+  border-bottom: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  column-gap: 0.55rem;
+  padding: 0.65rem 1rem;
+}
+
+.longest-substring-step-copy > span {
+  align-self: center;
+  border-radius: 999px;
+  background: #e4f2ee;
+  color: #276654;
+  grid-row: 1 / span 2;
+  padding: 0.28rem 0.48rem;
+  font: 800 0.63rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.longest-substring-step-copy strong {
+  color: #193f47;
+}
+
+.longest-substring-step-copy p {
+  margin: 0.12rem 0 0;
+  color: #506a71;
+  font-size: 0.82rem;
+}
+
+.longest-substring-array {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(62px, 1fr));
+  gap: 0.55rem;
+  padding: 0.85rem 1rem 0.65rem;
+}
+
+.longest-substring-cell {
+  min-height: 84px;
+  border: 1px solid rgba(35, 65, 76, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  display: grid;
+  place-items: center;
+  gap: 0.08rem;
+  padding: 0.4rem;
+  opacity: 0.48;
+}
+
+.longest-substring-cell.in-window {
+  border-color: #26866f;
+  background: #e9f7f1;
+  box-shadow: inset 0 -3px #26866f;
+  opacity: 1;
+}
+
+.longest-substring-cell.candidate {
+  border: 2px dashed #c06e2e;
+  background: #fff2e4;
+  opacity: 1;
+}
+
+.longest-substring-cell.removed {
+  border-color: #b95454;
+  background: #fff0ef;
+  opacity: 0.65;
+}
+
+.longest-substring-cell small {
+  color: #7a8d8d;
+  font: 600 0.62rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.longest-substring-cell > strong {
+  color: #183a40;
+  font: 800 1.35rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.longest-substring-cell > span {
+  min-height: 1.2rem;
+  display: flex;
+  gap: 0.22rem;
+}
+
+.longest-substring-cell b {
+  width: 1.2rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font: 800 0.62rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.longest-substring-cell b.left {
+  background: #237c68;
+}
+
+.longest-substring-cell b.right {
+  background: #c06e2e;
+}
+
+.longest-substring-state {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.longest-substring-state > div {
+  min-height: 76px;
+  border: 1px solid rgba(28, 69, 86, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  display: grid;
+  align-content: center;
+  gap: 0.14rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.longest-substring-state > div.invalid {
+  border-color: rgba(185, 84, 84, 0.42);
+  background: #fff0ef;
+}
+
+.longest-substring-state span {
+  color: #6b8083;
+  font: 700 0.62rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.longest-substring-state strong {
+  color: #193f47;
+  font-size: 0.88rem;
+}
+
+.longest-substring-state small {
+  color: #788b8d;
+  font-size: 0.65rem;
+}
+
+.longest-substring-comparison {
+  border-top: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+}
+
+.longest-substring-comparison > div {
+  border-left: 4px solid #b95454;
+  border-radius: 7px;
+  background: rgba(255, 240, 239, 0.76);
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.58rem 0.7rem;
+}
+
+.longest-substring-comparison > div:last-child {
+  border-left-color: #21836a;
+  background: rgba(235, 248, 242, 0.82);
+}
+
+.longest-substring-comparison strong {
+  color: #244a4b;
+  font-size: 0.8rem;
+}
+
+.longest-substring-comparison code {
+  color: #3e565b;
+  font-size: 0.7rem;
+}
+
+.longest-substring-comparison span {
+  color: #5b7476;
+  font-size: 0.7rem;
+}
+
+.longest-substring-controls {
+  border-top: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem 0.85rem;
+}
+
+.longest-substring-controls button {
+  border: 1px solid rgba(28, 69, 86, 0.2);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #244a51;
+  cursor: pointer;
+  padding: 0.44rem 0.65rem;
+  font-weight: 700;
+}
+
+.longest-substring-controls button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.longest-substring-controls input {
+  width: 100%;
+  accent-color: #c06e2e;
+}
+
 /* ── 3Sum / two pointers visual ──────────────────── */
 .three-sum-visual {
   margin: 1.35rem auto;
@@ -4434,6 +4742,19 @@
     flex-direction: column;
   }
 
+  .longest-substring-header {
+    flex-direction: column;
+  }
+
+  .longest-substring-code-map,
+  .longest-substring-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .longest-substring-state {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .sliding-window-phases,
   .sliding-window-state,
   .sliding-window-timing {
@@ -4577,6 +4898,20 @@
   .sliding-window-state,
   .sliding-window-timing {
     grid-template-columns: 1fr;
+  }
+
+  .longest-substring-state {
+    grid-template-columns: 1fr;
+  }
+
+  .longest-substring-step-copy {
+    grid-template-columns: 1fr;
+    row-gap: 0.25rem;
+  }
+
+  .longest-substring-step-copy > span {
+    justify-self: start;
+    grid-row: auto;
   }
 
   .top-nav-link {
