@@ -576,6 +576,200 @@ $$
   -> 最后抽象为 KSum 递归
 ```
 
+## 例题：Trapping Rain Water = 较矮的 max 先结算
+
+### 题目中文翻译
+
+给定一个非负整数数组 `height`，它表示一张柱状的地形图。`height[i]` 是第 $i$ 根柱子的高度，每根柱子的宽度都是 1。
+
+返回这些柱子之间最多能够接住多少单位的雨水。
+
+经典示例：
+
+```text
+height = [0,1,0,2,1,0,1,3,2,1,2,1]
+answer = 6
+```
+
+### 先写出每一格的水量
+
+位置 $i$ 能装多少水，只取决于它左边最高的墙和右边最高的墙：
+
+$$
+water[i]
+=
+\min(leftMax[i],rightMax[i])-height[i].
+$$
+
+其中：
+
+$$
+leftMax[i]=\max(height[0],\ldots,height[i]),
+$$
+
+$$
+rightMax[i]=\max(height[i],\ldots,height[n-1]).
+$$
+
+`min` 是因为水位由较矮的边界决定。更高的那面墙不会让水悬浮到矮墙上方。
+
+可以先用两个数组预计算所有 `leftMax` 和 `rightMax`，时间是 $O(n)$，额外空间也是 $O(n)$。双指针的目标是：不保存整张前缀、后缀表，只维护当前两端的最高墙。
+
+```rain-water-demo
+```
+
+### 双指针的核心判断
+
+维护：
+
+```text
+left, right
+leftMax  = 从数组左端到 left 的最高柱子
+rightMax = 从数组右端到 right 的最高柱子
+```
+
+如果：
+
+$$
+leftMax\le rightMax,
+$$
+
+那么右边已经确定存在一堵高度至少为 `rightMax` 的墙，而它不低于 `leftMax`。因此 `left` 位置的较矮边界一定是 `leftMax`，不需要知道中间尚未扫描的柱子：
+
+$$
+water[left]=leftMax-height[left].
+$$
+
+这时可以安全结算 `left`，然后令 `left += 1`。
+
+反过来，如果：
+
+$$
+rightMax<leftMax,
+$$
+
+左边已经有足够高的墙，`right` 位置可以立即结算：
+
+$$
+water[right]=rightMax-height[right],
+$$
+
+然后令 `right -= 1`。
+
+最重要的记忆句是：
+
+```text
+比较的不是“当前哪根柱子矮”，而是“哪一侧的历史最高墙更矮”。
+较矮的 max 先结算，较高的 max 继续等。
+```
+
+### 双指针代码
+
+```python
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        if not height:
+            return 0
+
+        left = 0
+        right = len(height) - 1
+        left_max = 0
+        right_max = 0
+        water = 0
+
+        while left <= right:
+            left_max = max(left_max, height[left])
+            right_max = max(right_max, height[right])
+
+            if left_max <= right_max:
+                water += left_max - height[left]
+                left += 1
+            else:
+                water += right_max - height[right]
+                right -= 1
+
+        return water
+```
+
+这里先更新 `left_max` 和 `right_max`，所以：
+
+$$
+leftMax-height[left]\ge0,
+\qquad
+rightMax-height[right]\ge0.
+$$
+
+遇到一根更高的新柱子时，它会更新边界，本格水量自然就是 0。
+
+### 示例中的 6 单位水来自哪里
+
+对于：
+
+```text
+[0,1,0,2,1,0,1,3,2,1,2,1]
+```
+
+真正装到水的位置是：
+
+| index | height | 最终水位 | 本格水量 |
+|---:|---:|---:|---:|
+| 2 | 0 | 1 | 1 |
+| 4 | 1 | 2 | 1 |
+| 5 | 0 | 2 | 2 |
+| 6 | 1 | 2 | 1 |
+| 9 | 1 | 2 | 1 |
+
+所以：
+
+$$
+1+1+2+1+1=6.
+$$
+
+### 正确性不变量
+
+循环过程中始终保持：
+
+```text
+[0, left) 和 (right, n-1] 已经被正确结算；
+leftMax 是左侧已扫描区域的最高墙；
+rightMax 是右侧已扫描区域的最高墙；
+[left, right] 是尚未结算的区域。
+```
+
+每一轮选择较小的 `max` 那一侧。另一侧已经提供了不低于它的边界，所以这一格的水量不会再被未知区域改变。处理后区间至少缩小一格，最终所有位置都会被结算。
+
+### 复杂度
+
+两个指针都只向中间移动，每个位置最多处理一次：
+
+$$
+\text{time}=O(n),\qquad \text{extra space}=O(1).
+$$
+
+### 接雨水常见错误
+
+#### 1. 用左右相邻柱子计算
+
+水可能跨越很多根柱子，决定水位的是左右两侧的最高边界，不一定是相邻柱子。
+
+#### 2. 把较高的 max 先结算
+
+较高的一侧还不知道另一边是否存在同样高的墙，它的水位尚未确定。只有较矮 `max` 的一侧已经被对面兜住。
+
+#### 3. 混用两种模板
+
+有些正确写法比较 `height[left]` 和 `height[right]`，另一些写法比较 `leftMax` 和 `rightMax`。两者的更新顺序和证明略有不同。这里使用的是 `max` 模板，不要只替换判断条件而保留另一套更新顺序。
+
+#### 4. 忘记减去柱子本身
+
+水量是：
+
+$$
+\text{水位}-\text{柱高},
+$$
+
+不是水位本身。
+
 ## 常见错误
 
 ### 1. 没有单调性就硬用
@@ -612,6 +806,7 @@ right -= 1
 连续区间，看滑动窗口。
 链表结构，看快慢指针。
 原地压缩，看读写指针。
+接雨水，看较矮的 leftMax / rightMax，先结算较矮侧。
 
 双指针的本质：
   每移动一步，都能安全丢掉一部分搜索空间。

@@ -198,6 +198,33 @@ describe('App', () => {
     expect(screen.getByText('[-1, -1, 2]')).toBeInTheDocument();
   });
 
+  it('renders the trapping rain water walkthrough and reaches six units', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills28')
+          ? '# Two Pointers\n\n```rain-water-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
+
+    const visual = await screen.findByRole('region', { name: '接雨水双指针演示' });
+    expect(within(visual).getByText(/较低的历史最高墙先结算/)).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: '选择接雨水演示步骤' }), {
+      target: { value: '11' },
+    });
+
+    expect(visual.querySelector('.rain-water-total strong')).toHaveTextContent('6');
+    expect(within(visual).getByText('重新播放')).toBeInTheDocument();
+  });
+
   it('opens the System Design section with the new overview notes', async () => {
     render(<App />);
 

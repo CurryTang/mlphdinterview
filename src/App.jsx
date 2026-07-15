@@ -3610,6 +3610,215 @@ function ThreeSumVisual() {
   );
 }
 
+const RAIN_WATER_HEIGHTS = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1];
+
+function buildRainWaterSteps(heights) {
+  const steps = [];
+  const resolved = Array(heights.length).fill(false);
+  const waterByIndex = Array(heights.length).fill(0);
+  let left = 0;
+  let right = heights.length - 1;
+  let leftMax = 0;
+  let rightMax = 0;
+  let total = 0;
+
+  while (left <= right) {
+    leftMax = Math.max(leftMax, heights[left]);
+    rightMax = Math.max(rightMax, heights[right]);
+
+    if (leftMax <= rightMax) {
+      const current = left;
+      const added = leftMax - heights[current];
+      total += added;
+      resolved[current] = true;
+      waterByIndex[current] = added;
+      steps.push({
+        side: 'left',
+        current,
+        left,
+        right,
+        leftMax,
+        rightMax,
+        added,
+        total,
+        resolved: [...resolved],
+        waterByIndex: [...waterByIndex],
+        title: `结算左侧 index ${current}`,
+        note: leftMax === rightMax
+          ? `leftMax = rightMax = ${leftMax}，任选一侧都安全；这里先处理左侧。`
+          : `leftMax ${leftMax} < rightMax ${rightMax}，右边已有足够高的墙，左侧水位已经确定。`,
+      });
+      left += 1;
+    } else {
+      const current = right;
+      const added = rightMax - heights[current];
+      total += added;
+      resolved[current] = true;
+      waterByIndex[current] = added;
+      steps.push({
+        side: 'right',
+        current,
+        left,
+        right,
+        leftMax,
+        rightMax,
+        added,
+        total,
+        resolved: [...resolved],
+        waterByIndex: [...waterByIndex],
+        title: `结算右侧 index ${current}`,
+        note: `rightMax ${rightMax} < leftMax ${leftMax}，左边已有足够高的墙，右侧水位已经确定。`,
+      });
+      right -= 1;
+    }
+  }
+
+  return steps;
+}
+
+const RAIN_WATER_STEPS = buildRainWaterSteps(RAIN_WATER_HEIGHTS);
+
+function RainWaterVisual() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const step = RAIN_WATER_STEPS[activeStep];
+  const maxHeight = Math.max(...RAIN_WATER_HEIGHTS);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveStep((current) => {
+        if (current >= RAIN_WATER_STEPS.length - 1) {
+          setIsPlaying(false);
+          return current;
+        }
+        return current + 1;
+      });
+    }, 950);
+
+    return () => window.clearInterval(timer);
+  }, [isPlaying]);
+
+  const jumpToStep = (index) => {
+    setIsPlaying(false);
+    setActiveStep(index);
+  };
+
+  return (
+    <section className="rain-water-visual" aria-label="接雨水双指针演示">
+      <header className="rain-water-header">
+        <div>
+          <p className="eyebrow">Two pointers visual</p>
+          <h2>Trapping Rain Water</h2>
+          <p>较低的历史最高墙先结算：它这一侧的水位已经被另一侧兜住。</p>
+        </div>
+        <div className="rain-water-total">
+          <span>累计水量</span>
+          <strong>{step.total}</strong>
+          <small>/ 6</small>
+        </div>
+      </header>
+
+      <div className="rain-water-rule">
+        <span className={step.side === 'left' ? 'active left' : 'left'}>leftMax = {step.leftMax}</span>
+        <strong>{step.leftMax <= step.rightMax ? '≤' : '>'}</strong>
+        <span className={step.side === 'right' ? 'active right' : 'right'}>rightMax = {step.rightMax}</span>
+        <em>→ 结算{step.side === 'left' ? '左' : '右'}侧</em>
+      </div>
+
+      <div className="rain-water-chart-wrap">
+        <div className="rain-water-chart" aria-label="柱状高度与已结算雨水">
+          {RAIN_WATER_HEIGHTS.map((height, index) => {
+            const water = step.waterByIndex[index];
+            const isResolved = step.resolved[index];
+            const isCurrent = index === step.current;
+
+            return (
+              <div className={`rain-water-column ${isResolved ? 'resolved' : ''} ${isCurrent ? `current ${step.side}` : ''}`} key={`${height}-${index}`}>
+                <div className="rain-water-cells">
+                  {Array.from({ length: maxHeight }, (_, rowIndex) => {
+                    const level = maxHeight - rowIndex;
+                    const isBar = level <= height;
+                    const isWater = isResolved && level > height && level <= height + water;
+                    return (
+                      <span className={isBar ? 'bar' : isWater ? 'water' : 'empty'} key={level} />
+                    );
+                  })}
+                </div>
+                <strong>{height}</strong>
+                <small>{index}</small>
+                <div className="rain-water-pointers">
+                  {index === step.left && <b className="left">L</b>}
+                  {index === step.right && <b className="right">R</b>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rain-water-explain">
+        <div>
+          <span>{step.title}</span>
+          <strong>{step.note}</strong>
+        </div>
+        <div className="rain-water-formula">
+          <span>本格水量</span>
+          <strong>
+            {step.side === 'left' ? step.leftMax : step.rightMax}
+            {' - '}{RAIN_WATER_HEIGHTS[step.current]} = {step.added}
+          </strong>
+        </div>
+      </div>
+
+      <div className="rain-water-legend">
+        <span><i className="bar" />柱子</span>
+        <span><i className="water" />已确定的水</span>
+        <strong>未处理区域保持空白</strong>
+      </div>
+
+      <div className="rain-water-controls">
+        <button type="button" onClick={() => jumpToStep(Math.max(0, activeStep - 1))} disabled={activeStep === 0}>
+          上一步
+        </button>
+        <button
+          type="button"
+          className="rain-water-play"
+          onClick={() => {
+            if (activeStep === RAIN_WATER_STEPS.length - 1) {
+              setActiveStep(0);
+              setIsPlaying(true);
+            } else {
+              setIsPlaying((current) => !current);
+            }
+          }}
+        >
+          {isPlaying ? '暂停' : activeStep === RAIN_WATER_STEPS.length - 1 ? '重新播放' : '播放'}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={RAIN_WATER_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => jumpToStep(Number(event.target.value))}
+          aria-label="选择接雨水演示步骤"
+        />
+        <span>{activeStep + 1} / {RAIN_WATER_STEPS.length}</span>
+        <button
+          type="button"
+          onClick={() => jumpToStep(Math.min(RAIN_WATER_STEPS.length - 1, activeStep + 1))}
+          disabled={activeStep === RAIN_WATER_STEPS.length - 1}
+        >
+          下一步
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function IntervalBar({ domain, interval, isActive = false, isMuted = false }) {
   const left = intervalPercent(interval.start, domain);
   const right = intervalPercent(interval.end, domain);
@@ -3954,7 +4163,7 @@ function HighDimensionalIntegralVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|three-sum-demo|high-dimensional-integral-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -3982,6 +4191,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'three-sum-demo') {
     return <ThreeSumVisual />;
+  }
+
+  if (match?.[1] === 'rain-water-demo') {
+    return <RainWaterVisual />;
   }
 
   if (match?.[1] === 'high-dimensional-integral-demo') {

@@ -2095,6 +2095,340 @@
   background: #177891;
 }
 
+/* ── Trapping rain water visual ──────────────────── */
+.rain-water-visual {
+  margin: 1.35rem auto;
+  max-width: min(100%, 1000px);
+  border: 1px solid rgba(24, 73, 96, 0.2);
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, rgba(246, 252, 255, 0.96), rgba(232, 244, 248, 0.9)),
+    repeating-linear-gradient(90deg, rgba(33, 105, 136, 0.05) 0 1px, transparent 1px 44px);
+  box-shadow: 0 12px 28px rgba(27, 64, 82, 0.12);
+  overflow: hidden;
+}
+
+.rain-water-header {
+  border-bottom: 1px solid rgba(24, 73, 96, 0.13);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.rain-water-header h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #102c3b;
+  font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+}
+
+.rain-water-header p:not(.eyebrow) {
+  margin: 0;
+  color: #486572;
+  font-size: 0.88rem;
+}
+
+.rain-water-total {
+  min-width: 5.3rem;
+  border: 1px solid rgba(26, 105, 140, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  padding: 0.55rem 0.65rem;
+}
+
+.rain-water-total span {
+  grid-column: 1 / -1;
+  color: #607b87;
+  font: 700 0.62rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.rain-water-total strong {
+  color: #087fac;
+  font: 800 1.65rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.rain-water-total small {
+  color: #7a9099;
+  font-weight: 700;
+}
+
+.rain-water-rule {
+  border-bottom: 1px solid rgba(24, 73, 96, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+}
+
+.rain-water-rule span {
+  border: 1px solid rgba(32, 73, 91, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #4b6672;
+  padding: 0.3rem 0.58rem;
+  font: 700 0.72rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-rule span.active.left {
+  border-color: #1682a4;
+  background: #e1f5fb;
+  color: #096683;
+}
+
+.rain-water-rule span.active.right {
+  border-color: #d07835;
+  background: #fff0e2;
+  color: #9a4e18;
+}
+
+.rain-water-rule > strong {
+  color: #294b5a;
+}
+
+.rain-water-rule em {
+  color: #193d4d;
+  font: 800 0.76rem "IBM Plex Mono", "Courier New", monospace;
+  font-style: normal;
+}
+
+.rain-water-chart-wrap {
+  overflow-x: auto;
+  padding: 1rem 1rem 0.7rem;
+}
+
+.rain-water-chart {
+  min-width: 720px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(48px, 1fr));
+  align-items: end;
+  gap: 0.3rem;
+}
+
+.rain-water-column {
+  display: grid;
+  grid-template-rows: auto auto auto 1.35rem;
+  gap: 0.16rem;
+  text-align: center;
+}
+
+.rain-water-cells {
+  height: 126px;
+  border-bottom: 2px solid #345563;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.rain-water-cells span {
+  border-radius: 3px 3px 1px 1px;
+  transition: background 180ms ease, opacity 180ms ease;
+}
+
+.rain-water-cells .bar {
+  border: 1px solid #294b59;
+  background: linear-gradient(135deg, #315e70, #183541);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.rain-water-cells .water {
+  border: 1px solid rgba(28, 137, 184, 0.36);
+  background:
+    linear-gradient(180deg, rgba(112, 207, 239, 0.68), rgba(43, 153, 199, 0.78)),
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(255, 255, 255, 0.34) 7px 9px);
+  animation: rain-water-fill 240ms ease-out;
+}
+
+.rain-water-cells .empty {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.rain-water-column > strong {
+  color: #173644;
+  font: 800 0.88rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-column > small {
+  color: #82949b;
+  font: 600 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-column.current .rain-water-cells {
+  border-bottom-width: 4px;
+}
+
+.rain-water-column.current.left .rain-water-cells {
+  border-color: #1682a4;
+}
+
+.rain-water-column.current.right .rain-water-cells {
+  border-color: #d07835;
+}
+
+.rain-water-column:not(.resolved) {
+  opacity: 0.58;
+}
+
+.rain-water-pointers {
+  min-height: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+}
+
+.rain-water-pointers b {
+  width: 1.2rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font: 800 0.62rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-pointers .left {
+  background: #1682a4;
+}
+
+.rain-water-pointers .right {
+  background: #d07835;
+}
+
+.rain-water-explain {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.rain-water-explain > div {
+  min-height: 72px;
+  border: 1px solid rgba(24, 73, 96, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.rain-water-explain span {
+  color: #62808d;
+  font: 700 0.65rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.rain-water-explain strong {
+  color: #244958;
+  font-size: 0.84rem;
+}
+
+.rain-water-explain .rain-water-formula {
+  min-width: 11rem;
+  border-color: rgba(23, 133, 178, 0.25);
+  background: #e9f7fc;
+}
+
+.rain-water-formula strong {
+  color: #076f98;
+  font: 800 1rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-legend {
+  border-top: 1px solid rgba(24, 73, 96, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.55rem 1rem;
+  color: #5c747f;
+  font: 700 0.67rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rain-water-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.rain-water-legend i {
+  width: 0.75rem;
+  aspect-ratio: 1;
+  border-radius: 2px;
+}
+
+.rain-water-legend i.bar {
+  background: #294b59;
+}
+
+.rain-water-legend i.water {
+  background: #42a9d1;
+}
+
+.rain-water-legend strong {
+  margin-left: auto;
+  color: #6b818a;
+}
+
+.rain-water-controls {
+  border-top: 1px solid rgba(24, 73, 96, 0.1);
+  display: grid;
+  grid-template-columns: auto auto minmax(140px, 1fr) auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1rem 0.85rem;
+}
+
+.rain-water-controls button {
+  border: 1px solid rgba(24, 73, 96, 0.2);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #234959;
+  cursor: pointer;
+  padding: 0.45rem 0.65rem;
+  font-weight: 700;
+}
+
+.rain-water-controls button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.rain-water-controls .rain-water-play {
+  border-color: #117b9f;
+  background: #117b9f;
+  color: #ffffff;
+}
+
+.rain-water-controls input {
+  width: 100%;
+  accent-color: #1682a4;
+}
+
+.rain-water-controls > span {
+  color: #59727d;
+  font: 700 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  white-space: nowrap;
+}
+
+@keyframes rain-water-fill {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ── Bellman-Ford visual walkthrough ─────────────── */
 .bf-visual {
   margin: 1.35rem auto;
@@ -3794,6 +4128,53 @@
 }
 
 @media (max-width: 680px) {
+  .rain-water-header {
+    flex-direction: column;
+  }
+
+  .rain-water-explain {
+    grid-template-columns: 1fr;
+  }
+
+  .rain-water-explain .rain-water-formula {
+    min-width: 0;
+  }
+
+  .rain-water-legend {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .rain-water-legend strong {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .rain-water-controls {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .rain-water-controls input {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .rain-water-controls > span {
+    display: none;
+  }
+
+  .rain-water-controls > button:first-child {
+    grid-column: 1;
+  }
+
+  .rain-water-controls .rain-water-play {
+    grid-column: 2;
+  }
+
+  .rain-water-controls > button:last-child {
+    grid-column: 3;
+  }
+
   .three-sum-header {
     flex-direction: column;
   }
