@@ -181,7 +181,71 @@ def fixed_window(items, k):
 
 ---
 
-## 示例一：最长无重复子串
+## 示例一：Best Time to Buy and Sell Stock
+
+目标：只能先买入一次、再卖出一次，求最大利润。
+
+```python
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        min_price = float('inf')
+        max_profit = 0
+
+        for price in prices:
+            min_price = min(min_price, price)
+            max_profit = max(max_profit, price - min_price)
+
+        return max_profit
+```
+
+这道题适合放在 Sliding Window 的第一个例子，因为它包含滑窗思想最简单的雏形：
+
+```text
+right：依次考察每一个卖出日
+left：保留 right 左边价格最低的买入日
+答案：prices[right] - prices[left] 的最大值
+```
+
+对于每一个卖出日 `right`，最好的买入日一定是此前价格最低的那一天。因此可以把当前候选区间理解为：
+
+```text
+[left = 历史最低价格的位置 ........ right = 今天]
+                 利润 = prices[right] - prices[left]
+```
+
+以 `prices = [7, 1, 5, 3, 6, 4]` 为例：
+
+```text
+价格        7   1   5   3   6   4
+历史最低价  7   1   1   1   1   1
+当天卖出    0   0   4   2   5   3
+最大利润    0   0   4   4   5   5
+                left ------> right
+```
+
+当遇到一个更低的价格时，`left` 可以直接跳到这里。假设旧买入价是 7，新买入价是 1，那么对任意未来卖出价 $x$：
+
+$$
+x-1 \ge x-7.
+$$
+
+旧买入日从此不可能更优，可以永久丢弃。
+
+不过，严格来说它**不是标准滑动窗口**，更准确的分类是：
+
+```text
+单次扫描 + 前缀最小值，也可以理解为贪心
+```
+
+标准滑窗通常需要用 `while` 删除左端元素，并维护整个窗口的状态。这道题不需要，因为对固定的 `right`，唯一有用的左侧信息就是历史最低价。一个 `min_price` 已经把整个左侧历史压缩掉了。
+
+所以记忆时不要记成“看到股票题就套滑窗”，而要记成：
+
+> 右边持续探索卖出日，左边只保留最优买入日；`min_price` 是被压缩后的左指针。
+
+---
+
+## 示例二：最长无重复子串
 
 目标：求不含重复字符的最长连续子串长度。
 
@@ -215,7 +279,7 @@ class Solution:
 
 ---
 
-## 示例二：和至少为 target 的最短子数组
+## 示例三：和至少为 target 的最短子数组
 
 假设数组元素都是正数。
 
@@ -254,7 +318,7 @@ left 右移  -> sum 只会减小
 
 ---
 
-## 示例三：Minimum Window Substring 的状态压缩
+## 示例四：Minimum Window Substring 的状态压缩
 
 目标：找到 `s` 中覆盖 `t` 所有字符及频次的最短子串。
 
