@@ -1829,6 +1829,272 @@
   background: #e4f6fb;
 }
 
+/* ── 3Sum / two pointers visual ──────────────────── */
+.three-sum-visual {
+  margin: 1.35rem auto;
+  max-width: min(100%, 980px);
+  border: 1px solid rgba(26, 67, 84, 0.2);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(224, 141, 60, 0.11), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(237, 247, 247, 0.9));
+  box-shadow: 0 12px 28px rgba(31, 53, 66, 0.11);
+  overflow: hidden;
+}
+
+.three-sum-header {
+  border-bottom: 1px solid rgba(24, 75, 92, 0.13);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.three-sum-header h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #102735;
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+}
+
+.three-sum-header p:not(.eyebrow) {
+  max-width: 680px;
+  margin: 0;
+  color: #49616d;
+  font-size: 0.88rem;
+}
+
+.three-sum-counter {
+  min-width: 4rem;
+  border: 1px solid rgba(24, 75, 92, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #102735;
+  display: grid;
+  place-items: center;
+  padding: 0.55rem;
+  font: 700 1.35rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.three-sum-counter span {
+  color: #667d87;
+  font: 700 0.68rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.three-sum-step-copy {
+  min-height: 74px;
+  border-bottom: 1px solid rgba(24, 75, 92, 0.1);
+  display: grid;
+  align-content: center;
+  gap: 0.18rem;
+  padding: 0.72rem 1rem;
+}
+
+.three-sum-step-copy strong {
+  color: #153848;
+}
+
+.three-sum-step-copy span {
+  color: #49616d;
+  font-size: 0.86rem;
+}
+
+.three-sum-array-wrap {
+  overflow-x: auto;
+  padding: 0.9rem 1rem 0.75rem;
+}
+
+.three-sum-array {
+  min-width: 510px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(70px, 1fr));
+  gap: 0.55rem;
+}
+
+.three-sum-cell {
+  min-height: 92px;
+  border: 1px solid rgba(35, 63, 77, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  display: grid;
+  place-items: center;
+  gap: 0.12rem;
+  padding: 0.45rem;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.three-sum-cell small {
+  color: #7a8d95;
+  font: 600 0.63rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.three-sum-cell strong {
+  color: #18313f;
+  font: 800 1.45rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.three-sum-cell span {
+  min-height: 1.25rem;
+  color: #687e87;
+  font: 800 0.68rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.three-sum-cell.anchor {
+  border-color: #177891;
+  background: #e3f5f8;
+  box-shadow: inset 0 -3px #177891;
+  transform: translateY(-2px);
+}
+
+.three-sum-cell.left {
+  border-color: #3579b8;
+  background: #e9f2fb;
+  box-shadow: inset 0 -3px #3579b8;
+  transform: translateY(-2px);
+}
+
+.three-sum-cell.right {
+  border-color: #cb7435;
+  background: #fff1e4;
+  box-shadow: inset 0 -3px #cb7435;
+  transform: translateY(-2px);
+}
+
+.three-sum-cell.skipped {
+  border-style: dashed;
+  opacity: 0.58;
+  text-decoration: line-through;
+}
+
+.three-sum-state {
+  display: grid;
+  grid-template-columns: 1.3fr 0.65fr 1fr;
+  gap: 0.55rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.three-sum-state > div {
+  min-height: 70px;
+  border: 1px solid rgba(35, 63, 77, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.three-sum-state span,
+.three-sum-results > span {
+  color: #657b85;
+  font: 700 0.64rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.three-sum-state strong {
+  color: #173544;
+  font: 700 1rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.three-sum-state .three-sum-sum {
+  text-align: center;
+}
+
+.three-sum-sum.low {
+  border-color: rgba(53, 121, 184, 0.4);
+  background: #edf5fc;
+}
+
+.three-sum-sum.high {
+  border-color: rgba(203, 116, 53, 0.4);
+  background: #fff3e8;
+}
+
+.three-sum-sum.hit {
+  border-color: rgba(42, 130, 82, 0.42);
+  background: #eaf7ef;
+}
+
+.three-sum-sum.skip {
+  border-style: dashed;
+}
+
+.three-sum-results {
+  border-top: 1px solid rgba(24, 75, 92, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 1rem;
+}
+
+.three-sum-results div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.three-sum-results strong,
+.three-sum-results em {
+  border-radius: 999px;
+  background: #e8f6ed;
+  color: #205c3a;
+  padding: 0.3rem 0.6rem;
+  font: 700 0.74rem "IBM Plex Mono", "Courier New", monospace;
+  font-style: normal;
+}
+
+.three-sum-results em {
+  background: #f1f4f4;
+  color: #73858c;
+}
+
+.three-sum-controls {
+  border-top: 1px solid rgba(24, 75, 92, 0.1);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem 0.85rem;
+}
+
+.three-sum-controls > button {
+  border: 1px solid rgba(24, 75, 92, 0.22);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #234554;
+  cursor: pointer;
+  padding: 0.46rem 0.7rem;
+  font-weight: 700;
+}
+
+.three-sum-controls > button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.three-sum-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.three-sum-dots button {
+  width: 0.62rem;
+  height: 0.62rem;
+  border: 0;
+  border-radius: 999px;
+  background: #afc0c7;
+  cursor: pointer;
+  padding: 0;
+}
+
+.three-sum-dots button.active {
+  width: 1.45rem;
+  background: #177891;
+}
+
 /* ── Bellman-Ford visual walkthrough ─────────────── */
 .bf-visual {
   margin: 1.35rem auto;
@@ -3528,6 +3794,27 @@
 }
 
 @media (max-width: 680px) {
+  .three-sum-header {
+    flex-direction: column;
+  }
+
+  .three-sum-counter {
+    min-width: 3.7rem;
+  }
+
+  .three-sum-state {
+    grid-template-columns: 1fr;
+  }
+
+  .three-sum-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .three-sum-dots {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
   .integral-visual-header {
     flex-direction: column;
   }

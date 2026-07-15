@@ -255,6 +255,327 @@ right 只向左走
 
 它比三重循环的 `O(n^3)` 少了一层。
 
+## 例题：3Sum = 固定一个数 + Two Sum
+
+题目要求找出数组中所有满足下式且互不重复的三元组：
+
+$$
+a+b+c=0.
+$$
+
+暴力法枚举三个下标，需要 $O(n^3)$。更好的做法是先排序，固定第一个数 `nums[i]`，再在右侧区间寻找：
+
+$$
+nums[left]+nums[right]=-nums[i].
+$$
+
+这就把 3Sum 降成了一个排序数组上的 Two Sum。
+
+```three-sum-demo
+```
+
+### 3Sum 代码
+
+```python
+class Solution:
+    def threeSum(self, nums: List[int]) -> List[List[int]]:
+        nums.sort()
+        if len(nums) < 3:
+            return []
+
+        result = []
+
+        for i in range(len(nums) - 2):
+            # target 是 0；固定值已经大于 0 时，后面不可能再凑出 0。
+            if nums[i] > 0:
+                break
+
+            # 同一个值只做一次锚点，避免重复三元组。
+            if i > 0 and nums[i] == nums[i - 1]:
+                continue
+
+            left = i + 1
+            right = len(nums) - 1
+
+            while left < right:
+                total = nums[i] + nums[left] + nums[right]
+
+                if total == 0:
+                    result.append([nums[i], nums[left], nums[right]])
+
+                    # 命中后跳过左右两边的重复值。
+                    while left < right and nums[left] == nums[left + 1]:
+                        left += 1
+                    while left < right and nums[right] == nums[right - 1]:
+                        right -= 1
+
+                    left += 1
+                    right -= 1
+                elif total < 0:
+                    left += 1
+                else:
+                    right -= 1
+
+        return result
+```
+
+### 为什么指针移动不会漏答案
+
+数组已经排序。固定 `i` 后：
+
+```text
+total < 0:
+  当前和太小。
+  right 已经是当前区间最大值；如果还保留旧 left，换成更小的 right 只会更小。
+  所以旧 left 不可能参与答案，可以安全执行 left += 1。
+
+total > 0:
+  当前和太大。
+  left 已经是当前区间最小值；如果还保留旧 right，换成更大的 left 只会更大。
+  所以旧 right 不可能参与答案，可以安全执行 right -= 1。
+```
+
+这就是双指针需要的单调性证明。
+
+### 3Sum 有三层去重
+
+```text
+锚点 i 去重：
+  nums[i] == nums[i - 1] 时跳过，避免重复固定相同的第一个数。
+
+left 去重：
+  命中后跳过连续相同的左值。
+
+right 去重：
+  命中后跳过连续相同的右值。
+```
+
+去重必须在**命中以后**进行。如果 `total < 0` 或 `total > 0`，直接移动对应指针即可；重复值最多造成一次额外比较，不影响正确性。
+
+复杂度：
+
+$$
+\text{time}=O(n^2),\qquad \text{extra space}=O(1)
+$$
+
+这里的额外空间不计算排序实现和输出数组。
+
+## 4Sum：固定两个数 + Two Sum
+
+4Sum 要找的是：
+
+$$
+a+b+c+d=target.
+$$
+
+它和 3Sum 的结构完全一致，只是多固定一层：
+
+```text
+第一层固定 i
+  第二层固定 j
+    left / right 在 j 右侧做 Two Sum
+```
+
+### 4Sum 代码
+
+```python
+class Solution:
+    def fourSum(self, nums: List[int], target: int) -> List[List[int]]:
+        nums.sort()
+        n = len(nums)
+        result = []
+
+        for i in range(n - 3):
+            if i > 0 and nums[i] == nums[i - 1]:
+                continue
+
+            # 固定 i 后的最小和已经太大，后续 i 只会更大。
+            if nums[i] + nums[i + 1] + nums[i + 2] + nums[i + 3] > target:
+                break
+
+            # 固定 i 后连最大的三个数都不够，当前 i 不可能有答案。
+            if nums[i] + nums[-1] + nums[-2] + nums[-3] < target:
+                continue
+
+            for j in range(i + 1, n - 2):
+                if j > i + 1 and nums[j] == nums[j - 1]:
+                    continue
+
+                if nums[i] + nums[j] + nums[j + 1] + nums[j + 2] > target:
+                    break
+
+                if nums[i] + nums[j] + nums[-1] + nums[-2] < target:
+                    continue
+
+                left = j + 1
+                right = n - 1
+
+                while left < right:
+                    total = nums[i] + nums[j] + nums[left] + nums[right]
+
+                    if total == target:
+                        result.append([
+                            nums[i], nums[j], nums[left], nums[right]
+                        ])
+
+                        while left < right and nums[left] == nums[left + 1]:
+                            left += 1
+                        while left < right and nums[right] == nums[right - 1]:
+                            right -= 1
+
+                        left += 1
+                        right -= 1
+                    elif total < target:
+                        left += 1
+                    else:
+                        right -= 1
+
+        return result
+```
+
+复杂度是：
+
+$$
+O(n^3)
+$$
+
+两层固定各贡献一个 $n$，最内层双指针总共线性移动。不计算排序实现和输出数组时，额外空间是 $O(1)$。
+
+在 C++、Java 等固定宽度整数语言中，四个 `int` 相加可能溢出，计算 `total` 时应转成 `long long` 或 `long`。Python 整数不会溢出。
+
+## KSum：递归降维，最终落到 Two Sum
+
+3Sum 和 4Sum 不需要分别背。统一结构是：
+
+```text
+KSum(start, k, target)
+  固定 nums[i]
+  -> 求 (k - 1)Sum(i + 1, target - nums[i])
+  -> 一直降到 2Sum
+  -> 2Sum 用相向双指针解决
+```
+
+### 通用 KSum 代码
+
+```python
+class Solution:
+    def kSum(self, nums: List[int], k: int, target: int) -> List[List[int]]:
+        nums.sort()
+
+        def solve(start: int, k: int, target: int) -> List[List[int]]:
+            result = []
+            n = len(nums)
+
+            if k < 2 or n - start < k:
+                return result
+
+            # 当前区间能取得的最小和、最大和，用于整层剪枝。
+            min_sum = sum(nums[start:start + k])
+            max_sum = sum(nums[-k:])
+            if target < min_sum or target > max_sum:
+                return result
+
+            # 递归基：排序数组上的 Two Sum。
+            if k == 2:
+                left, right = start, n - 1
+
+                while left < right:
+                    total = nums[left] + nums[right]
+
+                    if total == target:
+                        result.append([nums[left], nums[right]])
+
+                        left_value = nums[left]
+                        right_value = nums[right]
+                        while left < right and nums[left] == left_value:
+                            left += 1
+                        while left < right and nums[right] == right_value:
+                            right -= 1
+                    elif total < target:
+                        left += 1
+                    else:
+                        right -= 1
+
+                return result
+
+            # 固定一个数，把 kSum 降成 (k - 1)Sum。
+            for i in range(start, n - k + 1):
+                if i > start and nums[i] == nums[i - 1]:
+                    continue
+
+                # 固定 nums[i] 后，剩余 k-1 个数的最小可能和。
+                smallest = nums[i] + sum(nums[i + 1:i + k])
+                if smallest > target:
+                    break
+
+                # 固定 nums[i] 后，剩余 k-1 个数的最大可能和。
+                largest = nums[i] + sum(nums[-(k - 1):])
+                if largest < target:
+                    continue
+
+                tails = solve(i + 1, k - 1, target - nums[i])
+                for tail in tails:
+                    result.append([nums[i]] + tail)
+
+            return result
+
+        return solve(0, k, target)
+```
+
+调用方式：
+
+```python
+# 3Sum
+answer = Solution().kSum(nums, 3, 0)
+
+# 4Sum
+answer = Solution().kSum(nums, 4, target)
+```
+
+### KSum 为什么不会重复
+
+每一层递归都只做一件事：相同的值只在该层第一次出现时被固定。
+
+```python
+if i > start and nums[i] == nums[i - 1]:
+    continue
+```
+
+注意条件是 `i > start`，不是 `i > 0`。因为每一层递归都有自己的起点；我们只跳过**当前层**相邻的重复候选。
+
+递归基 2Sum 在命中后也会一次性跳过左右两侧的相同值，因此从每一层到最终 pair 都不会重复。
+
+### KSum 复杂度
+
+对固定的 $k$，最坏时间复杂度是：
+
+$$
+O(n^{k-1}).
+$$
+
+原因是前 $k-2$ 层递归各固定一个数，最后的 2Sum 是 $O(n)$。例如：
+
+| 问题 | 结构 | 最坏时间 |
+|---|---|---:|
+| 2Sum（已排序） | 双指针 | $O(n)$ |
+| 3Sum | 固定 1 层 + 2Sum | $O(n^2)$ |
+| 4Sum | 固定 2 层 + 2Sum | $O(n^3)$ |
+| KSum | 固定 $k-2$ 层 + 2Sum | $O(n^{k-1})$ |
+
+递归栈深度是 $O(k)$，不计算输出结果。上下界剪枝会让实际运行更快，但不改变最坏复杂度。
+
+### 面试时应该写通用 KSum 吗
+
+如果题目只问 3Sum，直接写固定一层的版本更清楚；只问 4Sum，写两层循环也更容易检查边界。只有题目明确要求推广、追问 KSum，或者希望展示抽象能力时，再写递归模板。
+
+正确的讲解顺序通常是：
+
+```text
+先把 3Sum 写对
+  -> 说明 4Sum 只是再固定一层
+  -> 最后抽象为 KSum 递归
+```
+
 ## 常见错误
 
 ### 1. 没有单调性就硬用

@@ -3423,6 +3423,193 @@ function BinaryPowVisual() {
   );
 }
 
+const THREE_SUM_VALUES = [-4, -1, -1, 0, 1, 2];
+
+const THREE_SUM_STEPS = [
+  {
+    title: '排序并初始化',
+    i: 0,
+    left: 1,
+    right: 5,
+    sum: -3,
+    tone: 'low',
+    action: '-3 < 0，和太小；固定 i 和 right，left 右移。',
+    results: [],
+  },
+  {
+    title: 'left 继续右移',
+    i: 0,
+    left: 2,
+    right: 5,
+    sum: -3,
+    tone: 'low',
+    action: '仍然小于 0。虽然值还是 -1，但这一轮尚未命中，继续移动 left。',
+    results: [],
+  },
+  {
+    title: '排除更小的组合',
+    i: 0,
+    left: 3,
+    right: 5,
+    sum: -2,
+    tone: 'low',
+    action: '-2 < 0。排序保证 left 左边的候选都不会更大，可以安全排除。',
+    results: [],
+  },
+  {
+    title: '第一个锚点结束',
+    i: 0,
+    left: 4,
+    right: 5,
+    sum: -1,
+    tone: 'low',
+    action: '-1 < 0，left 再右移就会与 right 相遇；固定 -4 时没有答案。',
+    results: [],
+  },
+  {
+    title: '固定 -1，命中第一组',
+    i: 1,
+    left: 2,
+    right: 5,
+    sum: 0,
+    tone: 'hit',
+    action: '-1 + -1 + 2 = 0，记录答案，然后两端跳过重复值并同时内收。',
+    results: [[-1, -1, 2]],
+  },
+  {
+    title: '同一锚点命中第二组',
+    i: 1,
+    left: 3,
+    right: 4,
+    sum: 0,
+    tone: 'hit',
+    action: '-1 + 0 + 1 = 0，再记录一组；随后 left 与 right 交错。',
+    results: [[-1, -1, 2], [-1, 0, 1]],
+  },
+  {
+    title: '跳过重复锚点',
+    i: 2,
+    left: null,
+    right: null,
+    sum: null,
+    tone: 'skip',
+    action: 'nums[2] == nums[1]，若再次固定 -1 只会生成重复答案，直接 continue。',
+    skippedAnchor: 2,
+    results: [[-1, -1, 2], [-1, 0, 1]],
+  },
+  {
+    title: '扫描完成',
+    i: 3,
+    left: 4,
+    right: 5,
+    sum: 3,
+    tone: 'high',
+    action: '0 + 1 + 2 = 3，和太大；right 左移后指针相遇，全部搜索结束。',
+    results: [[-1, -1, 2], [-1, 0, 1]],
+  },
+];
+
+function ThreeSumVisual() {
+  const [activeStep, setActiveStep] = useState(0);
+  const step = THREE_SUM_STEPS[activeStep];
+  const selectedValues = step.left === null
+    ? [THREE_SUM_VALUES[step.i]]
+    : [THREE_SUM_VALUES[step.i], THREE_SUM_VALUES[step.left], THREE_SUM_VALUES[step.right]];
+
+  return (
+    <section className="three-sum-visual" aria-label="3Sum 双指针演示">
+      <header className="three-sum-header">
+        <div>
+          <p className="eyebrow">Two pointers visual</p>
+          <h2>3Sum：固定 i，收缩 left / right</h2>
+          <p>输入 [-1, 0, 1, 2, -1, -4]，先排序，再观察每次移动为什么能排除一批组合。</p>
+        </div>
+        <div className="three-sum-counter">{activeStep + 1}<span>/ {THREE_SUM_STEPS.length}</span></div>
+      </header>
+
+      <div className="three-sum-step-copy">
+        <strong>{step.title}</strong>
+        <span>{step.action}</span>
+      </div>
+
+      <div className="three-sum-array-wrap">
+        <div className="three-sum-array" aria-label="排序后的数组">
+          {THREE_SUM_VALUES.map((value, index) => {
+            const roles = [];
+            if (index === step.i) roles.push('i');
+            if (index === step.left) roles.push('L');
+            if (index === step.right) roles.push('R');
+            const isSkipped = index === step.skippedAnchor;
+
+            return (
+              <div
+                className={`three-sum-cell ${index === step.i ? 'anchor' : ''} ${index === step.left ? 'left' : ''} ${index === step.right ? 'right' : ''} ${isSkipped ? 'skipped' : ''}`}
+                key={`${value}-${index}`}
+              >
+                <small>index {index}</small>
+                <strong>{value}</strong>
+                <span>{roles.join(' · ') || '·'}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="three-sum-state">
+        <div>
+          <span>当前选择</span>
+          <strong>{selectedValues.join(' + ')}</strong>
+        </div>
+        <div className={`three-sum-sum ${step.tone}`}>
+          <span>sum</span>
+          <strong>{step.sum === null ? 'skip' : step.sum}</strong>
+        </div>
+        <div>
+          <span>动作</span>
+          <strong>{step.tone === 'low' ? 'left →' : step.tone === 'high' ? '← right' : step.tone === 'hit' ? '记录 + 内收' : '跳过重复'}</strong>
+        </div>
+      </div>
+
+      <div className="three-sum-results">
+        <span>已找到</span>
+        <div>
+          {step.results.length > 0
+            ? step.results.map((triplet) => <strong key={triplet.join(',')}>[{triplet.join(', ')}]</strong>)
+            : <em>尚未命中</em>}
+        </div>
+      </div>
+
+      <div className="three-sum-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          上一步
+        </button>
+        <div className="three-sum-dots">
+          {THREE_SUM_STEPS.map((candidate, index) => (
+            <button
+              type="button"
+              className={index === activeStep ? 'active' : ''}
+              aria-label={`跳到步骤 ${index + 1}: ${candidate.title}`}
+              onClick={() => setActiveStep(index)}
+              key={candidate.title}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.min(THREE_SUM_STEPS.length - 1, current + 1))}
+          disabled={activeStep === THREE_SUM_STEPS.length - 1}
+        >
+          下一步
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function IntervalBar({ domain, interval, isActive = false, isMuted = false }) {
   const left = intervalPercent(interval.start, domain);
   const right = intervalPercent(interval.end, domain);
@@ -3767,7 +3954,7 @@ function HighDimensionalIntegralVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|high-dimensional-integral-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|three-sum-demo|high-dimensional-integral-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -3791,6 +3978,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'pow-demo') {
     return <BinaryPowVisual />;
+  }
+
+  if (match?.[1] === 'three-sum-demo') {
+    return <ThreeSumVisual />;
   }
 
   if (match?.[1] === 'high-dimensional-integral-demo') {

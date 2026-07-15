@@ -173,6 +173,31 @@ describe('App', () => {
     expect(screen.getAllByText('CoreSkills28 Two Pointers.md')).toHaveLength(2);
   });
 
+  it('renders the interactive 3Sum two-pointer walkthrough', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills28')
+          ? '# Two Pointers\n\n```three-sum-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
+
+    expect(await screen.findByRole('region', { name: '3Sum 双指针演示' })).toBeInTheDocument();
+    expect(screen.getByText('排序并初始化')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /跳到步骤 5: 固定 -1，命中第一组/i }));
+
+    expect(screen.getByText('固定 -1，命中第一组')).toBeInTheDocument();
+    expect(screen.getByText('[-1, -1, 2]')).toBeInTheDocument();
+  });
+
   it('opens the System Design section with the new overview notes', async () => {
     render(<App />);
 
