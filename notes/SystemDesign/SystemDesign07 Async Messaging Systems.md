@@ -70,6 +70,155 @@ sequenceDiagram
 
 异步完成后的结果可以通过轮询、webhook、SSE 或 WebSocket 返回。选择取决于谁需要结果，以及连接能否长期保持。
 
+### 1.4 常见消息场景：先看拓扑，再看交互
+
+“1-to-1”“Pub/Sub”“RPC”“聊天消息”经常被放在一起说，其实它们描述的不是同一件事：
+
+```text
+拓扑：谁发给谁？              1 -> 1、1 -> N、N -> 1、N -> N
+交互：发送方等不等结果？      notification、request/reply、stream
+语义：消息代表什么？          command、event、document
+载荷：bytes 怎么编码？         text、JSON、Protobuf、Avro
+```
+
+因此，`text` 本身不是一种消息模式。它可能表示聊天这个业务场景，也可能只是 payload 的编码格式。同一条 1-to-1 聊天消息可以用 JSON 传输；同一种 RPC 也可以用 Protobuf 或 JSON。
+
+#### 按连接拓扑分类
+
+```mermaid
+flowchart TB
+    subgraph P2P[1 to 1 · Point to Point]
+      P1[Sender] --> Q1[Mailbox or Queue]
+      Q1 --> C1[One logical receiver]
+    end
+
+    subgraph FANOUT[1 to N · Fan-out]
+      P2[Publisher] --> T2[Topic or Router]
+      T2 --> C2[Subscriber A]
+      T2 --> C3[Subscriber B]
+      T2 --> C4[Subscriber C]
+    end
+
+    subgraph FANIN[N to 1 · Fan-in]
+      P3[Producer A] --> I3[Collector]
+      P4[Producer B] --> I3
+      P5[Producer C] --> I3
+    end
+
+    subgraph MANY[N to N · Event Backbone]
+      P6[Many producers] --> B4[Event Bus or Log]
+      B4 --> C6[Many consumer groups]
+    end
+```
+
+| 拓扑 | 消息含义 | 常见场景 | 常见实现 |
+|---|---|---|---|
+| 1 → 1 | 交给一个逻辑接收者 | 私信、发邮件任务、生成报表 | mailbox、work queue、一个 consumer group |
+| 1 → N | 多个下游观察同一事实 | `order.paid`、配置变更、cache invalidation | Pub/Sub、exchange + 多个 queue、多个 Kafka group |
+| N → 1 | 多个来源汇入一个处理面 | 日志采集、metrics、审计、IoT telemetry | collector、ingestion topic、stream processor |
+| N → N | 多个生产者和下游共享事件骨干 | 企业事件平台、CDC、数据集成 | Event Bus、Kafka、Pulsar 等日志系统 |
+
+这里的 `1` 和 `N` 指**逻辑角色**，不一定是进程数量。例如一个“Notification subscriber”背后可以有 50 个 worker；它在 Pub/Sub 拓扑里仍然算一个逻辑订阅者。
+
+#### 按交互方式分类
+
+| 模式 | 发送方是否等结果 | 消息里通常有什么 | 适合场景 |
+|---|---|---|---|
+| Notification | 不等业务结果 | `event_id`、type、payload | cache 失效、审计通知、非关键提醒 |
+| Task / Command | 通常先拿 job ID | task type、参数、幂等键 | 转码、邮件、报表、异步推理 |
+| Event | 不要求某个固定接收者响应 | 已发生的事实、版本、时间 | 订单状态、CDC、领域事件 |
+| Request / Reply | 等待对应 reply，可同步也可异步 | `request_id`、`reply_to`、deadline | RPC、跨服务查询、设备命令 |
+| Stream | 持续接收多条结果 | sequence、offset、event time | 日志、行情、模型 token、传感器数据 |
+
+#### 1-to-1 的三种常见含义
+
+同样写成 1-to-1，背后的契约可能完全不同：
+
+```text
+Direct message
+  Alice -> Bob's mailbox
+  接收者由 user_id 指定，Bob 可以晚点上线再收
+
+Work item
+  API -> image-processing queue -> any available worker
+  不是指定某台机器，而是任意一个 worker 完成即可
+
+Request / reply
+  Service A -> request queue -> Service B
+  Service B -> reply queue -> Service A
+  A 通过 correlation_id 找回对应响应
+```
+
+第一个是“指定逻辑接收者”，第二个是“指定 worker 集合”，第三个还多了一条反向消息。不能只凭箭头数量判断可靠性、顺序或是否同步。
+
+#### Text / Chat：业务场景，不只是一个字符串
+
+私聊通常是 1-to-1，群聊通常是 1-to-N，但真正的聊天系统还要定义：
+
+- `conversation_id`：消息属于哪个会话。
+- `message_id`：去重和重试定位。
+- `sender_id` 与 recipient / membership snapshot：谁发给谁。
+- `client_sequence` 或 server sequence：会话内如何排序。
+- `sent`、`delivered`、`read`：三个不同的状态，不能合成一个“成功”。
+- 离线 mailbox、push notification 和多设备同步：接收者不在线时如何补发。
+
+```text
+Client A -> Chat API -> durable conversation log
+                         |-> online gateway -> Client B
+                         |-> offline mailbox
+                         |-> push notification
+                         +-> sync cursor for B's other devices
+```
+
+正文可以是 UTF-8 text，也可以是图片或文件的 object reference。编码格式不会改变聊天的投递语义。
+
+#### RPC over messaging：能做，但不要假装它天然解耦
+
+RPC 的核心是 request 对应一个 response。用 broker 实现时，request 至少需要：
+
+```json
+{
+  "request_id": "req_123",
+  "method": "risk.score",
+  "reply_to": "risk-replies.service-a",
+  "deadline": "2026-07-15T18:20:05Z",
+  "payload": {"order_id": "order_918"}
+}
+```
+
+Responder 把相同的 `request_id` 放进 reply，调用方据此匹配等待中的请求。还必须处理 timeout、late reply、重复 reply、reply queue 生命周期和 caller 已经重启的情况。
+
+```mermaid
+sequenceDiagram
+    participant A as Caller
+    participant RQ as Request Queue
+    participant B as Responder
+    participant PQ as Reply Queue
+
+    A->>RQ: request_id + reply_to + deadline
+    RQ->>B: deliver request
+    B->>PQ: reply with same request_id
+    PQ->>A: correlate response
+```
+
+如果 Caller 发完消息后仍阻塞等待 reply，那么它在业务上依旧是同步 RPC：Responder 变慢，Caller 仍会 timeout。Broker 改善的是缓冲、投递和位置解耦，并没有消除时间依赖。
+
+真正的异步 request/reply 通常是：立即返回 `job_id`，后台完成后把结果写入状态表，再由调用方轮询或由 webhook / SSE 通知。长任务不要占住一个 RPC 等待槽。
+
+#### 一张选择表
+
+```text
+只想告诉对方“发生了什么”              -> Event / Notification
+希望某个 worker 完成一份工作            -> Task Queue
+多个独立下游都要处理                    -> Pub/Sub
+必须拿到一个对应结果，且很快完成          -> RPC / Request-Reply
+耗时长，但最终需要结果                    -> Async Job + status / callback
+持续产生、需要 offset 或 replay           -> Stream / Partitioned Log
+人与人发送消息                            -> Mailbox / Conversation Log
+```
+
+一个业务可以组合多种模式。比如“发送聊天图片”可能先用 request/reply 获取上传地址，再用 task queue 做缩略图，写入 conversation log，最后通过 Pub/Sub 同步到接收者的多台设备。
+
 ---
 
 ## 2 · 一条消息到底包含什么
