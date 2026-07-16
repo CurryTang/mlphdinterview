@@ -2002,6 +2002,12 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'Messaging', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'System Design 8 · 异步 LLM RL 训练平台',
+    'SystemDesign08 LLM Async RL Platform.md',
+    null,
+    { directory: 'SystemDesign', category: 'ML Infrastructure', difficulty: 'Hard' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',

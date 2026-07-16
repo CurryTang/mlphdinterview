@@ -41,6 +41,8 @@ describe('App', () => {
         text: async () =>
           english
             ? '# English tutorial\n\nThis is the English version.'
+            : requestUrl.includes('SystemDesign08')
+              ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
             : chineseContent,
       };
     });
@@ -296,7 +298,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('9 notes in this section')).toBeInTheDocument();
+    expect(screen.getByText('10 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 1 · 无状态设计范式/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 2 · 数据库基本范式/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 3 · 数据库扩展三件套/i })).toBeInTheDocument();
@@ -304,6 +306,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /System Design 5 · 设计题基本流程/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 6 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 7 · 异步消息系统/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 8 · 异步 LLM RL 训练平台/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 2 · 数据库基本范式/i }));
@@ -335,6 +338,12 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /System Design 7 · 异步消息系统/ })).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign07 Async Messaging Systems.md')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 8 · 异步 LLM RL 训练平台/i }));
+
+    expect(await screen.findByRole('heading', { name: /System Design 08 · 异步 LLM RL 训练平台/ })).toBeInTheDocument();
+    expect(screen.getByText(/60 sample admission QPS/)).toBeInTheDocument();
+    expect(screen.getAllByText('SystemDesign08 LLM Async RL Platform.md')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
 
