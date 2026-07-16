@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net" modified="2026-07-15T00:00:00.000Z" agent="Codex" version="26.0.0">
+  <diagram id="photo-sharing-architecture" name="Photo Sharing Architecture">
+    <mxGraphModel dx="1800" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1740" pageHeight="900" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="lane-edge" value="客户端与边缘" style="swimlane;horizontal=0;startSize=110;fillColor=#f5f5f5;html=1;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1740" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="client" value="Mobile / Web&lt;br&gt;Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane-edge">
+          <mxGeometry x="120" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="gateway" value="API Gateway&lt;br&gt;Auth · Rate Limit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="lane-edge">
+          <mxGeometry x="300" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="cdn" value="CDN&lt;br&gt;Versioned Media" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="lane-edge">
+          <mxGeometry x="840" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-service" value="同步服务" style="swimlane;horizontal=0;startSize=110;fillColor=#e8f4f8;html=1;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="0" y="150" width="1740" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="upload-service" value="Upload Service&lt;br&gt;Signed Session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane-service">
+          <mxGeometry x="300" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="post-service" value="Post Metadata&lt;br&gt;State Machine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane-service">
+          <mxGeometry x="480" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="feed-service" value="Feed Service&lt;br&gt;Read Orchestration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane-service">
+          <mxGeometry x="840" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="graph-service" value="Social Graph&lt;br&gt;Follow / Unfollow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane-service">
+          <mxGeometry x="1020" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="merge-rank" value="Merge / Rank&lt;br&gt;Filter · Dedup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="lane-service">
+          <mxGeometry x="1200" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-async" value="异步事件与计算" style="swimlane;horizontal=0;startSize=110;fillColor=#fff0e6;html=1;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="0" y="300" width="1740" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="event-log" value="Event Log&lt;br&gt;Replay · Consumer Lag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="lane-async">
+          <mxGeometry x="480" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="media-worker" value="Media Processor&lt;br&gt;Validate · Renditions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="lane-async">
+          <mxGeometry x="660" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="fanout-worker" value="Fan-out Workers&lt;br&gt;Push / Pull Classifier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="lane-async">
+          <mxGeometry x="1020" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-data" value="状态与媒体" style="swimlane;horizontal=0;startSize=110;fillColor=#e8f5e9;html=1;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="0" y="450" width="1740" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="object-store" value="Object Storage&lt;br&gt;Original + Renditions" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane-data">
+          <mxGeometry x="120" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="metadata-db" value="Post Metadata DB&lt;br&gt;Source of Truth" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="lane-data">
+          <mxGeometry x="480" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="timeline-store" value="Timeline Store&lt;br&gt;Bounded Materialized View" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="lane-data">
+          <mxGeometry x="840" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="author-outbox" value="Author Outbox&lt;br&gt;Celebrity Pull" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="lane-data">
+          <mxGeometry x="1020" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="graph-store" value="Follow Graph Store&lt;br&gt;Sharded Adjacency" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="lane-data">
+          <mxGeometry x="1200" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-client-gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="client" target="gateway">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-gateway-upload" value="upload session" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;" edge="1" parent="1" source="gateway" target="upload-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-gateway-feed" value="feed read" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;" edge="1" parent="1" source="gateway" target="feed-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-gateway-graph" value="follow" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;" edge="1" parent="1" source="gateway" target="graph-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-upload-client" value="signed URL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="upload-service" target="client">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-client-object" value="direct bytes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="client" target="object-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-client-cdn" value="media read" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="client" target="cdn">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-cdn-object" value="origin miss" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="cdn" target="object-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-upload-post" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="upload-service" target="post-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-post-db" value="state" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#b85450;" edge="1" parent="1" source="post-service" target="metadata-db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-object-event" value="ObjectCreated" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="object-store" target="event-log">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-event-media" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="event-log" target="media-worker">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-media-object" value="renditions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="media-worker" target="object-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-media-post" value="READY" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="media-worker" target="post-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-post-event" value="PostReady" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="post-service" target="event-log">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-event-fanout" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="event-log" target="fanout-worker">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fanout-graph" value="followers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="fanout-worker" target="graph-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fanout-timeline" value="push" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="fanout-worker" target="timeline-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fanout-outbox" value="pull" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="fanout-worker" target="author-outbox">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-graph-service-store" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#b85450;" edge="1" parent="1" source="graph-service" target="graph-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-feed-timeline" value="precomputed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="feed-service" target="timeline-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-feed-outbox" value="celebrity" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="feed-service" target="author-outbox">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-feed-graph-store" value="followees" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="feed-service" target="graph-store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-feed-merge" value="candidates" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="feed-service" target="merge-rank">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-merge-db" value="batch hydrate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="merge-rank" target="metadata-db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

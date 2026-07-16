@@ -1990,6 +1990,12 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'Framework', difficulty: 'Intro' },
   ),
+  createTutorialDefinition(
+    'System Design 6 · 图片分享与 Feed',
+    'SystemDesign06 Photo Sharing Feed.md',
+    null,
+    { directory: 'SystemDesign', category: 'Case Study', difficulty: 'Hard' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',

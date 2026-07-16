@@ -344,6 +344,208 @@ $$
 write\ QPS=total\ QPS\times\frac{w}{r+w}.
 $$
 
+### QPS 低或高时需要什么设计
+
+QPS 只是第一维，不能看到一个数字就机械地“上 Redis”或“做分片”。同样是 1K QPS，下面几种负载完全不同：
+
+```text
+1K cache lookup/s：通常很轻
+1K complex SQL join/s：可能很重
+1K image upload/s：可能先打满网络
+1K fan-out request/s × 500 downstream calls：内部变成 500K RPC/s
+```
+
+做架构判断时至少同时写出：
+
+```text
+peak QPS
+read : write ratio
+payload size
+single-request CPU / I/O cost
+p99 latency target
+burst factor
+fan-out factor
+hot-key distribution
+```
+
+下面的分档只是面试起点，不是通用容量上限。真实边界必须通过目标硬件与真实 query 的 benchmark 获得。
+
+| Peak QPS 粗略量级 | 可以从什么设计开始 | 什么时候升级 |
+|---:|---|---|
+| < 100 | 单体或少量 stateless instances + 一个关系数据库 + 正确索引 | p99、CPU、connection 或磁盘开始接近上限 |
+| 100～5K | Load Balancer、多实例、connection pool、慢查询治理、备份与基本监控 | 热点读取压垮 DB，或突发流量使实例来不及扩容 |
+| 5K～50K | distributed cache、read replica、异步 queue、rate limit、容量 headroom | 单 shard 写入、hot key、cache miss 或内部 fan-out 成为瓶颈 |
+| > 50K | 多级 cache / CDN、预计算、partition / shard、event log、backpressure、热点隔离 | 根据真实瓶颈继续拆服务或做多 region，而不是按 QPS 自动拆分 |
+
+#### 低 QPS 时
+
+优先保证简单和正确：
+
+```text
+User -> Load Balancer -> Stateless Service -> Primary Database
+```
+
+通常先做好：
+
+- 正确 schema 与 index
+- connection pool
+- query timeout
+- backup / restore
+- 多实例与 health check
+- request metric、database metric 和 tracing
+
+低 QPS 不代表可以没有 fault tolerance，但通常没有理由一开始引入 distributed cache、sharding 和复杂 event pipeline。
+
+#### 中等 QPS 时
+
+先找读写瓶颈：
+
+```text
+读多：index -> cache -> read replica -> precomputed view
+写多：batch -> async queue -> partition -> shard
+突发：rate limit -> queue -> backpressure -> load shedding
+```
+
+不要把 read replica 当成 cache。Replica 仍然执行数据库 query，只是分担 primary；cache 保存的是更便宜的派生结果，但会引入 stale data 与 invalidation。
+
+#### 高 QPS 时
+
+重点从“机器能否处理”转向“负载能否均匀分布”：
+
+- partition key 是否均匀
+- 单个 celebrity / tenant / object 是否形成 hot key
+- cache miss 是否同时回源形成 stampede
+- retry 是否在故障时放大流量
+- fan-out 是否让内部 QPS 远大于入口 QPS
+- queue backlog 是否可以在目标时间内清空
+- 单 AZ 故障后剩余容量是否仍有 headroom
+
+高 QPS 系统往往不是缺少组件，而是某个 key、partition 或 dependency 无法水平扩展。
+
+### Cache 是否真的需要
+
+加入 cache 前先回答：
+
+```text
+要保护谁？database、external API 还是昂贵计算？
+cache key 是什么？
+value 多大？
+允许多旧？
+miss 后谁回填？
+更新或删除时如何失效？
+cache 整体不可用时，origin 会不会被瞬间打垮？
+```
+
+最常见的 cache-aside read path：
+
+```text
+1. Service 读取 cache
+2. hit：直接返回
+3. miss：读取 source of truth
+4. 写入 cache，并设置 TTL
+5. 返回结果
+```
+
+写入通常先更新 source of truth，再删除或更新 cache。顺序与失败处理要根据一致性要求设计，不能把 cache 当成唯一可信数据。
+
+### 用 hit rate 反推 cache 目标
+
+假设 peak read QPS 是 $Q$，数据库安全吞吐为 $D$，忽略额外回填与重试时：
+
+$$
+DB\ QPS\approx Q\times(1-hit\ rate).
+$$
+
+因此理论最低 hit rate 为：
+
+$$
+hit\ rate\ge 1-\frac{D}{Q}.
+$$
+
+例如 peak read QPS 为 20K，而数据库在目标 p99 下只能安全承载 2K QPS：
+
+```text
+required hit rate >= 1 - 2K / 20K = 90%
+```
+
+实际目标必须更高，因为还要留出部署、故障、cache refill 与流量增长的 headroom。若目标设为 95%，正常回源约为：
+
+```text
+20K × (1 - 95%) = 1K QPS
+```
+
+### Cache 容量估算
+
+$$
+cache\ memory\approx hot\ objects\times value\ size\times overhead.
+$$
+
+再除以目标内存利用率，并乘副本数：
+
+$$
+provisioned\ memory\approx
+\frac{working\ set\times overhead}{target\ utilization}
+\times replicas.
+$$
+
+例如 5M 个热点对象，每个 value 2 KB，序列化与 key overhead 假设 1.4 倍，目标利用率 70%，两个副本：
+
+```text
+working set = 5M × 2 KB × 1.4 ≈ 14 GB
+per replica provisioned ≈ 14 / 0.7 = 20 GB
+two replicas ≈ 40 GB
+```
+
+这个估算还没有包括 rebalancing headroom、大 key、allocator fragmentation 和 replication buffer。
+
+### TTL 应该怎么选
+
+TTL 不是越长越好，也不是统一写 5 分钟。它主要由四件事决定：
+
+```text
+允许的数据陈旧时间
+source data 的更新频率
+一次回源或重算的成本
+cache 容量与 eviction 压力
+```
+
+通用判断：
+
+| 数据类型 | TTL 起点 | 备注 |
+|---|---|---|
+| immutable、带 version 的媒体或配置 | 很长，小时到天 | 新版本使用新 key，最容易缓存 |
+| 热点 profile / post metadata | 数十秒到数分钟 | 配合 update event 主动失效 |
+| feed page / aggregate result | 数秒到数十秒 | 低 latency，但允许短暂 stale |
+| permission / block / account state | 很短或事件驱动失效 | 不能只靠长 TTL 保证安全 |
+| not-found / negative cache | 1～10 秒 | 防穿透，但避免新数据长期不可见 |
+
+一个保守起点是：
+
+$$
+TTL\le allowed\ staleness,
+$$
+
+但如果有可靠的 versioned key 或主动 invalidation，TTL 可以更长，作为清理与故障兜底，而不是主要新鲜度机制。
+
+### TTL 到期会产生什么问题
+
+如果大量 key 同时过期，cache miss 会集中回源，形成 cache stampede。常见保护：
+
+```text
+TTL jitter：在基础 TTL 上加入 ±10%～20% 随机量
+singleflight / request coalescing：同一个 key 只允许一个请求回源
+stale-while-revalidate：先返回短暂旧值，后台刷新
+soft TTL + hard TTL：soft 到期异步刷新，hard 到期才禁止返回
+refresh-ahead：热点 key 到期前主动刷新
+origin rate limit：cache 故障时保护数据库
+```
+
+### Cache 的三个正确性原则
+
+1. Cache miss 必须是正常路径，而不是异常。
+2. Cache 全部丢失时系统应该降级，而不是立刻压垮 source of truth。
+3. 权限、删除、支付状态等 correctness boundary 不能只等待 TTL 自然过期。
+
 ### 并发请求数
 
 Little's Law 给出一个非常实用的近似：
