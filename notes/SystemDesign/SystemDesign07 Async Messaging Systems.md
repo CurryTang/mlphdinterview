@@ -74,7 +74,22 @@ sequenceDiagram
 
 ## 2 · 一条消息到底包含什么
 
-只发送业务 payload 很快就会遇到版本、排障和幂等问题。一个可维护的 message envelope 至少需要：
+“Queue 里放一条 JSON”只描述了应用看到的部分。Broker 真正管理的是三层数据：
+
+```text
+应用消息：这件事是什么，业务参数是什么
+Broker record：消息要去哪里，如何序列化，写在什么位置
+投递状态：现在可领取、处理中、等待重试，还是已经进入 DLQ
+```
+
+应用消息通常由 envelope 和 payload 组成。Broker 把它序列化成 bytes，再把 bytes 与路由、位置和投递状态关联起来。磁盘上的实际格式通常是二进制 segment、page 或 record batch，不是一张可以直接查询的 JSON 表。
+
+```message-queue-demo
+```
+
+### 2.1 应用写进去的数据
+
+一个可维护的 message envelope 至少需要：
 
 ```json
 {
@@ -94,6 +109,8 @@ sequenceDiagram
 }
 ```
 
+这里的 `payload` 才是业务数据。外层 envelope 让基础设施和通用 consumer 不解析订单字段也能完成路由、追踪、版本检查和去重。
+
 字段的职责不同：
 
 | 字段 | 用途 |
@@ -105,6 +122,110 @@ sequenceDiagram
 | `tenant_id` | 隔离、计费、限流 |
 | `aggregate_id` | 分区键，例如同一个订单局部有序 |
 | `traceparent` | 跨 HTTP 和消息链路继续 tracing |
+
+JSON 只是序列化选择。Broker 通常接收 bytes，应用也可以使用 Protobuf、Avro 或 MessagePack。Consumer 必须根据 `content_type` 或 schema contract 知道如何还原这些 bytes。
+
+### 2.2 Broker 概念上还会维护什么
+
+下面是帮助理解的逻辑模型，不是某个产品公开的磁盘格式：
+
+```json
+{
+  "message": {
+    "message_id": "evt_01J...",
+    "content_type": "application/json",
+    "headers": {
+      "event_type": "order.paid",
+      "schema_version": "3",
+      "traceparent": "00-..."
+    },
+    "body_bytes": "{...serialized payload...}"
+  },
+  "routing": {
+    "destination": "billing.v1",
+    "partition_key": "order_918",
+    "priority": 0
+  },
+  "broker_state": {
+    "position": 184233,
+    "status": "READY",
+    "delivery_count": 0,
+    "available_at": "2026-07-15T18:20:00Z",
+    "lease_until": null
+  }
+}
+```
+
+这三部分的所有权不同：
+
+| 数据 | 谁设置 | 消费过程中是否变化 |
+|---|---|---|
+| `message_id`、headers、body | Producer | 通常不变 |
+| destination、partition key | Producer 或 router | 通常不变 |
+| position / offset | Broker | 入队时分配 |
+| delivery count | Broker | 每次失败投递后增加 |
+| receipt handle / delivery tag | Broker | 每次投递可能重新生成 |
+| lease / visibility deadline | Broker | 领取、续租、超时都会变化 |
+| status | Broker | READY、IN_FLIGHT、RETRY、DONE 或 DEAD |
+
+所以“重复投递”一般不是 broker 复制了一份新的业务订单。更常见的情况是，同一条 message body 再次获得新的 delivery handle，`delivery_count` 增加，并重新变成可领取状态。
+
+### 2.3 Queue 内部需要哪些索引
+
+一条消息写入磁盘后，broker 还要快速回答几个问题：
+
+```text
+下一条可以交给 consumer 的消息是哪条？
+哪些消息已经交出，但还没有 ack？
+哪些 lease 已经过期，需要重新投递？
+哪些消息到了 available_at，可以结束延迟等待？
+哪些消息超过重试上限，需要进入 DLQ？
+```
+
+因此逻辑上常见这些结构：
+
+```mermaid
+flowchart LR
+    S[(Append-only bytes<br/>segment / page)] --> R[Ready index<br/>可以领取]
+    R --> I[In-flight map<br/>handle + lease deadline]
+    I -->|ack| D[Delete / advance cursor]
+    I -->|timeout or nack| T[Retry schedule<br/>available_at]
+    T --> R
+    T -->|attempt limit| X[(Dead-letter queue)]
+```
+
+不同产品实现差异很大。Queue broker 可能为每条 delivery 维护状态；partitioned log 更倾向于保留不可变 record，让 consumer group 用 offset 表示进度。它们都“存消息”，但读写放大的来源不同。
+
+### 2.4 三种产品里，consumer 实际拿到什么
+
+| 系统 | Producer 提供 | Broker 增加或维护 | Consumer 确认方式 |
+|---|---|---|---|
+| RabbitMQ / AMQP 0-9-1 | properties、headers、opaque body bytes、routing key | queue 位置、delivery tag、redelivered flag、exchange 等投递信息 | 使用当前 channel 的 delivery tag ack / nack |
+| Kafka | key bytes、value bytes、headers、timestamp，可选 partition | topic、partition、offset、record batch、复制状态 | consumer group 提交下一消费位置 |
+| SQS 风格队列 | body、message attributes、可选 group / dedup ID | message ID、receive count、receipt handle、visibility deadline | 使用本次 receive 返回的 receipt handle 删除消息 |
+
+[RabbitMQ 官方文档](https://www.rabbitmq.com/docs/publishers)把 AMQP 0-9-1 的 publisher properties 与 broker 在投递时生成的 delivery information 分开。Body 对 broker 是 opaque byte array。Kafka 的[磁盘 record 格式](https://kafka.apache.org/41/implementation/message-format/)则直接包含 key、value、headers、timestamp delta 和 offset delta，多条 record 组成 batch 后再压缩和校验。SQS 的 [`ReceiveMessage`](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html) 会返回 body、attributes、message ID 和 receipt handle，并用 visibility timeout 暂时隐藏已领取消息。
+
+### 2.5 Body 里应该放什么
+
+常见的三种 payload：
+
+```json
+// 1. 完整业务快照，consumer 少查一次数据库
+{"order_id":"o_918","amount_cents":2599,"currency":"USD"}
+
+// 2. 轻量引用，consumer 再读取 source of truth
+{"order_id":"o_918","version":7}
+
+// 3. 大对象引用，bytes 留在 object storage
+{"object_key":"exports/r_42.parquet","sha256":"...","size_bytes":8451021}
+```
+
+选择取决于一致性和成本：
+
+- 完整快照方便重放，但消息更大，也可能包含需要删除的敏感字段。
+- 轻量引用体积小，但 consumer 处理时依赖数据库可用，而且读到的可能是更新后的状态。
+- 大对象引用适合图片、视频和批量数据，必须带 checksum、size 和授权边界。
 
 大文件不要直接塞进消息。先写 object storage，再发送对象引用、checksum 和 content type。否则 broker 的内存、复制流量和重试成本都会随 payload 放大。
 

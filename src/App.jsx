@@ -4679,10 +4679,245 @@ function HighDimensionalIntegralVisual() {
   );
 }
 
+const MESSAGE_QUEUE_STEPS = [
+  {
+    phase: 'produce',
+    title: 'Producer 构造应用消息',
+    detail: 'Envelope 和 payload 已经生成，但 broker 还没有接管责任。此时进程崩溃，消息仍可能丢失。',
+    status: 'NEW',
+    location: 'producer',
+    position: '未分配',
+    deliveryCount: 0,
+    handle: '无',
+    lease: '无',
+    activePart: 'message',
+  },
+  {
+    phase: 'store',
+    title: 'Broker 持久化并放入 Ready index',
+    detail: 'Body bytes 写入持久化 segment，broker 分配位置 184233。Durable ack 之后，API 才能安全返回已接收。',
+    status: 'READY',
+    location: 'ready',
+    position: '184233',
+    deliveryCount: 0,
+    handle: '无',
+    lease: '无',
+    activePart: 'broker',
+  },
+  {
+    phase: 'deliver',
+    title: 'Worker A 领取消息',
+    detail: '业务 body 没变。Broker 生成本次投递使用的 handle，并在 lease 到期前把消息放进 in-flight 集合。',
+    status: 'IN_FLIGHT',
+    location: 'inflight',
+    position: '184233',
+    deliveryCount: 1,
+    handle: 'rh_A7',
+    lease: '30s',
+    activePart: 'delivery',
+  },
+  {
+    phase: 'timeout',
+    title: 'Worker A 崩溃，没有 ack',
+    detail: '数据库可能尚未提交，也可能已经提交。Lease 到期后 broker 只能把消息重新交付，因此 consumer 必须幂等。',
+    status: 'RETRY_WAIT',
+    location: 'retry',
+    position: '184233',
+    deliveryCount: 1,
+    handle: 'rh_A7 失效',
+    lease: '已超时',
+    activePart: 'delivery',
+  },
+  {
+    phase: 'requeue',
+    title: '消息重新变成 READY',
+    detail: '同一条 message body 回到可领取集合。Broker 保留重投信息，下一次领取会得到新的 delivery handle。',
+    status: 'READY',
+    location: 'ready',
+    position: '184233',
+    deliveryCount: 1,
+    handle: '等待新 handle',
+    lease: '无',
+    activePart: 'broker',
+  },
+  {
+    phase: 'redeliver',
+    title: 'Worker B 收到重投',
+    detail: 'Position 和业务 ID 仍相同，handle 变成 rh_B2，delivery count 增加。Worker B 先用 event_id 去重。',
+    status: 'IN_FLIGHT',
+    location: 'inflight',
+    position: '184233',
+    deliveryCount: 2,
+    handle: 'rh_B2',
+    lease: '30s',
+    activePart: 'delivery',
+  },
+  {
+    phase: 'ack',
+    title: '业务提交成功，再发送 ack',
+    detail: 'Broker 收到当前 handle 的确认后删除 queue entry 或推进消费位置。Envelope 和 payload 不需要被修改。',
+    status: 'DONE',
+    location: 'done',
+    position: '184233',
+    deliveryCount: 2,
+    handle: 'rh_B2 已确认',
+    lease: '结束',
+    activePart: 'delivery',
+  },
+];
+
+const MESSAGE_QUEUE_PHASES = [
+  ['produce', '构造'],
+  ['store', '持久化'],
+  ['deliver', '首次投递'],
+  ['timeout', '超时'],
+  ['requeue', '重新入队'],
+  ['redeliver', '再次投递'],
+  ['ack', '确认完成'],
+];
+
+function MessageQueueVisual() {
+  const [activeStep, setActiveStep] = useState(0);
+  const step = MESSAGE_QUEUE_STEPS[activeStep];
+  const lanes = [
+    ['ready', 'Ready', '可以被 consumer 领取'],
+    ['inflight', 'In-flight', '已交付，等待 ack'],
+    ['retry', 'Retry wait', '等待 lease / backoff'],
+    ['done', 'Done', 'entry 已确认完成'],
+  ];
+
+  return (
+    <section className="message-queue-visual" aria-label="消息队列数据与投递生命周期演示">
+      <header className="message-queue-header">
+        <div>
+          <p className="eyebrow">Message anatomy + delivery state</p>
+          <h2>业务内容保持不变，Broker 状态不断变化</h2>
+          <p>逐步查看同一条 OrderPaid 消息如何从 producer 进入 queue，超时后重投，最后被确认。</p>
+        </div>
+        <div className="message-queue-counter">
+          {activeStep + 1}<span>/ {MESSAGE_QUEUE_STEPS.length}</span>
+        </div>
+      </header>
+
+      <div className="message-queue-phases" aria-label="消息投递阶段">
+        {MESSAGE_QUEUE_PHASES.map(([id, label], index) => (
+          <button
+            type="button"
+            className={`${index === activeStep ? 'active' : ''} ${index < activeStep ? 'complete' : ''}`}
+            onClick={() => setActiveStep(index)}
+            aria-pressed={index === activeStep}
+            key={id}
+          >
+            <span>{index + 1}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="message-queue-step-copy">
+        <span>{step.status}</span>
+        <strong>{step.title}</strong>
+        <p>{step.detail}</p>
+      </div>
+
+      <div className="message-queue-stage">
+        <div className={`message-record ${step.activePart === 'message' ? 'active' : ''}`}>
+          <div className="message-record-title">
+            <span>Application message</span>
+            <strong>evt_01J...</strong>
+          </div>
+          <div className="message-envelope">
+            <span>Envelope</span>
+            <code>event_type</code><strong>order.paid</strong>
+            <code>schema_version</code><strong>3</strong>
+            <code>aggregate_id</code><strong>order_918</strong>
+            <code>traceparent</code><strong>00-a81...</strong>
+          </div>
+          <div className="message-payload">
+            <span>Payload bytes</span>
+            <pre>{`{
+  "order_id": "order_918",
+  "amount_cents": 2599,
+  "currency": "USD"
+}`}</pre>
+          </div>
+        </div>
+
+        <div className="message-queue-arrow" aria-hidden="true">
+          <span className={step.location === 'producer' ? '' : 'active'}>→</span>
+          <small>{step.location === 'producer' ? 'publish pending' : 'same body bytes'}</small>
+        </div>
+
+        <div className={`broker-record ${step.activePart !== 'message' ? 'active' : ''}`}>
+          <div className="broker-record-title">
+            <span>Broker metadata</span>
+            <strong>{step.status}</strong>
+          </div>
+          <dl>
+            <div><dt>queue</dt><dd>billing.v1</dd></div>
+            <div><dt>position</dt><dd>{step.position}</dd></div>
+            <div><dt>delivery_count</dt><dd>{step.deliveryCount}</dd></div>
+            <div className={step.activePart === 'delivery' ? 'hot' : ''}><dt>handle</dt><dd>{step.handle}</dd></div>
+            <div className={step.activePart === 'delivery' ? 'hot' : ''}><dt>lease</dt><dd>{step.lease}</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="message-queue-lanes" aria-label="Broker 中的消息状态集合">
+        {lanes.map(([id, label, detail]) => (
+          <div className={step.location === id ? `active ${id}` : id} key={id}>
+            <span><strong>{label}</strong><small>{detail}</small></span>
+            <div className="message-queue-slot">
+              {step.location === id ? (
+                <b>
+                  <i />
+                  evt_01J...
+                  <em>#{step.position}</em>
+                </b>
+              ) : (
+                <small>empty</small>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {step.location === 'producer' && (
+        <div className="message-queue-producer-note">消息还在 producer 内存中，broker 尚未接管</div>
+      )}
+
+      <div className="message-queue-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          上一步
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={MESSAGE_QUEUE_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label="选择消息队列生命周期步骤"
+        />
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.min(MESSAGE_QUEUE_STEPS.length - 1, current + 1))}
+          disabled={activeStep === MESSAGE_QUEUE_STEPS.length - 1}
+        >
+          下一步
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -4726,6 +4961,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'high-dimensional-integral-demo') {
     return <HighDimensionalIntegralVisual />;
+  }
+
+  if (match?.[1] === 'message-queue-demo') {
+    return <MessageQueueVisual />;
   }
 
   if (match) {

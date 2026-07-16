@@ -342,6 +342,38 @@ describe('App', () => {
     expect(screen.getAllByText('SystemDesign99 Glossary.md')).toHaveLength(2);
   });
 
+  it('renders the message queue anatomy and redelivery walkthrough', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('SystemDesign07')
+          ? '# 异步消息系统\n\n```message-queue-demo\n```'
+          : '# System Design tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+    fireEvent.click(screen.getByRole('button', { name: /System Design 7 · 异步消息系统/i }));
+
+    const visual = await screen.findByRole('region', { name: '消息队列数据与投递生命周期演示' });
+    expect(within(visual).getByText('Producer 构造应用消息')).toBeInTheDocument();
+    expect(within(visual).getByText('消息还在 producer 内存中，broker 尚未接管')).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: '选择消息队列生命周期步骤' }), {
+      target: { value: '5' },
+    });
+
+    expect(within(visual).getByText('Worker B 收到重投')).toBeInTheDocument();
+    expect(within(visual).getAllByText(/rh_B2/).length).toBeGreaterThan(0);
+
+    fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
+    expect(within(visual).getByText('业务提交成功，再发送 ack')).toBeInTheDocument();
+    expect(within(visual).getAllByText(/rh_B2 已确认/).length).toBeGreaterThan(0);
+  });
+
   it('shows local-only draft notes in development mode', async () => {
     render(<App />);
 
