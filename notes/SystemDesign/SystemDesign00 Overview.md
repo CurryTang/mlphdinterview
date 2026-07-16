@@ -299,6 +299,543 @@ Baseline
 
 ---
 
+## 冗余基础：什么时候需要 replica
+
+冗余的目标不是“多放几台机器看起来更高级”，而是让某个 failure domain 消失后，系统仍满足明确的 SLO。
+
+### 什么时候必须考虑冗余
+
+出现下面任意一项，就应该讨论冗余：
+
+```text
+Availability SLO 无法接受人工修复时间
+某个实例、磁盘、机架、AZ 或 region 是 SPOF
+单机故障后剩余容量无法承载 peak traffic
+状态数据不能接受单副本永久丢失
+部署、升级和维护期间仍需持续服务
+RTO / RPO 要求无法只靠 backup restore 达成
+```
+
+最基础的判断：
+
+| 组件 | 常见最低冗余起点 | 主要解决什么 |
+|---|---|---|
+| Stateless service | 不同 failure domain 的至少 2 个实例 + Load Balancer | 单进程 / 单机故障、滚动发布 |
+| Cache | replica / cluster，或明确 cache loss 后的降级 | cache 节点故障与 hot key |
+| Database | primary + standby / replicas + tested failover | 数据可用性、读扩展、故障切换 |
+| Queue / Event log | replicated partitions | broker / disk 故障后不丢已确认事件 |
+| Object storage | 多设备 / 多 AZ 冗余 + version / lifecycle | 媒体或文件持久性 |
+| Region | warm / hot standby 或 active-active | region 级灾难恢复 |
+
+### 先确定 failure domain
+
+“有两个副本”不代表真正冗余：
+
+```text
+同一进程的两个 worker       -> 不能防进程故障
+同一台机器的两个进程       -> 不能防机器故障
+同一机架的两台机器         -> 不能防机架网络 / 电源故障
+同一 AZ 的多个实例         -> 不能防 AZ 故障
+同一 region 的多个 AZ      -> 不能防 region 故障
+```
+
+副本必须跨越你希望容忍的 failure domain，同时考虑跨域通信带来的 latency、bandwidth 和 cost。
+
+### 冗余前先算 N-1 capacity
+
+副本存在不等于故障后还能处理流量。假设共有 $N$ 个实例，失去一个 failure domain 后，剩余安全吞吐必须满足：
+
+$$
+remaining\ safe\ capacity\ge peak\ load\times headroom.
+$$
+
+例如两个 AZ 各承载 50% 流量，任一 AZ 故障后，另一个 AZ 会瞬间接收 100%。如果平时每个 AZ 已经运行在 70%，它无法在故障后直接接管全部流量。
+
+常见选择：
+
+```text
+2 AZ：每个 AZ 预留接管另一侧的容量，成本较高
+3 AZ：正常约各承载 1/3，失去一个后剩余两个各升到约 1/2
+N+1：额外保留一份故障容量
+autoscaling：只能补充后续容量，不能替代故障瞬间的 headroom
+```
+
+---
+
+## 主从 / Primary-Replica
+
+“主从”“leader-follower”“primary-replica”通常描述同一类单写入口复制拓扑：
+
+```text
+                 replicate
+Primary / Leader ----------> Replica A
+        |
+        +-------------------> Replica B
+
+writes -> Primary
+reads  -> Primary 或允许 stale read 的 Replicas
+```
+
+### 工作方式
+
+1. Primary 接受写入并确定顺序。
+2. Replicas 从 WAL / replication log 重放变更。
+3. Read traffic 可以部分转移到 replicas。
+4. Primary 故障时，通过 election 或控制面提升一个 replica。
+5. 客户端、proxy 或 service discovery 把写流量切到新 primary。
+
+### 它可能解决三类不同问题
+
+| 目标 | 需要的设计 |
+|---|---|
+| Read scale | replicas 可以服务允许 stale 的读取 |
+| High availability | health check、leader election、promotion 和 client reroute |
+| Durability | 同步 / quorum replication，确保已确认写入存在于多个 failure domains |
+
+有 read replica 不自动等于高可用。如果没有 promotion、fencing 和流量切换流程，primary 挂掉后仍然只能人工修复。
+
+### 同步与异步复制
+
+```text
+同步复制：写成功前等待 replica / quorum
+  优点：更小 RPO，更不容易丢已确认写入
+  代价：写 latency 增加，慢副本可能拖累写入
+
+异步复制：primary 先确认，replica 后续追赶
+  优点：写 latency 低，吞吐较高
+  代价：有 replication lag，failover 可能丢最近写入
+```
+
+异步 replica 读会出现 stale read。常见缓解：
+
+- read-your-writes 在一段时间内路由 primary
+- 使用 session / log position 等待 replica 追到某个版本
+- 对权限、余额、库存等关键读取强制走一致路径
+- UI 对允许最终一致的数据做 optimistic update
+
+详细的一致性与 replication lag 示例见：[[SystemDesign02 Database Paradigms|数据库副本、强一致与最终一致]]。
+
+---
+
+## 主主 / Active-Active
+
+主主表示两个或多个节点、AZ 或 region **同时接受业务流量和写入**：
+
+```text
+Region A accepts reads + writes
+          <---- replicate / reconcile ---->
+Region B accepts reads + writes
+```
+
+它适合：
+
+- 全球用户需要本地写入低延迟
+- 单 region 故障时希望接近零流量切换时间
+- 工作负载可以按 user / tenant / key 划分 ownership
+- 业务能够定义冲突解决或使用跨节点共识
+
+### 主主的难点是并发写冲突
+
+必须回答：
+
+```text
+两个 region 同时更新同一个 key，谁赢？
+使用 last-write-wins、version vector、CRDT，还是业务 merge？
+ID 如何全局唯一？
+唯一约束如何跨 region 保证？
+网络分区时继续接收写入还是停止一侧？
+region 恢复后如何 replay、deduplicate 和 reconcile？
+```
+
+常见降低复杂度的方法是“物理主主、逻辑单主”：
+
+```text
+每个 user / tenant / partition 只有一个 home region 接受它的写
+多个 region 同时 active，但同一个 key 不做多主并发写
+```
+
+如果业务要求跨 region 强一致事务，写路径往往要跨 region quorum / consensus，全球写延迟会上升。不要为了“更高可用”轻易把简单主从升级成真正 multi-writer。
+
+---
+
+## 双机热备 / Active-Passive
+
+“双机热备”通常指 active-passive，而不是主主：
+
+```text
+              state replication
+Active node ----------------------> Hot standby
+     |
+     +-> serves production traffic
+
+Active fails
+  -> fence old active
+  -> promote standby
+  -> VIP / LB / DNS reroutes traffic
+```
+
+备用节点已经启动、数据持续同步、依赖已连接，因此故障时可以较快接管，但平时通常不承载主要业务写流量。
+
+### Cold、Warm、Hot standby
+
+| 模式 | 备用侧状态 | 故障切换 | 成本 |
+|---|---|---|---|
+| Cold standby | 只有 backup / image，需要临时启动并恢复 | 分钟到小时 | 最低 |
+| Warm standby | 服务已运行但容量较小，数据持续复制 | 分钟级，需要扩容或切流 | 中等 |
+| Hot standby | 完整运行、数据接近实时、容量可立即接管 | 秒到分钟 | 较高 |
+
+这里的“hot”描述的是**接管准备程度**，不代表两边都可以同时写。
+
+### 双机热备的关键保护
+
+#### Heartbeat 与 health check
+
+Heartbeat 需要区分服务真正不可用和监控链路短暂丢包。
+
+#### Fencing
+
+提升 standby 前必须确保旧 active 不能继续写，否则两台都以为自己是主节点，形成 split brain。常见 fencing 包括 lease、quorum、存储锁或控制面强制隔离。
+
+#### Failover routing
+
+通过 VIP、Load Balancer、service discovery 或 DNS 把流量切到新 active。DNS TTL 太长会让部分客户端继续访问旧地址。
+
+#### Failback
+
+原节点恢复后不能直接抢回 primary。需要先追数据、验证状态，再执行受控切换。
+
+#### 定期演练
+
+没有被演练过的热备只是一个假设。需要测真实 RTO、数据差异、连接恢复与客户端 retry 行为。
+
+---
+
+## 四种拓扑怎么选
+
+| 场景 | 推荐起点 | 原因 |
+|---|---|---|
+| Stateless API 高可用 | 多 active replicas + Load Balancer | 无共享本地状态，天然 active-active |
+| 数据库读多写少 | Primary + read replicas | 单一写顺序，读水平扩展 |
+| 数据库要求自动故障切换 | Primary + hot standby / replicas | 拓扑简单，冲突较少 |
+| 单 region 高可用 | multi-AZ primary-replica / quorum | 容忍实例或 AZ 故障 |
+| 全球读低延迟 | 单写 region + cross-region read replicas / cache | 避免多写冲突 |
+| 全球写低延迟 | partitioned ownership 或 active-active | 接受冲突、共识与运维复杂度 |
+| RTO 可以是小时、成本敏感 | backup + cold / warm standby | 不为极低 RTO 支付持续资源成本 |
+
+### Replica 不等于 backup
+
+```text
+Replica：快速复制当前状态，主要用于 availability / scale
+Backup：保留历史恢复点，主要用于误删、逻辑损坏、勒索与审计恢复
+```
+
+如果应用误删一行数据，replication 会迅速把误删同步到所有 replicas。必须另外设计 point-in-time recovery、versioning、retention 和 restore test。
+
+### 推荐的渐进升级路径
+
+```text
+单实例
+  -> 多个 stateless replicas + LB
+  -> stateful primary + replica / standby
+  -> 跨 AZ + automatic failover
+  -> 跨 region warm / hot standby
+  -> 只有业务明确需要时才做 active-active multi-writer
+```
+
+相关笔记：
+
+- [[SystemDesign01 Stateless Service|无状态服务、Load Balancer 与横向复制]]
+- [[SystemDesign02 Database Paradigms|数据库复制、一致性与 stale read]]
+- [[SystemDesign99 Glossary|高可用、复制、RPO / RTO 高频术语表]]
+
+---
+
+## 异步与 Queue：把慢工作从请求链路里拿出来
+
+Queue 最直观的用途是异步执行，但它更重要的作用是切断两个组件的生命周期绑定。
+
+同步调用中，A 是否成功取决于 B 此刻是否在线、是否够快：
+
+```text
+Client -> Service A -> Service B -> Service C
+```
+
+只要 B 或 C 超时，整条请求就失败。改成 queue 后，A 只负责把一项工作可靠地交出去：
+
+```text
+Client -> Producer -> Queue -> Consumer
+                       |
+                       +-> Consumer 可以稍后处理
+```
+
+Producer 与 Consumer 仍然共享一份消息契约，但它们可以独立扩容、部署和故障恢复。Consumer 暂时停机时，Producer 不必跟着停机，未处理的工作会变成可观察的 backlog。
+
+### 逻辑解耦到底解开了什么
+
+#### 时间解耦
+
+Producer 不再等待完整业务链路结束。上传图片时，API 可以先确认 object 已经安全落盘，缩略图和内容审核随后处理。
+
+#### 容量解耦
+
+突发的 10K tasks/s 可以先进入 queue，Consumer 以较稳定的速率处理。这里的前提是 backlog 有上限，而且系统知道多久能清空。
+
+#### 故障解耦
+
+外部邮件服务宕机不会阻塞订单写入。Consumer 恢复后重试发送，订单主路径不需要承担第三方故障。
+
+#### 部署解耦
+
+Producer 和 Consumer 通过 versioned schema 通信，可以独立发布。若 Producer 的 payload 直接依赖 Consumer 的内部表结构，这种解耦只是表面上的。
+
+### 什么工作适合异步
+
+适合放入 queue 的工作通常有下面几个特点：
+
+- 用户不需要在当前 response 中拿到最终结果
+- 执行时间长或波动大，例如转码、图片处理、报表生成
+- 下游可能暂时不可用，工作可以稍后重试
+- 流量有明显 burst，需要保护数据库或第三方 API
+- 同一个业务事件需要被多个独立系统消费
+- 允许最终一致，并且应用能表达 `PENDING / PROCESSING / READY / FAILED`
+
+常见例子：
+
+```text
+PostReady -> feed fan-out、search indexing、notification
+OrderCreated -> email、analytics、warehouse sync
+ObjectUploaded -> virus scan、thumbnail、transcode
+UserDeleted -> 多个存储系统的异步清理
+```
+
+不适合直接异步化的部分：
+
+- response 必须包含计算结果
+- 同一事务内必须立即成立的业务不变量
+- 排队等待时间已经超过用户可接受的 latency
+- 失败后无法重试、补偿或人工处理
+- Producer 返回成功后，系统却没有地方记录任务状态
+
+以支付为例，“给用户发收据”可以异步；“是否成功扣款”能否异步，取决于 API 语义。如果 API 返回的是 `payment_pending`，后续异步处理是合理的。如果 API 已经返回 `paid`，扣款工作就不能只存在一条可能丢失的内存消息里。
+
+---
+
+## Queue 什么时候需要持久化
+
+有一个很实用的判断题：
+
+> Producer 已经向用户或上游返回成功。此刻进程立刻 crash，这项工作丢失能不能接受？
+
+如果不能接受，消息必须在返回成功之前进入持久化、可恢复的介质。通常还需要副本或 quorum，否则 broker 磁盘故障仍会丢消息。
+
+### 适合非持久化队列的情况
+
+内存 queue、进程内 channel 或短生命周期 work buffer 适合：
+
+```text
+工作丢失没有业务后果
+工作可以从 source of truth 重新扫描出来
+只做 best-effort prefetch、cache refresh 或 metric sampling
+Producer 与 Consumer 在同一进程，目标是并发调度而不是跨服务交付
+极低 latency 比 crash recovery 更重要
+```
+
+例如 cache refresh job 丢了，下一次 cache miss 仍然可以重新触发刷新。为这种任务引入 replicated event log，收益可能抵不过延迟和运维成本。
+
+### 适合持久化队列的情况
+
+下面这些任务一旦被系统接受，通常不能悄悄消失：
+
+```text
+订单、支付、库存等业务命令
+PostReady 后的 feed fan-out
+已经确认上传成功的 media processing
+必须送达的 notification 或 webhook
+数据删除、合规导出和审计任务
+需要 replay / backfill 的领域事件
+```
+
+持久化 queue 还适合 Consumer 可能长时间停机的场景。它把未完成工作保存下来，并允许新版本 Consumer 从旧 offset 继续处理。
+
+### Queue durability 不是一个开关
+
+判断消息是否“可靠”时，需要把整条确认链路说清楚：
+
+```text
+Producer 什么时候认为 publish 成功？
+Broker 是写入内存、单盘，还是多个副本后才 ack？
+Consumer 在执行副作用前还是之后 ack？
+Consumer crash 后消息何时重新可见？
+Broker 丢失一个节点时，已确认消息还在不在？
+```
+
+一种常见语义是：
+
+```text
+Producer ack：消息已写入 replicated log
+Consumer ack：数据库写入或外部副作用已经完成
+Consumer 提前 crash：visibility timeout 到期后重新投递
+```
+
+这通常是 at-least-once。Consumer 可能收到重复消息，所以副作用需要 idempotency key 或 dedup table。持久化可以减少消息丢失，不能自动提供端到端 exactly-once。
+
+---
+
+## Database 与 Queue 之间的双写问题
+
+下面的代码有一个隐蔽故障窗口：
+
+```text
+1. 写入业务数据库成功
+2. 发布消息前进程 crash
+```
+
+数据库里已经有订单或 post，但 Consumer 永远收不到事件。反过来，先发消息再写数据库，也可能让 Consumer 读到不存在的业务对象。
+
+### Transactional outbox
+
+把业务数据和待发布事件写进同一个数据库事务：
+
+```text
+BEGIN
+  update business row
+  insert outbox(event_id, aggregate_id, type, payload, status)
+COMMIT
+```
+
+Outbox relay 持续扫描或通过 CDC 读取新事件，再发布到 queue。发布成功后记录 offset 或状态。Relay 可能重复发布，因此 `event_id` 仍然要用于 Consumer 去重。
+
+Outbox 解决的是“数据库提交与事件产生不能一边成功一边丢失”。它没有消除重复投递，也没有替你处理 schema evolution。
+
+如果数据库和消息系统本身支持同一个可靠事务，也可以使用原生事务，但跨系统 distributed transaction 的延迟和运维成本通常更高。
+
+---
+
+## Task Queue 与 Event Log 的区别
+
+两者都能异步，但语义不同：
+
+| 模型 | 更自然的用途 | 消费方式 | 保留方式 |
+|---|---|---|---|
+| Task queue | “请执行这项工作” | 同一 consumer group 中通常只需一个 worker 完成 | 完成后删除或短期保留 |
+| Event log | “某件事已经发生” | 多个 consumer group 各自读取 | 按时间 / 大小保留，可 replay |
+
+例如 `GenerateThumbnail(post_id)` 是 task；`PostReady(post_id)` 是 event。Feed、Search 和 Notification 可以各自消费 `PostReady`，互不共享消费进度。
+
+不要让 event payload 变成某个 Consumer 的私有 RPC 参数。Event 应描述已经发生的业务事实，并带上稳定 ID、version、occurred_at 和必要的 routing key。
+
+---
+
+## Retention、TTL 与 DLQ
+
+Queue 的 TTL 与 cache TTL 目的不同：
+
+```text
+cache TTL：控制数据能旧多久，以及何时释放 cache memory
+queue retention：给故障恢复、重放和 backfill 留多少时间
+```
+
+Queue retention 至少要覆盖：
+
+```text
+允许的最长 Consumer outage
+部署回滚与故障排查时间
+最慢 backlog 的清空时间
+业务是否需要 replay / backfill
+审计或合规保留要求
+```
+
+如果 Consumer 最长可能停 12 小时，把 retention 设成 1 小时没有意义。反过来，所有原始事件永久保留会让存储成本、删除合规和 schema 演进越来越难。
+
+### Poison message
+
+某条消息可能因为数据损坏或代码 bug 一直失败。无限 retry 会阻塞同一 partition，并持续消耗资源。常见处理：
+
+```text
+限制 retry 次数
+exponential backoff + jitter
+超过阈值进入 DLQ
+告警并保留失败原因
+修复后人工或自动 replay
+```
+
+DLQ 不能只是消息坟场。需要 owner、报警、处理 SLA 和 replay 工具。
+
+---
+
+## Ordering 与 partition key
+
+大多数系统不需要全局顺序，只需要同一个业务对象内有序：
+
+```text
+payment_id：同一支付的状态变化有序
+order_id：同一订单的事件有序
+user_id：同一用户的 profile 更新有序
+post_id：同一 post 的 READY / DELETE 有序
+```
+
+把 routing key 映射到固定 partition，可以在 partition 内保序，同时让不同 key 并行处理。全局顺序会把吞吐收缩到一个协调点，除非业务真的依赖它，否则不要主动要求。
+
+Consumer 仍然要检查 entity version。网络重试、跨 topic 操作和 replay 可能让旧事件晚到，单靠 broker 顺序不足以保护业务状态。
+
+---
+
+## Queue 不会凭空增加处理能力
+
+Queue 能吸收短时 burst，也能让过载变得可观察。它不能修复长期容量不足。
+
+如果到达速率是 $\lambda$，处理速率是 $\mu$：
+
+$$
+\mu>\lambda
+$$
+
+是长期稳定的基本条件。若 $\lambda$ 持续大于 $\mu$，backlog 只会增长，最终耗尽 retention 或违反 freshness SLO。
+
+需要长期监控：
+
+```text
+arrival rate
+processing rate
+queue depth
+oldest message age
+consumer lag
+retry / DLQ rate
+end-to-end freshness
+```
+
+设计时还要给 queue 一个边界和过载策略：
+
+- 扩容 Consumer
+- 对低优先级任务降速或丢弃
+- 合并可以 batch 的任务
+- 对 Producer rate limit / backpressure
+- 超过 freshness deadline 的任务直接过期
+- 保护 source of truth，避免 Consumer 扩容反而打垮数据库
+
+这也是 queue 的逻辑价值：系统可以明确选择“稍后做”“降级做”或“不再做”，而不是让所有请求一起超时。
+
+---
+
+## 异步设计的最小检查清单
+
+```text
+成功边界：Producer 在什么状态下可以返回成功？
+持久化：进程 crash 后消息是否必须存在？
+语义：task 还是 event？谁可以消费？
+重复：Consumer 如何幂等？
+顺序：需要 global order，还是 per-key order？
+失败：retry、backoff、DLQ 和人工处理怎么做？
+容量：peak arrival、service rate、backlog、drain time 是多少？
+保留：retention 是否覆盖最长故障和 replay window？
+一致性：业务数据库与 publish 之间是否需要 outbox？
+观测：能否从业务动作追踪到最终 Consumer 完成？
+```
+
+详细术语可查：[[SystemDesign99 Glossary|消息交付、幂等、fan-out 与容灾术语表]]。
+
+---
+
 ## 数值估算应该怎样贯穿每一步
 
 Back-of-the-envelope estimation 的目的不是算出精确账单，而是排除数量级错误，并找出谁会先成为瓶颈。

@@ -628,6 +628,8 @@ metadata miss：跳过单个损坏 item，不阻塞整页
 | Media bytes | immutable large object by key | object storage + CDN |
 | Events | ordered per key、replay、consumer groups | partitioned event log |
 
+Queue 的持久化边界、ack、retention 和 transactional outbox 见：[[SystemDesign00 Overview|异步与 Queue 基础]]。
+
 ### Partition keys
 
 ```text
