@@ -635,7 +635,9 @@ $$
 
 const systemDesignDbScalingContent = String.raw`# System Design 03 · 数据库扩展三件套
 
-这篇是一个基础 system design pattern：先用 QPS / IOPS / 存储容量做粗估，再讨论主从复制、主主复制和数据分区，以及它们在 Feature Store / Embedding Store / Online KV Store 里的类比。
+课程位置：[[SystemDesign02 Database Paradigms|02 数据库基本范式]] → 本篇 → [[SystemDesign04 Storage Systems|04 存储系统]]
+
+这篇只从数据库扩展角度讨论三件事：读压力如何分给 replica，写入和容量如何分片，以及两者怎样组合。故障检测、fencing、热备、跨区 RPO/RTO 统一放在 [[SystemDesign05 Reliability Replication|05 可靠性与复制]]，这里不重复讲容灾流程。
 
 ## 0. 基础概念：QPS、IOPS、吞吐和延迟
 
@@ -918,13 +920,13 @@ flowchart TD
 
 | 模式 | 解决什么 | 不解决什么 |
 | --- | --- | --- |
-| 主从复制 | 读扩展、备份、读侧容灾 | 不扩展主库写入能力 |
-| 主主复制 | 主库故障时更快切换 | 不让写入能力线性翻倍 |
+| 主从复制 | 读扩展、为故障接管保留副本 | 不扩展主库写入能力，也不代替 backup |
+| 主主复制 | 多个写入口或更灵活的接管 | 不让写入能力线性翻倍，还会引入冲突 |
 | 数据分区 | 容量扩展、写入扩展、索引变小 | 增加查询路由和跨分片复杂度 |
 
 ---
 
-## 1. 主从复制：用副本扩展读取和容灾能力
+## 1. 主从复制：这里先解决读扩展
 
 主从复制的基本结构是：
 
@@ -1041,7 +1043,7 @@ Replica 3: 备份任务
 
 ---
 
-## 2. 主主复制：高可用优先，不是写入翻倍
+## 2. 主主复制：理解写拓扑，不把它当写入翻倍
 
 主从复制里，主库是唯一写入口。主库挂了以后，需要选新主库、切流量、处理旧主库恢复后的状态。主主复制把两个节点都做成可写节点：
 
@@ -1950,26 +1952,26 @@ const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
 
 const systemDesignNoteDefinitions = [
   createTutorialDefinition(
-    'System Design 0 · Overview',
+    'System Design 00 · 方法总览',
     'SystemDesign00 Overview.md',
     null,
     { directory: 'SystemDesign', category: 'Overview', difficulty: 'Intro' },
   ),
   createTutorialDefinition(
-    'System Design 1 · 无状态设计范式',
+    'System Design 01 · 无状态设计范式',
     'SystemDesign01 Stateless Service.md',
     null,
     { directory: 'SystemDesign', category: 'Design Pattern', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'System Design 2 · 数据库基本范式',
+    'System Design 02 · 数据库基本范式',
     'SystemDesign02 Database Paradigms.md',
     null,
     { directory: 'SystemDesign', category: 'Database', difficulty: 'Medium' },
   ),
   {
     id: 'SystemDesign03 Database Scaling.md',
-    title: 'System Design 3 · 数据库扩展三件套',
+    title: 'System Design 03 · 数据库扩展三件套',
     fileName: 'SystemDesign03 Database Scaling.md',
     zhFileName: 'SystemDesign03 Database Scaling.md',
     enFileName: '',
@@ -1979,31 +1981,31 @@ const systemDesignNoteDefinitions = [
     content: systemDesignDbScalingContent,
   },
   createTutorialDefinition(
-    'System Design 4 · 存储系统',
+    'System Design 04 · 存储系统',
     'SystemDesign04 Storage Systems.md',
     null,
     { directory: 'SystemDesign', category: 'Storage', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'System Design 5 · 设计题基本流程',
-    'SystemDesign05 Interview Flow.md',
+    'System Design 05 · 可靠性与复制',
+    'SystemDesign05 Reliability Replication.md',
     null,
-    { directory: 'SystemDesign', category: 'Framework', difficulty: 'Intro' },
+    { directory: 'SystemDesign', category: 'Reliability', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'System Design 6 · 图片分享与 Feed',
-    'SystemDesign06 Photo Sharing Feed.md',
-    null,
-    { directory: 'SystemDesign', category: 'Case Study', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'System Design 7 · 异步消息系统',
-    'SystemDesign07 Async Messaging Systems.md',
+    'System Design 06 · 异步消息系统',
+    'SystemDesign06 Async Messaging Systems.md',
     null,
     { directory: 'SystemDesign', category: 'Messaging', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'System Design 8 · 异步 LLM RL 训练平台',
+    'System Design 07 · 图片分享与 Feed',
+    'SystemDesign07 Photo Sharing Feed.md',
+    null,
+    { directory: 'SystemDesign', category: 'Case Study', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'System Design 08 · 异步 LLM RL 训练平台',
     'SystemDesign08 LLM Async RL Platform.md',
     null,
     { directory: 'SystemDesign', category: 'ML Infrastructure', difficulty: 'Hard' },
@@ -5478,6 +5480,12 @@ function tokenizeCode(code, language) {
   return tokens;
 }
 
+const legacySystemDesignRoutes = {
+  'SystemDesign05 Interview Flow.md': 'SystemDesign00 Overview.md',
+  'SystemDesign06 Photo Sharing Feed.md': 'SystemDesign07 Photo Sharing Feed.md',
+  'SystemDesign07 Async Messaging Systems.md': 'SystemDesign06 Async Messaging Systems.md',
+};
+
 function parseHashRoute(rawHash) {
   const hashValue = decodeURIComponent(String(rawHash ?? '').replace(/^#/, '')).replace(/^\/+/, '');
 
@@ -5485,7 +5493,8 @@ function parseHashRoute(rawHash) {
     return { view: 'home', noteId: null, sectionId: null };
   }
 
-  const noteMatch = tutorials.find((tutorial) => tutorial.id === hashValue);
+  const resolvedNoteId = legacySystemDesignRoutes[hashValue] ?? hashValue;
+  const noteMatch = tutorials.find((tutorial) => tutorial.id === resolvedNoteId);
   if (noteMatch) {
     return { view: 'reader', noteId: noteMatch.id, sectionId: noteMatch.sectionId };
   }

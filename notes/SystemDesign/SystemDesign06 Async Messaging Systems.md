@@ -1,4 +1,6 @@
-# System Design 07 · 异步处理、消息系统与 Event Bus
+# System Design 06 · 异步处理、消息系统与 Event Bus
+
+课程位置：[[SystemDesign05 Reliability Replication|05 可靠性与复制]] → 本篇 → [[SystemDesign07 Photo Sharing Feed|07 图片分享与 Feed]]
 
 异步架构重新安排责任转移的时间点。它不保证函数本身跑得更快。
 

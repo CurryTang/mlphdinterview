@@ -1,5 +1,7 @@
 # System Design 02 · 数据库基本范式：RDBMS vs NoSQL
 
+课程位置：[[SystemDesign01 Stateless Service|01 无状态服务]] → 本篇 → [[SystemDesign03 Database Scaling|03 数据库扩展]]
+
 > [!info] 范式一句话
 > RDBMS 的设计中心是 relation-first：先表达实体、关系和约束，再用 SQL 和查询优化器组合数据。NoSQL 的设计中心是 access-pattern-first：先确定系统怎么读、怎么写，再把数据组织成贴合这些访问路径的数据结构。
 

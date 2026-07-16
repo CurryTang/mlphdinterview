@@ -1,5 +1,7 @@
 # System Design 04 · 存储系统：File、Block、Object、Blob 与 HDFS
 
+课程位置：[[SystemDesign03 Database Scaling|03 数据库扩展]] → 本篇 → [[SystemDesign05 Reliability Replication|05 可靠性与复制]]
+
 > [!info] 核心问题
 > 存储系统的差别不在“文件放在哪里”这一层，而在访问单位、元数据位置、读写模式、一致性语义和扩展方式。先判断数据怎么被读写，再选存储形态。
 

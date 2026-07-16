@@ -1,5 +1,7 @@
 # System Design 99 · 高频术语整合
 
+课程位置：[[SystemDesign08 LLM Async RL Platform|08 异步 LLM RL 平台]] → 本篇；课程入口见 [[SystemDesign00 Overview|00 方法总览]]。
+
 这页放在 System Design 的最后，作为查词和写 design doc 时的速查表。重点不是把词背下来，而是知道一个词在解决什么问题、什么时候值得引入、代价是什么。
 
 ## 一、扩展性和容量

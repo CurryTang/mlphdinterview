@@ -1,5 +1,7 @@
 # System Design 01 · 无状态设计范式：把服务实例做成可替换计算单元
 
+课程位置：[[SystemDesign00 Overview|00 方法总览]] → 本篇 → [[SystemDesign02 Database Paradigms|02 数据库基本范式]]
+
 > [!info] 范式一句话
 > **Stateless 不是“系统里没有状态”，而是“服务进程本身不拥有不可丢失的状态”。** 状态可以存在，而且一定会存在；关键是把不可丢失的状态放到外部系统里：DB、Redis、对象存储、消息队列、checkpoint store、feature store、model registry 等。服务实例只负责拿输入、查共享状态、计算、写回共享状态或返回结果。
 
@@ -320,23 +322,7 @@ sequenceDiagram
 
 Web service 不需要记得任务。它只负责创建任务、查询任务、取消任务。任务状态在 DB，执行权在 worker，排队状态在 queue。
 
-<details class="solution">
-<summary>技术背景：消息队列在这里解决什么问题？</summary>
-
-消息队列把“接收请求”和“执行耗时任务”解耦。Web API 只需要把任务写入 DB 并投递一个消息，然后立即返回 `job_id`；worker 可以按自己的速度消费任务。
-
-队列主要提供四个能力：
-
-| 能力 | 含义 |
-|---|---|
-| buffer | 流量突增时先排队，不让 Web 进程被长任务占满 |
-| retry | worker 失败后消息可以重新投递 |
-| backpressure | 队列长度反映下游处理不过来，可以限流或扩 worker |
-| isolation | Web API 和 worker 可以独立扩容、独立部署 |
-
-常见队列语义是 at-least-once：消息至少会投递一次，但可能重复投递。因此 worker 必须幂等，不能假设一个 job 只会执行一次。
-
-</details>
+这里关注的是状态归属：API 不持有任务状态，worker 也不永久拥有执行权。Queue 的持久化、重投、backpressure 和幂等语义统一见 [[SystemDesign06 Async Messaging Systems|06 异步消息系统]]，本篇不再重复展开。
 
 ---
 

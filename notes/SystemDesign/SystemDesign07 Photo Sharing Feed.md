@@ -1,4 +1,6 @@
-# System Design 06 · 设计图片分享与 Home Feed
+# System Design 07 · 设计图片分享与 Home Feed
+
+课程位置：[[SystemDesign06 Async Messaging Systems|06 异步消息系统]] → 本篇 → [[SystemDesign08 LLM Async RL Platform|08 异步 LLM RL 平台]]
 
 这是一道“设计 Instagram-like 图片分享系统”的独立案例。文中的流量、容量和 SLO 都是用于面试推导的假设值，不代表任何真实系统的内部数据。
 
@@ -575,7 +577,7 @@ metadata miss：跳过单个损坏 item，不阻塞整页
 | Media bytes | immutable large object by key | object storage + CDN |
 | Events | ordered per key、replay、consumer groups | partitioned event log |
 
-Queue 的持久化边界、ack、retention 和 transactional outbox 见：[[SystemDesign00 Overview|异步与 Queue 基础]]。
+Queue 的持久化边界、ack、retention 和 transactional outbox 见：[[SystemDesign06 Async Messaging Systems|06 异步消息系统]]。
 
 ### Partition keys
 
