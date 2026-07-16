@@ -289,63 +289,10 @@ TimelineEntry 是派生数据。丢失后可以从 author outbox 和 post events
 
 ## 4 · High-level architecture
 
-下面是独立重构后的整体设计，分成 upload、async processing、fan-out 和 feed read 四条路径：
+整体设计可以拆成 upload、async processing、fan-out 和 feed read 四条路径：
 
-```mermaid
-flowchart LR
-    C[Mobile / Web Client]
-    G[API Gateway<br/>Auth · Rate Limit]
-    CDN[CDN]
-
-    U[Upload Service]
-    P[Post Metadata Service]
-    F[Feed Service]
-    S[Social Graph Service]
-    M[Merge / Rank]
-
-    O[(Object Storage)]
-    MDB[(Post Metadata DB)]
-    GDB[(Follow Graph Store)]
-    T[(Timeline Store / Cache)]
-    A[(Author Outbox)]
-
-    E[Event Log]
-    MP[Media Processor]
-    FW[Fan-out Workers]
-
-    C --> G
-    C -->|signed upload| O
-    C --> CDN
-    CDN --> O
-
-    G --> U
-    G --> F
-    G --> S
-    U --> P
-    P --> MDB
-    U -->|signed URL| C
-
-    O -->|object event| E
-    E --> MP
-    MP --> O
-    MP --> P
-    P -->|PostReady via outbox| E
-
-    E --> FW
-    FW --> GDB
-    FW --> T
-    FW --> A
-
-    F --> T
-    F --> GDB
-    F --> A
-    F --> M
-    M --> MDB
-    M --> F
-    F --> C
+```photo-sharing-architecture-visual
 ```
-
-[在线预览并编辑架构图（diagrams.net）](https://app.diagrams.net/?chrome=0&lightbox=1&edit=_blank&layers=1&pages=1&dark=auto#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FCurryTang%2Fmlphdinterview%2Fmain%2Fpublic%2Fdiagrams%2Fphoto-sharing-feed.drawio) · [下载 `.drawio` 源文件](/diagrams/photo-sharing-feed.drawio)
 
 与常见的“client → upload service → object storage”直传 API 方案相比，这里让图片 bytes 从 client 直接进入 object storage，普通 API server 只处理授权、metadata 和状态转换。
 

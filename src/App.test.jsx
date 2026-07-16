@@ -383,6 +383,43 @@ describe('App', () => {
     expect(within(visual).getAllByText(/rh_B2 已确认/).length).toBeGreaterThan(0);
   });
 
+  it('renders native HTML architecture diagrams for the System Design notes', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      let content = '# System Design tutorial';
+
+      if (requestUrl.includes('SystemDesign00')) {
+        content = '# Overview\n\n```system-design-overview-visual\n```';
+      } else if (requestUrl.includes('SystemDesign06')) {
+        content = '# Photo Sharing\n\n```photo-sharing-architecture-visual\n```';
+      } else if (requestUrl.includes('SystemDesign07')) {
+        content = '# Async Messaging\n\n```async-messaging-architecture-visual\n```';
+      }
+
+      return { ok: true, text: async () => content };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+
+    const overview = await screen.findByRole('region', { name: '系统设计基础架构图' });
+    expect(within(overview).getByText('先跑通同步闭环，再按指标加组件')).toBeInTheDocument();
+    fireEvent.click(within(overview).getByRole('button', { name: /Primary Store/i }));
+    expect(within(overview).getByText('先明确 source of truth')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 6 · 图片分享与 Feed/i }));
+    const photo = await screen.findByRole('region', { name: '图片分享系统架构图' });
+    fireEvent.click(within(photo).getByRole('button', { name: '读取 Feed' }));
+    expect(within(photo).getByText('先取 post_id，再批量补齐内容')).toBeInTheDocument();
+    expect(within(photo).getByText('READ-TIME GUARDS')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 7 · 异步消息系统/i }));
+    const asyncDiagram = await screen.findByRole('region', { name: '异步消息模式架构图' });
+    fireEvent.click(within(asyncDiagram).getByRole('button', { name: 'Kafka groups' }));
+    expect(within(asyncDiagram).getByText('系统是实现，group 决定语义')).toBeInTheDocument();
+    expect(within(asyncDiagram).getByText('group: analytics')).toBeInTheDocument();
+  });
+
   it('shows local-only draft notes in development mode', async () => {
     render(<App />);
 

@@ -146,20 +146,8 @@ Growth: 预留 30% headroom，可水平扩展到当前负载的 10 倍
 
 不要从 Kafka、Redis、微服务和跨区域复制开始。先画出一个请求如何完成核心功能：
 
-```mermaid
-flowchart LR
-    U[User / Client] -->|HTTP / RPC| G[Load Balancer<br/>API Gateway]
-    G -->|validated request| S[Stateless Service]
-    S -->|read / write| D[(Primary Data Store<br/>Source of Truth)]
-
-    S -. "hot reads" .-> C[(Cache)]
-    S -. "async work" .-> Q[Queue / Event Log]
-    Q -.-> W[Worker]
-    W -. "derived result" .-> D
-    D -. "HA / read scale" .-> R[(Replica / Shard)]
+```system-design-overview-visual
 ```
-
-[在线预览并编辑架构图（diagrams.net）](https://app.diagrams.net/?chrome=0&lightbox=1&edit=_blank&layers=1&pages=1&dark=auto#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FCurryTang%2Fmlphdinterview%2Fmain%2Fpublic%2Fdiagrams%2Fsystem-design-overview.drawio) · [下载 `.drawio` 源文件](/diagrams/system-design-overview.drawio)
 
 图里的实线是最小同步闭环，虚线组件只有在需求能够证明其必要性时才加入。
 

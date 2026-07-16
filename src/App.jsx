@@ -4920,10 +4920,269 @@ function MessageQueueVisual() {
   );
 }
 
+const OVERVIEW_STAGES = {
+  edge: {
+    label: '入口层',
+    title: '先把流量接稳',
+    body: 'Load Balancer 负责健康检查和分流；API Gateway 负责鉴权、限流与路由。这里不放业务重计算。',
+    check: '估算峰值 QPS、连接数、请求大小与突发系数。',
+  },
+  service: {
+    label: '计算层',
+    title: '无状态服务承载业务规则',
+    body: '实例可以水平扩容，也可以随时被替换。长任务交给队列，热点读取交给缓存。',
+    check: '根据单实例安全 QPS 计算副本数，并预留 30% 左右余量。',
+  },
+  data: {
+    label: '数据层',
+    title: '先明确 source of truth',
+    body: '主存储保存事实数据；副本、缓存和物化视图都是可重建的派生状态。',
+    check: '估算读写比、数据量、索引大小、复制带宽与恢复目标。',
+  },
+  async: {
+    label: '异步层',
+    title: '把慢工作移出请求路径',
+    body: 'Queue / Event Log 接管任务后，Worker 可以独立扩缩容、重试和削峰。',
+    check: '估算生产速率、消费速率、积压时间与消息保留空间。',
+  },
+};
+
+function SystemDesignOverviewVisual() {
+  const [active, setActive] = useState('service');
+  const detail = OVERVIEW_STAGES[active];
+
+  return (
+    <section className="arch-visual overview-arch" aria-label="系统设计基础架构图">
+      <header className="arch-header">
+        <div>
+          <p className="eyebrow">High-level architecture</p>
+          <h2>先跑通同步闭环，再按指标加组件</h2>
+          <p>点击节点查看它解决的问题。蓝色是同步请求，橙色是异步工作，绿色是数据访问。</p>
+        </div>
+        <div className="arch-legend" aria-label="连线图例">
+          <span><i className="sync" />同步</span>
+          <span><i className="async" />异步</span>
+          <span><i className="data" />数据</span>
+        </div>
+      </header>
+
+      <div className="overview-board">
+        <div className="arch-lane-label">REQUEST PATH</div>
+        <div className="arch-flow overview-main-flow">
+          <div className="arch-node neutral"><small>01</small><strong>User / Client</strong><span>发起请求</span></div>
+          <span className="arch-connector sync" aria-hidden="true">→</span>
+          <button type="button" className={`arch-node edge ${active === 'edge' ? 'active' : ''}`} onClick={() => setActive('edge')}>
+            <small>02 · EDGE</small><strong>LB / API Gateway</strong><span>auth · rate limit · routing</span>
+          </button>
+          <span className="arch-connector sync" aria-hidden="true">→</span>
+          <button type="button" className={`arch-node service ${active === 'service' ? 'active' : ''}`} onClick={() => setActive('service')}>
+            <small>03 · COMPUTE</small><strong>Stateless Service</strong><span>业务规则与编排</span>
+          </button>
+          <span className="arch-connector data" aria-hidden="true">→</span>
+          <button type="button" className={`arch-node store ${active === 'data' ? 'active' : ''}`} onClick={() => setActive('data')}>
+            <small>04 · SOURCE OF TRUTH</small><strong>Primary Store</strong><span>事实数据与事务边界</span>
+          </button>
+        </div>
+
+        <div className="arch-lane-label">SUPPORTING PATHS</div>
+        <div className="overview-support-grid">
+          <div className="overview-support-card data-card">
+            <span className="support-origin">Service</span><span className="support-arrow data">↓ hot reads</span>
+            <div className="arch-node compact store"><strong>Cache</strong><span>可丢、可重建、带 TTL</span></div>
+          </div>
+          <button type="button" className={`overview-support-card async-card ${active === 'async' ? 'active' : ''}`} onClick={() => setActive('async')}>
+            <span className="support-origin">Service</span><span className="support-arrow async">↓ enqueue</span>
+            <div className="arch-node compact queue"><strong>Queue / Event Log</strong><span>durable handoff · buffer</span></div>
+            <span className="support-arrow async">↓ consume</span>
+            <div className="arch-node compact worker"><strong>Workers</strong><span>retry · batch · scale</span></div>
+          </button>
+          <div className="overview-support-card data-card">
+            <span className="support-origin">Primary Store</span><span className="support-arrow data">↓ replicate / shard</span>
+            <div className="arch-node compact store"><strong>Replica / Shard</strong><span>读扩展与故障恢复</span></div>
+          </div>
+        </div>
+      </div>
+
+      <aside className="arch-inspector" aria-live="polite">
+        <span>{detail.label}</span>
+        <div><strong>{detail.title}</strong><p>{detail.body}</p></div>
+        <div className="arch-estimate"><small>面试时估算</small><b>{detail.check}</b></div>
+      </aside>
+    </section>
+  );
+}
+
+const PHOTO_PATHS = {
+  upload: {
+    eyebrow: 'UPLOAD PATH',
+    title: '大文件直传，API 只走控制流',
+    note: '图片 bytes 不经过业务服务；PostReady 事件驱动处理和 feed 分发。',
+  },
+  feed: {
+    eyebrow: 'READ PATH',
+    title: '先取 post_id，再批量补齐内容',
+    note: 'Timeline 是可重建索引，metadata 才是事实数据；图片由 CDN 返回。',
+  },
+};
+
+function PhotoSharingArchitectureVisual() {
+  const [mode, setMode] = useState('upload');
+  const copy = PHOTO_PATHS[mode];
+
+  return (
+    <section className="arch-visual photo-arch" aria-label="图片分享系统架构图">
+      <header className="arch-header split">
+        <div>
+          <p className="eyebrow">Photo sharing system</p>
+          <h2>{copy.title}</h2>
+          <p>{copy.note}</p>
+        </div>
+        <div className="arch-tabs" role="group" aria-label="选择图片系统链路">
+          <button type="button" className={mode === 'upload' ? 'active' : ''} onClick={() => setMode('upload')}>发布图片</button>
+          <button type="button" className={mode === 'feed' ? 'active' : ''} onClick={() => setMode('feed')}>读取 Feed</button>
+        </div>
+      </header>
+
+      <div className="photo-stage" data-mode={mode}>
+        <div className="photo-stage-label">{copy.eyebrow}</div>
+        {mode === 'upload' ? (
+          <>
+            <div className="photo-control-row arch-flow">
+              <div className="arch-node neutral"><small>CLIENT</small><strong>App</strong><span>create post</span></div>
+              <span className="arch-connector sync">→</span>
+              <div className="arch-node edge"><small>CONTROL</small><strong>Post API</strong><span>auth + signed URL</span></div>
+              <span className="arch-connector data">→</span>
+              <div className="arch-node store"><small>STATE</small><strong>Metadata DB</strong><span>PENDING → READY</span></div>
+            </div>
+            <div className="photo-branch-grid">
+              <div className="photo-branch media">
+                <span className="branch-kicker">DATA PLANE · BYTES</span>
+                <div className="arch-node compact neutral"><strong>App</strong><span>PUT signed URL</span></div>
+                <span className="support-arrow data">↓</span>
+                <div className="arch-node compact blob"><strong>Object Storage</strong><span>original image</span></div>
+                <span className="support-arrow async">↓ object event</span>
+                <div className="arch-node compact worker"><strong>Media Workers</strong><span>resize · scan · encode</span></div>
+                <span className="support-arrow data">↓</span>
+                <div className="arch-node compact blob"><strong>CDN Origins</strong><span>optimized variants</span></div>
+              </div>
+              <div className="photo-branch events">
+                <span className="branch-kicker">EVENT PLANE · IDS</span>
+                <div className="arch-node compact store"><strong>Outbox</strong><span>PostReady(post_id)</span></div>
+                <span className="support-arrow async">↓</span>
+                <div className="arch-node compact queue"><strong>Event Log</strong><span>partition by author_id</span></div>
+                <span className="support-arrow async">↓</span>
+                <div className="arch-node compact worker"><strong>Fan-out Workers</strong><span>push ordinary authors</span></div>
+                <span className="support-arrow data">↓</span>
+                <div className="arch-node compact store"><strong>Home Timelines</strong><span>bounded post_id list</span></div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="photo-control-row arch-flow">
+              <div className="arch-node neutral"><small>CLIENT</small><strong>App</strong><span>GET /feed</span></div>
+              <span className="arch-connector sync">→</span>
+              <div className="arch-node edge"><small>EDGE</small><strong>Gateway</strong><span>auth · rate limit</span></div>
+              <span className="arch-connector sync">→</span>
+              <div className="arch-node service"><small>READ</small><strong>Feed Service</strong><span>merge + paginate</span></div>
+            </div>
+            <div className="feed-read-grid">
+              <div className="read-source"><small>1 · CANDIDATES</small><strong>Timeline Store</strong><span>home list + celebrity outbox</span></div>
+              <span className="read-arrow">→</span>
+              <div className="read-source"><small>2 · HYDRATE</small><strong>Metadata Cache / DB</strong><span>batch-get posts and authors</span></div>
+              <span className="read-arrow">→</span>
+              <div className="read-source"><small>3 · MEDIA</small><strong>CDN</strong><span>return image variants</span></div>
+            </div>
+            <div className="feed-safety-strip">
+              <span>READ-TIME GUARDS</span>
+              <b>privacy</b><i>·</i><b>block list</b><i>·</i><b>deleted posts</b><i>·</i><b>ranking policy</b>
+            </div>
+          </>
+        )}
+      </div>
+
+      <footer className="arch-footnote"><span><i className="sync" />control</span><span><i className="data" />bytes / reads</span><span><i className="async" />events</span><strong>当前视图：{mode === 'upload' ? '写入与派生' : '读取与补齐'}</strong></footer>
+    </section>
+  );
+}
+
+const ASYNC_PATTERNS = {
+  queue: {
+    label: 'Task Queue',
+    title: '一条任务，只交给一个 worker',
+    description: '同一组 worker 竞争领取任务。扩容 worker 可以提高消费速率，但不会复制业务动作。',
+  },
+  pubsub: {
+    label: 'Pub/Sub',
+    title: '一个事件，多份独立处理',
+    description: '每个订阅拥有自己的进度和重试。增加订阅者时，上游 producer 不需要改代码。',
+  },
+  kafka: {
+    label: 'Kafka groups',
+    title: '系统是实现，group 决定语义',
+    description: '同一个 consumer group 内是抢单；不同 group 各读一份，就是发布订阅。',
+  },
+};
+
+function AsyncMessagingArchitectureVisual() {
+  const [pattern, setPattern] = useState('queue');
+  const copy = ASYNC_PATTERNS[pattern];
+
+  return (
+    <section className="arch-visual async-arch" aria-label="异步消息模式架构图">
+      <header className="arch-header split">
+        <div>
+          <p className="eyebrow">Messaging semantics</p>
+          <h2>{copy.title}</h2>
+          <p>{copy.description}</p>
+        </div>
+        <div className="arch-tabs" role="group" aria-label="选择消息模式">
+          {Object.entries(ASYNC_PATTERNS).map(([id, item]) => (
+            <button type="button" className={pattern === id ? 'active' : ''} onClick={() => setPattern(id)} key={id}>{item.label}</button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`messaging-pattern pattern-${pattern}`}>
+        <div className="message-producer arch-node neutral"><small>PRODUCER</small><strong>Order Service</strong><span>OrderPaid</span></div>
+        <span className="pattern-arrow async">→</span>
+        <div className="message-broker arch-node queue"><small>{pattern === 'kafka' ? 'KAFKA TOPIC' : pattern === 'queue' ? 'DURABLE QUEUE' : 'TOPIC'}</small><strong>orders.paid.v1</strong><span>key = order_id</span></div>
+        <span className="pattern-arrow async">→</span>
+
+        {pattern === 'queue' && (
+          <div className="consumer-cluster queue-consumers">
+            <span>ONE CONSUMER GROUP</span>
+            <div><div className="consumer active"><b>Worker A</b><small>处理 evt_42</small></div><div className="consumer"><b>Worker B</b><small>等待下一条</small></div><div className="consumer"><b>Worker C</b><small>等待下一条</small></div></div>
+            <p><strong>竞争消费</strong> · evt_42 只会被其中一个 worker 领取</p>
+          </div>
+        )}
+
+        {pattern === 'pubsub' && (
+          <div className="consumer-cluster subscription-consumers">
+            <span>THREE SUBSCRIPTIONS</span>
+            <div><div className="consumer active"><b>Billing</b><small>sub_billing</small></div><div className="consumer active"><b>CRM</b><small>sub_crm</small></div><div className="consumer active"><b>Analytics</b><small>sub_analytics</small></div></div>
+            <p><strong>各自一份</strong> · 三个订阅分别保存 offset、重试与 DLQ</p>
+          </div>
+        )}
+
+        {pattern === 'kafka' && (
+          <div className="consumer-cluster kafka-consumers">
+            <span>TWO CONSUMER GROUPS</span>
+            <div className="kafka-group"><b>group: billing</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>组内竞争</em></div>
+            <div className="kafka-group"><b>group: analytics</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>另一份事件</em></div>
+          </div>
+        )}
+      </div>
+
+      <footer className="messaging-rule"><span>记忆规则</span><strong>Queue / PubSub 是消费语义；Kafka、RabbitMQ、SQS 是承载语义的系统。</strong></footer>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -4971,6 +5230,18 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'message-queue-demo') {
     return <MessageQueueVisual />;
+  }
+
+  if (match?.[1] === 'system-design-overview-visual') {
+    return <SystemDesignOverviewVisual />;
+  }
+
+  if (match?.[1] === 'photo-sharing-architecture-visual') {
+    return <PhotoSharingArchitectureVisual />;
+  }
+
+  if (match?.[1] === 'async-messaging-architecture-visual') {
+    return <AsyncMessagingArchitectureVisual />;
   }
 
   if (match) {
