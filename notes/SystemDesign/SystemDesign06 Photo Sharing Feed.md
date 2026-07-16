@@ -1,6 +1,6 @@
 # System Design 06 · 设计图片分享与 Home Feed
 
-这是一道“设计 Instagram-like 图片分享系统”的独立案例。所有流量、容量和 SLO 都是为了面试推导而设定的**假设值**，不是任何真实公司的内部数据；架构图、文字组织和计算均为重新设计，没有复刻题图的布局或原文。
+这是一道“设计 Instagram-like 图片分享系统”的独立案例。文中的流量、容量和 SLO 都是用于面试推导的假设值，不代表任何真实系统的内部数据。
 
 本题真正值得深入的不是“用什么数据库”，而是两条完全不同的主链路：
 
@@ -869,21 +869,6 @@ Event Log
 - Follow graph 与 post metadata 按 consistency requirement 复制。
 - Feed materialized view 可在每个 region 重建，不必全球强一致。
 - Region failover 必须定义 RPO、RTO、DNS / traffic shift 和 duplicate event handling。
-
----
-
-## 12 · 为什么这个版本与题图不同
-
-本设计没有复刻题图，而是从需求重新推导，并做了几个关键调整：
-
-1. 图片通过 signed URL 直接上传 Object Storage，不穿过 Upload Service 搬运 bytes。
-2. Post 使用明确的 `PENDING -> PROCESSING -> READY` 状态机。
-3. Media processing 与 feed fan-out 通过可重放 Event Log 解耦。
-4. Metadata、follow graph、author outbox 和 home timeline 按访问模式拆分。
-5. Feed 使用 hybrid fan-out，而不是只选择纯 pull 或纯 push。
-6. Timeline 是有 TTL / cap 的可重建 materialized view。
-7. Delete、unfollow 和 privacy change 在 read path 立即生效，再异步清理派生数据。
-8. 所有容量数字重新假设并独立计算，不采用图片里的规模或结果。
 
 ---
 
