@@ -1996,6 +1996,12 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'Case Study', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'System Design 7 · 异步消息系统',
+    'SystemDesign07 Async Messaging Systems.md',
+    null,
+    { directory: 'SystemDesign', category: 'Messaging', difficulty: 'Hard' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',
