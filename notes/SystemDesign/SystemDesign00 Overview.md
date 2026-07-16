@@ -159,7 +159,7 @@ flowchart LR
     D -. "HA / read scale" .-> R[(Replica / Shard)]
 ```
 
-[打开可编辑的 draw.io 架构源图](/diagrams/system-design-overview.drawio)
+[在线预览并编辑架构图（diagrams.net）](https://app.diagrams.net/?chrome=0&lightbox=1&edit=_blank&layers=1&pages=1&dark=auto#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FCurryTang%2Fmlphdinterview%2Fmain%2Fpublic%2Fdiagrams%2Fsystem-design-overview.drawio) · [下载 `.drawio` 源文件](/diagrams/system-design-overview.drawio)
 
 图里的实线是最小同步闭环，虚线组件只有在需求能够证明其必要性时才加入。
 

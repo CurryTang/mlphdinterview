@@ -8,7 +8,7 @@
 
 消息队列、持久化日志、数据库 outbox 和 webhook 都是在回答这个问题。它们提供的答案不同，所以适合的场景也不同。
 
-[打开可编辑的 draw.io 总图](/diagrams/async-messaging-systems.drawio)
+[在线预览并编辑总图（diagrams.net，含 3 个页面）](https://app.diagrams.net/?chrome=0&lightbox=1&edit=_blank&layers=1&pages=1&dark=auto#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FCurryTang%2Fmlphdinterview%2Fmain%2Fpublic%2Fdiagrams%2Fasync-messaging-systems.drawio) · [下载 `.drawio` 源文件](/diagrams/async-messaging-systems.drawio)
 
 ---
 

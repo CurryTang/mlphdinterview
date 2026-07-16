@@ -345,7 +345,7 @@ flowchart LR
     F --> C
 ```
 
-[打开可编辑的 draw.io 架构源图](/diagrams/photo-sharing-feed.drawio)
+[在线预览并编辑架构图（diagrams.net）](https://app.diagrams.net/?chrome=0&lightbox=1&edit=_blank&layers=1&pages=1&dark=auto#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FCurryTang%2Fmlphdinterview%2Fmain%2Fpublic%2Fdiagrams%2Fphoto-sharing-feed.drawio) · [下载 `.drawio` 源文件](/diagrams/photo-sharing-feed.drawio)
 
 与常见的“client → upload service → object storage”直传 API 方案相比，这里让图片 bytes 从 client 直接进入 object storage，普通 API server 只处理授权、metadata 和状态转换。
 
