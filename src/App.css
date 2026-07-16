@@ -6111,3 +6111,274 @@ button.overview-support-card.active {
     transition: none;
   }
 }
+
+/* ── VM vs container isolation visual ────────── */
+.isolation-visual {
+  --iso-ink: #17313f;
+  --iso-blue: #267b9a;
+  --iso-green: #438069;
+  --iso-orange: #c97832;
+  margin: 1.5rem 0 1.8rem;
+  border: 1px solid rgba(24, 49, 63, 0.18);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% 5%, rgba(255, 211, 147, 0.18), transparent 28%),
+    linear-gradient(145deg, rgba(253, 254, 252, 0.98), rgba(235, 245, 243, 0.95));
+  box-shadow: 0 18px 38px rgba(31, 53, 66, 0.12);
+  color: var(--iso-ink);
+  overflow: hidden;
+}
+
+.isolation-header {
+  border-bottom: 1px solid rgba(24, 49, 63, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.15rem 0.95rem;
+}
+
+.isolation-header h2 {
+  margin: 0.18rem 0 0.3rem;
+  color: #102735;
+  font: 700 clamp(1.25rem, 2.5vw, 1.75rem) "Space Grotesk", "Avenir Next", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.isolation-header p:not(.eyebrow) {
+  margin: 0;
+  color: #58707b;
+  font-size: 0.86rem;
+}
+
+.isolation-tabs {
+  flex: 0 0 auto;
+  border: 1px solid rgba(24, 49, 63, 0.15);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  padding: 0.23rem;
+}
+
+.isolation-tabs button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #56717c;
+  cursor: pointer;
+  font: 700 0.69rem "IBM Plex Mono", "Courier New", monospace;
+  padding: 0.55rem 0.65rem;
+}
+
+.isolation-tabs button.active {
+  background: #17313f;
+  box-shadow: 0 4px 12px rgba(24, 49, 63, 0.17);
+  color: #fff;
+}
+
+.isolation-stage {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 1.15rem;
+  background:
+    repeating-linear-gradient(0deg, rgba(24, 49, 63, 0.032) 0 1px, transparent 1px 34px),
+    rgba(255, 255, 255, 0.27);
+}
+
+.isolation-workloads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.container-mode .isolation-workloads {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.isolation-workload {
+  min-width: 0;
+  border: 1px solid rgba(38, 123, 154, 0.28);
+  border-radius: 9px;
+  background: rgba(235, 247, 250, 0.92);
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.7rem;
+}
+
+.container-mode .isolation-workload {
+  border-color: rgba(67, 128, 105, 0.3);
+  background: rgba(235, 246, 240, 0.94);
+}
+
+.isolation-workload > span,
+.isolation-boundary span {
+  color: #6c818a;
+  font: 700 0.58rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.isolation-workload > strong {
+  color: #17313f;
+  font: 700 0.9rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.isolation-workload > small {
+  color: #657a84;
+  font: 600 0.62rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.isolation-workload > b {
+  border-top: 1px solid rgba(24, 49, 63, 0.12);
+  margin-top: 0.32rem;
+  padding-top: 0.42rem;
+  color: #326f86;
+  font: 700 0.65rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.container-mode .isolation-workload > b {
+  color: #3f755f;
+}
+
+.isolation-boundary {
+  border-top: 2px dashed var(--iso-blue);
+  height: 1.05rem;
+  position: relative;
+  text-align: center;
+}
+
+.isolation-boundary.container {
+  border-color: var(--iso-green);
+}
+
+.isolation-boundary span {
+  position: relative;
+  top: -0.72rem;
+  background: #f6faf8;
+  color: #39758c;
+  padding: 0 0.55rem;
+}
+
+.isolation-boundary.container span {
+  color: #477b66;
+}
+
+.isolation-platform,
+.isolation-hardware {
+  border: 1px solid rgba(24, 49, 63, 0.16);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.66rem 0.75rem;
+}
+
+.isolation-platform.hypervisor {
+  border-color: rgba(201, 120, 50, 0.34);
+  background: #fff1e3;
+}
+
+.isolation-platform.runtime {
+  border-color: rgba(38, 123, 154, 0.26);
+  background: #e8f3f7;
+}
+
+.isolation-platform.kernel {
+  border-color: rgba(201, 120, 50, 0.3);
+  background: #fff3e7;
+}
+
+.isolation-hardware {
+  background: #17313f;
+  color: #f4f9f8;
+}
+
+.isolation-platform strong,
+.isolation-hardware strong {
+  font: 700 0.76rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.isolation-platform span,
+.isolation-hardware span {
+  color: #647c87;
+  font: 600 0.61rem "IBM Plex Mono", "Courier New", monospace;
+  text-align: right;
+}
+
+.isolation-hardware span {
+  color: #b9cdd4;
+}
+
+.isolation-memory {
+  border-top: 1px solid rgba(24, 49, 63, 0.12);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.72rem;
+  padding: 0.75rem 1.15rem;
+}
+
+.isolation-memory > span {
+  border: 1px solid rgba(38, 123, 154, 0.22);
+  border-radius: 999px;
+  color: #2d6e86;
+  font: 700 0.59rem "IBM Plex Mono", "Courier New", monospace;
+  padding: 0.28rem 0.44rem;
+}
+
+.isolation-memory strong {
+  color: #284754;
+  font-size: 0.72rem;
+}
+
+.isolation-memory small {
+  color: #758991;
+  font: 600 0.6rem "IBM Plex Mono", "Courier New", monospace;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .isolation-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .isolation-tabs {
+    width: 100%;
+  }
+
+  .isolation-tabs button {
+    flex: 1;
+  }
+
+  .container-mode .isolation-workloads {
+    grid-template-columns: 1fr;
+  }
+
+  .isolation-memory {
+    grid-template-columns: auto 1fr;
+  }
+
+  .isolation-memory small {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .isolation-workloads {
+    grid-template-columns: 1fr;
+  }
+
+  .isolation-platform,
+  .isolation-hardware {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .isolation-platform span,
+  .isolation-hardware span {
+    text-align: left;
+  }
+}

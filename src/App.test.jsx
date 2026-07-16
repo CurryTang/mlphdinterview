@@ -304,8 +304,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('10 notes in this section')).toBeInTheDocument();
+    expect(screen.getByText('11 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态设计范式/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 02 · 数据库基本范式/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 03 · 数据库扩展三件套/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 04 · 存储系统/i })).toBeInTheDocument();
@@ -387,6 +388,31 @@ describe('App', () => {
     fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
     expect(within(visual).getByText('业务提交成功，再发送 ack')).toBeInTheDocument();
     expect(within(visual).getAllByText(/rh_B2 已确认/).length).toBeGreaterThan(0);
+  });
+
+  it('compares VM and container isolation boundaries', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('SystemDesign01B')
+          ? '# 虚拟化与容器\n\n```virtualization-container-visual\n```'
+          : '# System Design tutorial',
+      };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+    fireEvent.click(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i }));
+
+    const visual = await screen.findByRole('region', { name: '虚拟机与容器隔离边界对比' });
+    expect(within(visual).getByText('VM：每个 guest 有自己的 kernel')).toBeInTheDocument();
+    expect(within(visual).getAllByText('Guest kernel')).toHaveLength(2);
+
+    fireEvent.click(within(visual).getByRole('button', { name: 'Container' }));
+    expect(within(visual).getByText('Container：多个进程共享 host kernel')).toBeInTheDocument();
+    expect(within(visual).getByText('Shared host kernel')).toBeInTheDocument();
+    expect(within(visual).getByText('隔离进程视图和资源，kernel 仍然共享。')).toBeInTheDocument();
   });
 
   it('redirects renamed System Design note routes to the new chapter numbers', async () => {

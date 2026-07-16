@@ -1964,6 +1964,12 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', category: 'Design Pattern', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
+    'System Design 01B · 虚拟化与容器',
+    'SystemDesign01B Virtualization Containers.md',
+    null,
+    { directory: 'SystemDesign', category: 'Compute Isolation', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
     'System Design 02 · 数据库基本范式',
     'SystemDesign02 Database Paradigms.md',
     null,
@@ -5181,10 +5187,74 @@ function AsyncMessagingArchitectureVisual() {
   );
 }
 
+function VirtualizationContainerVisual() {
+  const [mode, setMode] = useState('vm');
+  const isVm = mode === 'vm';
+
+  return (
+    <section className="isolation-visual" aria-label="虚拟机与容器隔离边界对比">
+      <header className="isolation-header">
+        <div>
+          <p className="eyebrow">Isolation boundary</p>
+          <h2>{isVm ? 'VM：每个 guest 有自己的 kernel' : 'Container：多个进程共享 host kernel'}</h2>
+          <p>{isVm ? 'Hypervisor 提供虚拟 CPU、内存与设备。' : 'Namespace 改变可见范围，cgroup 约束资源使用。'}</p>
+        </div>
+        <div className="isolation-tabs" role="group" aria-label="选择隔离方式">
+          <button type="button" className={isVm ? 'active' : ''} onClick={() => setMode('vm')}>Virtual machine</button>
+          <button type="button" className={!isVm ? 'active' : ''} onClick={() => setMode('container')}>Container</button>
+        </div>
+      </header>
+
+      <div className={`isolation-stage ${isVm ? 'vm-mode' : 'container-mode'}`}>
+        <div className="isolation-workloads">
+          {(isVm ? ['Guest A', 'Guest B'] : ['Container A', 'Container B', 'Container C']).map((label, index) => (
+            <div className="isolation-workload" key={label}>
+              <span>{label}</span>
+              <strong>{index === 0 ? 'API' : index === 1 ? 'Worker' : 'Sidecar'}</strong>
+              <small>app + libraries</small>
+              {isVm ? <b>Guest kernel</b> : <b>rootfs + ns + cgroup</b>}
+            </div>
+          ))}
+        </div>
+
+        <div className={`isolation-boundary ${isVm ? 'vm' : 'container'}`}>
+          <span>{isVm ? 'HARDWARE VIRTUALIZATION BOUNDARY' : 'PROCESS ISOLATION BOUNDARY'}</span>
+        </div>
+
+        {isVm ? (
+          <div className="isolation-platform hypervisor">
+            <strong>Hypervisor / VMM</strong>
+            <span>vCPU · second-level page tables · virtual devices</span>
+          </div>
+        ) : (
+          <>
+            <div className="isolation-platform runtime">
+              <strong>Container runtime</strong>
+              <span>image · rootfs · network · security policy</span>
+            </div>
+            <div className="isolation-platform kernel">
+              <strong>Shared host kernel</strong>
+              <span>scheduler · namespaces · cgroups · syscalls</span>
+            </div>
+          </>
+        )}
+
+        <div className="isolation-hardware"><strong>Physical host</strong><span>CPU · memory · NIC · storage</span></div>
+      </div>
+
+      <footer className="isolation-memory">
+        <span>记忆</span>
+        <strong>{isVm ? '隔离一台机器，guest kernel 也被隔开。' : '隔离进程视图和资源，kernel 仍然共享。'}</strong>
+        <small>{isVm ? 'stronger boundary · heavier startup' : 'higher density · shared-kernel risk'}</small>
+      </footer>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -5244,6 +5314,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'async-messaging-architecture-visual') {
     return <AsyncMessagingArchitectureVisual />;
+  }
+
+  if (match?.[1] === 'virtualization-container-visual') {
+    return <VirtualizationContainerVisual />;
   }
 
   if (match) {

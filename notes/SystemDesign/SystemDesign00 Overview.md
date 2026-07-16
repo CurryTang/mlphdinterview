@@ -12,6 +12,7 @@ System design 面试不是背一张“大厂架构图”。面试官给出的题
 |---|---|---|
 | 00 | 本篇：设计方法 | 面试时先说什么、怎么算、怎么推进 |
 | 01 | [[SystemDesign01 Stateless Service|无状态服务]] | 服务实例怎样做到可替换、可横向扩展 |
+| 01B | [[SystemDesign01B Virtualization Containers|虚拟化与容器]] | VM、container 和 Linux 隔离机制怎样工作 |
 | 02 | [[SystemDesign02 Database Paradigms|数据库基本范式]] | RDBMS、NoSQL、一致性和事务怎么选 |
 | 03 | [[SystemDesign03 Database Scaling|数据库扩展]] | replication、sharding、partitioning 怎么落地 |
 | 04 | [[SystemDesign04 Storage Systems|存储系统]] | block、file、object storage 各自存什么 |
