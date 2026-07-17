@@ -515,6 +515,33 @@ describe('App', () => {
     expect(screen.getByText('目标：2/3 ≈ 0.6667')).toBeInTheDocument();
   });
 
+  it('steps through the prefix-minimum grouping visual', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant01')
+          ? '# 期望与计数\n\n```record-minimum-demo\n```'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 1 · 期望与计数/i }));
+
+    expect(await screen.findByRole('region', { name: '前缀最小值与最终队伍可视化' })).toBeInTheDocument();
+    expect(screen.getByText('位置 3 / 7')).toBeInTheDocument();
+    expect(screen.getByText('v3 = 6 > 4，最终会追上第 2 位领队。')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '下一步 →' }));
+
+    expect(screen.getByText('位置 4 / 7')).toBeInTheDocument();
+    expect(screen.getByText('v4 = 2 < 4，刷新前缀最小值，成为新领队。')).toBeInTheDocument();
+    expect(screen.getByText('3 支队伍')).toBeInTheDocument();
+  });
+
   it('opens the recursion chapter for the absent-minded passenger problem', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);

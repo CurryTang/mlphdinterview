@@ -1840,7 +1840,7 @@ const draftNotes = draftNoteDefinitions.map((definition) => ({
 
 const quantNoteDefinitions = [
   createTutorialDefinition(
-    'Quant 1 · 期望与计数：Indicator / Multinomial Moment',
+    'Quant 1 · 期望与计数：Indicator、Records 与 Multinomial',
     'Quant01 Expectation Counting Multinomial.md',
     null,
     { directory: 'quant', category: 'Expectation', difficulty: 'Medium' },
@@ -5251,10 +5251,160 @@ function VirtualizationContainerVisual() {
   );
 }
 
+const RECORD_EXAMPLE_SPEEDS = [7, 4, 6, 2, 5, 1, 3];
+
+const RECORD_EXAMPLE_STATES = (() => {
+  let prefixMinimum = Infinity;
+  let leaderIndex = -1;
+  let groupNumber = 0;
+
+  return RECORD_EXAMPLE_SPEEDS.map((speed, index) => {
+    const previousMinimum = prefixMinimum;
+    const isRecord = speed < prefixMinimum;
+
+    if (isRecord) {
+      prefixMinimum = speed;
+      leaderIndex = index;
+      groupNumber += 1;
+    }
+
+    return {
+      index,
+      speed,
+      previousMinimum,
+      prefixMinimum,
+      isRecord,
+      leaderIndex,
+      groupNumber,
+    };
+  });
+})();
+
+function RecordMinimumVisual() {
+  const [step, setStep] = useState(3);
+  const current = step > 0 ? RECORD_EXAMPLE_STATES[step - 1] : null;
+  const processed = RECORD_EXAMPLE_STATES.slice(0, step);
+  const groups = processed.reduce((result, walker) => {
+    if (walker.isRecord) {
+      result.push({
+        leaderIndex: walker.index,
+        speed: walker.speed,
+        members: [walker.index + 1],
+      });
+    } else {
+      result[result.length - 1].members.push(walker.index + 1);
+    }
+    return result;
+  }, []);
+
+  let decision = '从最前方开始，维护目前见过的最低速度。';
+  if (current?.index === 0) {
+    decision = '第 1 位在最前方，自然成为第一支队伍的领队。';
+  } else if (current?.isRecord) {
+    decision = `v${current.index + 1} = ${current.speed} < ${current.previousMinimum}，刷新前缀最小值，成为新领队。`;
+  } else if (current) {
+    decision = `v${current.index + 1} = ${current.speed} > ${current.previousMinimum}，最终会追上第 ${current.leaderIndex + 1} 位领队。`;
+  }
+
+  return (
+    <section className="record-visual" aria-label="前缀最小值与最终队伍可视化">
+      <header className="record-header">
+        <div>
+          <p className="eyebrow">Prefix minimum</p>
+          <h2>从前往后，只保留新的最低速度</h2>
+          <p>速度样本固定为 [7, 4, 6, 2, 5, 1, 3]。</p>
+        </div>
+        <strong className="record-step">位置 {step} / {RECORD_EXAMPLE_STATES.length}</strong>
+      </header>
+
+      <div className="record-stage">
+        <div className="record-direction" aria-hidden="true">
+          <span>前方</span>
+          <b>← 行进方向</b>
+          <span>后方</span>
+        </div>
+
+        <div className="record-walkers">
+          {RECORD_EXAMPLE_STATES.map((walker) => {
+            const isProcessed = walker.index < step;
+            const isCurrent = walker.index === step - 1;
+            const stateClass = !isProcessed
+              ? 'pending'
+              : walker.isRecord
+                ? 'leader'
+                : 'follower';
+
+            return (
+              <div
+                className={`record-walker ${stateClass}${isCurrent ? ' current' : ''}`}
+                aria-current={isCurrent ? 'step' : undefined}
+                key={walker.index}
+              >
+                <small>位置 {walker.index + 1}</small>
+                <strong>v = {walker.speed}</strong>
+                <span>
+                  {!isProcessed
+                    ? '待检查'
+                    : walker.isRecord
+                      ? `新领队 · 组 ${walker.groupNumber}`
+                      : `并入位置 ${walker.leaderIndex + 1}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="record-decision" aria-live="polite">{decision}</p>
+
+        <div className="record-groups" aria-label="当前形成的队伍">
+          {groups.length === 0
+            ? <span className="record-empty">尚未开始扫描</span>
+            : groups.map((group) => (
+              <div className="record-group" key={group.leaderIndex}>
+                <small>领队 {group.leaderIndex + 1} · 速度 {group.speed}</small>
+                <strong>[{group.members.join(', ')}]</strong>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      <footer className="record-footer">
+        <div>
+          <span>这组样本</span>
+          <strong>{groups.length} 支队伍</strong>
+        </div>
+        <code>P(位置 i 刷新最低值) = 1 / i</code>
+        <div>
+          <span>随机期望</span>
+          <strong>H₇ ≈ 2.593</strong>
+        </div>
+      </footer>
+
+      <div className="record-controls">
+        <button
+          type="button"
+          onClick={() => setStep((value) => Math.max(0, value - 1))}
+          disabled={step === 0}
+        >
+          ← 上一步
+        </button>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setStep((value) => Math.min(RECORD_EXAMPLE_STATES.length, value + 1))}
+          disabled={step === RECORD_EXAMPLE_STATES.length}
+        >
+          下一步 →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -5298,6 +5448,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'high-dimensional-integral-demo') {
     return <HighDimensionalIntegralVisual />;
+  }
+
+  if (match?.[1] === 'record-minimum-demo') {
+    return <RecordMinimumVisual />;
   }
 
   if (match?.[1] === 'message-queue-demo') {
