@@ -75,12 +75,26 @@ left += 1
 
 先移动 `left` 再删除，会删错元素。
 
+下面的交互演示使用“最长合法窗口”，展示的是需要 `while` 的变长窗口分支。
+
 ```sliding-window-demo
 ```
 
-## 一个万能模板
+## 共同骨架：先分定长和变长
 
-五题共用这一个循环。各题只替换 `state`、`should_shrink` 和记录位置。
+“滑动窗口”真正共用的不是某一行 `while`，而是这三个动作：
+
+```text
+1. right 加入一个新元素
+2. 移动 left，让窗口恢复题目要求的不变量
+3. 窗口处在正确状态时记录答案
+```
+
+第 2 步要先看窗口类型，再决定写 `while` 还是 `if`。
+
+### 变长窗口：用 `while`
+
+最长合法窗口和最短满足窗口的长度会变化。加入一个元素后，可能要连续移动多次 `left`，因此使用 `while`：
 
 ```python
 left = 0
@@ -100,26 +114,44 @@ for right, item in enumerate(items):
 return answer
 ```
 
-两个 `record` 槽位按题意二选一，也可以都不执行：
+### 固定长度窗口：用 `if`
 
-| 题型 | `should_shrink` | 收缩前记录 | 收缩后记录 |
+固定窗口每轮只加入一个元素。上一轮窗口长度不超过 `k`，这一轮最多变成 `k + 1`，所以最多只需移出一个左端元素：
+
+```python
+left = 0
+state = initialize_state()
+
+for right, item in enumerate(items):
+    add_right(state, item)
+
+    if right - left + 1 > k:
+        remove_left(state, items[left])
+        left += 1
+
+    if right - left + 1 == k:
+        record_window(state, left, right)
+```
+
+因此 `Permutation in String` 和 `Sliding Window Maximum` 不需要硬套 `while`。写成 `while` 结果也对，但 `if` 更直接地表达“窗口每次向右滑一格”。
+
+两类模板的记录时机是：
+
+| 题型 | 调整 `left` 的方式 | 移动 `left` 前 | 窗口调整后 |
 |---|---|---|---|
-| 最长合法窗口 | 窗口不合法 | 不记录 | 更新最长值 |
-| 最短满足窗口 | 窗口仍满足要求 | 更新最短值 | 不记录 |
-| 固定长度窗口 | 窗口长度大于 `k` | 不记录 | 长度等于 `k` 时记录 |
-
-固定窗口每轮只加入一个元素，所以这里的 `while` 最多执行一次。实际代码常写成 `if`，仍是同一循环的特例。
+| 最长合法窗口 | `while` 窗口不合法 | 不记录 | 更新最长值 |
+| 最短满足窗口 | `while` 窗口仍满足要求 | 更新最短值 | 不记录 |
+| 固定长度窗口 | `if` 窗口长度大于 `k` | 不记录 | 长度等于 `k` 时记录 |
 
 ```mermaid
 flowchart LR
   A["right 加入元素"] --> B["add_right"]
-  B --> C{"should_shrink"}
-  C -->|是| D["可选：收缩前记录"]
-  D --> E["remove_left"]
-  E --> F["left += 1"]
-  F --> C
-  C -->|否| G["可选：收缩后记录"]
-  G --> H["处理下一个 right"]
+  B --> C{"窗口长度固定吗"}
+  C -->|否| D["while 条件成立：可连续移动 left"]
+  C -->|是| E["if 长度 > k：最多移动一次 left"]
+  D --> F["在正确时机 record"]
+  E --> F
+  F --> G["处理下一个 right"]
 ```
 
 ## 1. Longest Substring Without Repeating Characters
@@ -138,7 +170,7 @@ flowchart LR
 | `add_right` | `count[s[right]] += 1` |
 | `should_shrink` | `count[s[right]] > 1` |
 | `remove_left` | `count[s[left]] -= 1` |
-| 收缩后记录 | 更新最长长度 |
+| 窗口调整后记录 | 更新最长长度 |
 
 ```python
 from collections import defaultdict
@@ -162,7 +194,7 @@ class Solution:
         return answer
 ```
 
-本题先执行 `add_right`，再进入 `while should_shrink`，最后在收缩后记录。记录答案时，窗口内所有字符频次都不超过 1。
+本题先执行 `add_right`，再进入 `while should_shrink`，最后在窗口重新合法后记录。记录答案时，窗口内所有字符频次都不超过 1。
 
 ```longest-substring-demo
 ```
@@ -202,7 +234,7 @@ max_freq(A) = 3
 | `add_right` | 更新右端字符频次和 `max_freq` |
 | `should_shrink` | `window_len - max_freq > k` |
 | `remove_left` | 左端字符频次减 1 |
-| 收缩后记录 | 更新最长长度 |
+| 窗口调整后记录 | 更新最长长度 |
 
 ```python
 from collections import defaultdict
@@ -263,9 +295,22 @@ max_freq = max(count.values())
 |---|---|
 | `state` | `need[26]` 和 `window[26]` |
 | `add_right` | 右端字符的窗口频次加 1 |
-| `should_shrink` | 窗口长度大于 `len(s1)` |
+| 固定窗口调整 | `if` 窗口长度大于 `len(s1)` |
 | `remove_left` | 左端字符的窗口频次减 1 |
-| 收缩后记录 | 长度为 `len(s1)` 时比较频次表 |
+| 窗口满时记录 | 长度为 `len(s1)` 时比较频次表 |
+
+### 为什么本题用 `if`，不是 `while`
+
+设 `k = len(s1)`。每轮开始前，窗口长度一定不超过 `k`；加入 `s2[right]` 后，长度最多是 `k + 1`。如果超长，移出一个 `s2[left]` 就会立刻回到 `k`，不可能需要连续移出多个元素。
+
+```text
+上一轮：长度 k
+加入 right：长度 k + 1
+移出 left：长度 k
+比较 window 和 need
+```
+
+所以这题和变长窗口共享 `add → adjust → record` 的骨架，但调整步骤应写成一次 `if`。强行写 `while` 虽然结果正确，却掩盖了固定窗口“每轮右移一格”的结构。
 
 ```python
 class Solution:
@@ -295,6 +340,8 @@ class Solution:
 
         return False
 ```
+
+最后一个 `if` 中有两次相等判断：`right - left + 1 == k` 表示窗口已经装满，`window == need` 表示 26 个字符的频次全部相同；`and` 要求两者同时成立。这里的 `==` 是 Python 相等运算符。
 
 以 `s1 = "ab"`、`s2 = "eidbaooo"` 为例：
 
@@ -351,7 +398,7 @@ flowchart LR
 | `state` | `need`、`window`、`have`、`required` |
 | `add_right` | 更新右端字符频次；刚好达标时 `have += 1` |
 | `should_shrink` | `have == required` |
-| 收缩前记录 | 更新最短窗口 |
+| 移动 `left` 前记录 | 更新最短窗口 |
 | `remove_left` | 若左端字符刚好达标，先让 `have -= 1`，再减频次 |
 
 ```python
@@ -441,7 +488,7 @@ flowchart LR
   D --> E{"窗口长度 > k"}
   E -->|是| F["若队首是 left 就删除"]
   F --> G["left += 1"]
-  G --> E
+  G --> H
   E -->|否| H["长度为 k 时输出队首"]
 ```
 
@@ -451,9 +498,9 @@ flowchart LR
 |---|---|
 | `state` | 值单调递减的下标 deque |
 | `add_right` | 删除弱势队尾，再加入 `right` |
-| `should_shrink` | 窗口长度大于 `k` |
+| 固定窗口调整 | `if` 窗口长度大于 `k` |
 | `remove_left` | 若队首等于 `left` 就删除队首 |
-| 收缩后记录 | 窗口长度为 `k` 时输出队首对应值 |
+| 窗口满时记录 | 窗口长度为 `k` 时输出队首对应值 |
 
 ```python
 from collections import deque
@@ -472,7 +519,7 @@ class Solution:
 
             candidates.append(right)
 
-            while right - left + 1 > k:
+            if right - left + 1 > k:
                 if candidates[0] == left:
                     candidates.popleft()
                 left += 1
@@ -495,37 +542,34 @@ class Solution:
 
 每个下标只入队一次、出队一次，总队列操作次数是 $O(n)$。
 
-## 五题填入同一个模板
+## 五题填入两类模板
 
-| 题目 | `state` | `should_shrink` | 收缩前记录 | 收缩后记录 |
+| 题目 | 窗口类型 | `state` | 调整方式 | 记录时机 |
 |---|---|---|---|---|
-| Longest Substring | 字符频次 | 新字符频次 `> 1` | 无 | 更新 `max` |
-| Character Replacement | 频次 + `max_freq` | `len - max_freq > k` | 无 | 更新 `max` |
-| Permutation in String | 两张频次表 | 窗口长度 `> len(s1)` | 无 | 长度正确时比较 |
-| Minimum Window | 频次 + `have` | `have == required` | 更新 `min` | 无 |
-| Sliding Window Maximum | 递减下标 deque | 窗口长度 `> k` | 无 | 长度为 `k` 时输出队首 |
+| Longest Substring | 变长 | 字符频次 | `while` 新字符频次 `> 1` | 合法后更新 `max` |
+| Character Replacement | 变长 | 频次 + `max_freq` | `while len - max_freq > k` | 合法后更新 `max` |
+| Permutation in String | 定长 | 两张频次表 | `if` 长度 `> len(s1)` | 长度为 `len(s1)` 时比较 |
+| Minimum Window | 变长 | 频次 + `have` | `while have == required` | 每次左缩前更新 `min` |
+| Sliding Window Maximum | 定长 | 递减下标 deque | `if` 长度 `> k` | 长度为 `k` 时输出队首 |
 
-面试时先写同一个骨架，再填空：
+面试时先写共同骨架，再选择调整分支：
 
 ```python
 for right, item in enumerate(items):
     add_right(state, item)
 
-    while should_shrink(state, left, right):
-        record_before_shrink()   # 可选
-        remove_left(state, items[left])
-        left += 1
-
-    record_after_shrink()        # 可选
+    adjust_left()      # 变长窗口用 while；定长窗口用 if
+    record_if_ready() # 合法、满足或窗口满 k 时记录
 ```
 
-`record_before_shrink` 和 `record_after_shrink` 是同一循环里的两个插槽。每道题只填需要的部分。
+不要先背 `while`。先问窗口是否固定，再决定 `adjust_left` 是连续调整还是最多调整一次。
 
 ## 常见错误
 
 | 错误 | 修正 |
 |---|---|
-| 把 `while` 写成 `if` | 一个新元素可能要求连续移出多个左端元素 |
+| 变长窗口误写成 `if` | 一个新元素可能要求连续移出多个左端元素；变长窗口通常用 `while` |
+| 固定窗口机械套 `while` | 每轮最多超长 1，直接用 `if` 移出一个元素更清楚 |
 | 窗口长度写成 `right - left` | 闭区间长度是 `right - left + 1` |
 | 最长窗口在收缩前记录 | 先恢复合法，再更新 `max` |
 | 最短窗口在收缩后记录 | 当前合法窗口要先记录，再删除左端 |
@@ -542,7 +586,7 @@ for right, item in enumerate(items):
 2. right 加入一个元素时，哪些状态可以增量更新？
 3. 什么表达式表示窗口非法或已经满足要求？
 4. left 删除一个元素时，状态如何恢复？
-5. 答案应在收缩前、收缩后，还是窗口满 k 时记录？
+5. 答案应在移动 `left` 前、窗口调整后，还是窗口满 `k` 时记录？
 ```
 
 如果第 3 问没有单调方向，普通滑窗可能不适用。例如数组含负数时，扩大窗口不一定让区间和变大，收缩也不一定让区间和变小。
@@ -554,21 +598,21 @@ for right, item in enumerate(items):
 | window | `[left, right]` 的准确含义 |
 | state | 频次、和、满足种类数，或单调队列 |
 | add | `right` 进入窗口后怎样更新状态 |
-| shrink | `while invalid`、`while valid`，还是长度超出 `k` |
+| adjust | 变长窗口的 `while`，还是定长窗口的 `if length > k` |
 | remove | `left` 离开窗口前怎样更新状态 |
 | record | 更新 `max`、更新 `min`，或输出当前窗口结果 |
 
 ## 模板速记
 
 ```text
-right 进入：add_right
+共同骨架：add → adjust → record
 
-while should_shrink:
-    收缩前需要答案，就先 record
-    remove_left
-    left += 1
+变长窗口：while 条件成立，可能连续移动 left
+固定窗口：if 长度 > k，只移动一次 left
 
-收缩后需要答案，就 record
+最长合法：调整完成后 record max
+最短满足：每次移动 left 前 record min
+固定长度：窗口长度 == k 时 record
 ```
 
-只记这一份。题目变化时，替换状态、收缩条件和记录槽位。
+先判断定长还是变长，再填状态、调整条件和记录时机。

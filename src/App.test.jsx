@@ -26,7 +26,8 @@ describe('App', () => {
         '',
         '```python',
         'def can_jump(nums):',
-        '    return True',
+        '    if right - left + 1 == k and window == need:',
+        '        return True',
         '```',
         '',
         'Inline math $QK^T$ and display math:',
@@ -136,6 +137,18 @@ describe('App', () => {
     expect(screen.getByText('def')).toHaveClass('code-token', 'keyword');
   });
 
+  it('does not treat Python equality operators as Obsidian highlights', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start mlsys/i }));
+
+    const pythonFrame = (await screen.findByText('Python')).closest('.code-frame');
+    expect(pythonFrame.querySelector('code')).toHaveTextContent(
+      'if right - left + 1 == k and window == need:',
+    );
+    expect(pythonFrame.querySelector('mark')).toBeNull();
+  });
+
   it('renders Markdown math through KaTeX without losing LaTeX commands', async () => {
     render(<App />);
 
@@ -238,6 +251,31 @@ describe('App', () => {
 
     expect(within(visual).getByText('加入 A 后条件失效')).toBeInTheDocument();
     expect(within(visual).getByText('不合法')).toBeInTheDocument();
+  });
+
+  it('presents Permutation in String as the fixed-window branch', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills29')
+          ? '# Sliding Window\n\n```sliding-window-patterns\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+
+    const atlas = await screen.findByRole('region', { name: '五道滑动窗口题模板对照' });
+    fireEvent.click(within(atlas).getByRole('tab', { name: /LC 567.*Permutation in String/i }));
+
+    expect(within(atlas).getByText('if：窗口长度 > |s1|')).toBeInTheDocument();
+    expect(within(atlas).getByText('最多移出一个左端字符')).toBeInTheDocument();
+    expect(within(atlas).getByText('窗口满 |s1| 时比较频次表')).toBeInTheDocument();
+    expect(within(atlas).queryByText('3 · while 内')).not.toBeInTheDocument();
   });
 
   it('maps longest substring code to the sliding window template', async () => {

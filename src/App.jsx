@@ -3951,10 +3951,11 @@ const SLIDING_WINDOW_PATTERNS = [
     shape: '变长 · 求最长合法',
     state: 'count',
     add: 'count[s[right]] += 1',
-    trigger: 'count[s[right]] > 1',
+    control: 'while：count[s[right]] > 1',
+    shrinkStep: '可能连续移出左端字符',
     shrink: 'count[s[left]] -= 1，再移动 left',
     beforeRecord: '不记录',
-    afterRecord: '更新 max',
+    afterRecord: '窗口合法后更新 max',
     invariant: '窗口内每个字符至多出现一次',
     formula: 'invalid = count[s[right]] > 1',
     tone: 'green',
@@ -3966,10 +3967,11 @@ const SLIDING_WINDOW_PATTERNS = [
     shape: '变长 · 求最长合法',
     state: 'count + max_freq',
     add: '更新字符频次与最高频次',
-    trigger: '需要替换的字符超过 k',
+    control: 'while：所需替换数 > k',
+    shrinkStep: '可能连续移出左端字符',
     shrink: '左端字符频次减 1',
     beforeRecord: '不记录',
-    afterRecord: '更新 max',
+    afterRecord: '窗口合法后更新 max',
     invariant: 'len(window) - max_freq <= k',
     formula: 'replacements = length - max_freq',
     tone: 'amber',
@@ -3981,10 +3983,11 @@ const SLIDING_WINDOW_PATTERNS = [
     shape: '定长 · 长度为 |s1|',
     state: 'need[26] + window[26]',
     add: '加入 s2[right]',
-    trigger: '窗口长度超过 |s1|',
-    shrink: '恰好移出一个左端字符',
+    control: 'if：窗口长度 > |s1|',
+    shrinkStep: '最多移出一个左端字符',
+    shrink: 'window[s2[left]] -= 1，再移动 left',
     beforeRecord: '不记录',
-    afterRecord: '长度正确时比较频次表',
+    afterRecord: '窗口满 |s1| 时比较频次表',
     invariant: '窗口始终不长于 |s1|',
     formula: 'match = window == need',
     tone: 'blue',
@@ -3996,10 +3999,11 @@ const SLIDING_WINDOW_PATTERNS = [
     shape: '变长 · 求最短满足',
     state: 'need/window + have',
     add: '达到某字符阈值时 have += 1',
-    trigger: 'have == required',
+    control: 'while：have == required',
+    shrinkStep: '每轮记录候选后移出左端字符',
     shrink: '更新 have/window，再删除左端字符',
     beforeRecord: '更新 min',
-    afterRecord: '不记录',
+    afterRecord: '不记录，候选已在调整前保存',
     invariant: 'have 只数已经达到所需频次的字符种类',
     formula: 'valid = have == len(need)',
     tone: 'rose',
@@ -4011,10 +4015,11 @@ const SLIDING_WINDOW_PATTERNS = [
     shape: '定长 · 每窗求最大值',
     state: '递减 deque，存下标',
     add: '删弱势队尾，再 append right',
-    trigger: '窗口长度超过 k',
+    control: 'if：窗口长度 > k',
+    shrinkStep: '最多移出一个过期位置',
     shrink: '若队首是 left 就删除，再移动 left',
     beforeRecord: '不记录',
-    afterRecord: '窗口满 k 后读取 deque[0]',
+    afterRecord: '窗口满 k 时读取 deque[0]',
     invariant: '下标递增，值递减，队首是最大值',
     formula: 'maximum = nums[deque[0]]',
     tone: 'violet',
@@ -4030,9 +4035,9 @@ function SlidingWindowPatternAtlas() {
     <section className={`sliding-pattern-atlas ${pattern.tone}`} aria-label="五道滑动窗口题模板对照">
       <header className="sliding-pattern-header">
         <div>
-          <p className="eyebrow">Five problems · one skeleton</p>
-          <h2>题目只是在替换状态、收缩条件和记录时机</h2>
-          <p>切换题目，沿着右扩、判断、while 内、while 后四格读一遍。</p>
+          <p className="eyebrow">One skeleton · two resize rules</p>
+          <h2>先分定长与变长，再选择 if 或 while</h2>
+          <p>共同顺序是右端加入、调整左端、记录答案；调整次数由窗口类型决定。</p>
         </div>
         <code>{pattern.formula}</code>
       </header>
@@ -4075,19 +4080,19 @@ function SlidingWindowPatternAtlas() {
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>2 · should_shrink</span>
-          <strong>{pattern.trigger}</strong>
+          <span>2 · 选择调整规则</span>
+          <strong>{pattern.control}</strong>
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>3 · while 内</span>
-          <strong>收缩前：{pattern.beforeRecord}</strong>
-          <small>remove_left：{pattern.shrink}</small>
+          <span>3 · 调整 left</span>
+          <strong>{pattern.shrinkStep}</strong>
+          <small>移动前记录：{pattern.beforeRecord}；remove：{pattern.shrink}</small>
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>4 · while 后</span>
-          <strong>收缩后：{pattern.afterRecord}</strong>
+          <span>4 · 窗口调整后</span>
+          <strong>{pattern.afterRecord}</strong>
         </div>
       </div>
     </section>
@@ -5877,6 +5882,19 @@ function parseHashRoute(rawHash) {
   return null;
 }
 
+function replaceObsidianHighlights(markdownText) {
+  const codeSegments = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)/g;
+
+  return markdownText
+    .split(codeSegments)
+    .map((segment, index) => (
+      index % 2 === 1
+        ? segment
+        : segment.replace(/==([^=\n][^=\n]*?)==/g, '<mark>$1</mark>')
+    ))
+    .join('');
+}
+
 function normalizeObsidianMarkdown(markdownText) {
   if (!markdownText) {
     return '';
@@ -5930,7 +5948,7 @@ function normalizeObsidianMarkdown(markdownText) {
     return alias || prettyLabel(target);
   });
 
-  normalized = normalized.replace(/==([^=\n][^=\n]*?)==/g, '<mark>$1</mark>');
+  normalized = replaceObsidianHighlights(normalized);
 
   return normalized;
 }
