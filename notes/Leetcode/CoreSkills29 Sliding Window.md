@@ -35,6 +35,29 @@ $$
 [left,right], \qquad \text{length}=right-left+1.
 $$
 
+### 为什么窗口长度要 `+ 1`
+
+`left` 和 `right` 都指向窗口内的元素，所以这里是**两端都包含**的闭区间。`right - left` 计算的是两个下标之间隔了多少步，而元素个数还要把起点 `left` 自己算进去，因此要再加 1。
+
+```text
+下标：     2   3   4
+窗口：    [A   B   C]
+left = 2, right = 4
+下标间隔：4 - 2 = 2
+元素个数：4 - 2 + 1 = 3
+```
+
+最容易检查的方法是看只有一个元素的窗口：当 `left == right` 时，长度应该是 1；`right - left + 1` 正好等于 1，而不加 1 会错误地得到 0。
+
+这也取决于区间写法：
+
+| 窗口约定 | 是否包含 `right` | 长度 |
+|---|---:|---:|
+| 闭区间 `[left, right]` | 是 | `right - left + 1` |
+| 左闭右开 `[left, right)` | 否 | `right - left` |
+
+本笔记的代码中，`right` 是 `enumerate(s)` 当前访问并已加入窗口的字符下标，因此 `answer = max(answer, right - left + 1)` 记录的就是当前合法闭区间中的字符数。
+
 每轮只做三件事：
 
 ```text
