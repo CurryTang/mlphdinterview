@@ -2458,6 +2458,7 @@
     radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--pattern-accent) 13%, transparent), transparent 25%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 247, 247, 0.92));
   box-shadow: 0 12px 28px rgba(31, 53, 66, 0.11);
+  container-type: inline-size;
   overflow: hidden;
 }
 
@@ -2550,10 +2551,10 @@
 
 .sliding-pattern-tabs strong {
   min-width: 0;
-  overflow: hidden;
   font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .sliding-pattern-summary {
@@ -2621,6 +2622,12 @@
   align-self: center;
   color: var(--pattern-accent);
   font-size: 1.15rem;
+}
+
+@container (max-width: 760px) {
+  .sliding-pattern-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
