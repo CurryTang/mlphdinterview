@@ -790,7 +790,11 @@
 }
 
 .mermaid-frame {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin: 1rem 0 1.25rem;
+  overflow: hidden;
 }
 
 .mermaid-toolbar {
@@ -850,6 +854,9 @@
 }
 
 .mermaid-diagram {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 1rem;
   border: 1px solid rgba(24, 49, 63, 0.16);
   border-radius: 8px;
@@ -2437,6 +2444,208 @@
 .longest-substring-controls input {
   width: 100%;
   accent-color: #c06e2e;
+}
+
+/* ── Sliding window five-pattern atlas ───────────── */
+.sliding-pattern-atlas {
+  --pattern-accent: #237c68;
+  --pattern-soft: #e9f7f1;
+  margin: 1.35rem auto;
+  max-width: min(100%, 980px);
+  border: 1px solid color-mix(in srgb, var(--pattern-accent) 28%, transparent);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--pattern-accent) 13%, transparent), transparent 25%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 247, 247, 0.92));
+  box-shadow: 0 12px 28px rgba(31, 53, 66, 0.11);
+  overflow: hidden;
+}
+
+.sliding-pattern-atlas.amber {
+  --pattern-accent: #b87528;
+  --pattern-soft: #fff2df;
+}
+
+.sliding-pattern-atlas.blue {
+  --pattern-accent: #24759a;
+  --pattern-soft: #e8f5fa;
+}
+
+.sliding-pattern-atlas.rose {
+  --pattern-accent: #b45461;
+  --pattern-soft: #fff0f2;
+}
+
+.sliding-pattern-atlas.violet {
+  --pattern-accent: #6958a7;
+  --pattern-soft: #f1eefb;
+}
+
+.sliding-pattern-header {
+  border-bottom: 1px solid rgba(31, 67, 82, 0.12);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.sliding-pattern-header h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #102f39;
+  font-size: clamp(1.18rem, 2.2vw, 1.55rem);
+}
+
+.sliding-pattern-header p:not(.eyebrow) {
+  margin: 0;
+  color: #4c676f;
+  font-size: 0.84rem;
+}
+
+.sliding-pattern-header > code {
+  max-width: 330px;
+  border: 1px solid color-mix(in srgb, var(--pattern-accent) 32%, transparent);
+  border-radius: 7px;
+  background: var(--pattern-soft);
+  color: var(--pattern-accent);
+  padding: 0.58rem 0.68rem;
+  font: 700 0.69rem/1.45 "IBM Plex Mono", "Courier New", monospace;
+  text-align: right;
+}
+
+.sliding-pattern-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.72rem 1rem;
+}
+
+.sliding-pattern-tabs button {
+  min-width: 0;
+  border: 1px solid rgba(31, 67, 82, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #36565e;
+  cursor: pointer;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.52rem 0.56rem;
+  text-align: left;
+}
+
+.sliding-pattern-tabs button:hover {
+  border-color: color-mix(in srgb, var(--pattern-accent) 48%, transparent);
+}
+
+.sliding-pattern-tabs button.active {
+  border-color: var(--pattern-accent);
+  background: var(--pattern-soft);
+  box-shadow: inset 0 -3px var(--pattern-accent);
+}
+
+.sliding-pattern-tabs span {
+  color: var(--pattern-accent);
+  font: 800 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.sliding-pattern-tabs strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sliding-pattern-summary {
+  border-top: 1px solid rgba(31, 67, 82, 0.1);
+  border-bottom: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: 0.8fr 0.9fr 1.5fr;
+  gap: 0.5rem;
+  padding: 0.72rem 1rem;
+}
+
+.sliding-pattern-summary > div {
+  min-height: 72px;
+  border: 1px solid rgba(31, 67, 82, 0.13);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  display: grid;
+  align-content: center;
+  gap: 0.16rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.sliding-pattern-summary span,
+.sliding-pattern-flow span {
+  color: #6b8083;
+  font: 700 0.61rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.sliding-pattern-summary strong {
+  color: #193f47;
+  font-size: 0.8rem;
+}
+
+.sliding-pattern-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1.25fr auto 1fr;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem 0.95rem;
+}
+
+.sliding-pattern-flow > div {
+  min-height: 92px;
+  border-left: 4px solid var(--pattern-accent);
+  border-radius: 7px;
+  background: var(--pattern-soft);
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: 0.58rem 0.68rem;
+}
+
+.sliding-pattern-flow strong {
+  color: #244a4b;
+  font-size: 0.78rem;
+}
+
+.sliding-pattern-flow small {
+  color: #61777a;
+  font-size: 0.67rem;
+}
+
+.sliding-pattern-flow > b {
+  align-self: center;
+  color: var(--pattern-accent);
+  font-size: 1.15rem;
+}
+
+@media (max-width: 760px) {
+  .sliding-pattern-header {
+    display: grid;
+  }
+
+  .sliding-pattern-header > code {
+    max-width: none;
+    text-align: left;
+  }
+
+  .sliding-pattern-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sliding-pattern-summary,
+  .sliding-pattern-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .sliding-pattern-flow > b {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
 }
 
 /* ── 3Sum / two pointers visual ──────────────────── */

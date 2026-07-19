@@ -3700,19 +3700,19 @@ const LONGEST_SUBSTRING_VALUES = ['a', 'b', 'c', 'a'];
 
 const LONGEST_SUBSTRING_TEMPLATE_LINES = [
   ['loop', 'for right in range(len(items)):'],
-  ['while', '    while candidate_is_invalid(state):'],
+  ['add', '    add(state, items[right])'],
+  ['while', '    while window_is_invalid(state):'],
   ['remove', '        remove(state, items[left])'],
   ['left', '        left += 1'],
-  ['add', '    add(state, items[right])'],
   ['record', '    answer = max(answer, right - left + 1)'],
 ];
 
 const LONGEST_SUBSTRING_FILLED_LINES = [
   ['loop', 'for right in range(len(s)):'],
-  ['while', '    while s[right] in window:'],
-  ['remove', '        window.remove(s[left])'],
+  ['add', '    count[s[right]] += 1'],
+  ['while', '    while count[s[right]] > 1:'],
+  ['remove', '        count[s[left]] -= 1'],
   ['left', '        left += 1'],
-  ['add', '    window.add(s[right])'],
   ['record', '    max_length = max(max_length, right - left + 1)'],
 ];
 
@@ -3720,13 +3720,13 @@ const LONGEST_SUBSTRING_STEPS = [
   {
     phase: '扩张',
     title: 'right = 0：加入 a',
-    detail: 'a 不在 window 中，不需要收缩；执行 window.add(s[right])。',
+    detail: '先执行 count[s[right]] += 1。a 的频次变成 1，窗口仍然合法。',
     left: 0,
     right: 0,
     includedRight: 0,
-    state: '{a}',
+    state: 'a × 1',
     best: 0,
-    activeLines: ['add'],
+    activeLines: ['loop', 'add'],
   },
   {
     phase: '记录',
@@ -3735,40 +3735,40 @@ const LONGEST_SUBSTRING_STEPS = [
     left: 0,
     right: 0,
     includedRight: 0,
-    state: '{a}',
+    state: 'a × 1',
     best: 1,
     activeLines: ['record'],
   },
   {
     phase: '扩张',
     title: 'right = 1：复用窗口并加入 b',
-    detail: 'window 没有清空；在 {a} 上增量加入 b。',
+    detail: 'count 没有清空；b 的频次从 0 变成 1。',
     left: 0,
     right: 1,
     includedRight: 1,
-    state: '{a, b}',
+    state: 'a × 1 · b × 1',
     best: 1,
     activeLines: ['loop', 'add'],
   },
   {
     phase: '记录',
     title: '记录窗口 ab',
-    detail: '长度是 1 - 0 + 1 = 2，max_length 更新为 2。',
+    detail: '所有频次都不超过 1。长度是 1 - 0 + 1 = 2。',
     left: 0,
     right: 1,
     includedRight: 1,
-    state: '{a, b}',
+    state: 'a × 1 · b × 1',
     best: 2,
     activeLines: ['record'],
   },
   {
     phase: '扩张',
     title: 'right = 2：继续加入 c',
-    detail: '仍然不重复，window 从 {a, b} 增量变成 {a, b, c}。',
+    detail: 'c 的频次从 0 变成 1，旧状态继续复用。',
     left: 0,
     right: 2,
     includedRight: 2,
-    state: '{a, b, c}',
+    state: 'a × 1 · b × 1 · c × 1',
     best: 2,
     activeLines: ['loop', 'add'],
   },
@@ -3779,55 +3779,42 @@ const LONGEST_SUBSTRING_STEPS = [
     left: 0,
     right: 2,
     includedRight: 2,
-    state: '{a, b, c}',
+    state: 'a × 1 · b × 1 · c × 1',
     best: 3,
     activeLines: ['record'],
   },
   {
-    phase: '检测',
-    title: 'right = 3：候选 a 重复',
-    detail: '新 a 还没有加入；while 发现 a 已在 window 中，因此 right 停住，开始移动 left。',
+    phase: '扩张',
+    title: 'right = 3：先加入第二个 a',
+    detail: 'a 的频次变成 2，while count[s[right]] > 1 被触发。',
     left: 0,
     right: 3,
-    includedRight: 2,
-    candidate: true,
+    includedRight: 3,
     invalid: true,
-    state: '{a, b, c}',
+    state: 'a × 2 · b × 1 · c × 1',
     best: 3,
-    activeLines: ['loop', 'while'],
+    activeLines: ['loop', 'add', 'while'],
   },
   {
     phase: '收缩',
     title: '移除旧 a，left 从 0 变成 1',
-    detail: '先 remove(s[left])，再 left += 1。候选 a 不再重复，while 结束。',
+    detail: 'count[s[left]] 减 1 后，a 的频次恢复为 1；再让 left += 1。',
     left: 1,
     right: 3,
-    includedRight: 2,
-    candidate: true,
+    includedRight: 3,
     removedIndex: 0,
-    state: '{b, c}',
+    state: 'a × 1 · b × 1 · c × 1',
     best: 3,
     activeLines: ['remove', 'left'],
   },
   {
-    phase: '扩张',
-    title: '把候选 a 加入恢复后的窗口',
-    detail: '现在 window 是 {b, c}，可以安全加入 s[right]，窗口变成 bca。',
-    left: 1,
-    right: 3,
-    includedRight: 3,
-    state: '{a, b, c}',
-    best: 3,
-    activeLines: ['add'],
-  },
-  {
     phase: '记录',
     title: '记录窗口 bca，最优值仍是 3',
-    detail: '当前长度是 3 - 1 + 1 = 3。right 没有回头，window 也没有重建。',
+    detail: 'while 已结束，窗口重新合法。right 没有回头，count 也没有重建。',
     left: 1,
     right: 3,
     includedRight: 3,
-    state: '{a, b, c}',
+    state: 'a × 1 · b × 1 · c × 1',
     best: 3,
     activeLines: ['record'],
   },
@@ -3861,7 +3848,7 @@ function LongestSubstringVisual() {
 
       <div className="longest-substring-code-map">
         <div>
-          <strong>最长合法窗口模板</strong>
+          <strong>万能模板骨架</strong>
           <pre><code>{renderCode(LONGEST_SUBSTRING_TEMPLATE_LINES)}</code></pre>
         </div>
         <div>
@@ -3904,9 +3891,9 @@ function LongestSubstringVisual() {
           <small>s[{step.left}:{step.includedRight + 1}]</small>
         </div>
         <div className={step.invalid ? 'invalid' : ''}>
-          <span>set state</span>
+          <span>frequency state</span>
           <strong>{step.state}</strong>
-          <small>{step.invalid ? '候选字符已经存在' : '窗口内没有重复'}</small>
+          <small>{step.invalid ? '存在频次大于 1' : '所有频次都不超过 1'}</small>
         </div>
         <div>
           <span>max_length</span>
@@ -3919,12 +3906,12 @@ function LongestSubstringVisual() {
         <div>
           <strong>外层 loop left</strong>
           <code>abc… · bc… · c…</code>
-          <span>每个起点重建 set，right 反复扫描：O(n²)</span>
+          <span>每个起点重建 count，right 反复扫描：O(n²)</span>
         </div>
         <div>
           <strong>外层 loop right</strong>
           <code>R → n 次 · L → 最多 n 次</code>
-          <span>窗口和 set 跨轮复用，总移动不超过 2n：O(n)</span>
+          <span>窗口和 count 跨轮复用，总移动不超过 2n：O(n)</span>
         </div>
       </div>
 
@@ -3951,6 +3938,157 @@ function LongestSubstringVisual() {
         >
           下一步
         </button>
+      </div>
+    </section>
+  );
+}
+
+const SLIDING_WINDOW_PATTERNS = [
+  {
+    id: 'unique',
+    number: '3',
+    title: 'Longest Substring',
+    shape: '变长 · 求最长合法',
+    state: 'count',
+    add: 'count[s[right]] += 1',
+    trigger: 'count[s[right]] > 1',
+    shrink: 'count[s[left]] -= 1，再移动 left',
+    beforeRecord: '不记录',
+    afterRecord: '更新 max',
+    invariant: '窗口内每个字符至多出现一次',
+    formula: 'invalid = count[s[right]] > 1',
+    tone: 'green',
+  },
+  {
+    id: 'replace',
+    number: '424',
+    title: 'Character Replacement',
+    shape: '变长 · 求最长合法',
+    state: 'count + max_freq',
+    add: '更新字符频次与最高频次',
+    trigger: '需要替换的字符超过 k',
+    shrink: '左端字符频次减 1',
+    beforeRecord: '不记录',
+    afterRecord: '更新 max',
+    invariant: 'len(window) - max_freq <= k',
+    formula: 'replacements = length - max_freq',
+    tone: 'amber',
+  },
+  {
+    id: 'permutation',
+    number: '567',
+    title: 'Permutation in String',
+    shape: '定长 · 长度为 |s1|',
+    state: 'need[26] + window[26]',
+    add: '加入 s2[right]',
+    trigger: '窗口长度超过 |s1|',
+    shrink: '恰好移出一个左端字符',
+    beforeRecord: '不记录',
+    afterRecord: '长度正确时比较频次表',
+    invariant: '窗口始终不长于 |s1|',
+    formula: 'match = window == need',
+    tone: 'blue',
+  },
+  {
+    id: 'minimum',
+    number: '76',
+    title: 'Minimum Window',
+    shape: '变长 · 求最短满足',
+    state: 'need/window + have',
+    add: '达到某字符阈值时 have += 1',
+    trigger: 'have == required',
+    shrink: '更新 have/window，再删除左端字符',
+    beforeRecord: '更新 min',
+    afterRecord: '不记录',
+    invariant: 'have 只数已经达到所需频次的字符种类',
+    formula: 'valid = have == len(need)',
+    tone: 'rose',
+  },
+  {
+    id: 'maximum',
+    number: '239',
+    title: 'Sliding Window Maximum',
+    shape: '定长 · 每窗求最大值',
+    state: '递减 deque，存下标',
+    add: '删弱势队尾，再 append right',
+    trigger: '窗口长度超过 k',
+    shrink: '若队首是 left 就删除，再移动 left',
+    beforeRecord: '不记录',
+    afterRecord: '窗口满 k 后读取 deque[0]',
+    invariant: '下标递增，值递减，队首是最大值',
+    formula: 'maximum = nums[deque[0]]',
+    tone: 'violet',
+  },
+];
+
+function SlidingWindowPatternAtlas() {
+  const [activePattern, setActivePattern] = useState('unique');
+  const pattern = SLIDING_WINDOW_PATTERNS.find(({ id }) => id === activePattern)
+    ?? SLIDING_WINDOW_PATTERNS[0];
+
+  return (
+    <section className={`sliding-pattern-atlas ${pattern.tone}`} aria-label="五道滑动窗口题模板对照">
+      <header className="sliding-pattern-header">
+        <div>
+          <p className="eyebrow">Five problems · one skeleton</p>
+          <h2>题目只是在替换状态、收缩条件和记录时机</h2>
+          <p>切换题目，沿着右扩、判断、while 内、while 后四格读一遍。</p>
+        </div>
+        <code>{pattern.formula}</code>
+      </header>
+
+      <div className="sliding-pattern-tabs" role="tablist" aria-label="选择滑动窗口题目">
+        {SLIDING_WINDOW_PATTERNS.map((candidate) => (
+          <button
+            type="button"
+            className={candidate.id === activePattern ? 'active' : ''}
+            onClick={() => setActivePattern(candidate.id)}
+            role="tab"
+            aria-selected={candidate.id === activePattern}
+            key={candidate.id}
+          >
+            <span>LC {candidate.number}</span>
+            <strong>{candidate.title}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="sliding-pattern-summary">
+        <div>
+          <span>窗口形状</span>
+          <strong>{pattern.shape}</strong>
+        </div>
+        <div>
+          <span>增量状态</span>
+          <strong>{pattern.state}</strong>
+        </div>
+        <div>
+          <span>窗口不变量</span>
+          <strong>{pattern.invariant}</strong>
+        </div>
+      </div>
+
+      <div className="sliding-pattern-flow">
+        <div>
+          <span>1 · right 右扩</span>
+          <strong>{pattern.add}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>2 · should_shrink</span>
+          <strong>{pattern.trigger}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>3 · while 内</span>
+          <strong>收缩前：{pattern.beforeRecord}</strong>
+          <small>remove_left：{pattern.shrink}</small>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>4 · while 后</span>
+          <strong>收缩后：{pattern.afterRecord}</strong>
+        </div>
       </div>
     </section>
   );
@@ -5404,7 +5542,7 @@ function RecordMinimumVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -5436,6 +5574,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'longest-substring-demo') {
     return <LongestSubstringVisual />;
+  }
+
+  if (match?.[1] === 'sliding-window-patterns') {
+    return <SlidingWindowPatternAtlas />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

@@ -264,8 +264,8 @@ describe('App', () => {
       target: { value: '6' },
     });
 
-    expect(within(visual).getByText('right = 3：候选 a 重复')).toBeInTheDocument();
-    expect(within(visual).getByText('候选字符已经存在')).toBeInTheDocument();
+    expect(within(visual).getByText('right = 3：先加入第二个 a')).toBeInTheDocument();
+    expect(within(visual).getByText('存在频次大于 1')).toBeInTheDocument();
 
     fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
     expect(within(visual).getByText('移除旧 a，left 从 0 变成 1')).toBeInTheDocument();
