@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Let an active production deployment finish before the next run starts.
+  cancel-in-progress: false
 
 jobs:
   build:
