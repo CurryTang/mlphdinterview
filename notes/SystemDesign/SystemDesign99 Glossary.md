@@ -1,6 +1,6 @@
 # System Design 99 · 高频术语整合
 
-课程位置：[[SystemDesign08 LLM Async RL Platform|08 异步 LLM RL 平台]] → 本篇；课程入口见 [[SystemDesign00 Overview|00 方法总览]]。
+课程位置：[[SystemDesign09 Consistent Hashing|09 一致性哈希]] → 本篇；课程入口见 [[SystemDesign00 Overview|00 方法总览]]。
 
 这页放在 System Design 的最后，作为查词和写 design doc 时的速查表。重点不是把词背下来，而是知道一个词在解决什么问题、什么时候值得引入、代价是什么。
 
@@ -50,7 +50,7 @@ concurrency ~= QPS * average latency in seconds
 | sharding | 分片 | 按 user_id、region、time 等把数据拆到不同节点 | Shard by user_id to distribute writes. |
 | partitioning | 分区 | 大表按范围、hash、list 拆分 | Partition event tables by time. |
 | hot partition / hot shard | 热分区 / 热分片 | 某个分片流量远高于其他分片 | Celebrity users can create hot partitions. |
-| consistent hashing | 一致性哈希 | 增减节点时减少数据迁移 | Consistent hashing is useful for cache routing. |
+| consistent hashing | [[SystemDesign09 Consistent Hashing|一致性哈希]] | 增减节点时减少数据迁移 | Consistent hashing is useful for cache routing. |
 | resharding | 重新分片 | 分片规则变化后的数据迁移 | We need an online resharding plan. |
 | data locality | 数据局部性 | 相关数据尽量放近 | Co-locate related data to reduce cross-node reads. |
 | denormalization | 反范式化 | 为读性能冗余存储数据 | Denormalize user name into posts to avoid a join on the hot path. |

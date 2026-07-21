@@ -1,6 +1,6 @@
 # System Design 08 · 异步 LLM RL 训练平台
 
-课程位置：[[SystemDesign07 Photo Sharing Feed|07 图片分享与 Feed]] → 本篇 → [[SystemDesign99 Glossary|99 术语表]]
+课程位置：[[SystemDesign07 Photo Sharing Feed|07 图片分享与 Feed]] → 本篇 → [[SystemDesign09 Consistent Hashing|09 一致性哈希]]
 
 这是一道偏 ML Systems 的 System Design 题。算法不是主角，但也不能装作算法不存在。异步队列每深一层，rollout 就可能旧一版；这个系统变量会直接进入 PPO / GRPO 的数据分布。
 

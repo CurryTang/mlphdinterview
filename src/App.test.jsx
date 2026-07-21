@@ -50,6 +50,8 @@ describe('App', () => {
               ? '# System Design 07 · 设计图片分享与 Home Feed'
             : requestUrl.includes('SystemDesign08')
               ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
+            : requestUrl.includes('SystemDesign09')
+              ? '# System Design 09 · 一致性哈希\n\nSemantic ID 和一致性哈希解决不同层的问题。'
             : chineseContent,
       };
     });
@@ -342,7 +344,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('11 notes in this section')).toBeInTheDocument();
+    expect(screen.getByText('12 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态设计范式/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 02 · 数据库基本范式/i })).toBeInTheDocument();
@@ -352,6 +354,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /System Design 06 · 异步消息系统/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 08 · 异步 LLM RL 训练平台/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库基本范式/i }));
@@ -389,6 +392,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /System Design 08 · 异步 LLM RL 训练平台/ })).toBeInTheDocument();
     expect(screen.getByText(/60 sample admission QPS/)).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign08 LLM Async RL Platform.md')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i }));
+
+    expect(await screen.findByRole('heading', { name: /System Design 09 · 一致性哈希/ })).toBeInTheDocument();
+    expect(screen.getByText(/Semantic ID 和一致性哈希解决不同层的问题/)).toBeInTheDocument();
+    expect(screen.getAllByText('SystemDesign09 Consistent Hashing.md')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
 

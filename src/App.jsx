@@ -2016,6 +2016,12 @@ const systemDesignNoteDefinitions = [
     null,
     { directory: 'SystemDesign', category: 'ML Infrastructure', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'System Design 09 · 一致性哈希',
+    'SystemDesign09 Consistent Hashing.md',
+    null,
+    { directory: 'SystemDesign', category: 'Distributed Systems', difficulty: 'Medium' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',

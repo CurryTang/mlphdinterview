@@ -20,6 +20,7 @@ System design 面试不是背一张“大厂架构图”。面试官给出的题
 | 06 | [[SystemDesign06 Async Messaging Systems|异步消息系统]] | Queue、Pub/Sub、Kafka、Event Bus 怎么区分 |
 | 07 | [[SystemDesign07 Photo Sharing Feed|图片分享与 Feed]] | 把通用方法用在经典互联网系统 |
 | 08 | [[SystemDesign08 LLM Async RL Platform|异步 LLM RL 平台]] | 把通用方法用在 ML infrastructure |
+| 09 | [[SystemDesign09 Consistent Hashing|一致性哈希]] | 动态集群怎样稳定地路由 key、减少数据迁移 |
 | 99 | [[SystemDesign99 Glossary|术语表]] | 面试前快速查词，不承担系统教学 |
 
 第一次读可以按编号走。准备面试时不用从头翻：先看本篇，然后挑一个案例完整讲一遍，卡住的地方再回基础章节。
