@@ -15,9 +15,8 @@
 4. [[#四、工程实现不能只有一个环]]
 5. [[#五、它用在哪里]]
 6. [[#六、它没有解决什么]]
-7. [[#七、和推荐系统的 Semantic ID 有什么关系]]
-8. [[#八、面试时怎么回答]]
-9. [[#九、自测题]]
+7. [[#七、面试时怎么回答]]
+8. [[#八、自测题]]
 
 ---
 
@@ -216,77 +215,13 @@ stream_id  -> 某个消费 worker
 
 面试中如果只画一个环就结束，通常还差四件事：virtual nodes、replication、membership 和 migration。
 
-## 七、和推荐系统的 Semantic ID 有什么关系
-
-名字很像，问题不一样。两者没有直接的算法继承关系，但可以出现在同一条推荐链路中。它们都把一个对象映射到另一个空间，优化目标不同。
-
-### 7.1 Semantic ID 在做什么
-
-传统推荐常给每个 item 一个任意整数 ID。Semantic ID 则先从文本、图片或交互信息得到 embedding，再把连续向量量化为一串离散 code：
-
-```text
-item content
-    -> encoder
-    -> embedding
-    -> vector quantizer / RQ-VAE
-    -> Semantic ID = (c1, c2, c3, ...)
-```
-
-语义接近的 item 可能共享前缀或部分 code。像 TIGER 这样的生成式推荐模型，会把用户历史表示成 Semantic ID 序列，再自回归生成下一个 item 的 Semantic ID。
-
-### 7.2 两者的目标不同
-
-| 维度 | 一致性哈希 | Semantic ID |
-|---|---|---|
-| 输入 | cache key、user ID、item ID、tenant ID | item embedding 或多模态表示 |
-| 输出 | 负责请求或数据的物理节点 | 有语义结构的离散 code 序列 |
-| 希望相近对象靠近吗 | 通常不希望，哈希应尽量均匀打散 | 通常希望，语义相近 item 可共享 code 或前缀 |
-| 节点扩缩容时要稳定吗 | 是，目标是少迁移 | 不是它的主要问题 |
-| 主要用途 | 基础设施路由与分片 | 推荐模型的 item 表示和生成目标 |
-
-因此，不应该说 Semantic ID 是一致性哈希，也不应该用普通 hash 直接生成 Semantic ID。普通 hash 会刻意打散相似 item，恰好破坏 Semantic ID 想保留的结构。
-
-### 7.3 它们可以怎样配合
-
-可以把 Semantic ID 当作逻辑层标识，再用一致性哈希决定物理存储位置：
-
-```mermaid
-flowchart LR
-  I["item content"] --> E["encoder + quantizer"]
-  E --> S["Semantic ID"]
-  S --> M["recommendation model / retrieval index"]
-  S --> H["routing key"]
-  H --> C["consistent hash"]
-  C --> N["feature or index shard"]
-```
-
-这两层不要混成一个问题：
-
-```text
-Semantic ID 回答：这个 item 在模型的离散语义空间里叫什么？
-一致性哈希回答：保存或处理这个 item 的机器是哪台？
-```
-
-是否对完整 Semantic ID 做 hash，要看访问模式。
-
-如果主要按完整 ID 点查，希望各 shard 负载均匀，可以 hash 完整 ID。代价是语义相近的 item 会被打散。
-
-如果查询依赖 Semantic ID 前缀，例如同一粗粒度语义簇需要放在一起，就不能直接 hash 整串 ID。常见思路是先按前缀路由到逻辑 semantic partition，再在 partition 内用一致性哈希分配副本或 worker：
-
-```text
-(c1, c2)          -> semantic partition
-(c1, c2, item_id) -> partition 内的物理分片
-```
-
-这种设计保留了语义局部性，但也会引入数据倾斜。热门语义簇可能远大于其他簇，需要拆分热 partition、复制热门数据，或者在逻辑 partition 和物理节点之间加一层可调整的映射表。
-
-## 八、面试时怎么回答
+## 七、面试时怎么回答
 
 可以用下面这段作为两分钟版本：
 
-> 一致性哈希把节点和 key 放到同一个哈希空间，key 由顺时针的第一个节点负责。它相对 `hash(key) % N` 的优势是节点增加或退出时只影响相邻区间，因此大多数 key 不用换节点。工程上通常要加入虚拟节点改善负载分布，再补上副本、成员配置版本、故障检测和数据迁移。它适合分布式缓存、KV 分片以及需要保持本地状态的请求路由，但不能单独解决热 key、强一致性和复制问题。Semantic ID 属于推荐模型的表示层，它保留语义结构；一致性哈希属于基础设施路由层，它追求均匀分散和扩缩容稳定。两者可以串起来使用，但不是同一种 ID。
+> 一致性哈希把节点和 key 放到同一个哈希空间，key 由顺时针的第一个节点负责。它相对 `hash(key) % N` 的优势是节点增加或退出时只影响相邻区间，因此大多数 key 不用换节点。工程上通常要加入虚拟节点改善负载分布，再补上副本、成员配置版本、故障检测和数据迁移。它适合分布式缓存、KV 分片以及需要保持本地状态的请求路由，但不能单独解决热 key、强一致性和复制问题。
 
-## 九、自测题
+## 八、自测题
 
 1. 为什么 `hash(key) % N` 在扩容时会让大量 key 改变归属？
 2. 增加一个环节点时，哪些区间的 key 需要迁移？
@@ -294,8 +229,6 @@ Semantic ID 回答：这个 item 在模型的离散语义空间里叫什么？
 4. 为什么一致性哈希不能保证 strong consistency？
 5. 热 key 为什么可能在 key 数量均匀时仍然压垮一个节点？
 6. Redis Cluster 为什么不属于经典的一致性哈希环？
-7. 为什么直接 hash Semantic ID 会破坏语义局部性？
-8. 什么访问模式适合先按 Semantic ID 前缀分区，再做物理分片？
 
 ## 延伸阅读
 
@@ -303,4 +236,3 @@ Semantic ID 回答：这个 item 在模型的离散语义空间里叫什么？
 - Giuseppe DeCandia et al., [Dynamo: Amazon's Highly Available Key-value Store](https://www.amazon.science/publications/dynamo-amazons-highly-available-key-value-store), SOSP 2007.
 - John Lamping and Eric Veach, [A Fast, Minimal Memory, Consistent Hash Algorithm](https://arxiv.org/abs/1406.2294), 2014.
 - Redis, [Scale with Redis Cluster](https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/).
-- Shashank Rajput et al., [Recommender Systems with Generative Retrieval](https://papers.neurips.cc/paper_files/paper/2023/file/20dcab0f14046a5c6b02b61da9f13229-Paper-Conference.pdf), NeurIPS 2023.

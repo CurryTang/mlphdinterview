@@ -51,7 +51,7 @@ describe('App', () => {
             : requestUrl.includes('SystemDesign08')
               ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
             : requestUrl.includes('SystemDesign09')
-              ? '# System Design 09 · 一致性哈希\n\nSemantic ID 和一致性哈希解决不同层的问题。'
+              ? '# System Design 09 · 一致性哈希\n\n节点变化时只迁移相邻区间。'
             : chineseContent,
       };
     });
@@ -396,7 +396,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i }));
 
     expect(await screen.findByRole('heading', { name: /System Design 09 · 一致性哈希/ })).toBeInTheDocument();
-    expect(screen.getByText(/Semantic ID 和一致性哈希解决不同层的问题/)).toBeInTheDocument();
+    expect(screen.getByText(/节点变化时只迁移相邻区间/)).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign09 Consistent Hashing.md')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
