@@ -2043,10 +2043,46 @@ const systemDesignNotes = systemDesignNoteDefinitions.map((definition) => ({
 
 const businessAlgorithmNoteDefinitions = [
   createTutorialDefinition(
-    '业务算法八股 · TODO',
-    'Business Algorithm TODO.md',
+    '业务算法 00 · 系统总览与数据闭环',
+    'BusinessAlgorithm00 System Overview.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'TODO', difficulty: 'TODO' },
+    { directory: 'BusinessAlgorithm', category: 'System Map', difficulty: 'Start Here' },
+  ),
+  createTutorialDefinition(
+    '业务算法 01 · 召回与检索',
+    'BusinessAlgorithm01 Retrieval.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Retrieval', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '业务算法 02 · 排序建模',
+    'BusinessAlgorithm02 Ranking.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Ranking', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '业务算法 03 · 列表决策',
+    'BusinessAlgorithm03 List Decision.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Reranking', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '业务算法 04 · 生成式搜索与推荐',
+    'BusinessAlgorithm04 Generative Algorithms.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Generative', difficulty: 'Frontier' },
+  ),
+  createTutorialDefinition(
+    '业务算法 05 · 系统设计与上线验证',
+    'BusinessAlgorithm05 System Design.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
+  ),
+  createTutorialDefinition(
+    '业务算法 06 · Quick Coding',
+    'BusinessAlgorithm06 Quick Coding.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Practice', difficulty: '8 Problems' },
   ),
 ];
 
@@ -2108,8 +2144,8 @@ const noteSections = [
   },
   {
     id: 'business-algorithm',
-    title: '业务算法八股',
-    description: 'TODO: recommendation, search, ads, ranking, and experimentation basics',
+    title: '业务算法',
+    description: '从一次线上请求出发，拆解召回、排序、列表决策、生成式方法与实验闭环',
     notes: businessAlgorithmNotes,
   },
   {
@@ -5077,6 +5113,274 @@ function MessageQueueVisual() {
   );
 }
 
+const BUSINESS_ALGORITHM_PATHS = {
+  cascade: {
+    label: '传统级联',
+    eyebrow: 'MULTI-STAGE FUNNEL',
+    title: '亿级候选，沿延迟预算逐层收窄',
+    summary: '越靠前越重覆盖，越靠后越重精度；每一层都把候选和归因交给下一层。',
+    stages: [
+      {
+        id: 'recall',
+        step: '01',
+        title: '多路召回',
+        short: 'Recall',
+        volume: '10⁸ → 3k',
+        latency: '10–30 ms',
+        input: '全量 item、query / 用户历史、倒排与向量索引',
+        output: '带召回通道和原始分数的数千候选',
+        compute: 'BM25、ItemCF、双塔 ANN、热门与关注通道并行取回',
+        failure: '正例没进候选，后续再强的排序也救不回来。',
+        chapter: '第 3–5 章 · 召回与检索',
+        noteId: 'BusinessAlgorithm01 Retrieval.md',
+      },
+      {
+        id: 'filter',
+        step: '02',
+        title: '合并与过滤',
+        short: 'Merge',
+        volume: '3k → 1.8k',
+        latency: '5–15 ms',
+        input: '多路候选、库存、地域、安全、已看记录',
+        output: '去重后的合法候选与通道归因',
+        compute: '去重、配额、硬规则、轻量特征补齐',
+        failure: '过滤过严会形成隐蔽误杀；过滤过松会浪费后级预算。',
+        chapter: '第 15 章 · 系统设计',
+        noteId: 'BusinessAlgorithm05 System Design.md',
+      },
+      {
+        id: 'prerank',
+        step: '03',
+        title: '粗排',
+        short: 'Pre-rank',
+        volume: '1.8k → 300',
+        latency: '10–25 ms',
+        input: '候选、低成本用户与 item 特征',
+        output: '保留给精排的数百候选',
+        compute: '蒸馏模型、轻量 DNN / GBDT、分数校准',
+        failure: '粗排与精排目标错位时，会提前删掉真正的高价值 item。',
+        chapter: '第 6–9 章 · 排序建模',
+        noteId: 'BusinessAlgorithm02 Ranking.md',
+      },
+      {
+        id: 'rank',
+        step: '04',
+        title: '精排',
+        short: 'Rank',
+        volume: '300 → 80',
+        latency: '25–60 ms',
+        input: '实时特征、交叉特征和候选集合',
+        output: 'CTR、CVR、时长等多目标分数',
+        compute: 'Wide & Deep、DeepFM、DCN、多任务学习与分数融合',
+        failure: '训练标签、曝光偏差或线上特征错位会直接扭曲最终顺序。',
+        chapter: '第 6–9 章 · 排序建模',
+        noteId: 'BusinessAlgorithm02 Ranking.md',
+      },
+      {
+        id: 'slate',
+        step: '05',
+        title: '列表决策',
+        short: 'Slate',
+        volume: '80 → 20',
+        latency: '5–20 ms',
+        input: '排序结果、规则、探索预算和列表上下文',
+        output: '最终展示列表与完整曝光日志',
+        compute: 'MMR / DPP、去重、频控、业务规则、bandit 探索',
+        failure: '逐 item 最优不等于整页最优；重复、疲劳和规则冲突都在这里暴露。',
+        chapter: '第 10–11 章 · 列表决策',
+        noteId: 'BusinessAlgorithm03 List Decision.md',
+      },
+    ],
+  },
+  generative: {
+    label: '端到端生成',
+    eyebrow: 'GENERATIVE PATH',
+    title: '把检索与排序目标并入一次序列生成',
+    summary: '模型可以统一更多阶段，但 SID、约束解码、库存安全规则和反馈闭环仍然存在。',
+    stages: [
+      {
+        id: 'context',
+        step: '01',
+        title: '统一上下文',
+        short: 'Context',
+        volume: 'query + history',
+        latency: 'online',
+        input: 'query、行为序列、场景、用户与 item 表示',
+        output: '可供序列模型消费的统一 token / embedding',
+        compute: '序列化用户行为，融合搜索意图与上下文',
+        failure: '上下文过长、时间信息丢失或训练服务格式不一致都会污染生成。',
+        chapter: '第 12–14 章 · 生成式方法',
+        noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
+      },
+      {
+        id: 'generator',
+        step: '02',
+        title: '统一生成器',
+        short: 'Generate',
+        volume: 'one model',
+        latency: 'decode budget',
+        input: '统一上下文和当前策略',
+        output: 'item token、Semantic ID 或整个推荐 slate',
+        compute: 'HSTU / OneRec / OneSearch 类序列建模与自回归解码',
+        failure: '“端到端”范围因系统而异，不能默认所有在线服务和规则都消失。',
+        chapter: '第 12–14 章 · 生成式方法',
+        noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
+      },
+      {
+        id: 'materialize',
+        step: '03',
+        title: '标识物化',
+        short: 'Materialize',
+        volume: 'SID → items',
+        latency: 'index lookup',
+        input: '生成的 item ID / Semantic ID',
+        output: '真实、可展示且可追踪版本的候选',
+        compute: 'SID codebook、posting、版本对齐与冲突处理',
+        failure: '量化冲突、空 posting 或索引版本错位会让合法 token 找不到真实 item。',
+        chapter: '第 12 章 · Semantic ID',
+        noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
+      },
+      {
+        id: 'align',
+        step: '04',
+        title: '偏好对齐',
+        short: 'Align',
+        volume: 'CE → DPO / RL',
+        latency: 'offline train',
+        input: '正负偏好、rollout 和下游 reward',
+        output: '更符合列表与业务目标的生成策略',
+        compute: 'SFT、DPO、GRPO / PPO 与不可微系统指标',
+        failure: 'reward 设计不完整会诱发投机；off-policy 数据会放大分布偏移。',
+        chapter: '第 14 章 · 偏好与 RL',
+        noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
+      },
+      {
+        id: 'guardrail',
+        step: '05',
+        title: '约束与服务',
+        short: 'Serve',
+        volume: 'valid top N',
+        latency: 'P99 budget',
+        input: '生成结果、库存、安全和业务规则',
+        output: '最终列表、降级结果和曝光日志',
+        compute: '约束解码、过滤、缓存、fallback 与观测',
+        failure: '模型统一了目标，不代表确定性约束、容灾和线上验证可以省略。',
+        chapter: '第 15 章 · 系统设计',
+        noteId: 'BusinessAlgorithm05 System Design.md',
+      },
+    ],
+  },
+};
+
+function BusinessAlgorithmMap() {
+  const [mode, setMode] = useState('cascade');
+  const [activeStageId, setActiveStageId] = useState('recall');
+  const path = BUSINESS_ALGORITHM_PATHS[mode];
+  const activeStage = path.stages.find((stage) => stage.id === activeStageId) ?? path.stages[0];
+
+  const selectMode = (nextMode) => {
+    setMode(nextMode);
+    setActiveStageId(BUSINESS_ALGORITHM_PATHS[nextMode].stages[0].id);
+  };
+
+  return (
+    <section className="biz-map" data-mode={mode} aria-label="推荐与搜索业务算法系统地图">
+      <header className="biz-map-header">
+        <div className="biz-map-title">
+          <p className="eyebrow">{path.eyebrow}</p>
+          <h2>{path.title}</h2>
+          <p>{path.summary}</p>
+        </div>
+        <div className="biz-mode-switch" role="group" aria-label="选择系统架构">
+          {Object.entries(BUSINESS_ALGORITHM_PATHS).map(([key, option]) => (
+            <button
+              type="button"
+              key={key}
+              className={mode === key ? 'active' : ''}
+              aria-pressed={mode === key}
+              onClick={() => selectMode(key)}
+            >
+              <span>{key === 'cascade' ? '01' : '02'}</span>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className="biz-request-strip">
+        <div>
+          <small>REQUEST</small>
+          <strong>query · user · context</strong>
+        </div>
+        <span className="biz-pulse" aria-hidden="true" />
+        <p>{mode === 'cascade' ? '候选漏斗在每一层显式收窄' : '统一模型生成，外部系统负责物化与约束'}</p>
+        <div>
+          <small>RESPONSE</small>
+          <strong>top 20 + trace</strong>
+        </div>
+      </div>
+
+      <div className="biz-stage-flow" aria-label={`${path.label}阶段`}>
+        {path.stages.map((stage, index) => (
+          <button
+            type="button"
+            key={stage.id}
+            className={`biz-stage ${activeStage.id === stage.id ? 'active' : ''}`}
+            onClick={() => setActiveStageId(stage.id)}
+            aria-pressed={activeStage.id === stage.id}
+            style={{ '--stage-index': index }}
+          >
+            <span className="biz-stage-number">{stage.step}</span>
+            <strong>{stage.title}</strong>
+            <small>{stage.short}</small>
+            <b>{stage.volume}</b>
+          </button>
+        ))}
+      </div>
+
+      <div className="biz-inspector" aria-live="polite">
+        <div className="biz-inspector-lead">
+          <span>{activeStage.step} / {activeStage.short}</span>
+          <h3>{activeStage.title}</h3>
+          <p>{activeStage.compute}</p>
+          <a href={`#${encodeURIComponent(activeStage.noteId)}`}>{activeStage.chapter} →</a>
+        </div>
+        <dl className="biz-io-grid">
+          <div>
+            <dt>INPUT</dt>
+            <dd>{activeStage.input}</dd>
+          </div>
+          <div>
+            <dt>OUTPUT</dt>
+            <dd>{activeStage.output}</dd>
+          </div>
+          <div>
+            <dt>BUDGET</dt>
+            <dd>{activeStage.latency}</dd>
+          </div>
+        </dl>
+        <div className="biz-failure-card">
+          <small>FAILURE TO WATCH</small>
+          <p>{activeStage.failure}</p>
+        </div>
+      </div>
+
+      <footer className="biz-feedback-loop">
+        <div className="biz-feedback-label">
+          <span>↺</span>
+          <div><small>SHARED FEEDBACK LOOP</small><strong>模型之外，系统仍要闭环</strong></div>
+        </div>
+        <ol>
+          <li><span>01</span>曝光与交互日志</li>
+          <li><span>02</span>样本与特征</li>
+          <li><span>03</span>训练与评估</li>
+          <li><span>04</span>模型 / 索引版本</li>
+        </ol>
+      </footer>
+    </section>
+  );
+}
+
 const OVERVIEW_STAGES = {
   edge: {
     label: '入口层',
@@ -5553,7 +5857,7 @@ function RecordMinimumVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -5609,6 +5913,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'message-queue-demo') {
     return <MessageQueueVisual />;
+  }
+
+  if (match?.[1] === 'business-algorithm-map') {
+    return <BusinessAlgorithmMap />;
   }
 
   if (match?.[1] === 'system-design-overview-visual') {

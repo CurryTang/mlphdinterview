@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760">
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#5B8CCB"/></marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#8B6CC4"/></marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#7B8794"/></marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#D69E2E"/></marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #25364A; }
+      .panel-title { font-size: 22px; font-weight: 700; }
+      .node-title { font-size: 17px; font-weight: 700; }
+      .node-sub { font-size: 14px; }
+      .light { fill: #FFFFFF; }
+      .line-blue { fill: none; stroke: #5B8CCB; stroke-width: 3; marker-end: url(#arrow-blue); }
+      .line-purple { fill: none; stroke: #8B6CC4; stroke-width: 3; marker-end: url(#arrow-purple); }
+      .line-gray { fill: none; stroke: #7B8794; stroke-width: 2.5; stroke-dasharray: 8 6; marker-end: url(#arrow-gray); }
+      .line-orange { fill: none; stroke: #D69E2E; stroke-width: 3; marker-end: url(#arrow-orange); }
+    </style>
+  </defs>
+  <rect width="1600" height="760" rx="24" fill="#F8FAFC"/>
+  <rect x="355" y="45" width="920" height="190" rx="22" fill="#EAF2FF" stroke="#7AA2E3" stroke-width="2.5"/>
+  <text x="385" y="80" class="panel-title" fill="#24456B">传统多阶段在线链路</text>
+  <rect x="355" y="265" width="920" height="155" rx="22" fill="#F3EDFF" stroke="#9B7BD3" stroke-width="2.5"/>
+  <text x="385" y="300" class="panel-title" fill="#503C78">端到端生成式替代路径</text>
+  <rect x="45" y="465" width="1430" height="245" rx="22" fill="#F1F5F9" stroke="#9AA8B6" stroke-width="2.5"/>
+  <text x="75" y="505" class="panel-title">共享的数据、服务与反馈闭环</text>
+
+  <rect x="45" y="155" width="140" height="76" rx="16" fill="#173B57"/>
+  <text x="115" y="185" text-anchor="middle" class="node-title light">请求</text>
+  <text x="115" y="210" text-anchor="middle" class="node-sub light">user / query / context</text>
+  <rect x="210" y="155" width="140" height="76" rx="16" fill="#DFF3F0" stroke="#4F9D91" stroke-width="2"/>
+  <text x="280" y="185" text-anchor="middle" class="node-title" fill="#194C45">意图与上下文</text>
+  <text x="280" y="210" text-anchor="middle" class="node-sub" fill="#194C45">历史、场景、query</text>
+
+  <g>
+    <rect x="385" y="120" width="145" height="76" rx="14" fill="#FFFFFF" stroke="#5B8CCB" stroke-width="2"/>
+    <text x="457" y="151" text-anchor="middle" class="node-title">多路召回</text><text x="457" y="177" text-anchor="middle" class="node-sub">全库 → 数千</text>
+    <rect x="565" y="120" width="145" height="76" rx="14" fill="#FFFFFF" stroke="#5B8CCB" stroke-width="2"/>
+    <text x="637" y="151" text-anchor="middle" class="node-title">合并与过滤</text><text x="637" y="177" text-anchor="middle" class="node-sub">去重、库存、安全</text>
+    <rect x="745" y="120" width="130" height="76" rx="14" fill="#FFFFFF" stroke="#5B8CCB" stroke-width="2"/>
+    <text x="810" y="151" text-anchor="middle" class="node-title">粗排</text><text x="810" y="177" text-anchor="middle" class="node-sub">数千 → 数百</text>
+    <rect x="910" y="120" width="130" height="76" rx="14" fill="#FFFFFF" stroke="#5B8CCB" stroke-width="2"/>
+    <text x="975" y="151" text-anchor="middle" class="node-title">精排</text><text x="975" y="177" text-anchor="middle" class="node-sub">多目标打分</text>
+    <rect x="1075" y="120" width="165" height="76" rx="14" fill="#FFFFFF" stroke="#5B8CCB" stroke-width="2"/>
+    <text x="1157" y="151" text-anchor="middle" class="node-title">列表决策</text><text x="1157" y="177" text-anchor="middle" class="node-sub">规则、多样性、探索</text>
+  </g>
+
+  <g>
+    <rect x="405" y="320" width="270" height="70" rx="14" fill="#FFFFFF" stroke="#8B6CC4" stroke-width="2"/>
+    <text x="540" y="348" text-anchor="middle" class="node-title">统一生成模型</text><text x="540" y="374" text-anchor="middle" class="node-sub">HSTU / OneRec / OneSearch</text>
+    <rect x="735" y="320" width="220" height="70" rx="14" fill="#FFFFFF" stroke="#8B6CC4" stroke-width="2"/>
+    <text x="845" y="348" text-anchor="middle" class="node-title">item / SID 序列</text><text x="845" y="374" text-anchor="middle" class="node-sub">约束解码与物化</text>
+    <rect x="1015" y="320" width="210" height="70" rx="14" fill="#FFFFFF" stroke="#8B6CC4" stroke-width="2"/>
+    <text x="1120" y="348" text-anchor="middle" class="node-title">外部护栏</text><text x="1120" y="374" text-anchor="middle" class="node-sub">库存、相关性、安全</text>
+  </g>
+
+  <rect x="1325" y="155" width="150" height="82" rx="16" fill="#2F855A" stroke="#276749" stroke-width="2"/>
+  <text x="1400" y="188" text-anchor="middle" class="node-title light">最终列表</text>
+  <text x="1400" y="215" text-anchor="middle" class="node-sub light">曝光 / 点击 / 转化</text>
+
+  <g>
+    <rect x="85" y="550" width="160" height="80" rx="14" fill="#FFFFFF" stroke="#7B8794" stroke-width="2"/>
+    <text x="165" y="581" text-anchor="middle" class="node-title">item / doc 库</text><text x="165" y="608" text-anchor="middle" class="node-sub">内容、属性、库存</text>
+    <rect x="285" y="550" width="180" height="80" rx="14" fill="#FFFFFF" stroke="#7B8794" stroke-width="2"/>
+    <text x="375" y="581" text-anchor="middle" class="node-title">索引与 ID</text><text x="375" y="608" text-anchor="middle" class="node-sub">倒排、ANN、Semantic ID</text>
+    <rect x="505" y="550" width="180" height="80" rx="14" fill="#FFFFFF" stroke="#7B8794" stroke-width="2"/>
+    <text x="595" y="581" text-anchor="middle" class="node-title">在线特征服务</text><text x="595" y="608" text-anchor="middle" class="node-sub">用户、query、交叉特征</text>
+    <rect x="725" y="550" width="190" height="80" rx="14" fill="#FFF7E6" stroke="#D69E2E" stroke-width="2"/>
+    <text x="820" y="581" text-anchor="middle" class="node-title" fill="#744210">曝光与交互日志</text><text x="820" y="608" text-anchor="middle" class="node-sub" fill="#744210">request / position / version</text>
+    <rect x="955" y="550" width="190" height="80" rx="14" fill="#FFF7E6" stroke="#D69E2E" stroke-width="2"/>
+    <text x="1050" y="581" text-anchor="middle" class="node-title" fill="#744210">样本构造</text><text x="1050" y="608" text-anchor="middle" class="node-sub" fill="#744210">时间切分、标签成熟、去偏</text>
+    <rect x="1185" y="550" width="230" height="80" rx="14" fill="#FFF7E6" stroke="#D69E2E" stroke-width="2"/>
+    <text x="1300" y="581" text-anchor="middle" class="node-title" fill="#744210">训练、验收与发布</text><text x="1300" y="608" text-anchor="middle" class="node-sub" fill="#744210">模型 / 索引 / 规则版本</text>
+  </g>
+
+  <path d="M185 193 H210" class="line-blue"/><path d="M350 185 H385" class="line-blue"/>
+  <path d="M530 158 H565" class="line-blue"/><path d="M710 158 H745" class="line-blue"/><path d="M875 158 H910" class="line-blue"/><path d="M1040 158 H1075" class="line-blue"/><path d="M1240 158 H1325" class="line-blue"/>
+  <path d="M280 231 V355 H405" class="line-purple"/><path d="M675 355 H735" class="line-purple"/><path d="M955 355 H1015" class="line-purple"/><path d="M1225 355 H1290 V220 H1325" class="line-purple"/>
+  <path d="M245 590 H285" class="line-gray"/><path d="M465 590 H505" class="line-gray"/>
+  <path d="M915 590 H955" class="line-orange"/><path d="M1145 590 H1185" class="line-orange"/>
+  <path d="M1400 237 V500 H820 V550" class="line-orange"/>
+  <path d="M375 550 V430 H457 V196" class="line-gray"/>
+  <path d="M595 550 V450 H975 V196" class="line-gray"/>
+  <path d="M1300 550 V500 H375 V550" class="line-gray"/>
+
+  <text x="75" y="735" font-size="14" fill="#64748B">实线：在线请求与反馈　　虚线：离线产物或在线服务依赖</text>
+</svg>

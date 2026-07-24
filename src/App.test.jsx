@@ -52,6 +52,8 @@ describe('App', () => {
               ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
             : requestUrl.includes('SystemDesign09')
               ? '# System Design 09 · 一致性哈希\n\n节点变化时只迁移相邻区间。'
+            : requestUrl.includes('BusinessAlgorithm00')
+              ? '# 第一部分：系统总览与数据基础\n\n```business-algorithm-map\n```'
             : chineseContent,
       };
     });
@@ -403,6 +405,23 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /高频术语整合/ })).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign99 Glossary.md')).toHaveLength(2);
+  });
+
+  it('opens the business algorithms system map and switches architecture paths', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
+
+    expect(await screen.findByText('7 notes in this section')).toBeInTheDocument();
+    const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
+    expect(within(visual).getByText(/亿级候选，沿延迟预算逐层收窄/)).toBeInTheDocument();
+    expect(within(visual).getByText('10⁸ → 3k')).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /端到端生成/ }));
+
+    expect(within(visual).getByText(/把检索与排序目标并入一次序列生成/)).toBeInTheDocument();
+    fireEvent.click(within(visual).getByRole('button', { name: /统一生成器/ }));
+    expect(within(visual).getByText(/“端到端”范围因系统而异/)).toBeInTheDocument();
   });
 
   it('renders the message queue anatomy and redelivery walkthrough', async () => {
