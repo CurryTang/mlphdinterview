@@ -435,13 +435,11 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('本板块共 23 篇笔记')).toBeInTheDocument();
+    expect(await screen.findByText('本板块共 21 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 19 章 · RAG 与 Agentic Search/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /附录 · 王树森课程覆盖索引/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /附录 · 公式速查/ })).toBeInTheDocument();
     expect(decodeURIComponent(window.location.hash)).toBe('#Business Algorithm TODO.md');
     const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
     expect(within(visual).getByText(/亿级候选，沿延迟预算逐层收窄/)).toBeInTheDocument();

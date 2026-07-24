@@ -2174,18 +2174,6 @@ const businessAlgorithmNoteDefinitions = [
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
   ),
   createTutorialDefinition(
-    '附录 · 王树森课程覆盖索引',
-    'BusinessAlgorithm10 Course Coverage.md',
-    null,
-    { directory: 'BusinessAlgorithm', category: 'Coverage', difficulty: 'Audit' },
-  ),
-  createTutorialDefinition(
-    '附录 · 公式速查',
-    'BusinessAlgorithm08 Formula Review.md',
-    null,
-    { directory: 'BusinessAlgorithm', category: 'Review', difficulty: 'Reference' },
-  ),
-  createTutorialDefinition(
     '附录 · Quick Coding',
     'BusinessAlgorithm09 Quick Coding.md',
     null,
