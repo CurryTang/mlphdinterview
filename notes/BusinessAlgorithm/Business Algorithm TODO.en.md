@@ -1,6 +1,6 @@
 # System Overview
 
-> **Acknowledgments**: The foundational framework and several conceptual explanations in this section are inspired by Professor Wang Shusen's Recommender Systems course. We are grateful to Professor Wang for his long-term commitment to sharing high-quality educational content publicly. The authors of this site are responsible for the reorganization, expansion, and any potential omissions in these notes.
+> **Acknowledgments**: The foundational framework and several conceptual explanations in this section are inspired by Professor Wang Shusen's Recommender Systems course. We are grateful to Professor Wang for his long-term commitment to sharing high-quality educational content publicly.
 
 ## Chapter 1: The Multi-Stage Pipeline of Recommendation and Search
 
