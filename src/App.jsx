@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createContext, Fragment, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
@@ -6,6 +6,17 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import 'katex/dist/katex.min.css';
 import './App.css';
+
+const UiLanguageContext = createContext('zh');
+
+function useUiCopy() {
+  const language = useContext(UiLanguageContext);
+  return {
+    language,
+    isEnglish: language === 'en',
+    t: (zh, en) => (language === 'en' ? en : zh),
+  };
+}
 
 const markdownModules = import.meta.glob('../notes/**/*.md', {
   eager: true,
@@ -2833,6 +2844,7 @@ function parseQuizSource(rawSource) {
 }
 
 function QuizBlock({ source }) {
+  const { t } = useUiCopy();
   const quiz = useMemo(() => parseQuizSource(source), [source]);
   const [collapsed, setCollapsed] = useState(false);
   const [selectedOption, setSelectedOption] = useState('');
@@ -2855,10 +2867,10 @@ function QuizBlock({ source }) {
         type="button"
         onClick={() => setCollapsed((current) => !current)}
         aria-expanded={!collapsed}
-        aria-label={`${collapsed ? 'Show' : 'Hide'} ${quiz.title}`}
+        aria-label={`${collapsed ? t('展开', 'Show') : t('收起', 'Hide')} ${quiz.title}`}
       >
         <span>{quiz.title}</span>
-        <span aria-hidden="true">{collapsed ? 'Show' : 'Hide'}</span>
+        <span aria-hidden="true">{collapsed ? t('展开', 'Show') : t('收起', 'Hide')}</span>
       </button>
 
       {!collapsed && (
@@ -2892,7 +2904,7 @@ function QuizBlock({ source }) {
           </div>
           {isAnswered && (
             <p className={`practice-feedback ${isCorrect ? 'correct' : 'incorrect'}`} role="status">
-              {isCorrect ? 'Correct.' : 'Not quite.'}
+              {isCorrect ? t('回答正确。', 'Correct.') : t('再想一下。', 'Not quite.')}
               {quiz.explanation ? ` ${quiz.explanation}` : ''}
             </p>
           )}
@@ -2903,6 +2915,7 @@ function QuizBlock({ source }) {
 }
 
 function ForeignDictionaryTopoVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackKey, setPlaybackKey] = useState(0);
   const comparisons = [
@@ -2931,21 +2944,24 @@ function ForeignDictionaryTopoVisual() {
   return (
     <section
       className={`topo-visual ${isPlaying ? 'is-playing' : ''}`}
-      aria-label="Foreign Dictionary topological sorting visualization"
+      aria-label={t('外星文字典拓扑排序可视化', 'Foreign Dictionary topological sorting visualization')}
     >
       <div className="topo-visual-copy">
         <div>
-          <p className="topo-kicker">Animated walkthrough</p>
-          <h2>从相邻单词比较，到 Kahn 拓扑序</h2>
-          <p>每一组相邻单词只看第一个不同字符；这个字符对就是一条有向边。边建完后，入度为 0 的字符先进入队列。</p>
+          <p className="topo-kicker">{t('动画演示', 'Animated walkthrough')}</p>
+          <h2>{t('从相邻单词比较，到 Kahn 拓扑序', 'From adjacent words to a Kahn topological order')}</h2>
+          <p>{t(
+            '每一组相邻单词只看第一个不同字符；这个字符对就是一条有向边。边建完后，入度为 0 的字符先进入队列。',
+            'For each adjacent pair, inspect only the first differing character. That pair gives one directed edge; after building the graph, enqueue characters with indegree 0.',
+          )}</p>
         </div>
         <button className="topo-play-button" type="button" onClick={playAnimation}>
-          {isPlaying ? 'Replay' : 'Play'}
+          {isPlaying ? t('重播', 'Replay') : t('播放', 'Play')}
         </button>
       </div>
 
       <div className="topo-stage" key={playbackKey}>
-        <div className="topo-words" aria-label="Adjacent word comparisons">
+        <div className="topo-words" aria-label={t('相邻单词比较', 'Adjacent word comparisons')}>
           {comparisons.map(([first, second, edge, pairClass]) => (
             <span className={`topo-word-pair ${pairClass}`} key={edge}>
               <b>{first}</b>
@@ -2955,7 +2971,7 @@ function ForeignDictionaryTopoVisual() {
           ))}
         </div>
 
-        <div className="topo-graph-board" aria-label="Directed graph h to e to r to n to f">
+        <div className="topo-graph-board" aria-label={t('有向图 h 到 e 到 r 到 n 到 f', 'Directed graph h to e to r to n to f')}>
           <div className="topo-chain">
             {nodes.map(([label, indegree, nodeClass], index) => (
               <Fragment key={label}>
@@ -2974,18 +2990,30 @@ function ForeignDictionaryTopoVisual() {
           </div>
         </div>
 
-        <div className="topo-output" aria-label="Topological output order">
+        <div className="topo-output" aria-label={t('拓扑排序输出', 'Topological output order')}>
           {['h', 'e', 'r', 'n', 'f'].map((char, index) => (
             <span className={`out-${index + 1}`} key={char}>{char}</span>
           ))}
         </div>
 
         <ol className="topo-timeline">
-          <li className="step-1">比较 <code>hrn</code> 和 <code>hrf</code>，第一个不同字符是 <code>n/f</code>，得到 <code>n -&gt; f</code>。</li>
-          <li className="step-2">比较 <code>hrf</code> 和 <code>er</code>，第一个不同字符是 <code>h/e</code>，得到 <code>h -&gt; e</code>。</li>
-          <li className="step-3">比较 <code>er</code> 和 <code>enn</code>，第一个不同字符是 <code>r/n</code>，得到 <code>r -&gt; n</code>。</li>
-          <li className="step-4">比较 <code>enn</code> 和 <code>rfnn</code>，第一个不同字符是 <code>e/r</code>，得到 <code>e -&gt; r</code>。</li>
-          <li className="step-5">Kahn 算法从入度为 0 的 <code>h</code> 开始，依次释放 <code>e</code>、<code>r</code>、<code>n</code>、<code>f</code>，输出 <code>hernf</code>。</li>
+          {isEnglish ? (
+            <>
+              <li className="step-1">Compare <code>hrn</code> with <code>hrf</code>. The first difference is <code>n/f</code>, giving <code>n -&gt; f</code>.</li>
+              <li className="step-2">Compare <code>hrf</code> with <code>er</code>. The first difference is <code>h/e</code>, giving <code>h -&gt; e</code>.</li>
+              <li className="step-3">Compare <code>er</code> with <code>enn</code>. The first difference is <code>r/n</code>, giving <code>r -&gt; n</code>.</li>
+              <li className="step-4">Compare <code>enn</code> with <code>rfnn</code>. The first difference is <code>e/r</code>, giving <code>e -&gt; r</code>.</li>
+              <li className="step-5">Kahn&apos;s algorithm starts from <code>h</code>, whose indegree is 0, then releases <code>e</code>, <code>r</code>, <code>n</code>, and <code>f</code> to output <code>hernf</code>.</li>
+            </>
+          ) : (
+            <>
+              <li className="step-1">比较 <code>hrn</code> 和 <code>hrf</code>，第一个不同字符是 <code>n/f</code>，得到 <code>n -&gt; f</code>。</li>
+              <li className="step-2">比较 <code>hrf</code> 和 <code>er</code>，第一个不同字符是 <code>h/e</code>，得到 <code>h -&gt; e</code>。</li>
+              <li className="step-3">比较 <code>er</code> 和 <code>enn</code>，第一个不同字符是 <code>r/n</code>，得到 <code>r -&gt; n</code>。</li>
+              <li className="step-4">比较 <code>enn</code> 和 <code>rfnn</code>，第一个不同字符是 <code>e/r</code>，得到 <code>e -&gt; r</code>。</li>
+              <li className="step-5">Kahn 算法从入度为 0 的 <code>h</code> 开始，依次释放 <code>e</code>、<code>r</code>、<code>n</code>、<code>f</code>，输出 <code>hernf</code>。</li>
+            </>
+          )}
         </ol>
       </div>
     </section>
@@ -2993,8 +3021,9 @@ function ForeignDictionaryTopoVisual() {
 }
 
 function CheapestFlightsBellmanVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeRound, setActiveRound] = useState(0);
-  const rounds = [
+  const rounds = (isEnglish ? [
     {
       label: 'init',
       title: 'Round 0 / source only',
@@ -3016,7 +3045,29 @@ function CheapestFlightsBellmanVisual() {
       activeEdges: ['flight-1-2', 'flight-1-3'],
       note: 'Copy before relaxing, so 1 -> 2 and 1 -> 3 are allowed, but 2 -> 3 cannot chain inside this same round.',
     },
-  ];
+  ] : [
+    {
+      label: '初始化',
+      title: '第 0 轮 / 只有起点',
+      prices: ['0', '∞', '∞', '∞'],
+      activeEdges: [],
+      note: '还没有乘坐任何航班时，只有 src=0 可达。',
+    },
+    {
+      label: '1 条边',
+      title: '第 1 轮 / 最多 1 趟航班',
+      prices: ['0', '100', '∞', '∞'],
+      activeEdges: ['flight-0-1'],
+      note: '只读取上一轮的 prices。航班 0 -> 1 将城市 1 的价格更新为 100。',
+    },
+    {
+      label: '2 条边',
+      title: '第 2 轮 / 最多 2 趟航班',
+      prices: ['0', '100', '200', '700'],
+      activeEdges: ['flight-1-2', 'flight-1-3'],
+      note: '松弛前先复制数组，因此可以使用 1 -> 2 和 1 -> 3，但 2 -> 3 不能在同一轮继续串联。',
+    },
+  ]);
   const cities = [
     ['0', 'src', 'city-0'],
     ['1', '', 'city-1'],
@@ -3041,22 +3092,22 @@ function CheapestFlightsBellmanVisual() {
   };
 
   return (
-    <section className="bf-visual" aria-label="Optimized Bellman-Ford visualization for Cheapest Flights Within K Stops">
+    <section className="bf-visual" aria-label={t('K 次中转内最便宜航班的 Bellman-Ford 可视化', 'Optimized Bellman-Ford visualization for Cheapest Flights Within K Stops')}>
       <div className="bf-header">
         <div>
-          <p className="bf-kicker">Bellman-Ford with edge budget</p>
+          <p className="bf-kicker">{t('带边数限制的 Bellman-Ford', 'Bellman-Ford with edge budget')}</p>
           <h2>Cheapest Flights Within K Stops</h2>
-          <p>Example: <code>n=4</code>, <code>src=0</code>, <code>dst=3</code>, <code>k=1</code>. We may use at most <code>k + 1 = 2</code> flights.</p>
+          <p>{t('例子：', 'Example:')} <code>n=4</code>, <code>src=0</code>, <code>dst=3</code>, <code>k=1</code>. {t('最多可以乘坐', 'We may use at most')} <code>k + 1 = 2</code> {t('趟航班。', 'flights.')}</p>
         </div>
-        <div className="bf-controls" aria-label="Bellman-Ford round controls">
-          <button type="button" onClick={previousRound} disabled={activeRound === 0} aria-label="Previous round">Prev</button>
+        <div className="bf-controls" aria-label={t('Bellman-Ford 轮次控制', 'Bellman-Ford round controls')}>
+          <button type="button" onClick={previousRound} disabled={activeRound === 0} aria-label={t('上一轮', 'Previous round')}>{t('上一轮', 'Prev')}</button>
           <span>{round.title}</span>
-          <button type="button" onClick={nextRound} disabled={activeRound === rounds.length - 1} aria-label="Next round">Next</button>
+          <button type="button" onClick={nextRound} disabled={activeRound === rounds.length - 1} aria-label={t('下一轮', 'Next round')}>{t('下一轮', 'Next')}</button>
         </div>
       </div>
 
       <div className="bf-stage">
-        <div className="bf-round-tabs" role="tablist" aria-label="Bellman-Ford rounds">
+        <div className="bf-round-tabs" role="tablist" aria-label={t('Bellman-Ford 轮次', 'Bellman-Ford rounds')}>
           {rounds.map((candidate, index) => (
             <button
               key={candidate.label}
@@ -3072,7 +3123,7 @@ function CheapestFlightsBellmanVisual() {
         </div>
 
         <div className="bf-layout">
-          <div className="bf-graph" aria-label="Weighted directed flights">
+          <div className="bf-graph" aria-label={t('带权有向航班图', 'Weighted directed flights')}>
             {cities.map(([id, tag, className]) => (
               <div className={`bf-city ${className}`} key={id}>
                 <strong>{id}</strong>
@@ -3090,15 +3141,15 @@ function CheapestFlightsBellmanVisual() {
             ))}
           </div>
 
-          <div className="bf-prices" aria-label="Prices array">
+          <div className="bf-prices" aria-label={t('价格数组', 'Prices array')}>
             <div className="bf-prices-title">
               <span>prices</span>
-              <small>from previous round only</small>
+              <small>{t('只读取上一轮', 'from previous round only')}</small>
             </div>
             <div className="bf-price-grid">
               {round.prices.map((price, index) => (
                 <div className={`bf-price ${price !== '∞' ? 'reachable' : ''}`} key={`${round.label}-${index}`}>
-                  <span>city {index}</span>
+                  <span>{t('城市', 'city')} {index}</span>
                   <strong>{price}</strong>
                 </div>
               ))}
@@ -3112,6 +3163,7 @@ function CheapestFlightsBellmanVisual() {
 }
 
 function SegmentTreeLISVisual() {
+  const { t } = useUiCopy();
   const values = [2, 3, 5, 7, 9, 10, 18, 101];
   const steps = [
     { input: 10, rank: 5, query: '0..4', beforeBest: 0, current: 1, lis: 1, after: [0, 0, 0, 0, 0, 1, 0, 0] },
@@ -3152,43 +3204,44 @@ function SegmentTreeLISVisual() {
   const treeLevels = buildSegmentTreeLevels(step.after);
   const smallerValues = values.slice(0, step.rank);
   const queryDescription = smallerValues.length > 0
-    ? `rank 0..${step.rank - 1}，也就是值 ${smallerValues.join(', ')}`
-    : '没有更小的压缩值';
+    ? `${t('rank', 'ranks')} 0..${step.rank - 1}${t('，也就是值', ', representing values')} ${smallerValues.join(', ')}`
+    : t('没有更小的压缩值', 'there is no smaller compressed value');
 
   return (
-    <section className="seg-visual" aria-label="Segment tree visualization for longest increasing subsequence">
+    <section className="seg-visual" aria-label={t('最长递增子序列的线段树可视化', 'Segment tree visualization for longest increasing subsequence')}>
       <div className="seg-header">
         <div>
-          <p className="seg-kicker">Segment tree walkthrough</p>
-          <h2>LIS: 先查更小值的最好结果，再更新当前值</h2>
+          <p className="seg-kicker">{t('线段树演示', 'Segment tree walkthrough')}</p>
+          <h2>{t('LIS：先查更小值的最好结果，再更新当前值', 'LIS: query the best smaller value, then update the current value')}</h2>
           <p>
-            例子输入 <code>[10, 9, 2, 5, 3, 7, 101, 18]</code>。坐标压缩后，
-            每个叶子存 <strong>以这个值结尾的最长递增子序列长度</strong>。
+            {t('例子输入', 'Example input:')} <code>[10, 9, 2, 5, 3, 7, 101, 18]</code>。
+            {t('坐标压缩后，每个叶子存', 'After coordinate compression, each leaf stores the ')}
+            <strong>{t('以这个值结尾的最长递增子序列长度', 'longest increasing subsequence ending at that value')}</strong>。
           </p>
         </div>
 
-        <div className="seg-controls" aria-label="Segment tree animation controls">
-          <button type="button" onClick={previousStep} aria-label="Previous LIS step">Prev</button>
-          <button type="button" onClick={() => setIsPlaying((current) => !current)} aria-label="Play segment tree animation">
-            {isPlaying ? 'Pause' : 'Play'}
+        <div className="seg-controls" aria-label={t('线段树动画控制', 'Segment tree animation controls')}>
+          <button type="button" onClick={previousStep} aria-label={t('上一个 LIS 步骤', 'Previous LIS step')}>{t('上一步', 'Prev')}</button>
+          <button type="button" onClick={() => setIsPlaying((current) => !current)} aria-label={t('播放线段树动画', 'Play segment tree animation')}>
+            {isPlaying ? t('暂停', 'Pause') : t('播放', 'Play')}
           </button>
-          <button type="button" onClick={nextStep} aria-label="Next LIS step">Next</button>
+          <button type="button" onClick={nextStep} aria-label={t('下一个 LIS 步骤', 'Next LIS step')}>{t('下一步', 'Next')}</button>
         </div>
       </div>
 
       <div className="seg-stage">
         <div className="seg-explainer">
           <div>
-            <span>这一帧怎么看</span>
+            <span>{t('这一帧怎么看', 'How to read this frame')}</span>
             <p>
-              现在处理输入里的第 <strong>{activeStep + 1}</strong> 个数：<strong>{step.input}</strong>。
-              因为 LIS 要严格递增，它只能接在比 {step.input} 更小的值后面。
+              {t('现在处理输入里的第', 'We are processing input number')} <strong>{activeStep + 1}</strong>{t(' 个数：', ': ')}<strong>{step.input}</strong>。
+              {t(`因为 LIS 要严格递增，它只能接在比 ${step.input} 更小的值后面。`, `Because the LIS must be strictly increasing, ${step.input} can only follow a smaller value.`)}
             </p>
           </div>
           <ol>
-            <li>蓝色叶子是本轮查询范围：<code>{queryDescription}</code>。</li>
-            <li>线段树返回这些更小值里的最大 LIS 长度：<code>{step.beforeBest}</code>。</li>
-            <li>当前数自己的长度就是 <code>{step.beforeBest} + 1 = {step.current}</code>，写到绿色叶子。</li>
+            <li>{t('蓝色叶子是本轮查询范围：', 'Blue leaves form this query range: ')}<code>{queryDescription}</code>。</li>
+            <li>{t('线段树返回这些更小值里的最大 LIS 长度：', 'The segment tree returns the largest LIS among those smaller values: ')}<code>{step.beforeBest}</code>。</li>
+            <li>{t('当前数自己的长度就是', 'The current value therefore has length')} <code>{step.beforeBest} + 1 = {step.current}</code>{t('，写到绿色叶子。', ', which is written to the green leaf.')}</li>
           </ol>
         </div>
 
@@ -3216,10 +3269,10 @@ function SegmentTreeLISVisual() {
         </div>
 
         <div className="seg-board-title">
-          <span>压缩后的叶子</span>
-          <small>叶子里的数字 = 以该值结尾的最佳 LIS 长度</small>
+          <span>{t('压缩后的叶子', 'Compressed leaves')}</span>
+          <small>{t('叶子里的数字 = 以该值结尾的最佳 LIS 长度', 'Leaf value = best LIS length ending at this value')}</small>
         </div>
-        <div className="seg-rank-board" aria-label="Compressed value leaves">
+        <div className="seg-rank-board" aria-label={t('压缩值叶子', 'Compressed value leaves')}>
           {values.map((value, index) => {
             const inQuery = step.rank > 0 && index < step.rank;
             const isUpdated = index === step.rank;
@@ -3238,10 +3291,10 @@ function SegmentTreeLISVisual() {
         </div>
 
         <div className="seg-board-title">
-          <span>线段树缓存</span>
-          <small>每个内部节点保存自己区间里的最大叶子值</small>
+          <span>{t('线段树缓存', 'Segment tree cache')}</span>
+          <small>{t('每个内部节点保存自己区间里的最大叶子值', 'Each internal node stores the maximum leaf value in its range')}</small>
         </div>
-        <div className="seg-tree-board" aria-label="Segment tree max values">
+        <div className="seg-tree-board" aria-label={t('线段树最大值', 'Segment tree max values')}>
           {treeLevels.map((level, levelIndex) => (
             <div className="seg-tree-level" key={`level-${levelIndex}`}>
               {level.map((node) => {
@@ -3263,8 +3316,8 @@ function SegmentTreeLISVisual() {
         </div>
 
         <div className="seg-board-title">
-          <span>输入顺序</span>
-          <small>点击任意一步，观察一个数如何改变整棵树</small>
+          <span>{t('输入顺序', 'Input order')}</span>
+          <small>{t('点击任意一步，观察一个数如何改变整棵树', 'Select any step to see how one value changes the tree')}</small>
         </div>
         <ol className="seg-timeline">
           {steps.map((candidate, index) => (
@@ -3495,8 +3548,87 @@ const INTERVAL_VISUALS = {
   },
 };
 
+const INTERVAL_ZH_COPY = {
+  'interval-merge-demo': {
+    title: '合并区间',
+    subtitle: '先按起点排序，再不断扩展当前合并区间。',
+    steps: ['第 1 步 · 按起点排序', '第 2 步 · 有重叠，扩展终点', '第 3 步 · 出现间隔，输出当前区间', '第 4 步 · 收尾'],
+  },
+  'interval-insert-demo': {
+    title: '插入区间',
+    subtitle: '分成三段：新区间左侧、重叠区间、新区间右侧。',
+    steps: ['第 1 步 · 追加左侧区间', '第 2 步 · 合并重叠区间', '第 3 步 · 追加右侧区间'],
+  },
+  'interval-rooms-demo': {
+    title: '会议室 II',
+    subtitle: '扫描所有开始与结束事件，答案是同时进行的会议数峰值。',
+    steps: ['t = 0 · 第一场会议开始', 't = 5 · 出现重叠', 't = 10 · 释放一个房间', 't = 15 · 再次重叠'],
+  },
+  'interval-query-demo': {
+    title: '包含每个查询的最小区间',
+    subtitle: '按顺序处理查询，把候选区间按长度放入最小堆。',
+    steps: ['query = 2', 'query = 3', 'query = 4', 'query = 5'],
+  },
+};
+
+const INTERVAL_EN_NOTES = {
+  'interval-merge-demo': [
+    'Sort by start so each interval only needs to be compared with the current merged interval.',
+    'The start of [2, 6] is at most the current end 3, so extend the interval to [1, 6].',
+    'The start of [8, 10] is greater than the current end 6. Flush [1, 6] and start a new interval.',
+    'No remaining intervals overlap, so flush each current interval in order.',
+  ],
+  'interval-insert-demo': [
+    '[1, 2] lies completely before newInterval, so append it directly to the output.',
+    '[3,5], [6,7], and [8,10] all overlap [4,8], so keep expanding newInterval.',
+    '[12,16] lies completely after the merged interval. Append [3,10], then append the remaining interval.',
+  ],
+  'interval-rooms-demo': [
+    'active grows from 0 to 1, so one room is needed.',
+    'When [5,10] starts, [0,30] is still active, so active = 2.',
+    '[5,10] ends and active returns to 1.',
+    'When [15,20] starts, [0,30] is still active, so the maximum remains 2 rooms.',
+  ],
+  'interval-query-demo': [
+    'Add intervals with start <= 2: [1,4] and [2,4]. The shortest covering interval is [2,4], with length 3.',
+    'Add [3,6]. The heap top remains [2,4], which covers query 3.',
+    'Add [4,4]. Its length is 1, so it immediately becomes the best answer.',
+    'Remove intervals with end < 5. The remaining [3,6] covers 5 and has length 4.',
+  ],
+};
+
+const INTERVAL_STAT_ZH = {
+  current: '当前区间',
+  output: '输出',
+  condition: '条件',
+  answer: '答案',
+  rule: '规则',
+  'merged start': '合并后起点',
+  'merged end': '合并后终点',
+  active: '进行中',
+  'max rooms': '最多房间',
+  'heap top': '堆顶',
+  removed: '已弹出',
+};
+
 function IntervalPatternVisual({ kind }) {
-  const visual = INTERVAL_VISUALS[kind];
+  const { isEnglish, t } = useUiCopy();
+  const baseVisual = INTERVAL_VISUALS[kind];
+  const zhCopy = INTERVAL_ZH_COPY[kind];
+  const visual = isEnglish
+    ? {
+      ...baseVisual,
+      steps: baseVisual.steps.map((step, index) => ({
+        ...step,
+        note: INTERVAL_EN_NOTES[kind][index],
+      })),
+    }
+    : {
+      ...baseVisual,
+      title: zhCopy.title,
+      subtitle: zhCopy.subtitle,
+      steps: baseVisual.steps.map((step, index) => ({ ...step, title: zhCopy.steps[index] })),
+    };
   const [activeStep, setActiveStep] = useState(0);
   const step = visual.steps[activeStep];
   const active = new Set(step.active ?? []);
@@ -3508,7 +3640,7 @@ function IntervalPatternVisual({ kind }) {
     <section className="interval-visual">
       <header className="interval-visual-header">
         <div>
-          <p className="eyebrow">Interval visual</p>
+          <p className="eyebrow">{t('区间题可视化', 'Interval visual')}</p>
           <h2>{visual.title}</h2>
           <p>{visual.subtitle}</p>
         </div>
@@ -3600,7 +3732,7 @@ function IntervalPatternVisual({ kind }) {
       <div className="interval-stat-grid">
         {(step.stats ?? []).map(([label, value]) => (
           <div key={label}>
-            <span>{label}</span>
+            <span>{isEnglish ? label : (INTERVAL_STAT_ZH[label] ?? label)}</span>
             <strong>{value}</strong>
           </div>
         ))}
@@ -3611,7 +3743,7 @@ function IntervalPatternVisual({ kind }) {
           <li className={index === activeStep ? 'active' : ''} key={candidate.title}>
             <button type="button" onClick={() => setActiveStep(index)}>
               <span>{index + 1}</span>
-              {candidate.title.replace(/^Step \d+ · /, '')}
+              {candidate.title.replace(/^(?:Step|第)\s*\d+\s*(?:步)?\s*·\s*/, '')}
             </button>
           </li>
         ))}
@@ -3668,25 +3800,60 @@ const POW_STEPS = [
   },
 ];
 
+const POW_STEPS_ZH = [
+  {
+    title: '初始化',
+    action: 'power = 10，二进制是 1010。最低位为 0，这一轮暂时不计入答案。',
+    next: 'base 平方得到 4，power 右移得到 5。',
+  },
+  {
+    title: '读取 bit 1',
+    action: 'power 是奇数。当前 base 代表 x²，因此把它乘进 res。',
+    next: 'res = 1 × 4 = 4。base 平方得到 16，power 右移得到 2。',
+  },
+  {
+    title: '读取 bit 0',
+    action: '最低位为 0。n = 10 不需要 x⁴，因此 res 保持不变。',
+    next: 'base 平方得到 256，power 右移得到 1。',
+  },
+  {
+    title: '读取 bit 1',
+    action: 'power 再次为奇数。当前 base 代表 x⁸，而 n = 10 包含这一位。',
+    next: 'res = 4 × 256 = 1024。power 右移到 0，停止。',
+  },
+  {
+    title: '完成',
+    action: '所有二进制位都已从右向左处理完：10 = 8 + 2。',
+    next: 'pow(2, 10) 返回 1024。',
+  },
+];
+
 function BinaryPowVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
-  const step = POW_STEPS[activeStep];
+  const steps = isEnglish
+    ? POW_STEPS
+    : POW_STEPS.map((step, index) => ({ ...step, ...POW_STEPS_ZH[index] }));
+  const step = steps[activeStep];
   const binaryBits = ['1', '0', '1', '0'];
   const consumedFromRight = Math.min(activeStep, binaryBits.length);
 
   return (
-    <section className="pow-visual" aria-label="Binary exponentiation walkthrough">
+    <section className="pow-visual" aria-label={t('二进制快速幂演示', 'Binary exponentiation walkthrough')}>
       <header className="pow-header">
         <div>
-          <p className="eyebrow">Math visual</p>
+          <p className="eyebrow">{t('数学可视化', 'Math visual')}</p>
           <h2>Binary Exponentiation: pow(2, 10)</h2>
-          <p>每一轮只看 `power` 的最低位：bit 为 1 才把当前 `base` 乘进 `res`。</p>
+          <p>{t(
+            '每一轮只看 power 的最低位：bit 为 1 才把当前 base 乘进 res。',
+            'Each round reads only the lowest bit of power. Multiply the current base into res only when that bit is 1.',
+          )}</p>
         </div>
         <div className="pow-counter">{activeStep + 1}<span>/ {POW_STEPS.length}</span></div>
       </header>
 
       <div className="pow-board">
-        <div className="pow-bits" aria-label="Binary bits of exponent 10">
+        <div className="pow-bits" aria-label={t('指数 10 的二进制位', 'Binary bits of exponent 10')}>
           {binaryBits.map((bit, index) => {
             const fromRight = binaryBits.length - 1 - index;
             const isCurrent = fromRight === consumedFromRight && activeStep < binaryBits.length;
@@ -3730,7 +3897,7 @@ function BinaryPowVisual() {
       </div>
 
       <ol className="pow-timeline">
-        {POW_STEPS.map((candidate, index) => (
+        {steps.map((candidate, index) => (
           <li className={index === activeStep ? 'active' : ''} key={candidate.title}>
             <button type="button" onClick={() => setActiveStep(index)}>
               <span>{index + 1}</span>
@@ -3866,24 +4033,54 @@ const SLIDING_PHASES = [
   ['record', '4 · 记录', '在正确时机更新'],
 ];
 
+const SLIDING_WINDOW_STEPS_EN = [
+  ['Expand right: add A', 'Move right one position and add the new element to the window state.'],
+  ['Valid: record A', 'The window is valid. For the longest-window template, update the answer after the shrinking loop.'],
+  ['Expand right: add B', 'right only moves forward. Add B incrementally instead of rescanning the window.'],
+  ['Valid: record AB', 'The current [left, right] window is valid, so best grows from 1 to 2.'],
+  ['Expand right: add C', 'The state remains valid, so the window keeps growing.'],
+  ['Valid: record ABC', 'The window length is right - left + 1 = 3.'],
+  ['Adding A breaks the condition', 'The count of A becomes 2. Keep right fixed and enter the shrinking loop before recording an answer.'],
+  ['Shrink left: remove the old A', 'Remove nums[left] from the state, then increment left until the window is valid again.'],
+  ['Valid again: window BCA', 'For the longest-window template, record only after the invalid loop ends. The length is still 3.'],
+  ['Expand right: add D', 'Window BCAD is valid, and right continues moving only forward.'],
+  ['Record the new best BCAD', 'The current length 4 exceeds the previous best 3, so update best before processing the next right.'],
+];
+
+const SLIDING_PHASES_EN = [
+  ['expand', '1 · Expand right', 'add nums[right]'],
+  ['validate', '2 · Validate', 'check the window condition'],
+  ['shrink', '3 · Shrink left', 'remove while invalid'],
+  ['record', '4 · Record', 'update at the right moment'],
+];
+
 function SlidingWindowVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
-  const step = SLIDING_WINDOW_STEPS[activeStep];
+  const steps = isEnglish
+    ? SLIDING_WINDOW_STEPS.map((step, index) => ({
+      ...step,
+      title: SLIDING_WINDOW_STEPS_EN[index][0],
+      detail: SLIDING_WINDOW_STEPS_EN[index][1],
+    }))
+    : SLIDING_WINDOW_STEPS;
+  const phases = isEnglish ? SLIDING_PHASES_EN : SLIDING_PHASES;
+  const step = steps[activeStep];
   const windowText = SLIDING_WINDOW_VALUES.slice(step.left, step.right + 1).join('');
 
   return (
-    <section className="sliding-window-visual" aria-label="滑动窗口万能模板演示">
+    <section className="sliding-window-visual" aria-label={t('滑动窗口万能模板演示', 'General sliding-window template walkthrough')}>
       <header className="sliding-window-header">
         <div>
-          <p className="eyebrow">Sliding window visual</p>
-          <h2>右扩、维护、左缩、记录</h2>
-          <p>示例状态是“窗口内不能出现重复字符”，但四拍循环可以替换成任何可增量维护的条件。</p>
+          <p className="eyebrow">{t('滑动窗口可视化', 'Sliding window visual')}</p>
+          <h2>{t('右扩、维护、左缩、记录', 'Expand, maintain, shrink, record')}</h2>
+          <p>{t('示例状态是“窗口内不能出现重复字符”，但四拍循环可以替换成任何可增量维护的条件。', 'This example forbids duplicate characters, but the four-beat loop works with any condition that can be maintained incrementally.')}</p>
         </div>
-        <div className="sliding-window-counter">{activeStep + 1}<span>/ {SLIDING_WINDOW_STEPS.length}</span></div>
+        <div className="sliding-window-counter">{activeStep + 1}<span>/ {steps.length}</span></div>
       </header>
 
       <div className="sliding-window-phases">
-        {SLIDING_PHASES.map(([id, label, detail]) => (
+        {phases.map(([id, label, detail]) => (
           <div className={step.phase === id ? `active ${id}` : ''} key={id}>
             <strong>{label}</strong>
             <span>{detail}</span>
@@ -3897,7 +4094,7 @@ function SlidingWindowVisual() {
       </div>
 
       <div className="sliding-window-array-wrap">
-        <div className="sliding-window-array" aria-label="滑动窗口数组">
+        <div className="sliding-window-array" aria-label={t('滑动窗口数组', 'Sliding-window array')}>
           {SLIDING_WINDOW_VALUES.map((value, index) => {
             const inWindow = step.left <= index && index <= step.right;
             const isLeft = index === step.left;
@@ -3922,37 +4119,37 @@ function SlidingWindowVisual() {
 
       <div className="sliding-window-state">
         <div>
-          <span>当前窗口</span>
+          <span>{t('当前窗口', 'Current window')}</span>
           <strong>{windowText || '∅'}</strong>
           <small>[{step.left}, {step.right}]</small>
         </div>
         <div>
-          <span>增量状态</span>
+          <span>{t('增量状态', 'Incremental state')}</span>
           <strong>{step.state}</strong>
-          <small>只 add / remove 边界元素</small>
+          <small>{t('只 add / remove 边界元素', 'add or remove boundary elements only')}</small>
         </div>
         <div className={step.valid ? 'valid' : 'invalid'}>
-          <span>条件</span>
-          <strong>{step.valid ? '合法' : '不合法'}</strong>
-          <small>{step.valid ? '可以考虑记录' : '必须继续左缩'}</small>
+          <span>{t('条件', 'Condition')}</span>
+          <strong>{step.valid ? t('合法', 'valid') : t('不合法', 'invalid')}</strong>
+          <small>{step.valid ? t('可以考虑记录', 'ready to record') : t('必须继续左缩', 'keep shrinking left')}</small>
         </div>
         <div>
           <span>best</span>
           <strong>{step.best}</strong>
-          <small>最长合法窗口</small>
+          <small>{t('最长合法窗口', 'longest valid window')}</small>
         </div>
       </div>
 
       <div className="sliding-window-timing">
         <div>
-          <strong>求最长合法窗口</strong>
-          <span>while 不合法：左缩</span>
-          <em>while 结束后 update max</em>
+          <strong>{t('求最长合法窗口', 'Longest valid window')}</strong>
+          <span>{t('while 不合法：左缩', 'while invalid: shrink left')}</span>
+          <em>{t('while 结束后 update max', 'update max after the loop')}</em>
         </div>
         <div>
-          <strong>求最短满足窗口</strong>
-          <span>while 合法：先记录，再左缩</span>
-          <em>在 while 内 update min</em>
+          <strong>{t('求最短满足窗口', 'Shortest satisfying window')}</strong>
+          <span>{t('while 合法：先记录，再左缩', 'while valid: record, then shrink')}</span>
+          <em>{t('在 while 内 update min', 'update min inside the loop')}</em>
         </div>
       </div>
 
@@ -3962,22 +4159,22 @@ function SlidingWindowVisual() {
           onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
           disabled={activeStep === 0}
         >
-          上一步
+          {t('上一步', 'Previous')}
         </button>
         <input
           type="range"
           min="0"
-          max={SLIDING_WINDOW_STEPS.length - 1}
+          max={steps.length - 1}
           value={activeStep}
           onChange={(event) => setActiveStep(Number(event.target.value))}
-          aria-label="选择滑动窗口演示步骤"
+          aria-label={t('选择滑动窗口演示步骤', 'Select a sliding-window step')}
         />
         <button
           type="button"
-          onClick={() => setActiveStep((current) => Math.min(SLIDING_WINDOW_STEPS.length - 1, current + 1))}
-          disabled={activeStep === SLIDING_WINDOW_STEPS.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
         >
-          下一步
+          {t('下一步', 'Next')}
         </button>
       </div>
     </section>
@@ -4108,9 +4305,30 @@ const LONGEST_SUBSTRING_STEPS = [
   },
 ];
 
+const LONGEST_SUBSTRING_STEPS_EN = [
+  ['Expand', 'right = 0: add a', 'First run count[s[right]] += 1. The count of a becomes 1, so the window stays valid.'],
+  ['Record', 'Record window a', 'The valid window has length 0 - 0 + 1 = 1, so max_length becomes 1.'],
+  ['Expand', 'right = 1: reuse the window and add b', 'Do not reset count. The count of b changes from 0 to 1.'],
+  ['Record', 'Record window ab', 'Every count is at most 1. The length is 1 - 0 + 1 = 2.'],
+  ['Expand', 'right = 2: add c', 'The count of c changes from 0 to 1 while the previous state remains in place.'],
+  ['Record', 'Record window abc', 'The length is 2 - 0 + 1 = 3, so max_length becomes 3.'],
+  ['Expand', 'right = 3: add the second a first', 'The count of a becomes 2, which triggers while count[s[right]] > 1.'],
+  ['Shrink', 'Remove the old a; left moves from 0 to 1', 'After decrementing count[s[left]], the count of a returns to 1. Then increment left.'],
+  ['Record', 'Record window bca; the best remains 3', 'The loop has ended and the window is valid again. right never moved backward, and count was not rebuilt.'],
+];
+
 function LongestSubstringVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
-  const step = LONGEST_SUBSTRING_STEPS[activeStep];
+  const steps = isEnglish
+    ? LONGEST_SUBSTRING_STEPS.map((step, index) => ({
+      ...step,
+      phase: LONGEST_SUBSTRING_STEPS_EN[index][0],
+      title: LONGEST_SUBSTRING_STEPS_EN[index][1],
+      detail: LONGEST_SUBSTRING_STEPS_EN[index][2],
+    }))
+    : LONGEST_SUBSTRING_STEPS;
+  const step = steps[activeStep];
   const windowText = step.includedRight >= step.left
     ? LONGEST_SUBSTRING_VALUES.slice(step.left, step.includedRight + 1).join('')
     : '∅';
@@ -4122,25 +4340,25 @@ function LongestSubstringVisual() {
   ));
 
   return (
-    <section className="longest-substring-visual" aria-label="最长无重复子串代码映射演示">
+    <section className="longest-substring-visual" aria-label={t('最长无重复子串代码映射演示', 'Longest-substring code mapping walkthrough')}>
       <header className="longest-substring-header">
         <div>
-          <p className="eyebrow">Template → concrete code</p>
-          <h2>同一行骨架，逐项填入本题条件</h2>
-          <p>拖动步骤，左边的抽象操作与右边的实际代码会同时高亮。</p>
+          <p className="eyebrow">{t('模板到具体代码', 'Template → concrete code')}</p>
+          <h2>{t('同一行骨架，逐项填入本题条件', 'Fill one shared skeleton with this problem’s condition')}</h2>
+          <p>{t('拖动步骤，左边的抽象操作与右边的实际代码会同时高亮。', 'Move through the steps to highlight the abstract operation and its concrete code together.')}</p>
         </div>
         <div className="longest-substring-counter">
-          {activeStep + 1}<span>/ {LONGEST_SUBSTRING_STEPS.length}</span>
+          {activeStep + 1}<span>/ {steps.length}</span>
         </div>
       </header>
 
       <div className="longest-substring-code-map">
         <div>
-          <strong>万能模板骨架</strong>
+          <strong>{t('万能模板骨架', 'General template')}</strong>
           <pre><code>{renderCode(LONGEST_SUBSTRING_TEMPLATE_LINES)}</code></pre>
         </div>
         <div>
-          <strong>Longest Substring 填空结果</strong>
+          <strong>{t('Longest Substring 填空结果', 'Longest Substring specialization')}</strong>
           <pre><code>{renderCode(LONGEST_SUBSTRING_FILLED_LINES)}</code></pre>
         </div>
       </div>
@@ -4151,7 +4369,7 @@ function LongestSubstringVisual() {
         <p>{step.detail}</p>
       </div>
 
-      <div className="longest-substring-array" aria-label="字符串 abca 的窗口状态">
+      <div className="longest-substring-array" aria-label={t('字符串 abca 的窗口状态', 'Window state for string abca')}>
         {LONGEST_SUBSTRING_VALUES.map((value, index) => {
           const inWindow = step.left <= index && index <= step.includedRight;
           const isCandidate = step.candidate && index === step.right;
@@ -4181,25 +4399,25 @@ function LongestSubstringVisual() {
         <div className={step.invalid ? 'invalid' : ''}>
           <span>frequency state</span>
           <strong>{step.state}</strong>
-          <small>{step.invalid ? '存在频次大于 1' : '所有频次都不超过 1'}</small>
+          <small>{step.invalid ? t('存在频次大于 1', 'a count exceeds 1') : t('所有频次都不超过 1', 'all counts are at most 1')}</small>
         </div>
         <div>
           <span>max_length</span>
           <strong>{step.best}</strong>
-          <small>只在窗口合法时记录</small>
+          <small>{t('只在窗口合法时记录', 'record only when the window is valid')}</small>
         </div>
       </div>
 
       <div className="longest-substring-comparison">
         <div>
-          <strong>外层 loop left</strong>
+          <strong>{t('外层 loop left', 'Outer loop over left')}</strong>
           <code>abc… · bc… · c…</code>
-          <span>每个起点重建 count，right 反复扫描：O(n²)</span>
+          <span>{t('每个起点重建 count，right 反复扫描：O(n²)', 'Rebuild count for every start and rescan with right: O(n²)')}</span>
         </div>
         <div>
-          <strong>外层 loop right</strong>
-          <code>R → n 次 · L → 最多 n 次</code>
-          <span>窗口和 count 跨轮复用，总移动不超过 2n：O(n)</span>
+          <strong>{t('外层 loop right', 'Outer loop over right')}</strong>
+          <code>{t('R → n 次 · L → 最多 n 次', 'R → n moves · L → at most n moves')}</code>
+          <span>{t('窗口和 count 跨轮复用，总移动不超过 2n：O(n)', 'Reuse the window and count across rounds; total pointer movement is at most 2n: O(n)')}</span>
         </div>
       </div>
 
@@ -4209,22 +4427,22 @@ function LongestSubstringVisual() {
           onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
           disabled={activeStep === 0}
         >
-          上一步
+          {t('上一步', 'Previous')}
         </button>
         <input
           type="range"
           min="0"
-          max={LONGEST_SUBSTRING_STEPS.length - 1}
+          max={steps.length - 1}
           value={activeStep}
           onChange={(event) => setActiveStep(Number(event.target.value))}
-          aria-label="选择最长无重复子串演示步骤"
+          aria-label={t('选择最长无重复子串演示步骤', 'Select a longest-substring step')}
         />
         <button
           type="button"
-          onClick={() => setActiveStep((current) => Math.min(LONGEST_SUBSTRING_STEPS.length - 1, current + 1))}
-          disabled={activeStep === LONGEST_SUBSTRING_STEPS.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
         >
-          下一步
+          {t('下一步', 'Next')}
         </button>
       </div>
     </section>
@@ -4314,23 +4532,80 @@ const SLIDING_WINDOW_PATTERNS = [
   },
 ];
 
+const SLIDING_WINDOW_PATTERNS_EN = {
+  unique: {
+    shape: 'Variable length · longest valid',
+    add: 'count[s[right]] += 1',
+    control: 'while count[s[right]] > 1',
+    shrinkStep: 'May remove several characters from the left',
+    shrink: 'count[s[left]] -= 1, then move left',
+    beforeRecord: 'do not record',
+    afterRecord: 'update max after the window is valid',
+    invariant: 'Each character appears at most once in the window',
+  },
+  replace: {
+    shape: 'Variable length · longest valid',
+    add: 'Update the character count and max_freq',
+    control: 'while replacements needed > k',
+    shrinkStep: 'May remove several characters from the left',
+    shrink: 'Decrement the count of the leftmost character',
+    beforeRecord: 'do not record',
+    afterRecord: 'update max after the window is valid',
+    invariant: 'len(window) - max_freq <= k',
+  },
+  permutation: {
+    shape: 'Fixed length · |s1|',
+    add: 'Add s2[right]',
+    control: 'if window length > |s1|',
+    shrinkStep: 'Remove at most one character from the left',
+    shrink: 'window[s2[left]] -= 1, then move left',
+    beforeRecord: 'do not record',
+    afterRecord: 'compare frequency tables when the window reaches |s1|',
+    invariant: 'The window never grows beyond |s1|',
+  },
+  minimum: {
+    shape: 'Variable length · shortest satisfying',
+    add: 'Increment have when a character reaches its target count',
+    control: 'while have == required',
+    shrinkStep: 'Record a candidate, then remove one character from the left',
+    shrink: 'Update have and window, then remove the leftmost character',
+    beforeRecord: 'update min',
+    afterRecord: 'do not record; the candidate was saved before shrinking',
+    invariant: 'have counts only character types that meet their required frequency',
+  },
+  maximum: {
+    shape: 'Fixed length · maximum per window',
+    add: 'Remove weaker tail entries, then append right',
+    control: 'if window length > k',
+    shrinkStep: 'Remove at most one expired position',
+    shrink: 'If deque[0] equals left, remove it; then move left',
+    beforeRecord: 'do not record',
+    afterRecord: 'read deque[0] when the window reaches k',
+    invariant: 'Indices increase, values decrease, and the front is the maximum',
+  },
+};
+
 function SlidingWindowPatternAtlas() {
+  const { isEnglish, t } = useUiCopy();
   const [activePattern, setActivePattern] = useState('unique');
-  const pattern = SLIDING_WINDOW_PATTERNS.find(({ id }) => id === activePattern)
+  const basePattern = SLIDING_WINDOW_PATTERNS.find(({ id }) => id === activePattern)
     ?? SLIDING_WINDOW_PATTERNS[0];
+  const pattern = isEnglish
+    ? { ...basePattern, ...SLIDING_WINDOW_PATTERNS_EN[basePattern.id] }
+    : basePattern;
 
   return (
-    <section className={`sliding-pattern-atlas ${pattern.tone}`} aria-label="五道滑动窗口题模板对照">
+    <section className={`sliding-pattern-atlas ${pattern.tone}`} aria-label={t('五道滑动窗口题模板对照', 'Five sliding-window patterns compared')}>
       <header className="sliding-pattern-header">
         <div>
-          <p className="eyebrow">One skeleton · two resize rules</p>
-          <h2>先分定长与变长，再选择 if 或 while</h2>
-          <p>共同顺序是右端加入、调整左端、记录答案；调整次数由窗口类型决定。</p>
+          <p className="eyebrow">{t('同一套骨架，两种调整规则', 'One skeleton · two resize rules')}</p>
+          <h2>{t('先分定长与变长，再选择 if 或 while', 'Choose fixed or variable length first, then choose if or while')}</h2>
+          <p>{t('共同顺序是右端加入、调整左端、记录答案；调整次数由窗口类型决定。', 'Every pattern adds on the right, adjusts the left, and records an answer. The window type determines how often adjustment runs.')}</p>
         </div>
         <code>{pattern.formula}</code>
       </header>
 
-      <div className="sliding-pattern-tabs" role="tablist" aria-label="选择滑动窗口题目">
+      <div className="sliding-pattern-tabs" role="tablist" aria-label={t('选择滑动窗口题目', 'Choose a sliding-window problem')}>
         {SLIDING_WINDOW_PATTERNS.map((candidate) => (
           <button
             type="button"
@@ -4348,38 +4623,38 @@ function SlidingWindowPatternAtlas() {
 
       <div className="sliding-pattern-summary">
         <div>
-          <span>窗口形状</span>
+          <span>{t('窗口形状', 'Window shape')}</span>
           <strong>{pattern.shape}</strong>
         </div>
         <div>
-          <span>增量状态</span>
+          <span>{t('增量状态', 'Incremental state')}</span>
           <strong>{pattern.state}</strong>
         </div>
         <div>
-          <span>窗口不变量</span>
+          <span>{t('窗口不变量', 'Window invariant')}</span>
           <strong>{pattern.invariant}</strong>
         </div>
       </div>
 
       <div className="sliding-pattern-flow">
         <div>
-          <span>1 · right 右扩</span>
+          <span>{t('1 · right 右扩', '1 · Expand right')}</span>
           <strong>{pattern.add}</strong>
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>2 · 选择调整规则</span>
+          <span>{t('2 · 选择调整规则', '2 · Choose the adjustment rule')}</span>
           <strong>{pattern.control}</strong>
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>3 · 调整 left</span>
+          <span>{t('3 · 调整 left', '3 · Adjust left')}</span>
           <strong>{pattern.shrinkStep}</strong>
-          <small>移动前记录：{pattern.beforeRecord}；remove：{pattern.shrink}</small>
+          <small>{t('移动前记录：', 'Before moving: ')}{pattern.beforeRecord}；remove: {pattern.shrink}</small>
         </div>
         <b aria-hidden="true">→</b>
         <div>
-          <span>4 · 窗口调整后</span>
+          <span>{t('4 · 窗口调整后', '4 · After adjustment')}</span>
           <strong>{pattern.afterRecord}</strong>
         </div>
       </div>
@@ -4473,22 +4748,41 @@ const THREE_SUM_STEPS = [
   },
 ];
 
+const THREE_SUM_STEPS_EN = [
+  ['Sort and initialize', '-3 < 0, so the sum is too small. Hold i and right fixed, then move left rightward.'],
+  ['Keep moving left rightward', 'The sum is still below 0. The value is still -1, but this pair has not produced a hit, so continue moving left.'],
+  ['Eliminate smaller combinations', '-2 < 0. Sorting guarantees that candidates to the left cannot be larger, so this block can be discarded safely.'],
+  ['Finish the first anchor', '-1 < 0. One more move would make left meet right, so anchor -4 has no solution.'],
+  ['Anchor -1 and find the first triplet', '-1 + -1 + 2 = 0. Record it, skip duplicates on both ends, and move both pointers inward.'],
+  ['Find the second triplet with the same anchor', '-1 + 0 + 1 = 0. Record it; then left and right cross.'],
+  ['Skip the duplicate anchor', 'nums[2] == nums[1]. Anchoring -1 again would only duplicate previous answers, so continue.'],
+  ['Scan complete', '0 + 1 + 2 = 3, so the sum is too large. Move right leftward; the pointers meet and the search ends.'],
+];
+
 function ThreeSumVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
-  const step = THREE_SUM_STEPS[activeStep];
+  const steps = isEnglish
+    ? THREE_SUM_STEPS.map((step, index) => ({
+      ...step,
+      title: THREE_SUM_STEPS_EN[index][0],
+      action: THREE_SUM_STEPS_EN[index][1],
+    }))
+    : THREE_SUM_STEPS;
+  const step = steps[activeStep];
   const selectedValues = step.left === null
     ? [THREE_SUM_VALUES[step.i]]
     : [THREE_SUM_VALUES[step.i], THREE_SUM_VALUES[step.left], THREE_SUM_VALUES[step.right]];
 
   return (
-    <section className="three-sum-visual" aria-label="3Sum 双指针演示">
+    <section className="three-sum-visual" aria-label={t('3Sum 双指针演示', '3Sum two-pointer walkthrough')}>
       <header className="three-sum-header">
         <div>
-          <p className="eyebrow">Two pointers visual</p>
-          <h2>3Sum：固定 i，收缩 left / right</h2>
-          <p>输入 [-1, 0, 1, 2, -1, -4]，先排序，再观察每次移动为什么能排除一批组合。</p>
+          <p className="eyebrow">{t('双指针可视化', 'Two pointers visual')}</p>
+          <h2>{t('3Sum：固定 i，收缩 left / right', '3Sum: fix i and move left / right inward')}</h2>
+          <p>{t('输入 [-1, 0, 1, 2, -1, -4]，先排序，再观察每次移动为什么能排除一批组合。', 'Sort input [-1, 0, 1, 2, -1, -4], then see why each pointer move eliminates a block of combinations.')}</p>
         </div>
-        <div className="three-sum-counter">{activeStep + 1}<span>/ {THREE_SUM_STEPS.length}</span></div>
+        <div className="three-sum-counter">{activeStep + 1}<span>/ {steps.length}</span></div>
       </header>
 
       <div className="three-sum-step-copy">
@@ -4497,7 +4791,7 @@ function ThreeSumVisual() {
       </div>
 
       <div className="three-sum-array-wrap">
-        <div className="three-sum-array" aria-label="排序后的数组">
+      <div className="three-sum-array" aria-label={t('排序后的数组', 'Sorted array')}>
           {THREE_SUM_VALUES.map((value, index) => {
             const roles = [];
             if (index === step.i) roles.push('i');
@@ -4521,7 +4815,7 @@ function ThreeSumVisual() {
 
       <div className="three-sum-state">
         <div>
-          <span>当前选择</span>
+          <span>{t('当前选择', 'Current selection')}</span>
           <strong>{selectedValues.join(' + ')}</strong>
         </div>
         <div className={`three-sum-sum ${step.tone}`}>
@@ -4529,17 +4823,17 @@ function ThreeSumVisual() {
           <strong>{step.sum === null ? 'skip' : step.sum}</strong>
         </div>
         <div>
-          <span>动作</span>
-          <strong>{step.tone === 'low' ? 'left →' : step.tone === 'high' ? '← right' : step.tone === 'hit' ? '记录 + 内收' : '跳过重复'}</strong>
+          <span>{t('动作', 'Action')}</span>
+          <strong>{step.tone === 'low' ? 'left →' : step.tone === 'high' ? '← right' : step.tone === 'hit' ? t('记录 + 内收', 'record + move inward') : t('跳过重复', 'skip duplicate')}</strong>
         </div>
       </div>
 
       <div className="three-sum-results">
-        <span>已找到</span>
+        <span>{t('已找到', 'Found')}</span>
         <div>
           {step.results.length > 0
             ? step.results.map((triplet) => <strong key={triplet.join(',')}>[{triplet.join(', ')}]</strong>)
-            : <em>尚未命中</em>}
+            : <em>{t('尚未命中', 'No hit yet')}</em>}
         </div>
       </div>
 
@@ -4549,14 +4843,14 @@ function ThreeSumVisual() {
           onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
           disabled={activeStep === 0}
         >
-          上一步
+          {t('上一步', 'Previous')}
         </button>
         <div className="three-sum-dots">
-          {THREE_SUM_STEPS.map((candidate, index) => (
+          {steps.map((candidate, index) => (
             <button
               type="button"
               className={index === activeStep ? 'active' : ''}
-              aria-label={`跳到步骤 ${index + 1}: ${candidate.title}`}
+              aria-label={`${t('跳到步骤', 'Go to step')} ${index + 1}: ${candidate.title}`}
               onClick={() => setActiveStep(index)}
               key={candidate.title}
             />
@@ -4564,10 +4858,10 @@ function ThreeSumVisual() {
         </div>
         <button
           type="button"
-          onClick={() => setActiveStep((current) => Math.min(THREE_SUM_STEPS.length - 1, current + 1))}
-          disabled={activeStep === THREE_SUM_STEPS.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
         >
-          下一步
+          {t('下一步', 'Next')}
         </button>
       </div>
     </section>
@@ -4608,9 +4902,13 @@ function buildRainWaterSteps(heights) {
         resolved: [...resolved],
         waterByIndex: [...waterByIndex],
         title: `结算左侧 index ${current}`,
+        titleEn: `Resolve left index ${current}`,
         note: leftMax === rightMax
           ? `leftMax = rightMax = ${leftMax}，任选一侧都安全；这里先处理左侧。`
           : `leftMax ${leftMax} < rightMax ${rightMax}，右边已有足够高的墙，左侧水位已经确定。`,
+        noteEn: leftMax === rightMax
+          ? `leftMax = rightMax = ${leftMax}. Either side is safe; resolve the left side first.`
+          : `leftMax ${leftMax} < rightMax ${rightMax}. The right side already has a tall enough wall, so the left water level is fixed.`,
       });
       left += 1;
     } else {
@@ -4631,7 +4929,9 @@ function buildRainWaterSteps(heights) {
         resolved: [...resolved],
         waterByIndex: [...waterByIndex],
         title: `结算右侧 index ${current}`,
+        titleEn: `Resolve right index ${current}`,
         note: `rightMax ${rightMax} < leftMax ${leftMax}，左边已有足够高的墙，右侧水位已经确定。`,
+        noteEn: `rightMax ${rightMax} < leftMax ${leftMax}. The left side already has a tall enough wall, so the right water level is fixed.`,
       });
       right -= 1;
     }
@@ -4643,6 +4943,7 @@ function buildRainWaterSteps(heights) {
 const RAIN_WATER_STEPS = buildRainWaterSteps(RAIN_WATER_HEIGHTS);
 
 function RainWaterVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const step = RAIN_WATER_STEPS[activeStep];
@@ -4672,15 +4973,15 @@ function RainWaterVisual() {
   };
 
   return (
-    <section className="rain-water-visual" aria-label="接雨水双指针演示">
+    <section className="rain-water-visual" aria-label={t('接雨水双指针演示', 'Trapping Rain Water two-pointer walkthrough')}>
       <header className="rain-water-header">
         <div>
-          <p className="eyebrow">Two pointers visual</p>
+          <p className="eyebrow">{t('双指针可视化', 'Two pointers visual')}</p>
           <h2>Trapping Rain Water</h2>
-          <p>较低的历史最高墙先结算：它这一侧的水位已经被另一侧兜住。</p>
+          <p>{t('较低的历史最高墙先结算：它这一侧的水位已经被另一侧兜住。', 'Resolve the side with the lower running maximum first; the opposite side already guarantees its water level.')}</p>
         </div>
         <div className="rain-water-total">
-          <span>累计水量</span>
+          <span>{t('累计水量', 'Total water')}</span>
           <strong>{step.total}</strong>
           <small>/ 6</small>
         </div>
@@ -4690,11 +4991,11 @@ function RainWaterVisual() {
         <span className={step.side === 'left' ? 'active left' : 'left'}>leftMax = {step.leftMax}</span>
         <strong>{step.leftMax <= step.rightMax ? '≤' : '>'}</strong>
         <span className={step.side === 'right' ? 'active right' : 'right'}>rightMax = {step.rightMax}</span>
-        <em>→ 结算{step.side === 'left' ? '左' : '右'}侧</em>
+        <em>→ {step.side === 'left' ? t('结算左侧', 'resolve left') : t('结算右侧', 'resolve right')}</em>
       </div>
 
       <div className="rain-water-chart-wrap">
-        <div className="rain-water-chart" aria-label="柱状高度与已结算雨水">
+        <div className="rain-water-chart" aria-label={t('柱状高度与已结算雨水', 'Bar heights and resolved water')}>
           {RAIN_WATER_HEIGHTS.map((height, index) => {
             const water = step.waterByIndex[index];
             const isResolved = step.resolved[index];
@@ -4726,11 +5027,11 @@ function RainWaterVisual() {
 
       <div className="rain-water-explain">
         <div>
-          <span>{step.title}</span>
-          <strong>{step.note}</strong>
+          <span>{isEnglish ? step.titleEn : step.title}</span>
+          <strong>{isEnglish ? step.noteEn : step.note}</strong>
         </div>
         <div className="rain-water-formula">
-          <span>本格水量</span>
+          <span>{t('本格水量', 'Water at this index')}</span>
           <strong>
             {step.side === 'left' ? step.leftMax : step.rightMax}
             {' - '}{RAIN_WATER_HEIGHTS[step.current]} = {step.added}
@@ -4739,14 +5040,14 @@ function RainWaterVisual() {
       </div>
 
       <div className="rain-water-legend">
-        <span><i className="bar" />柱子</span>
-        <span><i className="water" />已确定的水</span>
-        <strong>未处理区域保持空白</strong>
+        <span><i className="bar" />{t('柱子', 'bar')}</span>
+        <span><i className="water" />{t('已确定的水', 'resolved water')}</span>
+        <strong>{t('未处理区域保持空白', 'Unresolved cells stay blank')}</strong>
       </div>
 
       <div className="rain-water-controls">
         <button type="button" onClick={() => jumpToStep(Math.max(0, activeStep - 1))} disabled={activeStep === 0}>
-          上一步
+          {t('上一步', 'Previous')}
         </button>
         <button
           type="button"
@@ -4760,7 +5061,7 @@ function RainWaterVisual() {
             }
           }}
         >
-          {isPlaying ? '暂停' : activeStep === RAIN_WATER_STEPS.length - 1 ? '重新播放' : '播放'}
+          {isPlaying ? t('暂停', 'Pause') : activeStep === RAIN_WATER_STEPS.length - 1 ? t('重新播放', 'Replay') : t('播放', 'Play')}
         </button>
         <input
           type="range"
@@ -4768,7 +5069,7 @@ function RainWaterVisual() {
           max={RAIN_WATER_STEPS.length - 1}
           value={activeStep}
           onChange={(event) => jumpToStep(Number(event.target.value))}
-          aria-label="选择接雨水演示步骤"
+          aria-label={t('选择接雨水演示步骤', 'Select a trapping-rain-water step')}
         />
         <span>{activeStep + 1} / {RAIN_WATER_STEPS.length}</span>
         <button
@@ -4776,7 +5077,7 @@ function RainWaterVisual() {
           onClick={() => jumpToStep(Math.min(RAIN_WATER_STEPS.length - 1, activeStep + 1))}
           disabled={activeStep === RAIN_WATER_STEPS.length - 1}
         >
-          下一步
+          {t('下一步', 'Next')}
         </button>
       </div>
     </section>
@@ -4784,16 +5085,26 @@ function RainWaterVisual() {
 }
 
 function IntervalBar({ domain, interval, isActive = false, isMuted = false }) {
+  const { isEnglish } = useUiCopy();
   const left = intervalPercent(interval.start, domain);
   const right = intervalPercent(interval.end, domain);
   const width = Math.max(right - left, 1.4);
+  const label = isEnglish
+    ? interval.label
+    : interval.label
+      .replace(/^current /, '当前 ')
+      .replace(/^merged /, '合并后 ')
+      .replace(/^output /, '输出 ')
+      .replace(/^new /, '新区间 ')
+      .replace(/^best /, '最优 ')
+      .replace(/ len /, ' 长度 ');
 
   return (
     <div
       className={`interval-bar ${interval.kind ?? ''} ${isActive ? 'active' : ''} ${isMuted ? 'muted' : ''}`}
       style={{ left: `${left}%`, width: `${width}%` }}
     >
-      <span>{interval.label}</span>
+      <span>{label}</span>
     </div>
   );
 }
@@ -4923,6 +5234,7 @@ function IntegralAxis({ from, to, label, labelX, labelY }) {
 }
 
 function HighDimensionalIntegralVisual() {
+  const { t } = useUiCopy();
   const [mode, setMode] = useState('surface');
   const [levelIndex, setLevelIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -4955,21 +5267,21 @@ function HighDimensionalIntegralVisual() {
   };
 
   return (
-    <section className="integral-visual" aria-label="高维积分动态三维可视化">
+    <section className="integral-visual" aria-label={t('高维积分动态三维可视化', 'Dynamic 3D visualization of a high-dimensional integral')}>
       <header className="integral-visual-header">
         <div>
-          <p className="eyebrow">Dynamic 3D intuition</p>
-          <h2>把积分看成“随机高度的平均值”</h2>
-          <p>先看二维曲面的平均高度，再观察维度增加时随机点如何收缩到极限点。</p>
+          <p className="eyebrow">{t('动态三维直觉', 'Dynamic 3D intuition')}</p>
+          <h2>{t('把积分看成“随机高度的平均值”', 'View the integral as an average random height')}</h2>
+          <p>{t('先看二维曲面的平均高度，再观察维度增加时随机点如何收缩到极限点。', 'Start with the average height of a 2D surface, then watch random points concentrate around a limit as dimension grows.')}</p>
         </div>
-        <div className="integral-mode-toggle" role="group" aria-label="可视化视图">
+        <div className="integral-mode-toggle" role="group" aria-label={t('可视化视图', 'Visualization view')}>
           <button
             type="button"
             className={mode === 'surface' ? 'active' : ''}
             aria-pressed={mode === 'surface'}
             onClick={() => switchMode('surface')}
           >
-            n = 2 曲面
+            n = 2 {t('曲面', 'surface')}
           </button>
           <button
             type="button"
@@ -4977,7 +5289,7 @@ function HighDimensionalIntegralVisual() {
             aria-pressed={mode === 'cloud'}
             onClick={() => switchMode('cloud')}
           >
-            n → ∞ 云团
+            n → ∞ {t('云团', 'cloud')}
           </button>
         </div>
       </header>
@@ -4985,12 +5297,18 @@ function HighDimensionalIntegralVisual() {
       <div className="integral-stage">
         <svg viewBox="0 0 760 500" role="img" aria-labelledby="integral-visual-title integral-visual-desc">
           <title id="integral-visual-title">
-            {mode === 'surface' ? '二元积分曲面' : `${n} 维随机样本的统计量点云`}
+            {mode === 'surface' ? t('二元积分曲面', 'Two-variable integral surface') : t(`${n} 维随机样本的统计量点云`, `Statistic cloud from ${n}-dimensional random samples`)}
           </title>
           <desc id="integral-visual-desc">
             {mode === 'surface'
-              ? '曲面高度是 x1 平方加 x2 平方除以 x1 加 x2，积分是单位正方形上曲面的平均高度。'
-              : `每个点由 ${n} 个独立均匀随机数生成，维数增加时点云趋近均值二分之一、二阶矩三分之一、比值三分之二。`}
+              ? t(
+                '曲面高度是 x1 平方加 x2 平方除以 x1 加 x2，积分是单位正方形上曲面的平均高度。',
+                'The surface height is (x1 squared plus x2 squared) divided by (x1 plus x2). The integral is its average height over the unit square.',
+              )
+              : t(
+                `每个点由 ${n} 个独立均匀随机数生成，维数增加时点云趋近均值二分之一、二阶矩三分之一、比值三分之二。`,
+                `Each point comes from ${n} independent uniform samples. As dimension grows, the cloud approaches mean 1/2, second moment 1/3, and ratio 2/3.`,
+              )}
           </desc>
 
           <g className="integral-base-grid" aria-hidden="true">
@@ -5034,8 +5352,8 @@ function HighDimensionalIntegralVisual() {
               <circle className="integral-target" cx={target.x} cy={target.y} r="5.5" />
               <g className="integral-target-label" transform={`translate(${target.x + 18} ${target.y - 14})`}>
                 <rect x="0" y="-23" width="174" height="46" rx="7" />
-                <text x="10" y="-4">极限点 (1/2, 1/3, 2/3)</text>
-                <text x="10" y="14">LLN concentration</text>
+                <text x="10" y="-4">{t('极限点', 'Limit point')} (1/2, 1/3, 2/3)</text>
+                <text x="10" y="14">{t('大数定律下的集中', 'LLN concentration')}</text>
               </g>
             </g>
           )}
@@ -5043,21 +5361,21 @@ function HighDimensionalIntegralVisual() {
           <IntegralAxis
             from={origin}
             to={xEnd}
-            label={mode === 'surface' ? 'x₁' : '样本均值  x̄ₙ'}
+            label={mode === 'surface' ? 'x₁' : t('样本均值  x̄ₙ', 'sample mean  x̄ₙ')}
             labelX={xEnd.x + 10}
             labelY={xEnd.y + 8}
           />
           <IntegralAxis
             from={origin}
             to={yEnd}
-            label={mode === 'surface' ? 'x₂' : '二阶矩  qₙ'}
+            label={mode === 'surface' ? 'x₂' : t('二阶矩  qₙ', 'second moment  qₙ')}
             labelX={yEnd.x + 8}
             labelY={yEnd.y - 8}
           />
           <IntegralAxis
             from={origin}
             to={zEnd}
-            label={mode === 'surface' ? '高度 f₂' : '比值  qₙ / x̄ₙ'}
+            label={mode === 'surface' ? t('高度 f₂', 'height f₂') : t('比值  qₙ / x̄ₙ', 'ratio  qₙ / x̄ₙ')}
             labelX={zEnd.x - 4}
             labelY={zEnd.y - 12}
           />
@@ -5066,17 +5384,17 @@ function HighDimensionalIntegralVisual() {
         <aside className="integral-stage-note">
           {mode === 'surface' ? (
             <>
-              <span>二维切入</span>
-              <strong>积分 = 曲面的平均高度</strong>
-              <p>在单位正方形均匀撒点，每个点的高度是 f₂(x₁,x₂)。所有高度取平均，就是二重积分。</p>
+              <span>{t('二维切入', 'Start in 2D')}</span>
+              <strong>{t('积分 = 曲面的平均高度', 'Integral = average surface height')}</strong>
+              <p>{t('在单位正方形均匀撒点，每个点的高度是 f₂(x₁,x₂)。所有高度取平均，就是二重积分。', 'Sample uniformly on the unit square. Each point has height f₂(x₁,x₂), and the average of those heights is the double integral.')}</p>
             </>
           ) : (
             <>
-              <span>当前维度</span>
+              <span>{t('当前维度', 'Current dimension')}</span>
               <strong>n = {n}</strong>
-              <p>点云平均高度（固定随机样本）</p>
+              <p>{t('点云平均高度（固定随机样本）', 'Mean cloud height (fixed random samples)')}</p>
               <b>{cloud.estimate.toFixed(4)}</b>
-              <small>目标：2/3 ≈ 0.6667</small>
+              <small>{t('目标：', 'Target: ')}2/3 ≈ 0.6667</small>
             </>
           )}
         </aside>
@@ -5088,12 +5406,12 @@ function HighDimensionalIntegralVisual() {
             type="button"
             className="integral-play-button"
             onClick={() => setIsPlaying((current) => !current)}
-            aria-label={isPlaying ? '暂停维度动画' : '播放维度动画'}
+            aria-label={isPlaying ? t('暂停维度动画', 'Pause dimension animation') : t('播放维度动画', 'Play dimension animation')}
           >
-            {isPlaying ? '暂停' : '播放'}
+            {isPlaying ? t('暂停', 'Pause') : t('播放', 'Play')}
           </button>
           <label>
-            <span>维度 n</span>
+            <span>{t('维度 n', 'Dimension n')}</span>
             <input
               type="range"
               min="0"
@@ -5104,7 +5422,7 @@ function HighDimensionalIntegralVisual() {
                 setLevelIndex(Number(event.target.value));
                 setIsPlaying(false);
               }}
-              aria-label="选择积分维度"
+              aria-label={t('选择积分维度', 'Select integral dimension')}
             />
           </label>
           <div className="integral-levels" aria-hidden="true">
@@ -5116,9 +5434,9 @@ function HighDimensionalIntegralVisual() {
       )}
 
       <footer className="integral-visual-footer">
-        <span><i className="surface-key" /> 函数高度 / 样本点</span>
-        <span><i className="target-key" /> 大数定律极限</span>
-        <strong>{mode === 'surface' ? '先理解“平均高度”' : 'n 越大，云团越集中'}</strong>
+        <span><i className="surface-key" /> {t('函数高度 / 样本点', 'function height / sample point')}</span>
+        <span><i className="target-key" /> {t('大数定律极限', 'law-of-large-numbers limit')}</span>
+        <strong>{mode === 'surface' ? t('先理解“平均高度”', 'Start with average height') : t('n 越大，云团越集中', 'The cloud tightens as n grows')}</strong>
       </footer>
     </section>
   );
@@ -5221,10 +5539,82 @@ const MESSAGE_QUEUE_PHASES = [
   ['ack', '确认完成'],
 ];
 
+const MESSAGE_QUEUE_STEPS_EN = [
+  {
+    title: 'The producer constructs an application message',
+    detail: 'The envelope and payload exist, but the broker has not accepted responsibility. A process crash can still lose the message.',
+    position: 'unassigned',
+    handle: 'none',
+    lease: 'none',
+  },
+  {
+    title: 'The broker persists the message and adds it to the ready index',
+    detail: 'Body bytes are written to persistent segment 184233. The API can safely report acceptance only after the durable acknowledgment.',
+    position: '184233',
+    handle: 'none',
+    lease: 'none',
+  },
+  {
+    title: 'Worker A claims the message',
+    detail: 'The business body is unchanged. The broker creates a delivery handle and keeps the message in flight until its lease expires.',
+    position: '184233',
+    handle: 'rh_A7',
+    lease: '30s',
+  },
+  {
+    title: 'Worker A crashes without acknowledging',
+    detail: 'The database may or may not have committed. After the lease expires, the broker can only redeliver, so the consumer must be idempotent.',
+    position: '184233',
+    handle: 'rh_A7 expired',
+    lease: 'timed out',
+  },
+  {
+    title: 'The message becomes ready again',
+    detail: 'The same message body returns to the claimable set. The broker retains redelivery metadata, and the next claim receives a new delivery handle.',
+    position: '184233',
+    handle: 'awaiting a new handle',
+    lease: 'none',
+  },
+  {
+    title: 'Worker B receives the redelivery',
+    detail: 'The position and business ID stay the same. The handle changes to rh_B2 and the delivery count increases. Worker B deduplicates with event_id first.',
+    position: '184233',
+    handle: 'rh_B2',
+    lease: '30s',
+  },
+  {
+    title: 'Commit the business transaction, then acknowledge',
+    detail: 'After receiving an acknowledgment for the current handle, the broker deletes the queue entry or advances the consumer position. The envelope and payload stay unchanged.',
+    position: '184233',
+    handle: 'rh_B2 acknowledged',
+    lease: 'closed',
+  },
+];
+
+const MESSAGE_QUEUE_PHASES_EN = [
+  ['produce', 'Construct'],
+  ['store', 'Persist'],
+  ['deliver', 'First delivery'],
+  ['timeout', 'Timeout'],
+  ['requeue', 'Requeue'],
+  ['redeliver', 'Redeliver'],
+  ['ack', 'Acknowledge'],
+];
+
 function MessageQueueVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [activeStep, setActiveStep] = useState(0);
-  const step = MESSAGE_QUEUE_STEPS[activeStep];
-  const lanes = [
+  const steps = isEnglish
+    ? MESSAGE_QUEUE_STEPS.map((step, index) => ({ ...step, ...MESSAGE_QUEUE_STEPS_EN[index] }))
+    : MESSAGE_QUEUE_STEPS;
+  const phases = isEnglish ? MESSAGE_QUEUE_PHASES_EN : MESSAGE_QUEUE_PHASES;
+  const step = steps[activeStep];
+  const lanes = isEnglish ? [
+    ['ready', 'Ready', 'available for a consumer to claim'],
+    ['inflight', 'In-flight', 'delivered and awaiting acknowledgment'],
+    ['retry', 'Retry wait', 'waiting for lease expiry or backoff'],
+    ['done', 'Done', 'the queue entry is complete'],
+  ] : [
     ['ready', 'Ready', '可以被 consumer 领取'],
     ['inflight', 'In-flight', '已交付，等待 ack'],
     ['retry', 'Retry wait', '等待 lease / backoff'],
@@ -5232,20 +5622,20 @@ function MessageQueueVisual() {
   ];
 
   return (
-    <section className="message-queue-visual" aria-label="消息队列数据与投递生命周期演示">
+    <section className="message-queue-visual" aria-label={t('消息队列数据与投递生命周期演示', 'Message data and delivery lifecycle walkthrough')}>
       <header className="message-queue-header">
         <div>
-          <p className="eyebrow">Message anatomy + delivery state</p>
-          <h2>业务内容保持不变，Broker 状态不断变化</h2>
-          <p>逐步查看同一条 OrderPaid 消息如何从 producer 进入 queue，超时后重投，最后被确认。</p>
+          <p className="eyebrow">{t('消息结构与投递状态', 'Message anatomy + delivery state')}</p>
+          <h2>{t('业务内容保持不变，Broker 状态不断变化', 'The business payload stays fixed while broker state changes')}</h2>
+          <p>{t('逐步查看同一条 OrderPaid 消息如何从 producer 进入 queue，超时后重投，最后被确认。', 'Follow one OrderPaid message from the producer into the queue, through timeout and redelivery, and finally to acknowledgment.')}</p>
         </div>
         <div className="message-queue-counter">
           {activeStep + 1}<span>/ {MESSAGE_QUEUE_STEPS.length}</span>
         </div>
       </header>
 
-      <div className="message-queue-phases" aria-label="消息投递阶段">
-        {MESSAGE_QUEUE_PHASES.map(([id, label], index) => (
+      <div className="message-queue-phases" aria-label={t('消息投递阶段', 'Message delivery stages')}>
+        {phases.map(([id, label], index) => (
           <button
             type="button"
             className={`${index === activeStep ? 'active' : ''} ${index < activeStep ? 'complete' : ''}`}
@@ -5268,18 +5658,18 @@ function MessageQueueVisual() {
       <div className="message-queue-stage">
         <div className={`message-record ${step.activePart === 'message' ? 'active' : ''}`}>
           <div className="message-record-title">
-            <span>Application message</span>
+            <span>{t('应用消息', 'Application message')}</span>
             <strong>evt_01J...</strong>
           </div>
           <div className="message-envelope">
-            <span>Envelope</span>
+            <span>{t('消息头', 'Envelope')}</span>
             <code>event_type</code><strong>order.paid</strong>
             <code>schema_version</code><strong>3</strong>
             <code>aggregate_id</code><strong>order_918</strong>
             <code>traceparent</code><strong>00-a81...</strong>
           </div>
           <div className="message-payload">
-            <span>Payload bytes</span>
+            <span>{t('载荷字节', 'Payload bytes')}</span>
             <pre>{`{
   "order_id": "order_918",
   "amount_cents": 2599,
@@ -5290,12 +5680,12 @@ function MessageQueueVisual() {
 
         <div className="message-queue-arrow" aria-hidden="true">
           <span className={step.location === 'producer' ? '' : 'active'}>→</span>
-          <small>{step.location === 'producer' ? 'publish pending' : 'same body bytes'}</small>
+          <small>{step.location === 'producer' ? t('等待发布', 'publish pending') : t('消息正文不变', 'same body bytes')}</small>
         </div>
 
         <div className={`broker-record ${step.activePart !== 'message' ? 'active' : ''}`}>
           <div className="broker-record-title">
-            <span>Broker metadata</span>
+            <span>{t('Broker 元数据', 'Broker metadata')}</span>
             <strong>{step.status}</strong>
           </div>
           <dl>
@@ -5308,7 +5698,7 @@ function MessageQueueVisual() {
         </div>
       </div>
 
-      <div className="message-queue-lanes" aria-label="Broker 中的消息状态集合">
+      <div className="message-queue-lanes" aria-label={t('Broker 中的消息状态集合', 'Message state sets in the broker')}>
         {lanes.map(([id, label, detail]) => (
           <div className={step.location === id ? `active ${id}` : id} key={id}>
             <span><strong>{label}</strong><small>{detail}</small></span>
@@ -5320,7 +5710,7 @@ function MessageQueueVisual() {
                   <em>#{step.position}</em>
                 </b>
               ) : (
-                <small>empty</small>
+                <small>{t('空', 'empty')}</small>
               )}
             </div>
           </div>
@@ -5328,7 +5718,7 @@ function MessageQueueVisual() {
       </div>
 
       {step.location === 'producer' && (
-        <div className="message-queue-producer-note">消息还在 producer 内存中，broker 尚未接管</div>
+        <div className="message-queue-producer-note">{t('消息还在 producer 内存中，broker 尚未接管', 'The message is still in producer memory; the broker has not accepted responsibility')}</div>
       )}
 
       <div className="message-queue-controls">
@@ -5337,22 +5727,22 @@ function MessageQueueVisual() {
           onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
           disabled={activeStep === 0}
         >
-          上一步
+          {t('上一步', 'Previous')}
         </button>
         <input
           type="range"
           min="0"
-          max={MESSAGE_QUEUE_STEPS.length - 1}
+          max={steps.length - 1}
           value={activeStep}
           onChange={(event) => setActiveStep(Number(event.target.value))}
-          aria-label="选择消息队列生命周期步骤"
+          aria-label={t('选择消息队列生命周期步骤', 'Select a message lifecycle step')}
         />
         <button
           type="button"
-          onClick={() => setActiveStep((current) => Math.min(MESSAGE_QUEUE_STEPS.length - 1, current + 1))}
-          disabled={activeStep === MESSAGE_QUEUE_STEPS.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
         >
-          下一步
+          {t('下一步', 'Next')}
         </button>
       </div>
     </section>
@@ -5518,27 +5908,193 @@ const BUSINESS_ALGORITHM_PATHS = {
   },
 };
 
+const BUSINESS_ALGORITHM_PATHS_EN = {
+  cascade: {
+    label: 'Traditional cascade',
+    eyebrow: 'MULTI-STAGE FUNNEL',
+    title: 'Narrow billions of candidates within a fixed latency budget',
+    summary: 'Early stages handle more candidates with cheaper features. Real-time crosses and slate constraints appear only after the candidate set is small.',
+    stages: [
+      {
+        id: 'recall',
+        step: '01',
+        title: 'Multi-channel retrieval',
+        short: 'Recall',
+        volume: '10⁸ → 3k',
+        latency: '10–30 ms',
+        input: 'The full item corpus, query or user history, inverted indexes, and vector indexes',
+        output: 'A few thousand candidates with channel attribution and raw retrieval scores',
+        compute: 'Run BM25, ItemCF, two-tower ANN, trending, and following channels in parallel',
+        failure: 'If a relevant item never enters the candidate set, no downstream ranker can recover it.',
+        chapter: 'Chapter 6 · Query, content, and multi-channel retrieval',
+        noteId: 'BusinessAlgorithm01C Multi-Channel Retrieval.md',
+      },
+      {
+        id: 'filter',
+        step: '02',
+        title: 'Merge and filter',
+        short: 'Merge',
+        volume: '3k → 1.8k',
+        latency: '5–15 ms',
+        input: 'Candidates from every channel, inventory, region, safety, and seen-item history',
+        output: 'Deduplicated eligible candidates with channel attribution',
+        compute: 'Deduplication, quotas, hard rules, and lightweight feature hydration',
+        failure: 'Over-filtering silently drops good items; under-filtering wastes the budget of later stages.',
+        chapter: 'Chapter 20 · System design',
+        noteId: 'BusinessAlgorithm07 System Design.md',
+      },
+      {
+        id: 'prerank',
+        step: '03',
+        title: 'Pre-rank',
+        short: 'Pre-rank',
+        volume: '1.8k → 300',
+        latency: '10–25 ms',
+        input: 'Candidates plus low-cost user and item features',
+        output: 'A few hundred candidates reserved for the full ranker',
+        compute: 'Distilled models, lightweight DNNs or GBDTs, and score calibration',
+        failure: 'If pre-rank and rank optimize different targets, pre-rank may discard items the ranker would have kept.',
+        chapter: 'Chapter 11 · Feature crosses, pre-rank, and personalization',
+        noteId: 'BusinessAlgorithm02C Feature Interaction.md',
+      },
+      {
+        id: 'rank',
+        step: '04',
+        title: 'Rank',
+        short: 'Rank',
+        volume: '300 → 80',
+        latency: '25–60 ms',
+        input: 'Real-time features, cross features, and the candidate set',
+        output: 'Multi-objective scores such as CTR, CVR, and watch time',
+        compute: 'Wide & Deep, DeepFM, DCN, multi-task learning, and score fusion',
+        failure: 'Biased labels, exposure bias, or online feature skew directly distort the final order.',
+        chapter: 'Chapter 10 · Multi-objective learning and score fusion',
+        noteId: 'BusinessAlgorithm02B Multi-Objective Ranking.md',
+      },
+      {
+        id: 'slate',
+        step: '05',
+        title: 'Slate decision',
+        short: 'Slate',
+        volume: '80 → 20',
+        latency: '5–20 ms',
+        input: 'Ranked items, rules, exploration budget, and slate context',
+        output: 'The final slate and a complete exposure log',
+        compute: 'MMR or DPP, deduplication, frequency caps, business rules, and bandit exploration',
+        failure: 'The best items individually may form a poor page. Repetition, fatigue, and rule conflicts surface here.',
+        chapter: 'Chapter 13 · Re-ranking, diversity, and rules',
+        noteId: 'BusinessAlgorithm03 List Decision.md',
+      },
+    ],
+  },
+  generative: {
+    label: 'End-to-end generation',
+    eyebrow: 'GENERATIVE PATH',
+    title: 'Fold retrieval and ranking objectives into sequence generation',
+    summary: 'A single model can unify more stages, but SID materialization, constrained decoding, inventory and safety rules, and the feedback loop still remain.',
+    stages: [
+      {
+        id: 'context',
+        step: '01',
+        title: 'Unified context',
+        short: 'Context',
+        volume: 'query + history',
+        latency: 'online',
+        input: 'Query, behavior sequence, scenario, and user and item representations',
+        output: 'A unified token or embedding sequence for the sequence model',
+        compute: 'Serialize user behavior and combine search intent with current context',
+        failure: 'Overlong context, lost temporal information, or train-serve formatting skew can corrupt generation.',
+        chapter: 'Chapter 18 · Generative recommendation',
+        noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
+      },
+      {
+        id: 'generator',
+        step: '02',
+        title: 'Unified generator',
+        short: 'Generate',
+        volume: 'one model',
+        latency: 'decode budget',
+        input: 'Unified context and the current policy',
+        output: 'Item tokens, Semantic IDs, or an entire recommendation slate',
+        compute: 'HSTU-, OneRec-, or OneSearch-style sequence modeling and autoregressive decoding',
+        failure: '“End to end” has different boundaries across systems; it does not imply that every online service and rule disappears.',
+        chapter: 'Chapter 18 · Generative recommendation',
+        noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
+      },
+      {
+        id: 'materialize',
+        step: '03',
+        title: 'ID materialization',
+        short: 'Materialize',
+        volume: 'SID → items',
+        latency: 'index lookup',
+        input: 'Generated item IDs or Semantic IDs',
+        output: 'Real, displayable, versioned, and traceable candidates',
+        compute: 'SID codebooks, postings, version alignment, and collision handling',
+        failure: 'Quantization collisions, empty postings, or index-version skew can leave a valid token with no real item.',
+        chapter: 'Chapter 17 · Semantic ID',
+        noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
+      },
+      {
+        id: 'align',
+        step: '04',
+        title: 'Preference alignment',
+        short: 'Align',
+        volume: 'CE → DPO / RL',
+        latency: 'offline train',
+        input: 'Preference pairs, rollouts, and downstream rewards',
+        output: 'A generation policy better aligned with slate and business objectives',
+        compute: 'SFT, DPO, GRPO or PPO, and non-differentiable system metrics',
+        failure: 'An incomplete reward invites gaming; off-policy data can amplify distribution shift.',
+        chapter: 'Chapter 18 · Preference learning and RL',
+        noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
+      },
+      {
+        id: 'guardrail',
+        step: '05',
+        title: 'Constraints and serving',
+        short: 'Serve',
+        volume: 'valid top N',
+        latency: 'P99 budget',
+        input: 'Generated results, inventory, safety, and business rules',
+        output: 'The final slate, fallback results, and exposure logs',
+        compute: 'Constrained decoding, filtering, caching, fallbacks, and observability',
+        failure: 'A unified model objective does not remove deterministic constraints, resilience, or online validation.',
+        chapter: 'Chapter 20 · System design',
+        noteId: 'BusinessAlgorithm07 System Design.md',
+      },
+    ],
+  },
+};
+
 function BusinessAlgorithmMap() {
+  const { isEnglish, t } = useUiCopy();
   const [mode, setMode] = useState('cascade');
   const [activeStageId, setActiveStageId] = useState('recall');
-  const path = BUSINESS_ALGORITHM_PATHS[mode];
+  const paths = isEnglish ? BUSINESS_ALGORITHM_PATHS_EN : BUSINESS_ALGORITHM_PATHS;
+  const path = paths[mode];
   const activeStage = path.stages.find((stage) => stage.id === activeStageId) ?? path.stages[0];
 
   const selectMode = (nextMode) => {
     setMode(nextMode);
-    setActiveStageId(BUSINESS_ALGORITHM_PATHS[nextMode].stages[0].id);
+    setActiveStageId(paths[nextMode].stages[0].id);
   };
 
   return (
-    <section className="biz-map" data-mode={mode} aria-label="推荐与搜索业务算法系统地图">
+    <section
+      className="biz-map"
+      data-mode={mode}
+      data-system-label={t('系统 / 01', 'SYSTEM / 01')}
+      aria-label={t('推荐与搜索业务算法系统地图', 'Recommendation and search algorithm system map')}
+    >
       <header className="biz-map-header">
         <div className="biz-map-title">
-          <p className="eyebrow">{path.eyebrow}</p>
+          <p className="eyebrow">{mode === 'cascade' ? t('多阶段漏斗', path.eyebrow) : t('生成式链路', path.eyebrow)}</p>
           <h2>{path.title}</h2>
           <p>{path.summary}</p>
         </div>
-        <div className="biz-mode-switch" role="group" aria-label="选择系统架构">
-          {Object.entries(BUSINESS_ALGORITHM_PATHS).map(([key, option]) => (
+        <div className="biz-mode-switch" role="group" aria-label={t('选择系统架构', 'Choose a system architecture')}>
+          {Object.entries(paths).map(([key, option]) => (
             <button
               type="button"
               key={key}
@@ -5555,18 +6111,20 @@ function BusinessAlgorithmMap() {
 
       <div className="biz-request-strip">
         <div>
-          <small>REQUEST</small>
+          <small>{t('请求', 'REQUEST')}</small>
           <strong>query · user · context</strong>
         </div>
         <span className="biz-pulse" aria-hidden="true" />
-        <p>{mode === 'cascade' ? '候选漏斗在每一层显式收窄' : '统一模型生成，外部系统负责物化与约束'}</p>
+        <p>{mode === 'cascade'
+          ? t('候选漏斗在每一层显式收窄', 'The candidate funnel narrows explicitly at every stage')
+          : t('统一模型生成，外部系统负责物化与约束', 'One model generates; external systems materialize and enforce constraints')}</p>
         <div>
-          <small>RESPONSE</small>
+          <small>{t('响应', 'RESPONSE')}</small>
           <strong>top 20 + trace</strong>
         </div>
       </div>
 
-      <div className="biz-stage-flow" aria-label={`${path.label}阶段`}>
+      <div className="biz-stage-flow" aria-label={`${path.label} ${t('阶段', 'stages')}`}>
         {path.stages.map((stage, index) => (
           <button
             type="button"
@@ -5593,20 +6151,20 @@ function BusinessAlgorithmMap() {
         </div>
         <dl className="biz-io-grid">
           <div>
-            <dt>INPUT</dt>
+            <dt>{t('输入', 'INPUT')}</dt>
             <dd>{activeStage.input}</dd>
           </div>
           <div>
-            <dt>OUTPUT</dt>
+            <dt>{t('输出', 'OUTPUT')}</dt>
             <dd>{activeStage.output}</dd>
           </div>
           <div>
-            <dt>BUDGET</dt>
+            <dt>{t('预算', 'BUDGET')}</dt>
             <dd>{activeStage.latency}</dd>
           </div>
         </dl>
         <div className="biz-failure-card">
-          <small>FAILURE TO WATCH</small>
+          <small>{t('需要警惕的失效点', 'FAILURE TO WATCH')}</small>
           <p>{activeStage.failure}</p>
         </div>
       </div>
@@ -5614,13 +6172,13 @@ function BusinessAlgorithmMap() {
       <footer className="biz-feedback-loop">
         <div className="biz-feedback-label">
           <span>↺</span>
-          <div><small>SHARED FEEDBACK LOOP</small><strong>模型之外，系统仍要闭环</strong></div>
+          <div><small>{t('共享反馈闭环', 'SHARED FEEDBACK LOOP')}</small><strong>{t('模型之外，系统仍要闭环', 'The system still needs a feedback loop beyond the model')}</strong></div>
         </div>
         <ol>
-          <li><span>01</span>曝光与交互日志</li>
-          <li><span>02</span>样本与特征</li>
-          <li><span>03</span>训练与评估</li>
-          <li><span>04</span>模型 / 索引版本</li>
+          <li><span>01</span>{t('曝光与交互日志', 'Exposure and interaction logs')}</li>
+          <li><span>02</span>{t('样本与特征', 'Samples and features')}</li>
+          <li><span>03</span>{t('训练与评估', 'Training and evaluation')}</li>
+          <li><span>04</span>{t('模型 / 索引版本', 'Model and index versions')}</li>
         </ol>
       </footer>
     </section>
@@ -5654,58 +6212,86 @@ const OVERVIEW_STAGES = {
   },
 };
 
+const OVERVIEW_STAGES_EN = {
+  edge: {
+    label: 'Edge layer',
+    title: 'Stabilize incoming traffic first',
+    body: 'The load balancer handles health checks and traffic distribution. The API gateway handles authentication, rate limits, and routing. Heavy business computation stays out of this layer.',
+    check: 'Estimate peak QPS, connection count, request size, and burst factor.',
+  },
+  service: {
+    label: 'Compute layer',
+    title: 'Stateless services run business rules',
+    body: 'Instances can scale horizontally and be replaced at any time. Move long-running work to a queue and serve hot reads from a cache.',
+    check: 'Divide peak traffic by safe per-instance QPS, then keep roughly 30% headroom.',
+  },
+  data: {
+    label: 'Data layer',
+    title: 'Identify the source of truth',
+    body: 'The primary store holds factual state. Replicas, caches, and materialized views are rebuildable derived state.',
+    check: 'Estimate the read/write ratio, data volume, index size, replication bandwidth, and recovery targets.',
+  },
+  async: {
+    label: 'Async layer',
+    title: 'Move slow work off the request path',
+    body: 'Once a queue or event log accepts the work, workers can scale, retry, and absorb bursts independently.',
+    check: 'Estimate production and consumption rates, backlog time, and message retention storage.',
+  },
+};
+
 function SystemDesignOverviewVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [active, setActive] = useState('service');
-  const detail = OVERVIEW_STAGES[active];
+  const detail = (isEnglish ? OVERVIEW_STAGES_EN : OVERVIEW_STAGES)[active];
 
   return (
-    <section className="arch-visual overview-arch" aria-label="系统设计基础架构图">
+    <section className="arch-visual overview-arch" aria-label={t('系统设计基础架构图', 'System design overview diagram')}>
       <header className="arch-header">
         <div>
-          <p className="eyebrow">High-level architecture</p>
-          <h2>先跑通同步闭环，再按指标加组件</h2>
-          <p>点击节点查看它解决的问题。蓝色是同步请求，橙色是异步工作，绿色是数据访问。</p>
+          <p className="eyebrow">{t('系统整体架构', 'High-level architecture')}</p>
+          <h2>{t('先跑通同步闭环，再按指标加组件', 'Start with a complete synchronous path, then add components for measured needs')}</h2>
+          <p>{t('点击节点查看它解决的问题。蓝色是同步请求，橙色是异步工作，绿色是数据访问。', 'Select a node to see what it solves. Blue marks synchronous requests, orange asynchronous work, and green data access.')}</p>
         </div>
-        <div className="arch-legend" aria-label="连线图例">
-          <span><i className="sync" />同步</span>
-          <span><i className="async" />异步</span>
-          <span><i className="data" />数据</span>
+        <div className="arch-legend" aria-label={t('连线图例', 'Connection legend')}>
+          <span><i className="sync" />{t('同步', 'sync')}</span>
+          <span><i className="async" />{t('异步', 'async')}</span>
+          <span><i className="data" />{t('数据', 'data')}</span>
         </div>
       </header>
 
       <div className="overview-board">
-        <div className="arch-lane-label">REQUEST PATH</div>
+        <div className="arch-lane-label">{t('请求链路', 'REQUEST PATH')}</div>
         <div className="arch-flow overview-main-flow">
-          <div className="arch-node neutral"><small>01</small><strong>User / Client</strong><span>发起请求</span></div>
+          <div className="arch-node neutral"><small>01</small><strong>User / Client</strong><span>{t('发起请求', 'send request')}</span></div>
           <span className="arch-connector sync" aria-hidden="true">→</span>
           <button type="button" className={`arch-node edge ${active === 'edge' ? 'active' : ''}`} onClick={() => setActive('edge')}>
             <small>02 · EDGE</small><strong>LB / API Gateway</strong><span>auth · rate limit · routing</span>
           </button>
           <span className="arch-connector sync" aria-hidden="true">→</span>
           <button type="button" className={`arch-node service ${active === 'service' ? 'active' : ''}`} onClick={() => setActive('service')}>
-            <small>03 · COMPUTE</small><strong>Stateless Service</strong><span>业务规则与编排</span>
+            <small>03 · COMPUTE</small><strong>Stateless Service</strong><span>{t('业务规则与编排', 'business rules and orchestration')}</span>
           </button>
           <span className="arch-connector data" aria-hidden="true">→</span>
           <button type="button" className={`arch-node store ${active === 'data' ? 'active' : ''}`} onClick={() => setActive('data')}>
-            <small>04 · SOURCE OF TRUTH</small><strong>Primary Store</strong><span>事实数据与事务边界</span>
+            <small>04 · SOURCE OF TRUTH</small><strong>Primary Store</strong><span>{t('事实数据与事务边界', 'factual state and transaction boundary')}</span>
           </button>
         </div>
 
-        <div className="arch-lane-label">SUPPORTING PATHS</div>
+        <div className="arch-lane-label">{t('支撑链路', 'SUPPORTING PATHS')}</div>
         <div className="overview-support-grid">
           <div className="overview-support-card data-card">
-            <span className="support-origin">Service</span><span className="support-arrow data">↓ hot reads</span>
-            <div className="arch-node compact store"><strong>Cache</strong><span>可丢、可重建、带 TTL</span></div>
+            <span className="support-origin">Service</span><span className="support-arrow data">↓ {t('热点读取', 'hot reads')}</span>
+            <div className="arch-node compact store"><strong>Cache</strong><span>{t('可丢、可重建、带 TTL', 'disposable · rebuildable · TTL')}</span></div>
           </div>
           <button type="button" className={`overview-support-card async-card ${active === 'async' ? 'active' : ''}`} onClick={() => setActive('async')}>
-            <span className="support-origin">Service</span><span className="support-arrow async">↓ enqueue</span>
-            <div className="arch-node compact queue"><strong>Queue / Event Log</strong><span>durable handoff · buffer</span></div>
-            <span className="support-arrow async">↓ consume</span>
-            <div className="arch-node compact worker"><strong>Workers</strong><span>retry · batch · scale</span></div>
+            <span className="support-origin">Service</span><span className="support-arrow async">↓ {t('入队', 'enqueue')}</span>
+            <div className="arch-node compact queue"><strong>Queue / Event Log</strong><span>{t('持久交接 · 缓冲', 'durable handoff · buffer')}</span></div>
+            <span className="support-arrow async">↓ {t('消费', 'consume')}</span>
+            <div className="arch-node compact worker"><strong>Workers</strong><span>{t('重试 · 批处理 · 扩缩容', 'retry · batch · scale')}</span></div>
           </button>
           <div className="overview-support-card data-card">
-            <span className="support-origin">Primary Store</span><span className="support-arrow data">↓ replicate / shard</span>
-            <div className="arch-node compact store"><strong>Replica / Shard</strong><span>读扩展与故障恢复</span></div>
+            <span className="support-origin">Primary Store</span><span className="support-arrow data">↓ {t('复制 / 分片', 'replicate / shard')}</span>
+            <div className="arch-node compact store"><strong>Replica / Shard</strong><span>{t('读扩展与故障恢复', 'read scaling and recovery')}</span></div>
           </div>
         </div>
       </div>
@@ -5713,7 +6299,7 @@ function SystemDesignOverviewVisual() {
       <aside className="arch-inspector" aria-live="polite">
         <span>{detail.label}</span>
         <div><strong>{detail.title}</strong><p>{detail.body}</p></div>
-        <div className="arch-estimate"><small>面试时估算</small><b>{detail.check}</b></div>
+        <div className="arch-estimate"><small>{t('面试时估算', 'Estimate in the interview')}</small><b>{detail.check}</b></div>
       </aside>
     </section>
   );
@@ -5732,26 +6318,40 @@ const PHOTO_PATHS = {
   },
 };
 
+const PHOTO_PATHS_EN = {
+  upload: {
+    eyebrow: 'UPLOAD PATH',
+    title: 'Upload large files directly; keep bytes off the API path',
+    note: 'Image bytes bypass the application service. A PostReady event drives media processing and feed distribution.',
+  },
+  feed: {
+    eyebrow: 'READ PATH',
+    title: 'Fetch post IDs first, then hydrate content in batches',
+    note: 'The timeline is a rebuildable index; metadata is factual state, and the CDN serves image bytes.',
+  },
+};
+
 function PhotoSharingArchitectureVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [mode, setMode] = useState('upload');
-  const copy = PHOTO_PATHS[mode];
+  const copy = (isEnglish ? PHOTO_PATHS_EN : PHOTO_PATHS)[mode];
 
   return (
-    <section className="arch-visual photo-arch" aria-label="图片分享系统架构图">
+    <section className="arch-visual photo-arch" aria-label={t('图片分享系统架构图', 'Photo sharing system architecture')}>
       <header className="arch-header split">
         <div>
-          <p className="eyebrow">Photo sharing system</p>
+          <p className="eyebrow">{t('图片分享系统', 'Photo sharing system')}</p>
           <h2>{copy.title}</h2>
           <p>{copy.note}</p>
         </div>
-        <div className="arch-tabs" role="group" aria-label="选择图片系统链路">
-          <button type="button" className={mode === 'upload' ? 'active' : ''} onClick={() => setMode('upload')}>发布图片</button>
-          <button type="button" className={mode === 'feed' ? 'active' : ''} onClick={() => setMode('feed')}>读取 Feed</button>
+        <div className="arch-tabs" role="group" aria-label={t('选择图片系统链路', 'Choose a photo-system path')}>
+          <button type="button" className={mode === 'upload' ? 'active' : ''} onClick={() => setMode('upload')}>{t('发布图片', 'Publish photo')}</button>
+          <button type="button" className={mode === 'feed' ? 'active' : ''} onClick={() => setMode('feed')}>{t('读取 Feed', 'Read feed')}</button>
         </div>
       </header>
 
       <div className="photo-stage" data-mode={mode}>
-        <div className="photo-stage-label">{copy.eyebrow}</div>
+        <div className="photo-stage-label">{mode === 'upload' ? t('上传链路', copy.eyebrow) : t('读取链路', copy.eyebrow)}</div>
         {mode === 'upload' ? (
           <>
             <div className="photo-control-row arch-flow">
@@ -5763,7 +6363,7 @@ function PhotoSharingArchitectureVisual() {
             </div>
             <div className="photo-branch-grid">
               <div className="photo-branch media">
-                <span className="branch-kicker">DATA PLANE · BYTES</span>
+                <span className="branch-kicker">{t('数据面 · 图片字节', 'DATA PLANE · BYTES')}</span>
                 <div className="arch-node compact neutral"><strong>App</strong><span>PUT signed URL</span></div>
                 <span className="support-arrow data">↓</span>
                 <div className="arch-node compact blob"><strong>Object Storage</strong><span>original image</span></div>
@@ -5773,7 +6373,7 @@ function PhotoSharingArchitectureVisual() {
                 <div className="arch-node compact blob"><strong>CDN Origins</strong><span>optimized variants</span></div>
               </div>
               <div className="photo-branch events">
-                <span className="branch-kicker">EVENT PLANE · IDS</span>
+                <span className="branch-kicker">{t('事件面 · 标识符', 'EVENT PLANE · IDS')}</span>
                 <div className="arch-node compact store"><strong>Outbox</strong><span>PostReady(post_id)</span></div>
                 <span className="support-arrow async">↓</span>
                 <div className="arch-node compact queue"><strong>Event Log</strong><span>partition by author_id</span></div>
@@ -5801,14 +6401,14 @@ function PhotoSharingArchitectureVisual() {
               <div className="read-source"><small>3 · MEDIA</small><strong>CDN</strong><span>return image variants</span></div>
             </div>
             <div className="feed-safety-strip">
-              <span>READ-TIME GUARDS</span>
-              <b>privacy</b><i>·</i><b>block list</b><i>·</i><b>deleted posts</b><i>·</i><b>ranking policy</b>
+              <span>{t('读取时校验', 'READ-TIME GUARDS')}</span>
+              <b>{t('隐私', 'privacy')}</b><i>·</i><b>{t('屏蔽列表', 'block list')}</b><i>·</i><b>{t('已删除内容', 'deleted posts')}</b><i>·</i><b>{t('排序策略', 'ranking policy')}</b>
             </div>
           </>
         )}
       </div>
 
-      <footer className="arch-footnote"><span><i className="sync" />control</span><span><i className="data" />bytes / reads</span><span><i className="async" />events</span><strong>当前视图：{mode === 'upload' ? '写入与派生' : '读取与补齐'}</strong></footer>
+      <footer className="arch-footnote"><span><i className="sync" />{t('控制流', 'control')}</span><span><i className="data" />{t('字节 / 读取', 'bytes / reads')}</span><span><i className="async" />{t('事件', 'events')}</span><strong>{t('当前视图：', 'Current view: ')}{mode === 'upload' ? t('写入与派生', 'write and derive') : t('读取与补齐', 'read and hydrate')}</strong></footer>
     </section>
   );
 }
@@ -5831,20 +6431,40 @@ const ASYNC_PATTERNS = {
   },
 };
 
+const ASYNC_PATTERNS_EN = {
+  queue: {
+    label: 'Task Queue',
+    title: 'One task goes to exactly one worker',
+    description: 'Workers in the same group compete for tasks. Adding workers increases throughput without duplicating the business action.',
+  },
+  pubsub: {
+    label: 'Pub/Sub',
+    title: 'One event drives several independent handlers',
+    description: 'Each subscription owns its progress and retries. Adding a subscriber does not require changing the upstream producer.',
+  },
+  kafka: {
+    label: 'Kafka groups',
+    title: 'Kafka is the system; consumer groups define the semantics',
+    description: 'Consumers within one group compete for work. Different groups each receive a copy, which gives publish-subscribe semantics.',
+  },
+};
+
 function AsyncMessagingArchitectureVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [pattern, setPattern] = useState('queue');
-  const copy = ASYNC_PATTERNS[pattern];
+  const patterns = isEnglish ? ASYNC_PATTERNS_EN : ASYNC_PATTERNS;
+  const copy = patterns[pattern];
 
   return (
-    <section className="arch-visual async-arch" aria-label="异步消息模式架构图">
+    <section className="arch-visual async-arch" aria-label={t('异步消息模式架构图', 'Asynchronous messaging pattern diagram')}>
       <header className="arch-header split">
         <div>
-          <p className="eyebrow">Messaging semantics</p>
+          <p className="eyebrow">{t('消息消费语义', 'Messaging semantics')}</p>
           <h2>{copy.title}</h2>
           <p>{copy.description}</p>
         </div>
-        <div className="arch-tabs" role="group" aria-label="选择消息模式">
-          {Object.entries(ASYNC_PATTERNS).map(([id, item]) => (
+        <div className="arch-tabs" role="group" aria-label={t('选择消息模式', 'Choose a messaging pattern')}>
+          {Object.entries(patterns).map(([id, item]) => (
             <button type="button" className={pattern === id ? 'active' : ''} onClick={() => setPattern(id)} key={id}>{item.label}</button>
           ))}
         </div>
@@ -5858,45 +6478,50 @@ function AsyncMessagingArchitectureVisual() {
 
         {pattern === 'queue' && (
           <div className="consumer-cluster queue-consumers">
-            <span>ONE CONSUMER GROUP</span>
-            <div><div className="consumer active"><b>Worker A</b><small>处理 evt_42</small></div><div className="consumer"><b>Worker B</b><small>等待下一条</small></div><div className="consumer"><b>Worker C</b><small>等待下一条</small></div></div>
-            <p><strong>竞争消费</strong> · evt_42 只会被其中一个 worker 领取</p>
+            <span>{t('一个消费者组', 'ONE CONSUMER GROUP')}</span>
+            <div><div className="consumer active"><b>Worker A</b><small>{t('处理 evt_42', 'handles evt_42')}</small></div><div className="consumer"><b>Worker B</b><small>{t('等待下一条', 'waits for the next task')}</small></div><div className="consumer"><b>Worker C</b><small>{t('等待下一条', 'waits for the next task')}</small></div></div>
+            <p><strong>{t('竞争消费', 'Competing consumers')}</strong> · {t('evt_42 只会被其中一个 worker 领取', 'only one worker claims evt_42')}</p>
           </div>
         )}
 
         {pattern === 'pubsub' && (
           <div className="consumer-cluster subscription-consumers">
-            <span>THREE SUBSCRIPTIONS</span>
+            <span>{t('三个订阅', 'THREE SUBSCRIPTIONS')}</span>
             <div><div className="consumer active"><b>Billing</b><small>sub_billing</small></div><div className="consumer active"><b>CRM</b><small>sub_crm</small></div><div className="consumer active"><b>Analytics</b><small>sub_analytics</small></div></div>
-            <p><strong>各自一份</strong> · 三个订阅分别保存 offset、重试与 DLQ</p>
+            <p><strong>{t('各自一份', 'One copy each')}</strong> · {t('三个订阅分别保存 offset、重试与 DLQ', 'each subscription keeps its own offset, retries, and DLQ')}</p>
           </div>
         )}
 
         {pattern === 'kafka' && (
           <div className="consumer-cluster kafka-consumers">
-            <span>TWO CONSUMER GROUPS</span>
-            <div className="kafka-group"><b>group: billing</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>组内竞争</em></div>
-            <div className="kafka-group"><b>group: analytics</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>另一份事件</em></div>
+            <span>{t('两个消费者组', 'TWO CONSUMER GROUPS')}</span>
+            <div className="kafka-group"><b>group: billing</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>{t('组内竞争', 'compete within the group')}</em></div>
+            <div className="kafka-group"><b>group: analytics</b><div><div className="consumer active"><small>consumer 1</small></div><div className="consumer"><small>consumer 2</small></div></div><em>{t('另一份事件', 'a separate copy')}</em></div>
           </div>
         )}
       </div>
 
-      <footer className="messaging-rule"><span>记忆规则</span><strong>Queue / PubSub 是消费语义；Kafka、RabbitMQ、SQS 是承载语义的系统。</strong></footer>
+      <footer className="messaging-rule"><span>{t('记忆规则', 'Rule of thumb')}</span><strong>{t('Queue / PubSub 是消费语义；Kafka、RabbitMQ、SQS 是承载语义的系统。', 'Queue and Pub/Sub describe consumption semantics; Kafka, RabbitMQ, and SQS are systems that implement them.')}</strong></footer>
     </section>
   );
 }
 
 function VirtualizationContainerVisual() {
+  const { t } = useUiCopy();
   const [mode, setMode] = useState('vm');
   const isVm = mode === 'vm';
 
   return (
-    <section className="isolation-visual" aria-label="虚拟机与容器隔离边界对比">
+    <section className="isolation-visual" aria-label={t('虚拟机与容器隔离边界对比', 'VM and container isolation boundary comparison')}>
       <header className="isolation-header">
         <div>
-          <p className="eyebrow">Isolation boundary</p>
-          <h2>{isVm ? 'VM：每个 guest 有自己的 kernel' : 'Container：多个进程共享 host kernel'}</h2>
-          <p>{isVm ? 'Hypervisor 提供虚拟 CPU、内存与设备。' : 'Namespace 改变可见范围，cgroup 约束资源使用。'}</p>
+          <p className="eyebrow">{t('隔离边界', 'Isolation boundary')}</p>
+          <h2>{isVm
+            ? t('VM：每个 guest 有自己的 kernel', 'VM: each guest has its own kernel')
+            : t('Container：多个进程共享 host kernel', 'Container: processes share the host kernel')}</h2>
+          <p>{isVm
+            ? t('Hypervisor 提供虚拟 CPU、内存与设备。', 'The hypervisor provides virtual CPUs, memory, and devices.')
+            : t('Namespace 改变可见范围，cgroup 约束资源使用。', 'Namespaces change what a process can see; cgroups limit its resource use.')}</p>
         </div>
         <div className="isolation-tabs" role="group" aria-label="选择隔离方式">
           <button type="button" className={isVm ? 'active' : ''} onClick={() => setMode('vm')}>Virtual machine</button>
@@ -5910,7 +6535,7 @@ function VirtualizationContainerVisual() {
             <div className="isolation-workload" key={label}>
               <span>{label}</span>
               <strong>{index === 0 ? 'API' : index === 1 ? 'Worker' : 'Sidecar'}</strong>
-              <small>app + libraries</small>
+              <small>{t('应用 + 依赖库', 'app + libraries')}</small>
               {isVm ? <b>Guest kernel</b> : <b>rootfs + ns + cgroup</b>}
             </div>
           ))}
@@ -5942,9 +6567,13 @@ function VirtualizationContainerVisual() {
       </div>
 
       <footer className="isolation-memory">
-        <span>记忆</span>
-        <strong>{isVm ? '隔离一台机器，guest kernel 也被隔开。' : '隔离进程视图和资源，kernel 仍然共享。'}</strong>
-        <small>{isVm ? 'stronger boundary · heavier startup' : 'higher density · shared-kernel risk'}</small>
+        <span>{t('记忆', 'Remember')}</span>
+        <strong>{isVm
+          ? t('隔离一台机器，guest kernel 也被隔开。', 'A VM isolates a machine, including its guest kernel.')
+          : t('隔离进程视图和资源，kernel 仍然共享。', 'A container isolates process views and resources but still shares the kernel.')}</strong>
+        <small>{isVm
+          ? t('边界更强 · 启动更重', 'stronger boundary · heavier startup')
+          : t('密度更高 · 共享内核风险', 'higher density · shared-kernel risk')}</small>
       </footer>
     </section>
   );
@@ -5980,6 +6609,7 @@ const RECORD_EXAMPLE_STATES = (() => {
 })();
 
 function RecordMinimumVisual() {
+  const { isEnglish, t } = useUiCopy();
   const [step, setStep] = useState(3);
   const current = step > 0 ? RECORD_EXAMPLE_STATES[step - 1] : null;
   const processed = RECORD_EXAMPLE_STATES.slice(0, step);
@@ -5996,31 +6626,41 @@ function RecordMinimumVisual() {
     return result;
   }, []);
 
-  let decision = '从最前方开始，维护目前见过的最低速度。';
+  let decision = t(
+    '从最前方开始，维护目前见过的最低速度。',
+    'Scan from the front and keep the lowest speed seen so far.',
+  );
   if (current?.index === 0) {
-    decision = '第 1 位在最前方，自然成为第一支队伍的领队。';
+    decision = t(
+      '第 1 位在最前方，自然成为第一支队伍的领队。',
+      'Walker 1 starts at the front, so they lead the first group.',
+    );
   } else if (current?.isRecord) {
-    decision = `v${current.index + 1} = ${current.speed} < ${current.previousMinimum}，刷新前缀最小值，成为新领队。`;
+    decision = isEnglish
+      ? `v${current.index + 1} = ${current.speed} < ${current.previousMinimum}, so it sets a new prefix minimum and becomes a leader.`
+      : `v${current.index + 1} = ${current.speed} < ${current.previousMinimum}，刷新前缀最小值，成为新领队。`;
   } else if (current) {
-    decision = `v${current.index + 1} = ${current.speed} > ${current.previousMinimum}，最终会追上第 ${current.leaderIndex + 1} 位领队。`;
+    decision = isEnglish
+      ? `v${current.index + 1} = ${current.speed} > ${current.previousMinimum}, so it eventually catches leader ${current.leaderIndex + 1}.`
+      : `v${current.index + 1} = ${current.speed} > ${current.previousMinimum}，最终会追上第 ${current.leaderIndex + 1} 位领队。`;
   }
 
   return (
-    <section className="record-visual" aria-label="前缀最小值与最终队伍可视化">
+    <section className="record-visual" aria-label={t('前缀最小值与最终队伍可视化', 'Prefix minimum and final groups visualization')}>
       <header className="record-header">
         <div>
-          <p className="eyebrow">Prefix minimum</p>
-          <h2>从前往后，只保留新的最低速度</h2>
-          <p>速度样本固定为 [7, 4, 6, 2, 5, 1, 3]。</p>
+          <p className="eyebrow">{t('前缀最小值', 'Prefix minimum')}</p>
+          <h2>{t('从前往后，只保留新的最低速度', 'Scan left to right and keep only new minimum speeds')}</h2>
+          <p>{t('速度样本固定为', 'The speed sample is fixed at')} [7, 4, 6, 2, 5, 1, 3].</p>
         </div>
-        <strong className="record-step">位置 {step} / {RECORD_EXAMPLE_STATES.length}</strong>
+        <strong className="record-step">{t('位置', 'Position')} {step} / {RECORD_EXAMPLE_STATES.length}</strong>
       </header>
 
       <div className="record-stage">
         <div className="record-direction" aria-hidden="true">
-          <span>前方</span>
-          <b>← 行进方向</b>
-          <span>后方</span>
+          <span>{t('前方', 'Front')}</span>
+          <b>← {t('行进方向', 'Direction of travel')}</b>
+          <span>{t('后方', 'Back')}</span>
         </div>
 
         <div className="record-walkers">
@@ -6039,14 +6679,14 @@ function RecordMinimumVisual() {
                 aria-current={isCurrent ? 'step' : undefined}
                 key={walker.index}
               >
-                <small>位置 {walker.index + 1}</small>
+                <small>{t('位置', 'Position')} {walker.index + 1}</small>
                 <strong>v = {walker.speed}</strong>
                 <span>
                   {!isProcessed
-                    ? '待检查'
+                    ? t('待检查', 'Pending')
                     : walker.isRecord
-                      ? `新领队 · 组 ${walker.groupNumber}`
-                      : `并入位置 ${walker.leaderIndex + 1}`}
+                      ? `${t('新领队', 'New leader')} · ${t('组', 'Group')} ${walker.groupNumber}`
+                      : `${t('并入位置', 'Joins position')} ${walker.leaderIndex + 1}`}
                 </span>
               </div>
             );
@@ -6055,12 +6695,12 @@ function RecordMinimumVisual() {
 
         <p className="record-decision" aria-live="polite">{decision}</p>
 
-        <div className="record-groups" aria-label="当前形成的队伍">
+        <div className="record-groups" aria-label={t('当前形成的队伍', 'Groups formed so far')}>
           {groups.length === 0
-            ? <span className="record-empty">尚未开始扫描</span>
+            ? <span className="record-empty">{t('尚未开始扫描', 'The scan has not started')}</span>
             : groups.map((group) => (
               <div className="record-group" key={group.leaderIndex}>
-                <small>领队 {group.leaderIndex + 1} · 速度 {group.speed}</small>
+                <small>{t('领队', 'Leader')} {group.leaderIndex + 1} · {t('速度', 'speed')} {group.speed}</small>
                 <strong>[{group.members.join(', ')}]</strong>
               </div>
             ))}
@@ -6069,12 +6709,12 @@ function RecordMinimumVisual() {
 
       <footer className="record-footer">
         <div>
-          <span>这组样本</span>
-          <strong>{groups.length} 支队伍</strong>
+          <span>{t('这组样本', 'This sample')}</span>
+          <strong>{groups.length} {t('支队伍', groups.length === 1 ? 'group' : 'groups')}</strong>
         </div>
-        <code>P(位置 i 刷新最低值) = 1 / i</code>
+        <code>{t('P(位置 i 刷新最低值)', 'P(position i sets a new minimum)')} = 1 / i</code>
         <div>
-          <span>随机期望</span>
+          <span>{t('随机期望', 'Expected value')}</span>
           <strong>H₇ ≈ 2.593</strong>
         </div>
       </footer>
@@ -6085,7 +6725,7 @@ function RecordMinimumVisual() {
           onClick={() => setStep((value) => Math.max(0, value - 1))}
           disabled={step === 0}
         >
-          ← 上一步
+          ← {t('上一步', 'Previous')}
         </button>
         <button
           type="button"
@@ -6093,7 +6733,7 @@ function RecordMinimumVisual() {
           onClick={() => setStep((value) => Math.min(RECORD_EXAMPLE_STATES.length, value + 1))}
           disabled={step === RECORD_EXAMPLE_STATES.length}
         >
-          下一步 →
+          {t('下一步', 'Next')} →
         </button>
       </div>
     </section>
@@ -6564,6 +7204,11 @@ function App() {
 
   const activeLanguage =
     variantHasContent(selectedTutorial?.variants[language]) ? language : 'zh';
+  const localizedSelectedSection = (
+    homeSectionCopy[activeLanguage]?.[selectedSection?.id]
+    ?? homeSectionCopy.zh[selectedSection?.id]
+    ?? { title: selectedSection?.title ?? 'Notes', description: selectedSection?.description ?? '' }
+  );
   const selectedVariant = selectedTutorial?.variants[activeLanguage] ?? null;
   const contentKey =
     selectedTutorial && selectedVariant ? `${selectedTutorial.id}:${activeLanguage}` : '';
@@ -6859,21 +7504,25 @@ function App() {
         <div className="app-shell">
       <aside className="notes-panel">
         <header className="panel-header">
-          <p className="eyebrow">Current Section</p>
-          <h1>{selectedSection?.title ?? 'Notes'}</h1>
-          <p className="panel-meta">{activeSectionNotes.length} notes in this section</p>
-          {selectedSection?.description && (
-            <p className="panel-description">{selectedSection.description}</p>
+          <p className="eyebrow">{activeLanguage === 'en' ? 'Current section' : '当前板块'}</p>
+          <h1>{localizedSelectedSection.title}</h1>
+          <p className="panel-meta">
+            {activeLanguage === 'en'
+              ? `${activeSectionNotes.length} notes in this section`
+              : `本板块共 ${activeSectionNotes.length} 篇笔记`}
+          </p>
+          {localizedSelectedSection.description && (
+            <p className="panel-description">{localizedSelectedSection.description}</p>
           )}
         </header>
 
         <label className="search">
-          <span>Search {selectedSection?.title ?? 'Notes'}</span>
+          <span>{activeLanguage === 'en' ? 'Search' : '搜索'} {localizedSelectedSection.title}</span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Type note title or filename"
+            placeholder={activeLanguage === 'en' ? 'Type a note title or filename' : '输入笔记标题或文件名'}
           />
         </label>
 
@@ -6890,7 +7539,7 @@ function App() {
             </button>
           ))}
           {filteredTutorials.length === 0 && (
-            <p className="list-empty">No notes matched your search.</p>
+            <p className="list-empty">{activeLanguage === 'en' ? 'No notes matched your search.' : '没有匹配的笔记。'}</p>
           )}
         </div>
       </aside>
@@ -6901,13 +7550,13 @@ function App() {
             <header className="reader-header">
               <div className="reader-header-top">
                 <div>
-                  <p className="reader-label">{selectedTutorial.sectionTitle} / Interview Notes</p>
+                  <p className="reader-label">{localizedSelectedSection.title} / {activeLanguage === 'en' ? 'Interview Notes' : '面试笔记'}</p>
                   <h2>{selectedTutorial.title}</h2>
                   <p>{selectedVariant?.fileName ?? selectedTutorial.fileName}</p>
                 </div>
 
                 <div className="reader-controls">
-                  <div className="language-toggle" aria-label="Language selector" role="group">
+                  <div className="language-toggle" aria-label={activeLanguage === 'en' ? 'Language selector' : '语言选择'} role="group">
                     {languageOptions.map((option) => (
                       <button
                         key={option.id}
@@ -6926,9 +7575,10 @@ function App() {
 
             <div className="reader-content-grid">
               <article className="markdown-body">
-                {selectedError && <p className="empty-note">Load failed: {selectedError}</p>}
-                {selectedIsLoading && !selectedError && <p className="empty-note">Loading markdown...</p>}
+                {selectedError && <p className="empty-note">{activeLanguage === 'en' ? 'Load failed' : '加载失败'}: {selectedError}</p>}
+                {selectedIsLoading && !selectedError && <p className="empty-note">{activeLanguage === 'en' ? 'Loading markdown...' : '正在加载 Markdown…'}</p>}
                 {!selectedIsLoading && !selectedError && normalizedSelectedContent?.trim() && (
+                  <UiLanguageContext.Provider value={activeLanguage}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
@@ -6960,17 +7610,18 @@ function App() {
                   >
                     {normalizedSelectedContent}
                   </ReactMarkdown>
+                  </UiLanguageContext.Provider>
                 )}
                 {!selectedIsLoading && !selectedError && selectedContent !== undefined && !selectedContent.trim() && (
-                  <p className="empty-note">This file is empty and ready for future notes.</p>
+                  <p className="empty-note">{activeLanguage === 'en' ? 'This file is empty and ready for future notes.' : '这个文件暂时为空，可以继续补充笔记。'}</p>
                 )}
               </article>
 
               {sectionHeadings.length > 0 && (
-                <aside className="section-toc" aria-label="Section navigation">
+                <aside className="section-toc" aria-label={activeLanguage === 'en' ? 'Section navigation' : '章节导航'}>
                   <div className="section-toc-inner">
                     <div className="section-toc-heading">
-                      <p className="eyebrow">Sections</p>
+                      <p className="eyebrow">{activeLanguage === 'en' ? 'Sections' : '本页目录'}</p>
                       <span>{sectionHeadings.length}</span>
                     </div>
                     <nav>
@@ -6995,8 +7646,8 @@ function App() {
           </>
         ) : (
           <section className="reader-empty">
-            <h2>No published Markdown files found</h2>
-            <p>Add ready notes to an interview section and refresh.</p>
+            <h2>{activeLanguage === 'en' ? 'No published Markdown files found' : '没有找到已发布的 Markdown 文件'}</h2>
+            <p>{activeLanguage === 'en' ? 'Add ready notes to an interview section and refresh.' : '把整理好的笔记加入对应板块后刷新页面。'}</p>
           </section>
         )}
       </main>
