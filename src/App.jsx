@@ -2289,10 +2289,152 @@ const languageOptions = [
 ];
 
 const homeStats = [
-  { value: noteSections.length, label: 'Sections' },
-  { value: tutorials.length, label: 'Notes' },
-  { value: '2', label: 'Languages' },
+  { value: noteSections.length, id: 'sections' },
+  { value: tutorials.length, id: 'notes' },
+  { value: '2', id: 'languages' },
 ];
+
+const homeCopy = {
+  zh: {
+    brandSubtitle: '系统 · 基础设施 · 算法练习',
+    mainNavigation: '主导航',
+    home: '首页',
+    about: '关于',
+    languageSelector: '首页语言',
+    heroEyebrow: 'Interview Notes',
+    heroTitle: 'ML / LLM 技术复习笔记',
+    heroDescription:
+      '这是一套供自己反复复习的 ML / LLM 技术笔记，内容包括 MLSYS、CUDA kernel、分布式训练、LLM inference、ML coding、quant 和算法练习。',
+    startMlsys: '开始读 MLSYS',
+    tryPractice: '做一道练习',
+    siteSummary: '站点概览',
+    stats: {
+      sections: '板块',
+      notes: '篇笔记',
+      languages: '语言',
+    },
+    sectionsAria: '笔记板块',
+    sectionsEyebrow: 'Sections',
+    sectionsHeading: '笔记板块',
+    noteCount: (count) => `${count} 篇笔记`,
+    aboutEyebrow: 'About',
+    aboutHeading: '关于作者',
+    aboutBody: [
+      '这个网站由 Zhikai Chen 维护，收录我平时复习 MLSYS、LLM infra、ML coding、quant 和 LeetCode 时留下的笔记。',
+      '我目前在找工作，研究和工程兴趣集中在 agent memory、agentic reinforcement learning、predictive foundation models 和 agentic security。如果你有合适的机会，欢迎通过 GitHub、LinkedIn 或 Email 联系。',
+    ],
+    contactLinks: '作者联系方式',
+  },
+  en: {
+    brandSubtitle: 'systems · infrastructure · practice',
+    mainNavigation: 'Main navigation',
+    home: 'Home',
+    about: 'About',
+    languageSelector: 'Homepage language',
+    heroEyebrow: 'Interview Notes',
+    heroTitle: 'ML / LLM interview notes',
+    heroDescription:
+      'The notes I use to review ML systems, CUDA kernels, distributed training, LLM inference, ML coding, quant, and algorithm problems.',
+    startMlsys: 'Start MLSYS',
+    tryPractice: 'Try a practice problem',
+    siteSummary: 'Site summary',
+    stats: {
+      sections: 'Sections',
+      notes: 'Notes',
+      languages: 'Languages',
+    },
+    sectionsAria: 'Interview note sections',
+    sectionsEyebrow: 'Sections',
+    sectionsHeading: 'Browse the notes',
+    noteCount: (count) => `${count} ${count === 1 ? 'note' : 'notes'}`,
+    aboutEyebrow: 'About',
+    aboutHeading: 'About the author',
+    aboutBody: [
+      'This site is maintained by Zhikai Chen. It collects the notes I use to review MLSYS, LLM infrastructure, ML coding, quant, and LeetCode.',
+      "I'm currently looking for new opportunities. My work spans agent memory, agentic reinforcement learning, predictive foundation models, and agentic security. You can reach me on GitHub, LinkedIn, or by email.",
+    ],
+    contactLinks: 'Author contact links',
+  },
+};
+
+const homeSectionCopy = {
+  zh: {
+    mlsys: {
+      title: 'MLSYS',
+      description: 'GPU kernel、训练系统、推理系统与性能分析',
+    },
+    llm: {
+      title: 'LLM八股',
+      description: 'LLM 基础、Agent 训练、强化学习与面试题',
+    },
+    quant: {
+      title: 'Quant',
+      description: '概率、马尔可夫链、期望与面试数学题',
+    },
+    mlcoding: {
+      title: 'ML Coding',
+      description: '从零实现 tokenizer、attention、训练循环等机器学习组件',
+    },
+    'system-design': {
+      title: 'System Design',
+      description: '后端系统设计、LLM serving、Agent workflow 与基础设施面试题',
+    },
+    'business-algorithm': {
+      title: '业务算法',
+      description: '沿一次线上请求拆解召回、排序、列表决策、生成式方法与实验闭环',
+    },
+    'ml-interview': {
+      title: 'ML八股',
+      description: '机器学习基础与面试题，正在整理',
+    },
+    leetcode: {
+      title: 'LeetCode',
+      description: '数据结构、算法模式与 LeetCode 练习',
+    },
+    drafts: {
+      title: '草稿区',
+      description: '仅在本地开发环境可见的草稿',
+    },
+  },
+  en: {
+    mlsys: {
+      title: 'MLSYS',
+      description: 'GPU kernels, training and inference systems, and performance analysis',
+    },
+    llm: {
+      title: 'LLM Interview',
+      description: 'LLM fundamentals, agent training, reinforcement learning, and interview review',
+    },
+    quant: {
+      title: 'Quant',
+      description: 'Probability, Markov chains, expectation, and interview math',
+    },
+    mlcoding: {
+      title: 'ML Coding',
+      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components',
+    },
+    'system-design': {
+      title: 'System Design',
+      description: 'Backend design, LLM serving, agent workflows, and infrastructure interviews',
+    },
+    'business-algorithm': {
+      title: 'Business Algorithms',
+      description: 'Retrieval, ranking, list decisions, generative methods, and experimentation along one production request',
+    },
+    'ml-interview': {
+      title: 'ML Interview',
+      description: 'Machine learning fundamentals and interview questions. Work in progress.',
+    },
+    leetcode: {
+      title: 'LeetCode',
+      description: 'Data structures, algorithm patterns, and LeetCode practice',
+    },
+    drafts: {
+      title: 'Drafts',
+      description: 'Local drafts shown in development builds only',
+    },
+  },
+};
 
 const authorLinks = [
   {
@@ -6398,6 +6540,12 @@ function App() {
   const selectedSection = noteSections.find((section) =>
     section.notes.some((note) => note.id === selectedTutorialId),
   ) ?? noteSections[0];
+  const localizedHome = homeCopy[language] ?? homeCopy.zh;
+  const localizeHomeSection = (section) => (
+    homeSectionCopy[language]?.[section.id]
+    ?? homeSectionCopy.zh[section.id]
+    ?? { title: section.title, description: section.description }
+  );
   const activeSectionNotes = tutorials.filter((tutorial) => tutorial.sectionId === selectedSection?.id);
 
   const filteredTutorials = useMemo(() => {
@@ -6571,34 +6719,37 @@ function App() {
           <span className="brand-mark">IN</span>
           <span>
             <strong>Interview Notes</strong>
-            <small>systems · infra · practice</small>
+            <small>{localizedHome.brandSubtitle}</small>
           </span>
         </button>
 
-        <nav className="top-nav-links" aria-label="Main navigation">
+        <nav className="top-nav-links" aria-label={localizedHome.mainNavigation}>
           <button
             className={`top-nav-link ${currentView === 'home' ? 'active' : ''}`}
             type="button"
             onClick={navigateHome}
           >
-            Home
+            {localizedHome.home}
           </button>
-          {noteSections.map((section) => (
-            <button
-              key={section.id}
-              className={`top-nav-link ${currentView === 'reader' && selectedSection?.id === section.id ? 'active' : ''}`}
-              type="button"
-              onClick={() => navigateToSection(section.id)}
-            >
-              {section.title}
-            </button>
-          ))}
+          {noteSections.map((section) => {
+            const sectionCopy = localizeHomeSection(section);
+            return (
+              <button
+                key={section.id}
+                className={`top-nav-link ${currentView === 'reader' && selectedSection?.id === section.id ? 'active' : ''}`}
+                type="button"
+                onClick={() => navigateToSection(section.id)}
+              >
+                {sectionCopy.title}
+              </button>
+            );
+          })}
           <button
             className="top-nav-link"
             type="button"
             onClick={navigateToAbout}
           >
-            About
+            {localizedHome.about}
           </button>
         </nav>
       </header>
@@ -6607,74 +6758,87 @@ function App() {
         <main className="home-page">
           <section className="home-hero">
             <div className="home-hero-copy">
-              <p className="eyebrow">Interview Notes</p>
-              <h1>ML / LLM 技术复习笔记</h1>
-              <p>
-                面向 ML / LLM 领域的技术内容复习笔记，整理 MLSYS、CUDA kernel、分布式训练、
-                LLM inference、ML coding、quant 和算法练习里值得反复看的知识点。
-              </p>
+              <div className="home-hero-kicker">
+                <p className="eyebrow">{localizedHome.heroEyebrow}</p>
+                <div
+                  className="language-toggle home-language-toggle"
+                  aria-label={localizedHome.languageSelector}
+                  role="group"
+                >
+                  {languageOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      className={`language-button ${language === option.id ? 'active' : ''}`}
+                      onClick={() => setLanguage(option.id)}
+                      type="button"
+                      aria-pressed={language === option.id}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <h1>{localizedHome.heroTitle}</h1>
+              <p>{localizedHome.heroDescription}</p>
               <div className="home-actions">
                 <button className="primary-action" type="button" onClick={() => navigateToSection('mlsys')}>
-                  Start MLSYS
+                  {localizedHome.startMlsys}
                 </button>
                 <button className="secondary-action" type="button" onClick={() => navigateToTutorial('MLSYS1.md')}>
-                  Try Practice
+                  {localizedHome.tryPractice}
                 </button>
               </div>
             </div>
 
-            <div className="home-hero-panel" aria-label="Site summary">
+            <div className="home-hero-panel" aria-label={localizedHome.siteSummary}>
               {homeStats.map((stat) => (
-                <div className="home-stat" key={stat.label}>
+                <div className="home-stat" key={stat.id}>
                   <strong>{stat.value}</strong>
-                  <span>{stat.label}</span>
+                  <span>{localizedHome.stats[stat.id]}</span>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="home-sections" aria-label="Interview note sections">
+          <section className="home-sections" aria-label={localizedHome.sectionsAria}>
             <div className="section-heading">
-              <p className="eyebrow">Sections</p>
-              <h2>当前板块</h2>
+              <p className="eyebrow">{localizedHome.sectionsEyebrow}</p>
+              <h2>{localizedHome.sectionsHeading}</h2>
             </div>
 
             <div className="section-card-grid">
-              {noteSections.map((section) => (
-                <button
-                  key={section.id}
-                  className="home-section-card"
-                  type="button"
-                  onClick={() => navigateToSection(section.id)}
-                >
-                  <span className="section-card-kicker">{section.notes.length} notes</span>
-                  <strong>{section.title}</strong>
-                  <span>{section.description}</span>
-                </button>
-              ))}
+              {noteSections.map((section) => {
+                const sectionCopy = localizeHomeSection(section);
+                return (
+                  <button
+                    key={section.id}
+                    className="home-section-card"
+                    type="button"
+                    onClick={() => navigateToSection(section.id)}
+                  >
+                    <span className="section-card-kicker">{localizedHome.noteCount(section.notes.length)}</span>
+                    <strong>{sectionCopy.title}</strong>
+                    <span>{sectionCopy.description}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           <section className="home-about" id="about" aria-labelledby="about-title">
             <div className="section-heading">
-              <p className="eyebrow">About</p>
-              <h2 id="about-title">关于作者</h2>
+              <p className="eyebrow">{localizedHome.aboutEyebrow}</p>
+              <h2 id="about-title">{localizedHome.aboutHeading}</h2>
             </div>
 
             <div className="about-panel">
               <div className="about-copy">
-                <p>
-                  这个网站由 <strong>Zhikai Chen</strong> 维护，用来整理 MLSYS、LLM infra、ML coding、
-                  quant 和 LeetCode 面试复习笔记。
-                </p>
-                <p>
-                  作者目前正在找工作，并有 agent memory、agentic reinforcement learning、
-                  predictive foundation model 和 agentic security 方面的研究经验。如果您有合适的机会，
-                  欢迎通过 GitHub、LinkedIn 或 Email 联系。
-                </p>
+                {localizedHome.aboutBody.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
               </div>
 
-              <div className="about-links" aria-label="Author contact links">
+              <div className="about-links" aria-label={localizedHome.contactLinks}>
                 {authorLinks.map((link) => (
                   <a
                     className="about-link"

@@ -104,6 +104,22 @@
   margin: 0 auto;
 }
 
+.home-hero-kicker {
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-hero-kicker .eyebrow {
+  margin: 0;
+}
+
+.home-language-toggle {
+  flex: 0 0 auto;
+}
+
 .home-hero-copy h1 {
   margin: 0.35rem 0 1rem;
   max-width: 780px;
