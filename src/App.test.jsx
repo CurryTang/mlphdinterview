@@ -498,6 +498,14 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /Quick Coding：NDCG@K/ })).toBeInTheDocument();
     expect(screen.getByText('参考答案')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /QC05 NDCG@K/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByRole('button', {
+      name: /Chapter 9 · Ranking Objectives and Offline Evaluation/,
+    })).toBeInTheDocument();
+    expect(screen.getByRole('heading', {
+      name: /Chapter 9 · Ranking Objectives and Offline Evaluation/,
+    })).toBeInTheDocument();
   });
 
   it('renders the message queue anatomy and redelivery walkthrough', async () => {

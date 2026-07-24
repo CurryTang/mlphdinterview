@@ -2175,8 +2175,32 @@ const businessAlgorithmNoteDefinitions = [
   ),
 ];
 
+const businessAlgorithmEnglishTitles = {
+  'Business Algorithm TODO.md': 'Chapter 1 · Multi-Stage Recommendation and Search Pipeline',
+  'BusinessAlgorithm00 Data Foundations.md': 'Chapter 2 · Data, Samples, and Feature Streams',
+  'BusinessAlgorithm01 Retrieval.md': 'Chapter 3 · Sparse and Collaborative Retrieval',
+  'BusinessAlgorithm01B Vector Retrieval.md': 'Chapter 4 · Two-Tower Models, Negatives, and Vector Retrieval',
+  'BusinessAlgorithm01D Query Understanding.md': 'Chapter 5 · Query Understanding and Rewriting',
+  'BusinessAlgorithm01C Multi-Channel Retrieval.md': 'Chapter 6 · Query, Content, and Multi-Channel Retrieval',
+  'BusinessAlgorithm01E Search Quality.md': 'Chapter 7 · Search Experience and Evaluation',
+  'BusinessAlgorithm01F Search Relevance.md': 'Chapter 8 · Search Relevance and BERT',
+  'BusinessAlgorithm02 Ranking.md': 'Chapter 9 · Ranking Objectives and Offline Evaluation',
+  'BusinessAlgorithm02B Multi-Objective Ranking.md': 'Chapter 10 · Multi-Objective Learning and Score Fusion',
+  'BusinessAlgorithm02C Feature Interaction.md': 'Chapter 11 · Feature Interaction, Coarse Ranking, and Personalization',
+  'BusinessAlgorithm02D User Sequences.md': 'Chapter 12 · User Behavior Sequences',
+  'BusinessAlgorithm03 List Decision.md': 'Chapter 13 · Reranking, Diversity, and Rules',
+  'BusinessAlgorithm03B Exploration Cold Start.md': 'Chapter 14 · Cold Start, Exploration, and Long-Term Feedback',
+  'BusinessAlgorithm03C Experimentation Growth.md': 'Chapter 15 · Online Experimentation and Metric Growth',
+  'BusinessAlgorithm03D Query Recommendation.md': 'Chapter 16 · Query Recommendation',
+  'BusinessAlgorithm04 Generative Algorithms.md': 'Chapter 17 · Generative Retrieval and Semantic IDs',
+  'BusinessAlgorithm05 Generative Recommendation.md': 'Chapter 18 · LLM Ranking and Generative Recommendation',
+  'BusinessAlgorithm06 Agentic Search.md': 'Chapter 19 · RAG and Agentic Search',
+  'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
+};
+
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({
   ...definition,
+  titleEn: businessAlgorithmEnglishTitles[definition.id] ?? definition.titleEn,
   variants: {
     zh: createVariant(definition.zhFileName, definition.directory),
     en: createVariant(definition.enFileName, definition.directory),
@@ -2453,6 +2477,7 @@ function createTutorialDefinition(title, zhFileName, enFileName, options = {}) {
   return {
     id: zhFileName,
     title,
+    titleEn: options.titleEn ?? title,
     fileName: zhFileName,
     zhFileName,
     enFileName: resolvedEnglishFileName,
@@ -7177,7 +7202,9 @@ function App() {
     }
 
     return activeSectionNotes.filter((tutorial) =>
-      [tutorial.title, tutorial.fileName].some((field) => field.toLowerCase().includes(normalizedQuery)),
+      [tutorial.title, tutorial.titleEn, tutorial.fileName, tutorial.enFileName]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(normalizedQuery)),
     );
   }, [activeSectionNotes, query]);
 
@@ -7516,8 +7543,12 @@ function App() {
               onClick={() => navigateToTutorial(tutorial.id)}
               type="button"
             >
-              <span className="note-title">{tutorial.title}</span>
-              <span className="note-subtitle">{tutorial.fileName}</span>
+              <span className="note-title">
+                {activeLanguage === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
+              </span>
+              <span className="note-subtitle">
+                {tutorial.variants[activeLanguage]?.fileName ?? tutorial.fileName}
+              </span>
             </button>
           ))}
           {filteredTutorials.length === 0 && (
@@ -7533,7 +7564,11 @@ function App() {
               <div className="reader-header-top">
                 <div>
                   <p className="reader-label">{localizedSelectedSection.title} / {activeLanguage === 'en' ? 'Interview Notes' : '面试笔记'}</p>
-                  <h2>{selectedTutorial.title}</h2>
+                  <h2>
+                    {activeLanguage === 'en'
+                      ? (selectedTutorial.titleEn ?? selectedTutorial.title)
+                      : selectedTutorial.title}
+                  </h2>
                   <p>{selectedVariant?.fileName ?? selectedTutorial.fileName}</p>
                 </div>
 
