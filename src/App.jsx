@@ -1980,7 +1980,7 @@ const systemDesignNoteDefinitions = [
     title: 'System Design 03 · 数据库扩展三件套',
     fileName: 'SystemDesign03 Database Scaling.md',
     zhFileName: 'SystemDesign03 Database Scaling.md',
-    enFileName: '',
+    enFileName: 'SystemDesign03 Database Scaling.en.md',
     directory: 'SystemDesign',
     category: 'Design Pattern',
     difficulty: 'Medium',
@@ -2236,12 +2236,13 @@ const authorLinks = [
 
 function createTutorialDefinition(title, zhFileName, enFileName, options = {}) {
   const directory = options.directory ?? 'Mlsys';
+  const resolvedEnglishFileName = enFileName ?? zhFileName.replace(/\.md$/i, '.en.md');
   return {
     id: zhFileName,
     title,
     fileName: zhFileName,
     zhFileName,
-    enFileName,
+    enFileName: resolvedEnglishFileName,
     directory,
     category: options.category ?? '',
     difficulty: options.difficulty ?? '',

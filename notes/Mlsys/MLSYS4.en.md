@@ -1,10 +1,10 @@
 # Complete Guide to CUDA Reduce Kernels: From Principles to Optimization
 
 ## Contents
-1. [What Is a Reduce Kernel](#1-什么是-reduce-kernel)
-2. [Algorithmic Principles and Parallelization Ideas](#2-算法原理与并行化思想)
-3. [The Evolution of Reduce Kernels: 7 Versions](#3-reduce-kernel-的演进7-个版本)
-4. [Roofline Analysis and Performance Modeling](#4-roofline-分析与性能建模)
+1. [What Is a Reduce Kernel](#1-what-is-a-reduce-kernel)
+2. [Algorithmic Principles and Parallelization Ideas](#2-algorithmic-principles-and-parallelization-ideas)
+3. [The Evolution of Reduce Kernels: 7 Versions](#3-the-evolution-of-reduce-kernels-7-versions)
+4. [Roofline Analysis and Performance Modeling](#4-roofline-analysis-and-performance-modeling)
 5. [Profiling](#5-profiling)
 
 ---
