@@ -412,10 +412,11 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('10 notes in this section')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /业务算法 05 · 生成式推荐与 LLM 排序/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /业务算法 06 · RAG 与 Agentic Search/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /业务算法 08 · 公式速查/ })).toBeInTheDocument();
+    expect(await screen.findByText('17 notes in this section')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 13 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 14 章 · RAG 与 Agentic Search/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /附录 · 公式速查/ })).toBeInTheDocument();
     expect(decodeURIComponent(window.location.hash)).toBe('#Business Algorithm TODO.md');
     const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
     expect(within(visual).getByText(/亿级候选，沿延迟预算逐层收窄/)).toBeInTheDocument();

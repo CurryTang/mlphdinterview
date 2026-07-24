@@ -171,3 +171,14 @@ Stabilize single-turn retrieval, reranking, and citations before implementing mu
 3. How should Self-RAG's reflection tokens be evaluated separately?
 4. What should be recorded in the state and stop conditions of a search agent?
 5. How can retrieval, citation, and generation be evaluated separately?
+
+<details>
+<summary>Reference answers</summary>
+
+1. Correct evidence may be lost during chunking or reranking, excluded from context, ignored, merged incorrectly, or cited for an unsupported claim.
+2. Oversized chunks mix irrelevant material and waste context; undersized chunks break definitions, tables, and reasoning chains.
+3. Evaluate retrieval-need, evidence-support, and rewrite tokens separately, including accuracy and calibration. A wrong reflection can damage a correct answer.
+4. Record visited URLs, supported claims, missing evidence, accumulated cost, and steps. Stop on sufficient evidence, repeated lack of new evidence, or budget limits.
+5. Measure evidence Recall/Precision, claim-citation support and coverage, and answer correctness, completeness, and abstention separately.
+
+</details>

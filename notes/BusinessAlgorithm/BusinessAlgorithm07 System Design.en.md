@@ -254,4 +254,21 @@ Use SHA-256 to implement stable bucketing; do not use Python's built-in `hash()`
 
 Problem: [[BusinessAlgorithm09 Quick Coding.md#QC01 Stable A/B Bucketing|QC01 Stable A/B Bucketing]]
 
----
+### 15.3 Chapter Self-Test
+
+1. Why should a business-algorithm system design not begin with a model diagram?
+2. What must a candidate trace record for stage-by-stage debugging?
+3. If offline metrics improve but online metrics do not, which breaks should be checked?
+4. Why does A/B bucketing need a stable hash and an experiment salt?
+5. How can generative search distinguish "evidence was not retrieved" from "the model did not use the evidence"?
+
+<details>
+<summary>Reference answers</summary>
+
+1. Request shape, scale, latency, objectives, guardrails, and fallback determine the stages and models. Starting from a network diagram hides serving constraints.
+2. Record `request_id`, `item_id`, stage, channel, before/after rank, raw and calibrated scores, filter reason, and model, index, and rule versions.
+3. Check candidate-set parity, objective alignment, temporal leakage, missing online features, rules that cancel gains, and changes in latency or degradation rate.
+4. A stable hash keeps the same unit in the same bucket. A salt gives each experiment a distinct, reproducible assignment.
+5. Label required evidence, then test whether it exists, was retrieved, and entered final context before checking whether generated claims used and cited it.
+
+</details>

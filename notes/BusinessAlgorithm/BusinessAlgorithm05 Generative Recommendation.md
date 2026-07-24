@@ -211,4 +211,21 @@ LLM 或生成式列表模型处理小候选集
 
 生成式模型擅长复杂意图、长序列和列表联合建模；经典系统更容易满足高吞吐、增量更新、可解释排障和确定性约束。混合架构让两类模块分别承担自己擅长的部分。
 
----
+### 13.12 本章自测
+
+1. Pointwise、pairwise 和 listwise LLM 排序的主要代价分别是什么？
+2. FIRST 为什么比生成完整排序更快？
+3. HSTU 所说的 generative recommendation 是否等于生成自然语言？
+4. 为什么可以把 DPO 看成序列级 BPR？
+5. 什么条件下推荐 policy optimization 才是长期 sequential RL？
+
+<details>
+<summary>参考答案</summary>
+
+1. Pointwise 缺少候选间比较且每个 pair 都要调用模型；pairwise 比较更直接，但朴素成本是 `O(n²)`；listwise 能联合比较，却受上下文长度、位置偏差和非法输出影响。
+2. 它读取第一个生成位置上候选 ID 的 logits 直接排序，不再自回归生成完整 ID 序列，因此减少了解码步数。
+3. 不是。HSTU 把用户行为和 item 组织成序列转导任务，生成的是后续事件或 item，不是自然语言回答。
+4. 两者都优化 chosen score 高于 rejected score。BPR 使用 user-item 分数差，DPO 使用整条序列相对 reference policy 的 log-probability 差。
+5. action 必须改变后续用户状态，训练目标还要包含跨请求的折扣回报。若只在单次请求结束给 slate reward，更接近 contextual bandit 或序列级 policy optimization。
+
+</details>

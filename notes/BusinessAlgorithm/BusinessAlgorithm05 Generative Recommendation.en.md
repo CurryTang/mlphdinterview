@@ -211,4 +211,21 @@ Hard rules and safety layers
 
 Generative models excel at complex intents, long sequences, and joint list modeling; classic systems are easier to satisfy high throughput, incremental updates, explainable debugging, and deterministic constraints. A hybrid architecture allows both types of modules to handle the parts they excel at.
 
----
+### 13.12 Chapter Self-Test
+
+1. What is the main cost of pointwise, pairwise, and listwise LLM ranking?
+2. Why is FIRST faster than generating a complete ranking?
+3. Does HSTU's "generative recommendation" mean natural-language generation?
+4. Why can DPO be viewed as sequence-level BPR?
+5. Under what conditions is recommendation policy optimization truly long-term sequential RL?
+
+<details>
+<summary>Reference answers</summary>
+
+1. Pointwise lacks direct candidate comparison and invokes the model per pair; naive pairwise costs `O(n²)`; listwise suffers from context limits, position bias, and malformed output.
+2. It reads candidate-ID logits at the first generation position and ranks directly, avoiding autoregressive generation of the complete sequence.
+3. No. HSTU formulates user behavior and items as sequence transduction and predicts subsequent events or items.
+4. Both optimize a chosen score above a rejected score. BPR uses a user-item score difference; DPO uses a sequence log-probability difference relative to a reference policy.
+5. The action must change future user state and the objective must include return across requests. A one-request slate reward is closer to a contextual bandit or sequence-level policy optimization.
+
+</details>

@@ -146,4 +146,21 @@ SID(i) = [code_1, code_2, ..., code_L]
 
 两者可以并行召回，也可以互为 teacher。是否替换现有通道，要看固定延迟预算下的增量 Recall，而不是只看离线全量结果。
 
----
+### 12.10 本章自测
+
+1. DSI、NCI 和 SEAL 生成的 document identifier 有什么不同？
+2. Semantic ID 和普通 item embedding 是什么关系？
+3. 残差量化为什么可能产生 ID 碰撞，怎样处理？
+4. 生成式检索为什么需要约束解码？
+5. 怎样在同一延迟预算下比较双塔和生成式召回？
+
+<details>
+<summary>参考答案</summary>
+
+1. DSI 直接生成预先分配的文档 ID；NCI 使用结构化的层级 ID；SEAL 生成文档中可检索的 n-gram，再通过 FM-index 约束到合法文档。
+2. embedding 是连续向量，用于相似度计算或模型输入；Semantic ID 是离散 token 序列，通常由 embedding 量化得到，但不能互换。
+3. 多个相近向量可能选择相同 code 序列。可增加叶子 token、扩大或重训 codebook、后置物化多个候选再消歧，或显式保证唯一映射。
+4. 自回归模型可能输出不存在的 ID 或无效前缀。trie、FM-index 等约束能把每一步限制在合法路径，并减少无效 beam。
+5. 固定 P95/P99、候选数和硬件，比较增量 Recall、长尾覆盖、索引/目录更新成本与失败率；不能拿全量离线生成结果对比受延迟限制的 ANN。
+
+</details>
