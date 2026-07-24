@@ -92,7 +92,54 @@ SID(i) = [code_1, code_2, ..., code_L]
 
 给定一个向量和多层 codebook，每层选择离当前 residual 最近的 codeword，再更新 residual。返回 codeword 下标序列和最终残差。这个小题正好对应 Semantic ID 生成的最小骨架。
 
-题目：[[BusinessAlgorithm09 Quick Coding.md#QC08 Semantic ID 的残差量化|QC08 Semantic ID 的残差量化]]。
+实现：
+
+```python
+def residual_quantize(vector, codebooks):
+    ...
+```
+
+每层 codebook 选择与当前 residual 欧氏距离最近的 codeword，然后减去该 codeword。返回：
+
+```text
+([每层选中的 codeword 下标], 最终 residual)
+```
+
+所有 codeword 必须与输入向量同维；空 codebook 或维度错误时抛出 `ValueError`。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+def residual_quantize(vector, codebooks):
+    residual = list(vector)
+    codes = []
+
+    for codebook in codebooks:
+        if not codebook:
+            raise ValueError("codebook must not be empty")
+        if any(len(codeword) != len(residual) for codeword in codebook):
+            raise ValueError("codeword dimensions do not match")
+
+        best_index = min(
+            range(len(codebook)),
+            key=lambda index: sum(
+                (residual[d] - codebook[index][d]) ** 2
+                for d in range(len(residual))
+            ),
+        )
+        codes.append(best_index)
+        residual = [
+            value - code
+            for value, code in zip(residual, codebook[best_index])
+        ]
+
+    return codes, residual
+```
+
+若有 `L` 层、每层 `K` 个 codeword、向量维度为 `d`，时间复杂度是 `O(LKd)`。
+
+</details>
 
 ### 17.6 TIGER
 

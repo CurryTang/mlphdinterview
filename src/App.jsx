@@ -2173,12 +2173,6 @@ const businessAlgorithmNoteDefinitions = [
     null,
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
   ),
-  createTutorialDefinition(
-    '附录 · Quick Coding',
-    'BusinessAlgorithm09 Quick Coding.md',
-    null,
-    { directory: 'BusinessAlgorithm', category: 'Practice', difficulty: '8 Problems' },
-  ),
 ];
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({

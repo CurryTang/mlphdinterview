@@ -124,7 +124,48 @@ CTR、CVR 等 pointwise 预估先看 LogLoss：
 
 输入按预测顺序排列的分级相关性，计算 DCG、IDCG 和 NDCG。边界条件包括 `k <= 0`、列表短于 `k`，以及所有相关性都为零。
 
-题目：[[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG@K]]。
+实现：
+
+```python
+def ndcg_at_k(relevances, k):
+    ...
+```
+
+`relevances` 已按模型预测顺序排列，每个值是非负相关性等级。使用：
+
+```math
+DCG@K=\sum_{i=1}^{K}\frac{2^{rel_i}-1}{\log_2(i+1)}.
+```
+
+无相关结果时返回 `0.0`，`k <= 0` 时也返回 `0.0`。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+from math import log2
+
+
+def ndcg_at_k(relevances, k):
+    if k <= 0:
+        return 0.0
+
+    all_values = list(relevances)
+
+    def dcg(items):
+        return sum(
+            (2 ** rel - 1) / log2(rank + 1)
+            for rank, rel in enumerate(items, start=1)
+        )
+
+    actual = dcg(all_values[:k])
+    ideal = dcg(sorted(all_values, reverse=True)[:k])
+    return 0.0 if ideal == 0 else actual / ideal
+```
+
+排序 ideal list 需要 `O(n log n)`；若相关性等级范围很小，可以用计数把它降到线性。
+
+</details>
 
 ### 9.8 本章自测
 

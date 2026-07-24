@@ -41,7 +41,56 @@ Its weaknesses are also straightforward: it is difficult to retrieve items when 
 
 Given a set of tokenized documents, construct a `term -> posting list`. Each posting must store the `doc_id`, term frequency, and positions, and be sorted by document ID. This exercise checks whether you truly understand what data is required for TF, word distance, and phrase matching.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC02 Build Inverted Index|QC02 Build Inverted Index]].
+The input consists of tokenized documents:
+
+```python
+documents = {
+    1: ["deep", "learning", "deep"],
+    2: ["learning", "system"],
+}
+```
+
+Implementation:
+
+```python
+def build_inverted_index(documents):
+    ...
+```
+
+Output the posting list for each term, where each posting is:
+
+```text
+(doc_id, term_frequency, zero_based_positions)
+```
+
+For example, `deep` corresponds to `[(1, 2, [0, 2])]`. Postings should be sorted by `doc_id` in ascending order.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+from collections import defaultdict
+
+
+def build_inverted_index(documents):
+    index = defaultdict(list)
+
+    for doc_id in sorted(documents):
+        positions = defaultdict(list)
+        for position, term in enumerate(documents[doc_id]):
+            positions[term].append(position)
+
+        for term, term_positions in positions.items():
+            index[term].append(
+                (doc_id, len(term_positions), term_positions)
+            )
+
+    return dict(index)
+```
+
+For `T` total tokens and `D` documents, time is `O(T + D log D)` and index space is `O(T)`.
+
+</details>
 
 ### 3.3 TF-IDF and BM25
 
@@ -106,7 +155,59 @@ The benefits of ItemCF are ease of interpretation and low service cost. The down
 
 Starting from a small dataset of `user -> interacted items`, calculate co-occurrence cosine similarity and recall un-interacted items for a specified user. You are required to filter history, handle tied candidates stably, and explain why this interview code cannot be directly used to serve full-scale traffic.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC03 ItemCF Recommendation|QC03 ItemCF Recommendation]].
+Implementation:
+
+```python
+def item_cf_recommend(user_items, target_user, k):
+    ...
+```
+
+Use item co-occurrence cosine similarity:
+
+```math
+sim(i,j)=\frac{|U_i\cap U_j|}{\sqrt{|U_i||U_j|}}.
+```
+
+The candidate score is the sum of similarities between the target user's interacted items and the candidate items. Filter out items already interacted with, and return the top `k` `(item_id, score)` pairs sorted by `score` in descending order and `item_id` in ascending order.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+from collections import defaultdict
+from math import sqrt
+
+
+def item_cf_recommend(user_items, target_user, k):
+    item_users = defaultdict(set)
+    for user, items in user_items.items():
+        for item in set(items):
+            item_users[item].add(user)
+
+    seen = set(user_items.get(target_user, []))
+    scores = []
+
+    for candidate, candidate_users in item_users.items():
+        if candidate in seen:
+            continue
+
+        score = 0.0
+        for item in seen:
+            users = item_users.get(item, set())
+            if users and candidate_users:
+                score += len(users & candidate_users) / sqrt(
+                    len(users) * len(candidate_users)
+                )
+        if score > 0:
+            scores.append((candidate, score))
+
+    scores.sort(key=lambda pair: (-pair[1], pair[0]))
+    return scores[:k]
+```
+
+This is a direct interview implementation. Production systems precompute item-to-item top similarities instead of scanning the catalog per request.
+
+</details>
 
 ### 3.5 UserCF and Swing
 

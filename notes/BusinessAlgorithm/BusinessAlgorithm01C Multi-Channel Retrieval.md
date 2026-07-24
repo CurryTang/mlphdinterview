@@ -68,7 +68,46 @@ user -> 感兴趣的 author -> 相似 author -> 最新内容
 
 不用校准不同召回通道的原始分数，只根据各通道名次实现 Reciprocal Rank Fusion。记得处理单个列表中的重复候选和稳定 tie-break。
 
-题目：[[BusinessAlgorithm09 Quick Coding.md#QC04 Reciprocal Rank Fusion|QC04 Reciprocal Rank Fusion]]。
+实现：
+
+```python
+def reciprocal_rank_fusion(rankings, rrf_k=60, top_n=None):
+    ...
+```
+
+每个 ranking 是一个候选 ID 列表。融合分数：
+
+```math
+score(d)=\sum_m\frac{1}{rrf\_k+rank_m(d)}.
+```
+
+rank 从 1 开始。同一 ranking 中重复候选只计算第一次出现。按分数降序、候选 ID 升序返回。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+from collections import defaultdict
+
+
+def reciprocal_rank_fusion(rankings, rrf_k=60, top_n=None):
+    scores = defaultdict(float)
+
+    for ranking in rankings:
+        seen = set()
+        for rank, candidate in enumerate(ranking, start=1):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            scores[candidate] += 1.0 / (rrf_k + rank)
+
+    result = sorted(scores.items(), key=lambda pair: (-pair[1], pair[0]))
+    return result if top_n is None else result[:top_n]
+```
+
+若所有 ranking 的总长度为 `N`，计分是 `O(N)`，最终排序是 `O(M log M)`，`M` 为去重候选数。
+
+</details>
 
 ### 6.5 曝光过滤与缓存召回
 

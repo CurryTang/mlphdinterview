@@ -252,7 +252,40 @@ Long-term holdouts are used to observe the cumulative effects of multiple releas
 
 Use SHA-256 to implement stable bucketing; do not use Python's built-in `hash()`. Beyond determinism and value range, handle invalid bucket counts and explain why different experiments require different salts.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC01 Stable A/B Bucketing|QC01 Stable A/B Bucketing]]
+Implementation:
+
+```python
+def assign_bucket(user_id: str, salt: str, num_buckets: int) -> int:
+    ...
+```
+
+Requirements:
+
+- The same `user_id + salt` must always result in the same bucket.
+- The return value must fall within `[0, num_buckets)`.
+- Changing the `salt` should result in independent experimental bucketing.
+- Do not use Python's built-in `hash()`, as it does not guarantee stability across processes by default.
+- Raise a `ValueError` if `num_buckets <= 0`.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+import hashlib
+
+
+def assign_bucket(user_id: str, salt: str, num_buckets: int) -> int:
+    if num_buckets <= 0:
+        raise ValueError("num_buckets must be positive")
+
+    payload = f"{salt}\0{user_id}".encode("utf-8")
+    digest = hashlib.sha256(payload).digest()
+    return int.from_bytes(digest[:8], "big") % num_buckets
+```
+
+Time complexity is `O(len(user_id) + len(salt))`; auxiliary space is `O(1)`.
+
+</details>
 
 ### 20.3 Chapter Self-Test
 

@@ -57,7 +57,56 @@ MMR is intuitive, easy to tune, and supports hard filtering. Its limitation is t
 
 Given candidate relevance and pairwise similarity, greedily select the top-k. Support scenarios where only one-way similarity is provided, and ensure a deterministic order when scores are tied.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC07 MMR Reranking|QC07 MMR Reranking]].
+Implementation:
+
+```python
+def mmr_rerank(candidates, relevance, similarities, k, theta):
+    ...
+```
+
+Selection at each round:
+
+```math
+\arg\max_i
+\left[
+\theta r_i-(1-\theta)\max_{j\in S}sim(i,j)
+\right].
+```
+
+`similarities` uses a dictionary of `(item_a, item_b) -> score`; providing only one direction is acceptable. In case of ties in MMR scores, sort by candidate ID in ascending order.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+def mmr_rerank(candidates, relevance, similarities, k, theta):
+    remaining = set(candidates)
+    selected = []
+
+    def similarity(a, b):
+        return similarities.get(
+            (a, b),
+            similarities.get((b, a), 0.0),
+        )
+
+    while remaining and len(selected) < k:
+        def score(item):
+            redundancy = max(
+                (similarity(item, chosen) for chosen in selected),
+                default=0.0,
+            )
+            return theta * relevance[item] - (1 - theta) * redundancy
+
+        chosen = min(remaining, key=lambda item: (-score(item), item))
+        selected.append(chosen)
+        remaining.remove(chosen)
+
+    return selected
+```
+
+The direct implementation costs `O(k²N)`. Caching each candidate's maximum similarity to the selected set reduces updates to `O(kN)`.
+
+</details>
 
 ### 13.4 DPP
 

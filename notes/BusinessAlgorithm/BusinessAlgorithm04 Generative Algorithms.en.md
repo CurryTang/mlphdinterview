@@ -92,7 +92,54 @@ Its relationship with ordinary item embeddings is:
 
 Given a vector and multi-layer codebooks, select the codeword closest to the current residual at each layer, then update the residual. Return the sequence of codeword indices and the final residual. This exercise corresponds exactly to the minimal skeleton of Semantic ID generation.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC08 Residual Quantization for Semantic IDs|QC08 Residual Quantization for Semantic IDs]].
+Implementation:
+
+```python
+def residual_quantize(vector, codebooks):
+    ...
+```
+
+For each layer's codebook, select the codeword with the smallest Euclidean distance to the current residual, then subtract that codeword. Return:
+
+```text
+([indices of selected codewords per layer], final residual)
+```
+
+All codewords must have the same dimensionality as the input vector; raise a `ValueError` if a codebook is empty or dimensions are mismatched.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+def residual_quantize(vector, codebooks):
+    residual = list(vector)
+    codes = []
+
+    for codebook in codebooks:
+        if not codebook:
+            raise ValueError("codebook must not be empty")
+        if any(len(codeword) != len(residual) for codeword in codebook):
+            raise ValueError("codeword dimensions do not match")
+
+        best_index = min(
+            range(len(codebook)),
+            key=lambda index: sum(
+                (residual[d] - codebook[index][d]) ** 2
+                for d in range(len(residual))
+            ),
+        )
+        codes.append(best_index)
+        residual = [
+            value - code
+            for value, code in zip(residual, codebook[best_index])
+        ]
+
+    return codes, residual
+```
+
+For `L` layers, `K` codewords per layer, and vector dimension `d`, time complexity is `O(LKd)`.
+
+</details>
 
 ### 17.6 TIGER
 

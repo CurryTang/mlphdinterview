@@ -435,7 +435,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('本板块共 21 篇笔记')).toBeInTheDocument();
+    expect(await screen.findByText('本板块共 20 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
@@ -461,41 +461,43 @@ describe('App', () => {
     expect(within(englishVisual).queryByText('传统级联')).not.toBeInTheDocument();
   });
 
-  it('keeps the target heading when following a link to another note', async () => {
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
-
+  it('renders quick coding problems inline instead of linking to a standalone appendix', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = decodeURIComponent(String(input));
       return {
         ok: true,
-        text: async () => {
-          if (requestUrl.includes('BusinessAlgorithm02B Multi-Objective Ranking')) {
-            return [
-              '# 多目标排序',
-              '',
-              '题目：[[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG@K]]。',
-            ].join('\n');
-          }
-
-          if (requestUrl.includes('BusinessAlgorithm09 Quick Coding')) {
-            return '# Quick Coding\n\n## QC05 NDCG@K\n\n目标答案。';
-          }
-
-          return '# 业务算法';
-        },
+        text: async () => requestUrl.includes('BusinessAlgorithm02 Ranking')
+          ? [
+            '# 排序目标与离线评价',
+            '',
+            '### Quick Coding：NDCG@K',
+            '',
+            '实现 `ndcg_at_k(relevances, k)`。',
+            '',
+            '<details>',
+            '<summary>参考答案</summary>',
+            '',
+            '```python',
+            'def ndcg_at_k(relevances, k):',
+            '    return 0.0',
+            '```',
+            '',
+            '</details>',
+          ].join('\n')
+          : '# 业务算法',
       };
     });
 
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
-    fireEvent.click(screen.getByRole('button', { name: /第 10 章 · 多目标学习与分数融合/ }));
-    fireEvent.click(await screen.findByRole('link', { name: 'QC05 NDCG@K' }));
+    expect(screen.queryByRole('button', { name: /附录 · Quick Coding/ })).not.toBeInTheDocument();
 
-    expect(await screen.findByRole('heading', { name: /QC05 NDCG@K/ })).toBeInTheDocument();
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
-    expect(screen.getAllByText('BusinessAlgorithm09 Quick Coding.md')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: /第 9 章 · 排序目标与离线评价/ }));
+
+    expect(await screen.findByRole('heading', { name: /Quick Coding：NDCG@K/ })).toBeInTheDocument();
+    expect(screen.getByText('参考答案')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /QC05 NDCG@K/ })).not.toBeInTheDocument();
   });
 
   it('renders the message queue anatomy and redelivery walkthrough', async () => {

@@ -68,7 +68,46 @@ A channel with low independent Recall may still be valuable. If the positive exa
 
 Without calibrating the raw scores of different retrieval channels, implement Reciprocal Rank Fusion based on the rank of each channel. Remember to handle duplicate candidates within a single list and stable tie-breaking.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC04 Reciprocal Rank Fusion|QC04 Reciprocal Rank Fusion]].
+Implementation:
+
+```python
+def reciprocal_rank_fusion(rankings, rrf_k=60, top_n=None):
+    ...
+```
+
+Each ranking is a list of candidate IDs. Fusion score:
+
+```math
+score(d)=\sum_m\frac{1}{rrf\_k+rank_m(d)}.
+```
+
+Ranks start at 1. For duplicate candidates within the same ranking, only the first occurrence is counted. Return results sorted by score in descending order and candidate ID in ascending order.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+from collections import defaultdict
+
+
+def reciprocal_rank_fusion(rankings, rrf_k=60, top_n=None):
+    scores = defaultdict(float)
+
+    for ranking in rankings:
+        seen = set()
+        for rank, candidate in enumerate(ranking, start=1):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            scores[candidate] += 1.0 / (rrf_k + rank)
+
+    result = sorted(scores.items(), key=lambda pair: (-pair[1], pair[0]))
+    return result if top_n is None else result[:top_n]
+```
+
+For `N` total ranking entries and `M` unique candidates, scoring is `O(N)` and final sorting is `O(M log M)`.
+
+</details>
 
 ### 6.5 Exposure Filtering and Cache Retrieval
 

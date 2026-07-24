@@ -24,7 +24,56 @@ FM expresses second-order interactions. More complex relationships require deep 
 
 Implement an FM forward pass without using nested feature loops. Use the sum-of-squares identity to reduce second-order interaction from `O(d²k)` to `O(dk)`, and verify the results using naive pairwise calculation.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC06 FM Forward Pass|QC06 FM Forward Pass]].
+Implementation:
+
+```python
+def fm_predict(x, bias, linear_weights, factors):
+    ...
+```
+
+Where `factors[i]` is the `latent_dim`-dimensional vector for the `i`-th feature. You are required to use the following equivalent formula to reduce the second-order interaction complexity from `O(d²k)` to `O(dk)`:
+
+```math
+\frac{1}{2}\sum_f
+\left[
+\left(\sum_i v_{i,f}x_i\right)^2
+-\sum_i(v_{i,f}x_i)^2
+\right].
+```
+
+Raise a `ValueError` if input dimensions are inconsistent.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+def fm_predict(x, bias, linear_weights, factors):
+    if len(x) != len(linear_weights) or len(x) != len(factors):
+        raise ValueError("feature dimensions do not match")
+    if not factors:
+        return float(bias)
+
+    latent_dim = len(factors[0])
+    if any(len(vector) != latent_dim for vector in factors):
+        raise ValueError("factor dimensions do not match")
+
+    linear = sum(weight * value for weight, value in zip(linear_weights, x))
+    interaction = 0.0
+
+    for latent in range(latent_dim):
+        summed = sum(factors[i][latent] * x[i] for i in range(len(x)))
+        squared = sum(
+            (factors[i][latent] * x[i]) ** 2
+            for i in range(len(x))
+        )
+        interaction += 0.5 * (summed ** 2 - squared)
+
+    return bias + linear + interaction
+```
+
+For `d` features and latent dimension `m`, time is `O(dm)` and auxiliary space is `O(1)`.
+
+</details>
 
 ### 11.3 DCN
 

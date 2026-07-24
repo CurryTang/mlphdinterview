@@ -252,7 +252,40 @@ bucket = hash(user_id, experiment_salt) mod B
 
 用 SHA-256 实现稳定分桶，不能使用 Python 内置 `hash()`。除了确定性和取值范围，还要处理非法桶数，并解释不同实验为什么需要不同 salt。
 
-题目：[[BusinessAlgorithm09 Quick Coding.md#QC01 稳定 A/B 分桶|QC01 稳定 A/B 分桶]]。
+实现：
+
+```python
+def assign_bucket(user_id: str, salt: str, num_buckets: int) -> int:
+    ...
+```
+
+要求：
+
+- 相同 `user_id + salt` 永远得到同一桶；
+- 返回值落在 `[0, num_buckets)`；
+- 更换 `salt` 可以得到独立实验分桶；
+- 不能使用 Python 内置 `hash()`，因为它默认不保证跨进程稳定；
+- `num_buckets <= 0` 时抛出 `ValueError`。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+import hashlib
+
+
+def assign_bucket(user_id: str, salt: str, num_buckets: int) -> int:
+    if num_buckets <= 0:
+        raise ValueError("num_buckets must be positive")
+
+    payload = f"{salt}\0{user_id}".encode("utf-8")
+    digest = hashlib.sha256(payload).digest()
+    return int.from_bytes(digest[:8], "big") % num_buckets
+```
+
+时间复杂度是 `O(len(user_id) + len(salt))`，额外空间为 `O(1)`。
+
+</details>
 
 ### 20.3 本章自测
 

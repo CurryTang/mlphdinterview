@@ -124,7 +124,48 @@ Proxy objectives can differ from final metrics, but experimental records must ac
 
 Input graded relevance sorted by predicted order to calculate DCG, IDCG, and NDCG. Boundary conditions include `k <= 0`, lists shorter than `k`, and cases where all relevance values are zero.
 
-Problem: [[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG]].
+Implementation:
+
+```python
+def ndcg_at_k(relevances, k):
+    ...
+```
+
+`relevances` are already sorted by the model's predicted order, where each value is a non-negative relevance grade. Use:
+
+```math
+DCG@K=\sum_{i=1}^{K}\frac{2^{rel_i}-1}{\log_2(i+1)}.
+```
+
+Return `0.0` if there are no relevant results, or if `k <= 0`.
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+from math import log2
+
+
+def ndcg_at_k(relevances, k):
+    if k <= 0:
+        return 0.0
+
+    all_values = list(relevances)
+
+    def dcg(items):
+        return sum(
+            (2 ** rel - 1) / log2(rank + 1)
+            for rank, rel in enumerate(items, start=1)
+        )
+
+    actual = dcg(all_values[:k])
+    ideal = dcg(sorted(all_values, reverse=True)[:k])
+    return 0.0 if ideal == 0 else actual / ideal
+```
+
+Sorting the ideal list costs `O(n log n)`. A small bounded relevance scale allows a linear-time counting approach.
+
+</details>
 
 ### 9.8 Chapter Self-Test
 
