@@ -412,10 +412,12 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('17 notes in this section')).toBeInTheDocument();
+    expect(await screen.findByText('23 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /第 13 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /第 14 章 · RAG 与 Agentic Search/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第 19 章 · RAG 与 Agentic Search/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /附录 · 王树森课程覆盖索引/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /附录 · 公式速查/ })).toBeInTheDocument();
     expect(decodeURIComponent(window.location.hash)).toBe('#Business Algorithm TODO.md');
     const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
@@ -427,6 +429,43 @@ describe('App', () => {
     expect(within(visual).getByText(/把检索与排序目标并入一次序列生成/)).toBeInTheDocument();
     fireEvent.click(within(visual).getByRole('button', { name: /统一生成器/ }));
     expect(within(visual).getByText(/"端到端"范围因系统而异/)).toBeInTheDocument();
+  });
+
+  it('keeps the target heading when following a link to another note', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = decodeURIComponent(String(input));
+      return {
+        ok: true,
+        text: async () => {
+          if (requestUrl.includes('BusinessAlgorithm02B Multi-Objective Ranking')) {
+            return [
+              '# 多目标排序',
+              '',
+              '题目：[[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG@K]]。',
+            ].join('\n');
+          }
+
+          if (requestUrl.includes('BusinessAlgorithm09 Quick Coding')) {
+            return '# Quick Coding\n\n## QC05 NDCG@K\n\n目标答案。';
+          }
+
+          return '# 业务算法';
+        },
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
+    fireEvent.click(screen.getByRole('button', { name: /第 10 章 · 多目标学习与分数融合/ }));
+    fireEvent.click(await screen.findByRole('link', { name: 'QC05 NDCG@K' }));
+
+    expect(await screen.findByRole('heading', { name: /QC05 NDCG@K/ })).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(screen.getAllByText('BusinessAlgorithm09 Quick Coding.md')).toHaveLength(2);
   });
 
   it('renders the message queue anatomy and redelivery walkthrough', async () => {

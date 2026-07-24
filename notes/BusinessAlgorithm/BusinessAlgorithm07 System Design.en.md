@@ -1,6 +1,6 @@
 # Business Algorithm System Design
 
-## Chapter 15: Three System Design Case Studies
+## Chapter 20: Three System Design Case Studies
 
 First, fix the business objectives, traffic scale, and latency, then map out the flow along the path of a real request:
 
@@ -187,7 +187,7 @@ Is the evidence in the database?
 
 Offline, also test for prompt injection, malicious web pages, unauthorized documents, and expired sources. Online, monitor user follow-ups, citation clicks, corrections, and abandonment rates; do not rely solely on an LLM-as-a-judge total score.
 
-### 15.1 How to Deconstruct "Metric Growth"
+### 20.1 How to Deconstruct "Metric Growth"
 
 Locate the funnel first; do not start by reporting model names.
 
@@ -223,7 +223,7 @@ Engineering issues:
 
 Choose data, model, strategy, or engineering optimizations only after diagnosing the layer. Model upgrades are just one type of action.
 
-### 15.2 How to Validate Before and After Launch
+### 20.2 How to Validate Before and After Launch
 
 Discuss metrics only after the component is built, and first clarify which layer it corresponds to:
 
@@ -254,7 +254,7 @@ Use SHA-256 to implement stable bucketing; do not use Python's built-in `hash()`
 
 Problem: [[BusinessAlgorithm09 Quick Coding.md#QC01 Stable A/B Bucketing|QC01 Stable A/B Bucketing]]
 
-### 15.3 Chapter Self-Test
+### 20.3 Chapter Self-Test
 
 1. Why should a business-algorithm system design not begin with a model diagram?
 2. What must a candidate trace record for stage-by-stage debugging?

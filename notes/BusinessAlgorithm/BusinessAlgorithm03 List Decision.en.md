@@ -1,8 +1,8 @@
 # Reranking, Diversity, and Rules
 
-## Chapter 10: Reranking, Diversity, and Rules
+## Chapter 13: Reranking, Diversity, and Rules
 
-### 10.1 Adding an Item-Item Constraint Layer to Lists
+### 13.1 Adding an Item-Item Constraint Layer to Lists
 
 Fine-ranking predicts the utility of items individually. If the top ten candidates are all from the same author discussing the same topic, each might have a high score, but the list experience will be poor.
 
@@ -15,7 +15,7 @@ The input to reranking is a set of candidates and their fine-ranking scores; the
 - Dependencies between adjacent positions;
 - Content the user has already consumed.
 
-### 10.2 How to Quantify Diversity
+### 13.2 How to Quantify Diversity
 
 The simplest form is category coverage:
 
@@ -36,7 +36,7 @@ A lower ILS usually implies higher diversity, but "dissimilarity" is not always 
 
 There are also multiple types of similarity. Identical categories, same authors, similar text, or close embeddings represent different types of redundancy. In practice, these often need to be combined.
 
-### 10.3 MMR
+### 13.3 MMR
 
 MMR selects one candidate at a time from the unselected set:
 
@@ -59,7 +59,7 @@ Given candidate relevance and pairwise similarity, greedily select the top-k. Su
 
 Problem: [[BusinessAlgorithm09 Quick Coding.md#QC07 MMR Reranking|QC07 MMR Reranking]].
 
-### 10.4 DPP
+### 13.4 DPP
 
 DPP uses a positive semi-definite kernel matrix `L` to describe quality and similarity:
 
@@ -79,7 +79,7 @@ where `q_i` is quality and `S_{ij}` is similarity. Finding the exact optimal sub
 
 The mathematical form of DPP is elegant, but services must also face numerical stability, candidate scale, and hard rules. Many teams ultimately use DPP-inspired business approximations rather than the full sampling method found in textbooks.
 
-### 10.5 Sliding Window
+### 13.5 Sliding Window
 
 Long lists do not necessarily require global deduplication. Users are most sensitive to repetition in adjacent content; one can simply penalize the last `W` selected candidates:
 
@@ -89,7 +89,7 @@ When selecting the t-th candidate, compare similarity only with positions [t-W, 
 
 This is computationally cheaper and allows the same topic to reappear after a certain interval. `W` should be tuned based on screen layout and consumption rhythm rather than being copied blindly.
 
-### 10.6 How Rules Enter Reranking
+### 13.6 How Rules Enter Reranking
 
 Rules can be divided into three categories.
 
@@ -99,9 +99,11 @@ Soft constraints allow for trade-offs, such as author diversification, category 
 
 Quota constraints require a certain number of items of a specific type to appear within an interval, such as at least 1 cold-start item or no more than 2 ads. These can be handled via bucket selection, integer programming approximations, or constrained greedy algorithms.
 
+Make the interval explicit. Examples include no more than five consecutive image or video posts, at most one promoted item in any nine positions, or at most one commerce card in the first four. At each greedy step, first remove candidates that violate the active window rules, then run MMR on the feasible set. Logs can then distinguish a similarity penalty from a hard rule rejection.
+
 Stuffing all rules into a long if-else chain quickly leads to chaos. A more robust approach is to define rules as configurable constraints, log which rule removed each candidate, and support offline replay.
 
-### 10.7 Diversity in Search vs. Recommendation
+### 13.7 Diversity in Search vs. Recommendation
 
 Search queries usually have specific answers. If a user searches for "iPhone 15 specs," the top results must be relevant; you cannot insert Android phones just for the sake of diversity.
 
@@ -112,7 +114,7 @@ Search: Relevance baseline > Quality/Recency > Diversity
 Recommendation: Estimated interest and long-term experience jointly constrain diversity
 ```
 
-### 10.8 Chapter Self-Test
+### 13.8 Chapter Self-Test
 
 1. Why is lower intra-list similarity not always better?
 2. What happens when the `θ` in MMR is increased?

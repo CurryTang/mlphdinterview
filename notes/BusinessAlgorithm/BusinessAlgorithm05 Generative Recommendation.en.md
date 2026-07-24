@@ -1,8 +1,8 @@
 # Generative Recommendation and LLM Ranking
 
-## Chapter 13: LLM Ranking and Generative Recommendation
+## Chapter 18: LLM Ranking and Generative Recommendation
 
-### 13.1 Same Transformer, Different Stages
+### 18.1 Same Transformer, Different Stages
 
 | Method | Input | Output | What it does not handle |
 | --- | --- | --- | --- |
@@ -12,7 +12,7 @@
 
 When comparing papers, first identify which layer they replace. Using a decoder-only Transformer does not imply the same system boundaries.
 
-### 13.2 Pointwise LLM Ranking
+### 18.2 Pointwise LLM Ranking
 
 Ask a question for each query-document pair independently:
 
@@ -26,7 +26,7 @@ One can read the logit of the `yes` token as a score, rather than parsing the na
 
 The advantage is simplicity and parallelizability; the disadvantage is that candidates are not compared against each other, and scores are influenced by prompts and token biases. Calling a large model for every candidate is also very costly.
 
-### 13.3 Pairwise Ranking Prompting
+### 18.3 Pairwise Ranking Prompting
 
 Provide the model with two candidates and ask it to judge which is more relevant:
 
@@ -38,7 +38,7 @@ For query q, which is more relevant, A or B?
 
 Naive pairwise requires comparing $O(n^2)$ pairs. Costs can be reduced using bubble sort passes, tournaments, or local comparisons. One should also swap A/B positions and repeat the query to mitigate position bias.
 
-### 13.4 Listwise and RankGPT
+### 18.4 Listwise and RankGPT
 
 Listwise prompts provide the model with a set of candidates and require the following output:
 
@@ -58,13 +58,13 @@ Listwise can compare multiple documents directly, but issues include:
 
 During testing, candidate order should be randomly shuffled to evaluate ranking stability. High NDCG in a single prompt does not prove the absence of position bias.
 
-### 13.5 FIRST
+### 18.5 FIRST
 
 [FIRST](https://aclanthology.org/2024.emnlp-main.491/) (Gangi Reddy et al., EMNLP 2024) does not generate a complete ID ranking; instead, it reads the logits of candidate IDs at the first generation position and uses them to obtain a ranking directly. The paper also incorporates a learning-to-rank loss to penalize errors on highly relevant candidates more heavily.
 
 FIRST uses the representations of generative models without generating the full sequence. The paper reports an inference speedup of approximately 50%; actual gains still depend on candidate length, model size, and deployment method.
 
-### 13.6 Where to Place LLM Ranking
+### 18.6 Where to Place LLM Ranking
 
 Current common deployment positions include:
 
@@ -77,7 +77,7 @@ Current common deployment positions include:
 
 Having a large model rank the top 100 for full-volume, high-QPS search is usually not cost-effective. Model quantization, KV cache, batching, and distillation can reduce costs, but cascading remains essential.
 
-### 13.7 HSTU and Generative Recommenders
+### 18.7 HSTU and Generative Recommenders
 
 [HSTU](https://proceedings.mlr.press/v235/zhai24a.html) (Zhai et al., ICML 2024) frames recommendation as sequence transduction: inputting a sequence of user actions to predict subsequent actions/content. It is designed for the high cardinality, non-stationarity, and ultra-long sequences of recommendation data, rather than simply copying a standard Transformer.
 
@@ -91,7 +91,7 @@ These figures come from the data and platforms described in the paper and cannot
 
 The "generative" aspect of HSTU does not equate to generating natural language. It generates target events or items within a recommendation sequence.
 
-### 13.8 OneRec
+### 18.8 OneRec
 
 [OneRec](https://arxiv.org/abs/2502.18965) (Deng et al., 2025 preprint) uses an encoder-decoder to jointly perform retrieval and ranking:
 
@@ -113,7 +113,7 @@ The subsequent item is conditioned on the already generated list, allowing the m
 
 These are industrial results reported by the authors; the paper was treated as a preprint during the compilation of this manual. Unified models must still address issues such as rollbacks, rules, long-tail coverage, invalid IDs, and online decoding costs.
 
-### 13.9 From Positive/Negative Samples to RL
+### 18.9 From Positive/Negative Samples to RL
 
 The following methods all increase the probability of high-value actions, but their supervision signals, competitors, and sample weights differ.
 
@@ -166,7 +166,7 @@ A_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)
 \right].
 ```
 
-When `A_t > 0`, the probability of the action is increased; when `A_t < 0`, it is decreased. Thus, RL can be intuitively understood as reward-weighted positive/negative sample learning, though this is merely an analogy. Whether a rollout is positive or negative depends on its advantage relative to the baseline, not just the absolute value of the reward; weights also change with the policy, sampling batch, and baseline.
+When `A_t > 0`, the action becomes more likely; when `A_t < 0`, it becomes less likely. This resembles reward-weighted positive and negative sampling, but the sign comes from advantage relative to a baseline. Absolute reward alone does not determine it, and the weight changes with the policy, sampling batch, and baseline.
 
 Compared to fixed negative sampling, policy optimization differs in that:
 
@@ -181,7 +181,7 @@ Only when an action changes subsequent user states and the objective includes cr
 
 A common practice is to first learn representations and valid IDs using contrastive learning or CE, then learn stable generation using SFT, and only then consider DPO or online policy optimization. RL is suitable for complete slates, multiple reasonable answers, non-differentiable business metrics, or long-term states; if the goal is simply next-item Recall/NDCG and data is sufficient, CE, BPR, or InfoNCE are often more stable and significantly cheaper.
 
-### 13.10 Checklist for Preference Optimization and RL
+### 18.10 Checklist for Preference Optimization and RL
 
 Before introducing preference optimization, answer the following:
 
@@ -193,7 +193,7 @@ Before introducing preference optimization, answer the following:
 
 If these questions cannot be answered clearly, switching to DPO, PPO, or GRPO will only hide label bias within a longer training pipeline.
 
-### 13.11 Will Traditional Cascading Disappear?
+### 18.11 Will Traditional Cascading Disappear?
 
 In the short term, a hybrid system is more likely:
 
@@ -211,7 +211,7 @@ Hard rules and safety layers
 
 Generative models excel at complex intents, long sequences, and joint list modeling; classic systems are easier to satisfy high throughput, incremental updates, explainable debugging, and deterministic constraints. A hybrid architecture allows both types of modules to handle the parts they excel at.
 
-### 13.12 Chapter Self-Test
+### 18.12 Chapter Self-Test
 
 1. What is the main cost of pointwise, pairwise, and listwise LLM ranking?
 2. Why is FIRST faster than generating a complete ranking?

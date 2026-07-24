@@ -2,7 +2,7 @@
 
 ## Formula Quick Reference
 
-This page contains only high-frequency formulas. When reviewing, do not just memorize the symbols: you should at least be able to explain which layer they are used in, how to handle division by zero, and how to approximate them in production.
+This page keeps the formulas that recur across the notes. For each one, know where it is used, what happens when a denominator is zero, and how production code approximates it.
 
 ### Recall and Similarity
 
@@ -83,6 +83,44 @@ DIN:
 
 ```math
 u(q)=\sum_j\alpha(h_j,q)h_j.
+```
+
+### Search and experimentation
+
+Query CTR:
+
+```math
+\operatorname{QueryCTR}
+=\frac{\#\text{searches with a click}}
+{\#\text{searches}}.
+```
+
+GSB:
+
+```math
+\operatorname{GSB}
+=\frac{G-B}{G+S+B}.
+```
+
+Experiment mean difference:
+
+```math
+\Delta=\bar X_T-\bar X_C.
+```
+
+SRM chi-square statistic:
+
+```math
+\chi^2=\sum_b\frac{(O_b-E_b)^2}{E_b}.
+```
+
+CUPED:
+
+```math
+Y_{\text{cuped}}
+=Y-\frac{\operatorname{Cov}(Y,X)}
+{\operatorname{Var}(X)}
+(X-\mathbb E[X]).
 ```
 
 ### List and Generation

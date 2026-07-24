@@ -2067,70 +2067,106 @@ const businessAlgorithmNoteDefinitions = [
     { directory: 'BusinessAlgorithm', category: 'Vector Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 5 章 · Query、内容和多路召回',
+    '第 5 章 · Query 理解与改写',
+    'BusinessAlgorithm01D Query Understanding.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Query Understanding', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '第 6 章 · Query、内容和多路召回',
     'BusinessAlgorithm01C Multi-Channel Retrieval.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Retrieval Fusion', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 6 章 · 排序目标与离线评价',
+    '第 7 章 · 搜索体验与评价',
+    'BusinessAlgorithm01E Search Quality.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Search Quality', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '第 8 章 · 搜索相关性与 BERT',
+    'BusinessAlgorithm01F Search Relevance.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Search Relevance', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '第 9 章 · 排序目标与离线评价',
     'BusinessAlgorithm02 Ranking.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Ranking', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 7 章 · 多目标学习与分数融合',
+    '第 10 章 · 多目标学习与分数融合',
     'BusinessAlgorithm02B Multi-Objective Ranking.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Multi-Objective', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 8 章 · 特征交叉、粗排与个性化',
+    '第 11 章 · 特征交叉、粗排与个性化',
     'BusinessAlgorithm02C Feature Interaction.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Feature Interaction', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 9 章 · 用户行为序列',
+    '第 12 章 · 用户行为序列',
     'BusinessAlgorithm02D User Sequences.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'User Modeling', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 10 章 · 重排、多样性与规则',
+    '第 13 章 · 重排、多样性与规则',
     'BusinessAlgorithm03 List Decision.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Reranking', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 11 章 · 冷启动、探索与长期反馈',
+    '第 14 章 · 冷启动、探索与长期反馈',
     'BusinessAlgorithm03B Exploration Cold Start.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Exploration', difficulty: 'Core' },
   ),
   createTutorialDefinition(
-    '第 12 章 · 生成式检索与 Semantic ID',
+    '第 15 章 · 在线实验与涨指标',
+    'BusinessAlgorithm03C Experimentation Growth.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Experimentation', difficulty: 'Applied' },
+  ),
+  createTutorialDefinition(
+    '第 16 章 · 查询词推荐',
+    'BusinessAlgorithm03D Query Recommendation.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Query Recommendation', difficulty: 'Core' },
+  ),
+  createTutorialDefinition(
+    '第 17 章 · 生成式检索与 Semantic ID',
     'BusinessAlgorithm04 Generative Algorithms.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Generative Retrieval', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
-    '第 13 章 · LLM 排序与生成式推荐',
+    '第 18 章 · LLM 排序与生成式推荐',
     'BusinessAlgorithm05 Generative Recommendation.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Generative Rec', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
-    '第 14 章 · RAG 与 Agentic Search',
+    '第 19 章 · RAG 与 Agentic Search',
     'BusinessAlgorithm06 Agentic Search.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Generative Search', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
-    '第 15 章 · 系统设计与上线验证',
+    '第 20 章 · 系统设计与上线验证',
     'BusinessAlgorithm07 System Design.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
+  ),
+  createTutorialDefinition(
+    '附录 · 王树森课程覆盖索引',
+    'BusinessAlgorithm10 Course Coverage.md',
+    null,
+    { directory: 'BusinessAlgorithm', category: 'Coverage', difficulty: 'Audit' },
   ),
   createTutorialDefinition(
     '附录 · 公式速查',
@@ -2471,7 +2507,14 @@ function resolveObsidianLink(target, alias) {
     return null;
   }
 
-  return `[${alias || prettyLabel(target)}](#${encodeURIComponent(noteId)})`;
+  const targetHeading = target.includes('#')
+    ? cleanHeadingText(target.split('#').slice(1).join('#'))
+    : '';
+  const routeTarget = targetHeading
+    ? `${noteId}::${slugify(targetHeading)}`
+    : noteId;
+
+  return `[${alias || prettyLabel(target)}](#${encodeURIComponent(routeTarget)})`;
 }
 
 function resolveMediaUrl(rawTarget) {
@@ -5192,7 +5235,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '带召回通道和原始分数的数千候选',
         compute: 'BM25、ItemCF、双塔 ANN、热门与关注通道并行取回',
         failure: '正例没进候选，后续再强的排序也救不回来。',
-        chapter: '第 5 章 · Query、内容和多路召回',
+        chapter: '第 6 章 · Query、内容和多路召回',
         noteId: 'BusinessAlgorithm01C Multi-Channel Retrieval.md',
       },
       {
@@ -5206,7 +5249,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '去重后的合法候选与通道归因',
         compute: '去重、配额、硬规则、轻量特征补齐',
         failure: '过滤过严会形成隐蔽误杀；过滤过松会浪费后级预算。',
-        chapter: '第 15 章 · 系统设计',
+        chapter: '第 20 章 · 系统设计',
         noteId: 'BusinessAlgorithm07 System Design.md',
       },
       {
@@ -5220,7 +5263,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '保留给精排的数百候选',
         compute: '蒸馏模型、轻量 DNN / GBDT、分数校准',
         failure: '粗排与精排目标错位时，会提前删掉精排本来会保留的 item。',
-        chapter: '第 8 章 · 特征交叉、粗排与个性化',
+        chapter: '第 11 章 · 特征交叉、粗排与个性化',
         noteId: 'BusinessAlgorithm02C Feature Interaction.md',
       },
       {
@@ -5234,7 +5277,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: 'CTR、CVR、时长等多目标分数',
         compute: 'Wide & Deep、DeepFM、DCN、多任务学习与分数融合',
         failure: '训练标签、曝光偏差或线上特征错位会直接扭曲最终顺序。',
-        chapter: '第 7 章 · 多目标学习与分数融合',
+        chapter: '第 10 章 · 多目标学习与分数融合',
         noteId: 'BusinessAlgorithm02B Multi-Objective Ranking.md',
       },
       {
@@ -5248,7 +5291,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '最终展示列表与完整曝光日志',
         compute: 'MMR / DPP、去重、频控、业务规则、bandit 探索',
         failure: '逐 item 最优不等于整页最优；重复、疲劳和规则冲突都在这里暴露。',
-        chapter: '第 10 章 · 重排、多样性与规则',
+        chapter: '第 13 章 · 重排、多样性与规则',
         noteId: 'BusinessAlgorithm03 List Decision.md',
       },
     ],
@@ -5270,7 +5313,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '可供序列模型消费的统一 token / embedding',
         compute: '序列化用户行为，融合搜索意图与上下文',
         failure: '上下文过长、时间信息丢失或训练服务格式不一致都会污染生成。',
-        chapter: '第 13 章 · 生成式推荐',
+        chapter: '第 18 章 · 生成式推荐',
         noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
       },
       {
@@ -5284,7 +5327,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: 'item token、Semantic ID 或整个推荐 slate',
         compute: 'HSTU / OneRec / OneSearch 类序列建模与自回归解码',
         failure: '"端到端"范围因系统而异，不能默认所有在线服务和规则都消失。',
-        chapter: '第 13 章 · 生成式推荐',
+        chapter: '第 18 章 · 生成式推荐',
         noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
       },
       {
@@ -5298,7 +5341,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '真实、可展示且可追踪版本的候选',
         compute: 'SID codebook、posting、版本对齐与冲突处理',
         failure: '量化冲突、空 posting 或索引版本错位会让合法 token 找不到真实 item。',
-        chapter: '第 12 章 · Semantic ID',
+        chapter: '第 17 章 · Semantic ID',
         noteId: 'BusinessAlgorithm04 Generative Algorithms.md',
       },
       {
@@ -5312,7 +5355,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '更符合列表与业务目标的生成策略',
         compute: 'SFT、DPO、GRPO / PPO 与不可微系统指标',
         failure: 'reward 设计不完整会诱发投机；off-policy 数据会放大分布偏移。',
-        chapter: '第 13 章 · 偏好与 RL',
+        chapter: '第 18 章 · 偏好与 RL',
         noteId: 'BusinessAlgorithm05 Generative Recommendation.md',
       },
       {
@@ -5326,7 +5369,7 @@ const BUSINESS_ALGORITHM_PATHS = {
         output: '最终列表、降级结果和曝光日志',
         compute: '约束解码、过滤、缓存、fallback 与观测',
         failure: '模型统一了目标，不代表确定性约束、容灾和线上验证可以省略。',
-        chapter: '第 15 章 · 系统设计',
+        chapter: '第 20 章 · 系统设计',
         noteId: 'BusinessAlgorithm07 System Design.md',
       },
     ],
@@ -6240,18 +6283,30 @@ function parseHashRoute(rawHash) {
   const hashValue = decodeURIComponent(String(rawHash ?? '').replace(/^#/, '')).replace(/^\/+/, '');
 
   if (!hashValue || hashValue === 'home') {
-    return { view: 'home', noteId: null, sectionId: null };
+    return { view: 'home', noteId: null, sectionId: null, headingId: null };
   }
 
-  const resolvedNoteId = legacySystemDesignRoutes[hashValue] ?? hashValue;
+  const [rawNoteId, ...headingParts] = hashValue.split('::');
+  const headingId = headingParts.join('::') || null;
+  const resolvedNoteId = legacySystemDesignRoutes[rawNoteId] ?? rawNoteId;
   const noteMatch = tutorials.find((tutorial) => tutorial.id === resolvedNoteId);
   if (noteMatch) {
-    return { view: 'reader', noteId: noteMatch.id, sectionId: noteMatch.sectionId };
+    return {
+      view: 'reader',
+      noteId: noteMatch.id,
+      sectionId: noteMatch.sectionId,
+      headingId,
+    };
   }
 
-  const sectionMatch = noteSections.find((section) => section.id === hashValue);
+  const sectionMatch = noteSections.find((section) => section.id === rawNoteId);
   if (sectionMatch) {
-    return { view: 'reader', noteId: sectionMatch.notes[0]?.id ?? null, sectionId: sectionMatch.id };
+    return {
+      view: 'reader',
+      noteId: sectionMatch.notes[0]?.id ?? null,
+      sectionId: sectionMatch.id,
+      headingId: null,
+    };
   }
 
   return null;
@@ -6334,6 +6389,7 @@ function App() {
 
   const [currentView, setCurrentView] = useState(initialRoute.view);
   const [selectedTutorialId, setSelectedTutorialId] = useState(initialId);
+  const [pendingHeadingId, setPendingHeadingId] = useState(initialRoute.headingId ?? null);
   const [language, setLanguage] = useState('zh');
   const [query, setQuery] = useState('');
   const [contentByKey, setContentByKey] = useState({});
@@ -6431,6 +6487,7 @@ function App() {
   const navigateHome = () => {
     setCurrentView('home');
     setQuery('');
+    setPendingHeadingId(null);
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
@@ -6441,11 +6498,13 @@ function App() {
     const nextId = section?.notes[0]?.id ?? tutorials[0]?.id ?? '';
     setCurrentView('reader');
     setQuery('');
+    setPendingHeadingId(null);
     setSelectedTutorialId(nextId);
   };
 
   const navigateToTutorial = (tutorialId) => {
     setCurrentView('reader');
+    setPendingHeadingId(null);
     setSelectedTutorialId(tutorialId);
   };
 
@@ -6482,11 +6541,28 @@ function App() {
       if (route.noteId) {
         setSelectedTutorialId(route.noteId);
       }
+      setPendingHeadingId(route.headingId ?? null);
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    if (!pendingHeadingId || selectedIsLoading || selectedError || !normalizedSelectedContent.trim()) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById(pendingHeadingId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      setPendingHeadingId(null);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [normalizedSelectedContent, pendingHeadingId, selectedError, selectedIsLoading]);
 
   return (
     <div className={`site-shell ${currentView === 'home' ? 'home-view' : 'reader-view'}`}>

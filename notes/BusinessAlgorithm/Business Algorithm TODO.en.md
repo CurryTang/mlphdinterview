@@ -1,13 +1,13 @@
 # System Overview
 
-> **Acknowledgments**: The foundational framework and several conceptual explanations in this section are inspired by Professor Wang Shusen's Recommender Systems course. We are grateful to Professor Wang for his long-term commitment to sharing high-quality educational content publicly.
+> **Acknowledgment**: This section builds on Professor Wang Shusen's public courses *Industrial Recommender Systems* and *Search Engine Technology*, along with their lecture notes.
 
 ## Chapter 1: The Multi-Stage Pipeline of Recommendation and Search
 
 ```business-algorithm-map
 ```
 
-This diagram organizes the subsequent content according to the execution sequence of a single request. By toggling between traditional cascading and generative paths, one can observe the candidate scale, inputs/outputs, and latency at each layer. At the bottom lies the shared data feedback loop.
+The diagram follows one request from input to response. Switch between the cascade and generative paths to compare candidate counts, inputs, outputs, and latency. Both paths feed the same logging and training loop at the bottom.
 
 ### 1.1 Starting with a Single Request
 
@@ -33,13 +33,13 @@ Hundreds of millions of items
   -> Return 20 items and log complete exposure
 ```
 
-These numbers vary with the product and latency budget, but the layering logic remains constant: the earlier the stage, the larger the candidate pool and the less computation available per candidate; the later the stage, the smaller the pool and the more granular the model interactions and list constraints.
+The numbers depend on the product and its latency budget. The tradeoff is stable: early stages touch more candidates with cheap computation; later stages spend more work on fewer candidates.
 
 Search uses a similar funnel, but the query is a strong input. Recall must handle exact keywords, semantics, and attribute conditions simultaneously, while ranking must maintain query-item relevance. Recommendation primarily infers intent from history and context, allowing for a small number of exploration slots.
 
 ### 1.2 Why Traditional Architectures Adopt Multi-Stage Pipelines
 
-The most direct reason traditional systems decouple recall, pre-ranking, ranking, and re-ranking is the inability to distribute computational power evenly. Inverted indices, similarity tables, and ANN can quickly retrieve thousands of items from a massive library; real-time features and complex cross-features must be reserved for the final few hundred candidates.
+Traditional systems split retrieval, pre-ranking, ranking, and reranking because they cannot afford the same computation on every item. Inverted indexes, similarity tables, and ANN can retrieve thousands of candidates quickly. Real-time features and expensive feature interactions are reserved for the final few hundred.
 
 The cost of errors also differs across layers. If recall misses an item, subsequent models have no chance to recover, so this layer prioritizes coverage. Ranking deals with pre-selected candidates, where the goal is to distinguish subtle preferences.
 
@@ -51,22 +51,23 @@ Cascading architectures also have costs. Different stages are trained separately
 - [OneRec](https://arxiv.org/abs/2502.18965) explicitly replaces the retrieve-and-rank cascade with a single encoder-decoder, generating session-level item lists directly from user history and using DPO for preference alignment. It unifies recall, pre-ranking, and ranking objectives, but still requires Semantic IDs, a reward model, constrained decoding, and online rule integration.
 - [OneSearch](https://openreview.net/forum?id=JKGgHY9FKa), aimed at e-commerce search, feeds queries, user behavior, and item Semantic IDs into a unified generative framework, replacing the traditional recall-pre-ranking-ranking funnel. Search must still handle query-item strong relevance, inventory, and product attributes; the paper's system also retains item encoding and additional reward model selection.
 
-When discussing "end-to-end," it is essential to define the boundaries: which training objectives and online stages are unified by the model, and which indices, rules, and disaster recovery paths remain external. Otherwise, the same term may refer to entirely different systems.
+When a paper says "end-to-end," check its boundary: which objectives and online stages moved into the model, and which indexes, rules, and failover paths stayed outside. The phrase is otherwise too ambiguous to compare systems.
 
 ### 1.3 Decomposing the System by Request Order
 
-Subsequent chapters unfold according to the online sequence in Figure 1-1:
+The remaining chapters follow the online sequence in Figure 1-1:
 
 | Stage | Input | Output | Future Coverage |
 | --- | --- | --- | --- |
 | Data & Request | User, query, item, context, logs | Reproducible samples & features | Chapter 2 |
-| Recall | Full library, inverted index, similarity table, vector index | Thousands of candidates & channel attribution | Chapters 3-5 |
-| Pre-ranking & Ranking | Candidates, real-time features, cross-features | Candidate scores & truncated lists | Chapters 6-9 |
-| List Decision | Ranking results, rules, and exploration budget | Final display list | Chapters 10-11 |
-| Generative Path | Query/history and item/doc identifiers | Generated items, SIDs, or answers | Chapters 12-14 |
-| System Validation | Full-chain logs, versions, and experiment traffic | Launch conclusions & troubleshooting | Chapter 15 |
+| Query & Retrieval | Full corpus, inverted index, similarity table, vector index | Thousands of candidates & channel attribution | Chapters 3-6 |
+| Experience & Ranking | Candidates, real-time features, cross-features | Candidate scores & truncated lists | Chapters 7-12 |
+| List & Cold Start | Ranking results, rules, and exploration budget | Final list and exploration traffic | Chapters 13-14 |
+| Experiments & Query Recommendation | Experiment traffic and user/query/item signals | Launch conclusions and recommended queries | Chapters 15-16 |
+| Generative Path | Query/history and item/doc identifiers | Generated items, SIDs, or answers | Chapters 17-19 |
+| System Design | Full-chain logs, versions, capacity, and fallbacks | End-to-end design and diagnosis | Chapter 20 |
 
-When reading papers or designing solutions, ask four questions along the table: What is the input, which layer is being replaced, to whom is the output passed, and how to downgrade upon failure? Network architecture is only one of these items.
+For any paper or design, ask four questions: What is the input? Which stage does it replace? Who consumes its output? What happens when it fails? The network architecture answers only part of the design.
 
 ### 1.4 Offline and Online Boundaries
 

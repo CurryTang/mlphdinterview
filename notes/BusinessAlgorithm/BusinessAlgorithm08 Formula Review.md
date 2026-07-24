@@ -2,7 +2,7 @@
 
 ## 公式速查
 
-这页只收高频公式。复习时别只背符号：至少要能说出它在哪一层使用、分母为零怎么办、线上如何近似。
+这页只收常用公式。复习时别只背符号：至少要能说出它在哪一层使用、分母为零怎么办、线上如何近似。
 
 ### 召回与相似度
 
@@ -83,6 +83,44 @@ DIN：
 
 ```math
 u(q)=\sum_j\alpha(h_j,q)h_j.
+```
+
+### 搜索与实验
+
+有点比：
+
+```math
+\operatorname{QueryCTR}
+=\frac{\#\text{有点击的搜索请求}}
+{\#\text{搜索请求}}.
+```
+
+GSB：
+
+```math
+\operatorname{GSB}
+=\frac{G-B}{G+S+B}.
+```
+
+实验均值差：
+
+```math
+\Delta=\bar X_T-\bar X_C.
+```
+
+SRM 卡方统计量：
+
+```math
+\chi^2=\sum_b\frac{(O_b-E_b)^2}{E_b}.
+```
+
+CUPED：
+
+```math
+Y_{\text{cuped}}
+=Y-\frac{\operatorname{Cov}(Y,X)}
+{\operatorname{Var}(X)}
+(X-\mathbb E[X]).
 ```
 
 ### 列表与生成

@@ -1,8 +1,8 @@
 # Ranking Objectives and Offline Evaluation
 
-## Chapter 6: Ranking Objectives and Offline Evaluation
+## Chapter 9: Ranking Objectives and Offline Evaluation
 
-### 6.1 Defining "Relevance" for Ranking
+### 9.1 Defining "Relevance" for Ranking
 
 Search relevance is typically categorized into graded labels:
 
@@ -15,7 +15,7 @@ Real-world labeling is more complex. Queries may be polysemous, documents may be
 
 Recommendation labels are derived from behavior. Clicks, effective views, likes, follows, and purchases represent different intensities and have different latencies. Model objectives must align with product objectives; one should not train solely on CTR just because click samples are abundant.
 
-### 6.2 Pointwise
+### 9.2 Pointwise
 
 Pointwise treats each candidate as an independent classification or regression sample:
 
@@ -28,7 +28,7 @@ The advantage is that both sampling and training are simple, and predicted proba
 
 CTR, CVR, and duration estimation often start with pointwise. If search relevance has graded labels, it can also be treated as multi-class classification or regression.
 
-### 6.3 Pairwise
+### 9.3 Pairwise
 
 Pairwise constructs positive-negative candidate pairs, aiming for a higher score for the positive example:
 
@@ -41,7 +41,7 @@ It is closer to "which item is ranked ahead of which," but the number of pairs c
 
 RankNet is a pairwise approach. LambdaRank/LambdaMART adjust gradient weights based on the impact of swapping two candidates on NDCG, ensuring that errors at the top of the list are prioritized.
 
-### 6.4 Listwise
+### 9.4 Listwise
 
 Listwise treats the entire candidate list as the training object. A simple form is to apply softmax to the list:
 
@@ -51,9 +51,9 @@ P(i\mid q)=\frac{e^{s_i}}{\sum_j e^{s_j}},
 
 Then use cross-entropy with the target distribution. One can also directly optimize an approximation of NDCG or generate candidate permutations.
 
-Listwise is closer to the final task but requires candidates for the same query to be grouped for training, making memory usage, sampling, and implementation more complex. LLM ranking often uses listwise prompts, but long candidate lists encounter context window limits and position bias, which will be expanded upon in Chapter 13.
+Listwise is closer to the final task but requires candidates for the same query to be grouped for training, making memory usage, sampling, and implementation more complex. LLM ranking often uses listwise prompts, but long candidate lists encounter context window limits and position bias, which will be expanded upon in Chapter 18.
 
-### 6.5 Search Relevance Models
+### 9.5 Search Relevance Models
 
 Traditional text scores include:
 
@@ -67,7 +67,13 @@ Cross-BERT encodes the query and document together, enabling the recognition of 
 
 Two-tower BERT can pre-calculate document representations, making it suitable for retrieval; Cross-BERT is suitable for re-ranking. When comparing the two, one must account for the number of calls: top-200 re-ranking means executing 200 query-document forward passes per query.
 
-### 6.6 Measuring Ranking Performance
+Search performs fusion at retrieval truncation, pre-ranking, and fine ranking; only the candidate count and model budget change. All three may consume relevance, CTR or engagement, content quality, freshness, geography, and aggregate features. Retrieval truncation favors two-tower and linear models, pre-ranking uses smaller cross-encoders or trees, and fine ranking can afford the heaviest interactions.
+
+Early search systems often start with rules: bucket documents by relevance, then fuse click, quality, and freshness signals within a bucket. A clickbait failure or a sudden change in video share can be corrected directly. A learned fusion model becomes useful after labels accumulate, but the system should still monitor the relevance-grade mix in top results so that click gains cannot hide weaker relevance.
+
+Fusion supervision can combine human overall-satisfaction labels with behavior. Annotators judge the query, document, time, and location, producing a grade that includes relevance, quality, and freshness. Clicks and engagement add personalized evidence. If labels are scarce, train a small teacher on non-personalized features, score a large log set, then combine its satisfaction estimate with behavior to train the online model that includes user features. The teacher must use point-in-time features, including document age at request time.
+
+### 9.6 Measuring Ranking Performance
 
 For pointwise estimations like CTR and CVR, first look at LogLoss:
 
@@ -102,7 +108,7 @@ If the task primarily cares about the first correct result, MRR can be used:
 
 These metrics must be compared on the same candidate set. If the retrieval set changes, changes in NDCG may stem from better candidates or the ranking model itself; these two must be experimented with separately.
 
-### 6.7 Misalignment Between Training and Evaluation
+### 9.7 Misalignment Between Training and Evaluation
 
 Common misalignments:
 
@@ -120,13 +126,14 @@ Input graded relevance sorted by predicted order to calculate DCG, IDCG, and NDC
 
 Problem: [[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG]].
 
-### 6.8 Chapter Self-Test
+### 9.8 Chapter Self-Test
 
 1. Pointwise scores can be calibrated; why might ranking still be poor?
 2. How should hard negatives for Pairwise be generated?
 3. Why is NDCG more sensitive to the top of the list?
 4. Where should Cross-BERT and two-tower BERT be placed?
 5. How should relevance, content quality, and final ranking scores be decoupled?
+6. Why does search fusion often start with relevance buckets and hand-written rules before a learned fusion model?
 
 <details>
 <summary>Reference answers</summary>
@@ -136,5 +143,6 @@ Problem: [[BusinessAlgorithm09 Quick Coding.md#QC05 NDCG@K|QC05 NDCG]].
 3. Logarithmic discount gives top positions more weight, so the same displacement costs more near rank one than near the tail.
 4. Two-tower BERT fits retrieval or coarse ranking. Cross-BERT jointly encodes query and document and belongs in fine ranking over a small set.
 5. Produce separate relevance, quality, and business-objective scores, calibrate them, combine them by scenario, and keep interpretable hard guardrails.
+6. Rules are easier to inspect and repair while data and the pipeline are still changing. A learned model needs trustworthy satisfaction and behavior labels, plus relevance-grade monitoring so that it cannot trade relevance for clicks.
 
 </details>

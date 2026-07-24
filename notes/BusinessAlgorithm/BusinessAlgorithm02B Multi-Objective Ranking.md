@@ -1,14 +1,14 @@
 # 多目标学习与分数融合
 
-## 第 7 章 多目标学习与分数融合
+## 第 10 章 多目标学习与分数融合
 
-### 7.1 为什么会有多目标
+### 10.1 为什么会有多目标
 
 短视频平台可能同时关心点击、播放时长、完播、点赞、关注和负反馈。电商关心点击、加购、下单和成交额。搜索还要考虑相关性、质量、时效、地域和个性化。
 
 把所有目标粗暴加成一个标签，会丢掉结构。分别训练多个模型又会重复计算，并让低频任务缺少数据。多任务学习就在这两端之间找平衡。
 
-### 7.2 Shared-Bottom
+### 10.2 Shared-Bottom
 
 最简单的结构共享底层：
 
@@ -26,7 +26,7 @@ features -> shared network -> task A tower
 
 问题是任务梯度可能冲突。点击偏好标题吸引力，长时长偏好内容持续价值，它们不总朝同一方向更新共享参数。
 
-### 7.3 MMoE
+### 10.3 MMoE
 
 MMoE 用多个 expert 产生表示，每个任务有自己的 gate：
 
@@ -41,6 +41,8 @@ g_t(x)=\operatorname{softmax}(W_t x).
 
 任务 `t` 根据样本动态组合 experts。它比 Shared-Bottom 更灵活，但不要把 gate 解释成稳定的业务分工。某个 expert 不一定永久代表"点击"，gate 也可能塌缩到少数 experts。
 
+训练时对 gate 的 softmax 输出做少量 expert dropout，是缓解极化的一种办法：随机屏蔽部分 expert 后重新归一化，迫使任务别永远依赖同一条路径。它不能替代负载监控，dropout 过强还会破坏本来有用的专门化。
+
 诊断 MMoE 时可以看：
 
 - 各任务 gate 的熵；
@@ -49,7 +51,7 @@ g_t(x)=\operatorname{softmax}(W_t x).
 - 单任务与多任务的分群收益；
 - 低频任务是否被高频任务压制。
 
-### 7.4 ESMM 与转化漏斗
+### 10.4 ESMM 与转化漏斗
 
 电商 CVR 只在点击后可观察。若只用点击样本训练 CVR，训练分布与全量曝光分布不同。
 
@@ -62,7 +64,7 @@ P(\text{click and conversion})
 
 在全量曝光空间联合学习 CTR 和 CTCVR，再由二者关系约束 CVR。它缓解样本选择偏差与转化稀疏，但仍依赖模型假设和数据口径，不代表反事实问题完全解决。
 
-### 7.5 时长建模
+### 10.5 时长建模
 
 播放时长既有零膨胀，又受视频长度影响。直接回归秒数会偏向长视频。
 
@@ -74,9 +76,17 @@ P(\text{click and conversion})
 - 分视频长度校准；
 - 用 survival/hazard 思路建模退出。
 
+YouTube 的一种时长写法把观测秒数 `t` 变成 soft label：
+
+```math
+y=\frac{t}{1+t},\qquad p=\sigma(z).
+```
+
+用二元交叉熵拟合 `y`。当 `p=y` 时有 `e^z=t`，所以推理阶段可用 `e^z` 作为时长预估。完播则可回归播放比例，或把 `"播放超过 80%"` 当二分类；无论哪种，都要按视频长度校准，因为短视频天然更容易完播。
+
 评价时要按内容长度、用户活跃度和场景分桶。平均时长上涨可能只是系统多推了长视频。
 
-### 7.6 分数融合
+### 10.6 分数融合
 
 模型输出通常不能直接线性相加。CTR 可能在 `[0, 0.2]`，时长预测是秒，CVR 更稀疏。先做校准，再讨论融合。
 
@@ -92,9 +102,31 @@ S
 
 `f_t` 可以是 log、幂函数、分段函数或分位数映射。权重不只靠离线搜索，最终需要在线实验。
 
+课程里的几种典型融合各有侧重点：
+
+```math
+S_{\text{add}}
+=p_{\text{click}}+w_1p_{\text{like}}+w_2p_{\text{share}}+\cdots,
+```
+
+```math
+S_{\text{rank}}
+=\sum_j\frac{w_j}{r_j+\beta_j},
+```
+
+```math
+S_{\text{commerce}}
+=p_{\text{click}}^{\alpha}
+\times p_{\text{cart}}^{\beta}
+\times p_{\text{pay}}^{\gamma}
+\times \operatorname{price}^{\delta}.
+```
+
+第一种依赖校准后的数值尺度；第二种只看各目标的候选内名次，尺度更稳但丢失分差；电商乘法形式贴合曝光到支付的漏斗，任何一项接近零都会强烈压低总分。
+
 另一条路是学习融合模型，把各目标分数和上下文作为输入。但它仍要有训练标签，且更难解释目标权衡。业务强约束最好保留在重排或规则层。
 
-### 7.7 校准
+### 10.7 校准
 
 如果模型说 0.2 的样本约有 20% 真正点击，分数就是校准的。常用方法：
 
@@ -105,13 +137,23 @@ S
 
 排序只要求相对顺序，融合却经常需要可比较的概率。校准变化不一定改变 AUC，却可能大幅改变多目标融合的结果。
 
-### 7.8 从排序损失到偏好优化
+负样本降采样后，模型输出也要还原。若负例只保留比例 `\alpha`，采样数据上的预估为 `p_s`，原分布概率是：
+
+```math
+p
+=\frac{\alpha p_s}
+{1-p_s+\alpha p_s}.
+```
+
+只做降采样、不做校准，会系统性高估 CTR 和后续交互率，融分权重也会随采样率变化。
+
+### 10.8 从排序损失到偏好优化
 
 BCE 判断单个 pair，BPR 比较一对 item，InfoNCE 让一个正例与一组候选竞争。三者都利用正负反馈，比较粒度和负样本来源不同。
 
-生成式推荐把比较单位扩展到 token 或完整序列。next-token CE 与整个词表竞争，DPO 比较 chosen/rejected 序列，policy gradient 用 advantage 给 rollout 加权。RL 的低 advantage rollout 不能简单当成固定负样本，因为候选由当前 policy 产生，样本权重也会随训练变化。细节见 [[BusinessAlgorithm05 Generative Recommendation.md#13.9 从正负样本到 RL：一条连续的坐标轴|生成式推荐中的偏好优化]]。
+生成式推荐把比较单位扩展到 token 或完整序列。next-token CE 与整个词表竞争，DPO 比较 chosen/rejected 序列，policy gradient 用 advantage 给 rollout 加权。RL 的低 advantage rollout 不能简单当成固定负样本，因为候选由当前 policy 产生，样本权重也会随训练变化。细节见 [[BusinessAlgorithm05 Generative Recommendation.md#18.9 从正负样本到 RL|生成式推荐中的偏好优化]]。
 
-### 7.9 本章自测
+### 10.9 本章自测
 
 1. Shared-Bottom 的负迁移从哪里来？
 2. MMoE 的 gate 可以怎样诊断？
