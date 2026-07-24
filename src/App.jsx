@@ -2091,7 +2091,7 @@ const businessAlgorithmNoteDefinitions = [
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
   ),
   createTutorialDefinition(
-    '业务算法 08 · 公式与两周复习表',
+    '业务算法 08 · 公式速查',
     'BusinessAlgorithm08 Formula Review.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'Review', difficulty: 'Reference' },

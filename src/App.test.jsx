@@ -415,7 +415,7 @@ describe('App', () => {
     expect(await screen.findByText('10 notes in this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /业务算法 05 · 生成式推荐与 LLM 排序/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /业务算法 06 · RAG 与 Agentic Search/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /业务算法 08 · 公式与两周复习表/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /业务算法 08 · 公式速查/ })).toBeInTheDocument();
     expect(decodeURIComponent(window.location.hash)).toBe('#Business Algorithm TODO.md');
     const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
     expect(within(visual).getByText(/亿级候选，沿延迟预算逐层收窄/)).toBeInTheDocument();
