@@ -52,7 +52,7 @@ describe('App', () => {
               ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
             : requestUrl.includes('SystemDesign09')
               ? '# System Design 09 · 一致性哈希\n\n节点变化时只迁移相邻区间。'
-            : requestUrl.includes('BusinessAlgorithm00')
+            : requestUrl.includes('Business%20Algorithm%20TODO') || requestUrl.includes('Business Algorithm TODO')
               ? '# 第一部分：系统总览与数据基础\n\n```business-algorithm-map\n```'
             : chineseContent,
       };
@@ -413,6 +413,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
     expect(await screen.findByText('7 notes in this section')).toBeInTheDocument();
+    expect(decodeURIComponent(window.location.hash)).toBe('#Business Algorithm TODO.md');
     const visual = await screen.findByRole('region', { name: '推荐与搜索业务算法系统地图' });
     expect(within(visual).getByText(/亿级候选，沿延迟预算逐层收窄/)).toBeInTheDocument();
     expect(within(visual).getByText('10⁸ → 3k')).toBeInTheDocument();

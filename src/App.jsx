@@ -2044,7 +2044,7 @@ const systemDesignNotes = systemDesignNoteDefinitions.map((definition) => ({
 const businessAlgorithmNoteDefinitions = [
   createTutorialDefinition(
     '业务算法 00 · 系统总览与数据闭环',
-    'BusinessAlgorithm00 System Overview.md',
+    'Business Algorithm TODO.md',
     null,
     { directory: 'BusinessAlgorithm', category: 'System Map', difficulty: 'Start Here' },
   ),
