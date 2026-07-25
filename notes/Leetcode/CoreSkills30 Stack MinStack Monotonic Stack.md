@@ -11,14 +11,98 @@ MinStack 是一道相对独立的设计题，记住一版稳定写法即可。�
 
 ## 学习顺序
 
+题目以 [NeetCode 150](https://neetcode.io/practice/practice/neetcode150) 为准。`Generate Parentheses` 的核心是回溯，栈只用于保存当前路径；它不属于后文的单调栈模板。
+
 | 顺序 | 原题 | 要掌握的内容 |
 |---:|---|---|
-| 1 | [155. Min Stack](https://leetcode.com/problems/min-stack/description/) | 每个栈帧保存 `min_so_far` |
-| 2 | [739. Daily Temperatures](https://leetcode.com/problems/daily-temperatures/description/) | 右侧第一个更大值的标准模板 |
-| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/description/) | 环形数组只多一层取模 |
-| 4 | [84. Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/description/) | 单调栈确定左右边界 |
+| 1 | [20. Valid Parentheses](https://neetcode.io/problems/validate-parentheses/question?list=neetcode150) | 最近打开的括号最先闭合 |
+| 2 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | 每个栈帧保存 `min_so_far` |
+| 3 | [150. Evaluate Reverse Polish Notation](https://neetcode.io/problems/evaluate-reverse-polish-notation/question?list=neetcode150) | 操作符消费最近两个操作数 |
+| 4 | [22. Generate Parentheses](https://neetcode.io/problems/generate-parentheses/question?list=neetcode150) | 栈作为回溯路径 |
+| 5 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | 右侧第一个更大值 |
+| 6 | [853. Car Fleet](https://neetcode.io/problems/car-fleet/question?list=neetcode150) | 排序后维护车队到达时间 |
+| 7 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | 单调栈确定左右边界 |
 
-## 1. MinStack：给每一层保存当时的最小值
+## 1. 普通栈：先掌握 LIFO
+
+### Quick Coding：Valid Parentheses
+
+遇到左括号时入栈；遇到右括号时，它只能与最近出现且尚未匹配的左括号配对。只要栈为空、类型不匹配，或者扫描结束后栈非空，就返回 `False`。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+class Solution:
+    def isValid(self, s: str) -> bool:
+        opening = {
+            ")": "(",
+            "]": "[",
+            "}": "{",
+        }
+        stack = []
+
+        for bracket in s:
+            if bracket not in opening:
+                stack.append(bracket)
+                continue
+
+            if not stack or stack.pop() != opening[bracket]:
+                return False
+
+        return not stack
+```
+
+时间和空间复杂度都是 $O(n)$。
+
+</details>
+
+### Quick Coding：Evaluate Reverse Polish Notation
+
+数字入栈；操作符弹出最近两个数字，计算后把结果放回栈。减法和除法不能交换操作数：
+
+```text
+right = stack.pop()
+left = stack.pop()
+result = left op right
+```
+
+<details>
+<summary>参考答案</summary>
+
+```python
+from typing import List
+
+
+class Solution:
+    def evalRPN(self, tokens: List[str]) -> int:
+        stack = []
+
+        for token in tokens:
+            if token not in {"+", "-", "*", "/"}:
+                stack.append(int(token))
+                continue
+
+            right = stack.pop()
+            left = stack.pop()
+
+            if token == "+":
+                stack.append(left + right)
+            elif token == "-":
+                stack.append(left - right)
+            elif token == "*":
+                stack.append(left * right)
+            else:
+                stack.append(int(left / right))
+
+        return stack[-1]
+```
+
+Python 的 `//` 会向负无穷取整；题目要求向零截断，因此这里使用 `int(left / right)`。时间和空间复杂度都是 $O(n)$。
+
+</details>
+
+## 2. MinStack：给每一层保存当时的最小值
 
 如果只额外维护一个全局变量 `minimum`，`push` 和 `getMin` 很简单，但弹出当前最小值后，不知道上一个最小值是什么。重新扫描整个栈需要 $O(n)$。
 
@@ -82,7 +166,53 @@ class MinStack:
 
 这道题建议直接记住 `(value, min_so_far)`。双栈写法也正确，但面试现场需要多维护一次同步关系，没有必要给自己增加分支。
 
-## 2. 单调栈究竟在保存什么
+## 3. Generate Parentheses：这里的栈只是当前路径
+
+这题容易因为出现在 Stack 题单里而被误记成“栈算法”。它真正的约束是：
+
+```text
+只有 opened < n 时才能放左括号
+只有 closed < opened 时才能放右括号
+```
+
+`stack` 只是可原地 `append/pop` 的路径缓冲区，核心仍是回溯剪枝。
+
+<details>
+<summary>参考答案</summary>
+
+```python
+from typing import List
+
+
+class Solution:
+    def generateParenthesis(self, n: int) -> List[str]:
+        answer = []
+        stack = []
+
+        def backtrack(opened, closed):
+            if len(stack) == 2 * n:
+                answer.append("".join(stack))
+                return
+
+            if opened < n:
+                stack.append("(")
+                backtrack(opened + 1, closed)
+                stack.pop()
+
+            if closed < opened:
+                stack.append(")")
+                backtrack(opened, closed + 1)
+                stack.pop()
+
+        backtrack(0, 0)
+        return answer
+```
+
+输出规模是第 $n$ 个 Catalan 数，时间复杂度与合法结果总长度同阶，通常写作 $O(C_n n)$；递归路径空间为 $O(n)$。
+
+</details>
+
+## 4. 单调栈究竟在保存什么
 
 以“右侧第一个严格更大元素”为例。扫描到下标 `i` 时，当前值 `nums[i]` 只可能回答栈顶那些还没有答案的下标：
 
@@ -98,7 +228,7 @@ while stack and nums[i] > nums[stack[-1]]:
 
 为什么当前 `i` 一定是被弹出下标 `j` 的**第一个**答案？因为 `j` 入栈以后，扫描指针按顺序经过了 `j + 1, j + 2, ...`。如果中间有任何元素已经满足条件，`j` 当时就会被弹出，不可能等到现在。
 
-## 3. 一个统一模板
+## 5. 一个统一模板
 
 先写“右侧第一个满足条件的位置”：
 
@@ -144,7 +274,7 @@ answer[j]：题目要下标、值，还是距离
 ```monotonic-stack-demo
 ```
 
-## 4. Daily Temperatures：答案从下标改成距离
+## 6. Daily Temperatures：答案从下标改成距离
 
 给定每日温度，返回每一天还要等待多少天才会遇到更高温度；之后没有更高温度则返回 `0`。
 
@@ -193,7 +323,7 @@ class Solution:
 
 </details>
 
-## 5. 右侧答案与左侧答案，记录时机不同
+## 7. 右侧答案与左侧答案，记录时机不同
 
 单调栈常见的两种问法只差答案属于谁。
 
@@ -234,18 +364,24 @@ for i, value in enumerate(nums):
 | 右侧第一个满足条件 | 当前值回答旧下标 | 弹栈时写 `answer[j]` |
 | 左侧最近满足条件 | 删除当前下标不能使用的候选 | `while` 后读栈顶，写 `answer[i]` |
 
-## 6. 环形数组：模板不变，只扫描两遍
+## 8. Car Fleet：先排序，再保留新的最慢到达时间
 
-环形数组的右侧可以绕回开头。把下标 `0 ... n - 1` 虚拟复制一遍，扫描 `2n` 次：
+车不能超车，所以必须先按位置从接近终点到远离终点排序。每辆车单独到达终点所需时间是：
 
-```python
-for scan in range(2 * n):
-    i = scan % n
+$$
+t_i=\frac{target-position_i}{speed_i}.
+$$
+
+从前往后看：
+
+```text
+当前车 time <= 前方车队 time：能在终点前追上，合并进前方车队
+当前车 time > 前方车队 time：追不上，形成一支新车队
 ```
 
-第二遍只用来回答第一遍留下的问题，不要把同一个下标再次压栈。
+栈里保存的是已经形成的车队到达时间，并且严格递增。这不是“当前元素弹出旧下标”的单调栈模板；排序先确定了谁可能追上谁，栈只保留无法合并的车队。
 
-### Quick Coding：Next Greater Element II
+### Quick Coding：Car Fleet
 
 <details>
 <summary>参考答案</summary>
@@ -255,31 +391,31 @@ from typing import List
 
 
 class Solution:
-    def nextGreaterElements(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        answer = [-1] * n
-        stack = []
+    def carFleet(
+        self,
+        target: int,
+        position: List[int],
+        speed: List[int],
+    ) -> int:
+        cars = sorted(zip(position, speed), reverse=True)
+        fleet_times = []
 
-        for scan in range(2 * n):
-            i = scan % n
+        for start, velocity in cars:
+            arrival = (target - start) / velocity
 
-            while stack and nums[stack[-1]] < nums[i]:
-                j = stack.pop()
-                answer[j] = nums[i]
+            if not fleet_times or arrival > fleet_times[-1]:
+                fleet_times.append(arrival)
 
-            if scan < n:
-                stack.append(i)
-
-        return answer
+        return len(fleet_times)
 ```
 
-这一题要求返回值，所以写 `answer[j] = nums[i]`。第一遍每个下标只入栈一次，第二遍只负责弹栈，总复杂度仍为 $O(n)$。
+排序需要 $O(n\log n)$，之后扫描是 $O(n)$；车队到达时间栈最多保存 $n$ 个值。
 
 </details>
 
-## 7. 柱状图最大矩形：弹栈时确定完整边界
+## 9. 柱状图最大矩形：弹栈时确定完整边界
 
-在 [84. Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/description/) 中，下标 `j` 被更矮的柱子 `right` 弹出时：
+在 [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) 中，下标 `j` 被更矮的柱子 `right` 弹出时：
 
 ```text
 right = 右侧第一个严格更矮的位置
@@ -330,7 +466,7 @@ class Solution:
 
 </details>
 
-## 8. 为什么嵌套 while 仍然是 O(n)
+## 10. 为什么嵌套 while 仍然是 O(n)
 
 不要把外层 `for` 和内层 `while` 直接相乘。一个下标：
 
@@ -349,7 +485,7 @@ class Solution:
 2. 当前元素是在回答旧下标，还是为自己寻找左侧答案？
 3. 题目要求严格大于，还是大于等于？这决定 `<` 和 `<=`。
 4. `answer[j]` 要保存下标、值还是 `i - j`？
-5. 环形数组是否只在第一遍压栈？
+5. Car Fleet 是否先按位置从近到远排序？
 6. 柱状图是否用哨兵清空了剩余下标？
 
 最后只记一句：
