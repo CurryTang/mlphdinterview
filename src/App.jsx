@@ -1794,6 +1794,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Sliding Window', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 30 · Stack & Monotonic Stack',
+    'CoreSkills30 Stack MinStack Monotonic Stack.md',
+    null,
+    { directory: 'Leetcode', category: 'Stacks', difficulty: 'Medium' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
@@ -6747,10 +6753,286 @@ function RecordMinimumVisual() {
   );
 }
 
+const MONOTONIC_STACK_VALUES = [2, 1, 2, 4, 3];
+
+function buildMonotonicStackSteps(mode) {
+  const stack = [];
+  const answers = Array(MONOTONIC_STACK_VALUES.length).fill(null);
+  const steps = [{
+    action: 'start',
+    current: null,
+    popped: null,
+    stack: [],
+    answers: [...answers],
+  }];
+  const resolves = mode === 'greater'
+    ? (waiting, current) => current > waiting
+    : (waiting, current) => current < waiting;
+
+  MONOTONIC_STACK_VALUES.forEach((value, index) => {
+    steps.push({
+      action: 'scan',
+      current: index,
+      popped: null,
+      stack: [...stack],
+      answers: [...answers],
+    });
+
+    while (stack.length > 0 && resolves(MONOTONIC_STACK_VALUES[stack.at(-1)], value)) {
+      const popped = stack.pop();
+      answers[popped] = index;
+      steps.push({
+        action: 'resolve',
+        current: index,
+        popped,
+        stack: [...stack],
+        answers: [...answers],
+      });
+    }
+
+    stack.push(index);
+    steps.push({
+      action: 'push',
+      current: index,
+      popped: null,
+      stack: [...stack],
+      answers: [...answers],
+    });
+  });
+
+  steps.push({
+    action: 'finish',
+    current: null,
+    popped: null,
+    stack: [...stack],
+    answers: [...answers],
+  });
+  return steps;
+}
+
+const MONOTONIC_STACK_STEPS = {
+  greater: buildMonotonicStackSteps('greater'),
+  smaller: buildMonotonicStackSteps('smaller'),
+};
+
+function MonotonicStackVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [mode, setMode] = useState('greater');
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = MONOTONIC_STACK_STEPS[mode];
+  const step = steps[activeStep];
+  const isGreater = mode === 'greater';
+  const directionWord = t(isGreater ? '更大' : '更小', isGreater ? 'greater' : 'smaller');
+  const stackOrder = t(
+    isGreater ? '栈底 → 栈顶：单调不增' : '栈底 → 栈顶：单调不减',
+    isGreater ? 'bottom → top: non-increasing' : 'bottom → top: non-decreasing',
+  );
+
+  let title = t(
+    '下标都在等待右侧第一个答案',
+    'Every index is waiting for its first answer on the right',
+  );
+  let detail = t(
+    `目标：找到右侧第一个严格${directionWord}的元素。栈里只放尚未得到答案的下标。`,
+    `Goal: find the first strictly ${directionWord} value to the right. The stack stores only unresolved indices.`,
+  );
+  let activeLine = 'init';
+
+  if (step.action === 'scan') {
+    const value = MONOTONIC_STACK_VALUES[step.current];
+    const top = step.stack.at(-1);
+    title = isEnglish
+      ? `Scan i = ${step.current}, value = ${value}`
+      : `扫描 i = ${step.current}，当前值 = ${value}`;
+    detail = top === undefined
+      ? t('栈为空，当前下标还不能回答任何人。', 'The stack is empty, so the current index cannot resolve anyone yet.')
+      : isEnglish
+        ? `Compare ${value} with the waiting top value ${MONOTONIC_STACK_VALUES[top]}.`
+        : `拿 ${value} 和栈顶等待中的 ${MONOTONIC_STACK_VALUES[top]} 比较。`;
+    activeLine = 'loop';
+  } else if (step.action === 'resolve') {
+    const currentValue = MONOTONIC_STACK_VALUES[step.current];
+    const poppedValue = MONOTONIC_STACK_VALUES[step.popped];
+    const symbol = isGreater ? '>' : '<';
+    title = isEnglish
+      ? `${currentValue} ${symbol} ${poppedValue}: pop index ${step.popped}`
+      : `${currentValue} ${symbol} ${poppedValue}，弹出下标 ${step.popped}`;
+    detail = isEnglish
+      ? `Index ${step.current} is the first qualifying value to the right of index ${step.popped}, so answer[${step.popped}] = ${step.current}.`
+      : `下标 ${step.current} 是下标 ${step.popped} 右侧第一个满足条件的位置，因此 answer[${step.popped}] = ${step.current}。`;
+    activeLine = 'resolve';
+  } else if (step.action === 'push') {
+    title = isEnglish
+      ? `Push index ${step.current}`
+      : `压入下标 ${step.current}`;
+    detail = isEnglish
+      ? `Its answer is still unknown. After the push, ${stackOrder}.`
+      : `它自己的答案还不知道。入栈后，${stackOrder}。`;
+    activeLine = 'push';
+  } else if (step.action === 'finish') {
+    title = t('扫描结束，栈中元素没有右侧答案', 'The scan is done; remaining indices have no answer to the right');
+    detail = t(
+      '这些下标从未被后来的元素弹出，答案保留为 -1。',
+      'No later value ever popped these indices, so their answers remain -1.',
+    );
+    activeLine = 'finish';
+  }
+
+  const templateLines = [
+    ['init', 'answer = [-1] * n', 'stack = []'],
+    ['loop', 'for i, x in enumerate(nums):', t('    # x 尝试回答栈顶', '    # x tries to resolve the top')],
+    [
+      'resolve',
+      isGreater
+        ? '    while stack and nums[stack[-1]] < x:'
+        : '    while stack and nums[stack[-1]] > x:',
+      '        j = stack.pop(); answer[j] = i',
+    ],
+    ['push', '    stack.append(i)', t('    # i 开始等待自己的答案', '    # i starts waiting for its own answer')],
+    ['finish', 'return answer', ''],
+  ];
+
+  return (
+    <section
+      className="monotonic-stack-visual"
+      aria-label={t('单调栈统一模板演示', 'Unified monotonic-stack template walkthrough')}
+    >
+      <header className="monotonic-stack-header">
+        <div>
+          <p className="eyebrow">{t('单调栈', 'Monotonic stack')}</p>
+          <h2>{t('当前元素负责回答谁？', 'Whose question can the current value answer?')}</h2>
+          <p>{t(
+            '固定数组 [2, 1, 2, 4, 3]。切换目标时，只改变 while 的比较符号。',
+            'The array is fixed at [2, 1, 2, 4, 3]. Switching the target changes only the while-loop comparator.',
+          )}</p>
+        </div>
+        <div className="monotonic-stack-mode" role="group" aria-label={t('选择单调栈目标', 'Choose the monotonic-stack target')}>
+          <button
+            type="button"
+            className={isGreater ? 'active' : ''}
+            aria-pressed={isGreater}
+            onClick={() => {
+              setMode('greater');
+              setActiveStep(0);
+            }}
+          >
+            {t('找右侧更大', 'Next greater')}
+          </button>
+          <button
+            type="button"
+            className={!isGreater ? 'active' : ''}
+            aria-pressed={!isGreater}
+            onClick={() => {
+              setMode('smaller');
+              setActiveStep(0);
+            }}
+          >
+            {t('找右侧更小', 'Next smaller')}
+          </button>
+        </div>
+      </header>
+
+      <div className="monotonic-stack-step-copy" aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="monotonic-stack-array" aria-label={t('输入数组与已确定答案', 'Input array and resolved answers')}>
+        {MONOTONIC_STACK_VALUES.map((value, index) => {
+          const isCurrent = index === step.current;
+          const isPopped = index === step.popped;
+          const answer = step.answers[index];
+          const answerLabel = answer === null
+            ? (step.action === 'finish' ? '-1' : t('等待', 'waiting'))
+            : `→ ${answer}`;
+          return (
+            <div
+              className={`monotonic-stack-cell${isCurrent ? ' current' : ''}${isPopped ? ' popped' : ''}${answer !== null ? ' resolved' : ''}`}
+              key={index}
+            >
+              <small>i = {index}</small>
+              <strong>{value}</strong>
+              <span>{answerLabel}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="monotonic-stack-workspace">
+        <div className="monotonic-stack-lane">
+          <div className="monotonic-stack-lane-heading">
+            <span>{t('未决下标栈', 'Unresolved index stack')}</span>
+            <strong>{stackOrder}</strong>
+          </div>
+          <div className="monotonic-stack-items">
+            <span className="monotonic-stack-bottom">{t('栈底', 'bottom')}</span>
+            {step.stack.length === 0
+              ? <em>{t('空栈', 'empty')}</em>
+              : step.stack.map((index, position) => (
+                <div className="monotonic-stack-item" key={index}>
+                  <small>i = {index}</small>
+                  <strong>{MONOTONIC_STACK_VALUES[index]}</strong>
+                  {position === step.stack.length - 1 && <span>{t('栈顶', 'top')}</span>}
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="monotonic-stack-code" aria-label={t('当前模板代码', 'Active template code')}>
+          {templateLines.map(([id, first, second]) => (
+            <div className={activeLine === id ? 'active' : ''} key={id}>
+              <code>{first}</code>
+              {second && <code>{second}</code>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="monotonic-stack-answer">
+        <strong>answer</strong>
+        {step.answers.map((answer, index) => (
+          <span key={index}>
+            <small>{index}</small>
+            {answer ?? (step.action === 'finish' ? '-1' : '−')}
+          </span>
+        ))}
+        <em>{t('保存答案下标；题目也可能要求值或距离', 'Stores indices; a problem may instead ask for values or distances')}</em>
+      </div>
+
+      <div className="monotonic-stack-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择单调栈演示步骤', 'Select a monotonic-stack step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -6786,6 +7068,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'sliding-window-patterns') {
     return <SlidingWindowPatternAtlas />;
+  }
+
+  if (match?.[1] === 'monotonic-stack-demo') {
+    return <MonotonicStackVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

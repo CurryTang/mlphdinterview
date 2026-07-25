@@ -213,9 +213,10 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
-    expect(screen.getByText('本板块共 29 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 30 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
 
@@ -334,6 +335,44 @@ describe('App', () => {
 
     fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
     expect(within(visual).getByText('移除旧 a，left 从 0 变成 1')).toBeInTheDocument();
+  });
+
+  it('renders the unified monotonic stack walkthrough', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills30')
+          ? '# Stack\n\n```monotonic-stack-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i }));
+
+    const visual = await screen.findByRole('region', { name: '单调栈统一模板演示' });
+    expect(within(visual).getByText('下标都在等待右侧第一个答案')).toBeInTheDocument();
+    expect(within(visual).getByText('栈底 → 栈顶：单调不增')).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: '选择单调栈演示步骤' }), {
+      target: { value: '6' },
+    });
+
+    expect(within(visual).getByText('2 > 1，弹出下标 1')).toBeInTheDocument();
+    expect(within(visual).getByText('→ 2')).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: '找右侧更小' }));
+    expect(within(visual).getByText('栈底 → 栈顶：单调不减')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    const englishVisual = await screen.findByRole('region', {
+      name: 'Unified monotonic-stack template walkthrough',
+    });
+    expect(englishVisual).toBeInTheDocument();
+    expect(within(englishVisual).getByRole('button', { name: 'Next smaller' })).toBeInTheDocument();
   });
 
   it('renders the trapping rain water walkthrough and reaches six units', async () => {
