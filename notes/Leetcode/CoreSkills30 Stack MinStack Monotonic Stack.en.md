@@ -87,9 +87,57 @@ For this problem, it is worth memorizing `(value, min_so_far)` directly. A two-s
 
 ## Module 2: Monotonic Stack
 
+### What Kind of Problems Does It Solve?
+
+A monotonic stack most often handles this question:
+
+> For every position in an array, find the first (nearest) greater or smaller element to its left or right.
+
+The wording may change while the underlying query stays the same:
+
+| Problem Wording | What It Is Really Asking For |
+|---|---|
+| How many days until it gets warmer? | First strictly greater value on the right; return the index difference |
+| What is the next greater element? | First strictly greater value on the right; return its value |
+| How far can a histogram bar extend? | First smaller value on both sides |
+| How many previous prices does today's price dominate? | The nearest greater value on the left forms the boundary |
+
+There are two strong signals:
+
+1. The input is usually a one-dimensional sequence, and the problem needs a boundary for **every position**.
+2. The boundary is not the global maximum or minimum. It is the **first position in one direction that satisfies a comparison**.
+
+A brute-force solution scans left or right from every position and can take $O(n^2)$. A monotonic stack keeps only positions whose boundaries are still unknown. Since each index is pushed and popped at most once, all of these queries can be answered in $O(n)$.
+
+For a maximum over every fixed-size window, a monotonic deque is usually the right tool. For one maximum over the entire array, a linear scan is enough. A monotonic stack is useful when many positions each need their own nearest boundary.
+
 ### What Does the Stack Actually Store?
 
-Consider "the first strictly greater value to the right." When the scan reaches index `i`, the current value `nums[i]` can resolve only the indices at the top of the stack that are still waiting for an answer:
+For "the first strictly greater value to the right," the stack does not hold answers. It holds:
+
+> Indices that have already been scanned but whose first greater value on the right has not appeared.
+
+Store **indices**, rather than values alone, because an index gives all three pieces of information:
+
+```text
+nums[j]: the value used in comparisons
+j: the position used to compute a distance such as i - j
+answer[j]: the slot where the result belongs
+```
+
+Storing only values loses their positions and cannot distinguish duplicate values.
+
+For example, scan `nums = [5, 2, 4, 6]`:
+
+```text
+Read 5: stack = [0]       index 0 is waiting for something greater
+Read 2: stack = [0, 1]    2 cannot resolve 5, so index 1 also waits
+Read 4: pop 1             4 is the first greater value to the right of index 1
+        stack = [0, 2]    indices 0 and 2 are still unresolved
+Read 6: pop 2, then 0     6 resolves both remaining indices
+```
+
+The stack is therefore not "everything seen so far." It contains only unresolved candidate indices that survive earlier comparisons. At index `i`, the current value `nums[i]` repeatedly resolves the top:
 
 ```python
 while stack and nums[i] > nums[stack[-1]]:
@@ -97,9 +145,7 @@ while stack and nums[i] > nums[stack[-1]]:
     answer[j] = i
 ```
 
-The most useful invariant is more precise than "the stack is decreasing":
-
-> The stack stores indices that have been seen but whose answer on the right has not appeared yet.
+After the popping stops, push `i`: the current position now begins waiting for its own answer on the right. The values represented by the stack are non-increasing from bottom to top, but that monotonic order is a consequence of the waiting-and-removal process, not the goal by itself.
 
 Why is the current `i` the **first** answer for a popped index `j`? Since `j` was pushed, the scan has visited `j + 1, j + 2, ...` in order. If an earlier value had satisfied the condition, it would already have popped `j`.
 
