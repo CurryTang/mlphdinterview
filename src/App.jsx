@@ -6891,6 +6891,13 @@ function MonotonicStackVisual() {
     ['push', '    stack.append(i)', t('    # i 开始等待自己的答案', '    # i starts waiting for its own answer')],
     ['finish', 'return answer', ''],
   ];
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    loop: t('读取当前元素', 'Read current value'),
+    resolve: t('弹栈并写答案', 'Pop and write answer'),
+    push: t('压入未决下标', 'Push unresolved index'),
+    finish: t('返回答案', 'Return answers'),
+  }[activeLine];
 
   return (
     <section
@@ -6932,7 +6939,7 @@ function MonotonicStackVisual() {
         </div>
       </header>
 
-      <div className="monotonic-stack-step-copy" aria-live="polite">
+      <div className={`monotonic-stack-step-copy ${step.action}`} aria-live="polite">
         <span>{activeStep + 1} / {steps.length}</span>
         <strong>{title}</strong>
         <p>{detail}</p>
@@ -6970,7 +6977,10 @@ function MonotonicStackVisual() {
             {step.stack.length === 0
               ? <em>{t('空栈', 'empty')}</em>
               : step.stack.map((index, position) => (
-                <div className="monotonic-stack-item" key={index}>
+                <div
+                  className={`monotonic-stack-item${position === step.stack.length - 1 ? ' top' : ''}`}
+                  key={index}
+                >
                   <small>i = {index}</small>
                   <strong>{MONOTONIC_STACK_VALUES[index]}</strong>
                   {position === step.stack.length - 1 && <span>{t('栈顶', 'top')}</span>}
@@ -6980,19 +6990,29 @@ function MonotonicStackVisual() {
         </div>
 
         <div className="monotonic-stack-code" aria-label={t('当前模板代码', 'Active template code')}>
-          {templateLines.map(([id, first, second]) => (
-            <div className={activeLine === id ? 'active' : ''} key={id}>
-              <code>{first}</code>
-              {second && <code>{second}</code>}
-            </div>
-          ))}
+          <div className="monotonic-stack-code-heading">
+            <span>{t('统一模板', 'Unified template')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <div className="monotonic-stack-code-lines">
+            {templateLines.map(([id, first, second]) => (
+              <div
+                className={activeLine === id ? 'active' : ''}
+                aria-current={activeLine === id ? 'step' : undefined}
+                key={id}
+              >
+                <code>{first}</code>
+                {second && <code>{second}</code>}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="monotonic-stack-answer">
         <strong>answer</strong>
         {step.answers.map((answer, index) => (
-          <span key={index}>
+          <span className={answer !== null ? 'resolved' : ''} key={index}>
             <small>{index}</small>
             {answer ?? (step.action === 'finish' ? '-1' : '−')}
           </span>
