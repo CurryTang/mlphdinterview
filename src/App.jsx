@@ -5925,7 +5925,7 @@ const BUSINESS_ALGORITHM_PATHS_EN = {
   cascade: {
     label: 'Traditional cascade',
     eyebrow: 'MULTI-STAGE FUNNEL',
-    title: 'Narrow billions of candidates within a fixed latency budget',
+    title: 'Narrow hundreds of millions of candidates within a fixed latency budget',
     summary: 'Early stages handle more candidates with cheaper features. Real-time crosses and slate constraints appear only after the candidate set is small.',
     stages: [
       {

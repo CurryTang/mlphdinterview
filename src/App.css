@@ -2428,17 +2428,18 @@
 }
 
 .monotonic-stack-code {
-  border: 1px solid #0b2631;
-  background: var(--mono-blue-dark);
+  border: 1px solid #071c25;
+  background: #102d39;
   display: grid;
   grid-template-rows: auto 1fr;
   overflow-x: auto;
+  box-shadow: inset 0 0 0 1px rgba(191, 224, 235, 0.04);
 }
 
 .monotonic-stack-code-heading {
   min-width: 390px;
-  border-bottom: 1px solid rgba(205, 231, 239, 0.16);
-  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(205, 231, 239, 0.22);
+  background: #173c49;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2447,7 +2448,7 @@
 }
 
 .monotonic-stack-code-heading span {
-  color: #b8d2da;
+  color: #d7e9ee;
   font: 750 0.62rem "IBM Plex Mono", "Courier New", monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2475,31 +2476,36 @@
   border: 1px solid transparent;
   border-left-width: 4px;
   border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
   display: grid;
+  gap: 0.08rem;
   padding: 0.32rem 0.48rem;
 }
 
 .monotonic-stack-code-lines > div.active {
-  border-color: #f1a65f;
-  border-left-color: #f1a65f;
-  background: #ffdda8;
+  border-color: #f3ad68;
+  border-left-color: #e97822;
+  background: #fff0d8;
   box-shadow: 0 5px 12px rgba(5, 20, 27, 0.22);
 }
 
 .markdown-body .monotonic-stack-code code {
   display: block;
   border-radius: 0;
-  background: transparent;
-  color: #d7e9ee;
+  background: transparent !important;
+  color: #edf8fa !important;
   padding: 0;
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.55;
+  opacity: 1;
   white-space: pre;
 }
 
 .markdown-body .monotonic-stack-code-lines > div.active code {
-  color: #3d2614;
-  font-weight: 750;
+  background: transparent !important;
+  color: #3b220f !important;
+  font-weight: 800;
 }
 
 .monotonic-stack-answer {

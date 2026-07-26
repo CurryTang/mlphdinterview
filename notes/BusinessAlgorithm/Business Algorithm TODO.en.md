@@ -4,6 +4,32 @@
 
 ## Chapter 1: The Multi-Stage Pipeline of Recommendation and Search
 
+Recommendation and search both select candidates, but the user gives the system different evidence.
+
+Search begins with an explicit need. When a user enters `"waterproof running shoes for a rainy commute"`, the system must interpret the constraints, find matching products or documents, and put the most useful results first. Relevance is the first gate. A popular result that does not answer the query should not occupy a top position.
+
+Recommendation starts from a different problem. A user opening a home feed has not written a query. The system has to decide what to show from recent behavior, longer-term interests, the current context, and available inventory. It should use known preferences while leaving some room to test new interests and new items. Optimizing only for the easiest click may lift a short-term number while making the feed repetitive and rewarding clickbait.
+
+The boundary between the two tasks can be summarized as follows:
+
+| | Search | Recommendation |
+| --- | --- | --- |
+| Starting point | The user provides a query and filters | The user enters a consumption surface; intent must be inferred |
+| First question | Which results actually satisfy this need? | What is the best thing to show this user now? |
+| Role of personalization | Reorders relevant results; it must not override an explicit query | A primary signal, still constrained by supply, quality, and exploration |
+| Most costly error | Ranking irrelevant results first or missing a clear answer | Reinforcing a narrow interest, overreading accidental behavior, or starving new items |
+| Output | A short ranked result list or an answer | A short ranked list of content, products, or creators |
+
+Both systems must return tens of results from millions or billions of candidates within tens or hundreds of milliseconds. Running one expensive model over the entire corpus is rarely economical, so a traditional system makes several decisions at different levels of precision:
+
+```text
+Retrieval: did a relevant or potentially interesting item enter the candidate set?
+Ranking: among retrieved candidates, which items should appear first?
+Reranking: do these high-scoring items make sense together on one screen?
+```
+
+A retrieval miss usually cannot be repaired downstream. A ranking error can still be corrected by changing order. Reranking handles list-level interactions that independent item scores cannot see. These three error types give the later models and system choices a concrete purpose.
+
 ```business-algorithm-map
 ```
 
@@ -33,6 +59,18 @@ Hundreds of millions of items
   -> Return 20 items and log complete exposure
 ```
 
+E-commerce search narrows the set in the same way, though its early stages depend more on the query and structured constraints:
+
+```text
+Hundreds of millions of products
+  -> retrieve 5,000 through lexical, attribute, two-tower, and rewrite channels
+  -> brand, category, inventory, location, and safety filters leave 2,000
+  -> lightweight relevance and pre-ranking retain 400
+  -> a cross-encoder and fusion model rank 100
+  -> list rules handle variant grouping, ads, and repeated sellers
+  -> return the first 10–20 results
+```
+
 The numbers depend on the product and its latency budget. The tradeoff is stable: early stages touch more candidates with cheap computation; later stages spend more work on fewer candidates.
 
 Search uses a similar funnel, but the query is a strong input. Recall must handle exact keywords, semantics, and attribute conditions simultaneously, while ranking must maintain query-item relevance. Recommendation primarily infers intent from history and context, allowing for a small number of exploration slots.
@@ -40,6 +78,8 @@ Search uses a similar funnel, but the query is a strong input. Recall must handl
 ### 1.2 Why Traditional Architectures Adopt Multi-Stage Pipelines
 
 Traditional systems split retrieval, pre-ranking, ranking, and reranking because they cannot afford the same computation on every item. Inverted indexes, similarity tables, and ANN can retrieve thousands of candidates quickly. Real-time features and expensive feature interactions are reserved for the final few hundred.
+
+The scale makes the constraint concrete. Even if one expensive interaction takes only `10 μs`, scoring `10^8` candidates requires `1000 s` of aggregate compute. Compressing that work into `100 ms` would consume roughly ten thousand equivalent workers per request, before feature reads and network calls. A viable system uses indexes to reject most candidates first, then spends expensive computation on progressively smaller sets.
 
 The cost of errors also differs across layers. If recall misses an item, subsequent models have no chance to recover, so this layer prioritizes coverage. Ranking deals with pre-selected candidates, where the goal is to distinguish subtle preferences.
 

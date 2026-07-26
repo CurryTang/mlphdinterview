@@ -51,6 +51,8 @@ In-batch negatives contain false negatives. Two users might both like the same i
 
 For a retrieval model, exposed-but-unclicked items are usually poor default negatives. The old retriever and ranker already considered them plausible, and a missing click may come from position, timing, or chance. A safer mix starts with corpus or in-batch negatives and adds items rejected by pre-ranking or ranking as hard negatives. Treat exposed misses separately and verify that they help.
 
+Hard negatives also expire. Once the model fixes a class of errors, an old mined set may become too easy; training on it indefinitely overfits a few failure patterns. A common loop periodically mines again with the current checkpoint, keeps a stable fraction of random negatives, and manually audits false negatives among the hardest examples. Rejection by an old model means only that the old model did not choose the item, not that the item is a reliable negative label.
+
 Sampling changes the prior distribution. If item `j` enters the negative set with probability `p_j`, an in-batch softmax can correct its logit with:
 
 ```math
@@ -80,6 +82,8 @@ Whether the index supports incremental writes after item vector updates is also 
 
 When validating ANN, fix the same set of queries and plot the `Recall@K - P95/P99 Latency - Memory` curve, rather than just reporting a single top-K Recall. This curve reveals how much loss the approximate retrieval itself incurs when the model embedding remains constant but index parameters change.
 
+Filtering order changes effective recall. Retrieving ANN top-100 and then applying inventory, location, and category filters may leave nothing. Blindly over-fetching top-1000 increases both index and downstream cost. Options include sharded indexes for strong filters, ANN systems with metadata filtering, coarse filtering before vector search, or dynamic over-fetch based on historical filter rates. High offline ANN recall paired with frequent online trending backfill usually points to recall after filtering, not the embedding benchmark.
+
 ### 4.5 Online Service
 
 Typical two-tower pipeline:
@@ -104,6 +108,8 @@ Key concerns:
 - Fallback channels in case of index failure.
 
 Production updates usually run at two cadences. A daily full job shuffles the previous day's data, trains both towers, and republishes all item vectors. Intraday jobs consume recent logs and update user ID embeddings so that new interests reach the user tower sooner. Incremental data arrive in time order, have biased coverage, and contain less mature labels, so they do not replace full training. Serving should track the full checkpoint, incremental offset, and item-index version independently and be able to roll back to the last complete release.
+
+Incremental updates must preserve vector-space compatibility. If an intraday job changes the item tower, shared bottom layers, or any parameter that moves both sides' coordinate system, new query embeddings no longer match the old item index. Updating user-only parameters can reuse the old index. Changing the shared space requires recomputing item vectors and switching indexes together, or keeping the old query tower until the new index is ready.
 
 ### 4.6 Two-Tower and Cross-Encoder
 

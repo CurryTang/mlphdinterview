@@ -27,6 +27,10 @@ Candidate queries come from:
 
 Before indexing, check safety, quality, freshness, and result supply. A highly clickable query with no relevant documents only moves the failure to the SERP.
 
+The inventory is not an append-only string table. Each candidate should carry normalized text, language, source, creation and expiration times, safety status, result supply, and generator version. Normalize case, spacing, and phonetic variants, but do not collapse ambiguous meanings that share the same surface text. Document deletion, trend expiration, or a safety change must be able to withdraw a query by version.
+
+Generated queries need two admission stages. Offline checks cover text quality, safety, and minimum supply. Online checks enforce the current region, permissions, freshness, and live result count. A query that had one hundred results offline may have none available to the current user. If the online check fails, drop it or fall back to the reviewed inventory. A more clickable phrase must not bypass the supply floor.
+
 ### 16.3 SUG retrieval
 
 SUG has a tight latency budget, so deterministic indexes remain central:
@@ -89,6 +93,10 @@ trending and editorial pools
 Seeds should not be only the most recent N events. Keep recent events and sample balanced long-term history to retain both current interest and breadth.
 
 SERP recommendation uses the current query for Q2Q. In-document recommendation starts with D2Q and may add one D2Q2Q hop, but each extra hop increases drift.
+
+Channel merging should not concatenate everything and hand it to one global ranker. Reserve a minimum budget for stable channels, then let other channels borrow unused capacity. Deduplicate by normalized query while retaining every source. That attribution distinguishes agreement between Q2Q and D2Q from an isolated result produced by an aggressive path. Raw channel scores are not directly comparable; map them to calibrated values or within-channel quantiles before a fusion model consumes source, hop count, and result supply.
+
+For each request, log candidates returned by each channel, unique candidates after deduplication, removals by safety, supply, and seen-query rules, channel latency, and index version. If Q2Q times out, reviewed or trending pools can fill the gap. A missing D2Q result should not automatically trigger another D2Q2Q hop, because extra drift can hide an index failure. Version the fallback policy so experiments can separate model gains from channel degradation.
 
 ### 16.7 Ranking: clicks are only the first conversion
 

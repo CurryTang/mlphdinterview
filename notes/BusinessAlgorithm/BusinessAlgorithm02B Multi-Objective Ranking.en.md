@@ -8,6 +8,17 @@ Short-video platforms may simultaneously care about clicks, watch time, completi
 
 Roughly summing all objectives into one label loses structure. Training multiple models separately leads to redundant computation and causes low-frequency tasks to lack data. Multi-task learning finds a balance between these two extremes.
 
+Two different problems are often conflated here:
+
+```text
+Multi-task learning: how to share representations while predicting CTR, duration, CVR, and other targets
+Score fusion: how those predictions become the final online ranking score
+```
+
+MMoE, Shared-Bottom, and ESMM mainly address the first problem. Additive, multiplicative, rank-based, or learned fusion addresses the second. More accurate heads do not guarantee a better list. If the fusion weights let a frequent objective dominate quality and negative feedback, a sophisticated network will still optimize the wrong behavior.
+
+Fusion cannot repair poorly defined labels either. Clicks, duration, and purchases have different observation windows, sampling rates, and calibration requirements. Each head needs an interpretable target before its weight is tuned. Online weighting is a product tradeoff among defined objectives, not a substitute for defining the training data.
+
 ### 10.2 Shared-Bottom
 
 The simplest structure shares the bottom layers:

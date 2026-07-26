@@ -77,6 +77,12 @@ Current common deployment positions include:
 
 Having a large model rank the top 100 for full-volume, high-QPS search is usually not cost-effective. Model quantization, KV cache, batching, and distillation can reduce costs, but cascading remains essential.
 
+An LLM ranker needs a fixed request contract before serving. Inputs should include `request_id`, candidate IDs, original ranks, text versions, truncation flags, and the candidate limit, not only the query and document text. The output must cover the input IDs without duplicates and return `model_version`, `prompt_version`, latency, and format-validation results. Candidate text needs deterministic truncation, such as fixed budgets for title, summary, and matched passages, so one long document cannot displace the rest of the list.
+
+A practical policy gives the LLM its own deadline and limits it to the top 20 or 50. On timeout, missing IDs, duplicate IDs, unknown IDs, or incomplete coverage, return the original cross-encoder order for the whole list. Do not splice half an LLM permutation into scores from the previous ranker because the two outputs have no shared scale. If partial output is allowed, replay that fusion rule offline and log it explicitly as `partial_fallback`.
+
+Start with shadow traffic and record top-k swaps against the existing ranker, position bias, format failure rate, tokens per request, and P99 latency. The router should send hard queries to the LLM only when their incremental value pays for the extra cost and tail latency. When the LLM acts as a teacher, retain the prompt and candidate snapshot so its soft labels remain reproducible.
+
 ### 18.7 HSTU and Generative Recommenders
 
 [HSTU](https://proceedings.mlr.press/v235/zhai24a.html) (Zhai et al., ICML 2024) frames recommendation as sequence transduction: inputting a sequence of user actions to predict subsequent actions/content. It is designed for the high cardinality, non-stationarity, and ultra-long sequences of recommendation data, rather than simply copying a standard Transformer.

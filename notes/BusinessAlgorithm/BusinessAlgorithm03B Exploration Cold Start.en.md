@@ -50,6 +50,10 @@ For new users, one can utilize:
 
 The most valuable data for a new user is their first few actions. The system should quickly update short-term interests and avoid showing default popular content for too long.
 
+New-user handling works better as an explicit state than as scattered checks for `"history length < N"`. A user starts with regional and entry-point priors plus a small exploration budget. Valid plays, skips, follows, and other early actions update short-term interests through the streaming path. The personalized model takes most traffic only after both behavior volume and interest confidence cross tested thresholds. Three rapid skips and three completed views are both three events, but they provide very different evidence.
+
+The transition must be replayable. Exposure logs should include `cold_start_state`, available feature versions, the default pool, exploration quota, and transition reason. When the short-term feature service times out, do not treat a missing sequence as a user with no interests. Fall back to the latest versioned state and report first-day retention and negative feedback separately for degraded users.
+
 ### 14.4 Where to Inject Traffic
 
 Cold-start candidates can be injected at different layers:
@@ -78,6 +82,20 @@ A simple UCB form:
 `μ_i` is the current utility estimate, and `n_i` is the number of exposures. Items with fewer exposures receive an uncertainty bonus.
 
 Utility in recommendations depends on user context, items expire, and feedback has delays and position effects, so the UCB formula only indicates the direction of exploration. Even without bandits, one must provide a small amount of controlled traffic to high-uncertainty candidates; otherwise, the system cannot collect the data needed to correct initial estimates.
+
+Every exploration exposure needs enough data to reconstruct the decision:
+
+```text
+request_id, user_id, item_id
+policy_id, model_version, candidate_pool
+estimated_reward, uncertainty_bonus, final_score
+selection_probability / propensity
+position, exploration_reason, label_maturity_time
+```
+
+Without propensity, the log shows what the system displayed but cannot support reliable IPS or DR policy evaluation. A deterministic quota still needs the feasible set before quota selection and its tie-breaking rule; labeling every exploratory impression with one channel name is not enough.
+
+Position bias and delayed feedback can make a new item's early mean look much better or worse than it is. Update statistics by position and only after each reward, such as click, valid play, or purchase, has matured. Serving also needs hard budgets by user, session, and content-quality tier. Stop exploration immediately when negative feedback, reports, or inventory state crosses a guardrail rather than waiting for the bandit to learn the constraint.
 
 ### 14.6 Cold-Start Evaluation
 

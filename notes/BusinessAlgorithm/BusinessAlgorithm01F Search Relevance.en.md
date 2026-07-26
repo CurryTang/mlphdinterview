@@ -71,6 +71,16 @@ z_q=f(q),\qquad z_d=g(d),\qquad s(q,d)=z_q^\top z_d.
 
 Document vectors are precomputed. Dual encoders fit retrieval and coarse ranking; Cross-BERT fits later stages with fewer candidates. Production systems usually increase interaction depth stage by stage.
 
+Late interaction sits between them. In a ColBERT-style model, the query and document are encoded into token vectors separately, so document tokens can be precomputed. Online scoring lets each query token find its strongest document-token match:
+
+```math
+s(q,d)
+=\sum_{t\in q}\max_{j\in d}
+z_t^\top z_j.
+```
+
+This preserves token-level matching and is finer than a single-vector dual encoder, but it uses more storage and online matching work than a cross-independent score. Whether it is worthwhile depends on candidate volume, token-index memory, and latency, not the slogan that it "balances quality and cost."
+
 ### 8.5 Token granularity and long documents
 
 Chinese systems may use characters or a mixed character-word vocabulary. Mixed granularity shortens sequences, reduces attention cost, and retains more information under a fixed token limit.
@@ -150,6 +160,18 @@ A large teacher provides accurate soft labels; a smaller student meets latency l
 5. evaluate on human labels to detect copied teacher bias.
 
 Matching every hidden layer is optional. The target is relevance and ranking quality; more high-quality distillation pairs are often more useful than layer-wise imitation.
+
+Relevance release should also proceed in stages:
+
+```text
+fixed-candidate offline slices
+  -> Side-by-Side / GSB for page-level bad cases
+  -> shadow traffic for scores, timeouts, and cache behavior
+  -> a small canary for relevance-grade and latency guardrails
+  -> A/B testing for search success and reformulation
+```
+
+Monitoring needs more than aggregate NDCG. Track drift by head/tail, entity, attribute, freshness, and language slices, together with tokenizer, model, document, and cache versions. If the new model times out, puts grade-zero results at the top, or creates empty results for one query class, the relevance service should roll back independently instead of reverting the entire search stack.
 
 ### 8.10 Chapter self-test
 

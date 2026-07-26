@@ -2,6 +2,12 @@
 
 ## Chapter 3 Sparse Retrieval and Collaborative Retrieval
 
+Retrieval is not responsible for choosing the final first result. Its job is to collect a set of items that may matter downstream, subject to a latency and candidate budget. A missed positive is more costly here than an imperfect order: a ranker can reorder retrieved items, but it cannot score an item that never entered the candidate set.
+
+A retrieval result should therefore carry more than an `item_id`. It should include its channel, raw score, and triggering seed so that later stages can fuse it and offline analysis can explain why it appeared. The value of a channel is not that it has the highest standalone accuracy. It is how many positives it adds that the other channels miss while the total candidate budget stays fixed.
+
+This chapter starts with two forms of evidence that avoid expensive online interaction: lexical relations in search and behavioral co-occurrence in recommendation. Both are cheap and stable, and both have a hard boundary. If a term has no posting or no co-occurrence edge exists, the system cannot follow that relation. Vector retrieval in Chapter 4 fills part of this gap with continuous representations.
+
 ### 3.1 Two Types of Sparse Evidence
 
 Term co-occurrence in search and behavioral co-occurrence in recommendation look different, but their computational habits are quite similar.
@@ -36,6 +42,10 @@ The strengths of an inverted index are:
 - It is highly reliable for precise queries such as entity names, model numbers, and codes.
 
 Its weaknesses are also straightforward: it is difficult to retrieve items when there is no literal overlap. "LV bag" and "LOUIS VUITTON handbag" are semantically close, but pure term-based retrieval may not know this.
+
+The most common production failures are not in the formula. The tokenizer, dictionary, and index must use compatible versions. If serving tokenizes `"iPhone15"` as one term while the old index stored `"iPhone" + "15"`, recall may drop to zero. Postings for frequent terms can be too long to traverse fully, so systems use skip structures, WAND/Block-Max WAND, or stricter term combinations to prune work. Deletions often write tombstones first and reclaim space during segment merges; removing a document from forward storage without invalidating its postings keeps returning an unavailable result.
+
+AND versus OR is not merely an implementation choice either. AND is precise but can empty the result set when one term is missing. OR improves coverage but may retrieve documents that match only a weak modifier. A mature system varies the query plan with core terms, entities, and observed recall volume, and records the chosen plan in the request trace.
 
 ### Quick Coding: Inverted Index
 
@@ -116,6 +126,10 @@ A term appearing 20 times should not be twice as important as one appearing 10 t
 
 BM25 is fast, stable, and interpretable. When evaluating dense retrieval or generative retrieval, compare against it first; comparing only against weaker neural baselines makes it difficult to judge whether the added complexity is worthwhile.
 
+Document fields are rarely weighted equally. Title, body, anchor, and structured-attribute matches can receive separate BM25 scores and then be combined with BM25F or a linear model. Overweighting the title rewards keyword stuffing; overweighting the body favors long documents. Tune field weights on relevance slices rather than clicks alone.
+
+BM25 scores are also not directly comparable across queries. A query with several rare terms naturally produces a different score range. Thresholding, caching, or multi-channel fusion that needs a cross-request scale should use within-query rank, bucketed normalization, or calibration.
+
 ### 3.4 ItemCF
 
 ItemCF first calculates item similarity based on user-item interactions, then expands candidates from the user's history.
@@ -139,6 +153,8 @@ w(u,j)\operatorname{sim}(j,i),
 ```
 
 `H_u` is the user's history, and `w(u,j)` can incorporate behavior type, time decay, and viewing depth.
+
+The co-occurrence table first depends on which events enter it. Effective views, explicit saves, and purchases can carry different weights; autoplay, accidental taps, and bot traffic should be downweighted or removed. Two items consumed in one short session usually provide stronger local evidence than two items touched six months apart. Construction also caps user activity and session length so that a power user does not create an edge between almost every pair of items.
 
 The complete engineering workflow:
 
@@ -236,6 +252,19 @@ R\approx UV^\top,
 Matrix factorization compresses discrete co-occurrence into continuous vectors. It is easier to express latent interests than simple ItemCF, but it still relies primarily on interactions, and the cold-start problem does not disappear into thin air.
 
 Implicit feedback usually uses targets with confidence levels, rather than treating all non-clicks as explicit negatives. Training also requires careful negative sampling; otherwise, the massive number of zero entries will drown out the positive samples.
+
+One weighted matrix factorization objective is:
+
+```math
+\min_{U,V}
+\sum_{u,i} c_{ui}
+\left(p_{ui}-u_u^\top v_i\right)^2
+\lambda(\|U\|_F^2+\|V\|_F^2),
+```
+
+where `p_ui` marks whether a preference was observed and `c_ui` expresses confidence. Unobserved entries still affect the objective, but with less weight than explicit positive feedback; "not observed" is not an equally strong dislike.
+
+Online serving can run ANN from a user vector to item vectors or precompute top items. Matrix factorization and two-tower retrieval both use low-dimensional inner products, but their inputs differ. Classical matrix factorization mainly learns IDs from interactions and does not naturally consume text, images, or context. A two-tower model generates vectors from features, which makes new-item and cross-domain transfer easier.
 
 ### 3.7 When to Use Which
 

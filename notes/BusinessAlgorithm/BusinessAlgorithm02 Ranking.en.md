@@ -2,6 +2,12 @@
 
 ## Chapter 9: Ranking Objectives and Offline Evaluation
 
+A ranker does not see the full corpus. It sees a small candidate set selected by upstream retrieval, filtering, and exposure policies. It learns "which item should come first among candidates produced by this system," not a global preference function independent of the candidate distribution. When retrieval changes, negative difficulty, category mix, and score distributions change with it; gains on the old test set may not survive.
+
+This is why ranking comparisons should hold the candidate set fixed. On the same candidates, the difference isolates reordering quality. If a new experiment changes both retrieval and ranking and reports one NDCG number, the source of the gain is unknown. Both changes matter online, but they must be separated during diagnosis.
+
+The meaning of the score also needs to be explicit. A CTR score may be calibrated as a click probability. A relevance score may preserve only grades or order. A final multi-objective score may be an uncalibrated business utility. Without that distinction, thresholds, fusion, and experiment conclusions become ambiguous.
+
 ### 9.1 Defining "Relevance" for Ranking
 
 Search relevance is typically categorized into graded labels:

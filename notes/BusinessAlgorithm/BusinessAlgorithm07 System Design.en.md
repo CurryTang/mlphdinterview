@@ -16,6 +16,16 @@ Goals and Constraints
 
 Every arrow must answer three questions: What is the data volume, what is the allowed latency, and where does it fall back to upon failure? Model names should only be placed after these constraints are defined.
 
+The following numbers are useful interview assumptions, not fixed industry values:
+
+| Scenario | Peak traffic | Candidate funnel | End-to-end P99 | Most sensitive freshness |
+| --- | ---: | --- | ---: | --- |
+| Short-video recommendation | 100k RPS | 10k retrieval -> 1k pre-rank -> 200 fine-rank -> 50 rerank | 120 ms | Short-term behavior within 10 to 30 seconds |
+| E-commerce search | 20k QPS, designed for a 5x event burst | 3k retrieval -> 300 fine-rank -> 50 display | 200 ms | Price and inventory within seconds |
+| Generative search | 200 RPS | 200 retrieved chunks -> 20 reranked -> 8 context chunks | 5 s | Sources refreshed to the business SLA |
+
+The numbers force design choices. Candidate volume limits model weight, P99 determines how long parallel channels can wait, and freshness determines whether a cache is safe. An interview answer may choose different values, but its capacity, timeout, and fallback decisions must remain consistent with them.
+
 ### Case 1: Short Video Recommendation
 
 #### Goals
@@ -65,6 +75,10 @@ Real-time feature failure -> Recent snapshot
 Reranking failure -> Safety rules + Fine ranking order
 ```
 
+Under the 120 ms assumption, allocate 25 ms to retrieval and deduplication, 20 ms to features, 10 ms to pre-ranking, 35 ms to fine ranking, and 10 ms to reranking, leaving the rest for network and serialization. Give each stage its own deadline instead of waiting for the entire request to time out. If a real-time sequence is more than 30 seconds stale or feature reads exceed 20 ms, use the latest snapshot. If fine ranking exceeds 35 ms, switch to the small model. If vector retrieval exceeds 25 ms, continue with returned ItemCF, follow, and popular candidates.
+
+Fallback also needs traffic thresholds. An occasional fallback can complete the request. More than 1% over a five-minute window should alert and freeze model rollout. Above 5%, disable generative retrieval and expensive sequence interaction first, preserving safety, basic retrieval, and the small ranker. Experiment analysis should exclude or separately report degraded requests, or a slower treatment will turn an engineering failure into an apparent algorithm effect.
+
 #### Experimentation
 
 First, look at recall coverage, fine-ranking NDCG/calibration, and reranking list metrics, then proceed to A/B testing. New product exploration must be layered separately to avoid conflating exploration gains with model gains in the main experiment. Use long-term holdouts to observe retention and content ecosystem health.
@@ -103,6 +117,10 @@ Strong structural attributes should enter filtering or structured recall and sho
 - Commercial or new product channels included within defined quotas.
 
 Hybrid results can be fused using RRF or learning-to-rank, while retaining attribution for each path.
+
+During an event burst, preserve the inverted index and attribute filters first. A vector channel that exceeds 35 ms may miss the current merge, but brand, model, and category constraints must not loosen. A head-query cache should store only the candidate skeleton. Price, inventory, and regional availability still need a fresh check before response. If the inventory snapshot is older than five seconds or the service is unavailable, hide inventory-sensitive products or mark them for confirmation rather than trading stale stock for latency.
+
+Index releases use version switches. If inverted, attribute, and vector indexes disagree, logs must retain the version that produced each candidate. Stop a new index rollout when version skew exceeds its allowed window. During an event, if zero-result rate or inventory error crosses a guardrail, roll back query rewriting and commercial channels before widening retrieval. Widening first can flood the SERP with irrelevant products.
 
 #### Ranking
 
@@ -162,6 +180,10 @@ Question classification
 ```
 
 Simple facts can be handled in a single round; multi-hop questions enter a search loop with maximum step and cost budgets. For each search, retain the query, returned documents, selection reasoning, and time.
+
+Under the 200 RPS assumption, cap a request at three searches, rerank at most 20 chunks per search, keep no more than eight chunks or 6k tokens in final context, and set a five-second P99 deadline. If search and reranking consume two seconds without covering required claims, stop rewriting queries and reserve the remaining time for evidence synthesis and citation validation. Store a monetary budget in state as well; a step limit alone does not control cost.
+
+Timeout fallback depends on evidence completeness. Generate a shorter answer when evidence is sufficient, omit unsupported claims explicitly when coverage is partial, and return ordinary search results when no reliable evidence exists. No fallback may bypass ACLs, source blocks, or injection checks. If search timeouts exceed 2% over five minutes or per-request cost crosses its budget, disable multi-hop and LLM reranking first while preserving single-turn hybrid retrieval. Do not shut down the whole search entry point.
 
 #### Generation Constraints
 

@@ -494,7 +494,7 @@ describe('App', () => {
 
     const englishVisual = await screen.findByRole('region', { name: 'Recommendation and search algorithm system map' });
     expect(within(englishVisual).getByText('Traditional cascade')).toBeInTheDocument();
-    expect(within(englishVisual).getByText(/Narrow billions of candidates/)).toBeInTheDocument();
+    expect(within(englishVisual).getByText(/Narrow hundreds of millions of candidates/)).toBeInTheDocument();
     expect(within(englishVisual).getAllByText('Multi-channel retrieval')).toHaveLength(2);
     expect(within(englishVisual).getByText('Exposure and interaction logs')).toBeInTheDocument();
     expect(within(englishVisual).queryByText('传统级联')).not.toBeInTheDocument();

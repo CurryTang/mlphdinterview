@@ -14,6 +14,22 @@ raw query
 
 An error here gives retrieval and ranking the wrong structured signal to work from.
 
+Downstream services need a versioned parse with confidence; one query embedding is not enough:
+
+```text
+raw_query: "iPhone 15 repair in Beijing"
+normalized_query: "iPhone 15 repair Beijing"
+entities: [{type: brand, value: Apple},
+           {type: model, value: iPhone 15},
+           {type: location, value: Beijing}]
+intent: local_repair, confidence: 0.91
+filters: {city: Beijing}
+rewrites: ["iPhone 15 Beijing repair", "iPhone 15 Beijing service center"]
+parser_version: qp_2026_07_18
+```
+
+Retrieval reads this object to select indexes, terms, filters, and quotas. Low confidence should not force one guessed label. Keep the original query, run a few plausible routes in parallel, and let downstream relevance narrow the result.
+
 ### 5.1 Segmentation defines retrieval boundaries
 
 Chinese text has no natural word boundaries. Dictionary-based segmentation finds valid words and uses dynamic programming to select the lowest-cost path:
@@ -38,6 +54,8 @@ A dictionary is always behind new language. Vocabulary construction commonly com
 
 Neural segmentation is usually a BMES sequence-labeling task. BERT encodes each character, and a classifier or CRF predicts `B/M/E/S`. It uses context well, while dictionaries remain useful for new model numbers, strict entities, and boundaries that must be controllable.
 
+The tokenizer and inverted index form a contract across services. If a hot dictionary update makes the query service emit a new brand as one term before the index has a corresponding posting, the "improved" tokenizer creates an empty result. Tokenizer, dictionary, and index versions should roll out compatibly. When they cannot switch together, retain a character-level or previous-tokenization fallback.
+
 ### 5.2 Named entity recognition
 
 NER identifies people, places, brands, works, organizations, product models, and POIs. For example:
@@ -59,6 +77,8 @@ Entities affect several downstream stages:
 - query-document interaction features.
 
 NER should be evaluated with exact-span precision, recall, and F1. Character accuracy hides boundary errors. Recognizing only `"Beijing"` in `"Peking University"` gets many characters right but changes the entity.
+
+Entity linking follows span detection. NER says that `"Apple"` looks like an entity; the linker decides whether it refers to the company, the fruit, or another named object. Useful evidence includes the other query terms, current vertical, entity prior, and product context. When confidence is low, keep multiple entity candidates in parallel rather than turning one ambiguous interpretation into a hard filter.
 
 ### 5.3 Term weights
 

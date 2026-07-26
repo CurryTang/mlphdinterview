@@ -64,6 +64,19 @@ Online systems usually combine fixed or dynamic quotas, intra-channel truncation
 
 A channel with low independent Recall may still be valuable. If the positive examples it retrieves are long-tail content that other channels cannot find, its incremental value is high.
 
+Every channel competes for the same candidate budget. Giving one channel 500 more candidates may improve its coverage, but it also displaces other channels and forces filtering, feature retrieval, and pre-ranking to process 500 extra items. Judge a channel by its marginal return at a fixed total candidate count and P99:
+
+```text
+Add 100 candidates from this channel
+  -> how many deduplicated candidates are new?
+  -> how many positives survive downstream?
+  -> how much filtering, feature, and pre-ranking time is added?
+```
+
+Quotas can vary by request. An explicit brand query should spend more on lexical and attribute channels, while a broad query can give semantic retrieval more room. In recommendation, a new user may need more content-based and trending candidates; a user with rich history can use more collaborative and personalized retrieval. The routing decision may use request-time signals and channel health, but not clicks observed after the request.
+
+Use an `add-one` experiment to measure a new channel's incremental value and a `remove-one` experiment to measure how much the current system depends on an existing channel. Keep the total candidate budget fixed in both cases. Otherwise, "more candidates helped" is confounded with "the candidates were better."
+
 ### Quick Coding: RRF Fusion
 
 Without calibrating the raw scores of different retrieval channels, implement Reciprocal Rank Fusion based on the rank of each channel. Remember to handle duplicate candidates within a single list and stable tie-breaking.

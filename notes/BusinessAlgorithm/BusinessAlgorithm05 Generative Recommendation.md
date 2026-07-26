@@ -77,6 +77,12 @@ FIRST 使用生成模型的表示，但不生成完整排列。论文报告推�
 
 全量高 QPS 搜索直接让大模型排 top-100，通常不划算。模型量化、KV cache、批处理和蒸馏能降成本，但级联仍然重要。
 
+LLM ranker 上线前要固定请求契约。输入不只是 query 和文档文本，还应包含 `request_id`、候选 ID、原始名次、文本版本、截断标记和允许的候选数；输出必须覆盖输入 ID 且不重复，并带 `model_version`、`prompt_version`、耗时和格式校验结果。候选文本采用确定性截断，例如标题、摘要和命中段落各保留固定预算，不能让某篇长文随机挤掉其他候选。
+
+一个可执行的服务策略是给 LLM 独立 deadline，只处理 top-20/50。超时、缺 ID、重复 ID、非法 ID 或输出覆盖率不足时，整张列表回退到原 cross-encoder 顺序。不要把一半 LLM 名次和一半旧模型分数直接拼起来，它们没有共同尺度。若业务确实允许部分结果，融合规则必须离线回放并单独记录 `partial_fallback`。
+
+发布先走 shadow traffic，记录 LLM 与原排序的 top-k 交换、位置偏差、格式失败率、每请求 token 和 P99。只有难 query 上的增量收益覆盖额外费用与尾延迟，路由器才把这类请求切过去。把 LLM 当 teacher 时也要保存 prompt 和候选快照，否则软标签无法复现。
+
 ### 18.7 HSTU 与 Generative Recommenders
 
 [HSTU](https://proceedings.mlr.press/v235/zhai24a.html)（Zhai et al., ICML 2024）把推荐表述为序列转导：输入用户动作序列，预测后续动作/内容。它针对推荐数据的高基数、非平稳和超长序列设计 HSTU，而不是直接照搬标准 Transformer。

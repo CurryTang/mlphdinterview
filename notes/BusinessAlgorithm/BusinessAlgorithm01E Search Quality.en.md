@@ -16,6 +16,8 @@ Search ranking commonly combines:
 
 These signals should not disappear into an ambiguous `quality_score`. Their labels, update rates, and failure modes differ, so they should be produced separately and fused later.
 
+Fusion does not mean using one weight vector for every query. A medical query should first pass relevance and source-quality gates, then compare completeness. Breaking news still needs a minimum credibility threshold before freshness receives a boost. A navigational query already points to a specific page, so long-term personalization should rarely change the first result. Intent determines the priority of constraints here, not merely one more model feature.
+
 ### 7.2 Content quality
 
 The course uses EAT: expertise, authoritativeness, and trustworthiness. Google's later public terminology often uses E-E-A-T, adding experience. The engineering point is the same: source and author quality matter more for medical, financial, and legal YMYL queries than for casual entertainment.
@@ -30,6 +32,8 @@ Quality models often produce several scores:
 - safety, fraud, and harmful-content risk.
 
 Most can be computed offline or nearline when a document is published and stored in the document profile. The ranker reads those scores instead of rerunning expensive models for every query.
+
+E-E-A-T is closer to an evaluation framework than a naturally supervised scalar label. Treating site authority as quality can permanently entrench old head sources and miss a new expert author. Learning only from historical clicks rewards SEO, clickbait, and mass-produced AI content. A production quality system combines source priors, document-level content judgments, and adversarial signals, with a path for review and correction.
 
 ### 7.3 Freshness
 
@@ -111,6 +115,8 @@ Query CTR measures whether a search had at least one click:
 =\frac{\#\text{searches with at least one click}}
 {\#\text{searches}}.
 ```
+
+Zero clicks do not automatically mean failure. Weather, exchange-rate, calculator, and knowledge cards may complete the task directly on the result page. Track card expansion, copy actions, dwell time, and subsequent reformulation, and evaluate card-covered queries separately. Otherwise, improving a direct-answer card can make the conventional click-success rate look worse.
 
 Adding many similar documents may increase total clicks without helping users find an answer. For tool-like search, query CTR and first-screen query CTR are often closer to success than per-document CTR.
 

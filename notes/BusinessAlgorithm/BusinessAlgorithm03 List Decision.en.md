@@ -53,6 +53,10 @@ i^*
 
 MMR is intuitive, easy to tune, and supports hard filtering. Its limitation is that it is greedy and only considers the similarity between a candidate and the most similar selected item, failing to fully capture the structure of the entire set.
 
+Before serving MMR, check the scales of `r_i` and `sim(i,j)`. If ranking scores lie in `[0.01,0.03]` while similarities span `[0,1]`, the similarity term can take over even with a seemingly reasonable `θ`. A common approach maps utility scores to request-level ranks or quantiles and calibrates each similarity type separately. Same-author redundancy may be a binary signal, while embedding cosine remains continuous. Calibration should differ by entry point and list layout; a `θ` tuned for an infinite feed should not be copied into search top-10.
+
+Do not tune `θ` against ILS alone. Plot relevance or estimated utility, diversity, and rule rejection rate across `θ`, then measure valid consumption and negative feedback online. If a small change in `θ` causes a large list discontinuity, investigate score scale, the default for missing similarities, and candidate-pool instability before tuning another decimal place.
+
 ### Quick Coding: MMR Reranking
 
 Given candidate relevance and pairwise similarity, greedily select the top-k. Support scenarios where only one-way similarity is provided, and ensure a deterministic order when scores are tied.
@@ -137,6 +141,10 @@ When selecting the t-th candidate, compare similarity only with positions [t-W, 
 ```
 
 This is computationally cheaper and allows the same topic to reappear after a certain interval. `W` should be tuned based on screen layout and consumption rhythm rather than being copied blindly.
+
+Window rules need an explicit relaxation order for cases with no feasible candidate. Safety, inventory, and legal constraints cannot be relaxed. Experience constraints such as author spacing and category coverage can loosen in stages. For example, shrink an author window from 8 to 4, then permit a repeated author only in tail positions, and return to fine-rank order only if the set is still empty. Log the `rule_id`, original window, relaxed window, and position for each relaxation. Otherwise, repeated content cannot be traced to candidate scarcity or a rule-service failure.
+
+Pagination and continuous feeds must also decide whether the window crosses request boundaries. A page-local window can repeat the last item from one page at the start of the next. A cross-request window needs short-lived list state with a version and TTL. If that state times out, fall back to a page-local window, but never bypass safety filters.
 
 ### 13.6 How Rules Enter Reranking
 

@@ -2,6 +2,12 @@
 
 ## Chapter 12: User Behavior Sequences
 
+A behavior sequence is not better simply because it is longer, and feeding every log event into a Transformer does not finish the modeling problem. The model estimates the user's current state: which interests remain active, whether a recent action changed intent, and which part of history matters to the current candidate. Storage and latency limit how it can make that estimate.
+
+The first choices happen before the model. An accidental tap, autoplay, and an explicit save should not have equal weight. Watching ten items from one creator may not provide ten independent pieces of evidence. Behavior strength, deduplication, session boundaries, time gaps, and negative feedback often affect the result before another network layer does.
+
+Production systems commonly keep two user representations. A general user embedding is computed once per request and works well for retrieval or a large candidate set. A candidate-conditioned representation queries history with the current item and captures finer intent, but repeats work for every candidate. DIN, SIM, and longer-sequence models choose different points on this quality-cost tradeoff.
+
 ### 12.1 What Does Average Pooling Lose?
 
 A user has viewed basketball, cooking, music, and travel content. Averaging all item embeddings yields a fuzzy "overall interest," but it doesn't know which part of the history is relevant to the current candidate, nor does it account for temporal order.
@@ -44,6 +50,8 @@ The same user will get different interest representations when facing basketball
 
 The cost is also here: every candidate must interact with the history. When there are many candidates and long sequences, the computational load rises rapidly.
 
+Serving must also pass the padding mask, behavior type, and time gap into attention. Treating padded zeros as real events, or using different truncation rules in training and serving, makes the attention weights meaningless. Requests are often bucketed by sequence length so that one unusually long history does not slow the entire batch.
+
 ### 12.4 SIM
 
 SIM processes long sequences in two steps:
@@ -56,6 +64,8 @@ Hard Search keeps behaviors in the candidate's category. Soft Search uses the ca
 Long-term behavior also needs time-gap embeddings. Two clicks in the same category should not receive the same weight when one happened yesterday and the other two years ago.
 
 The logic is the same as the retrieval-ranking funnel: filter cheaply first, then interact expensively. Without efficient retrieval, long-sequence models are difficult to deploy online.
+
+The per-user history index used by Soft Search is production state. It needs an embedding version, build timestamp, and refresh-lag metric. If the index is unavailable or incompatible with the current model, fall back to Last-N or Hard Search instead of holding up the ranking request.
 
 ### 12.5 Temporal Issues in Training
 

@@ -39,6 +39,12 @@ Considerations include:
 
 After retrieving a child chunk, you can expand the context to include the parent paragraph or neighboring chunks. A fixed 512-token chunk size for all documents is usually just a starting point.
 
+Chunk artifacts need versions just like an index. Store `document_id`, `chunk_id`, parent ID, character offsets, a content hash, `source_version`, and `acl_version`. Split narrative text at headings into roughly 300 to 800 tokens. Keep table headers with complete rows, cut code at function or class boundaries, and keep each FAQ question with its answer. Overlap should repair boundaries, not let the same sentence occupy top-k through five near-duplicate chunks.
+
+Chunk size is not an isolated hyperparameter. Sweep the chunk policy, retrieval top-k, and parent expansion together, then measure claim recall, context precision, final context tokens, and answer support. Retrieving a small child and expanding its parent often balances precise matching with complete evidence. If parent expansion adds too much irrelevant text, attach only sibling chunks near the matched sentence.
+
+On document updates, build new chunks and indexes first, then switch the visible version atomically. A query must not combine old and new passages from one document. Deletion and permission tightening need a faster invalidation path that also clears caches. Waiting for the next full indexing run leaves stale or unauthorized evidence available.
+
 ### 19.3 Hybrid Retrieval and Reranking
 
 Generative search still requires BM25. Dense vectors excel at semantics, while BM25 excels at entities, numbers, model names, and precise keywords. Candidates from both paths can be merged using Reciprocal Rank Fusion:
@@ -145,6 +151,22 @@ Security boundaries include:
 - Permission isolation for caches.
 
 Corpus poisoning can also affect ranking. Attackers may stuff keywords, forge authoritative pages, or specifically cater to generative answers. Search quality, source quality, and generation security must be addressed together.
+
+Permission enforcement follows a fixed order:
+
+```text
+authenticate user and tenant
+  -> resolve current ACL
+  -> filter visible documents before retrieval
+  -> key caches by principal + ACL version + index version
+  -> mark retrieved text as untrusted data
+  -> generate and validate citations
+  -> validate parameters and confirm before any tool action
+```
+
+Retrieving first and removing unauthorized documents only before generation is unsafe. Their text, titles, and embeddings may already have entered logs, caches, or the reranker. A shared cache keyed only by query can also return a privileged user's results to a less privileged user.
+
+When prompt injection is detected, drop that chunk and retry with the remaining evidence. If a required claim depends only on the rejected chunk, refuse or return ordinary search results instead of asking the model whether the instruction looks trustworthy. Retrieval should not expose write-capable tools by default. Sending mail, modifying files, or executing transactions requires structured tool arguments and a fresh permission check immediately before the call. Logs should retain document versions, the rule that blocked content, and final tool arguments so a security incident can be reproduced.
 
 ### 19.10 Should You Implement Agentic Search?
 
