@@ -7055,6 +7055,697 @@ function MonotonicStackVisual() {
   );
 }
 
+const BINARY_SEARCH_TEMPLATE_CODE_LINES = [
+  { id: 'init', code: ['def find_first_true(lo, hi, check):', '    while lo < hi:'] },
+  { id: 'mid', code: ['        mid = lo + (hi - lo) // 2'] },
+  { id: 'true', code: ['        if check(mid):', '            hi = mid'] },
+  { id: 'false', code: ['        else:', '            lo = mid + 1'] },
+  { id: 'finish', code: ['    return lo'] },
+];
+
+const BINARY_SEARCH_TEMPLATE_NUMS = [1, 3, 5, 7, 9, 11, 13];
+const BINARY_SEARCH_TEMPLATE_PILES = [3, 6, 7, 11];
+const BINARY_SEARCH_TEMPLATE_HOURS_LIMIT = 8;
+const BINARY_SEARCH_TEMPLATE_TIMESTAMPS = [1, 4, 7, 10];
+const BINARY_SEARCH_TEMPLATE_QUERY = 8;
+
+function buildBinarySearchTemplateSteps(lo, hi, evaluate, finish) {
+  const steps = [{
+    action: 'start',
+    lo,
+    hi,
+    rangeLo: lo,
+    rangeHi: hi,
+    mid: null,
+    checkResult: null,
+    activeLine: 'init',
+  }];
+
+  let currentLo = lo;
+  let currentHi = hi;
+  let iteration = 1;
+
+  while (currentLo < currentHi) {
+    const mid = currentLo + Math.floor((currentHi - currentLo) / 2);
+    const probe = evaluate(mid);
+    const nextLo = probe.checkResult ? currentLo : mid + 1;
+    const nextHi = probe.checkResult ? mid : currentHi;
+
+    steps.push({
+      action: 'scan',
+      iteration,
+      lo: currentLo,
+      hi: currentHi,
+      rangeLo: currentLo,
+      rangeHi: currentHi,
+      mid,
+      nextLo,
+      nextHi,
+      activeLine: 'mid',
+      ...probe,
+    });
+
+    steps.push({
+      action: 'shrink',
+      iteration,
+      lo: currentLo,
+      hi: currentHi,
+      rangeLo: nextLo,
+      rangeHi: nextHi,
+      mid,
+      nextLo,
+      nextHi,
+      activeLine: probe.checkResult ? 'true' : 'false',
+      ...probe,
+    });
+
+    currentLo = nextLo;
+    currentHi = nextHi;
+    iteration += 1;
+  }
+
+  steps.push({
+    action: 'finish',
+    lo: currentLo,
+    hi: currentHi,
+    rangeLo: currentLo,
+    rangeHi: currentHi,
+    mid: null,
+    activeLine: 'finish',
+    ...finish(currentLo),
+  });
+
+  return steps;
+}
+
+function buildBinarySearchExactScenario(target) {
+  const positions = BINARY_SEARCH_TEMPLATE_NUMS.map((value, index) => ({
+    index,
+    label: `i = ${index}`,
+    displayValue: value,
+    predicate: value >= target,
+    sentinel: false,
+  }));
+  positions.push({
+    index: BINARY_SEARCH_TEMPLATE_NUMS.length,
+    label: `i = ${BINARY_SEARCH_TEMPLATE_NUMS.length}`,
+    displayValue: '∅',
+    predicate: null,
+    sentinel: true,
+  });
+
+  return {
+    mode: 'exact',
+    target,
+    positions,
+    initialLo: 0,
+    initialHi: BINARY_SEARCH_TEMPLATE_NUMS.length,
+    checkRule: `nums[mid] >= ${target}`,
+    steps: buildBinarySearchTemplateSteps(
+      0,
+      BINARY_SEARCH_TEMPLATE_NUMS.length,
+      (mid) => {
+        const value = BINARY_SEARCH_TEMPLATE_NUMS[mid];
+        return {
+          probeValue: value,
+          checkResult: value >= target,
+        };
+      },
+      (boundary) => {
+        const inBounds = boundary < BINARY_SEARCH_TEMPLATE_NUMS.length;
+        const boundaryValue = inBounds ? BINARY_SEARCH_TEMPLATE_NUMS[boundary] : null;
+        const found = inBounds && boundaryValue === target;
+        return {
+          boundary,
+          boundaryValue,
+          found,
+          answerIndex: found ? boundary : null,
+          returnValue: found ? boundary : -1,
+        };
+      },
+    ),
+  };
+}
+
+function buildBinarySearchRangeScenario() {
+  const maxSpeed = Math.max(...BINARY_SEARCH_TEMPLATE_PILES);
+  const positions = [];
+  for (let speed = 1; speed <= maxSpeed; speed += 1) {
+    const hours = BINARY_SEARCH_TEMPLATE_PILES.reduce((sum, pile) => sum + Math.ceil(pile / speed), 0);
+    positions.push({
+      index: speed,
+      label: `speed = ${speed}`,
+      displayValue: speed,
+      predicate: hours <= BINARY_SEARCH_TEMPLATE_HOURS_LIMIT,
+      auxiliary: `${hours}h`,
+      sentinel: false,
+    });
+  }
+
+  return {
+    mode: 'range',
+    piles: BINARY_SEARCH_TEMPLATE_PILES,
+    hoursLimit: BINARY_SEARCH_TEMPLATE_HOURS_LIMIT,
+    positions,
+    initialLo: 1,
+    initialHi: maxSpeed,
+    checkRule: `hours_needed(speed) <= ${BINARY_SEARCH_TEMPLATE_HOURS_LIMIT}`,
+    steps: buildBinarySearchTemplateSteps(
+      1,
+      maxSpeed,
+      (speed) => {
+        const parts = BINARY_SEARCH_TEMPLATE_PILES.map((pile) => Math.ceil(pile / speed));
+        const hours = parts.reduce((sum, value) => sum + value, 0);
+        return {
+          probeValue: speed,
+          checkResult: hours <= BINARY_SEARCH_TEMPLATE_HOURS_LIMIT,
+          hours,
+          hoursBreakdown: parts.join(' + '),
+        };
+      },
+      (boundary) => ({
+        boundary,
+        answerIndex: boundary,
+        returnValue: boundary,
+      }),
+    ),
+  };
+}
+
+function buildBinarySearchLastFalseScenario() {
+  const positions = BINARY_SEARCH_TEMPLATE_TIMESTAMPS.map((value, index) => ({
+    index,
+    label: `i = ${index}`,
+    displayValue: value,
+    predicate: value > BINARY_SEARCH_TEMPLATE_QUERY,
+    sentinel: false,
+  }));
+  positions.push({
+    index: BINARY_SEARCH_TEMPLATE_TIMESTAMPS.length,
+    label: `i = ${BINARY_SEARCH_TEMPLATE_TIMESTAMPS.length}`,
+    displayValue: '∅',
+    predicate: null,
+    sentinel: true,
+  });
+
+  return {
+    mode: 'lastFalse',
+    query: BINARY_SEARCH_TEMPLATE_QUERY,
+    positions,
+    initialLo: 0,
+    initialHi: BINARY_SEARCH_TEMPLATE_TIMESTAMPS.length,
+    checkRule: `timestamps[mid] > ${BINARY_SEARCH_TEMPLATE_QUERY}`,
+    steps: buildBinarySearchTemplateSteps(
+      0,
+      BINARY_SEARCH_TEMPLATE_TIMESTAMPS.length,
+      (mid) => {
+        const value = BINARY_SEARCH_TEMPLATE_TIMESTAMPS[mid];
+        return {
+          probeValue: value,
+          checkResult: value > BINARY_SEARCH_TEMPLATE_QUERY,
+        };
+      },
+      (boundary) => {
+        const answerIndex = boundary > 0 ? boundary - 1 : null;
+        return {
+          boundary,
+          boundaryValue: boundary < BINARY_SEARCH_TEMPLATE_TIMESTAMPS.length
+            ? BINARY_SEARCH_TEMPLATE_TIMESTAMPS[boundary]
+            : null,
+          answerIndex,
+          answerValue: answerIndex === null ? null : BINARY_SEARCH_TEMPLATE_TIMESTAMPS[answerIndex],
+          returnValue: answerIndex,
+        };
+      },
+    ),
+  };
+}
+
+const BINARY_SEARCH_TEMPLATE_SCENARIOS = {
+  exact: {
+    found: buildBinarySearchExactScenario(9),
+    missing: buildBinarySearchExactScenario(6),
+  },
+  range: buildBinarySearchRangeScenario(),
+  lastFalse: buildBinarySearchLastFalseScenario(),
+};
+
+function BinarySearchTemplateVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [mode, setMode] = useState('exact');
+  const [exactExample, setExactExample] = useState('found');
+  const [activeStep, setActiveStep] = useState(0);
+  const scenario = mode === 'exact'
+    ? BINARY_SEARCH_TEMPLATE_SCENARIOS.exact[exactExample]
+    : BINARY_SEARCH_TEMPLATE_SCENARIOS[mode];
+  const step = scenario.steps[activeStep];
+
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    mid: t('计算 mid', 'Compute mid'),
+    true: t('True 分支：hi = mid', 'True branch: hi = mid'),
+    false: t('False 分支：lo = mid + 1', 'False branch: lo = mid + 1'),
+    finish: t('返回边界', 'Return boundary'),
+  }[step.activeLine];
+
+  let title = '';
+  let detail = '';
+
+  if (step.action === 'start') {
+    if (mode === 'exact') {
+      title = t('初始化：边界在 [0, 7] 内', 'Initialize: the boundary lies in [0, 7]');
+      detail = t(
+        `check(mid) = nums[mid] >= ${scenario.target}。模板返回边界 b，之后再验证 nums[b] == target。`,
+        `check(mid) = nums[mid] >= ${scenario.target}. The template returns boundary b, then verifies nums[b] == target.`,
+      );
+    } else if (mode === 'range') {
+      title = t('初始化：速度边界在 [1, 11] 内', 'Initialize: the speed boundary lies in [1, 11]');
+      detail = t(
+        'check(speed) = hours_needed(speed) <= 8。hi = 11 是已知 True 的边界。',
+        'check(speed) = hours_needed(speed) <= 8. hi = 11 is a known True boundary.',
+      );
+    } else {
+      title = t('初始化：边界在 [0, 4] 内', 'Initialize: the boundary lies in [0, 4]');
+      detail = t(
+        'check(mid) = timestamps[mid] > 8。模板返回第一个 True，下标答案是 b - 1。',
+        'check(mid) = timestamps[mid] > 8. The template returns the first True; the answer index is b - 1.',
+      );
+    }
+  } else if (step.action === 'scan') {
+    title = isEnglish
+      ? `Iteration ${step.iteration}: mid = ${step.mid}`
+      : `第 ${step.iteration} 轮：mid = ${step.mid}`;
+    if (mode === 'exact') {
+      detail = isEnglish
+        ? `lo = ${step.lo}, hi = ${step.hi}, nums[${step.mid}] = ${step.probeValue}.`
+        : `lo = ${step.lo}，hi = ${step.hi}，nums[${step.mid}] = ${step.probeValue}。`;
+    } else if (mode === 'range') {
+      detail = isEnglish
+        ? `lo = ${step.lo}, hi = ${step.hi}, speed = ${step.mid}, hours_needed(${step.mid}) = ${step.hours}.`
+        : `lo = ${step.lo}，hi = ${step.hi}，speed = ${step.mid}，hours_needed(${step.mid}) = ${step.hours}。`;
+    } else {
+      detail = isEnglish
+        ? `lo = ${step.lo}, hi = ${step.hi}, timestamps[${step.mid}] = ${step.probeValue}.`
+        : `lo = ${step.lo}，hi = ${step.hi}，timestamps[${step.mid}] = ${step.probeValue}。`;
+    }
+  } else if (step.action === 'shrink') {
+    if (step.checkResult) {
+      title = t(`check(${step.mid}) = True，执行 hi = mid`, `check(${step.mid}) = True, execute hi = mid`);
+      detail = isEnglish
+        ? `The candidate interval shrinks to [${step.nextLo}, ${step.nextHi}].`
+        : `候选区间收缩到 [${step.nextLo}, ${step.nextHi}]。`;
+    } else {
+      title = t(`check(${step.mid}) = False，执行 lo = mid + 1`, `check(${step.mid}) = False, execute lo = mid + 1`);
+      detail = isEnglish
+        ? `The candidate interval shrinks to [${step.nextLo}, ${step.nextHi}].`
+        : `候选区间收缩到 [${step.nextLo}, ${step.nextHi}]。`;
+    }
+  } else if (mode === 'exact') {
+    title = isEnglish
+      ? `Finish: boundary b = ${step.boundary}`
+      : `结束：边界 b = ${step.boundary}`;
+    detail = step.found
+      ? t(
+        `nums[${step.boundary}] = ${step.boundaryValue}，验证通过，返回下标 ${step.returnValue}。`,
+        `nums[${step.boundary}] = ${step.boundaryValue}; verification passes, so return index ${step.returnValue}.`,
+      )
+      : t(
+        `nums[${step.boundary}] = ${step.boundaryValue}，验证失败，返回 -1。`,
+        `nums[${step.boundary}] = ${step.boundaryValue}; verification fails, so return -1.`,
+      );
+  } else if (mode === 'range') {
+    title = t(`结束：边界 b = ${step.boundary}`, `Finish: boundary b = ${step.boundary}`);
+    detail = t(
+      `最小可行速度是 ${step.returnValue}。`,
+      `The minimum feasible speed is ${step.returnValue}.`,
+    );
+  } else {
+    title = t(`结束：边界 b = ${step.boundary}`, `Finish: boundary b = ${step.boundary}`);
+    detail = t(
+      `答案下标 = b - 1 = ${step.answerIndex}，时间戳 = ${step.answerValue}。`,
+      `The answer index is b - 1 = ${step.answerIndex}, whose timestamp is ${step.answerValue}.`,
+    );
+  }
+
+  const summaryCards = step.action === 'start'
+    ? [
+      { label: 'lo', value: scenario.initialLo },
+      { label: 'hi', value: scenario.initialHi },
+      { label: t('谓词', 'Predicate'), value: scenario.checkRule },
+      {
+        label: t('哨兵', 'Sentinel'),
+        value: mode === 'range'
+          ? t('hi 已知为 True', 'hi is known True')
+          : t('hi 是越界一位', 'hi is one past the end'),
+      },
+      {
+        label: t('边界之后', 'After boundary'),
+        value: mode === 'exact'
+          ? t('验证相等', 'verify equality')
+          : mode === 'range'
+            ? t('直接返回 b', 'return b directly')
+            : t('返回 b - 1', 'return b - 1'),
+      },
+    ]
+    : step.action === 'finish'
+      ? [
+        { label: 'b', value: step.boundary },
+        { label: t('模板返回', 'Template return'), value: step.boundary },
+        {
+          label: t('后处理', 'Post-process'),
+          value: mode === 'exact'
+            ? t(`nums[b] == ${scenario.target}`, `nums[b] == ${scenario.target}`)
+            : mode === 'range'
+              ? t('直接使用 b', 'use b directly')
+              : 'b - 1',
+        },
+        {
+          label: t('最终答案', 'Final answer'),
+          value: mode === 'lastFalse' ? step.answerIndex : step.returnValue,
+        },
+        {
+          label: t('状态', 'Status'),
+          value: mode === 'exact'
+            ? (step.found ? t('找到', 'found') : t('未找到', 'not found'))
+            : t('完成', 'done'),
+        },
+      ]
+      : [
+        { label: 'lo', value: step.lo },
+        { label: 'hi', value: step.hi },
+        { label: 'mid', value: step.mid },
+        { label: 'check(mid)', value: step.checkResult ? 'True' : 'False' },
+        { label: t('下一步', 'Next'), value: step.checkResult ? 'hi = mid' : 'lo = mid + 1' },
+      ];
+
+  const currentRangeLabel = mode === 'range'
+    ? t(`当前候选速度 [${step.rangeLo}, ${step.rangeHi}]`, `Current candidate speeds [${step.rangeLo}, ${step.rangeHi}]`)
+    : t(`当前候选边界 [${step.rangeLo}, ${step.rangeHi}]`, `Current candidate boundaries [${step.rangeLo}, ${step.rangeHi}]`);
+
+  const formulaItems = [];
+  let formulaNote = '';
+
+  if (step.action !== 'start' && step.action !== 'finish') {
+    if (mode === 'exact') {
+      formulaItems.push(
+        { label: 'nums[mid]', value: `nums[${step.mid}] = ${step.probeValue}` },
+        { label: 'target', value: scenario.target },
+        { label: 'check(mid)', value: `${step.probeValue} ${step.checkResult ? '≥' : '<'} ${scenario.target} → ${step.checkResult ? 'True' : 'False'}` },
+      );
+    } else if (mode === 'range') {
+      formulaItems.push(
+        { label: 'speed', value: step.mid },
+        { label: 'hours_needed(speed)', value: `${step.hoursBreakdown} = ${step.hours}` },
+        { label: 'check(mid)', value: `${step.hours} ${step.checkResult ? '≤' : '>'} ${scenario.hoursLimit} → ${step.checkResult ? 'True' : 'False'}` },
+      );
+    } else {
+      formulaItems.push(
+        { label: 'timestamps[mid]', value: `timestamps[${step.mid}] = ${step.probeValue}` },
+        { label: 'query', value: scenario.query },
+        { label: 'check(mid)', value: `${step.probeValue} ${step.checkResult ? '>' : '≤'} ${scenario.query} → ${step.checkResult ? 'True' : 'False'}` },
+      );
+    }
+    formulaNote = step.checkResult
+      ? t('下一步进入 True 分支。', 'The next step enters the True branch.')
+      : t('下一步进入 False 分支。', 'The next step enters the False branch.');
+  } else if (step.action === 'finish') {
+    if (mode === 'exact') {
+      formulaItems.push(
+        { label: 'b', value: step.boundary },
+        { label: 'nums[b]', value: `nums[${step.boundary}] = ${step.boundaryValue}` },
+        { label: 'verify', value: `${step.boundaryValue} ${step.found ? '=' : '≠'} ${scenario.target}` },
+        { label: 'return', value: step.returnValue },
+      );
+    } else if (mode === 'range') {
+      formulaItems.push(
+        { label: 'b', value: step.boundary },
+        { label: 'hours_needed(b)', value: `${BINARY_SEARCH_TEMPLATE_PILES.map((pile) => Math.ceil(pile / step.boundary)).join(' + ')} = ${BINARY_SEARCH_TEMPLATE_PILES.reduce((sum, pile) => sum + Math.ceil(pile / step.boundary), 0)}` },
+        { label: 'answer', value: step.returnValue },
+      );
+    } else {
+      formulaItems.push(
+        { label: 'b', value: step.boundary },
+        { label: 'b - 1', value: step.answerIndex },
+        { label: 'timestamps[b - 1]', value: step.answerValue },
+        { label: 'return', value: step.answerIndex },
+      );
+    }
+    formulaNote = mode === 'exact'
+      ? (step.found ? t('边界位置同时是目标位置。', 'The boundary position is also the target position.') : t('边界存在，但目标值不存在。', 'The boundary exists, but the target value does not.'))
+      : mode === 'range'
+        ? t('边界本身就是答案。', 'The boundary itself is the answer.')
+        : t('模板返回的是边界，题目答案在前一格。', 'The template returns the boundary; the problem answer is one position earlier.');
+  } else {
+    formulaItems.push(
+      { label: 'lo', value: scenario.initialLo },
+      { label: 'hi', value: scenario.initialHi },
+      { label: 'check(mid)', value: scenario.checkRule },
+    );
+    formulaNote = mode === 'exact'
+      ? t('精确匹配还需要边界之后的相等验证。', 'Exact match still needs an equality check after the boundary is found.')
+      : mode === 'range'
+        ? t('这次搜索的对象是速度，不是数组下标。', 'This search runs over speeds, not array indices.')
+        : t('这次读取的是最后一个 False。', 'This reading asks for the last False.');
+  }
+
+  return (
+    <section
+      className="binary-search-template-visual"
+      aria-label={t('二分查找统一模板演示', 'Unified binary-search template walkthrough')}
+    >
+      <header className="binary-search-template-header">
+        <div>
+          <p className="eyebrow">{t('二分查找', 'Binary search')}</p>
+          <h2>{t('同一个 find_first_true，只替换 check(mid)', 'One find_first_true; only check(mid) changes')}</h2>
+          <p>{mode === 'exact'
+            ? t(
+              `nums = [${BINARY_SEARCH_TEMPLATE_NUMS.join(', ')}]，target = ${scenario.target}。`,
+              `nums = [${BINARY_SEARCH_TEMPLATE_NUMS.join(', ')}], target = ${scenario.target}.`,
+            )
+            : mode === 'range'
+              ? t(
+                `piles = [${BINARY_SEARCH_TEMPLATE_PILES.join(', ')}]，h = ${scenario.hoursLimit}。`,
+                `piles = [${BINARY_SEARCH_TEMPLATE_PILES.join(', ')}], h = ${scenario.hoursLimit}.`,
+              )
+              : t(
+                `timestamps = [${BINARY_SEARCH_TEMPLATE_TIMESTAMPS.join(', ')}]，query = ${scenario.query}。`,
+                `timestamps = [${BINARY_SEARCH_TEMPLATE_TIMESTAMPS.join(', ')}], query = ${scenario.query}.`,
+              )}</p>
+        </div>
+        <div className="binary-search-template-mode" role="group" aria-label={t('选择二分查找模式', 'Choose the binary-search mode')}>
+          <button
+            type="button"
+            className={mode === 'exact' ? 'active' : ''}
+            aria-pressed={mode === 'exact'}
+            onClick={() => {
+              setMode('exact');
+              setActiveStep(0);
+            }}
+          >
+            {t('精确匹配', 'Exact match')}
+          </button>
+          <button
+            type="button"
+            className={mode === 'range' ? 'active' : ''}
+            aria-pressed={mode === 'range'}
+            onClick={() => {
+              setMode('range');
+              setActiveStep(0);
+            }}
+          >
+            {t('答案值域', 'Answer range')}
+          </button>
+          <button
+            type="button"
+            className={mode === 'lastFalse' ? 'active' : ''}
+            aria-pressed={mode === 'lastFalse'}
+            onClick={() => {
+              setMode('lastFalse');
+              setActiveStep(0);
+            }}
+          >
+            {t('最后一个 False', 'Last False')}
+          </button>
+        </div>
+      </header>
+
+      {mode === 'exact' && (
+        <div className="binary-search-template-example" role="group" aria-label={t('选择精确匹配示例', 'Choose the exact-match example')}>
+          <button
+            type="button"
+            className={exactExample === 'found' ? 'active' : ''}
+            aria-pressed={exactExample === 'found'}
+            onClick={() => {
+              setExactExample('found');
+              setActiveStep(0);
+            }}
+          >
+            {t('target = 9（找到）', 'target = 9 (found)')}
+          </button>
+          <button
+            type="button"
+            className={exactExample === 'missing' ? 'active' : ''}
+            aria-pressed={exactExample === 'missing'}
+            onClick={() => {
+              setExactExample('missing');
+              setActiveStep(0);
+            }}
+          >
+            {t('target = 6（未找到）', 'target = 6 (not found)')}
+          </button>
+        </div>
+      )}
+
+      <div className={`binary-search-template-step-copy ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {scenario.steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="binary-search-template-stats" aria-label={t('当前状态', 'Current state')}>
+        {summaryCards.map((item) => (
+          <div className="binary-search-template-stat" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="binary-search-template-workspace">
+        <div className="binary-search-template-search">
+          <div className="binary-search-template-search-heading">
+            <span>{t('搜索空间', 'Search space')}</span>
+            <strong>{currentRangeLabel}</strong>
+          </div>
+          <p className="binary-search-template-rule">
+            <code>{scenario.checkRule}</code>
+          </p>
+          <div className={`binary-search-template-track${mode === 'range' ? ' range' : ''}`}>
+            {scenario.positions.map((point) => {
+              const inRange = point.index >= step.rangeLo && point.index <= step.rangeHi;
+              const isCurrent = point.index === step.mid;
+              const isBoundary = step.action === 'finish' && point.index === step.boundary;
+              const isAnswer = step.action === 'finish' && step.answerIndex === point.index;
+              const pointLabel = mode === 'range'
+                ? `${t('速度', 'speed')} = ${point.index}`
+                : `i = ${point.index}`;
+              const flags = [];
+
+              if (step.action === 'finish') {
+                if (isBoundary && isAnswer) flags.push(t('b = 答案', 'b = answer'));
+                else if (isBoundary) flags.push('b');
+                else if (isAnswer) flags.push(t('答案', 'answer'));
+              } else {
+                if (step.rangeLo === step.rangeHi && point.index === step.rangeLo) {
+                  flags.push('lo = hi');
+                } else {
+                  if (point.index === step.rangeLo) flags.push('lo');
+                  if (point.index === step.rangeHi) flags.push('hi');
+                }
+                if (isCurrent) flags.push('mid');
+              }
+
+              return (
+                <div
+                  className={[
+                    'binary-search-template-point',
+                    inRange ? 'candidate' : 'trimmed',
+                    isCurrent ? 'current' : '',
+                    isBoundary ? 'boundary' : '',
+                    isAnswer ? 'answer' : '',
+                    point.sentinel ? 'sentinel' : '',
+                  ].filter(Boolean).join(' ')}
+                  key={point.index}
+                >
+                  <small>{pointLabel}</small>
+                  <strong>{point.displayValue}</strong>
+                  <div className="binary-search-template-meta">
+                    {point.auxiliary && <span>{point.auxiliary}</span>}
+                    {point.predicate !== null && (
+                      <em className={point.predicate ? 'true' : 'false'}>{point.predicate ? 'T' : 'F'}</em>
+                    )}
+                    {point.sentinel && <span>{t('哨兵', 'sentinel')}</span>}
+                  </div>
+                  {flags.length > 0 && (
+                    <div className="binary-search-template-flags">
+                      {flags.map((flag) => (
+                        <i key={flag}>{flag}</i>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="binary-search-template-code" aria-label={t('统一模板代码', 'Unified template code')}>
+          <div className="binary-search-template-code-heading">
+            <span>find_first_true(lo, hi, check)</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <div className="binary-search-template-code-lines">
+            {BINARY_SEARCH_TEMPLATE_CODE_LINES.map((block) => (
+              <div
+                className={step.activeLine === block.id ? 'active' : ''}
+                aria-current={step.activeLine === block.id ? 'step' : undefined}
+                key={block.id}
+              >
+                {block.code.map((line, lineIndex) => (
+                  <code key={lineIndex}>{line}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={`binary-search-template-formula${step.action === 'finish' ? ' finish' : ''}`}>
+        {formulaItems.map((item) => (
+          <div className="binary-search-template-formula-card" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+        <em>{formulaNote}</em>
+      </div>
+
+      <div className="binary-search-template-legend">
+        <span><i className="candidate" />{t('候选区间', 'candidate range')}</span>
+        <span><i className="current" />{t('当前 mid', 'current mid')}</span>
+        <span><i className="boundary" />{t('返回边界 b', 'returned boundary b')}</span>
+        <span><i className="answer" />{t('题目答案', 'problem answer')}</span>
+      </div>
+
+      <div className="binary-search-template-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={scenario.steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择二分查找演示步骤', 'Select a binary-search step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(scenario.steps.length - 1, current + 1))}
+          disabled={activeStep === scenario.steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const LARGEST_RECTANGLE_HEIGHTS = [2, 1, 5, 6, 2, 3];
 const LARGEST_RECTANGLE_DISPLAY_HEIGHTS = [...LARGEST_RECTANGLE_HEIGHTS, 0];
 
@@ -7416,7 +8107,7 @@ function LargestRectangleVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -7460,6 +8151,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'largest-rectangle-demo') {
     return <LargestRectangleVisual />;
+  }
+
+  if (match?.[1] === 'binary-search-template-demo') {
+    return <BinarySearchTemplateVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

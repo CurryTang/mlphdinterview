@@ -49,6 +49,42 @@ check(mid): the definition of the monotonic predicate
 what happens after finding boundary b: use it directly, verify equality, or take b - 1
 ```
 
+```binary-search-template-demo
+```
+
+### Concrete Traces
+
+#### Exact Match: `nums = [1, 3, 5, 7, 9, 11, 13]`
+
+| Example | Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
+|---|---:|---:|---:|---:|---|---|
+| `target = 9` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 9` → False | `lo = 4` |
+| `target = 9` | 2 | 4 | 7 | 5 | `nums[5] = 11 >= 9` → True | `hi = 5` |
+| `target = 9` | 3 | 4 | 5 | 4 | `nums[4] = 9 >= 9` → True | `hi = 4` |
+| `target = 9` | Finish | 4 | 4 | - | boundary `b = 4` | verify `nums[4] == 9`, return `4` |
+| `target = 6` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 6` → True | `hi = 3` |
+| `target = 6` | 2 | 0 | 3 | 1 | `nums[1] = 3 >= 6` → False | `lo = 2` |
+| `target = 6` | 3 | 2 | 3 | 2 | `nums[2] = 5 >= 6` → False | `lo = 3` |
+| `target = 6` | Finish | 3 | 3 | - | boundary `b = 3` | verify `nums[3] = 7 != 6`, return `-1` |
+
+#### Answer Range: `piles = [3, 6, 7, 11]`, `h = 8`
+
+| Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
+|---|---:|---:|---:|---|---|
+| 1 | 1 | 11 | 6 | `1 + 1 + 2 + 2 = 6 <= 8` → True | `hi = 6` |
+| 2 | 1 | 6 | 3 | `1 + 2 + 3 + 4 = 10 <= 8` → False | `lo = 4` |
+| 3 | 4 | 6 | 5 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 5` |
+| 4 | 4 | 5 | 4 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 4` |
+| Finish | 4 | 4 | - | boundary `b = 4` | return the minimum feasible speed `4` |
+
+#### Last False: `timestamps = [1, 4, 7, 10]`, `query = 8`
+
+| Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
+|---|---:|---:|---:|---|---|
+| 1 | 0 | 4 | 2 | `timestamps[2] = 7 > 8` → False | `lo = 3` |
+| 2 | 3 | 4 | 3 | `timestamps[3] = 10 > 8` → True | `hi = 3` |
+| Finish | 3 | 3 | - | boundary `b = 3` | return `b - 1 = 2`, whose timestamp is `7` |
+
 ### Two Readings
 
 | Answer needed | How to obtain it |
