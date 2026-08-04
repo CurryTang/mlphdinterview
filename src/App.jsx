@@ -1800,6 +1800,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Stacks', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 31 · Binary Search',
+    'CoreSkills31 Binary Search.md',
+    null,
+    { directory: 'Leetcode', category: 'Binary Search', difficulty: 'Medium' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
@@ -7049,10 +7055,368 @@ function MonotonicStackVisual() {
   );
 }
 
+const LARGEST_RECTANGLE_HEIGHTS = [2, 1, 5, 6, 2, 3];
+const LARGEST_RECTANGLE_DISPLAY_HEIGHTS = [...LARGEST_RECTANGLE_HEIGHTS, 0];
+
+function buildLargestRectangleSteps(heights) {
+  const stack = [];
+  const steps = [];
+  let answer = 0;
+  let best = null;
+
+  for (let right = 0; right <= heights.length; right += 1) {
+    const isSentinel = right === heights.length;
+    const currentHeight = isSentinel ? 0 : heights[right];
+
+    steps.push({
+      action: 'scan',
+      right,
+      isSentinel,
+      currentHeight,
+      stack: [...stack],
+      popped: null,
+      answer,
+      updated: false,
+    });
+
+    while (stack.length > 0 && heights[stack[stack.length - 1]] > currentHeight) {
+      const j = stack.pop();
+      const left = stack.length > 0 ? stack[stack.length - 1] : -1;
+      const width = right - left - 1;
+      const area = heights[j] * width;
+      const updated = area > answer;
+      if (updated) {
+        answer = area;
+        best = { j, height: heights[j], left, right, width, area };
+      }
+
+      steps.push({
+        action: 'pop',
+        right,
+        isSentinel,
+        currentHeight,
+        stack: [...stack],
+        popped: j,
+        height: heights[j],
+        left,
+        width,
+        area,
+        answer,
+        updated,
+      });
+    }
+
+    if (isSentinel) {
+      steps.push({
+        action: 'finish',
+        right,
+        isSentinel,
+        currentHeight,
+        stack: [...stack],
+        popped: null,
+        answer,
+        best,
+      });
+    } else {
+      stack.push(right);
+      steps.push({
+        action: 'push',
+        right,
+        isSentinel,
+        currentHeight,
+        stack: [...stack],
+        popped: null,
+        answer,
+        updated: false,
+      });
+    }
+  }
+
+  return steps;
+}
+
+const LARGEST_RECTANGLE_STEPS = buildLargestRectangleSteps(LARGEST_RECTANGLE_HEIGHTS);
+
+const LARGEST_RECTANGLE_CODE_LINES = [
+  { id: 'init', code: ['answer = 0', 'stack = []'] },
+  {
+    id: 'loop',
+    code: [
+      'for right in range(len(heights) + 1):',
+      '    current = 0 if right == len(heights) else heights[right]',
+    ],
+  },
+  {
+    id: 'resolve',
+    code: [
+      '    while stack and heights[stack[-1]] > current:',
+      '        j = stack.pop()',
+      '        left = stack[-1] if stack else -1',
+      '        width = right - left - 1',
+      '        answer = max(answer, heights[j] * width)',
+    ],
+  },
+  { id: 'push', code: ['    stack.append(right)'] },
+  { id: 'finish', code: ['return answer'] },
+];
+
+function LargestRectangleVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = LARGEST_RECTANGLE_STEPS;
+  const step = steps[activeStep];
+  const heights = LARGEST_RECTANGLE_HEIGHTS;
+  const displayHeights = LARGEST_RECTANGLE_DISPLAY_HEIGHTS;
+  const maxHeight = Math.max(...displayHeights);
+
+  const stackOrder = t('栈底 → 栈顶：高度单调不减', 'bottom → top: heights are non-decreasing');
+
+  let activeLine = 'init';
+  if (step.action === 'scan') activeLine = 'loop';
+  else if (step.action === 'pop') activeLine = 'resolve';
+  else if (step.action === 'push') activeLine = 'push';
+  else if (step.action === 'finish') activeLine = 'finish';
+
+  let title = '';
+  let detail = '';
+
+  if (step.action === 'scan') {
+    const top = step.stack.length ? step.stack[step.stack.length - 1] : undefined;
+    title = step.isSentinel
+      ? t(`扫描哨兵，right = ${step.right}，高度 = 0`, `Scan sentinel, right = ${step.right}, height = 0`)
+      : t(`扫描 right = ${step.right}，高度 = ${step.currentHeight}`, `Scan right = ${step.right}, height = ${step.currentHeight}`);
+    if (top === undefined) {
+      detail = t('栈为空，本步不发生弹出。', 'The stack is empty; no pop happens this step.');
+    } else if (heights[top] > step.currentHeight) {
+      detail = t(
+        `栈顶下标 ${top} 高度 ${heights[top]} > ${step.currentHeight}，将触发弹出。`,
+        `Top index ${top} has height ${heights[top]} > ${step.currentHeight}; a pop follows.`,
+      );
+    } else {
+      detail = t(
+        `栈顶下标 ${top} 高度 ${heights[top]} ≤ ${step.currentHeight}，不发生弹出。`,
+        `Top index ${top} has height ${heights[top]} ≤ ${step.currentHeight}; no pop happens.`,
+      );
+    }
+  } else if (step.action === 'pop') {
+    title = t(`弹出下标 ${step.popped}`, `Pop index ${step.popped}`);
+    detail = t(
+      `left = ${step.left}，right = ${step.right}，width = ${step.width}，area = ${step.area}。`,
+      `left = ${step.left}, right = ${step.right}, width = ${step.width}, area = ${step.area}.`,
+    );
+  } else if (step.action === 'push') {
+    title = t(`压入下标 ${step.right}`, `Push index ${step.right}`);
+    detail = t(`入栈后，${stackOrder}。`, `After the push, ${stackOrder}.`);
+  } else {
+    title = t('哨兵处理完毕，栈已清空', 'The sentinel is processed; the stack is empty');
+    detail = t(
+      '哨兵下标本身会照代码入栈，但循环随即结束，不会再被读取。',
+      'Per the code, the sentinel index would still be pushed, but the loop ends immediately, so it is never read.',
+    );
+  }
+
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    loop: t('读取当前高度', 'Read current height'),
+    resolve: t('弹栈并结算矩形', 'Pop and settle a rectangle'),
+    push: t('压入待定下标', 'Push a pending index'),
+    finish: t('返回答案', 'Return the answer'),
+  }[activeLine];
+
+  return (
+    <section
+      className="largest-rectangle-visual"
+      aria-label={t('柱状图最大矩形演示', 'Largest Rectangle in Histogram walkthrough')}
+    >
+      <header className="largest-rectangle-header">
+        <div>
+          <p className="eyebrow">{t('哨兵单调栈', 'Sentinel monotonic stack')}</p>
+          <h2>{t('弹出下标时结算它的矩形', 'Settle a rectangle whenever an index is popped')}</h2>
+          <p>{t(
+            `固定数组 heights = [${heights.join(', ')}]，末尾补一个高度 0 的哨兵。`,
+            `Fixed array heights = [${heights.join(', ')}], with a trailing sentinel of height 0.`,
+          )}</p>
+        </div>
+        <div className="largest-rectangle-total">
+          <span>{t('当前最优面积', 'Best area so far')}</span>
+          <strong className={step.action === 'pop' && step.updated ? 'updated' : ''}>{step.answer}</strong>
+        </div>
+      </header>
+
+      <div className={`largest-rectangle-step-copy ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="largest-rectangle-chart-wrap">
+        <div className="largest-rectangle-chart" aria-label={t('柱状图与被测量的矩形', 'Bar heights and the rectangle under measurement')}>
+          {displayHeights.map((height, index) => {
+            const isPoppedNow = step.action === 'pop' && index === step.popped;
+            const isInStack = step.stack.includes(index);
+            const isStackTop = isInStack && index === step.stack[step.stack.length - 1];
+            const isCurrent = index === step.right
+              && (step.action === 'scan' || step.action === 'pop' || step.action === 'push' || step.action === 'finish');
+            const isFuture = index > step.right;
+
+            let state = 'resolved';
+            if (isPoppedNow) state = 'popped-now';
+            else if (isStackTop) state = 'stack-top';
+            else if (isInStack) state = 'in-stack';
+            else if (isCurrent) state = 'current';
+            else if (isFuture) state = 'future';
+
+            const isMeasuring = step.action === 'pop' && index >= step.left + 1 && index <= step.right - 1;
+            const isBest = step.action === 'finish' && step.best
+              && index >= step.best.left + 1 && index <= step.best.right - 1;
+            const rectHeight = isMeasuring ? step.height : (isBest ? step.best.height : 0);
+            const isSentinelBar = index === heights.length;
+
+            return (
+              <div className={`largest-rectangle-column ${state}`} key={index}>
+                <div className="largest-rectangle-track">
+                  {(isMeasuring || isBest) && (
+                    <div
+                      className={`largest-rectangle-rect-fill ${isBest ? 'best' : 'measuring'}`}
+                      style={{ height: `${(rectHeight / maxHeight) * 100}%` }}
+                    />
+                  )}
+                  <div
+                    className={`largest-rectangle-bar${isSentinelBar ? ' sentinel' : ''}`}
+                    style={{ height: `${(height / maxHeight) * 100}%` }}
+                  >
+                    <span>{height}</span>
+                  </div>
+                </div>
+                <small>{isSentinelBar ? t('哨兵', 'sentinel') : index}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {step.action === 'pop' && (
+        <div className="largest-rectangle-formula">
+          <div>
+            <span>left</span>
+            <strong>stack[-1] if stack else -1 = {step.left}</strong>
+          </div>
+          <div>
+            <span>width</span>
+            <strong>{step.right} − {step.left} − 1 = {step.width}</strong>
+          </div>
+          <div className={step.updated ? 'result updated' : 'result'}>
+            <span>area</span>
+            <strong>{step.height} × {step.width} = {step.area}</strong>
+          </div>
+          <em>{step.updated
+            ? t(`answer 更新为 ${step.answer}`, `answer updates to ${step.answer}`)
+            : t(`area ≤ answer(${step.answer})，不更新`, `area ≤ answer (${step.answer}); no update`)}</em>
+        </div>
+      )}
+
+      {step.action === 'finish' && step.best && (
+        <div className="largest-rectangle-formula finish">
+          <div>
+            <span>{t('最优矩形', 'Best rectangle')}</span>
+            <strong>j = {step.best.j}, height = {step.best.height}</strong>
+          </div>
+          <div>
+            <span>{t('覆盖区间', 'Covered span')}</span>
+            <strong>[{step.best.left + 1}, {step.best.right - 1}] ({t('宽度', 'width')} {step.best.width})</strong>
+          </div>
+          <div className="result updated">
+            <span>answer</span>
+            <strong>{step.best.height} × {step.best.width} = {step.answer}</strong>
+          </div>
+        </div>
+      )}
+
+      <div className="largest-rectangle-workspace">
+        <div className="largest-rectangle-lane">
+          <div className="largest-rectangle-lane-heading">
+            <span>{t('待定下标栈', 'Pending index stack')}</span>
+            <strong>{stackOrder}</strong>
+          </div>
+          <div className="largest-rectangle-items">
+            <span className="largest-rectangle-bottom">{t('栈底', 'bottom')}</span>
+            {step.stack.length === 0
+              ? <em>{t('空栈', 'empty')}</em>
+              : step.stack.map((index, position) => (
+                <div
+                  className={`largest-rectangle-item${position === step.stack.length - 1 ? ' top' : ''}`}
+                  key={index}
+                >
+                  <small>i = {index}</small>
+                  <strong>{displayHeights[index]}</strong>
+                  {position === step.stack.length - 1 && <span>{t('栈顶', 'top')}</span>}
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="largest-rectangle-code" aria-label={t('参考代码', 'Reference code')}>
+          <div className="largest-rectangle-code-heading">
+            <span>{t('参考代码', 'Reference code')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <div className="largest-rectangle-code-lines">
+            {LARGEST_RECTANGLE_CODE_LINES.map((block) => (
+              <div
+                className={activeLine === block.id ? 'active' : ''}
+                aria-current={activeLine === block.id ? 'step' : undefined}
+                key={block.id}
+              >
+                {block.code.map((line, lineIndex) => (
+                  <code key={lineIndex}>{line || ' '}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="largest-rectangle-legend">
+        <span><i className="current" />{t('当前扫描', 'scanning')}</span>
+        <span><i className="in-stack" />{t('栈中待定', 'in stack')}</span>
+        <span><i className="popped-now" />{t('本步弹出', 'popped now')}</span>
+        <span><i className="resolved" />{t('已结算', 'resolved')}</span>
+        <span><i className="rect" />{t('测量矩形', 'measured rectangle')}</span>
+      </div>
+
+      <div className="largest-rectangle-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择演示步骤', 'Select a step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -7092,6 +7456,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'monotonic-stack-demo') {
     return <MonotonicStackVisual />;
+  }
+
+  if (match?.[1] === 'largest-rectangle-demo') {
+    return <LargestRectangleVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

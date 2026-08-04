@@ -308,6 +308,11 @@ $$
 
 A final sentinel bar of height `0` pops all remaining bars, avoiding a duplicated cleanup loop.
 
+The demo below uses a fixed array to show popping, width computation, and sentinel handling step by step.
+
+```largest-rectangle-demo
+```
+
 <details>
 <summary>Reference answer</summary>
 
