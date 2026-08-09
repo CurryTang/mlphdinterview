@@ -92,6 +92,81 @@ what happens after finding boundary b: use it directly, verify equality, or take
 | First position that satisfies the condition | Return `b` directly |
 | Last position that does not satisfy the condition | Return `b - 1`, and check `b > 0` |
 
+### Four Standard Forms of `check(mid)`
+
+The question to answer is "what is the first position satisfying which condition," not "should this be `>` or `>=`." Rephrasing the problem this way fixes the comparison operator.
+
+Four boundaries map to four forms of `check(mid)`:
+
+| Answer needed | `check(mid)` | Final answer |
+|---|---|---|
+| First `>= target` | `nums[mid] >= target` | `lo` |
+| First `> target` | `nums[mid] > target` | `lo` |
+| Last `<= target` | `nums[mid] > target` | `lo - 1` |
+| Last `< target` | `nums[mid] >= target` | `lo - 1` |
+
+Rule of thumb:
+
+> For "first," write the condition directly.
+> For "last," find the first position on its right, then subtract one.
+
+Example with `nums = [1, 3, 3, 3, 5, 7]`:
+
+First `>= 3`:
+
+```text
+check(mid) = nums[mid] >= 3
+F T T T T T
+  ↑ answer (index 1)
+```
+
+First `> 3`:
+
+```text
+check(mid) = nums[mid] > 3
+F F F F T T
+        ↑ answer (index 4)
+```
+
+Last `<= 3`: find first `> 3`, then subtract one.
+
+```text
+check(mid) = nums[mid] > 3
+answer = lo - 1 = 3
+```
+
+Last `< 3`: find first `>= 3`, then subtract one.
+
+```text
+check(mid) = nums[mid] >= 3
+answer = lo - 1 = 0
+```
+
+Exact-match search, the Binary Search problem itself, reads "find the first `>= target`, then verify":
+
+```python
+check(mid) = nums[mid] >= target
+
+if lo < len(nums) and nums[lo] == target:
+    return lo
+return -1
+```
+
+`nums[mid] == target` cannot be used as `check` directly, because it is not monotonic over the array:
+
+```text
+False False True False False
+```
+
+The structure the template requires is:
+
+```text
+False False False | True True True
+                  ↑ boundary
+```
+
+Rule of thumb: `>=` finds the left boundary, `>` finds the right boundary past any duplicates; subtract one from the corresponding boundary whenever "last" is needed.
+
 ### Two Ways to Set the Boundary Sentinel
 
 | Setup | Meaning | When to use |

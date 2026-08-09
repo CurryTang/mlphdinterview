@@ -92,6 +92,81 @@ check(mid)：单调谓词的定义
 | 第一个满足条件的位置 | 直接返回 `b` |
 | 最后一个不满足条件的位置 | 返回 `b - 1`，并检查 `b > 0` |
 
+### `check(mid)` 的四种标准写法
+
+要确定的问题是"第一个满足什么条件的位置"，不是"该写 `>` 还是 `>=`"。把问题改写成这句话，比较符号随之确定。
+
+四种边界对应四种 `check(mid)`：
+
+| 想找的答案 | `check(mid)` | 最终答案 |
+|---|---|---|
+| 第一个 `>= target` | `nums[mid] >= target` | `lo` |
+| 第一个 `> target` | `nums[mid] > target` | `lo` |
+| 最后一个 `<= target` | `nums[mid] > target` | `lo - 1` |
+| 最后一个 `< target` | `nums[mid] >= target` | `lo - 1` |
+
+记忆方式：
+
+> 找"第一个"，条件直接写。
+> 找"最后一个"，找它右边的第一个，再减一。
+
+以 `nums = [1, 3, 3, 3, 5, 7]` 为例：
+
+第一个 `>= 3`：
+
+```text
+check(mid) = nums[mid] >= 3
+F T T T T T
+  ↑ 答案（下标 1）
+```
+
+第一个 `> 3`：
+
+```text
+check(mid) = nums[mid] > 3
+F F F F T T
+        ↑ 答案（下标 4）
+```
+
+最后一个 `<= 3`：先找第一个 `> 3`，再减一。
+
+```text
+check(mid) = nums[mid] > 3
+answer = lo - 1 = 3
+```
+
+最后一个 `< 3`：先找第一个 `>= 3`，再减一。
+
+```text
+check(mid) = nums[mid] >= 3
+answer = lo - 1 = 0
+```
+
+Binary Search 这道题的等值查找，写法是"先找第一个 `>= target`，再验证"：
+
+```python
+check(mid) = nums[mid] >= target
+
+if lo < len(nums) and nums[lo] == target:
+    return lo
+return -1
+```
+
+不能直接用 `nums[mid] == target` 作为 `check`，因为它在数组上不单调：
+
+```text
+False False True False False
+```
+
+模板要求的结构是：
+
+```text
+False False False | True True True
+                  ↑ 边界
+```
+
+记忆方式：`>=` 找左边界，`>` 找跨过重复元素后的右边界；需要"最后一个"就在对应边界上减一。
+
 ### 边界哨兵的两种设置方式
 
 | 设置方式 | 含义 | 使用场景 |
