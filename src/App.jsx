@@ -8104,10 +8104,1052 @@ function LargestRectangleVisual() {
   );
 }
 
+const LINKED_LIST_REVERSAL_NODES = [
+  { id: 0, value: 1, x: 90, y: 142 },
+  { id: 1, value: 2, x: 220, y: 142 },
+  { id: 2, value: 3, x: 350, y: 142 },
+  { id: 3, value: 4, x: 480, y: 142 },
+  { id: 4, value: 5, x: 610, y: 142 },
+];
+
+const FAST_SLOW_CYCLE_NODES = [
+  { id: 0, value: 3, x: 110, y: 134 },
+  { id: 1, value: 2, x: 270, y: 134 },
+  { id: 2, value: 0, x: 430, y: 134 },
+  { id: 3, value: -4, x: 590, y: 134 },
+];
+
+const LINKED_LIST_REVERSAL_CODE_LINES = [
+  { id: 'init', code: ['prev = None', 'curr = head'] },
+  { id: 'loop', code: ['while curr:'] },
+  { id: 'save', code: ['    next_node = curr.next'] },
+  { id: 'rewire', code: ['    curr.next = prev'] },
+  { id: 'advance', code: ['    prev = curr', '    curr = next_node'] },
+  { id: 'finish', code: ['return prev'] },
+];
+
+const FAST_SLOW_POINTER_CODE_LINES = {
+  middle: [
+    { id: 'init', code: ['slow = head', 'fast = head'] },
+    { id: 'move', code: ['while fast and fast.next:', '    slow = slow.next', '    fast = fast.next.next'] },
+    { id: 'finish', code: ['return slow'] },
+  ],
+  cycle: [
+    { id: 'init', code: ['slow = head', 'fast = head'] },
+    { id: 'detect', code: ['while True:', '    slow = slow.next', '    fast = fast.next.next', '    if slow == fast: break'] },
+    { id: 'reset', code: ['finder = head'] },
+    { id: 'locate', code: ['while finder != slow:', '    finder = finder.next', '    slow = slow.next'] },
+    { id: 'finish', code: ['return finder'] },
+  ],
+  gap: [
+    { id: 'init', code: ['lead = head', 'follow = head'] },
+    { id: 'advance', code: ['for _ in range(n):', '    lead = lead.next'] },
+    { id: 'move', code: ['while lead:', '    lead = lead.next', '    follow = follow.next'] },
+    { id: 'finish', code: ['return follow'] },
+  ],
+};
+
+function buildLinkedListHighlights(entries) {
+  const highlights = {};
+  entries.forEach(([nodeId, tone]) => {
+    if (nodeId !== null && nodeId !== undefined) {
+      highlights[nodeId] = tone;
+    }
+  });
+  return highlights;
+}
+
+function buildForwardEdges(nodes) {
+  return nodes.slice(0, -1).map((node, index) => ({
+    from: node.id,
+    to: nodes[index + 1].id,
+    type: 'next',
+  }));
+}
+
+function buildLinkedListReversalSteps() {
+  const nextMap = [1, 2, 3, 4, null];
+  const steps = [{
+    action: 'start',
+    iteration: 0,
+    prev: null,
+    curr: 0,
+    nextNode: null,
+    nextMap: [...nextMap],
+    activeLine: 'init',
+    nodeHighlights: buildLinkedListHighlights([[0, 'current']]),
+  }];
+
+  let prev = null;
+  let curr = 0;
+  let iteration = 1;
+
+  while (curr !== null) {
+    const nextNode = nextMap[curr];
+    steps.push({
+      action: 'save',
+      iteration,
+      prev,
+      curr,
+      nextNode,
+      nextMap: [...nextMap],
+      activeLine: 'save',
+      nodeHighlights: buildLinkedListHighlights([
+        [prev, 'anchor'],
+        [curr, 'current'],
+        [nextNode, 'support'],
+      ]),
+    });
+
+    nextMap[curr] = prev;
+    steps.push({
+      action: 'rewire',
+      iteration,
+      prev,
+      curr,
+      nextNode,
+      nextMap: [...nextMap],
+      activeLine: 'rewire',
+      nodeHighlights: buildLinkedListHighlights([
+        [prev, 'anchor'],
+        [curr, 'flip'],
+        [nextNode, 'support'],
+      ]),
+    });
+
+    prev = curr;
+    curr = nextNode;
+    steps.push({
+      action: 'advance',
+      iteration,
+      prev,
+      curr,
+      nextNode,
+      nextMap: [...nextMap],
+      activeLine: 'advance',
+      nodeHighlights: buildLinkedListHighlights([
+        [prev, 'anchor'],
+        [curr, 'current'],
+      ]),
+    });
+    iteration += 1;
+  }
+
+  steps.push({
+    action: 'finish',
+    iteration: iteration - 1,
+    prev,
+    curr,
+    nextNode: null,
+    nextMap: [...nextMap],
+    activeLine: 'finish',
+    nodeHighlights: buildLinkedListHighlights([[prev, 'result']]),
+  });
+
+  return steps;
+}
+
+function buildFastSlowMiddleSteps() {
+  return [
+    {
+      action: 'start',
+      slow: 0,
+      fast: 0,
+      activeLine: 'init',
+      nodeHighlights: buildLinkedListHighlights([[0, 'current']]),
+    },
+    {
+      action: 'move',
+      iteration: 1,
+      slow: 1,
+      fast: 2,
+      activeLine: 'move',
+      nodeHighlights: buildLinkedListHighlights([
+        [1, 'anchor'],
+        [2, 'current'],
+      ]),
+    },
+    {
+      action: 'move',
+      iteration: 2,
+      slow: 2,
+      fast: 4,
+      activeLine: 'move',
+      nodeHighlights: buildLinkedListHighlights([
+        [2, 'anchor'],
+        [4, 'current'],
+      ]),
+    },
+    {
+      action: 'finish',
+      slow: 2,
+      fast: 4,
+      activeLine: 'finish',
+      nodeHighlights: buildLinkedListHighlights([
+        [2, 'result'],
+        [4, 'support'],
+      ]),
+    },
+  ];
+}
+
+function buildFastSlowCycleSteps() {
+  return [
+    {
+      action: 'start',
+      slow: 0,
+      fast: 0,
+      finder: null,
+      activeLine: 'init',
+      nodeHighlights: buildLinkedListHighlights([[0, 'support']]),
+    },
+    {
+      action: 'detect',
+      iteration: 1,
+      slow: 1,
+      fast: 2,
+      finder: null,
+      activeLine: 'detect',
+      nodeHighlights: buildLinkedListHighlights([
+        [1, 'anchor'],
+        [2, 'current'],
+      ]),
+    },
+    {
+      action: 'detect',
+      iteration: 2,
+      slow: 2,
+      fast: 1,
+      finder: null,
+      activeLine: 'detect',
+      nodeHighlights: buildLinkedListHighlights([
+        [2, 'anchor'],
+        [1, 'current'],
+      ]),
+    },
+    {
+      action: 'meet',
+      iteration: 3,
+      slow: 3,
+      fast: 3,
+      finder: null,
+      activeLine: 'detect',
+      nodeHighlights: buildLinkedListHighlights([[3, 'meeting']]),
+    },
+    {
+      action: 'reset',
+      slow: 3,
+      fast: null,
+      finder: 0,
+      activeLine: 'reset',
+      nodeHighlights: buildLinkedListHighlights([
+        [3, 'meeting'],
+        [0, 'current'],
+      ]),
+    },
+    {
+      action: 'locate',
+      iteration: 1,
+      slow: 1,
+      fast: null,
+      finder: 1,
+      activeLine: 'locate',
+      nodeHighlights: buildLinkedListHighlights([[1, 'result']]),
+    },
+    {
+      action: 'finish',
+      slow: 1,
+      fast: null,
+      finder: 1,
+      activeLine: 'finish',
+      nodeHighlights: buildLinkedListHighlights([[1, 'result']]),
+    },
+  ];
+}
+
+function buildFastSlowGapSteps() {
+  return [
+    {
+      action: 'start',
+      lead: 0,
+      follow: 0,
+      activeLine: 'init',
+      nodeHighlights: buildLinkedListHighlights([[0, 'current']]),
+    },
+    {
+      action: 'advance',
+      progress: 1,
+      total: 2,
+      lead: 1,
+      follow: 0,
+      activeLine: 'advance',
+      nodeHighlights: buildLinkedListHighlights([
+        [1, 'current'],
+        [0, 'anchor'],
+      ]),
+    },
+    {
+      action: 'advance',
+      progress: 2,
+      total: 2,
+      lead: 2,
+      follow: 0,
+      activeLine: 'advance',
+      nodeHighlights: buildLinkedListHighlights([
+        [2, 'current'],
+        [0, 'anchor'],
+      ]),
+    },
+    {
+      action: 'move',
+      iteration: 1,
+      lead: 3,
+      follow: 1,
+      activeLine: 'move',
+      nodeHighlights: buildLinkedListHighlights([
+        [3, 'current'],
+        [1, 'anchor'],
+      ]),
+    },
+    {
+      action: 'move',
+      iteration: 2,
+      lead: 4,
+      follow: 2,
+      activeLine: 'move',
+      nodeHighlights: buildLinkedListHighlights([
+        [4, 'current'],
+        [2, 'anchor'],
+      ]),
+    },
+    {
+      action: 'move',
+      iteration: 3,
+      lead: null,
+      follow: 3,
+      activeLine: 'move',
+      nodeHighlights: buildLinkedListHighlights([[3, 'anchor']]),
+    },
+    {
+      action: 'finish',
+      lead: null,
+      follow: 3,
+      activeLine: 'finish',
+      nodeHighlights: buildLinkedListHighlights([[3, 'result']]),
+    },
+  ];
+}
+
+const LINKED_LIST_REVERSAL_STEPS = buildLinkedListReversalSteps();
+
+const FAST_SLOW_POINTER_SCENARIOS = {
+  middle: {
+    key: 'middle',
+    nodes: LINKED_LIST_REVERSAL_NODES,
+    edges: buildForwardEdges(LINKED_LIST_REVERSAL_NODES),
+    steps: buildFastSlowMiddleSteps(),
+  },
+  cycle: {
+    key: 'cycle',
+    nodes: FAST_SLOW_CYCLE_NODES,
+    edges: [
+      ...buildForwardEdges(FAST_SLOW_CYCLE_NODES),
+      { from: 3, to: 1, type: 'cycle' },
+    ],
+    steps: buildFastSlowCycleSteps(),
+  },
+  gap: {
+    key: 'gap',
+    nodes: LINKED_LIST_REVERSAL_NODES,
+    edges: buildForwardEdges(LINKED_LIST_REVERSAL_NODES),
+    steps: buildFastSlowGapSteps(),
+  },
+};
+
+function buildLinkedListEdgePath(source, target, type) {
+  if (type === 'cycle') {
+    return `M ${source.x + 42} ${source.y} C ${source.x + 100} ${source.y + 102}, ${target.x + 72} ${target.y + 102}, ${target.x} ${target.y + 30}`;
+  }
+  if (source.x < target.x) {
+    return `M ${source.x + 42} ${source.y} L ${target.x - 42} ${target.y}`;
+  }
+  return `M ${source.x - 42} ${source.y} C ${source.x - 82} ${source.y - 74}, ${target.x + 82} ${target.y - 74}, ${target.x + 42} ${target.y}`;
+}
+
+function LinkedListDiagram({
+  ariaLabel,
+  annotations = [],
+  edges,
+  nodes,
+  nodeHighlights = {},
+  nullPointers = [],
+  pointerLabels,
+  viewBoxHeight = 280,
+}) {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const labelsByNode = new Map(nodes.map((node) => [node.id, []]));
+  const annotationsByNode = new Map(nodes.map((node) => [node.id, []]));
+
+  pointerLabels.forEach((label) => {
+    if (label.nodeId !== null && label.nodeId !== undefined) {
+      labelsByNode.get(label.nodeId)?.push(label);
+    }
+  });
+
+  annotations.forEach((annotation) => {
+    if (annotation.nodeId !== null && annotation.nodeId !== undefined) {
+      annotationsByNode.get(annotation.nodeId)?.push(annotation);
+    }
+  });
+
+  return (
+    <div className="linked-list-diagram">
+      <svg
+        aria-label={ariaLabel}
+        className="linked-list-diagram-svg"
+        role="img"
+        viewBox={`0 0 700 ${viewBoxHeight}`}
+      >
+        <defs>
+          <marker
+            id="linked-list-arrow-next"
+            markerHeight="8"
+            markerWidth="8"
+            orient="auto"
+            refX="8"
+            refY="4"
+            viewBox="0 0 8 8"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="#1d596d" />
+          </marker>
+          <marker
+            id="linked-list-arrow-reversed"
+            markerHeight="8"
+            markerWidth="8"
+            orient="auto"
+            refX="8"
+            refY="4"
+            viewBox="0 0 8 8"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="#c96e27" />
+          </marker>
+          <marker
+            id="linked-list-arrow-cycle"
+            markerHeight="8"
+            markerWidth="8"
+            orient="auto"
+            refX="8"
+            refY="4"
+            viewBox="0 0 8 8"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="#157158" />
+          </marker>
+        </defs>
+
+        {edges.map((edge) => {
+          const source = nodeMap.get(edge.from);
+          const target = nodeMap.get(edge.to);
+          return (
+            <path
+              className={`linked-list-edge ${edge.type}`}
+              d={buildLinkedListEdgePath(source, target, edge.type)}
+              key={`${edge.from}-${edge.to}-${edge.type}`}
+              markerEnd={`url(#linked-list-arrow-${edge.type === 'reversed' ? 'reversed' : edge.type === 'cycle' ? 'cycle' : 'next'})`}
+            />
+          );
+        })}
+
+        {nodes.map((node) => {
+          const nodeLabels = labelsByNode.get(node.id) ?? [];
+          return nodeLabels.map((label, index) => {
+            const width = Math.max(56, label.text.length * 7 + 20);
+            const labelX = node.x - width / 2;
+            const labelY = node.y - 74 - index * 28;
+            return (
+              <g className={`linked-list-pointer-label ${label.tone}`} key={`${node.id}-${label.text}`}>
+                <line x1={node.x} x2={node.x} y1={labelY + 20} y2={node.y - 28} />
+                <rect height="20" rx="9" ry="9" width={width} x={labelX} y={labelY} />
+                <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={labelY + 10}>
+                  {label.text}
+                </text>
+              </g>
+            );
+          });
+        })}
+
+        {nodes.map((node) => {
+          const annotationItems = annotationsByNode.get(node.id) ?? [];
+          return annotationItems.map((annotation, index) => (
+            <g className={`linked-list-annotation ${annotation.tone ?? 'muted'}`} key={`${node.id}-${annotation.label}`}>
+              <rect
+                height="18"
+                rx="8"
+                ry="8"
+                width={Math.max(60, annotation.label.length * 7 + 22)}
+                x={node.x - Math.max(60, annotation.label.length * 7 + 22) / 2}
+                y={node.y + 42 + index * 22}
+              />
+              <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y + 51 + index * 22}>
+                {annotation.label}
+              </text>
+            </g>
+          ));
+        })}
+
+        {nodes.map((node) => (
+          <g
+            className={`linked-list-node${nodeHighlights[node.id] ? ` ${nodeHighlights[node.id]}` : ''}`}
+            key={node.id}
+          >
+            <rect height="50" rx="12" ry="12" width="84" x={node.x - 42} y={node.y - 25} />
+            <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y}>
+              {node.value}
+            </text>
+          </g>
+        ))}
+      </svg>
+
+      {nullPointers.length > 0 && (
+        <div className="linked-list-null-pointers">
+          {nullPointers.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinkedListReversalVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const step = LINKED_LIST_REVERSAL_STEPS[activeStep];
+
+  const pointerLabels = [];
+  const nullPointers = [];
+
+  if (step.prev !== null) {
+    pointerLabels.push({ nodeId: step.prev, text: 'prev', tone: 'green' });
+  } else {
+    nullPointers.push('prev = None');
+  }
+
+  if (step.curr !== null) {
+    pointerLabels.push({ nodeId: step.curr, text: 'curr', tone: 'orange' });
+  } else {
+    nullPointers.push('curr = None');
+  }
+
+  if (step.action === 'save' || step.action === 'rewire' || step.action === 'advance') {
+    if (step.nextNode !== null) {
+      pointerLabels.push({ nodeId: step.nextNode, text: 'next_node', tone: 'blue' });
+    } else {
+      nullPointers.push('next_node = None');
+    }
+  }
+
+  if (step.action === 'finish' && step.prev !== null) {
+    pointerLabels.push({ nodeId: step.prev, text: 'return', tone: 'gold' });
+  }
+
+  const edges = [];
+  step.nextMap.forEach((nextIndex, index) => {
+    if (nextIndex !== null) {
+      edges.push({
+        from: index,
+        to: nextIndex,
+        type: nextIndex > index ? 'next' : 'reversed',
+      });
+    }
+  });
+
+  const pointerCards = [
+    {
+      label: 'prev',
+      value: step.prev === null ? 'None' : LINKED_LIST_REVERSAL_NODES[step.prev].value,
+      tone: 'green',
+    },
+    {
+      label: 'curr',
+      value: step.curr === null ? 'None' : LINKED_LIST_REVERSAL_NODES[step.curr].value,
+      tone: 'orange',
+    },
+    {
+      label: 'next_node',
+      value: step.action === 'save' || step.action === 'rewire' || step.action === 'advance'
+        ? (step.nextNode === null ? 'None' : LINKED_LIST_REVERSAL_NODES[step.nextNode].value)
+        : '-',
+      tone: 'blue',
+    },
+  ];
+
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    loop: t('进入循环', 'Enter loop'),
+    save: t('保存 next_node', 'Save next_node'),
+    rewire: t('翻转一条 next', 'Flip one next'),
+    advance: t('推进三个指针', 'Advance the pointers'),
+    finish: t('返回新头节点', 'Return the new head'),
+  }[step.activeLine];
+
+  let title = '';
+  let detail = '';
+
+  if (step.action === 'start') {
+    title = t('初始化：prev 为空，curr 指向头节点', 'Initialize: prev is empty and curr points to the head');
+    detail = t(
+      '反转从空前缀开始。真正变化发生在每一轮的保存、改线、推进三步里。',
+      'The reversed prefix starts empty. Each loop performs the same three operations: save, rewire, then advance.',
+    );
+  } else if (step.action === 'save') {
+    title = t(`第 ${step.iteration} 轮：先保存 next_node`, `Iteration ${step.iteration}: save next_node first`);
+    detail = step.nextNode === null
+      ? t('当前节点已经是原链表尾部，保存结果是 `None`。', 'The current node is the original tail, so the saved next node is `None`.')
+      : t(
+        `保存值为 ${LINKED_LIST_REVERSAL_NODES[step.nextNode].value} 的节点，后面改写 curr.next 时不会丢链。`,
+        `Save the node with value ${LINKED_LIST_REVERSAL_NODES[step.nextNode].value} so rewiring curr.next does not lose the suffix.`,
+      );
+  } else if (step.action === 'rewire') {
+    title = t(`第 ${step.iteration} 轮：执行 curr.next = prev`, `Iteration ${step.iteration}: execute curr.next = prev`);
+    detail = step.prev === null
+      ? t('第一条被翻转的边直接指向 `None`，原头节点会成为新尾节点。', 'The first flipped edge points to `None`, so the original head becomes the new tail.')
+      : t(
+        `当前节点的箭头改为指向值为 ${LINKED_LIST_REVERSAL_NODES[step.prev].value} 的前驱，橙色边表示已经翻转。`,
+        `The current node now points to the node with value ${LINKED_LIST_REVERSAL_NODES[step.prev].value}. Orange edges mark the reversed prefix.`,
+      );
+  } else if (step.action === 'advance') {
+    title = t(`第 ${step.iteration} 轮：推进 prev 和 curr`, `Iteration ${step.iteration}: advance prev and curr`);
+    detail = step.curr === null
+      ? t('`curr` 已经走到 `None`，下一步可以直接返回 `prev`。', '`curr` has reached `None`, so the next step can return `prev` directly.')
+      : t(
+        `新的 prev 停在值为 ${LINKED_LIST_REVERSAL_NODES[step.prev].value} 的节点，curr 继续处理值为 ${LINKED_LIST_REVERSAL_NODES[step.curr].value} 的节点。`,
+        `The new prev stays at value ${LINKED_LIST_REVERSAL_NODES[step.prev].value}, and curr continues with value ${LINKED_LIST_REVERSAL_NODES[step.curr].value}.`,
+      );
+  } else {
+    title = t('结束：prev 就是新的头节点', 'Finish: prev is the new head');
+    detail = t(
+      '整条链的 `next` 都已经翻转完成，返回值从最右侧节点开始向左遍历。',
+      'Every `next` pointer has been reversed. Traversal now starts at the rightmost node and proceeds left.',
+    );
+  }
+
+  return (
+    <section
+      className="linked-list-reversal-visual"
+      aria-label={t('链表反转过程演示', 'Linked-list reversal walkthrough')}
+    >
+      <header className="linked-list-reversal-header">
+        <div>
+          <p className="eyebrow">{t('链表反转', 'Linked-list reversal')}</p>
+          <h2>{t('三指针模板拆成可视步骤', 'Split the three-pointer template into visible steps')}</h2>
+          <p>{t(
+            '固定链表 `1 -> 2 -> 3 -> 4 -> 5`。蓝色是尚未改写的 `next`，橙色是已经翻转的 `next`。',
+            'The list is fixed at `1 -> 2 -> 3 -> 4 -> 5`. Blue edges are still original `next` pointers; orange edges have already been reversed.',
+          )}</p>
+        </div>
+        <div className="linked-list-reversal-legend">
+          <span><i className="next" /> next</span>
+          <span><i className="reversed" /> reversed next</span>
+          <span><i className="result" /> return head</span>
+        </div>
+      </header>
+
+      <div className={`linked-list-reversal-step-copy ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {LINKED_LIST_REVERSAL_STEPS.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="linked-list-reversal-workspace">
+        <div className="linked-list-reversal-stage-card">
+          <div className="linked-list-reversal-stage-heading">
+            <span>{t('当前链表状态', 'Current list state')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <LinkedListDiagram
+            ariaLabel={t('链表反转节点与指针状态', 'Linked-list reversal nodes and pointers')}
+            edges={edges}
+            nodes={LINKED_LIST_REVERSAL_NODES}
+            nodeHighlights={step.nodeHighlights}
+            nullPointers={nullPointers}
+            pointerLabels={pointerLabels}
+          />
+          <div className="linked-list-reversal-pointer-cards">
+            {pointerCards.map((card) => (
+              <div className={`linked-list-reversal-pointer-card ${card.tone}`} key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="linked-list-reversal-code" aria-label={t('当前模板代码', 'Active template code')}>
+          <div className="linked-list-reversal-code-heading">
+            <span>{t('迭代模板', 'Iterative template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="linked-list-reversal-code-lines">
+            {LINKED_LIST_REVERSAL_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => (
+                  <code key={code}>{code}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="linked-list-reversal-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={LINKED_LIST_REVERSAL_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择链表反转步骤', 'Select a linked-list reversal step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(LINKED_LIST_REVERSAL_STEPS.length - 1, current + 1))}
+          disabled={activeStep === LINKED_LIST_REVERSAL_STEPS.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function FastSlowPointerVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [mode, setMode] = useState('middle');
+  const [activeStep, setActiveStep] = useState(0);
+  const scenario = FAST_SLOW_POINTER_SCENARIOS[mode];
+  const step = scenario.steps[activeStep];
+
+  const pointerLabels = [];
+  const nullPointers = [];
+  const annotations = [];
+  let pointerCards = [];
+
+  if (mode === 'middle') {
+    pointerLabels.push({ nodeId: step.slow, text: 'slow', tone: 'blue' });
+    pointerLabels.push({ nodeId: step.fast, text: 'fast', tone: 'orange' });
+    if (step.action === 'finish') {
+      pointerLabels.push({ nodeId: step.slow, text: 'middle', tone: 'green' });
+      annotations.push({ nodeId: step.slow, label: t('中点', 'middle'), tone: 'green' });
+      nullPointers.push('fast.next = None');
+    }
+    pointerCards = [
+      {
+        label: 'slow',
+        value: scenario.nodes[step.slow].value,
+        tone: 'blue',
+      },
+      {
+        label: 'fast',
+        value: scenario.nodes[step.fast].value,
+        tone: 'orange',
+      },
+    ];
+  } else if (mode === 'cycle') {
+    pointerLabels.push({ nodeId: 0, text: 'head', tone: 'gray' });
+    if (step.slow !== null) {
+      pointerLabels.push({ nodeId: step.slow, text: 'slow', tone: 'blue' });
+    }
+    if (step.fast !== null) {
+      pointerLabels.push({ nodeId: step.fast, text: 'fast', tone: 'orange' });
+    }
+    if (step.finder !== null) {
+      pointerLabels.push({ nodeId: step.finder, text: 'finder', tone: 'gold' });
+    }
+    if (step.action === 'finish') {
+      pointerLabels.push({ nodeId: step.finder, text: 'entry', tone: 'green' });
+      annotations.push({ nodeId: step.finder, label: t('入口', 'entry'), tone: 'green' });
+    }
+    pointerCards = [
+      {
+        label: 'slow',
+        value: step.slow === null ? 'None' : scenario.nodes[step.slow].value,
+        tone: 'blue',
+      },
+      {
+        label: step.fast === null ? 'finder' : 'fast',
+        value: step.fast === null
+          ? (step.finder === null ? 'None' : scenario.nodes[step.finder].value)
+          : scenario.nodes[step.fast].value,
+        tone: step.fast === null ? 'gold' : 'orange',
+      },
+    ];
+  } else {
+    if (step.lead !== null) {
+      pointerLabels.push({ nodeId: step.lead, text: 'lead', tone: 'orange' });
+    } else {
+      nullPointers.push('lead = None');
+    }
+    pointerLabels.push({ nodeId: step.follow, text: 'follow', tone: 'blue' });
+    if (step.action === 'finish') {
+      pointerLabels.push({ nodeId: step.follow, text: 'nth', tone: 'green' });
+      annotations.push({ nodeId: step.follow, label: t('第 2 个倒数节点', '2nd from end'), tone: 'green' });
+    }
+    pointerCards = [
+      {
+        label: 'lead',
+        value: step.lead === null ? 'None' : scenario.nodes[step.lead].value,
+        tone: 'orange',
+      },
+      {
+        label: 'follow',
+        value: scenario.nodes[step.follow].value,
+        tone: 'blue',
+      },
+    ];
+  }
+
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    move: t('同步推进', 'Move together'),
+    detect: t('检测相遇', 'Detect a meeting'),
+    reset: t('重置到头节点', 'Reset one pointer to head'),
+    locate: t('同步寻找入口', 'Walk to the entry together'),
+    advance: t('先拉开固定距离', 'Create the fixed gap'),
+    finish: t('读出答案', 'Read the answer'),
+  }[step.activeLine];
+
+  let title = '';
+  let detail = '';
+
+  if (mode === 'middle') {
+    if (step.action === 'start') {
+      title = t('初始化：slow 和 fast 都从头出发', 'Initialize: both slow and fast start at the head');
+      detail = t(
+        '每一轮 `slow` 走一步，`fast` 走两步。停止时，`slow` 落在中点。',
+        'Each loop moves slow by one and fast by two. When the loop stops, slow is at the middle.',
+      );
+    } else if (step.action === 'move') {
+      title = isEnglish
+        ? `Iteration ${step.iteration}: slow +1, fast +2`
+        : `第 ${step.iteration} 轮：slow 走 1，fast 走 2`;
+      detail = isEnglish
+        ? `slow is now at ${scenario.nodes[step.slow].value}; fast is now at ${scenario.nodes[step.fast].value}.`
+        : `slow 现在在值为 ${scenario.nodes[step.slow].value} 的节点；fast 现在在值为 ${scenario.nodes[step.fast].value} 的节点。`;
+    } else {
+      title = t('结束：slow 就是中点', 'Finish: slow is the middle');
+      detail = t(
+        '这条链长度为奇数，因此 `fast.next` 为空时，`slow` 正好落在值为 3 的中点。',
+        'This list has odd length, so when `fast.next` becomes empty, `slow` lands exactly on the middle node with value 3.',
+      );
+    }
+  } else if (mode === 'cycle') {
+    if (step.action === 'start') {
+      title = t('初始化：先只做环检测', 'Initialize: start with cycle detection');
+      detail = t(
+        '尾节点的 `next` 回到值为 2 的节点，因此链表里存在一个环。',
+        'The tail points back to the node with value 2, so the list contains a cycle.',
+      );
+    } else if (step.action === 'detect') {
+      title = isEnglish
+        ? `Detect step ${step.iteration}: fast closes the gap`
+        : `检测阶段第 ${step.iteration} 轮：fast 在缩小距离`;
+      detail = isEnglish
+        ? `slow is at ${scenario.nodes[step.slow].value}; fast is at ${scenario.nodes[step.fast].value}.`
+        : `slow 在值为 ${scenario.nodes[step.slow].value} 的节点；fast 在值为 ${scenario.nodes[step.fast].value} 的节点。`;
+    } else if (step.action === 'meet') {
+      title = t('相遇：两指针在环内碰头', 'Meeting point: the two pointers collide inside the cycle');
+      detail = t(
+        '这里只能说明“有环”，还不能直接说明入口位置。下一步要把一个指针重置回头节点。',
+        'This proves the cycle exists, but it does not yet reveal the entry. The next step resets one pointer to the head.',
+      );
+    } else if (step.action === 'reset') {
+      title = t('重置：finder 回到 head', 'Reset: send finder back to head');
+      detail = t(
+        '之后 `finder` 和 `slow` 都改为每次走一步。再次相遇的位置就是环入口。',
+        'From here, finder and slow both move one step at a time. Their next meeting point is the cycle entry.',
+      );
+    } else if (step.action === 'locate') {
+      title = t('再次相遇：定位到环入口', 'Second meeting: locate the cycle entry');
+      detail = t(
+        '两指针同步前进后一起到达值为 2 的节点，这正是入口。',
+        'After moving together, both pointers arrive at the node with value 2, which is the entry.',
+      );
+    } else {
+      title = t('结束：返回环入口', 'Finish: return the cycle entry');
+      detail = t(
+        'Floyd 的第二阶段把“是否有环”提升为“入口在哪里”。这和数组版 Duplicate Number 完全同构。',
+        'Floyd’s second phase upgrades cycle detection into cycle-entry location. The same structure appears in Find the Duplicate Number.',
+      );
+    }
+  } else {
+    if (step.action === 'start') {
+      title = t('初始化：lead 和 follow 从同一位置出发', 'Initialize: lead and follow start together');
+      detail = t(
+        '先让 `lead` 单独向前走 `n = 2` 步，之后保持固定间距同步移动。',
+        'First move `lead` forward by `n = 2` steps. Then keep the fixed gap while moving both pointers together.',
+      );
+    } else if (step.action === 'advance') {
+      title = t(
+        `拉开间距：第 ${step.progress} / ${step.total} 步`,
+        `Create the gap: step ${step.progress} / ${step.total}`,
+      );
+      detail = isEnglish
+        ? `lead is now at ${scenario.nodes[step.lead].value}; follow still waits at ${scenario.nodes[step.follow].value}.`
+        : `lead 现在在值为 ${scenario.nodes[step.lead].value} 的节点；follow 仍停在值为 ${scenario.nodes[step.follow].value} 的节点。`;
+    } else if (step.action === 'move') {
+      title = isEnglish
+        ? `Move together ${step.iteration}: keep the two-node gap`
+        : `同步前进第 ${step.iteration} 轮：保持 2 个节点的间距`;
+      detail = step.lead === null
+        ? t('lead 已经走到 `None`，因此 follow 停在倒数第 2 个节点。', 'lead has fallen off the list, so follow is now at the 2nd node from the end.')
+        : isEnglish
+          ? `lead is at ${scenario.nodes[step.lead].value}; follow is at ${scenario.nodes[step.follow].value}.`
+          : `lead 在值为 ${scenario.nodes[step.lead].value} 的节点；follow 在值为 ${scenario.nodes[step.follow].value} 的节点。`;
+    } else {
+      title = t('结束：follow 就是倒数第 2 个节点', 'Finish: follow is the 2nd node from the end');
+      detail = t(
+        '删除题通常会把这套模板和 dummy 头节点一起用，让跟随指针停在待删节点的前驱。',
+        'Removal problems usually combine this gap template with a dummy head so the trailing pointer lands on the predecessor of the node to delete.',
+      );
+    }
+  }
+
+  const modeLabels = {
+    middle: t('找中点', 'Find middle'),
+    cycle: t('找环入口', 'Cycle entry'),
+    gap: t('倒数第 n 个', 'Nth from end'),
+  };
+
+  return (
+    <section
+      className="fast-slow-pointer-visual"
+      aria-label={t('快慢指针模式演示', 'Fast-slow pointer walkthrough')}
+    >
+      <header className="fast-slow-pointer-header">
+        <div>
+          <p className="eyebrow">{t('快慢指针', 'Fast and slow pointers')}</p>
+          <h2>{t('同一种结构，三种相对速度', 'One structure, three relative-speed patterns')}</h2>
+          <p>{t(
+            '切换模式时，链表保持固定，变化的是指针速度和停止条件。',
+            'The lists stay fixed. What changes between modes is the relative speed and the stopping rule.',
+          )}</p>
+        </div>
+        <div className="fast-slow-pointer-mode" role="group" aria-label={t('选择快慢指针模式', 'Choose the fast-slow pointer mode')}>
+          {Object.entries(modeLabels).map(([key, label]) => (
+            <button
+              type="button"
+              className={mode === key ? 'active' : ''}
+              aria-pressed={mode === key}
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setActiveStep(0);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`fast-slow-pointer-step-copy ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {scenario.steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="fast-slow-pointer-workspace">
+        <div className="fast-slow-pointer-stage-card">
+          <div className="fast-slow-pointer-stage-heading">
+            <span>{modeLabels[mode]}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <LinkedListDiagram
+            ariaLabel={t('快慢指针节点与指针状态', 'Fast-slow pointer nodes and pointers')}
+            annotations={annotations}
+            edges={scenario.edges}
+            nodes={scenario.nodes}
+            nodeHighlights={step.nodeHighlights}
+            nullPointers={nullPointers}
+            pointerLabels={pointerLabels}
+            viewBoxHeight={mode === 'cycle' ? 304 : 280}
+          />
+          <div className="fast-slow-pointer-state-cards">
+            {pointerCards.map((card) => (
+              <div className={`fast-slow-pointer-state-card ${card.tone}`} key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="fast-slow-pointer-code" aria-label={t('当前模板代码', 'Active template code')}>
+          <div className="fast-slow-pointer-code-heading">
+            <span>{t('模板代码', 'Template code')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="fast-slow-pointer-code-lines">
+            {FAST_SLOW_POINTER_CODE_LINES[mode].map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => (
+                  <code key={code}>{code}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="fast-slow-pointer-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={scenario.steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择快慢指针演示步骤', 'Select a fast-slow pointer step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(scenario.steps.length - 1, current + 1))}
+          disabled={activeStep === scenario.steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -8155,6 +9197,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'binary-search-template-demo') {
     return <BinarySearchTemplateVisual />;
+  }
+
+  if (match?.[1] === 'linked-list-reversal-demo') {
+    return <LinkedListReversalVisual />;
+  }
+
+  if (match?.[1] === 'fast-slow-pointer-demo') {
+    return <FastSlowPointerVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
