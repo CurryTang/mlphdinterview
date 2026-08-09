@@ -167,6 +167,29 @@ False False False | True True True
 
 Rule of thumb: `>=` finds the left boundary, `>` finds the right boundary past any duplicates; subtract one from the corresponding boundary whenever "last" is needed.
 
+### When the Direction Flips, the Comparisons Mirror
+
+The table above assumes the compared quantity `f(mid)` (e.g. `nums[mid]`) is non-decreasing as `mid` grows. That holds for a sorted array, but not every problem satisfies it — in Koko Eating Bananas, `hours_needed(speed)` is non-increasing as `speed` grows (a higher speed takes no more time). When the direction reverses, the comparisons mirror as a whole:
+
+| Direction of `f(mid)` | Answer needed | `check(mid)` | Final answer |
+|---|---|---|---|
+| Non-decreasing | First `>= target` | `f(mid) >= target` | `lo` |
+| Non-decreasing | Last `<= target` | `f(mid) > target` | `lo - 1` |
+| Non-increasing | First `<= target` | `f(mid) <= target` | `lo` |
+| Non-increasing | Last `>= target` | `f(mid) < target` | `lo - 1` |
+
+Koko falls in the "non-increasing, first `<= target`" row: `check(mid) = hours_needed(mid) <= h`, returned directly as `lo` — matching the form already used in the Koko subsection of Module 2.
+
+The seven problems sorted into this table:
+
+| Category | Problems |
+|---|---|
+| Non-decreasing + `>=`/`>` | Binary Search, Search a 2D Matrix, Time Based Key-Value Store |
+| Non-increasing + `<=`/`<` | Koko Eating Bananas |
+| Structural exception, not a value-vs-threshold comparison | Find Minimum in Rotated Sorted Array (compares against `nums[-1]`, not an external threshold), Search in Rotated Sorted Array (key transform), Median of Two Sorted Arrays (partition balance condition) |
+
+The last category has no fixed comparison operator to plug in — `check(mid)` has to be constructed individually, following the derivation in each problem's Module 2 subsection.
+
 ### Two Ways to Set the Boundary Sentinel
 
 | Setup | Meaning | When to use |

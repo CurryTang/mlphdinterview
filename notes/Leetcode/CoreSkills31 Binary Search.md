@@ -167,6 +167,29 @@ False False False | True True True
 
 记忆方式：`>=` 找左边界，`>` 找跨过重复元素后的右边界；需要"最后一个"就在对应边界上减一。
 
+### 方向不同时，比较符号跟着镜像
+
+上面这张表假定被比较的量 `f(mid)`（比如 `nums[mid]`）随 `mid` 增大而非递减。这对排好序的数组成立，但不是所有题目都满足——Koko Eating Bananas 里 `hours_needed(speed)` 随 `speed` 增大而非递增（速度越快，耗时越少）。方向反过来时，比较符号整体镜像：
+
+| `f(mid)` 方向 | 想找的答案 | `check(mid)` | 最终答案 |
+|---|---|---|---|
+| 非递减 | 第一个 `>= target` | `f(mid) >= target` | `lo` |
+| 非递减 | 最后一个 `<= target` | `f(mid) > target` | `lo - 1` |
+| 非递增 | 第一个 `<= target` | `f(mid) <= target` | `lo` |
+| 非递增 | 最后一个 `>= target` | `f(mid) < target` | `lo - 1` |
+
+Koko 属于"非递增，第一个 `<= target`"这一行：`check(mid) = hours_needed(mid) <= h`，直接返回 `lo`，和 Module 2 里 Koko 那节的写法一致。
+
+七道题按这张表归类：
+
+| 归类 | 题目 |
+|---|---|
+| 非递减 + `>=`/`>` | Binary Search、Search a 2D Matrix、Time Based Key-Value Store |
+| 非递增 + `<=`/`<` | Koko Eating Bananas |
+| 结构性例外，不是"数值对阈值"的比较 | Find Minimum in Rotated Sorted Array（比较对象是 `nums[-1]`，不是外部阈值）、Search in Rotated Sorted Array（键值变换）、Median of Two Sorted Arrays（分割点平衡条件） |
+
+最后一类没有固定的比较符号可以套，`check(mid)` 要按 Module 2 里各自的推导单独构造。
+
 ### 边界哨兵的两种设置方式
 
 | 设置方式 | 含义 | 使用场景 |
