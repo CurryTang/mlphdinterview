@@ -1609,6 +1609,11 @@ const mlsysNoteDefinitions = [
     'MLSYS16 Modern MoE SonicMoE.md',
     null,
   ),
+  createTutorialDefinition(
+    '强化学习练习',
+    'MLSYS15 RL Infra 自测 35 问.md',
+    'MLSYS15 RL Infra 自测 35 问.en.md',
+  ),
 ];
 
 const mlsysNotes = mlsysNoteDefinitions.map((definition) => ({
@@ -1797,28 +1802,6 @@ const leetcodeNoteDefinitions = [
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
-  ...definition,
-  variants: {
-    zh: createVariant(definition.zhFileName, definition.directory),
-    en: createVariant(definition.enFileName, definition.directory),
-  },
-}));
-
-const llmNoteDefinitions = [
-  createTutorialDefinition(
-    'LLM八股 1 · World Model',
-    'LLMInterview01 World Model.md',
-    null,
-    { directory: 'LLMInterview', category: 'Models & Agents', difficulty: 'Placeholder' },
-  ),
-  createTutorialDefinition(
-    '强化学习练习',
-    'MLSYS15 RL Infra 自测 35 问.md',
-    'MLSYS15 RL Infra 自测 35 问.en.md',
-  ),
-];
-
-const llmNotes = llmNoteDefinitions.map((definition) => ({
   ...definition,
   variants: {
     zh: createVariant(definition.zhFileName, definition.directory),
@@ -2207,35 +2190,12 @@ const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition)
   },
 }));
 
-const mlInterviewNoteDefinitions = [
-  createTutorialDefinition(
-    'ML八股 · TODO',
-    'ML Interview TODO.md',
-    null,
-    { directory: 'MLInterview', category: 'TODO', difficulty: 'TODO' },
-  ),
-];
-
-const mlInterviewNotes = mlInterviewNoteDefinitions.map((definition) => ({
-  ...definition,
-  variants: {
-    zh: createVariant(definition.zhFileName, definition.directory),
-    en: createVariant(definition.enFileName, definition.directory),
-  },
-}));
-
 const noteSections = [
   {
     id: 'mlsys',
     title: 'MLSYS',
     description: 'GPU kernels, training systems, inference systems, and performance notes',
     notes: mlsysNotes,
-  },
-  {
-    id: 'llm',
-    title: 'LLM八股',
-    description: 'LLM concepts, agent training, RL practice, and interview drills',
-    notes: llmNotes,
   },
   {
     id: 'quant',
@@ -2260,12 +2220,6 @@ const noteSections = [
     title: '业务算法',
     description: '从一次线上请求出发，拆解召回、排序、列表决策、生成式方法与实验闭环',
     notes: businessAlgorithmNotes,
-  },
-  {
-    id: 'ml-interview',
-    title: 'ML八股',
-    description: 'TODO: machine learning fundamentals and interview drills',
-    notes: mlInterviewNotes,
   },
   {
     id: 'leetcode',
@@ -2380,17 +2334,13 @@ const homeSectionCopy = {
       title: 'MLSYS',
       description: 'GPU kernel、训练系统、推理系统与性能分析',
     },
-    llm: {
-      title: 'LLM八股',
-      description: 'LLM 基础、Agent 训练、强化学习与面试题',
-    },
     quant: {
       title: 'Quant',
       description: '概率、马尔可夫链、期望与面试数学题',
     },
     mlcoding: {
       title: 'ML Coding',
-      description: '从零实现 tokenizer、attention、训练循环等机器学习组件',
+      description: '从零实现 tokenizer、attention、训练循环等机器学习组件，附机器学习基础与面试题',
     },
     'system-design': {
       title: 'System Design',
@@ -2399,10 +2349,6 @@ const homeSectionCopy = {
     'business-algorithm': {
       title: '业务算法',
       description: '沿一次线上请求拆解召回、排序、列表决策、生成式方法与实验闭环',
-    },
-    'ml-interview': {
-      title: 'ML八股',
-      description: '机器学习基础与面试题，正在整理',
     },
     leetcode: {
       title: 'LeetCode',
@@ -2418,17 +2364,13 @@ const homeSectionCopy = {
       title: 'MLSYS',
       description: 'GPU kernels, training and inference systems, and performance analysis',
     },
-    llm: {
-      title: 'LLM Interview',
-      description: 'LLM fundamentals, agent training, reinforcement learning, and interview review',
-    },
     quant: {
       title: 'Quant',
       description: 'Probability, Markov chains, expectation, and interview math',
     },
     mlcoding: {
       title: 'ML Coding',
-      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components',
+      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components, plus ML fundamentals interview questions',
     },
     'system-design': {
       title: 'System Design',
@@ -2437,10 +2379,6 @@ const homeSectionCopy = {
     'business-algorithm': {
       title: 'Business Algorithms',
       description: 'Retrieval, ranking, list decisions, generative methods, and experimentation along one production request',
-    },
-    'ml-interview': {
-      title: 'ML Interview',
-      description: 'Machine learning fundamentals and interview questions. Work in progress.',
     },
     leetcode: {
       title: 'LeetCode',
