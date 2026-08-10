@@ -213,7 +213,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
-    expect(screen.getByText('本板块共 31 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 29 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i })).toBeInTheDocument();

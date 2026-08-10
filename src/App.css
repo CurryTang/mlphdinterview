@@ -2155,6 +2155,686 @@
 }
 
 /* ── Monotonic stack unified template ───────────── */
+.simple-sort-race-visual,
+.efficient-sort-race-visual {
+  max-width: min(100%, 1040px);
+  margin: 1.4rem auto;
+  border: 1px solid rgba(24, 59, 76, 0.2);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(225, 145, 63, 0.18), transparent 26%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(235, 244, 243, 0.95));
+  box-shadow: 0 18px 40px rgba(31, 53, 66, 0.14);
+  overflow: hidden;
+}
+
+.simple-sort-race-visual {
+  --sort-ink: #16333f;
+  --sort-muted: #59707a;
+  --sort-blue: #1d5e75;
+  --sort-blue-soft: #e5f3f6;
+  --sort-orange: #cf7635;
+  --sort-orange-soft: #fff1e3;
+  --sort-green: #1d7d67;
+  --sort-green-soft: #e3f4ef;
+  --sort-gold: #bd7b25;
+  --sort-gold-soft: #fff5dd;
+}
+
+.efficient-sort-race-visual {
+  --sort-ink: #173541;
+  --sort-muted: #5d747e;
+  --sort-blue: #20637a;
+  --sort-blue-soft: #e6f2f7;
+  --sort-orange: #cb7331;
+  --sort-orange-soft: #fff1e3;
+  --sort-green: #1e7d66;
+  --sort-green-soft: #e2f4ed;
+  --sort-gold: #b77722;
+  --sort-gold-soft: #fff4dc;
+}
+
+.simple-sort-race-header,
+.efficient-sort-race-header {
+  border-bottom: 1px solid rgba(24, 59, 76, 0.12);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.05rem 0.92rem;
+}
+
+.simple-sort-race-header h2,
+.efficient-sort-race-header h2 {
+  margin: 0.18rem 0 0.32rem;
+  color: var(--sort-ink);
+  font: 700 clamp(1.22rem, 2.3vw, 1.72rem) "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.simple-sort-race-header p:not(.eyebrow),
+.efficient-sort-race-header p:not(.eyebrow) {
+  max-width: 720px;
+  margin: 0;
+  color: var(--sort-muted);
+  font-size: 0.86rem;
+  line-height: 1.58;
+}
+
+.simple-sort-race-mode,
+.efficient-sort-race-mode {
+  min-width: max-content;
+  border: 1px solid rgba(28, 77, 94, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+
+.simple-sort-race-mode button,
+.efficient-sort-race-mode button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5a717a;
+  cursor: pointer;
+  padding: 0.5rem 0.68rem;
+  font: 800 0.72rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-mode button.active,
+.efficient-sort-race-mode button.active {
+  background: var(--sort-blue);
+  box-shadow: 0 4px 12px rgba(24, 59, 76, 0.12);
+  color: #ffffff;
+}
+
+.simple-sort-race-step-copy,
+.efficient-sort-race-step-copy {
+  min-height: 88px;
+  border-left: 5px solid var(--sort-blue);
+  border-bottom: 1px solid rgba(24, 59, 76, 0.1);
+  background: rgba(255, 255, 255, 0.58);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  column-gap: 0.72rem;
+  row-gap: 0.1rem;
+  padding: 0.72rem 1.05rem;
+}
+
+.simple-sort-race-step-copy.compare,
+.simple-sort-race-step-copy.pick,
+.simple-sort-race-step-copy.passStart,
+.simple-sort-race-step-copy.updateMin,
+.efficient-sort-race-step-copy.split,
+.efficient-sort-race-step-copy.prepare,
+.efficient-sort-race-step-copy.pivot,
+.efficient-sort-race-step-copy.buildNode,
+.efficient-sort-race-step-copy.heapBuilt {
+  border-left-color: var(--sort-orange);
+}
+
+.simple-sort-race-step-copy.shift,
+.simple-sort-race-step-copy.swap,
+.simple-sort-race-step-copy.insert,
+.simple-sort-race-step-copy.place,
+.simple-sort-race-step-copy.passDone,
+.simple-sort-race-step-copy.earlyStop,
+.efficient-sort-race-step-copy.compare,
+.efficient-sort-race-step-copy.write,
+.efficient-sort-race-step-copy.drainLeft,
+.efficient-sort-race-step-copy.drainRight,
+.efficient-sort-race-step-copy.swap,
+.efficient-sort-race-step-copy.placePivot,
+.efficient-sort-race-step-copy.extract {
+  border-left-color: var(--sort-green);
+}
+
+.simple-sort-race-step-copy.finish,
+.efficient-sort-race-step-copy.finish,
+.efficient-sort-race-step-copy.base,
+.efficient-sort-race-step-copy.merged,
+.efficient-sort-race-step-copy.recurse,
+.efficient-sort-race-step-copy.heapifyDone {
+  border-left-color: #325b7d;
+}
+
+.simple-sort-race-step-copy > span,
+.efficient-sort-race-step-copy > span {
+  grid-row: 1 / 3;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--sort-blue);
+  color: #ffffff;
+  padding: 0.36rem 0.58rem;
+  font: 700 0.66rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-step-copy strong,
+.efficient-sort-race-step-copy strong {
+  color: var(--sort-ink);
+  font-size: 0.94rem;
+}
+
+.simple-sort-race-step-copy p,
+.efficient-sort-race-step-copy p {
+  margin: 0.08rem 0 0;
+  color: var(--sort-muted);
+  font-size: 0.79rem;
+  line-height: 1.55;
+}
+
+.simple-sort-race-workspace,
+.efficient-sort-race-workspace {
+  border-bottom: 1px solid rgba(24, 59, 76, 0.1);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.95fr);
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+}
+
+.simple-sort-race-stage-card,
+.efficient-sort-race-stage-card {
+  min-width: 0;
+  border: 1px solid rgba(29, 71, 87, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.82rem;
+}
+
+.simple-sort-race-stage-heading,
+.efficient-sort-race-stage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.simple-sort-race-stage-heading span,
+.efficient-sort-race-stage-heading span {
+  color: #5a727c;
+  font: 700 0.64rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.simple-sort-race-stage-heading strong,
+.efficient-sort-race-stage-heading strong {
+  color: var(--sort-ink);
+  font: 800 0.82rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-chart,
+.efficient-sort-race-chart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(74px, 1fr));
+  gap: 0.42rem;
+}
+
+.simple-sort-race-column,
+.efficient-sort-race-column {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.simple-sort-race-track,
+.efficient-sort-race-track {
+  height: 170px;
+  border: 1px solid rgba(27, 64, 80, 0.14);
+  border-bottom: 3px solid #2a4d5b;
+  border-radius: 8px 8px 5px 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(235, 243, 243, 0.56)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.05) 0 1px, transparent 1px 28px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.36rem 0.25rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.simple-sort-race-bar,
+.efficient-sort-race-bar {
+  width: 100%;
+  border: 1px solid rgba(18, 51, 66, 0.28);
+  border-radius: 7px 7px 4px 4px;
+  background: linear-gradient(180deg, #2d7087, #163d4b);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.simple-sort-race-bar span,
+.efficient-sort-race-bar span {
+  padding-top: 0.38rem;
+  color: #ffffff;
+  font: 800 0.78rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-column small,
+.efficient-sort-race-column small {
+  color: #70848b;
+  font: 650 0.6rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-tags,
+.efficient-sort-race-tags {
+  min-height: 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
+
+.simple-sort-race-tags i,
+.efficient-sort-race-tags i {
+  border-radius: 999px;
+  background: #e8eff1;
+  color: #4d6670;
+  padding: 0.12rem 0.34rem;
+  font: 700 0.54rem "IBM Plex Mono", "Courier New", monospace;
+  font-style: normal;
+}
+
+.simple-sort-race-column.active-range .simple-sort-race-track,
+.efficient-sort-race-column.active-range .efficient-sort-race-track {
+  border-color: rgba(32, 99, 122, 0.28);
+  box-shadow: inset 0 -4px rgba(32, 99, 122, 0.18);
+}
+
+.simple-sort-race-column.compare .simple-sort-race-bar,
+.efficient-sort-race-column.compare .efficient-sort-race-bar {
+  border-color: rgba(203, 115, 49, 0.78);
+  background: linear-gradient(180deg, #efbb82, #cf7635);
+  transform: translateY(-2px);
+}
+
+.simple-sort-race-column.move .simple-sort-race-bar,
+.efficient-sort-race-column.move .efficient-sort-race-bar {
+  border-color: rgba(30, 125, 102, 0.72);
+  background: linear-gradient(180deg, #69bca8, #1e7d66);
+  transform: translateY(-3px);
+}
+
+.simple-sort-race-column.settled .simple-sort-race-track,
+.efficient-sort-race-column.settled .efficient-sort-race-track {
+  border-color: rgba(40, 97, 123, 0.3);
+  background:
+    linear-gradient(180deg, rgba(228, 242, 248, 0.92), rgba(219, 236, 242, 0.92)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.simple-sort-race-column.settled .simple-sort-race-bar,
+.efficient-sort-race-column.settled .efficient-sort-race-bar {
+  border-color: rgba(32, 99, 122, 0.72);
+  background: linear-gradient(180deg, #77adcc, #20637a);
+}
+
+.simple-sort-race-column.sorted-prefix .simple-sort-race-track {
+  background:
+    linear-gradient(180deg, rgba(227, 244, 239, 0.94), rgba(238, 247, 243, 0.92)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.simple-sort-race-column.key-slot .simple-sort-race-bar {
+  border-color: rgba(189, 123, 37, 0.76);
+  background: linear-gradient(180deg, #e3bf76, #b77722);
+}
+
+.simple-sort-race-column.minimum .simple-sort-race-track {
+  border-color: rgba(189, 123, 37, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 245, 221, 0.98), rgba(255, 249, 235, 0.95)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.simple-sort-race-column.minimum .simple-sort-race-bar {
+  border-color: rgba(189, 123, 37, 0.76);
+  background: linear-gradient(180deg, #e3bf76, #b77722);
+}
+
+.efficient-sort-race-column.left-range .efficient-sort-race-track {
+  background:
+    linear-gradient(180deg, rgba(230, 242, 247, 0.98), rgba(241, 247, 251, 0.94)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.efficient-sort-race-column.right-range .efficient-sort-race-track {
+  background:
+    linear-gradient(180deg, rgba(255, 241, 227, 0.98), rgba(255, 247, 238, 0.94)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.efficient-sort-race-column.sorted-range .efficient-sort-race-track {
+  border-color: rgba(30, 125, 102, 0.26);
+  box-shadow: inset 0 -4px rgba(30, 125, 102, 0.18);
+}
+
+.efficient-sort-race-column.pivot .efficient-sort-race-bar {
+  border-color: rgba(183, 119, 34, 0.78);
+  background: linear-gradient(180deg, #e6c37f, #b77722);
+}
+
+.efficient-sort-race-column.scan .efficient-sort-race-track {
+  border-color: rgba(203, 115, 49, 0.32);
+}
+
+.efficient-sort-race-column.store .efficient-sort-race-track {
+  box-shadow: inset 0 -4px rgba(32, 99, 122, 0.18);
+}
+
+.efficient-sort-race-column.partition-left .efficient-sort-race-track {
+  background:
+    linear-gradient(180deg, rgba(226, 244, 237, 0.98), rgba(240, 248, 244, 0.94)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.efficient-sort-race-column.partition-right .efficient-sort-race-track {
+  background:
+    linear-gradient(180deg, rgba(255, 241, 227, 0.84), rgba(255, 248, 239, 0.9)),
+    repeating-linear-gradient(0deg, rgba(25, 58, 73, 0.04) 0 1px, transparent 1px 28px);
+}
+
+.efficient-sort-race-column.heap-zone .efficient-sort-race-track {
+  border-color: rgba(32, 99, 122, 0.3);
+}
+
+.efficient-sort-race-column.parent .efficient-sort-race-bar {
+  border-color: rgba(32, 99, 122, 0.78);
+  background: linear-gradient(180deg, #7db6cf, #20637a);
+}
+
+.efficient-sort-race-column.child .efficient-sort-race-bar {
+  border-color: rgba(203, 115, 49, 0.78);
+  background: linear-gradient(180deg, #efbb82, #cb7331);
+}
+
+.simple-sort-race-cards,
+.efficient-sort-race-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.simple-sort-race-card,
+.efficient-sort-race-card {
+  min-width: 0;
+  border: 1px solid rgba(28, 72, 88, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.58rem 0.65rem;
+}
+
+.simple-sort-race-card span,
+.efficient-sort-race-card span {
+  color: #69808a;
+  font: 700 0.6rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.simple-sort-race-card strong,
+.efficient-sort-race-card strong {
+  color: var(--sort-ink);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.simple-sort-race-code,
+.efficient-sort-race-code {
+  min-width: 0;
+  border: 1px solid #081d25;
+  border-radius: 9px;
+  background: #102d39;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow-x: auto;
+}
+
+.simple-sort-race-code-heading,
+.efficient-sort-race-code-heading {
+  min-width: 360px;
+  border-bottom: 1px solid rgba(204, 230, 238, 0.22);
+  background: #173c49;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.simple-sort-race-code-heading span,
+.efficient-sort-race-code-heading span {
+  color: #d9eaf0;
+  font: 750 0.62rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.simple-sort-race-code-heading strong,
+.efficient-sort-race-code-heading strong {
+  border-radius: 999px;
+  background: #ffe0b5;
+  color: #63320d;
+  padding: 0.22rem 0.48rem;
+  font: 800 0.58rem "IBM Plex Mono", "Courier New", monospace;
+  white-space: nowrap;
+}
+
+.simple-sort-race-code-lines,
+.efficient-sort-race-code-lines {
+  min-width: 360px;
+  display: grid;
+  align-content: center;
+  gap: 0.24rem;
+  padding: 0.68rem;
+}
+
+.simple-sort-race-code-lines > div,
+.efficient-sort-race-code-lines > div {
+  min-width: 360px;
+  border: 1px solid transparent;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.34rem 0.5rem;
+}
+
+.simple-sort-race-code-lines > div.active,
+.efficient-sort-race-code-lines > div.active {
+  border-color: #f3ad68;
+  border-left-color: #e97822;
+  background: #fff0d8;
+  box-shadow: 0 5px 12px rgba(5, 20, 27, 0.22);
+}
+
+.markdown-body .simple-sort-race-code code,
+.markdown-body .efficient-sort-race-code code {
+  display: block;
+  border-radius: 0;
+  background: transparent !important;
+  color: #edf8fa !important;
+  padding: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.56;
+  opacity: 1;
+  white-space: pre;
+}
+
+.markdown-body .simple-sort-race-code-lines > div.active code,
+.markdown-body .efficient-sort-race-code-lines > div.active code {
+  background: transparent !important;
+  color: #3b220f !important;
+  font-weight: 800;
+}
+
+.simple-sort-race-legend,
+.efficient-sort-race-legend {
+  border-bottom: 1px solid rgba(24, 59, 76, 0.1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.62rem 1.05rem;
+  color: #5c757f;
+  font: 700 0.66rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.simple-sort-race-legend span,
+.efficient-sort-race-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.simple-sort-race-legend i,
+.efficient-sort-race-legend i {
+  width: 0.8rem;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.simple-sort-race-legend i.compare,
+.efficient-sort-race-legend i.compare {
+  background: #cf7635;
+}
+
+.simple-sort-race-legend i.move,
+.efficient-sort-race-legend i.move {
+  background: #1e7d66;
+}
+
+.simple-sort-race-legend i.settled,
+.efficient-sort-race-legend i.settled {
+  background: #20637a;
+}
+
+.simple-sort-race-legend i.prefix {
+  background: #b77722;
+}
+
+.efficient-sort-race-legend i.range {
+  background: linear-gradient(135deg, #20637a, #cb7331);
+}
+
+.simple-sort-race-legend strong,
+.efficient-sort-race-legend strong {
+  margin-left: auto;
+  color: #6b818a;
+}
+
+.simple-sort-race-controls,
+.efficient-sort-race-controls {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 0.72rem;
+  padding: 0.72rem 1.05rem 0.88rem;
+}
+
+.simple-sort-race-controls button,
+.efficient-sort-race-controls button {
+  border: 1px solid rgba(27, 66, 82, 0.2);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #244b5b;
+  cursor: pointer;
+  padding: 0.45rem 0.68rem;
+  font-weight: 750;
+}
+
+.simple-sort-race-controls button.primary,
+.efficient-sort-race-controls button.primary {
+  border-color: var(--sort-blue);
+  background: var(--sort-blue);
+  color: #ffffff;
+}
+
+.simple-sort-race-controls button:disabled,
+.efficient-sort-race-controls button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.simple-sort-race-controls input,
+.efficient-sort-race-controls input {
+  width: 100%;
+  accent-color: var(--sort-blue);
+}
+
+@media (max-width: 760px) {
+  .simple-sort-race-header,
+  .efficient-sort-race-header {
+    flex-direction: column;
+  }
+
+  .simple-sort-race-mode,
+  .efficient-sort-race-mode {
+    width: 100%;
+  }
+
+  .simple-sort-race-workspace,
+  .efficient-sort-race-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-sort-race-cards,
+  .efficient-sort-race-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-sort-race-legend strong,
+  .efficient-sort-race-legend strong {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .simple-sort-race-step-copy,
+  .efficient-sort-race-step-copy {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-sort-race-step-copy > span,
+  .efficient-sort-race-step-copy > span {
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .simple-sort-race-chart,
+  .efficient-sort-race-chart {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .simple-sort-race-controls,
+  .efficient-sort-race-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .simple-sort-race-controls input,
+  .efficient-sort-race-controls input {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
 .monotonic-stack-visual {
   --mono-ink: #14323e;
   --mono-muted: #5f747d;

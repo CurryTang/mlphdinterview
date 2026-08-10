@@ -1675,20 +1675,8 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'Core Skills 10 · Insertion Sort',
+    'Core Skills 10 · Sorting Algorithms',
     'CoreSkills10 Insertion Sort.md',
-    null,
-    { directory: 'Leetcode', category: 'Sorting', difficulty: 'Easy' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 11 · Merge Sort',
-    'CoreSkills11 Merge Sort.md',
-    null,
-    { directory: 'Leetcode', category: 'Sorting', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 12 · Quick Sort',
-    'CoreSkills12 Quick Sort.md',
     null,
     { directory: 'Leetcode', category: 'Sorting', difficulty: 'Medium' },
   ),
@@ -6759,6 +6747,2256 @@ function RecordMinimumVisual() {
   );
 }
 
+const SORT_RACE_EXAMPLE = [5, 2, 8, 1, 6, 3];
+const SORT_RACE_MAX = Math.max(...SORT_RACE_EXAMPLE);
+
+function rangeInclusive(start, end) {
+  if (start > end) {
+    return [];
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
+
+function sortedIndicesFromSet(indices) {
+  return Array.from(indices).sort((left, right) => left - right);
+}
+
+function isIndexInRange(range, index) {
+  return Boolean(range) && index >= range[0] && index <= range[1];
+}
+
+function formatSortRaceRange(range) {
+  return range ? `[${range[0]}, ${range[1]}]` : '—';
+}
+
+function formatSortRaceIndex(index) {
+  return index === null || index === undefined ? '—' : index;
+}
+
+function snapshotSortRaceStep(step) {
+  return {
+    ...step,
+    array: [...step.array],
+    finalIndices: [...(step.finalIndices ?? [])],
+    sortedPrefixIndices: [...(step.sortedPrefixIndices ?? [])],
+    compareIndices: [...(step.compareIndices ?? [])],
+    moveIndices: [...(step.moveIndices ?? [])],
+    activeRange: step.activeRange ? [...step.activeRange] : null,
+    leftRange: step.leftRange ? [...step.leftRange] : null,
+    rightRange: step.rightRange ? [...step.rightRange] : null,
+    sortedRange: step.sortedRange ? [...step.sortedRange] : null,
+    mergePointers: step.mergePointers ? { ...step.mergePointers } : null,
+    quickPointers: step.quickPointers ? { ...step.quickPointers } : null,
+    heapPointers: step.heapPointers ? { ...step.heapPointers } : null,
+  };
+}
+
+function buildInsertionSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'outer',
+      array,
+      currentPass: 0,
+      keyValue: null,
+      keyIndex: null,
+      insertIndex: null,
+      probeIndex: null,
+      finalIndices: [],
+      sortedPrefixIndices: [0],
+      compareIndices: [],
+      moveIndices: [],
+      activeRange: [0, 0],
+    }),
+  ];
+
+  for (let i = 1; i < array.length; i += 1) {
+    const key = array[i];
+    let j = i - 1;
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'pick',
+      activeLine: 'save',
+      array,
+      currentPass: i,
+      keyValue: key,
+      keyIndex: i,
+      insertIndex: i,
+      probeIndex: j,
+      finalIndices: [],
+      sortedPrefixIndices: rangeInclusive(0, i - 1),
+      compareIndices: [],
+      moveIndices: [i],
+      activeRange: [0, i],
+    }));
+
+    while (j >= 0) {
+      steps.push(snapshotSortRaceStep({
+        kind: 'compare',
+        activeLine: 'shift',
+        array,
+        currentPass: i,
+        keyValue: key,
+        keyIndex: j + 1,
+        insertIndex: j + 1,
+        probeIndex: j,
+        finalIndices: [],
+        sortedPrefixIndices: rangeInclusive(0, i - 1),
+        compareIndices: [j, j + 1],
+        moveIndices: [],
+        activeRange: [0, i],
+      }));
+
+      if (array[j] <= key) {
+        break;
+      }
+
+      array[j + 1] = array[j];
+      steps.push(snapshotSortRaceStep({
+        kind: 'shift',
+        activeLine: 'shift',
+        array,
+        currentPass: i,
+        keyValue: key,
+        keyIndex: j,
+        insertIndex: j,
+        probeIndex: j,
+        finalIndices: [],
+        sortedPrefixIndices: [],
+        compareIndices: [j, j + 1],
+        moveIndices: [j, j + 1],
+        activeRange: [0, i],
+      }));
+
+      j -= 1;
+    }
+
+    array[j + 1] = key;
+    steps.push(snapshotSortRaceStep({
+      kind: 'insert',
+      activeLine: 'insert',
+      array,
+      currentPass: i,
+      keyValue: key,
+      keyIndex: null,
+      insertIndex: j + 1,
+      probeIndex: null,
+      finalIndices: [],
+      sortedPrefixIndices: rangeInclusive(0, i),
+      compareIndices: [],
+      moveIndices: [j + 1],
+      activeRange: [0, i],
+    }));
+  }
+
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    currentPass: array.length - 1,
+    keyValue: null,
+    keyIndex: null,
+    insertIndex: null,
+    probeIndex: null,
+    finalIndices: rangeInclusive(0, array.length - 1),
+    sortedPrefixIndices: rangeInclusive(0, array.length - 1),
+    compareIndices: [],
+    moveIndices: [],
+    activeRange: [0, array.length - 1],
+  }));
+
+  return steps;
+}
+
+function buildSelectionSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'outer',
+      array,
+      passIndex: 0,
+      minIndex: null,
+      scanIndex: null,
+      didSwap: false,
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      activeRange: [0, array.length - 1],
+    }),
+  ];
+  const finalIndices = [];
+
+  for (let i = 0; i < array.length - 1; i += 1) {
+    let minIndex = i;
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'pick',
+      activeLine: 'initMin',
+      array,
+      passIndex: i,
+      minIndex,
+      scanIndex: null,
+      didSwap: false,
+      finalIndices: [...finalIndices],
+      compareIndices: [],
+      moveIndices: [i],
+      activeRange: [i, array.length - 1],
+    }));
+
+    for (let j = i + 1; j < array.length; j += 1) {
+      steps.push(snapshotSortRaceStep({
+        kind: 'compare',
+        activeLine: 'scan',
+        array,
+        passIndex: i,
+        minIndex,
+        scanIndex: j,
+        didSwap: false,
+        finalIndices: [...finalIndices],
+        compareIndices: [minIndex, j],
+        moveIndices: [],
+        activeRange: [i, array.length - 1],
+      }));
+
+      if (array[j] < array[minIndex]) {
+        minIndex = j;
+        steps.push(snapshotSortRaceStep({
+          kind: 'updateMin',
+          activeLine: 'updateMin',
+          array,
+          passIndex: i,
+          minIndex,
+          scanIndex: j,
+          didSwap: false,
+          finalIndices: [...finalIndices],
+          compareIndices: [i, j],
+          moveIndices: [j],
+          activeRange: [i, array.length - 1],
+        }));
+      }
+    }
+
+    const didSwap = minIndex !== i;
+    if (didSwap) {
+      [array[i], array[minIndex]] = [array[minIndex], array[i]];
+    }
+    finalIndices.push(i);
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'place',
+      activeLine: 'swap',
+      array,
+      passIndex: i,
+      minIndex,
+      scanIndex: null,
+      didSwap,
+      finalIndices: [...finalIndices],
+      compareIndices: didSwap ? [i, minIndex] : [i],
+      moveIndices: didSwap ? [i, minIndex] : [i],
+      activeRange: [i, array.length - 1],
+    }));
+  }
+
+  finalIndices.push(array.length - 1);
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    passIndex: array.length - 1,
+    minIndex: null,
+    scanIndex: null,
+    didSwap: false,
+    finalIndices: [...finalIndices],
+    compareIndices: [],
+    moveIndices: [],
+    activeRange: [0, array.length - 1],
+  }));
+
+  return steps;
+}
+
+function buildBubbleSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'outer',
+      array,
+      passEnd: array.length - 1,
+      passNumber: 0,
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      activeRange: [0, array.length - 1],
+    }),
+  ];
+
+  let finalIndices = [];
+  let passNumber = 1;
+
+  for (let end = array.length - 1; end > 0; end -= 1, passNumber += 1) {
+    let swapped = false;
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'passStart',
+      activeLine: 'reset',
+      array,
+      passEnd: end,
+      passNumber,
+      finalIndices: [...finalIndices],
+      compareIndices: [],
+      moveIndices: [],
+      activeRange: [0, end],
+    }));
+
+    for (let i = 0; i < end; i += 1) {
+      steps.push(snapshotSortRaceStep({
+        kind: 'compare',
+        activeLine: 'scan',
+        array,
+        passEnd: end,
+        passNumber,
+        finalIndices: [...finalIndices],
+        compareIndices: [i, i + 1],
+        moveIndices: [],
+        activeRange: [0, end],
+      }));
+
+      if (array[i] > array[i + 1]) {
+        [array[i], array[i + 1]] = [array[i + 1], array[i]];
+        swapped = true;
+
+        steps.push(snapshotSortRaceStep({
+          kind: 'swap',
+          activeLine: 'swap',
+          array,
+          passEnd: end,
+          passNumber,
+          finalIndices: [...finalIndices],
+          compareIndices: [i, i + 1],
+          moveIndices: [i, i + 1],
+          activeRange: [0, end],
+        }));
+      }
+    }
+
+    if (!swapped) {
+      finalIndices = rangeInclusive(0, array.length - 1);
+      steps.push(snapshotSortRaceStep({
+        kind: 'earlyStop',
+        activeLine: 'check',
+        array,
+        passEnd: end,
+        passNumber,
+        finalIndices: [...finalIndices],
+        compareIndices: [],
+        moveIndices: [],
+        activeRange: [0, end],
+      }));
+      break;
+    }
+
+    finalIndices = rangeInclusive(end, array.length - 1);
+    steps.push(snapshotSortRaceStep({
+      kind: 'passDone',
+      activeLine: 'check',
+      array,
+      passEnd: end,
+      passNumber,
+      finalIndices: [...finalIndices],
+      compareIndices: [],
+      moveIndices: [end],
+      activeRange: [0, end],
+    }));
+  }
+
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    passEnd: 0,
+    passNumber,
+    finalIndices: rangeInclusive(0, array.length - 1),
+    compareIndices: [],
+    moveIndices: [],
+    activeRange: [0, array.length - 1],
+  }));
+
+  return steps;
+}
+
+const SIMPLE_SORT_RACE_STEPS = {
+  insertion: buildInsertionSortRaceSteps(),
+  selection: buildSelectionSortRaceSteps(),
+  bubble: buildBubbleSortRaceSteps(),
+};
+
+const SIMPLE_SORT_RACE_CODE_LINES = {
+  insertion: [
+    { id: 'outer', code: ['for i in range(1, len(arr)):', '    key = arr[i]; j = i - 1'] },
+    { id: 'save', code: ['key = arr[i]', 'j = i - 1'] },
+    { id: 'shift', code: ['while j >= 0 and arr[j] > key:', '    arr[j + 1] = arr[j]; j -= 1'] },
+    { id: 'insert', code: ['arr[j + 1] = key'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+  selection: [
+    { id: 'outer', code: ['for i in range(len(arr) - 1):'] },
+    { id: 'initMin', code: ['min_idx = i'] },
+    { id: 'scan', code: ['for j in range(i + 1, len(arr)):', '    if arr[j] < arr[min_idx]: ...'] },
+    { id: 'updateMin', code: ['if arr[j] < arr[min_idx]:', '    min_idx = j'] },
+    { id: 'swap', code: ['if min_idx != i:', '    arr[i], arr[min_idx] = arr[min_idx], arr[i]'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+  bubble: [
+    { id: 'outer', code: ['for end in range(len(arr) - 1, 0, -1):'] },
+    { id: 'reset', code: ['swapped = False'] },
+    { id: 'scan', code: ['for i in range(end):', '    if arr[i] > arr[i + 1]: ...'] },
+    { id: 'swap', code: ['arr[i], arr[i + 1] = arr[i + 1], arr[i]', 'swapped = True'] },
+    { id: 'check', code: ['if not swapped:', '    break'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+};
+
+function describeSimpleSortStep(mode, step, t) {
+  if (mode === 'insertion') {
+    if (step.kind === 'start') {
+      return {
+        activeLineLabel: t('初始化外层循环', 'Initialize the outer loop'),
+        title: t('开始：把长度 1 的前缀视为已排序', 'Start: treat the length-1 prefix as sorted'),
+        detail: t(
+          'Insertion sort 只维护“左侧前缀有序”。它不会提前保证任何位置已经是全局最终位置。',
+          'Insertion sort only maintains a sorted prefix on the left. It does not guarantee any globally final position early.',
+        ),
+        cards: [
+          { label: 'i', value: '—' },
+          { label: 'key', value: '—' },
+          { label: t('不变式', 'Invariant'), value: t('前缀 [0, 0] 已排序', 'prefix [0, 0] is sorted') },
+        ],
+      };
+    }
+
+    if (step.kind === 'pick') {
+      return {
+        activeLineLabel: t('取出 key', 'Save key'),
+        title: t(
+          `第 ${step.currentPass} 轮：取出 key = ${step.keyValue}`,
+          `Pass ${step.currentPass}: take key = ${step.keyValue}`,
+        ),
+        detail: t(
+          `进入本轮前，前缀 [0, ${step.currentPass - 1}] 已排序。接下来只需要为 key 找到插入位置。`,
+          `Before this pass, prefix [0, ${step.currentPass - 1}] is sorted. The only task now is to find the insertion position for the key.`,
+        ),
+        cards: [
+          { label: 'i', value: step.currentPass },
+          { label: 'key', value: step.keyValue },
+          { label: t('不变式', 'Invariant'), value: t(`前缀 [0, ${step.currentPass - 1}] 已排序`, `prefix [0, ${step.currentPass - 1}] is sorted`) },
+        ],
+      };
+    }
+
+    if (step.kind === 'compare') {
+      const probeValue = step.array[step.probeIndex];
+      const shouldShift = probeValue > step.keyValue;
+      return {
+        activeLineLabel: t('比较并判断是否右移', 'Compare and decide whether to shift'),
+        title: t(
+          `比较 arr[${step.probeIndex}] = ${probeValue} 与 key = ${step.keyValue}`,
+          `Compare arr[${step.probeIndex}] = ${probeValue} with key = ${step.keyValue}`,
+        ),
+        detail: shouldShift
+          ? t('当前值更大，需要继续右移，为 key 腾出位置。', 'The current value is larger, so it must shift right to open a slot for the key.')
+          : t('当前值不大于 key，可以停止右移。', 'The current value is not larger than the key, so the shifts can stop.'),
+        cards: [
+          { label: 'i', value: step.currentPass },
+          { label: 'key', value: step.keyValue },
+          { label: t('待比较下标', 'Probe index'), value: step.probeIndex },
+        ],
+      };
+    }
+
+    if (step.kind === 'shift') {
+      return {
+        activeLineLabel: t('右移较大元素', 'Shift the larger value to the right'),
+        title: t(
+          `右移 arr[${step.probeIndex}]，空位移动到 ${step.insertIndex}`,
+          `Shift arr[${step.probeIndex}] to the right; the gap moves to ${step.insertIndex}`,
+        ),
+        detail: t(
+          'Insertion sort 的代价主要来自位移，不是交换。对近乎有序的数据，这种位移通常很少。',
+          'Insertion sort pays mostly in shifts, not swaps. On nearly sorted input, those shifts are often rare.',
+        ),
+        cards: [
+          { label: 'i', value: step.currentPass },
+          { label: 'key', value: step.keyValue },
+          { label: t('当前空位', 'Current gap'), value: step.insertIndex },
+        ],
+      };
+    }
+
+    if (step.kind === 'insert') {
+      return {
+        activeLineLabel: t('写回 key', 'Write the key back'),
+        title: t(
+          `把 key = ${step.keyValue} 放到下标 ${step.insertIndex}`,
+          `Write key = ${step.keyValue} into index ${step.insertIndex}`,
+        ),
+        detail: t(
+          `这一轮结束后，前缀 [0, ${step.currentPass}] 已重新恢复为有序。`,
+          `After this pass, prefix [0, ${step.currentPass}] becomes sorted again.`,
+        ),
+        cards: [
+          { label: 'i', value: step.currentPass },
+          { label: 'key', value: step.keyValue },
+          { label: t('不变式', 'Invariant'), value: t(`前缀 [0, ${step.currentPass}] 已排序`, `prefix [0, ${step.currentPass}] is sorted`) },
+        ],
+      };
+    }
+
+    return {
+      activeLineLabel: t('结束', 'Finish'),
+      title: t('结束：整个数组有序', 'Finish: the whole array is sorted'),
+      detail: t(
+        'Insertion sort 直到最后一轮才把“局部有序前缀”扩展成“整个数组有序”。',
+        'Insertion sort turns the locally sorted prefix into a fully sorted array only at the last pass.',
+      ),
+      cards: [
+        { label: 'i', value: 'done' },
+        { label: 'key', value: '—' },
+        { label: t('最终状态', 'Final state'), value: t('所有位置已确定', 'all positions are sorted') },
+      ],
+    };
+  }
+
+  if (mode === 'selection') {
+    if (step.kind === 'start') {
+      return {
+        activeLineLabel: t('初始化外层循环', 'Initialize the outer loop'),
+        title: t('开始：每一轮只确定一个最小值的位置', 'Start: each pass fixes exactly one minimum'),
+        detail: t(
+          'Selection sort 的不变式是“前缀已经是最终位置”。它会完整扫描后缀，再做至多一次交换。',
+          'The invariant in selection sort is that the prefix already contains final positions. It scans the whole suffix, then performs at most one swap.',
+        ),
+        cards: [
+          { label: 'i', value: '—' },
+          { label: 'min_idx', value: '—' },
+          { label: t('不变式', 'Invariant'), value: t('当前没有最终前缀', 'no final prefix yet') },
+        ],
+      };
+    }
+
+    if (step.kind === 'pick') {
+      return {
+        activeLineLabel: t('初始化最小值下标', 'Initialize the minimum index'),
+        title: t(`第 ${step.passIndex} 轮：先令 min_idx = ${step.minIndex}`, `Pass ${step.passIndex}: start with min_idx = ${step.minIndex}`),
+        detail: t(
+          '接下来会线性扫描未排序后缀，看看是否存在更小的候选值。',
+          'The next step scans the unsorted suffix linearly to see whether a smaller candidate exists.',
+        ),
+        cards: [
+          { label: 'i', value: step.passIndex },
+          { label: 'min_idx', value: step.minIndex },
+          { label: t('已确定前缀', 'Final prefix'), value: step.passIndex === 0 ? '—' : `[0, ${step.passIndex - 1}]` },
+        ],
+      };
+    }
+
+    if (step.kind === 'compare') {
+      return {
+        activeLineLabel: t('扫描未排序后缀', 'Scan the unsorted suffix'),
+        title: t(
+          `比较 arr[${step.scanIndex}] = ${step.array[step.scanIndex]} 与 arr[${step.minIndex}] = ${step.array[step.minIndex]}`,
+          `Compare arr[${step.scanIndex}] = ${step.array[step.scanIndex]} with arr[${step.minIndex}] = ${step.array[step.minIndex]}`,
+        ),
+        detail: t(
+          'Selection sort 不立即交换。它先扫完整个后缀，再在本轮结束时统一放置最小值。',
+          'Selection sort does not swap immediately. It finishes scanning the suffix first, then places the minimum once at the end of the pass.',
+        ),
+        cards: [
+          { label: 'i', value: step.passIndex },
+          { label: 'min_idx', value: step.minIndex },
+          { label: t('扫描位置', 'Scan index'), value: step.scanIndex },
+        ],
+      };
+    }
+
+    if (step.kind === 'updateMin') {
+      return {
+        activeLineLabel: t('更新最小值下标', 'Update the minimum index'),
+        title: t(
+          `更新：min_idx = ${step.minIndex}`,
+          `Update: min_idx = ${step.minIndex}`,
+        ),
+        detail: t(
+          '后缀里出现了更小的值，因此本轮最终交换的目标位置也随之改变。',
+          'A smaller value appears in the suffix, so the target of the final swap changes as well.',
+        ),
+        cards: [
+          { label: 'i', value: step.passIndex },
+          { label: 'min_idx', value: step.minIndex },
+          { label: t('当前最小值', 'Current minimum'), value: step.array[step.minIndex] },
+        ],
+      };
+    }
+
+    if (step.kind === 'place') {
+      return {
+        activeLineLabel: t('把最小值放到前面', 'Place the minimum at the front'),
+        title: step.didSwap
+          ? t(`交换下标 ${step.passIndex} 与 ${step.minIndex}`, `Swap indices ${step.passIndex} and ${step.minIndex}`)
+          : t(`本轮无需交换，下标 ${step.passIndex} 已经是最小值`, `No swap this pass; index ${step.passIndex} is already the minimum`),
+        detail: t(
+          `本轮结束后，下标 ${step.passIndex} 进入最终位置。`,
+          `After this pass, index ${step.passIndex} is in its final position.`,
+        ),
+        cards: [
+          { label: 'i', value: step.passIndex },
+          { label: 'min_idx', value: step.minIndex },
+          { label: t('最终前缀', 'Final prefix'), value: `[0, ${step.passIndex}]` },
+        ],
+      };
+    }
+
+    return {
+      activeLineLabel: t('结束', 'Finish'),
+      title: t('结束：所有位置都已确定', 'Finish: every position is final'),
+      detail: t(
+        'Selection sort 的优点是每轮最多一次交换，缺点是无论输入如何都要做完整扫描。',
+        'Selection sort performs at most one swap per pass, but it pays for a full scan regardless of input order.',
+      ),
+      cards: [
+        { label: 'i', value: 'done' },
+        { label: 'min_idx', value: '—' },
+        { label: t('最终状态', 'Final state'), value: t('整个数组有序', 'the array is sorted') },
+      ],
+    };
+  }
+
+  if (step.kind === 'start') {
+    return {
+      activeLineLabel: t('初始化外层循环', 'Initialize the outer loop'),
+      title: t('开始：每一轮把当前最大值冒到右端', 'Start: each pass bubbles the current maximum to the right'),
+      detail: t(
+        'Bubble sort 只做相邻交换，因此最容易保持稳定性，也最容易加入提前退出优化。',
+        'Bubble sort only uses adjacent swaps, so it is easy to keep stable and easy to optimize with an early exit.',
+      ),
+      cards: [
+        { label: t('未排序右端', 'Unsorted end'), value: step.passEnd },
+        { label: t('交换状态', 'Swap state'), value: '—' },
+        { label: t('不变式', 'Invariant'), value: t('当前没有最终后缀', 'no final suffix yet') },
+      ],
+    };
+  }
+
+  if (step.kind === 'passStart') {
+    return {
+      activeLineLabel: t('重置 swapped 标记', 'Reset the swapped flag'),
+      title: t(
+        `第 ${step.passNumber} 轮：处理区间 [0, ${step.passEnd}]`,
+        `Pass ${step.passNumber}: process [0, ${step.passEnd}]`,
+      ),
+      detail: t(
+        '这一轮结束后，下标 end 会成为当前未排序区间中的最大值位置。',
+        'At the end of this pass, index end will contain the maximum of the current unsorted range.',
+      ),
+      cards: [
+        { label: t('end', 'end'), value: step.passEnd },
+        { label: t('交换状态', 'Swap state'), value: t('尚未交换', 'no swap yet') },
+        { label: t('已确定后缀', 'Final suffix'), value: step.passEnd === step.array.length - 1 ? '—' : `[${step.passEnd + 1}, ${step.array.length - 1}]` },
+      ],
+    };
+  }
+
+  if (step.kind === 'compare') {
+    return {
+      activeLineLabel: t('比较相邻元素', 'Compare adjacent values'),
+      title: t(
+        `比较 arr[${step.compareIndices[0]}] = ${step.array[step.compareIndices[0]]} 与 arr[${step.compareIndices[1]}] = ${step.array[step.compareIndices[1]]}`,
+        `Compare arr[${step.compareIndices[0]}] = ${step.array[step.compareIndices[0]]} with arr[${step.compareIndices[1]}] = ${step.array[step.compareIndices[1]]}`,
+      ),
+      detail: t(
+        '只有发生逆序时才交换。相等值不会互换，因此这版 bubble sort 是稳定的。',
+        'A swap happens only on an inversion. Equal values never cross, so this bubble sort remains stable.',
+      ),
+      cards: [
+        { label: t('end', 'end'), value: step.passEnd },
+        { label: t('比较对', 'Compared pair'), value: `[${step.compareIndices.join(', ')}]` },
+        { label: t('已确定后缀', 'Final suffix'), value: step.finalIndices.length ? `[${step.finalIndices[0]}, ${step.array.length - 1}]` : '—' },
+      ],
+    };
+  }
+
+  if (step.kind === 'swap') {
+    return {
+      activeLineLabel: t('交换逆序对', 'Swap the inversion'),
+      title: t(
+        `交换相邻逆序对 [${step.moveIndices.join(', ')}]`,
+        `Swap the adjacent inversion [${step.moveIndices.join(', ')}]`,
+      ),
+      detail: t(
+        '最大值会沿着相邻交换逐步向右移动。这也是“冒泡”这个名字的由来。',
+        'The maximum drifts right through adjacent swaps. That is the mechanical pattern behind the name.',
+      ),
+      cards: [
+        { label: t('end', 'end'), value: step.passEnd },
+        { label: t('交换状态', 'Swap state'), value: t('本轮已发生交换', 'a swap happened this pass') },
+        { label: t('已确定后缀', 'Final suffix'), value: step.finalIndices.length ? `[${step.finalIndices[0]}, ${step.array.length - 1}]` : '—' },
+      ],
+    };
+  }
+
+  if (step.kind === 'passDone') {
+    return {
+      activeLineLabel: t('检查是否提前结束', 'Check for an early exit'),
+      title: t(
+        `本轮结束：下标 ${step.passEnd} 进入最终位置`,
+        `Pass complete: index ${step.passEnd} is now final`,
+      ),
+      detail: t(
+        '这一轮至少发生过一次交换，因此还需要继续处理更短的未排序前缀。',
+        'At least one swap happened this pass, so a shorter unsorted prefix still remains.',
+      ),
+      cards: [
+        { label: t('end', 'end'), value: step.passEnd },
+        { label: t('交换状态', 'Swap state'), value: t('继续下一轮', 'continue to the next pass') },
+        { label: t('最终后缀', 'Final suffix'), value: `[${step.passEnd}, ${step.array.length - 1}]` },
+      ],
+    };
+  }
+
+  if (step.kind === 'earlyStop') {
+    return {
+      activeLineLabel: t('检查是否提前结束', 'Check for an early exit'),
+      title: t('本轮没有交换，数组已经有序', 'No swap this pass; the array is already sorted'),
+      detail: t(
+        '这就是 bubble sort 的最好情况 `O(n)`：扫描一轮后直接退出。',
+        'This is the `O(n)` best case in bubble sort: one full scan, then an immediate exit.',
+      ),
+      cards: [
+        { label: t('end', 'end'), value: step.passEnd },
+        { label: t('交换状态', 'Swap state'), value: t('提前结束', 'early exit') },
+        { label: t('最终状态', 'Final state'), value: t('所有位置已确定', 'all positions are sorted') },
+      ],
+    };
+  }
+
+  return {
+    activeLineLabel: t('结束', 'Finish'),
+    title: t('结束：整个数组有序', 'Finish: the whole array is sorted'),
+    detail: t(
+      'Bubble sort 的主要价值是相邻交换和提前退出这两个性质，而不是理论复杂度。',
+      'The main value of bubble sort is its adjacent-swap structure and early-exit rule, not its asymptotic complexity.',
+    ),
+    cards: [
+      { label: t('end', 'end'), value: 'done' },
+      { label: t('交换状态', 'Swap state'), value: '—' },
+      { label: t('最终状态', 'Final state'), value: t('整个数组有序', 'the array is sorted') },
+    ],
+  };
+}
+
+function SimpleSortRaceVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('insertion');
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = SIMPLE_SORT_RACE_STEPS[mode];
+  const step = steps[activeStep];
+  const modeLabels = {
+    insertion: 'Insertion',
+    selection: 'Selection',
+    bubble: 'Bubble',
+  };
+  const copy = describeSimpleSortStep(mode, step, t);
+
+  return (
+    <section
+      className="simple-sort-race-visual"
+      aria-label={t('简单排序对比演示', 'Simple sorting comparison walkthrough')}
+    >
+      <header className="simple-sort-race-header">
+        <div>
+          <p className="eyebrow">{t('O(n²) 家族', 'O(n²) family')}</p>
+          <h2>{t('同一组输入，比较位移、选最小值、相邻交换', 'One input, compared through shifts, min-selection, and adjacent swaps')}</h2>
+          <p>{t(
+            `固定数组 [${SORT_RACE_EXAMPLE.join(', ')}]。切换模式时，不改变输入，只改变“本轮不变式”和局部操作。`,
+            `The array stays fixed at [${SORT_RACE_EXAMPLE.join(', ')}]. Switching modes changes only the invariant and the local operation.`,
+          )}</p>
+        </div>
+        <div className="simple-sort-race-mode" role="group" aria-label={t('选择简单排序算法', 'Choose the simple sort')}>
+          {Object.entries(modeLabels).map(([key, label]) => (
+            <button
+              type="button"
+              className={mode === key ? 'active' : ''}
+              aria-pressed={mode === key}
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setActiveStep(0);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`simple-sort-race-step-copy ${step.kind}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="simple-sort-race-workspace">
+        <div className="simple-sort-race-stage-card">
+          <div className="simple-sort-race-stage-heading">
+            <span>{t('固定样例', 'Fixed sample')}</span>
+            <strong>[{SORT_RACE_EXAMPLE.join(', ')}]</strong>
+          </div>
+
+          <div className="simple-sort-race-chart" aria-label={t('简单排序数组状态', 'Simple sort array state')}>
+            {step.array.map((value, index) => {
+              const isCompared = step.compareIndices.includes(index);
+              const isMoved = step.moveIndices.includes(index);
+              const isSettled = step.finalIndices.includes(index);
+              const isSortedPrefix = mode === 'insertion' && step.sortedPrefixIndices.includes(index) && !isSettled;
+              const isKey = mode === 'insertion'
+                && step.insertIndex === index
+                && ['pick', 'compare', 'shift', 'insert'].includes(step.kind);
+              const isMinimum = mode === 'selection'
+                && step.minIndex === index
+                && ['pick', 'compare', 'updateMin', 'place'].includes(step.kind);
+              const inActiveRange = isIndexInRange(step.activeRange, index);
+              const tags = [];
+
+              if (isSettled) tags.push(t('final', 'final'));
+              else if (isSortedPrefix) tags.push(t('prefix', 'prefix'));
+              if (isKey) tags.push('key');
+              if (isMinimum) tags.push('min');
+
+              return (
+                <div
+                  className={[
+                    'simple-sort-race-column',
+                    inActiveRange ? 'active-range' : '',
+                    isCompared ? 'compare' : '',
+                    isMoved ? 'move' : '',
+                    isSettled ? 'settled' : '',
+                    isSortedPrefix ? 'sorted-prefix' : '',
+                    isKey ? 'key-slot' : '',
+                    isMinimum ? 'minimum' : '',
+                  ].filter(Boolean).join(' ')}
+                  key={index}
+                >
+                  <div className="simple-sort-race-track">
+                    <div
+                      className="simple-sort-race-bar"
+                      style={{ height: `${(value / SORT_RACE_MAX) * 100}%` }}
+                    >
+                      <span>{value}</span>
+                    </div>
+                  </div>
+                  <small>i = {index}</small>
+                  <div className="simple-sort-race-tags">
+                    {tags.length === 0
+                      ? <i>{t('—', '—')}</i>
+                      : tags.map((tag) => <i key={tag}>{tag}</i>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="simple-sort-race-cards">
+            {copy.cards.map((card) => (
+              <div className="simple-sort-race-card" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="simple-sort-race-code" aria-label={t('当前排序代码', 'Active sorting code')}>
+          <div className="simple-sort-race-code-heading">
+            <span>{modeLabels[mode]} sort</span>
+            <strong>{t('当前执行', 'Now')}: {copy.activeLineLabel}</strong>
+          </div>
+          <div className="simple-sort-race-code-lines">
+            {SIMPLE_SORT_RACE_CODE_LINES[mode].map((block) => (
+              <div
+                className={step.activeLine === block.id ? 'active' : ''}
+                aria-current={step.activeLine === block.id ? 'step' : undefined}
+                key={block.id}
+              >
+                {block.code.map((line, lineIndex) => (
+                  <code key={lineIndex}>{line}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="simple-sort-race-legend">
+        <span><i className="compare" />{t('本步比较', 'compared this step')}</span>
+        <span><i className="move" />{t('本步移动或交换', 'moved or swapped this step')}</span>
+        <span><i className="settled" />{t('已在最终位置', 'final position')}</span>
+        <span><i className="prefix" />{t('局部有序 / 当前角色', 'local invariant / current role')}</span>
+        <strong>{t('Insertion 只标记有序前缀；Selection / Bubble 会逐步标记最终位置。', 'Insertion marks a sorted prefix; Selection and Bubble gradually mark final positions.')}</strong>
+      </div>
+
+      <div className="simple-sort-race-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择简单排序步骤', 'Select a simple-sort step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function buildMergeSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'split',
+      array,
+      mid: null,
+      activeRange: [0, array.length - 1],
+      leftRange: null,
+      rightRange: null,
+      sortedRange: null,
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      mergePointers: null,
+    }),
+  ];
+
+  function sort(lo, hi) {
+    if (lo >= hi) {
+      steps.push(snapshotSortRaceStep({
+        kind: 'base',
+        activeLine: 'base',
+        array,
+        mid: lo,
+        activeRange: [lo, hi],
+        leftRange: null,
+        rightRange: null,
+        sortedRange: [lo, hi],
+        finalIndices: [],
+        compareIndices: [],
+        moveIndices: [],
+        mergePointers: null,
+      }));
+      return;
+    }
+
+    const mid = Math.floor((lo + hi) / 2);
+    steps.push(snapshotSortRaceStep({
+      kind: 'split',
+      activeLine: 'split',
+      array,
+      mid,
+      activeRange: [lo, hi],
+      leftRange: [lo, mid],
+      rightRange: [mid + 1, hi],
+      sortedRange: null,
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      mergePointers: null,
+    }));
+
+    sort(lo, mid);
+    sort(mid + 1, hi);
+
+    const left = array.slice(lo, mid + 1);
+    const right = array.slice(mid + 1, hi + 1);
+    let i = 0;
+    let j = 0;
+    let k = lo;
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'prepare',
+      activeLine: 'prepare',
+      array,
+      mid,
+      activeRange: [lo, hi],
+      leftRange: [lo, mid],
+      rightRange: [mid + 1, hi],
+      sortedRange: null,
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      mergePointers: { left: lo, right: mid + 1, write: lo },
+    }));
+
+    while (i < left.length && j < right.length) {
+      const leftIndex = lo + i;
+      const rightIndex = mid + 1 + j;
+
+      steps.push(snapshotSortRaceStep({
+        kind: 'compare',
+        activeLine: 'compare',
+        array,
+        mid,
+        activeRange: [lo, hi],
+        leftRange: [lo, mid],
+        rightRange: [mid + 1, hi],
+        sortedRange: null,
+        finalIndices: [],
+        compareIndices: [leftIndex, rightIndex],
+        moveIndices: [],
+        mergePointers: { left: leftIndex, right: rightIndex, write: k },
+      }));
+
+      let source = 'left';
+      if (left[i] <= right[j]) {
+        array[k] = left[i];
+        i += 1;
+      } else {
+        array[k] = right[j];
+        j += 1;
+        source = 'right';
+      }
+
+      steps.push(snapshotSortRaceStep({
+        kind: 'write',
+        activeLine: 'write',
+        array,
+        mid,
+        activeRange: [lo, hi],
+        leftRange: [lo, mid],
+        rightRange: [mid + 1, hi],
+        sortedRange: [lo, k],
+        finalIndices: [],
+        compareIndices: [],
+        moveIndices: [k],
+        mergePointers: {
+          left: i < left.length ? lo + i : null,
+          right: j < right.length ? mid + 1 + j : null,
+          write: k,
+        },
+        writeIndex: k,
+        writtenValue: array[k],
+        source,
+      }));
+
+      k += 1;
+    }
+
+    while (i < left.length) {
+      array[k] = left[i];
+      i += 1;
+
+      steps.push(snapshotSortRaceStep({
+        kind: 'drainLeft',
+        activeLine: 'drain',
+        array,
+        mid,
+        activeRange: [lo, hi],
+        leftRange: [lo, mid],
+        rightRange: [mid + 1, hi],
+        sortedRange: [lo, k],
+        finalIndices: [],
+        compareIndices: [],
+        moveIndices: [k],
+        mergePointers: {
+          left: i < left.length ? lo + i : null,
+          right: j < right.length ? mid + 1 + j : null,
+          write: k,
+        },
+        writeIndex: k,
+        writtenValue: array[k],
+        source: 'left',
+      }));
+
+      k += 1;
+    }
+
+    while (j < right.length) {
+      array[k] = right[j];
+      j += 1;
+
+      steps.push(snapshotSortRaceStep({
+        kind: 'drainRight',
+        activeLine: 'drain',
+        array,
+        mid,
+        activeRange: [lo, hi],
+        leftRange: [lo, mid],
+        rightRange: [mid + 1, hi],
+        sortedRange: [lo, k],
+        finalIndices: [],
+        compareIndices: [],
+        moveIndices: [k],
+        mergePointers: {
+          left: i < left.length ? lo + i : null,
+          right: j < right.length ? mid + 1 + j : null,
+          write: k,
+        },
+        writeIndex: k,
+        writtenValue: array[k],
+        source: 'right',
+      }));
+
+      k += 1;
+    }
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'merged',
+      activeLine: 'drain',
+      array,
+      mid,
+      activeRange: [lo, hi],
+      leftRange: null,
+      rightRange: null,
+      sortedRange: [lo, hi],
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      mergePointers: null,
+    }));
+  }
+
+  sort(0, array.length - 1);
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    mid: null,
+    activeRange: [0, array.length - 1],
+    leftRange: null,
+    rightRange: null,
+    sortedRange: [0, array.length - 1],
+    finalIndices: rangeInclusive(0, array.length - 1),
+    compareIndices: [],
+    moveIndices: [],
+    mergePointers: null,
+  }));
+
+  return steps;
+}
+
+function buildQuickSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const finalIndices = new Set();
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'pivot',
+      array,
+      activeRange: [0, array.length - 1],
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      quickPointers: null,
+      partitionBoundary: null,
+      pivotIndex: null,
+      pivotValue: null,
+    }),
+  ];
+
+  function sort(lo, hi) {
+    if (lo > hi) {
+      return;
+    }
+
+    if (lo === hi) {
+      finalIndices.add(lo);
+      steps.push(snapshotSortRaceStep({
+        kind: 'base',
+        activeLine: 'base',
+        array,
+        activeRange: [lo, hi],
+        finalIndices: sortedIndicesFromSet(finalIndices),
+        compareIndices: [lo],
+        moveIndices: [],
+        quickPointers: { store: lo, scan: null },
+        partitionBoundary: lo,
+        pivotIndex: lo,
+        pivotValue: array[lo],
+      }));
+      return;
+    }
+
+    let store = lo;
+    const pivotValue = array[hi];
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'pivot',
+      activeLine: 'pivot',
+      array,
+      activeRange: [lo, hi],
+      finalIndices: sortedIndicesFromSet(finalIndices),
+      compareIndices: [hi],
+      moveIndices: [],
+      quickPointers: { store, scan: null },
+      partitionBoundary: store,
+      pivotIndex: hi,
+      pivotValue,
+    }));
+
+    for (let scan = lo; scan < hi; scan += 1) {
+      steps.push(snapshotSortRaceStep({
+        kind: 'scan',
+        activeLine: 'scan',
+        array,
+        activeRange: [lo, hi],
+        finalIndices: sortedIndicesFromSet(finalIndices),
+        compareIndices: [scan, hi],
+        moveIndices: [],
+        quickPointers: { store, scan },
+        partitionBoundary: store,
+        pivotIndex: hi,
+        pivotValue,
+      }));
+
+      if (array[scan] < pivotValue) {
+        [array[scan], array[store]] = [array[store], array[scan]];
+        steps.push(snapshotSortRaceStep({
+          kind: 'swap',
+          activeLine: 'swap',
+          array,
+          activeRange: [lo, hi],
+          finalIndices: sortedIndicesFromSet(finalIndices),
+          compareIndices: [scan, hi],
+          moveIndices: [scan, store],
+          quickPointers: { store, scan },
+          partitionBoundary: store + 1,
+          pivotIndex: hi,
+          pivotValue,
+        }));
+        store += 1;
+      }
+    }
+
+    [array[store], array[hi]] = [array[hi], array[store]];
+    finalIndices.add(store);
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'placePivot',
+      activeLine: 'place',
+      array,
+      activeRange: [lo, hi],
+      finalIndices: sortedIndicesFromSet(finalIndices),
+      compareIndices: [],
+      moveIndices: [store, hi],
+      quickPointers: { store, scan: null },
+      partitionBoundary: store,
+      pivotIndex: store,
+      pivotValue: array[store],
+    }));
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'recurse',
+      activeLine: 'recurse',
+      array,
+      activeRange: [lo, hi],
+      finalIndices: sortedIndicesFromSet(finalIndices),
+      compareIndices: [],
+      moveIndices: [],
+      quickPointers: { store, scan: null },
+      partitionBoundary: store,
+      pivotIndex: store,
+      pivotValue: array[store],
+    }));
+
+    sort(lo, store - 1);
+    sort(store + 1, hi);
+  }
+
+  sort(0, array.length - 1);
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    activeRange: [0, array.length - 1],
+    finalIndices: rangeInclusive(0, array.length - 1),
+    compareIndices: [],
+    moveIndices: [],
+    quickPointers: null,
+    partitionBoundary: null,
+    pivotIndex: null,
+    pivotValue: null,
+  }));
+
+  return steps;
+}
+
+function buildHeapSortRaceSteps() {
+  const array = [...SORT_RACE_EXAMPLE];
+  const finalIndices = new Set();
+  const steps = [
+    snapshotSortRaceStep({
+      kind: 'start',
+      activeLine: 'build',
+      array,
+      heapEnd: array.length - 1,
+      phase: 'build',
+      activeRange: [0, array.length - 1],
+      finalIndices: [],
+      compareIndices: [],
+      moveIndices: [],
+      heapPointers: null,
+    }),
+  ];
+
+  function heapify(heapSize, root, phase, extractedEnd = null) {
+    let parent = root;
+
+    while (true) {
+      const left = 2 * parent + 1;
+      const right = 2 * parent + 2;
+      let largest = parent;
+      const compared = [parent];
+      if (left < heapSize) compared.push(left);
+      if (right < heapSize) compared.push(right);
+
+      steps.push(snapshotSortRaceStep({
+        kind: 'compare',
+        activeLine: 'compare',
+        array,
+        heapEnd: heapSize - 1,
+        phase,
+        extractedEnd,
+        activeRange: [0, heapSize - 1],
+        finalIndices: sortedIndicesFromSet(finalIndices),
+        compareIndices: compared,
+        moveIndices: [],
+        heapPointers: {
+          parent,
+          left: left < heapSize ? left : null,
+          right: right < heapSize ? right : null,
+          largest,
+        },
+      }));
+
+      if (left < heapSize && array[left] > array[largest]) {
+        largest = left;
+        steps.push(snapshotSortRaceStep({
+          kind: 'select',
+          activeLine: 'select',
+          array,
+          heapEnd: heapSize - 1,
+          phase,
+          extractedEnd,
+          activeRange: [0, heapSize - 1],
+          finalIndices: sortedIndicesFromSet(finalIndices),
+          compareIndices: [parent, left],
+          moveIndices: [left],
+          heapPointers: {
+            parent,
+            left,
+            right: right < heapSize ? right : null,
+            largest,
+          },
+        }));
+      }
+
+      if (right < heapSize && array[right] > array[largest]) {
+        largest = right;
+        steps.push(snapshotSortRaceStep({
+          kind: 'select',
+          activeLine: 'select',
+          array,
+          heapEnd: heapSize - 1,
+          phase,
+          extractedEnd,
+          activeRange: [0, heapSize - 1],
+          finalIndices: sortedIndicesFromSet(finalIndices),
+          compareIndices: [parent, right],
+          moveIndices: [right],
+          heapPointers: {
+            parent,
+            left: left < heapSize ? left : null,
+            right,
+            largest,
+          },
+        }));
+      }
+
+      if (largest === parent) {
+        steps.push(snapshotSortRaceStep({
+          kind: 'heapifyDone',
+          activeLine: 'done',
+          array,
+          heapEnd: heapSize - 1,
+          phase,
+          extractedEnd,
+          activeRange: [0, heapSize - 1],
+          finalIndices: sortedIndicesFromSet(finalIndices),
+          compareIndices: [parent],
+          moveIndices: [],
+          heapPointers: {
+            parent,
+            left: left < heapSize ? left : null,
+            right: right < heapSize ? right : null,
+            largest,
+          },
+        }));
+        return;
+      }
+
+      [array[parent], array[largest]] = [array[largest], array[parent]];
+      steps.push(snapshotSortRaceStep({
+        kind: 'swap',
+        activeLine: 'swap',
+        array,
+        heapEnd: heapSize - 1,
+        phase,
+        extractedEnd,
+        activeRange: [0, heapSize - 1],
+        finalIndices: sortedIndicesFromSet(finalIndices),
+        compareIndices: [parent, largest],
+        moveIndices: [parent, largest],
+        heapPointers: {
+          parent,
+          left: left < heapSize ? left : null,
+          right: right < heapSize ? right : null,
+          largest,
+        },
+      }));
+
+      parent = largest;
+    }
+  }
+
+  for (let i = Math.floor(array.length / 2) - 1; i >= 0; i -= 1) {
+    steps.push(snapshotSortRaceStep({
+      kind: 'buildNode',
+      activeLine: 'build',
+      array,
+      heapEnd: array.length - 1,
+      phase: 'build',
+      activeRange: [0, array.length - 1],
+      finalIndices: sortedIndicesFromSet(finalIndices),
+      compareIndices: [i],
+      moveIndices: [],
+      heapPointers: {
+        parent: i,
+        left: 2 * i + 1 < array.length ? 2 * i + 1 : null,
+        right: 2 * i + 2 < array.length ? 2 * i + 2 : null,
+        largest: i,
+      },
+    }));
+    heapify(array.length, i, 'build');
+  }
+
+  steps.push(snapshotSortRaceStep({
+    kind: 'heapBuilt',
+    activeLine: 'build',
+    array,
+    heapEnd: array.length - 1,
+    phase: 'build',
+    activeRange: [0, array.length - 1],
+    finalIndices: sortedIndicesFromSet(finalIndices),
+    compareIndices: [0],
+    moveIndices: [],
+    heapPointers: { parent: 0, left: 1, right: 2, largest: 0 },
+  }));
+
+  for (let end = array.length - 1; end > 0; end -= 1) {
+    [array[0], array[end]] = [array[end], array[0]];
+    finalIndices.add(end);
+
+    steps.push(snapshotSortRaceStep({
+      kind: 'extract',
+      activeLine: 'extract',
+      array,
+      heapEnd: end - 1,
+      phase: 'extract',
+      extractedEnd: end,
+      activeRange: end > 1 ? [0, end - 1] : [0, 0],
+      finalIndices: sortedIndicesFromSet(finalIndices),
+      compareIndices: [0, end],
+      moveIndices: [0, end],
+      heapPointers: {
+        parent: 0,
+        left: 1 < end ? 1 : null,
+        right: 2 < end ? 2 : null,
+        largest: 0,
+      },
+    }));
+
+    heapify(end, 0, 'extract', end);
+  }
+
+  finalIndices.add(0);
+  steps.push(snapshotSortRaceStep({
+    kind: 'finish',
+    activeLine: 'finish',
+    array,
+    heapEnd: -1,
+    phase: 'finish',
+    activeRange: null,
+    finalIndices: rangeInclusive(0, array.length - 1),
+    compareIndices: [],
+    moveIndices: [],
+    heapPointers: null,
+  }));
+
+  return steps;
+}
+
+const EFFICIENT_SORT_RACE_STEPS = {
+  merge: buildMergeSortRaceSteps(),
+  quick: buildQuickSortRaceSteps(),
+  heap: buildHeapSortRaceSteps(),
+};
+
+const EFFICIENT_SORT_RACE_CODE_LINES = {
+  merge: [
+    { id: 'base', code: ['if lo >= hi:', '    return'] },
+    { id: 'split', code: ['mid = (lo + hi) // 2', 'sort(lo, mid); sort(mid + 1, hi)'] },
+    { id: 'prepare', code: ['left = arr[lo:mid + 1]', 'right = arr[mid + 1:hi + 1]'] },
+    { id: 'compare', code: ['while i < len(left) and j < len(right):'] },
+    { id: 'write', code: ['    arr[k] = left[i] if left[i] <= right[j] else right[j]'] },
+    { id: 'drain', code: ['copy the remaining suffix from left or right'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+  quick: [
+    { id: 'base', code: ['if lo >= hi:', '    return'] },
+    { id: 'pivot', code: ['pivot = arr[hi]', 'store = lo'] },
+    { id: 'scan', code: ['for scan in range(lo, hi):'] },
+    { id: 'swap', code: ['if arr[scan] < pivot:', '    arr[scan], arr[store] = arr[store], arr[scan]', '    store += 1'] },
+    { id: 'place', code: ['arr[store], arr[hi] = arr[hi], arr[store]'] },
+    { id: 'recurse', code: ['quick_sort(lo, store - 1)', 'quick_sort(store + 1, hi)'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+  heap: [
+    { id: 'build', code: ['for i in range(n // 2 - 1, -1, -1):', '    heapify(n, i)'] },
+    { id: 'compare', code: ['left = 2 * i + 1', 'right = 2 * i + 2'] },
+    { id: 'select', code: ['largest = argmax(i, left, right) inside the heap'] },
+    { id: 'swap', code: ['if largest != i:', '    arr[i], arr[largest] = arr[largest], arr[i]', '    heapify(heap_size, largest)'] },
+    { id: 'done', code: ['if largest == i:', '    return'] },
+    { id: 'extract', code: ['for end in range(n - 1, 0, -1):', '    arr[0], arr[end] = arr[end], arr[0]', '    heapify(end, 0)'] },
+    { id: 'finish', code: ['return arr'] },
+  ],
+};
+
+function describeEfficientSortStep(mode, step, t) {
+  if (mode === 'merge') {
+    if (step.kind === 'start') {
+      return {
+        activeLineLabel: t('拆分当前区间', 'Split the current range'),
+        title: t('开始：对整个数组做分治', 'Start: apply divide and conquer to the full array'),
+        detail: t(
+          'Merge sort 先递归把子区间排好，再在返回阶段做线性合并。',
+          'Merge sort recursively sorts subranges first, then performs linear merges on the way back up.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: 'mid', value: '—' },
+          { label: t('不变式', 'Invariant'), value: t('子问题先有序，再合并', 'subproblems first, then merge') },
+        ],
+      };
+    }
+
+    if (step.kind === 'base') {
+      return {
+        activeLineLabel: t('命中长度 1 的基线', 'Hit the length-1 base case'),
+        title: t(
+          `基线：区间 ${formatSortRaceRange(step.activeRange)} 不再拆分`,
+          `Base case: range ${formatSortRaceRange(step.activeRange)} stops splitting`,
+        ),
+        detail: t(
+          '单个元素天然有序，但它还不是全局最终位置，只是一个已经排好的子问题。',
+          'A single element is already sorted, but it is not yet a globally final position; it is only a solved subproblem.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: 'mid', value: step.mid },
+          { label: t('状态', 'State'), value: t('局部已排序', 'locally sorted') },
+        ],
+      };
+    }
+
+    if (step.kind === 'split') {
+      return {
+        activeLineLabel: t('拆成左右两半', 'Split into left and right halves'),
+        title: t(
+          `拆分区间 ${formatSortRaceRange(step.activeRange)}，mid = ${step.mid}`,
+          `Split range ${formatSortRaceRange(step.activeRange)}, mid = ${step.mid}`,
+        ),
+        detail: t(
+          `左半是 ${formatSortRaceRange(step.leftRange)}，右半是 ${formatSortRaceRange(step.rightRange)}。`,
+          `The left half is ${formatSortRaceRange(step.leftRange)} and the right half is ${formatSortRaceRange(step.rightRange)}.`,
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: 'mid', value: step.mid },
+          { label: t('下一步', 'Next'), value: t('先递归左右子区间', 'recurse into both halves') },
+        ],
+      };
+    }
+
+    if (step.kind === 'prepare') {
+      return {
+        activeLineLabel: t('准备左右缓冲区', 'Prepare the left and right buffers'),
+        title: t(
+          `开始合并 ${formatSortRaceRange(step.activeRange)}`,
+          `Start merging ${formatSortRaceRange(step.activeRange)}`,
+        ),
+        detail: t(
+          '此时左右两半已经分别有序。接下来只需要用两个指针做线性合并。',
+          'At this point the two halves are already sorted individually. Only a two-pointer linear merge remains.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('指针', 'Pointers'), value: `i = ${step.mergePointers.left}, j = ${step.mergePointers.right}, k = ${step.mergePointers.write}` },
+          { label: t('不变式', 'Invariant'), value: t('left / right 各自有序', 'left / right are individually sorted') },
+        ],
+      };
+    }
+
+    if (step.kind === 'compare') {
+      return {
+        activeLineLabel: t('比较左右指针', 'Compare the two merge pointers'),
+        title: t(
+          `比较 arr[${step.compareIndices[0]}] = ${step.array[step.compareIndices[0]]} 与 arr[${step.compareIndices[1]}] = ${step.array[step.compareIndices[1]]}`,
+          `Compare arr[${step.compareIndices[0]}] = ${step.array[step.compareIndices[0]]} with arr[${step.compareIndices[1]}] = ${step.array[step.compareIndices[1]]}`,
+        ),
+        detail: t(
+          '稳定版本在相等时优先取左边，因此相等元素的原始相对顺序会被保留。',
+          'A stable implementation takes the left side first on ties, preserving the original order of equal values.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('指针', 'Pointers'), value: `i = ${step.mergePointers.left}, j = ${step.mergePointers.right}, k = ${step.mergePointers.write}` },
+          { label: t('比较结果', 'Comparison'), value: step.array[step.compareIndices[0]] <= step.array[step.compareIndices[1]] ? 'left <= right' : 'right < left' },
+        ],
+      };
+    }
+
+    if (step.kind === 'write') {
+      return {
+        activeLineLabel: t('把更小值写回数组', 'Write the smaller value back'),
+        title: t(
+          `把 ${step.source === 'left' ? 'left' : 'right'} 的值 ${step.writtenValue} 写到 arr[${step.writeIndex}]`,
+          `Write ${step.writtenValue} from the ${step.source} buffer into arr[${step.writeIndex}]`,
+        ),
+        detail: t(
+          '蓝绿色高亮表示已经合并好的前缀。写指针 `k` 只向右前进，不会回退。',
+          'The blue-green highlight marks the merged prefix. The write pointer `k` moves only to the right.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('写入位置', 'Write index'), value: step.writeIndex },
+          { label: t('已合并前缀', 'Merged prefix'), value: formatSortRaceRange(step.sortedRange) },
+        ],
+      };
+    }
+
+    if (step.kind === 'drainLeft' || step.kind === 'drainRight') {
+      return {
+        activeLineLabel: t('拷贝剩余后缀', 'Copy the remaining suffix'),
+        title: t(
+          `继续拷贝 ${step.source === 'left' ? 'left' : 'right'} 的剩余值到 arr[${step.writeIndex}]`,
+          `Copy the remaining ${step.source} value into arr[${step.writeIndex}]`,
+        ),
+        detail: t(
+          '一侧缓冲区耗尽后，另一侧的剩余元素已经保持有序，直接顺序写回即可。',
+          'Once one buffer is exhausted, the other side is already ordered and can be copied back directly.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('写入位置', 'Write index'), value: step.writeIndex },
+          { label: t('已合并前缀', 'Merged prefix'), value: formatSortRaceRange(step.sortedRange) },
+        ],
+      };
+    }
+
+    if (step.kind === 'merged') {
+      return {
+        activeLineLabel: t('本轮合并结束', 'Finish the current merge'),
+        title: t(
+          `区间 ${formatSortRaceRange(step.activeRange)} 已经局部有序`,
+          `Range ${formatSortRaceRange(step.activeRange)} is now locally sorted`,
+        ),
+        detail: t(
+          '之后它会作为更大子问题的一半继续参与上一层合并。',
+          'This range will now serve as one sorted half inside a larger merge.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('已排序子区间', 'Sorted subrange'), value: formatSortRaceRange(step.sortedRange) },
+          { label: t('状态', 'State'), value: t('等待上一层合并', 'waiting for the parent merge') },
+        ],
+      };
+    }
+
+    return {
+      activeLineLabel: t('结束', 'Finish'),
+      title: t('结束：整个数组已经排好序', 'Finish: the whole array is sorted'),
+      detail: t(
+        'Merge sort 的时间复杂度稳定在 `O(n log n)`，代价是这版实现需要 `O(n)` 额外空间。',
+        'Merge sort stays at `O(n log n)` time, at the cost of `O(n)` extra space in this implementation.',
+      ),
+      cards: [
+        { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+        { label: t('额外空间', 'Extra space'), value: 'O(n)' },
+        { label: t('最终状态', 'Final state'), value: t('稳定且有序', 'stable and sorted') },
+      ],
+    };
+  }
+
+  if (mode === 'quick') {
+    const store = step.quickPointers?.store ?? null;
+    const scan = step.quickPointers?.scan ?? null;
+
+    if (step.kind === 'start') {
+      return {
+        activeLineLabel: t('初始化 partition', 'Initialize the partition'),
+        title: t('开始：对整个数组做第一次 partition', 'Start: perform the first partition on the full array'),
+        detail: t(
+          '这版 quicksort 使用 Lomuto partition：`store` 指向下一个“小于 pivot”的写入位置。',
+          'This quicksort uses Lomuto partition: `store` points to the next slot for a value smaller than the pivot.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: '—' },
+          { label: t('不变式', 'Invariant'), value: t('先 partition，再递归两侧', 'partition first, recurse later') },
+        ],
+      };
+    }
+
+    if (step.kind === 'base') {
+      return {
+        activeLineLabel: t('命中基线', 'Hit the base case'),
+        title: t(
+          `基线：单点区间 ${formatSortRaceRange(step.activeRange)} 已经到位`,
+          `Base case: single-index range ${formatSortRaceRange(step.activeRange)} is already final`,
+        ),
+        detail: t(
+          '快排的“最终位置”来自 partition。单点区间不需要再做任何工作。',
+          'Quicksort gets final positions through partitioning. A single-index range needs no more work.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: step.pivotValue },
+          { label: t('状态', 'State'), value: t('该位置已最终确定', 'this position is final') },
+        ],
+      };
+    }
+
+    if (step.kind === 'pivot') {
+      return {
+        activeLineLabel: t('选择 pivot 并初始化 store', 'Choose the pivot and initialize store'),
+        title: t(
+          `选择 pivot = arr[${step.pivotIndex}] = ${step.pivotValue}`,
+          `Choose pivot = arr[${step.pivotIndex}] = ${step.pivotValue}`,
+        ),
+        detail: t(
+          '扫描区间时，`store` 左边保持 `< pivot`，`store` 到 `scan - 1` 保持 `>= pivot`。',
+          'During the scan, everything left of `store` stays `< pivot`, while `store .. scan - 1` stays `>= pivot`.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: `${step.pivotValue} @ ${step.pivotIndex}` },
+          { label: t('store', 'store'), value: store },
+        ],
+      };
+    }
+
+    if (step.kind === 'scan') {
+      return {
+        activeLineLabel: t('扫描 partition 区间', 'Scan the partition range'),
+        title: t(
+          `比较 arr[${scan}] = ${step.array[scan]} 与 pivot = ${step.pivotValue}`,
+          `Compare arr[${scan}] = ${step.array[scan]} with pivot = ${step.pivotValue}`,
+        ),
+        detail: t(
+          '如果当前值小于 pivot，就把它交换到 `store` 位置，并把 `store` 右移一格。',
+          'If the current value is smaller than the pivot, swap it into the `store` position and move `store` one step right.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: `${step.pivotValue} @ ${step.pivotIndex}` },
+          { label: t('指针', 'Pointers'), value: `store = ${store}, scan = ${scan}` },
+        ],
+      };
+    }
+
+    if (step.kind === 'swap') {
+      return {
+        activeLineLabel: t('把较小值交换到左边', 'Swap a smaller value into the left partition'),
+        title: t(
+          `arr[${scan}] < pivot，交换下标 ${step.moveIndices[0]} 与 ${step.moveIndices[1]}`,
+          `arr[${scan}] < pivot, so swap indices ${step.moveIndices[0]} and ${step.moveIndices[1]}`,
+        ),
+        detail: t(
+          '交换后，左侧分区边界右移一格。绿色区域就是已经确认 `< pivot` 的部分。',
+          'After the swap, the left-partition boundary moves one step right. The green region marks values already known to be `< pivot`.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: `${step.pivotValue} @ ${step.pivotIndex}` },
+          { label: t('下一条边界', 'Next boundary'), value: step.partitionBoundary },
+        ],
+      };
+    }
+
+    if (step.kind === 'placePivot') {
+      return {
+        activeLineLabel: t('把 pivot 放回最终位置', 'Place the pivot into its final position'),
+        title: t(
+          `交换 pivot 到下标 ${step.pivotIndex}`,
+          `Swap the pivot into index ${step.pivotIndex}`,
+        ),
+        detail: t(
+          'partition 完成后，pivot 左边都 `< pivot`，右边都 `>= pivot`，因此 pivot 的位置已经最终确定。',
+          'Once partition completes, everything left of the pivot is `< pivot` and everything right is `>= pivot`, so the pivot is now final.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: `${step.pivotValue} @ ${step.pivotIndex}` },
+          { label: t('状态', 'State'), value: t('pivot 已最终确定', 'pivot is now final') },
+        ],
+      };
+    }
+
+    if (step.kind === 'recurse') {
+      return {
+        activeLineLabel: t('递归左右两侧', 'Recurse on both sides'),
+        title: t(
+          `递归处理 ${formatSortRaceRange([step.activeRange[0], step.pivotIndex - 1])} 和 ${formatSortRaceRange([step.pivotIndex + 1, step.activeRange[1]])}`,
+          `Recurse on ${formatSortRaceRange([step.activeRange[0], step.pivotIndex - 1])} and ${formatSortRaceRange([step.pivotIndex + 1, step.activeRange[1]])}`,
+        ),
+        detail: t(
+          '快排的最终有序性来自“每个 pivot 都被放到最终位置”，然后对子区间重复同样的动作。',
+          'Quicksort becomes sorted because each pivot is placed in its final position, and the same action repeats on both subranges.',
+        ),
+        cards: [
+          { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+          { label: t('pivot', 'pivot'), value: `${step.pivotValue} @ ${step.pivotIndex}` },
+          { label: t('已确定位置数', 'Final positions'), value: step.finalIndices.length },
+        ],
+      };
+    }
+
+    return {
+      activeLineLabel: t('结束', 'Finish'),
+      title: t('结束：整个数组已经排好序', 'Finish: the whole array is sorted'),
+      detail: t(
+        '这版 quicksort 是原地的，但固定取末尾元素做 pivot 仍然有最坏 `O(n^2)` 的情况。',
+        'This quicksort is in-place, but choosing the last element as the pivot still leaves a worst-case `O(n^2)` path.',
+      ),
+      cards: [
+        { label: t('当前区间', 'Current range'), value: formatSortRaceRange(step.activeRange) },
+        { label: t('额外空间', 'Extra space'), value: t('平均 O(log n) 栈', 'O(log n) average stack') },
+        { label: t('最终状态', 'Final state'), value: t('原地且有序', 'in-place and sorted') },
+      ],
+    };
+  }
+
+  const parent = step.heapPointers?.parent ?? null;
+  const left = step.heapPointers?.left ?? null;
+  const right = step.heapPointers?.right ?? null;
+  const largest = step.heapPointers?.largest ?? null;
+  const heapLabel = step.heapEnd >= 0 ? `[0, ${step.heapEnd}]` : '—';
+  const finalSuffixLabel = step.heapEnd >= 0 && step.heapEnd < step.array.length - 1
+    ? `[${step.heapEnd + 1}, ${step.array.length - 1}]`
+    : (step.heapEnd < 0 ? `[0, ${step.array.length - 1}]` : '—');
+
+  if (step.kind === 'start') {
+    return {
+      activeLineLabel: t('开始建堆', 'Start building the heap'),
+      title: t('开始：先把数组原地建成最大堆', 'Start: build an in-place max heap first'),
+      detail: t(
+        'Heap sort 先完成一次 `O(n)` 建堆，再不断把堆顶最大值交换到数组末尾。',
+        'Heap sort first builds a max heap in `O(n)`, then repeatedly swaps the maximum root to the end of the array.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('最终后缀', 'Final suffix'), value: '—' },
+        { label: t('不变式', 'Invariant'), value: t('堆顶始终是当前最大值', 'the heap root is the current maximum') },
+      ],
+    };
+  }
+
+  if (step.kind === 'buildNode') {
+    return {
+      activeLineLabel: t('从最后一个非叶子节点开始 heapify', 'Heapify from the last internal node'),
+      title: t(
+        `建堆：对下标 ${parent} 做 heapify`,
+        `Build heap: heapify index ${parent}`,
+      ),
+      detail: t(
+        '建堆阶段从最后一个非叶子节点向前走，因为叶子节点天然满足堆性质。',
+        'The build phase walks backward from the last internal node because leaves already satisfy the heap property.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('节点', 'Nodes'), value: `p = ${formatSortRaceIndex(parent)}, l = ${formatSortRaceIndex(left)}, r = ${formatSortRaceIndex(right)}` },
+        { label: t('阶段', 'Phase'), value: t('建堆', 'build heap') },
+      ],
+    };
+  }
+
+  if (step.kind === 'compare') {
+    return {
+      activeLineLabel: t('比较父节点与孩子节点', 'Compare the parent with its children'),
+      title: t(
+        `检查 parent = ${parent}，left = ${formatSortRaceIndex(left)}，right = ${formatSortRaceIndex(right)}`,
+        `Inspect parent = ${parent}, left = ${formatSortRaceIndex(left)}, right = ${formatSortRaceIndex(right)}`,
+      ),
+      detail: t(
+        '孩子下标来自固定公式：`left = 2*i + 1`，`right = 2*i + 2`。只有堆区间内的下标才参与比较。',
+        'Child indices follow the fixed formulas `left = 2*i + 1` and `right = 2*i + 2`. Only indices inside the heap participate.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('节点', 'Nodes'), value: `p = ${formatSortRaceIndex(parent)}, l = ${formatSortRaceIndex(left)}, r = ${formatSortRaceIndex(right)}` },
+        { label: t('最终后缀', 'Final suffix'), value: finalSuffixLabel },
+      ],
+    };
+  }
+
+  if (step.kind === 'select') {
+    return {
+      activeLineLabel: t('更新当前最大值候选', 'Update the current largest candidate'),
+      title: t(
+        `largest 更新为下标 ${largest}`,
+        `Update largest to index ${largest}`,
+      ),
+      detail: t(
+        'heapify 的核心不是全局扫描，而是沿着一条从根到叶的路径不断下沉较小的值。',
+        'The core of heapify is not a global scan. It sinks the smaller value along one root-to-leaf path.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('largest', 'largest'), value: largest },
+        { label: t('阶段', 'Phase'), value: step.phase === 'build' ? t('建堆', 'build heap') : t('抽取后恢复堆', 'restore heap after extraction') },
+      ],
+    };
+  }
+
+  if (step.kind === 'swap') {
+    return {
+      activeLineLabel: t('交换父节点与更大孩子', 'Swap the parent with the larger child'),
+      title: t(
+        `交换下标 ${step.moveIndices[0]} 与 ${step.moveIndices[1]}`,
+        `Swap indices ${step.moveIndices[0]} and ${step.moveIndices[1]}`,
+      ),
+      detail: t(
+        '交换后，较小的值继续向下沉，直到该子树重新满足最大堆性质。',
+        'After the swap, the smaller value keeps sinking until the subtree satisfies the max-heap property again.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('交换节点', 'Swapped nodes'), value: `[${step.moveIndices.join(', ')}]` },
+        { label: t('最终后缀', 'Final suffix'), value: finalSuffixLabel },
+      ],
+    };
+  }
+
+  if (step.kind === 'heapifyDone') {
+    return {
+      activeLineLabel: t('当前子树恢复堆性质', 'The current subtree satisfies the heap property'),
+      title: t(
+        `以 ${parent} 为根的子树已经满足最大堆`,
+        `The subtree rooted at ${parent} now satisfies the max-heap property`,
+      ),
+      detail: t(
+        '如果 `largest == parent`，说明父节点已经不小于两个孩子，可以结束当前 heapify。',
+        'If `largest == parent`, the parent is already at least as large as both children, so the current heapify is done.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('largest', 'largest'), value: largest },
+        { label: t('状态', 'State'), value: t('当前子树已修复', 'current subtree restored') },
+      ],
+    };
+  }
+
+  if (step.kind === 'heapBuilt') {
+    return {
+      activeLineLabel: t('建堆完成', 'Finish building the heap'),
+      title: t('最大堆已经建好', 'The max heap is ready'),
+      detail: t(
+        '现在根节点就是整个未排序区间中的最大值，下一步可以把它交换到数组末尾。',
+        'Now the root is the maximum of the unsorted range, so the next step can swap it to the end of the array.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('根节点', 'Root'), value: step.array[0] },
+        { label: t('下一步', 'Next'), value: t('抽取最大值', 'extract the maximum') },
+      ],
+    };
+  }
+
+  if (step.kind === 'extract') {
+    return {
+      activeLineLabel: t('把堆顶最大值放到末尾', 'Move the maximum root to the end'),
+      title: t(
+        `交换堆顶与下标 ${step.extractedEnd}，该位置进入最终状态`,
+        `Swap the heap root with index ${step.extractedEnd}; that index is now final`,
+      ),
+      detail: t(
+        '抽取后，堆区间缩短一格。接下来只需要对根节点重新做一次 heapify。',
+        'After extraction, the heap shrinks by one position. Only the root needs another heapify.',
+      ),
+      cards: [
+        { label: t('当前堆', 'Current heap'), value: heapLabel },
+        { label: t('最终后缀', 'Final suffix'), value: finalSuffixLabel },
+        { label: t('阶段', 'Phase'), value: t('抽取最大值', 'extract maximum') },
+      ],
+    };
+  }
+
+  return {
+    activeLineLabel: t('结束', 'Finish'),
+    title: t('结束：整个数组已经排好序', 'Finish: the whole array is sorted'),
+    detail: t(
+      'Heap sort 保证最坏 `O(n log n)` 且额外空间 `O(1)`，但顺序访问和缓存局部性通常不如 quicksort。',
+      'Heap sort guarantees `O(n log n)` worst-case time with `O(1)` extra space, but its access pattern is usually less cache-friendly than quicksort.',
+    ),
+    cards: [
+      { label: t('当前堆', 'Current heap'), value: '—' },
+      { label: t('最终后缀', 'Final suffix'), value: finalSuffixLabel },
+      { label: t('最终状态', 'Final state'), value: t('所有位置已确定', 'all positions are final') },
+    ],
+  };
+}
+
+function EfficientSortRaceVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('merge');
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = EFFICIENT_SORT_RACE_STEPS[mode];
+  const step = steps[activeStep];
+  const modeLabels = {
+    merge: 'Merge',
+    quick: 'Quick',
+    heap: 'Heap',
+  };
+  const copy = describeEfficientSortStep(mode, step, t);
+
+  return (
+    <section
+      className="efficient-sort-race-visual"
+      aria-label={t('高效排序对比演示', 'Efficient sorting comparison walkthrough')}
+    >
+      <header className="efficient-sort-race-header">
+        <div>
+          <p className="eyebrow">{t('O(n log n) 家族', 'O(n log n) family')}</p>
+          <h2>{t('同一组输入，比较分治、partition、heapify', 'One input, compared through divide-and-conquer, partitioning, and heapify')}</h2>
+          <p>{t(
+            `固定数组 [${SORT_RACE_EXAMPLE.join(', ')}]。Merge 看子区间与双指针，Quick 看 pivot 与边界，Heap 看 parent / child 下沉。`,
+            `The array stays fixed at [${SORT_RACE_EXAMPLE.join(', ')}]. Merge exposes subranges and merge pointers, Quick exposes the pivot and boundary, and Heap exposes parent / child sift-down steps.`,
+          )}</p>
+        </div>
+        <div className="efficient-sort-race-mode" role="group" aria-label={t('选择高效排序算法', 'Choose the efficient sort')}>
+          {Object.entries(modeLabels).map(([key, label]) => (
+            <button
+              type="button"
+              className={mode === key ? 'active' : ''}
+              aria-pressed={mode === key}
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setActiveStep(0);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`efficient-sort-race-step-copy ${step.kind}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="efficient-sort-race-workspace">
+        <div className="efficient-sort-race-stage-card">
+          <div className="efficient-sort-race-stage-heading">
+            <span>{t('固定样例', 'Fixed sample')}</span>
+            <strong>[{SORT_RACE_EXAMPLE.join(', ')}]</strong>
+          </div>
+
+          <div className="efficient-sort-race-chart" aria-label={t('高效排序数组状态', 'Efficient sort array state')}>
+            {step.array.map((value, index) => {
+              const isSettled = step.finalIndices.includes(index);
+              const isCompared = step.compareIndices.includes(index);
+              const isMoved = step.moveIndices.includes(index);
+              const inActiveRange = isIndexInRange(step.activeRange, index);
+              const inLeftRange = isIndexInRange(step.leftRange, index);
+              const inRightRange = isIndexInRange(step.rightRange, index);
+              const inSortedRange = isIndexInRange(step.sortedRange, index);
+              const isPivot = mode === 'quick' && step.pivotIndex === index;
+              const isScan = mode === 'quick' && step.quickPointers?.scan === index;
+              const isStore = mode === 'quick' && step.quickPointers?.store === index;
+              const isPartitionLeft = mode === 'quick'
+                && step.partitionBoundary !== null
+                && inActiveRange
+                && index < step.partitionBoundary;
+              const isPartitionRight = mode === 'quick'
+                && step.partitionBoundary !== null
+                && inActiveRange
+                && index > step.partitionBoundary
+                && !isPivot;
+              const isHeapZone = mode === 'heap' && step.heapEnd >= 0 && index <= step.heapEnd;
+              const isParent = mode === 'heap' && step.heapPointers?.parent === index;
+              const isLeftChild = mode === 'heap' && step.heapPointers?.left === index;
+              const isRightChild = mode === 'heap' && step.heapPointers?.right === index;
+              const isMergeLeftPointer = mode === 'merge' && step.mergePointers?.left === index;
+              const isMergeRightPointer = mode === 'merge' && step.mergePointers?.right === index;
+              const isWriteIndex = mode === 'merge' && step.mergePointers?.write === index;
+              const tags = [];
+
+              if (isSettled) tags.push(t('final', 'final'));
+              if (mode === 'merge') {
+                if (inLeftRange) tags.push('L');
+                if (inRightRange) tags.push('R');
+                if (isMergeLeftPointer) tags.push('i');
+                if (isMergeRightPointer) tags.push('j');
+                if (isWriteIndex) tags.push('k');
+              } else if (mode === 'quick') {
+                if (isPivot) tags.push('pivot');
+                if (isStore) tags.push('store');
+                if (isScan) tags.push('scan');
+              } else {
+                if (isParent) tags.push('parent');
+                if (isLeftChild) tags.push('left');
+                if (isRightChild) tags.push('right');
+              }
+
+              return (
+                <div
+                  className={[
+                    'efficient-sort-race-column',
+                    inActiveRange ? 'active-range' : '',
+                    inLeftRange ? 'left-range' : '',
+                    inRightRange ? 'right-range' : '',
+                    inSortedRange ? 'sorted-range' : '',
+                    isCompared ? 'compare' : '',
+                    isMoved ? 'move' : '',
+                    isSettled ? 'settled' : '',
+                    isPivot ? 'pivot' : '',
+                    isScan ? 'scan' : '',
+                    isStore ? 'store' : '',
+                    isPartitionLeft ? 'partition-left' : '',
+                    isPartitionRight ? 'partition-right' : '',
+                    isHeapZone ? 'heap-zone' : '',
+                    isParent ? 'parent' : '',
+                    isLeftChild || isRightChild ? 'child' : '',
+                  ].filter(Boolean).join(' ')}
+                  key={index}
+                >
+                  <div className="efficient-sort-race-track">
+                    <div
+                      className="efficient-sort-race-bar"
+                      style={{ height: `${(value / SORT_RACE_MAX) * 100}%` }}
+                    >
+                      <span>{value}</span>
+                    </div>
+                  </div>
+                  <small>i = {index}</small>
+                  <div className="efficient-sort-race-tags">
+                    {tags.length === 0
+                      ? <i>{t('—', '—')}</i>
+                      : tags.map((tag) => <i key={tag}>{tag}</i>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="efficient-sort-race-cards">
+            {copy.cards.map((card) => (
+              <div className="efficient-sort-race-card" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="efficient-sort-race-code" aria-label={t('当前排序代码', 'Active sorting code')}>
+          <div className="efficient-sort-race-code-heading">
+            <span>{modeLabels[mode]} sort</span>
+            <strong>{t('当前执行', 'Now')}: {copy.activeLineLabel}</strong>
+          </div>
+          <div className="efficient-sort-race-code-lines">
+            {EFFICIENT_SORT_RACE_CODE_LINES[mode].map((block) => (
+              <div
+                className={step.activeLine === block.id ? 'active' : ''}
+                aria-current={step.activeLine === block.id ? 'step' : undefined}
+                key={block.id}
+              >
+                {block.code.map((line, lineIndex) => (
+                  <code key={lineIndex}>{line}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="efficient-sort-race-legend">
+        <span><i className="range" />{t('当前工作区间 / 堆区间', 'active subrange / heap')}</span>
+        <span><i className="compare" />{t('本步比较', 'compared this step')}</span>
+        <span><i className="move" />{t('本步写回或交换', 'written or swapped this step')}</span>
+        <span><i className="settled" />{t('已在最终位置', 'final position')}</span>
+        <strong>{t('Merge 标记 L / R / i / j / k；Quick 标记 pivot / store / scan；Heap 标记 parent / left / right。', 'Merge marks L / R / i / j / k; Quick marks pivot / store / scan; Heap marks parent / left / right.')}</strong>
+      </div>
+
+      <div className="efficient-sort-race-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择高效排序步骤', 'Select an efficient-sort step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const MONOTONIC_STACK_VALUES = [2, 1, 2, 4, 3];
 
 function buildMonotonicStackSteps(mode) {
@@ -9149,7 +11387,7 @@ function FastSlowPointerVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|three-sum-demo|rain-water-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -9213,6 +11451,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'rain-water-demo') {
     return <RainWaterVisual />;
+  }
+
+  if (match?.[1] === 'simple-sort-race-demo') {
+    return <SimpleSortRaceVisual />;
+  }
+
+  if (match?.[1] === 'efficient-sort-race-demo') {
+    return <EfficientSortRaceVisual />;
   }
 
   if (match?.[1] === 'high-dimensional-integral-demo') {
