@@ -201,7 +201,7 @@ describe('App', () => {
     const sidebar = document.querySelector('.notes-panel');
     expect(sidebar).not.toBeNull();
     expect(within(sidebar).getByRole('heading', { name: 'MLSYS' })).toBeInTheDocument();
-    expect(within(sidebar).getByText('本板块共 19 篇笔记')).toBeInTheDocument();
+    expect(within(sidebar).getByText('本板块共 18 篇笔记')).toBeInTheDocument();
     expect(within(sidebar).queryByText('LLM八股')).not.toBeInTheDocument();
     expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
   });

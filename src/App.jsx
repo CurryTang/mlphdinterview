@@ -1609,11 +1609,6 @@ const mlsysNoteDefinitions = [
     'MLSYS16 Modern MoE SonicMoE.md',
     null,
   ),
-  createTutorialDefinition(
-    '强化学习练习',
-    'MLSYS15 RL Infra 自测 35 问.md',
-    'MLSYS15 RL Infra 自测 35 问.en.md',
-  ),
 ];
 
 const mlsysNotes = mlsysNoteDefinitions.map((definition) => ({
@@ -1897,6 +1892,11 @@ const mlCodingNoteDefinitions = [
       difficulty: 'Hard',
     },
   ),
+  createTutorialDefinition(
+    '强化学习练习',
+    'MLSYS15 RL Infra 自测 35 问.md',
+    'MLSYS15 RL Infra 自测 35 问.en.md',
+  ),
 ];
 
 const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
@@ -2168,8 +2168,8 @@ const noteSections = [
   },
   {
     id: 'mlcoding',
-    title: 'ML Coding',
-    description: 'From-scratch machine learning implementation exercises',
+    title: 'ML Coding & 八股',
+    description: 'From-scratch machine learning implementation exercises, plus ML interview drills',
     notes: mlCodingNotes,
   },
   {
@@ -2302,8 +2302,8 @@ const homeSectionCopy = {
       description: '概率、马尔可夫链、期望与面试数学题',
     },
     mlcoding: {
-      title: 'ML Coding',
-      description: '从零实现 tokenizer、attention、训练循环等机器学习组件，附机器学习基础与面试题',
+      title: 'ML Coding & 八股',
+      description: '从零实现 tokenizer、attention、训练循环等机器学习组件，附强化学习自测与面试题',
     },
     'system-design': {
       title: 'System Design',
@@ -2332,8 +2332,8 @@ const homeSectionCopy = {
       description: 'Probability, Markov chains, expectation, and interview math',
     },
     mlcoding: {
-      title: 'ML Coding',
-      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components, plus ML fundamentals interview questions',
+      title: 'ML Coding & Interview',
+      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components, plus an RL self-test and interview questions',
     },
     'system-design': {
       title: 'System Design',
