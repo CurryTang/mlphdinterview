@@ -10605,6 +10605,194 @@ const FAST_SLOW_POINTER_SCENARIOS = {
   },
 };
 
+const ARRAY_DUPLICATE_NODES = [
+  { id: 0, value: 0, x: 96, y: 182, next: 1, region: 'tail', nextLabelOffset: 52 },
+  { id: 1, value: 1, x: 236, y: 182, next: 3, region: 'tail', nextLabelOffset: 52 },
+  { id: 3, value: 3, x: 376, y: 182, next: 2, region: 'tail', nextLabelOffset: 52 },
+  { id: 2, value: 2, x: 556, y: 118, next: 4, region: 'cycle', nextLabelOffset: 50, isEntry: true },
+  { id: 4, value: 4, x: 556, y: 246, next: 2, region: 'cycle', nextLabelOffset: 52 },
+];
+
+const ARRAY_DUPLICATE_EDGE_PATHS = {
+  '0-1': 'M 138 182 L 194 182',
+  '1-3': 'M 278 182 L 334 182',
+  '3-2': 'M 418 182 C 468 182, 492 138, 514 118',
+  '2-4': 'M 588 132 C 640 146, 646 218, 588 232',
+  '4-2': 'M 524 232 C 448 214, 446 148, 524 132',
+};
+
+const ARRAY_DUPLICATE_EDGES = [
+  { from: 0, to: 1, tone: 'tail' },
+  { from: 1, to: 3, tone: 'tail' },
+  { from: 3, to: 2, tone: 'tail' },
+  { from: 2, to: 4, tone: 'cycle' },
+  { from: 4, to: 2, tone: 'cycle-back' },
+];
+
+const ARRAY_DUPLICATE_CODE_LINES = [
+  { id: 'init', code: ['slow = fast = 0'] },
+  { id: 'phase1', code: ['while True:', '    slow = nums[slow]', '    fast = nums[nums[fast]]', '    if slow == fast:', '        break'] },
+  { id: 'reset', code: ['finder = 0'] },
+  { id: 'phase2', code: ['while finder != slow:', '    finder = nums[finder]', '    slow = nums[slow]'] },
+  { id: 'finish', code: ['return slow'] },
+];
+
+const ARRAY_DUPLICATE_STEPS = [
+  {
+    action: 'start',
+    slow: 0,
+    fast: 0,
+    finder: null,
+    phase: 1,
+    round: 0,
+    k: 0,
+    activeLine: 'init',
+    headerTone: 'init',
+    nodeHighlights: buildLinkedListHighlights([[0, 'current']]),
+  },
+  {
+    action: 'phase1',
+    slow: 1,
+    fast: 3,
+    finder: null,
+    phase: 1,
+    round: 1,
+    k: 1,
+    activeLine: 'phase1',
+    headerTone: 'phase1',
+    nodeHighlights: buildLinkedListHighlights([
+      [1, 'anchor'],
+      [3, 'current'],
+    ]),
+  },
+  {
+    action: 'phase1',
+    slow: 3,
+    fast: 4,
+    finder: null,
+    phase: 1,
+    round: 2,
+    k: 2,
+    activeLine: 'phase1',
+    headerTone: 'phase1',
+    nodeHighlights: buildLinkedListHighlights([
+      [3, 'anchor'],
+      [4, 'current'],
+    ]),
+  },
+  {
+    action: 'phase1',
+    slow: 2,
+    fast: 4,
+    finder: null,
+    phase: 1,
+    round: 3,
+    k: 3,
+    activeLine: 'phase1',
+    headerTone: 'phase1',
+    nodeHighlights: buildLinkedListHighlights([
+      [2, 'anchor'],
+      [4, 'current'],
+    ]),
+  },
+  {
+    action: 'meet',
+    slow: 4,
+    fast: 4,
+    finder: null,
+    phase: 1,
+    round: 4,
+    k: 4,
+    activeLine: 'phase1',
+    headerTone: 'phase1',
+    nodeHighlights: buildLinkedListHighlights([[4, 'meeting']]),
+  },
+  {
+    action: 'warning',
+    slow: 4,
+    fast: 4,
+    finder: null,
+    phase: 1,
+    round: 4,
+    k: 4,
+    activeLine: 'phase1',
+    headerTone: 'warning',
+    nodeHighlights: buildLinkedListHighlights([
+      [4, 'wrong'],
+      [2, 'result'],
+    ]),
+  },
+  {
+    action: 'reset',
+    slow: 4,
+    fast: null,
+    finder: 0,
+    phase: 2,
+    round: 0,
+    s: 0,
+    activeLine: 'reset',
+    headerTone: 'phase2',
+    nodeHighlights: buildLinkedListHighlights([
+      [4, 'meeting'],
+      [0, 'current'],
+    ]),
+  },
+  {
+    action: 'phase2',
+    slow: 2,
+    fast: null,
+    finder: 1,
+    phase: 2,
+    round: 1,
+    s: 1,
+    activeLine: 'phase2',
+    headerTone: 'phase2',
+    nodeHighlights: buildLinkedListHighlights([
+      [2, 'anchor'],
+      [1, 'current'],
+    ]),
+  },
+  {
+    action: 'phase2',
+    slow: 4,
+    fast: null,
+    finder: 3,
+    phase: 2,
+    round: 2,
+    s: 2,
+    activeLine: 'phase2',
+    headerTone: 'phase2',
+    nodeHighlights: buildLinkedListHighlights([
+      [4, 'anchor'],
+      [3, 'current'],
+    ]),
+  },
+  {
+    action: 'meet-entry',
+    slow: 2,
+    fast: null,
+    finder: 2,
+    phase: 2,
+    round: 3,
+    s: 3,
+    activeLine: 'phase2',
+    headerTone: 'phase2',
+    nodeHighlights: buildLinkedListHighlights([[2, 'result']]),
+  },
+  {
+    action: 'finish',
+    slow: 2,
+    fast: null,
+    finder: 2,
+    phase: 2,
+    round: 3,
+    s: 3,
+    activeLine: 'finish',
+    headerTone: 'finish',
+    nodeHighlights: buildLinkedListHighlights([[2, 'result']]),
+  },
+];
+
 function buildLinkedListEdgePath(source, target, type) {
   if (type === 'cycle') {
     return `M ${source.x + 42} ${source.y} C ${source.x + 100} ${source.y + 102}, ${target.x + 72} ${target.y + 102}, ${target.x} ${target.y + 30}`;
@@ -11285,10 +11473,355 @@ function FastSlowPointerVisual() {
   );
 }
 
+function ArrayDuplicateDiagram({ annotations, ariaLabel, pointerLabels, step, zoneLabels }) {
+  const labelsByNode = new Map(ARRAY_DUPLICATE_NODES.map((node) => [node.id, []]));
+  const annotationsByNode = new Map(ARRAY_DUPLICATE_NODES.map((node) => [node.id, []]));
+
+  pointerLabels.forEach((label) => {
+    if (label.nodeId !== null && label.nodeId !== undefined) {
+      labelsByNode.get(label.nodeId)?.push(label);
+    }
+  });
+
+  annotations.forEach((annotation) => {
+    if (annotation.nodeId !== null && annotation.nodeId !== undefined) {
+      annotationsByNode.get(annotation.nodeId)?.push(annotation);
+    }
+  });
+
+  return (
+    <svg
+      aria-label={ariaLabel}
+      className="array-duplicate-diagram-svg"
+      role="img"
+      viewBox="0 0 720 340"
+    >
+      <defs>
+        <marker
+          id="array-duplicate-arrow-tail"
+          markerHeight="8"
+          markerWidth="8"
+          orient="auto"
+          refX="8"
+          refY="4"
+          viewBox="0 0 8 8"
+        >
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="#1d596d" />
+        </marker>
+        <marker
+          id="array-duplicate-arrow-cycle"
+          markerHeight="8"
+          markerWidth="8"
+          orient="auto"
+          refX="8"
+          refY="4"
+          viewBox="0 0 8 8"
+        >
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="#8a6d0c" />
+        </marker>
+        <marker
+          id="array-duplicate-arrow-cycle-back"
+          markerHeight="8"
+          markerWidth="8"
+          orient="auto"
+          refX="8"
+          refY="4"
+          viewBox="0 0 8 8"
+        >
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="#8a6d0c" />
+        </marker>
+      </defs>
+
+      <g className="array-duplicate-zone-labels" aria-hidden="true">
+        <text x="148" y="82">{zoneLabels.tail}</text>
+        <text x="548" y="74">{zoneLabels.cycle}</text>
+      </g>
+
+      {ARRAY_DUPLICATE_EDGES.map((edge) => (
+        <path
+          className={`array-duplicate-edge ${edge.tone}`}
+          d={ARRAY_DUPLICATE_EDGE_PATHS[`${edge.from}-${edge.to}`]}
+          key={`${edge.from}-${edge.to}`}
+          markerEnd={`url(#array-duplicate-arrow-${edge.tone})`}
+        />
+      ))}
+
+      {ARRAY_DUPLICATE_NODES.map((node) => {
+        const nodeLabels = labelsByNode.get(node.id) ?? [];
+        return nodeLabels.map((label, index) => {
+          const width = Math.max(58, label.text.length * 7 + 22);
+          const labelX = node.x - width / 2;
+          const labelY = node.y - 78 - index * 28;
+          return (
+            <g className={`array-duplicate-pointer ${label.tone}`} key={`${node.id}-${label.text}`}>
+              <line x1={node.x} x2={node.x} y1={labelY + 20} y2={node.y - 28} />
+              <rect height="20" rx="9" ry="9" width={width} x={labelX} y={labelY} />
+              <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={labelY + 10}>
+                {label.text}
+              </text>
+            </g>
+          );
+        });
+      })}
+
+      {ARRAY_DUPLICATE_NODES.map((node) => {
+        const nodeAnnotations = annotationsByNode.get(node.id) ?? [];
+        return nodeAnnotations.map((annotation, index) => {
+          const width = Math.max(82, annotation.label.length * 7 + 24);
+          return (
+            <g className={`array-duplicate-annotation ${annotation.tone}`} key={`${node.id}-${annotation.label}`}>
+              <rect
+                height="20"
+                rx="9"
+                ry="9"
+                width={width}
+                x={node.x - width / 2}
+                y={node.y + 52 + index * 24}
+              />
+              <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y + 62 + index * 24}>
+                {annotation.label}
+              </text>
+            </g>
+          );
+        });
+      })}
+
+      {ARRAY_DUPLICATE_NODES.map((node) => {
+        const highlight = step.nodeHighlights[node.id] ?? '';
+        return (
+          <g
+            className={`array-duplicate-node ${node.region}${node.isEntry ? ' entry' : ''}${highlight ? ` ${highlight}` : ''}`}
+            key={node.id}
+          >
+            <rect height="50" rx="12" ry="12" width="84" x={node.x - 42} y={node.y - 25} />
+            <text className="array-duplicate-node-value" dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y - 2}>
+              {node.value}
+            </text>
+            <text className="array-duplicate-node-meta" dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y + node.nextLabelOffset}>
+              {`nums[${node.id}] = ${node.next}`}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function ArrayDuplicateVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const step = ARRAY_DUPLICATE_STEPS[activeStep];
+
+  const pointerLabels = [];
+  const annotations = [];
+
+  if (step.slow !== null && step.slow !== undefined) {
+    pointerLabels.push({ nodeId: step.slow, text: 'slow', tone: 'blue' });
+  }
+  if (step.fast !== null && step.fast !== undefined) {
+    pointerLabels.push({ nodeId: step.fast, text: 'fast', tone: 'orange' });
+  }
+  if (step.finder !== null && step.finder !== undefined) {
+    pointerLabels.push({ nodeId: step.finder, text: 'finder', tone: 'gold' });
+  }
+
+  if (step.action === 'warning') {
+    annotations.push({ nodeId: 4, label: t('若直接返回：4', 'returning now: 4'), tone: 'warning' });
+    annotations.push({ nodeId: 2, label: t('真正入口：2', 'true entrance: 2'), tone: 'success' });
+  }
+
+  if (step.action === 'meet-entry' || step.action === 'finish') {
+    annotations.push({ nodeId: 2, label: t('入口 = 重复值 = 2', 'entrance = duplicate = 2'), tone: 'success' });
+  }
+
+  const activeLineLabel = {
+    init: t('初始化', 'Initialize'),
+    phase1: t('第一阶段：找相遇点', 'Phase 1: find a meeting'),
+    reset: t('第二阶段：重置 finder', 'Phase 2: reset finder'),
+    phase2: t('第二阶段：同步找入口', 'Phase 2: walk to the entrance'),
+    finish: t('返回入口', 'Return the entrance'),
+  }[step.activeLine];
+
+  let title = '';
+  let detail = '';
+
+  if (step.action === 'start') {
+    title = t('把数组画成函数图', 'Render the array as a functional graph');
+    detail = t(
+      '固定示例 `nums = [1, 3, 4, 2, 2]`。尾部是 `0 -> 1 -> 3`，然后进入环 `2 -> 4 -> 2`。',
+      'The example is fixed at `nums = [1, 3, 4, 2, 2]`. The tail is `0 -> 1 -> 3`, which feeds into the cycle `2 -> 4 -> 2`.',
+    );
+  } else if (step.action === 'phase1') {
+    title = isEnglish
+      ? `Phase 1, round ${step.round}: slow +1, fast +2`
+      : `第一阶段第 ${step.round} 轮：slow 走 1，fast 走 2`;
+    detail = isEnglish
+      ? `The table in the note gives (slow, fast) = (${step.slow}, ${step.fast}) after this round.`
+      : `本轮结束后，表格中的位置正是 (slow, fast) = (${step.slow}, ${step.fast})。`;
+  } else if (step.action === 'meet') {
+    title = t('第一阶段结束：相遇点在 4', 'Phase 1 ends: the meeting point is 4');
+    detail = t(
+      '`slow` 和 `fast` 第一次在节点 `4` 相遇。这一步只说明“有环”，还没有得到真正入口。',
+      '`slow` and `fast` meet for the first time at node `4`. This only proves a cycle exists; it does not yet give the entrance.',
+    );
+  } else if (step.action === 'warning') {
+    title = t('这里直接返回会错', 'Returning here would be wrong');
+    detail = t(
+      '如果把第一阶段的相遇点 `4` 当答案返回，就会错过真正的重复值 `2`。这正是第二阶段必须存在的原因。',
+      'If you return the phase-one meeting point `4` directly, you miss the actual duplicate `2`. This is exactly why the second phase is necessary.',
+    );
+  } else if (step.action === 'reset') {
+    title = t('第二阶段开始：finder 回到 0', 'Phase 2 starts: reset finder to 0');
+    detail = t(
+      '`slow` 留在相遇点 `4`，`finder` 回到起点 `0`。接下来两者都改成每轮走一步。',
+      '`slow` stays at the meeting point `4`, and `finder` resets to the start `0`. From here, both move one step per round.',
+    );
+  } else if (step.action === 'phase2') {
+    title = isEnglish
+      ? `Phase 2, round ${step.round}: walk one step each`
+      : `第二阶段第 ${step.round} 轮：两者都走 1 步`;
+    detail = isEnglish
+      ? `This matches the note's second table: (finder, slow) = (${step.finder}, ${step.slow}).`
+      : `这一步与文中的第二张表一致： (finder, slow) = (${step.finder}, ${step.slow})。`;
+  } else if (step.action === 'meet-entry') {
+    title = t('恰好在第 3 轮到达入口 2', 'They reach the entrance 2 exactly on round 3');
+    detail = t(
+      '`s = μ = 3` 时，`finder` 和 `slow` 同时落在真正的环入口 `2`。',
+      'At `s = μ = 3`, `finder` and `slow` land on the true cycle entrance `2` at the same time.',
+    );
+  } else {
+    title = t('正确答案：返回 2', 'Correct answer: return 2');
+    detail = t(
+      '第二阶段把“相遇点 `4`”修正为“入口 `2`”。数组版 Duplicate Number 返回的是入口，而不是第一阶段的相遇点。',
+      'The second phase corrects “meeting point `4`” into “entrance `2`.” In Find The Duplicate Number, the returned value is the entrance, not the first meeting point.',
+    );
+  }
+
+  const phaseValue = step.phase === 1 ? t('第一阶段', 'Phase 1') : t('第二阶段', 'Phase 2');
+  const countValue = step.phase === 1
+    ? (step.k === 0 ? 'k = 0' : `k = ${step.k}`)
+    : `s = ${step.s} / μ = 3`;
+
+  const stateCards = [
+    { label: 'slow', value: String(step.slow), tone: 'blue' },
+    { label: 'fast', value: step.fast === null ? '—' : String(step.fast), tone: 'orange' },
+    { label: 'finder', value: step.finder === null ? '—' : String(step.finder), tone: 'gold' },
+    {
+      label: step.phase === 1 ? t('阶段 / k', 'phase / k') : t('阶段 / s', 'phase / s'),
+      value: `${phaseValue} · ${countValue}`,
+      tone: step.action === 'warning' ? 'warning' : step.action === 'finish' ? 'success' : 'gray',
+    },
+  ];
+
+  return (
+    <section
+      className="array-duplicate-visual"
+      aria-label={t('数组版 Floyd 第二阶段必要性演示', 'Why Floyd needs phase two on the array duplicate graph')}
+    >
+      <header className="array-duplicate-header">
+        <div>
+          <p className="eyebrow">{t('数组判重', 'Find The Duplicate Number')}</p>
+          <h2>{t('第一阶段只会到相遇点，不会直接到入口', 'Phase 1 reaches a meeting point, not necessarily the entrance')}</h2>
+          <p>{t(
+            '这个固定例子只演示一个 correctness gotcha：`slow = fast` 时停在 `4`，真正要返回的是第二阶段找到的入口 `2`。',
+            'This fixed example isolates one correctness gotcha: the `slow = fast` stop is at `4`, but the value to return is the entrance `2` found in phase 2.',
+          )}</p>
+        </div>
+        <div className="array-duplicate-summary" aria-label={t('示例参数', 'Example parameters')}>
+          <span>nums = [1, 3, 4, 2, 2]</span>
+          <span>μ = 3</span>
+          <span>λ = 2</span>
+          <span>{t('入口 = 2', 'entrance = 2')}</span>
+        </div>
+      </header>
+
+      <div className={`array-duplicate-step ${step.headerTone}`} aria-live="polite">
+        <span>{activeStep + 1} / {ARRAY_DUPLICATE_STEPS.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="array-duplicate-workspace">
+        <div className="array-duplicate-stage-card">
+          <div className="array-duplicate-stage-heading">
+            <span>{t('隐式图状态', 'Implicit graph state')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+
+          <div className="array-duplicate-diagram-shell">
+            <ArrayDuplicateDiagram
+              annotations={annotations}
+              ariaLabel={t('数组隐式图与指针状态', 'Implicit array graph and pointer state')}
+              pointerLabels={pointerLabels}
+              step={step}
+              zoneLabels={{ tail: t('尾部', 'tail'), cycle: t('环', 'cycle') }}
+            />
+          </div>
+
+          <div className="array-duplicate-state-cards">
+            {stateCards.map((card) => (
+              <div className={`array-duplicate-state-card ${card.tone}`} key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="array-duplicate-code" aria-label={t('当前代码', 'Current code')}>
+          <div className="array-duplicate-code-heading">
+            <span>{t('模板代码', 'Template code')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="array-duplicate-code-lines">
+            {ARRAY_DUPLICATE_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => (
+                  <code key={code}>{code}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="array-duplicate-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={ARRAY_DUPLICATE_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择数组版 Floyd 演示步骤', 'Select an array-duplicate demo step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(ARRAY_DUPLICATE_STEPS.length - 1, current + 1))}
+          disabled={activeStep === ARRAY_DUPLICATE_STEPS.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -11344,6 +11877,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'fast-slow-pointer-demo') {
     return <FastSlowPointerVisual />;
+  }
+
+  if (match?.[1] === 'array-duplicate-demo') {
+    return <ArrayDuplicateVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

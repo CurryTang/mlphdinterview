@@ -327,6 +327,61 @@ return slow
 
 This problem has no `ListNode`, but it uses exactly the same Floyd template as Linked List Cycle: fast-slow pointers work on any structure with a well-defined `next(i)`, not only literal linked-list nodes.
 
+### Why the Second Phase Is Necessary: A Congruence Argument
+
+Write the sequence visited from index `0` as $x_0, x_1, x_2, \ldots$, where $x_0 = 0$ and $x_{i+1} = \text{nums}[x_i]$. Let $\mu$ be the tail length ($x_0, \ldots, x_{\mu-1}$ lie outside the cycle and are all distinct), and let $\lambda$ be the cycle length ($x_\mu$ is the cycle entrance, which is the duplicate value itself). For $k \ge \mu$, $x_k$'s position on the cycle is $(k - \mu) \bmod \lambda$.
+
+After round $k$ of the first phase, `slow` is at $x_k$ and `fast` is at $x_{2k}$. They meet exactly when $x_k = x_{2k}$, i.e.
+
+$$
+(k - \mu) \equiv (2k - \mu) \pmod \lambda
+\quad\Longleftrightarrow\quad
+\lambda \mid k.
+$$
+
+The first meeting happens at the smallest $k$ satisfying $\lambda \mid k$ and $k \ge \mu$, call it $k^*$. The meeting point's position on the cycle is
+
+$$
+(k^* - \mu) \bmod \lambda = (-\mu) \bmod \lambda.
+$$
+
+This position is `0` (the entrance) only when $\lambda \mid \mu$; in general it is some other point on the cycle. This is why `slow` cannot be returned directly after the first phase: `slow` stops at "some meeting point satisfying $\lambda \mid k$," not at "the cycle entrance" — the two coincide only in a special case.
+
+The second phase resets `finder` to $x_0$ and leaves `slow` at the meeting point; both then advance one step per round. Suppose each has taken $s$ steps:
+
+- `finder` needs $s = \mu$ steps to reach the entrance — it is still on the tail and has to walk the full tail length first.
+- `slow`'s position is $\big((-\mu \bmod \lambda) + s\big) \bmod \lambda$; at $s = \mu$ this is always `0`, regardless of what $\mu \bmod \lambda$ happens to be.
+
+So `finder` and `slow` reach the entrance at the same time, at $s = \mu$. For $s < \mu$, `finder` is still on the tail, which is disjoint from the cycle, so they cannot meet earlier — $s = \mu$ is their first meeting, which is why the second phase's return value is always correct.
+
+#### Worked example: `nums = [1, 3, 4, 2, 2]`
+
+Visit sequence: $x_0=0, x_1=1, x_2=3, x_3=2, x_4=4, x_5=2, x_6=4, \ldots$. The tail is $x_0, x_1, x_2$ ($\mu = 3$), the cycle is $2 \to 4 \to 2$ ($\lambda = 2$), and the cycle entrance is `2` — the duplicate value.
+
+First phase:
+
+| Round | `slow` | `fast` | Met? |
+|---:|---|---|---|
+| 1 | 1 | 3 | No |
+| 2 | 3 | 4 | No |
+| 3 | 2 | 4 | No |
+| 4 | 4 | 4 | Yes |
+
+The first phase meets at `slow = 4` ($k^* = 4$, the smallest multiple of `2` that is at least $\mu=3$). Returning `slow` directly would give `4`, but the actual duplicate is `2`. This matches the argument above: $(-\mu) \bmod \lambda = (-3) \bmod 2 = 1$, which is the position one step past the entrance — that is `4`, not the entrance itself.
+
+Second phase:
+
+| Round | `finder` | `slow` | Met? |
+|---:|---|---|---|
+| 1 | 1 | 2 | No |
+| 2 | 3 | 4 | No |
+| 3 | 2 | 2 | Yes |
+
+After exactly $\mu = 3$ rounds, both meet at the true cycle entrance `2`, which is returned.
+
+```array-duplicate-demo
+```
+
 ### Doubly Linked List + Hash Map
 
 LRU Cache requires both `get` and `put` to run in `O(1)`. That means:
