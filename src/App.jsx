@@ -1887,52 +1887,15 @@ const quantNotes = quantNoteDefinitions.map((definition) => ({
 
 const mlCodingNoteDefinitions = [
   createTutorialDefinition(
-    'ML Coding 1 · Unicode & Pretokenization',
+    'ML Coding · 从零实现 LLM',
     'MLCoding01 Unicode Pretokenization.md',
     null,
-    { directory: 'MLCoding', category: 'Tokenizer', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 2 · BPE Training',
-    'MLCoding02 BPE Training.md',
-    null,
-    { directory: 'MLCoding', category: 'Tokenizer', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 3 · Tokenizer Runtime',
-    'MLCoding03 Tokenizer Runtime.md',
-    null,
-    { directory: 'MLCoding', category: 'Tokenizer', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 4 · Tensor Modules',
-    'MLCoding04 Tensor Modules.md',
-    null,
-    { directory: 'MLCoding', category: 'Transformer LM', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 5 · Attention & Transformer',
-    'MLCoding05 Attention Transformer.md',
-    null,
-    { directory: 'MLCoding', category: 'Transformer LM', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 6 · Training Components',
-    'MLCoding06 Training Components.md',
-    null,
-    { directory: 'MLCoding', category: 'Training', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 7 · Training Loop & Generation',
-    'MLCoding07 Training Loop Generation.md',
-    null,
-    { directory: 'MLCoding', category: 'Training', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'ML Coding 8 · Experiments & Ablations',
-    'MLCoding08 Experiments Ablations.md',
-    null,
-    { directory: 'MLCoding', category: 'Experiments', difficulty: 'Hard' },
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding · From-Scratch LLM Implementation',
+      category: 'From Scratch',
+      difficulty: 'Hard',
+    },
   ),
 ];
 
