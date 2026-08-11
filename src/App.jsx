@@ -10793,6 +10793,121 @@ const ARRAY_DUPLICATE_STEPS = [
   },
 ];
 
+const LRU_CACHE_CAPACITY = 2;
+
+const LRU_CACHE_OPERATIONS = [
+  { type: 'put', key: 1, value: 1, result: null },
+  { type: 'put', key: 2, value: 2, result: null },
+  { type: 'get', key: 1, result: 1 },
+  { type: 'put', key: 3, value: 3, result: null },
+  { type: 'get', key: 2, result: -1 },
+  { type: 'put', key: 4, value: 4, result: null },
+  { type: 'get', key: 1, result: -1 },
+  { type: 'get', key: 3, result: 3 },
+  { type: 'get', key: 4, result: 4 },
+];
+
+const LRU_CACHE_CODE_LINES = [
+  { id: 'class-def', code: ['class LRUCache:'] },
+  { id: 'remove-def', code: ['    def remove(self, node: Node) -> None:'] },
+  { id: 'remove-neighbors', code: ['        prev_node, next_node = node.prev, node.next'] },
+  { id: 'remove-prev-next', code: ['        prev_node.next = next_node'] },
+  { id: 'remove-next-prev', code: ['        next_node.prev = prev_node'] },
+  { id: 'insert-def', code: ['    def insert_before_tail(self, node: Node) -> None:'] },
+  { id: 'insert-prev', code: ['        prev_node = self.right.prev'] },
+  { id: 'insert-prev-next', code: ['        prev_node.next = node'] },
+  { id: 'insert-node-prev', code: ['        node.prev = prev_node'] },
+  { id: 'insert-node-next', code: ['        node.next = self.right'] },
+  { id: 'insert-right-prev', code: ['        self.right.prev = node'] },
+  { id: 'get-def', code: ['    def get(self, key: int) -> int:'] },
+  { id: 'get-lookup', code: ['        if key not in self.cache:'] },
+  { id: 'get-miss', code: ['            return -1'] },
+  { id: 'get-node', code: ['        node = self.cache[key]'] },
+  { id: 'get-remove', code: ['        self.remove(node)'] },
+  { id: 'get-insert', code: ['        self.insert_before_tail(node)'] },
+  { id: 'get-return', code: ['        return node.value'] },
+  { id: 'put-def', code: ['    def put(self, key: int, value: int) -> None:'] },
+  { id: 'put-lookup', code: ['        if key in self.cache:'] },
+  { id: 'put-remove-existing', code: ['            self.remove(self.cache[key])'] },
+  { id: 'put-node', code: ['        node = Node(key, value)'] },
+  { id: 'put-cache', code: ['        self.cache[key] = node'] },
+  { id: 'put-insert', code: ['        self.insert_before_tail(node)'] },
+  { id: 'put-capacity', code: ['        if len(self.cache) > self.capacity:'] },
+  { id: 'put-lru', code: ['            lru = self.left.next'] },
+  { id: 'put-remove-lru', code: ['            self.remove(lru)'] },
+  { id: 'put-delete', code: ['            del self.cache[lru.key]'] },
+];
+
+function buildLRUCacheSteps() {
+  const steps = [];
+  const cache = new Map();
+  const order = [];
+
+  const snapshot = (operationIndex, action, activeLine, extra = {}) => {
+    steps.push({
+      operationIndex,
+      action,
+      activeLine,
+      order: [...order],
+      cacheEntries: [...cache.entries()].sort(([leftKey], [rightKey]) => leftKey - rightKey),
+      ...extra,
+    });
+  };
+
+  LRU_CACHE_OPERATIONS.forEach((operation, operationIndex) => {
+    const { key, type, value } = operation;
+
+    if (type === 'get') {
+      if (!cache.has(key)) {
+        snapshot(operationIndex, 'get-miss', 'get-miss', { lookupKey: key, lookupTone: 'miss' });
+        return;
+      }
+
+      snapshot(operationIndex, 'get-hit', 'get-node', { lookupKey: key, lookupTone: 'hit' });
+      order.splice(order.indexOf(key), 1);
+      snapshot(operationIndex, 'get-remove', 'get-remove', { detachedKey: key, lookupKey: key, lookupTone: 'hit' });
+      order.push(key);
+      snapshot(operationIndex, 'get-insert', 'get-insert', { movedKey: key, lookupKey: key, lookupTone: 'hit' });
+      snapshot(operationIndex, 'get-return', 'get-return', { movedKey: key, lookupKey: key, lookupTone: 'hit' });
+      return;
+    }
+
+    const existed = cache.has(key);
+    snapshot(operationIndex, 'put-lookup', 'put-lookup', {
+      lookupKey: key,
+      lookupTone: existed ? 'hit' : 'miss',
+    });
+
+    if (existed) {
+      order.splice(order.indexOf(key), 1);
+      snapshot(operationIndex, 'put-remove-existing', 'put-remove-existing', { detachedKey: key, lookupKey: key, lookupTone: 'hit' });
+    }
+
+    snapshot(operationIndex, 'put-new-node', 'put-node', { detachedKey: key, detachedValue: value });
+    cache.set(key, value);
+    snapshot(operationIndex, 'put-map', 'put-cache', { detachedKey: key });
+    order.push(key);
+    snapshot(operationIndex, 'put-insert', 'put-insert', { movedKey: key });
+
+    if (cache.size <= LRU_CACHE_CAPACITY) {
+      snapshot(operationIndex, 'capacity-ok', 'put-capacity');
+      return;
+    }
+
+    snapshot(operationIndex, 'capacity-over', 'put-capacity');
+    const lruKey = order[0];
+    snapshot(operationIndex, 'evict-target', 'put-lru', { evictKey: lruKey });
+    order.shift();
+    snapshot(operationIndex, 'evict-remove', 'put-remove-lru', { detachedKey: lruKey, evictKey: lruKey });
+    cache.delete(lruKey);
+    snapshot(operationIndex, 'evict-delete', 'put-delete', { evictedKey: lruKey });
+  });
+
+  return steps;
+}
+
+const LRU_CACHE_STEPS = buildLRUCacheSteps();
+
 function buildLinkedListEdgePath(source, target, type) {
   if (type === 'cycle') {
     return `M ${source.x + 42} ${source.y} C ${source.x + 100} ${source.y + 102}, ${target.x + 72} ${target.y + 102}, ${target.x} ${target.y + 30}`;
@@ -11818,10 +11933,291 @@ function ArrayDuplicateVisual() {
   );
 }
 
+function LRUCacheVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const step = LRU_CACHE_STEPS[activeStep];
+  const operation = LRU_CACHE_OPERATIONS[step.operationIndex];
+  const operationCall = operation.type === 'put'
+    ? `put(${operation.key}, ${operation.value})`
+    : `get(${operation.key})`;
+  const operationResult = operation.type === 'put'
+    ? t('(无返回值)', '(no return value)')
+    : String(operation.result);
+  const cacheValues = new Map(step.cacheEntries);
+  const valueForKey = (key) => cacheValues.get(key)
+    ?? LRU_CACHE_OPERATIONS.find((item) => item.type === 'put' && item.key === key)?.value;
+  const mruToLru = [...step.order].reverse();
+
+  const copyByAction = {
+    'put-lookup': {
+      title: step.lookupTone === 'hit'
+        ? t('哈希查找命中已有键', 'Hash lookup finds the existing key')
+        : t('哈希查找未找到该键', 'Hash lookup does not find the key'),
+      detail: step.lookupTone === 'hit'
+        ? t('先从双向链表删除旧节点，再用新值创建并插入节点。', 'Remove the old node from the list before creating and inserting the replacement.')
+        : t('该键尚不在 cache 中，下一步创建新节点。', 'The key is not in cache, so the next step creates a fresh node.'),
+    },
+    'put-remove-existing': {
+      title: t('删除已有节点', 'Remove the existing node'),
+      detail: t('哈希映射暂时保留，节点已从双向链表断开。', 'The hash entry remains temporarily while the node is detached from the doubly linked list.'),
+    },
+    'put-new-node': {
+      title: t('创建新节点', 'Create a fresh node'),
+      detail: t('新节点当前还未接入链表，也还未写入哈希表。', 'The fresh node is not linked into the list or stored in the hash map yet.'),
+    },
+    'put-map': {
+      title: t('写入 key → node 映射', 'Store the key → node mapping'),
+      detail: t('哈希表已经指向新节点；节点仍处于未接入链表的中间状态。', 'The hash map now points to the fresh node, which is still detached from the list.'),
+    },
+    'put-insert': {
+      title: t('insert_before_tail：插到 MRU 端', 'insert_before_tail: insert at the MRU end'),
+      detail: t('节点被插到 right 前面，因此 right.prev 再次指向最新访问节点。', 'The node is inserted immediately before right, so right.prev again identifies the most recent node.'),
+    },
+    'capacity-ok': {
+      title: t('容量检查通过，无需淘汰', 'Capacity check passes; no eviction'),
+      detail: t('cache 大小没有超过 capacity = 2，本次 put 完成。', 'The cache size does not exceed capacity = 2, so this put is complete.'),
+    },
+    'capacity-over': {
+      title: t('容量超限，必须淘汰一个节点', 'Capacity exceeded; one node must be evicted'),
+      detail: t('插入发生在检查之前，所以此刻短暂出现 3 个节点。', 'Insertion happens before the check, so the cache temporarily contains three nodes.'),
+    },
+    'evict-target': {
+      title: t(`选择 left.next：键 ${step.evictKey}`, `Select left.next: key ${step.evictKey}`),
+      detail: t('left.next 是 LRU 节点；不能从 right.prev 淘汰。', 'left.next is the LRU node; eviction must not use right.prev.'),
+    },
+    'evict-remove': {
+      title: t(`从链表删除 LRU 节点 ${step.evictKey}`, `Remove LRU node ${step.evictKey} from the list`),
+      detail: t('remove(lru) 已修复前后指针，但哈希映射还存在，下一行才删除。', 'remove(lru) has repaired both neighbor links, but the hash entry remains until the next line.'),
+    },
+    'evict-delete': {
+      title: t(`从哈希表删除键 ${step.evictedKey}`, `Delete key ${step.evictedKey} from the hash map`),
+      detail: t('链表与哈希表再次同步，淘汰完成。', 'The list and hash map are synchronized again; eviction is complete.'),
+    },
+    'get-hit': {
+      title: t(`哈希查找命中键 ${operation.key}`, `Hash lookup hits key ${operation.key}`),
+      detail: t('命中后不能直接返回；还要把该节点移动到 MRU 端。', 'A hit cannot return immediately; the node must first move to the MRU end.'),
+    },
+    'get-miss': {
+      title: t(`哈希查找未命中键 ${operation.key}`, `Hash lookup misses key ${operation.key}`),
+      detail: t('cache 中没有该键，立即返回 -1，链表顺序不变。', 'The key is absent, so get returns -1 immediately and the list order stays unchanged.'),
+    },
+    'get-remove': {
+      title: t(`remove：断开键 ${operation.key} 的节点`, `remove: detach the node for key ${operation.key}`),
+      detail: t('哈希表仍指向这个临时断开的节点。', 'The hash map still points to this temporarily detached node.'),
+    },
+    'get-insert': {
+      title: t('insert_before_tail：移动到 MRU 端', 'insert_before_tail: move to the MRU end'),
+      detail: t('同一个节点被重新插到 right 前面，哈希映射无需更改。', 'The same node is reinserted immediately before right; the hash entry does not change.'),
+    },
+    'get-return': {
+      title: t(`返回节点值 ${operation.result}`, `Return node value ${operation.result}`),
+      detail: t('返回前的移动已经完成，当前顺序就是本次 get 之后的顺序。', 'The move completes before returning, so the displayed order is the final order after this get.'),
+    },
+  };
+
+  const activeCopy = copyByAction[step.action];
+  const activeLineLabel = {
+    'put-lookup': t('检查键是否存在', 'Check whether the key exists'),
+    'put-remove-existing': t('删除旧节点', 'Remove the old node'),
+    'put-node': t('创建节点', 'Create the node'),
+    'put-cache': t('更新哈希表', 'Update the hash map'),
+    'put-insert': t('插到 MRU 端', 'Insert at the MRU end'),
+    'put-capacity': t('检查容量', 'Check capacity'),
+    'put-lru': t('读取 left.next', 'Read left.next'),
+    'put-remove-lru': t('从链表淘汰', 'Evict from the list'),
+    'put-delete': t('从哈希表淘汰', 'Evict from the hash map'),
+    'get-node': t('哈希查找命中', 'Hash lookup hits'),
+    'get-miss': t('哈希查找未命中', 'Hash lookup misses'),
+    'get-remove': t('从链表断开', 'Detach from the list'),
+    'get-insert': t('重新插到 MRU 端', 'Reinsert at the MRU end'),
+    'get-return': t('返回节点值', 'Return the node value'),
+  }[step.activeLine];
+
+  const stepTone = step.action.startsWith('evict') || step.action === 'capacity-over'
+    ? 'eviction'
+    : step.action === 'get-miss'
+      ? 'miss'
+      : step.movedKey !== undefined
+        ? 'moved'
+        : 'normal';
+
+  const renderNode = (key, className = '') => (
+    <div className={`lru-cache-node ${className}`.trim()} key={key}>
+      <span>{t('键', 'key')} {key}</span>
+      <strong>{t('值', 'value')} {valueForKey(key)}</strong>
+    </div>
+  );
+
+  return (
+    <section className="lru-cache-visual" aria-label={t('LRU 缓存逐步演示', 'LRU cache walkthrough')}>
+      <header className="lru-cache-header">
+        <div>
+          <p className="eyebrow">LRU Cache · LeetCode 146</p>
+          <h2>{t('双向链表顺序与哈希表同步变化', 'Doubly linked-list order and hash map in sync')}</h2>
+          <p>{t(
+            '固定执行 9 个操作。链表从左到右始终是 LRU 端到 MRU 端，淘汰只删除 left.next。',
+            'The walkthrough runs nine fixed operations. The list always reads from the LRU end to the MRU end, and eviction only removes left.next.',
+          )}</p>
+        </div>
+        <div className="lru-cache-summary" aria-label={t('缓存参数', 'Cache parameters')}>
+          <span>capacity = {LRU_CACHE_CAPACITY}</span>
+          <span>{t('当前大小', 'current size')} = {step.cacheEntries.length}</span>
+          <span>left.next = {step.order[0] ?? 'right'}</span>
+          <span>right.prev = {step.order.at(-1) ?? 'left'}</span>
+        </div>
+      </header>
+
+      <div className={`lru-cache-step ${stepTone}`} aria-live="polite">
+        <span>{activeStep + 1} / {LRU_CACHE_STEPS.length}</span>
+        <strong>{activeCopy.title}</strong>
+        <p>{activeCopy.detail}</p>
+      </div>
+
+      <div className="lru-cache-operation-bar">
+        <span>{t('操作', 'operation')} {step.operationIndex + 1} / {LRU_CACHE_OPERATIONS.length}</span>
+        <code>{operationCall}</code>
+        <strong>→ {operationResult}</strong>
+        <i className={operation.type === 'get' ? (operation.result === -1 ? 'miss' : 'hit') : 'put'}>
+          {operation.type === 'get'
+            ? (operation.result === -1 ? t('未命中', 'miss') : t('命中', 'hit'))
+            : 'put'}
+        </i>
+      </div>
+
+      <div className="lru-cache-workspace">
+        <div className="lru-cache-stage-card">
+          <div className="lru-cache-stage-heading">
+            <span>{t('双向链表与哈希表', 'Doubly linked list and hash map')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+
+          <div className="lru-cache-order-pill">
+            <span>{t('操作后顺序', 'Order after this micro-step')}</span>
+            <code>MRU → LRU [{mruToLru.join(', ')}]</code>
+          </div>
+
+          <div className="lru-cache-list-shell">
+            <div className="lru-cache-list-direction">
+              <span>{t('较久未使用', 'less recent')}</span>
+              <strong>{t('LRU 端 → MRU 端', 'LRU end → MRU end')}</strong>
+              <span>{t('最近使用', 'more recent')}</span>
+            </div>
+            <div className="lru-cache-list" aria-label={t('LRU 到 MRU 的双向链表', 'Doubly linked list from LRU to MRU')}>
+              <div className="lru-cache-sentinel left">
+                <strong>left</strong>
+                <span>{t('LRU 哨兵', 'LRU sentinel')}</span>
+              </div>
+              <span className="lru-cache-edge" aria-hidden="true">⇄</span>
+              {step.order.map((key) => (
+                <Fragment key={key}>
+                  {renderNode(
+                    key,
+                    key === step.evictKey
+                      ? 'evict-target'
+                      : key === step.movedKey
+                        ? 'moved'
+                        : '',
+                  )}
+                  <span className="lru-cache-edge" aria-hidden="true">⇄</span>
+                </Fragment>
+              ))}
+              <div className="lru-cache-sentinel right">
+                <strong>right</strong>
+                <span>{t('MRU 哨兵', 'MRU sentinel')}</span>
+              </div>
+            </div>
+          </div>
+
+          {(step.detachedKey !== undefined || step.evictedKey !== undefined) && (
+            <div className={`lru-cache-detached ${step.evictKey !== undefined || step.evictedKey !== undefined ? 'eviction' : ''}`}>
+              <span>{step.evictedKey !== undefined
+                ? t('已淘汰', 'evicted')
+                : step.evictKey !== undefined
+                  ? t('已从链表移除，等待删除哈希映射', 'removed from list; hash deletion pending')
+                  : t('临时断开的节点', 'temporarily detached node')}</span>
+              {renderNode(step.detachedKey ?? step.evictedKey, step.evictedKey !== undefined ? 'evicted' : 'detached')}
+            </div>
+          )}
+
+          <div className="lru-cache-map-panel">
+            <div className="lru-cache-map-heading">
+              <strong>{t('哈希表 cache', 'Hash map cache')}</strong>
+              {step.lookupKey !== undefined && (
+                <span className={step.lookupTone}>
+                  {t('查找', 'lookup')} {step.lookupKey} → {step.lookupTone === 'hit' ? t('命中', 'hit') : t('未命中', 'miss')}
+                </span>
+              )}
+            </div>
+            <div className="lru-cache-map-entries">
+              {step.cacheEntries.length === 0 ? (
+                <span className="empty">{t('空', 'empty')}</span>
+              ) : step.cacheEntries.map(([key, value]) => (
+                <div
+                  className={`${key === step.evictKey ? 'evict-target' : ''}${key === step.lookupKey ? ` ${step.lookupTone}` : ''}`.trim()}
+                  key={key}
+                >
+                  <code>{key}</code>
+                  <span>→</span>
+                  <strong>Node({key}, {value})</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lru-cache-code" aria-label={t('当前 LRU 代码', 'Current LRU code')}>
+          <div className="lru-cache-code-heading">
+            <span>{t('参考实现', 'Reference implementation')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="lru-cache-code-lines">
+            {LRU_CACHE_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="lru-cache-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((current) => Math.max(0, current - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={LRU_CACHE_STEPS.length - 1}
+          value={activeStep}
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          aria-label={t('选择 LRU 缓存演示步骤', 'Select an LRU cache walkthrough step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((current) => Math.min(LRU_CACHE_STEPS.length - 1, current + 1))}
+          disabled={activeStep === LRU_CACHE_STEPS.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -11881,6 +12277,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'array-duplicate-demo') {
     return <ArrayDuplicateVisual />;
+  }
+
+  if (match?.[1] === 'lru-cache-demo') {
+    return <LRUCacheVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

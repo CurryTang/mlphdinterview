@@ -860,6 +860,11 @@ class LRUCache:
 
 </details>
 
+The demo below fixes `capacity = 2` and steps through a sequence of `put`/`get` calls, showing how the doubly linked list's order and the hash map change on every access, including the moment an eviction happens.
+
+```lru-cache-demo
+```
+
 ### 10. Merge K Sorted Lists
 
 This directly reuses two-list merging, but lifts it to multiple lists. The most natural linked-list implementation is pairwise merging: halve the number of lists on each pass until only one remains.
