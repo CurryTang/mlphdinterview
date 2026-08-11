@@ -10908,6 +10908,288 @@ function buildLRUCacheSteps() {
 
 const LRU_CACHE_STEPS = buildLRUCacheSteps();
 
+const TREE_TRAVERSAL_NODES = [
+  { id: 1, value: 1, x: 350, y: 54, left: 2, right: 3 },
+  { id: 2, value: 2, x: 210, y: 145, left: 4, right: 5 },
+  { id: 3, value: 3, x: 490, y: 145, left: null, right: 6 },
+  { id: 4, value: 4, x: 130, y: 238, left: null, right: null },
+  { id: 5, value: 5, x: 290, y: 238, left: null, right: null },
+  { id: 6, value: 6, x: 570, y: 238, left: null, right: null },
+];
+
+const TREE_TRAVERSAL_NODE_MAP = new Map(TREE_TRAVERSAL_NODES.map((node) => [node.id, node]));
+
+const TREE_TRAVERSAL_EDGES = TREE_TRAVERSAL_NODES.flatMap((node) => [node.left, node.right]
+  .filter((childId) => childId !== null)
+  .map((childId) => ({ from: node.id, to: childId })));
+
+const TREE_TRAVERSAL_CODE_LINES = {
+  preorder: [
+    { id: 'init', code: ['if not root: return []', 'stack = [root]', 'order = []'] },
+    { id: 'loop', code: ['while stack:'] },
+    { id: 'pop', code: ['    node = stack.pop()'] },
+    { id: 'visit', code: ['    order.append(node.val)'] },
+    { id: 'push-right', code: ['    if node.right:', '        stack.append(node.right)'] },
+    { id: 'push-left', code: ['    if node.left:', '        stack.append(node.left)'] },
+    { id: 'finish', code: ['return order'] },
+  ],
+  inorder: [
+    { id: 'init', code: ['stack, order = [], []', 'current = root'] },
+    { id: 'loop', code: ['while stack or current:'] },
+    { id: 'descend', code: ['    while current:', '        stack.append(current)', '        current = current.left'] },
+    { id: 'pop', code: ['    current = stack.pop()'] },
+    { id: 'visit', code: ['    order.append(current.val)'] },
+    { id: 'move-right', code: ['    current = current.right'] },
+    { id: 'finish', code: ['return order'] },
+  ],
+  postorder: [
+    { id: 'init', code: ['if not root: return []', 'stack = [root]', 'reverse_order = []'] },
+    { id: 'loop', code: ['while stack:'] },
+    { id: 'pop', code: ['    node = stack.pop()'] },
+    { id: 'visit', code: ['    reverse_order.append(node.val)'] },
+    { id: 'push-left', code: ['    if node.left:', '        stack.append(node.left)'] },
+    { id: 'push-right', code: ['    if node.right:', '        stack.append(node.right)'] },
+    { id: 'finish', code: ['return reverse_order[::-1]'] },
+  ],
+  level: [
+    { id: 'init', code: ['if not root: return []', 'queue = deque([root])', 'order = []'] },
+    { id: 'loop', code: ['while queue:'] },
+    { id: 'pop', code: ['    node = queue.popleft()'] },
+    { id: 'visit', code: ['    order.append(node.val)'] },
+    { id: 'add-left', code: ['    if node.left:', '        queue.append(node.left)'] },
+    { id: 'add-right', code: ['    if node.right:', '        queue.append(node.right)'] },
+    { id: 'finish', code: ['return order'] },
+  ],
+};
+
+function buildPreorderTraversalSteps() {
+  const steps = [];
+  const stack = [1];
+  const output = [];
+  const snapshot = (action, activeLine, current = null) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...stack],
+    output: [...output],
+    buffer: [],
+  });
+
+  snapshot('start', 'init');
+  while (stack.length) {
+    const nodeId = stack.pop();
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('pop', 'pop', nodeId);
+    output.push(nodeId);
+    snapshot('visit', 'visit', nodeId);
+    if (node.right !== null) {
+      stack.push(node.right);
+      snapshot('push-right', 'push-right', nodeId);
+    }
+    if (node.left !== null) {
+      stack.push(node.left);
+      snapshot('push-left', 'push-left', nodeId);
+    }
+  }
+  snapshot('finish', 'finish');
+  return steps;
+}
+
+function buildInorderTraversalSteps() {
+  const steps = [];
+  const stack = [];
+  const output = [];
+  let current = 1;
+  const snapshot = (action, activeLine, focus = current) => steps.push({
+    action,
+    activeLine,
+    current: focus,
+    container: [...stack],
+    output: [...output],
+    buffer: [],
+  });
+
+  snapshot('start', 'init');
+  while (stack.length || current !== null) {
+    while (current !== null) {
+      const pushed = current;
+      stack.push(pushed);
+      current = TREE_TRAVERSAL_NODE_MAP.get(pushed).left;
+      snapshot('descend', 'descend', pushed);
+    }
+    current = stack.pop();
+    snapshot('pop', 'pop', current);
+    output.push(current);
+    snapshot('visit', 'visit', current);
+    current = TREE_TRAVERSAL_NODE_MAP.get(current).right;
+    snapshot('move-right', 'move-right', current);
+  }
+  snapshot('finish', 'finish', null);
+  return steps;
+}
+
+function buildPostorderTraversalSteps() {
+  const steps = [];
+  const stack = [1];
+  const reverseOrder = [];
+  const snapshot = (action, activeLine, current = null, finished = false) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...stack],
+    output: finished ? [...reverseOrder].reverse() : [],
+    buffer: [...reverseOrder],
+  });
+
+  snapshot('start', 'init');
+  while (stack.length) {
+    const nodeId = stack.pop();
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('pop', 'pop', nodeId);
+    reverseOrder.push(nodeId);
+    snapshot('visit-buffer', 'visit', nodeId);
+    if (node.left !== null) {
+      stack.push(node.left);
+      snapshot('push-left', 'push-left', nodeId);
+    }
+    if (node.right !== null) {
+      stack.push(node.right);
+      snapshot('push-right', 'push-right', nodeId);
+    }
+  }
+  snapshot('finish', 'finish', null, true);
+  return steps;
+}
+
+function buildLevelOrderTraversalSteps() {
+  const steps = [];
+  const queue = [1];
+  const output = [];
+  const snapshot = (action, activeLine, current = null) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...queue],
+    output: [...output],
+    buffer: [],
+  });
+
+  snapshot('start', 'init');
+  while (queue.length) {
+    const nodeId = queue.shift();
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('pop', 'pop', nodeId);
+    output.push(nodeId);
+    snapshot('visit', 'visit', nodeId);
+    if (node.left !== null) {
+      queue.push(node.left);
+      snapshot('add-left', 'add-left', nodeId);
+    }
+    if (node.right !== null) {
+      queue.push(node.right);
+      snapshot('add-right', 'add-right', nodeId);
+    }
+  }
+  snapshot('finish', 'finish');
+  return steps;
+}
+
+const TREE_TRAVERSAL_SCENARIOS = {
+  preorder: { steps: buildPreorderTraversalSteps(), container: 'stack' },
+  inorder: { steps: buildInorderTraversalSteps(), container: 'stack' },
+  postorder: { steps: buildPostorderTraversalSteps(), container: 'stack' },
+  level: { steps: buildLevelOrderTraversalSteps(), container: 'queue' },
+};
+
+const AVL_ROTATION_CODE_LINES = {
+  ll: [
+    { id: 'detect', code: ['# balance(30) = +2: LL case'] },
+    { id: 'promote', code: ['new_root = node.left       # 20', 'transfer = new_root.right  # 25'] },
+    { id: 'rotate', code: ['new_root.right = node       # 20 -> 30', 'node.left = transfer        # 30 -> 25'] },
+    { id: 'finish', code: ['return new_root             # 20'] },
+  ],
+  lr: [
+    { id: 'detect', code: ['# balance(30) = +2: LR case'] },
+    { id: 'left-rotate', code: ['node.left = rotate_left(node.left)', '# 20 becomes the left-subtree root'] },
+    { id: 'right-rotate', code: ['new_root = rotate_right(node)', '# 20 becomes the subtree root'] },
+    { id: 'finish', code: ['return new_root             # 20'] },
+  ],
+};
+
+function buildAVLLLSteps() {
+  const beforeNodes = [
+    { id: 'n30', value: 30, x: 350, y: 54 },
+    { id: 'n20', value: 20, x: 225, y: 145 },
+    { id: 'n10', value: 10, x: 135, y: 238 },
+    { id: 'n25', value: 25, x: 315, y: 238 },
+  ];
+  const beforeEdges = [
+    { from: 'n30', to: 'n20' },
+    { from: 'n20', to: 'n10' },
+    { from: 'n20', to: 'n25', label: 'T2' },
+  ];
+  const afterNodes = [
+    { id: 'n20', value: 20, x: 350, y: 54 },
+    { id: 'n10', value: 10, x: 225, y: 145 },
+    { id: 'n30', value: 30, x: 475, y: 145 },
+    { id: 'n25', value: 25, x: 405, y: 238 },
+  ];
+  const afterEdges = [
+    { from: 'n20', to: 'n10' },
+    { from: 'n20', to: 'n30' },
+    { from: 'n30', to: 'n25', label: 'T2' },
+  ];
+
+  return [
+    { action: 'detect', activeLine: 'detect', nodes: beforeNodes, edges: beforeEdges, root: 30, moved: null, highlights: { n30: 'pivot' } },
+    { action: 'promote', activeLine: 'promote', nodes: beforeNodes, edges: beforeEdges, root: 30, moved: 20, highlights: { n30: 'pivot', n20: 'promoted', n25: 'transfer' } },
+    { action: 'rotate', activeLine: 'rotate', nodes: afterNodes, edges: afterEdges, root: 20, moved: 25, highlights: { n20: 'promoted', n30: 'pivot', n25: 'transfer' } },
+    { action: 'finish', activeLine: 'finish', nodes: afterNodes, edges: afterEdges, root: 20, moved: 25, highlights: { n20: 'result', n25: 'transfer' } },
+  ];
+}
+
+function buildAVLLRSteps() {
+  const beforeNodes = [
+    { id: 'n30', value: 30, x: 350, y: 54 },
+    { id: 'n10', value: 10, x: 225, y: 145 },
+    { id: 'n20', value: 20, x: 315, y: 238 },
+  ];
+  const beforeEdges = [
+    { from: 'n30', to: 'n10' },
+    { from: 'n10', to: 'n20' },
+  ];
+  const intermediateNodes = [
+    { id: 'n30', value: 30, x: 350, y: 54 },
+    { id: 'n20', value: 20, x: 225, y: 145 },
+    { id: 'n10', value: 10, x: 135, y: 238 },
+  ];
+  const intermediateEdges = [
+    { from: 'n30', to: 'n20' },
+    { from: 'n20', to: 'n10' },
+  ];
+  const afterNodes = [
+    { id: 'n20', value: 20, x: 350, y: 54 },
+    { id: 'n10', value: 10, x: 225, y: 145 },
+    { id: 'n30', value: 30, x: 475, y: 145 },
+  ];
+  const afterEdges = [
+    { from: 'n20', to: 'n10' },
+    { from: 'n20', to: 'n30' },
+  ];
+
+  return [
+    { action: 'detect', activeLine: 'detect', nodes: beforeNodes, edges: beforeEdges, root: 30, moved: null, highlights: { n30: 'pivot', n20: 'promoted' } },
+    { action: 'left-rotate', activeLine: 'left-rotate', nodes: intermediateNodes, edges: intermediateEdges, root: 30, moved: 20, highlights: { n20: 'promoted', n10: 'pivot' } },
+    { action: 'right-rotate', activeLine: 'right-rotate', nodes: afterNodes, edges: afterEdges, root: 20, moved: 20, highlights: { n20: 'promoted', n30: 'pivot' } },
+    { action: 'finish', activeLine: 'finish', nodes: afterNodes, edges: afterEdges, root: 20, moved: 20, highlights: { n20: 'result' } },
+  ];
+}
+
+const AVL_ROTATION_SCENARIOS = {
+  ll: { steps: buildAVLLLSteps() },
+  lr: { steps: buildAVLLRSteps() },
+};
+
 function buildLinkedListEdgePath(source, target, type) {
   if (type === 'cycle') {
     return `M ${source.x + 42} ${source.y} C ${source.x + 100} ${source.y + 102}, ${target.x + 72} ${target.y + 102}, ${target.x} ${target.y + 30}`;
@@ -12214,10 +12496,435 @@ function LRUCacheVisual() {
   );
 }
 
+function TreeTraversalDiagram({ step, t }) {
+  const visited = new Set([...step.output, ...step.buffer]);
+  const frontier = new Set(step.container);
+  const nodeMap = new Map(TREE_TRAVERSAL_NODES.map((node) => [node.id, node]));
+
+  return (
+    <svg
+      aria-label={t('固定二叉树的遍历状态', 'Traversal state on the fixed binary tree')}
+      className="tree-traversal-diagram"
+      role="img"
+      viewBox="0 0 700 292"
+    >
+      {TREE_TRAVERSAL_EDGES.map((edge) => {
+        const source = nodeMap.get(edge.from);
+        const target = nodeMap.get(edge.to);
+        return (
+          <line
+            className="tree-traversal-edge"
+            key={`${edge.from}-${edge.to}`}
+            x1={source.x}
+            x2={target.x}
+            y1={source.y + 27}
+            y2={target.y - 27}
+          />
+        );
+      })}
+      {TREE_TRAVERSAL_NODES.map((node) => {
+        const classes = [
+          'tree-traversal-node',
+          visited.has(node.id) ? 'visited' : '',
+          frontier.has(node.id) ? 'frontier' : '',
+          step.current === node.id ? 'current' : '',
+        ].filter(Boolean).join(' ');
+        return (
+          <g className={classes} key={node.id}>
+            <rect height="54" rx="14" ry="14" width="70" x={node.x - 35} y={node.y - 27} />
+            <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y}>{node.value}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function TreeTraversalVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('preorder');
+  const [activeStep, setActiveStep] = useState(0);
+  const scenario = TREE_TRAVERSAL_SCENARIOS[mode];
+  const step = scenario.steps[activeStep];
+  const isQueue = scenario.container === 'queue';
+  const modeLabels = {
+    preorder: t('前序', 'Preorder'),
+    inorder: t('中序', 'Inorder'),
+    postorder: t('后序', 'Postorder'),
+    level: t('层序', 'Level order'),
+  };
+  const expected = {
+    preorder: [1, 2, 4, 5, 3, 6],
+    inorder: [4, 2, 5, 1, 3, 6],
+    postorder: [4, 5, 2, 6, 3, 1],
+    level: [1, 2, 3, 4, 5, 6],
+  }[mode];
+  const activeLineLabel = {
+    init: t('初始化容器', 'Initialize the container'),
+    loop: t('检查容器', 'Check the container'),
+    pop: isQueue ? t('队首出队', 'Dequeue the front') : t('栈顶出栈', 'Pop the stack'),
+    visit: mode === 'postorder' ? t('写入反向缓冲区', 'Append to the reverse buffer') : t('访问节点', 'Visit the node'),
+    'push-right': t('右子节点入栈', 'Push the right child'),
+    'push-left': t('左子节点入栈', 'Push the left child'),
+    descend: t('沿左链入栈', 'Push the left chain'),
+    'move-right': t('转向右子树', 'Move to the right subtree'),
+    'add-left': t('左子节点入队', 'Enqueue the left child'),
+    'add-right': t('右子节点入队', 'Enqueue the right child'),
+    finish: mode === 'postorder' ? t('反转缓冲区', 'Reverse the buffer') : t('返回序列', 'Return the sequence'),
+  }[step.activeLine];
+  const actionCopy = {
+    start: {
+      title: isQueue ? t('根节点进入队列', 'Place the root in the queue') : t('初始化显式栈', 'Initialize the explicit stack'),
+      detail: t('容器保存后续需要处理的节点，输出序列当前为空。', 'The container holds nodes that still need processing; the output is empty.'),
+    },
+    pop: {
+      title: isQueue ? t('取出队首节点', 'Remove the front node') : t('弹出栈顶节点', 'Pop the top node'),
+      detail: t('橙色节点是当前节点。下一步根据遍历顺序访问或扩展它。', 'The orange node is current. The next step visits or expands it according to the traversal order.'),
+    },
+    visit: {
+      title: t('把当前值追加到输出', 'Append the current value to the output'),
+      detail: t('绿色节点已经被访问，输出序列按执行顺序增长。', 'Green nodes have been visited, and the output grows in execution order.'),
+    },
+    'visit-buffer': {
+      title: t('写入 root-right-left 反向缓冲区', 'Append to the root-right-left reverse buffer'),
+      detail: t('后序的最终结果会在遍历结束后把这个缓冲区整体反转。', 'Postorder reverses this complete buffer after the traversal finishes.'),
+    },
+    'push-right': {
+      title: mode === 'preorder' ? t('先压入右子节点', 'Push the right child first') : t('压入右子节点', 'Push the right child'),
+      detail: mode === 'preorder'
+        ? t('随后再压入左子节点，左子节点会先出栈。', 'The left child is pushed afterward, so it will pop first.')
+        : t('后序的修改前序要求右子节点先出栈。', 'The modified preorder for postorder needs the right child to pop first.'),
+    },
+    'push-left': {
+      title: mode === 'preorder' ? t('再压入左子节点', 'Push the left child second') : t('先压入左子节点', 'Push the left child first'),
+      detail: mode === 'preorder'
+        ? t('栈是后进先出，因此下一次优先处理左子树。', 'The stack is last-in, first-out, so the left subtree is processed next.')
+        : t('右子节点随后入栈并先处理，缓冲区顺序保持 root-right-left。', 'The right child is pushed next and processed first, preserving root-right-left in the buffer.'),
+    },
+    descend: {
+      title: t('当前节点入栈并继续向左', 'Push the current node and continue left'),
+      detail: t('中序遍历先保存祖先，直到当前指针到达空节点。', 'Inorder saves ancestors until the current pointer reaches an empty child.'),
+    },
+    'move-right': {
+      title: t('访问后转向右子树', 'Move to the right subtree after visiting'),
+      detail: t('右子树仍按相同规则先走到最左端。', 'The same rule descends to the leftmost node of the right subtree.'),
+    },
+    'add-left': {
+      title: t('左子节点加入队尾', 'Enqueue the left child'),
+      detail: t('同一层的节点会在下一层节点之前出队。', 'Nodes on the current level leave the queue before nodes on the next level.'),
+    },
+    'add-right': {
+      title: t('右子节点加入队尾', 'Enqueue the right child'),
+      detail: t('左子节点先入队，因此同一层保持从左到右的顺序。', 'The left child entered first, preserving left-to-right order within the level.'),
+    },
+    finish: {
+      title: t(`完成：${expected.join(' → ')}`, `Complete: ${expected.join(' → ')}`),
+      detail: mode === 'postorder'
+        ? t('反向缓冲区整体翻转后得到 left-right-root 的后序序列。', 'Reversing the complete buffer produces the left-right-root postorder sequence.')
+        : t('容器为空，所有节点都已按当前模式访问。', 'The container is empty, and every node has been visited in the selected order.'),
+    },
+  };
+  const copy = actionCopy[step.action];
+  const displayContainer = isQueue ? step.container : [...step.container].reverse();
+  const sequence = (values) => values.length ? values.join(' → ') : '—';
+
+  return (
+    <section className="tree-traversal-visual" aria-label={t('二叉树遍历逐步演示', 'Binary-tree traversal walkthrough')}>
+      <header className="tree-traversal-header">
+        <div>
+          <p className="eyebrow">{t('遍历模板', 'Traversal templates')}</p>
+          <h2>{t('同一棵树的四种迭代遍历', 'Four iterative traversals on one tree')}</h2>
+          <p>{t(
+            '切换模式后，节点结构保持固定；容器规则、访问时机和输出顺序随模式变化。',
+            'The node structure stays fixed; the container rule, visit timing, and output order change by mode.',
+          )}</p>
+        </div>
+        <div className="tree-traversal-mode" role="group" aria-label={t('选择遍历模式', 'Choose a traversal mode')}>
+          {Object.entries(modeLabels).map(([key, label]) => (
+            <button
+              aria-pressed={mode === key}
+              className={mode === key ? 'active' : ''}
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setActiveStep(0);
+              }}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`tree-traversal-step ${step.action === 'finish' ? 'finish' : step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {scenario.steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="tree-traversal-workspace">
+        <div className="tree-traversal-stage-card">
+          <div className="tree-traversal-stage-heading">
+            <span>{modeLabels[mode]}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <TreeTraversalDiagram step={step} t={t} />
+          <div className="tree-traversal-container-panel">
+            <div>
+              <span>{isQueue ? t('队列：队首在左', 'Queue: front at left') : t('栈：栈顶在左', 'Stack: top at left')}</span>
+              <strong>{isQueue ? 'FIFO' : 'LIFO'}</strong>
+            </div>
+            <div className="tree-traversal-container">
+              {displayContainer.length ? displayContainer.map((nodeId, index) => (
+                <span className={index === 0 ? 'next' : ''} key={`${nodeId}-${index}`}>
+                  {nodeId}
+                  {index === 0 && <i>{isQueue ? t('队首', 'front') : t('栈顶', 'top')}</i>}
+                </span>
+              )) : <em>{t('空', 'empty')}</em>}
+            </div>
+          </div>
+          <div className="tree-traversal-state-cards">
+            <div><span>{t('当前节点', 'current')}</span><strong>{step.current ?? '—'}</strong></div>
+            {mode === 'postorder' && <div className="buffer"><span>{t('反向缓冲区', 'reverse buffer')}</span><strong>{sequence(step.buffer)}</strong></div>}
+            <div className="output"><span>{t('输出', 'output')}</span><strong>{sequence(step.output)}</strong></div>
+          </div>
+        </div>
+
+        <div className="tree-traversal-code" aria-label={t('当前迭代遍历代码', 'Current iterative traversal code')}>
+          <div className="tree-traversal-code-heading">
+            <span>{t('迭代模板', 'Iterative template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="tree-traversal-code-lines">
+            {TREE_TRAVERSAL_CODE_LINES[mode].map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="tree-traversal-legend">
+        <span><i className="current" />{t('当前节点', 'current')}</span>
+        <span><i className="frontier" />{t('栈或队列中', 'in stack or queue')}</span>
+        <span><i className="visited" />{t('已访问', 'visited')}</span>
+      </div>
+
+      <div className="tree-traversal-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择树遍历演示步骤', 'Select a tree-traversal step')}
+          max={scenario.steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === scenario.steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(scenario.steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AVLRotationDiagram({ step, t }) {
+  const nodeMap = new Map(step.nodes.map((node) => [node.id, node]));
+  return (
+    <svg aria-label={t('AVL 旋转中的节点位置', 'Node positions during the AVL rotation')} className="avl-rotation-diagram" role="img" viewBox="0 0 700 292">
+      {step.edges.map((edge) => {
+        const source = nodeMap.get(edge.from);
+        const target = nodeMap.get(edge.to);
+        return (
+          <g className={edge.label ? 'avl-rotation-edge transfer' : 'avl-rotation-edge'} key={`${edge.from}-${edge.to}`}>
+            <line x1={source.x} x2={target.x} y1={source.y + 27} y2={target.y - 27} />
+            {edge.label && <text textAnchor="middle" x={(source.x + target.x) / 2 + 18} y={(source.y + target.y) / 2}>{edge.label}</text>}
+          </g>
+        );
+      })}
+      {step.nodes.map((node) => (
+        <g className={`avl-rotation-node ${step.highlights[node.id] ?? ''}`} key={node.id}>
+          <rect height="54" rx="14" ry="14" width="76" x={node.x - 38} y={node.y - 27} />
+          <text dominantBaseline="middle" textAnchor="middle" x={node.x} y={node.y}>{node.value}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function AVLRotationVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('ll');
+  const [activeStep, setActiveStep] = useState(0);
+  const scenario = AVL_ROTATION_SCENARIOS[mode];
+  const step = scenario.steps[activeStep];
+  const modeLabels = {
+    ll: t('LL：单右旋', 'LL: single right rotation'),
+    lr: t('LR：先左后右', 'LR: left then right'),
+  };
+  const lineLabels = {
+    detect: t('识别失衡类型', 'Identify the imbalance'),
+    promote: t('保存新根与转移子树', 'Save the new root and transfer subtree'),
+    rotate: t('执行右旋并重新连接', 'Rotate right and reconnect'),
+    'left-rotate': t('先对左子节点左旋', 'First rotate the left child left'),
+    'right-rotate': t('再对失衡节点右旋', 'Then rotate the unbalanced node right'),
+    finish: t('返回新的子树根', 'Return the new subtree root'),
+  };
+  const copy = {
+    ll: {
+      detect: {
+        title: t('LL 失衡：30 的左侧高出两层', 'LL imbalance: the left side of 30 is two levels taller'),
+        detail: t('较重路径是 30 → 20 → 10，需要围绕 30 做一次右旋。', 'The heavy path is 30 → 20 → 10, so one right rotation around 30 is required.'),
+      },
+      promote: {
+        title: t('20 将成为新的子树根', '20 will become the new subtree root'),
+        detail: t('旋转前先保存 20.right，也就是标为 T2 的节点 25。', 'Before rotating, save 20.right: node 25, labeled T2.'),
+      },
+      rotate: {
+        title: t('30 下移，T2 接到 30.left', '30 moves down, and T2 attaches to 30.left'),
+        detail: t('20.right 指向 30；25 保持有序关系并成为 30 的左子节点。', '20.right points to 30; node 25 preserves ordering as the left child of 30.'),
+      },
+      finish: {
+        title: t('LL 修复完成：新根是 20', 'LL repair complete: the new root is 20'),
+        detail: t('中序顺序仍为 10, 20, 25, 30，子树高度差恢复到允许范围。', 'The inorder sequence remains 10, 20, 25, 30, and the subtree height difference returns to the allowed range.'),
+      },
+    },
+    lr: {
+      detect: {
+        title: t('LR 失衡：较重路径先向左，再向右', 'LR imbalance: the heavy path goes left, then right'),
+        detail: t('路径 30 → 10 → 20 需要两次旋转。', 'The path 30 → 10 → 20 requires two rotations.'),
+      },
+      'left-rotate': {
+        title: t('第一步：围绕 10 左旋', 'Step 1: rotate left around 10'),
+        detail: t('20 成为 30 的左子节点，10 成为 20 的左子节点。LR 已转换为 LL。', '20 becomes the left child of 30, and 10 becomes the left child of 20. The LR case is now an LL case.'),
+      },
+      'right-rotate': {
+        title: t('第二步：围绕 30 右旋', 'Step 2: rotate right around 30'),
+        detail: t('20 上移为子树根，10 和 30 分别位于左右两侧。', '20 moves up as the subtree root, with 10 on the left and 30 on the right.'),
+      },
+      finish: {
+        title: t('LR 修复完成：新根是 20', 'LR repair complete: the new root is 20'),
+        detail: t('中序顺序仍为 10, 20, 30，两次局部旋转保持 BST 有序性质。', 'The inorder sequence remains 10, 20, 30; both local rotations preserve BST ordering.'),
+      },
+    },
+  }[mode][step.action];
+
+  return (
+    <section className="avl-rotation-visual" aria-label={t('AVL 单旋与双旋逐步演示', 'AVL single- and double-rotation walkthrough')}>
+      <header className="avl-rotation-header">
+        <div>
+          <p className="eyebrow">{t('AVL 再平衡', 'AVL rebalancing')}</p>
+          <h2>{t('旋转只修改局部连接', 'Rotations update a local set of links')}</h2>
+          <p>{t(
+            'LL 模式展示转移子树 T2 的重新连接；LR 模式展示连续的左旋与右旋。',
+            'LL mode shows transfer subtree T2 being reattached; LR mode shows the left and right rotations in sequence.',
+          )}</p>
+        </div>
+        <div className="avl-rotation-mode" role="group" aria-label={t('选择 AVL 旋转案例', 'Choose an AVL rotation case')}>
+          {Object.entries(modeLabels).map(([key, label]) => (
+            <button
+              aria-pressed={mode === key}
+              className={mode === key ? 'active' : ''}
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setActiveStep(0);
+              }}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`avl-rotation-step ${step.action === 'finish' ? 'finish' : step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {scenario.steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="avl-rotation-workspace">
+        <div className="avl-rotation-stage-card">
+          <div className="avl-rotation-stage-heading">
+            <span>{modeLabels[mode]}</span>
+            <strong>{t('当前执行', 'Now')}: {lineLabels[step.activeLine]}</strong>
+          </div>
+          <AVLRotationDiagram step={step} t={t} />
+          <div className="avl-rotation-state-cards">
+            <div><span>{t('当前子树根', 'subtree root')}</span><strong>{step.root}</strong></div>
+            <div><span>{t('移动节点 / 子树', 'moved node / subtree')}</span><strong>{step.moved ?? '—'}</strong></div>
+            <div><span>{t('旋转类型', 'rotation')}</span><strong>{mode === 'll' ? t('右旋', 'right') : t('左旋 → 右旋', 'left → right')}</strong></div>
+          </div>
+        </div>
+
+        <div className="avl-rotation-code" aria-label={t('当前 AVL 旋转伪代码', 'Current AVL rotation pseudocode')}>
+          <div className="avl-rotation-code-heading">
+            <span>{t('局部更新', 'Local update')}</span>
+            <strong>{lineLabels[step.activeLine]}</strong>
+          </div>
+          <div className="avl-rotation-code-lines">
+            {AVL_ROTATION_CODE_LINES[mode].map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="avl-rotation-legend">
+        <span><i className="pivot" />{t('失衡节点', 'unbalanced node')}</span>
+        <span><i className="promoted" />{t('上移节点', 'promoted node')}</span>
+        <span><i className="transfer" />{t('转移子树', 'transfer subtree')}</span>
+      </div>
+
+      <div className="avl-rotation-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择 AVL 旋转步骤', 'Select an AVL rotation step')}
+          max={scenario.steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === scenario.steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(scenario.steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -12281,6 +12988,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'lru-cache-demo') {
     return <LRUCacheVisual />;
+  }
+
+  if (match?.[1] === 'tree-traversal-demo') {
+    return <TreeTraversalVisual />;
+  }
+
+  if (match?.[1] === 'avl-rotation-demo') {
+    return <AVLRotationVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
