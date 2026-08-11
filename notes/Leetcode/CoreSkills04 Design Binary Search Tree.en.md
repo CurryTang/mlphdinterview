@@ -203,41 +203,51 @@ Every traversal visits each node once, for `O(n)` time. Recursive DFS and iterat
 
 ### 1. Bottom-Up Return Value + Global Best
 
-The helper returns a quantity the parent can continue composing, while an outer variable records the answer across the full tree.
+Iterative postorder processes both children before computing the parent. A cache stores the quantity that each parent can continue composing, while a separate variable records the answer across the full tree.
 
 ```python
-best = 0
-
-def dfs(node):
-    nonlocal best
-    if not node:
-        return 0
-
-    left = dfs(node.left)
-    right = dfs(node.right)
-    best = max(best, combine_for_answer(left, right, node))
-    return value_for_parent(left, right, node)
+def solve(root):
+    value = {None: 0}
+    best = 0
+    stack = [(root, False)]
+    while stack:
+        node, processed = stack.pop()
+        if node is None:
+            continue
+        if processed:
+            left = value[node.left]
+            right = value[node.right]
+            best = max(best, combine_for_answer(left, right, node))
+            value[node] = value_for_parent(left, right, node)
+        else:
+            stack.append((node, True))
+            stack.append((node.left, False))
+            stack.append((node.right, False))
+    return best
 ```
 
-Diameter returns height and records `left_height + right_height` outside the helper. Maximum Path Sum returns a one-sided downward path sum and records a complete path that may use both branches. The whole-tree answer and the recursive quantity required by the parent differ; conflating them is the common implementation error.
+`processed=False` expands the children first. `processed=True` means both child values are finalized in the cache, so the current node can be computed. Diameter caches height and records `left_height + right_height` as the answer. Maximum Path Sum caches a one-sided downward path sum and records a complete path that may use both branches. The whole-tree answer and the quantity required by the parent differ; conflating them is a common implementation error.
 
-Count Good Nodes applies the same separation between recursive state and answer aggregation. Its path maximum flows from parent to child, while an outer variable records the count, making it a top-down variant of the pattern.
+Count Good Nodes applies the same separation between state and answer aggregation. Its explicit stack passes the path maximum from parent to child, while a separate variable records the count, making it a top-down variant of the pattern.
 
 Used by: Diameter of Binary Tree, Binary Tree Maximum Path Sum, Count Good Nodes in Binary Tree.
 
 ### 2. Structural Comparison Recursion
 
-Two nodes enter each recursive call together. The null-node combination and value equality determine the result.
+The explicit stack stores corresponding nodes from the two trees together. The null-node combination and value equality determine the result.
 
 ```python
 def same(a, b):
-    if not a or not b:
-        return a is b
-    return (
-        a.val == b.val
-        and same(a.left, b.left)
-        and same(a.right, b.right)
-    )
+    stack = [(a, b)]
+    while stack:
+        x, y = stack.pop()
+        if not x and not y:
+            continue
+        if not x or not y or x.val != y.val:
+            return False
+        stack.append((x.left, y.left))
+        stack.append((x.right, y.right))
+    return True
 ```
 
 Same Tree uses this template directly. Subtree of Another Tree calls `same(node, subRoot)` at every node in the larger tree and continues into both subtrees after a failed match.
@@ -256,28 +266,53 @@ The most useful BST-specific fact is that inorder traversal is sorted. It suppor
 
 Checking only `node.left.val < node.val < node.right.val` misses violations that cross multiple levels. The allowed interval must include constraints from every ancestor. LCA follows one path in `O(h)` time and does not search both subtrees.
 
-### 4. Traversal-Sequence Reconstruction
-
-The first preorder value identifies the root of the current subtree. Its position in inorder splits the nodes into left and right subtrees. A hash map from value to inorder index gives `O(1)` splits.
+Validate BST uses an explicit stack to carry the ancestor bounds for each node:
 
 ```python
-preorder_index = 0
-inorder_index = {value: i for i, value in enumerate(inorder)}
+import math
 
-def build(left, right):
-    nonlocal preorder_index
-    if left > right:
-        return None
-    root_value = preorder[preorder_index]
-    preorder_index += 1
-    root = TreeNode(root_value)
-    split = inorder_index[root_value]
-    root.left = build(left, split - 1)
-    root.right = build(split + 1, right)
+
+def valid(root):
+    stack = [(root, -math.inf, math.inf)]
+    while stack:
+        node, low, high = stack.pop()
+        if not node:
+            continue
+        if not low < node.val < high:
+            return False
+        stack.append((node.left, low, node.val))
+        stack.append((node.right, node.val, high))
+    return True
+```
+
+Iterative inorder traversal can also check that values are strictly increasing. The bounds stack more directly shows the constraints imposed by all ancestors.
+
+### 4. Traversal-Sequence Reconstruction
+
+Preorder supplies each new node in sequence. The stack stores the current path of nodes still waiting for a right child, and `j` points to the next node to complete in inorder.
+
+```python
+def build_tree(preorder, inorder):
+    root = TreeNode(preorder[0])
+    stack = [root]
+    j = 0
+    for i in range(1, len(preorder)):
+        node = TreeNode(preorder[i])
+        parent = None
+        while stack and stack[-1].val == inorder[j]:
+            parent = stack.pop()
+            j += 1
+        if parent:
+            parent.right = node
+        else:
+            stack[-1].left = node
+        stack.append(node)
     return root
 ```
 
-Serialize and Deserialize uses preorder with an explicit null marker. Preorder supplies the current root first, and the remaining markers can be consumed in the fixed order of left subtree followed by right subtree. Inorder alone places left-side content before the root and cannot identify the root position without another traversal.
+When the next preorder value differs from `inorder[j]`, it is the left child of the stack top. When the values match, the current left subtree is complete. Pop consecutive stack entries that match inorder, then attach the new node as the right child of the last popped node. Each node enters and leaves the stack once, giving `O(n)` time and `O(n)` auxiliary space.
+
+Serialize and Deserialize uses preorder with explicit null markers and a stack of nodes with pending children. Preorder supplies the current root first, and the remaining markers are consumed in the fixed order of left subtree followed by right subtree. Inorder alone places left-side content before the root and cannot identify the root position without another traversal.
 
 Used by: Construct Binary Tree from Preorder and Inorder Traversal, Serialize and Deserialize Binary Tree.
 
@@ -285,25 +320,30 @@ Used by: Construct Binary Tree from Preorder and Inorder Traversal, Serialize an
 
 A direct Balanced Binary Tree implementation calls a separate `height()` function at every node. On a skewed tree, the same descendants are revisited many times, producing `O(n^2)` time.
 
-One bottom-up DFS can compute height and detect imbalance together. Return `-1` as soon as a subtree is unbalanced, then propagate that sentinel upward.
+One iterative postorder traversal can compute height and detect imbalance together. A cache stores the heights of processed subtrees, and the function returns `False` immediately when it finds an imbalance.
 
 ```python
-def height_or_unbalanced(node):
-    if not node:
-        return 0
-
-    left = height_or_unbalanced(node.left)
-    if left == -1:
-        return -1
-
-    right = height_or_unbalanced(node.right)
-    if right == -1 or abs(left - right) > 1:
-        return -1
-
-    return 1 + max(left, right)
+def is_balanced(root):
+    height = {None: 0}
+    stack = [(root, False)]
+    while stack:
+        node, processed = stack.pop()
+        if node is None:
+            continue
+        if processed:
+            left_h = height[node.left]
+            right_h = height[node.right]
+            if abs(left_h - right_h) > 1:
+                return False
+            height[node] = 1 + max(left_h, right_h)
+        else:
+            stack.append((node, True))
+            stack.append((node.left, False))
+            stack.append((node.right, False))
+    return True
 ```
 
-This `-1` follows the same interface pattern as a binary-search boundary sentinel and the trailing sentinel in Largest Rectangle: one special value carries control information and shortens later processing.
+The recursive version needs `-1` to carry the "subtree is already unbalanced" signal across call frames. The iterative version can return `False` directly from the function when it finds an imbalance, so it does not need a sentinel value. Both mechanisms apply the same principle: stop as soon as the answer is known. The recursive version's `-1` still follows the same interface pattern as a binary-search boundary sentinel and the trailing sentinel in Largest Rectangle: a special value carries control information and shortens later processing.
 
 ## Module 3: Self-Balancing Tree Fundamentals
 
@@ -377,7 +417,7 @@ A B-Tree node stores several sorted keys and several child pointers. The high br
 
 ### 1. Invert Binary Tree
 
-This problem combines basic DFS with a local pointer swap. Swap each node's children, then recurse into both subtrees. Preorder and postorder both work.
+This problem combines iterative DFS with a local pointer swap. Swap each node's children, then push its non-null children onto the stack.
 
 | Item | Value |
 |---|---|
@@ -403,10 +443,14 @@ class Solution:
     def invertTree(self, root: Optional[TreeNode]) -> Optional[TreeNode]:
         if not root:
             return None
-
-        root.left, root.right = root.right, root.left
-        self.invertTree(root.left)
-        self.invertTree(root.right)
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            node.left, node.right = node.right, node.left
+            if node.left:
+                stack.append(node.left)
+            if node.right:
+                stack.append(node.right)
         return root
 ```
 
@@ -414,13 +458,13 @@ class Solution:
 
 ### 2. Maximum Depth of Binary Tree
 
-This is the basic height recursion. An empty tree has height `0`; a nonempty node has one plus the larger child height.
+Level-order BFS increments the depth after processing each level. When the queue is empty, the accumulated level count is the maximum depth.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Bottom-up height return |
-| Recurrence | `1 + max(left_depth, right_depth)` |
-| Time / Space | `O(n) / O(h)` |
+| Composed patterns | Level order + level count |
+| State | The current queue length is the level size |
+| Time / Space | `O(n) / O(w)` |
 
 #### Quick Coding: Maximum Depth of Binary Tree
 
@@ -433,6 +477,7 @@ def maxDepth(root):
 <summary>Reference answer</summary>
 
 ```python
+from collections import deque
 from typing import Optional
 
 
@@ -440,19 +485,29 @@ class Solution:
     def maxDepth(self, root: Optional[TreeNode]) -> int:
         if not root:
             return 0
-        return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+        depth = 0
+        queue = deque([root])
+        while queue:
+            depth += 1
+            for _ in range(len(queue)):
+                node = queue.popleft()
+                if node.left:
+                    queue.append(node.left)
+                if node.right:
+                    queue.append(node.right)
+        return depth
 ```
 
 </details>
 
 ### 3. Diameter of Binary Tree
 
-The helper returns height to its parent, while an outer variable records `left_height + right_height` at every node. The diameter is measured in edges.
+Iterative postorder finalizes both child heights before computing the current node's height. A separate variable records `left_height + right_height` at every node. The diameter is measured in edges.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Return value + global best |
-| Returned / answer quantity | Subtree height / maximum diameter |
+| Composed patterns | Postorder stack + height cache + global best |
+| Cached / answer quantity | Subtree height / maximum diameter |
 | Time / Space | `O(n) / O(h)` |
 
 #### Quick Coding: Diameter of Binary Tree
@@ -471,31 +526,37 @@ from typing import Optional
 
 class Solution:
     def diameterOfBinaryTree(self, root: Optional[TreeNode]) -> int:
+        if not root:
+            return 0
+        height = {None: 0}
         diameter = 0
-
-        def height(node: Optional[TreeNode]) -> int:
-            nonlocal diameter
-            if not node:
-                return 0
-
-            left = height(node.left)
-            right = height(node.right)
-            diameter = max(diameter, left + right)
-            return 1 + max(left, right)
-
-        height(root)
+        stack = [(root, False)]
+        while stack:
+            node, processed = stack.pop()
+            if node is None:
+                continue
+            if processed:
+                left_h, right_h = height[node.left], height[node.right]
+                diameter = max(diameter, left_h + right_h)
+                height[node] = 1 + max(left_h, right_h)
+            else:
+                stack.append((node, True))
+                stack.append((node.left, False))
+                stack.append((node.right, False))
         return diameter
 ```
+
+Each `(node, processed)` pair records a processing stage. `processed=False` expands the node's children first. `processed=True` means both child heights are finalized in `height`, so the current height can be computed. This is a standard iterative postorder simulation, and Maximum Path Sum reuses the same structure.
 
 </details>
 
 ### 4. Balanced Binary Tree
 
-The height DFS returns `-1` when a subtree is already unbalanced. The sentinel propagates up the call stack, so the tree is traversed once.
+Iterative postorder caches the height of every subtree. The function returns `False` immediately when a node's child heights differ by more than `1`.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Height recursion + imbalance sentinel |
+| Composed patterns | Postorder stack + height cache + early termination |
 | Condition | `abs(left - right) <= 1` |
 | Time / Space | `O(n) / O(h)` |
 
@@ -515,32 +576,35 @@ from typing import Optional
 
 class Solution:
     def isBalanced(self, root: Optional[TreeNode]) -> bool:
-        def height(node: Optional[TreeNode]) -> int:
-            if not node:
-                return 0
-
-            left = height(node.left)
-            if left == -1:
-                return -1
-
-            right = height(node.right)
-            if right == -1 or abs(left - right) > 1:
-                return -1
-
-            return 1 + max(left, right)
-
-        return height(root) != -1
+        if not root:
+            return True
+        height = {None: 0}
+        stack = [(root, False)]
+        while stack:
+            node, processed = stack.pop()
+            if node is None:
+                continue
+            if processed:
+                left_h, right_h = height[node.left], height[node.right]
+                if abs(left_h - right_h) > 1:
+                    return False
+                height[node] = 1 + max(left_h, right_h)
+            else:
+                stack.append((node, True))
+                stack.append((node.left, False))
+                stack.append((node.right, False))
+        return True
 ```
 
 </details>
 
 ### 5. Same Tree
 
-This is the base structural-comparison problem. Two null nodes match; one null node or unequal values fail immediately.
+This is the base structural-comparison problem. Each stack element contains two nodes at the same structural position. Two null nodes match; one null node or unequal values fail immediately.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Structural comparison recursion |
+| Composed patterns | Pair stack + structural comparison |
 | State | Two nodes at the same structural position |
 | Time / Space | `O(n) / O(h)` |
 
@@ -559,29 +623,28 @@ from typing import Optional
 
 
 class Solution:
-    def isSameTree(
-        self,
-        p: Optional[TreeNode],
-        q: Optional[TreeNode],
-    ) -> bool:
-        if not p or not q:
-            return p is q
-        return (
-            p.val == q.val
-            and self.isSameTree(p.left, q.left)
-            and self.isSameTree(p.right, q.right)
-        )
+    def isSameTree(self, p: Optional[TreeNode], q: Optional[TreeNode]) -> bool:
+        stack = [(p, q)]
+        while stack:
+            a, b = stack.pop()
+            if not a and not b:
+                continue
+            if not a or not b or a.val != b.val:
+                return False
+            stack.append((a.left, b.left))
+            stack.append((a.right, b.right))
+        return True
 ```
 
 </details>
 
 ### 6. Subtree of Another Tree
 
-This problem uses Same Tree as a subroutine. After a failed match at the current node, continue searching for a candidate root in both subtrees.
+This problem uses iterative Same Tree as a subroutine. After a failed match at the current node, the main stack continues searching both subtrees for a candidate root.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Structural comparison + candidate-root enumeration |
+| Composed patterns | Structural-comparison stack + candidate-root stack |
 | Operation | `same(node, subRoot)` |
 | Time / Space | Worst case `O(mn) / O(h)` |
 
@@ -600,29 +663,31 @@ from typing import Optional
 
 
 class Solution:
-    def isSubtree(
-        self,
-        root: Optional[TreeNode],
-        subRoot: Optional[TreeNode],
-    ) -> bool:
+    def isSubtree(self, root: Optional[TreeNode], subRoot: Optional[TreeNode]) -> bool:
         def same(a: Optional[TreeNode], b: Optional[TreeNode]) -> bool:
-            if not a or not b:
-                return a is b
-            return (
-                a.val == b.val
-                and same(a.left, b.left)
-                and same(a.right, b.right)
-            )
+            stack = [(a, b)]
+            while stack:
+                x, y = stack.pop()
+                if not x and not y:
+                    continue
+                if not x or not y or x.val != y.val:
+                    return False
+                stack.append((x.left, y.left))
+                stack.append((x.right, y.right))
+            return True
 
         if not subRoot:
             return True
-        if not root:
-            return False
-        return (
-            same(root, subRoot)
-            or self.isSubtree(root.left, subRoot)
-            or self.isSubtree(root.right, subRoot)
-        )
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if not node:
+                continue
+            if same(node, subRoot):
+                return True
+            stack.append(node.left)
+            stack.append(node.right)
+        return False
 ```
 
 </details>
@@ -769,7 +834,7 @@ class Solution:
 
 ### 10. Count Good Nodes in Binary Tree
 
-Pass the path maximum from the root downward. Increment the count when the current value is at least that maximum, then update the value passed to both children.
+Each `(node, max_seen)` pair on the stack passes the path maximum from the root downward. Increment the count when the current value is at least that maximum, then update the value passed to both children.
 
 | Item | Value |
 |---|---|
@@ -791,19 +856,16 @@ def goodNodes(root):
 class Solution:
     def goodNodes(self, root: TreeNode) -> int:
         good = 0
-
-        def dfs(node: TreeNode, max_seen: int) -> None:
-            nonlocal good
-            if not node:
-                return
-
+        stack = [(root, root.val)]
+        while stack:
+            node, max_seen = stack.pop()
             if node.val >= max_seen:
                 good += 1
             next_max = max(max_seen, node.val)
-            dfs(node.left, next_max)
-            dfs(node.right, next_max)
-
-        dfs(root, root.val)
+            if node.left:
+                stack.append((node.left, next_max))
+            if node.right:
+                stack.append((node.right, next_max))
         return good
 ```
 
@@ -811,7 +873,7 @@ class Solution:
 
 ### 11. Validate Binary Search Tree
 
-Every node must lie inside the open interval `(low, high)` established by all ancestors. The open interval also excludes duplicate keys.
+The explicit stack carries the open interval `(low, high)` established by all ancestors for each node. The open interval also excludes duplicate keys.
 
 | Item | Value |
 |---|---|
@@ -836,18 +898,19 @@ from typing import Optional
 
 class Solution:
     def isValidBST(self, root: Optional[TreeNode]) -> bool:
-        def valid(node: Optional[TreeNode], low: float, high: float) -> bool:
+        stack = [(root, -math.inf, math.inf)]
+        while stack:
+            node, low, high = stack.pop()
             if not node:
-                return True
+                continue
             if not low < node.val < high:
                 return False
-            return (
-                valid(node.left, low, node.val)
-                and valid(node.right, node.val, high)
-            )
-
-        return valid(root, -math.inf, math.inf)
+            stack.append((node.left, low, node.val))
+            stack.append((node.right, node.val, high))
+        return True
 ```
+
+Iterative inorder traversal can also check that values are strictly increasing. The bounds stack remains the primary solution because it directly shows that the allowed range contains constraints from every ancestor.
 
 </details>
 
@@ -895,12 +958,12 @@ class Solution:
 
 ### 13. Construct Binary Tree from Preorder and Inorder Traversal
 
-The preorder pointer selects each subtree root. The inorder hash map gives the split position, and recursive boundaries define both subtree ranges.
+Preorder creates each node in sequence. The stack stores nodes on the current path that are still waiting for a right child, and `j` advances in lockstep with inorder.
 
 | Item | Value |
 |---|---|
 | Composed patterns | Traversal-sequence reconstruction |
-| State | Preorder pointer + inorder interval |
+| State | Pending-node stack + inorder pointer |
 | Time / Space | `O(n) / O(n)` |
 
 #### Quick Coding: Construct Binary Tree from Preorder and Inorder Traversal
@@ -918,40 +981,46 @@ from typing import List, Optional
 
 
 class Solution:
-    def buildTree(
-        self,
-        preorder: List[int],
-        inorder: List[int],
-    ) -> Optional[TreeNode]:
-        inorder_index = {value: i for i, value in enumerate(inorder)}
-        preorder_index = 0
-
-        def build(left: int, right: int) -> Optional[TreeNode]:
-            nonlocal preorder_index
-            if left > right:
-                return None
-
-            root_value = preorder[preorder_index]
-            preorder_index += 1
-            root = TreeNode(root_value)
-            split = inorder_index[root_value]
-            root.left = build(left, split - 1)
-            root.right = build(split + 1, right)
-            return root
-
-        return build(0, len(inorder) - 1)
+    def buildTree(self, preorder: List[int], inorder: List[int]) -> Optional[TreeNode]:
+        root = TreeNode(preorder[0])
+        stack = [root]
+        j = 0
+        for i in range(1, len(preorder)):
+            node = TreeNode(preorder[i])
+            parent = None
+            while stack and stack[-1].val == inorder[j]:
+                parent = stack.pop()
+                j += 1
+            if parent:
+                parent.right = node
+            else:
+                stack[-1].left = node
+            stack.append(node)
+        return root
 ```
+
+The invariant is that `stack` holds the current right spine of nodes still waiting for a right child, while `j` points to the next unfinished position in inorder. Before attaching the next preorder node, compare the stack top with `inorder[j]`. If they differ, the new node must be the left child of the stack top, so construction continues down a left spine. If they match, that node's left subtree is complete. Pop consecutive entries that match `inorder[j]` and advance `j` after each pop. The new node becomes the right child of the last node popped. If nothing was popped, it remains the left child of the current stack top.
+
+For `preorder=[3,9,20,15,7]` and `inorder=[9,3,15,20,7]`, the execution is:
+
+1. Create root `3`: `stack=[3]`, `j=0`, and the next inorder value is `9`.
+2. Process `9`: stack top `3 != 9`, so set `3.left=9`. The stack becomes `[3,9]`.
+3. Process `20`: stack top `9` matches inorder value `9`, so pop `9`. Then `3` matches inorder value `3`, so pop `3`. Now `j=2`; set `3.right=20`, and the stack becomes `[20]`.
+4. Process `15`: stack top `20 != 15`, so set `20.left=15`. The stack becomes `[20,15]`.
+5. Process `7`: pop `15` and `20` as they match the next inorder values. Now `j=4`; set `20.right=7`.
+
+The result is `3(9, 20(15,7))`.
 
 </details>
 
 ### 14. Binary Tree Maximum Path Sum
 
-A parent can continue through one downward branch, so the helper returns `node.val + max(left_gain, right_gain)`. The complete candidate at the current node may join both branches and updates the global answer. Negative gains are clamped to `0`.
+A parent can continue through one downward branch, so the cache stores `node.val + max(left_gain, right_gain)`. The complete candidate at the current node may join both branches and updates the global answer. Negative gains are clamped to `0`.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Return value + global best |
-| Returned / answer quantity | One-sided downward gain / maximum path with any endpoints |
+| Composed patterns | Postorder stack + gain cache + global best |
+| Cached / answer quantity | One-sided downward gain / maximum path with any endpoints |
 | Time / Space | `O(n) / O(h)` |
 
 #### Quick Coding: Binary Tree Maximum Path Sum
@@ -970,27 +1039,32 @@ import math
 
 class Solution:
     def maxPathSum(self, root: TreeNode) -> int:
+        gain = {None: 0}
         best = -math.inf
-
-        def gain(node: TreeNode) -> int:
-            nonlocal best
-            if not node:
-                return 0
-
-            left = max(0, gain(node.left))
-            right = max(0, gain(node.right))
-            best = max(best, node.val + left + right)
-            return node.val + max(left, right)
-
-        gain(root)
+        stack = [(root, False)]
+        while stack:
+            node, processed = stack.pop()
+            if node is None:
+                continue
+            if processed:
+                left_gain = max(0, gain[node.left])
+                right_gain = max(0, gain[node.right])
+                best = max(best, node.val + left_gain + right_gain)
+                gain[node] = node.val + max(left_gain, right_gain)
+            else:
+                stack.append((node, True))
+                stack.append((node.left, False))
+                stack.append((node.right, False))
         return best
 ```
+
+The `(node, processed)` state is identical to Diameter: expand the children first, then combine their cached results at the current node. Both problems use the same iterative postorder pattern with different combine functions for height and path gain.
 
 </details>
 
 ### 15. Serialize and Deserialize Binary Tree
 
-The preorder sequence records every node value and writes `#` for every null child. Deserialization consumes tokens in the same order, so each recursive call can determine whether its current subtree is empty.
+The preorder sequence records every node value and writes `#` for every null child. Serialization and deserialization both use explicit stacks to track pending children.
 
 | Item | Value |
 |---|---|
@@ -1019,32 +1093,50 @@ from typing import Optional
 class Codec:
     def serialize(self, root: Optional[TreeNode]) -> str:
         tokens = []
-
-        def encode(node: Optional[TreeNode]) -> None:
-            if not node:
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if node is None:
                 tokens.append("#")
-                return
+                continue
             tokens.append(str(node.val))
-            encode(node.left)
-            encode(node.right)
-
-        encode(root)
+            stack.append(node.right)
+            stack.append(node.left)
         return ",".join(tokens)
 
     def deserialize(self, data: str) -> Optional[TreeNode]:
-        tokens = iter(data.split(","))
-
-        def decode() -> Optional[TreeNode]:
-            token = next(tokens)
-            if token == "#":
-                return None
-            node = TreeNode(int(token))
-            node.left = decode()
-            node.right = decode()
-            return node
-
-        return decode()
+        tokens = data.split(",")
+        idx = 0
+        root_token = tokens[idx]
+        idx += 1
+        if root_token == "#":
+            return None
+        root = TreeNode(int(root_token))
+        stack = [[root, 0]]
+        while idx < len(tokens):
+            token = tokens[idx]
+            idx += 1
+            entry = stack[-1]
+            parent = entry[0]
+            new_node = None if token == "#" else TreeNode(int(token))
+            if entry[1] == 0:
+                parent.left = new_node
+                entry[1] = 1
+            else:
+                parent.right = new_node
+                entry[1] = 2
+            while stack and stack[-1][1] == 2:
+                stack.pop()
+            if new_node is not None:
+                stack.append([new_node, 0])
+        return root
 ```
+
+`serialize` is iterative preorder with null markers. Push the right child before the left child so the left child pops first, and emit `"#"` for every null child.
+
+Each `deserialize` stack entry is `[node, fill_count]`, where `fill_count` records how many of the node's two children have been assigned: `0`, `1`, or `2`. Each token becomes the next pending child of the current stack top. When `fill_count` reaches `2`, the node is complete and is popped. This can pop several ancestors in sequence when the new assignment also completes them. A non-null new node is then pushed to await its own two children.
+
+This stack and the Preorder+Inorder construction stack both track pending children. Here, null markers state whether each child exists, so no inorder cross-reference is required.
 
 </details>
 
