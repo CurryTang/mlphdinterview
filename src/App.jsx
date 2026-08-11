@@ -1627,10 +1627,10 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Easy' },
   ),
   createTutorialDefinition(
-    'Core Skills 2 · Design Singly Linked List',
+    'Core Skills 2 · Linked Lists',
     'CoreSkills02 Design Singly Linked List.md',
     null,
-    { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Easy' },
+    { directory: 'Leetcode', category: 'Linked Lists', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'Core Skills 3 · Design Double-ended Queue',
@@ -1639,10 +1639,10 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Easy' },
   ),
   createTutorialDefinition(
-    'Core Skills 4 · Design Binary Search Tree',
+    'Core Skills 4 · Trees',
     'CoreSkills04 Design Binary Search Tree.md',
     null,
-    { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Medium' },
+    { directory: 'Leetcode', category: 'Trees', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'Core Skills 5 · Design Hash Table',

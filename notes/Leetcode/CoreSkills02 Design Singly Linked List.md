@@ -1,4 +1,4 @@
-# Design Singly Linked List
+# Linked Lists
 
 ## 面试目标
 
