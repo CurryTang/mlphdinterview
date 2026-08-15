@@ -11101,6 +11101,138 @@ const TREE_TRAVERSAL_SCENARIOS = {
   level: { steps: buildLevelOrderTraversalSteps(), container: 'queue' },
 };
 
+const TREE_TRAVERSAL_RECURSIVE_CODE_LINES = {
+  preorder: [
+    { id: 'call', code: ['def preorder(node, order):', '    if not node: return'] },
+    { id: 'visit', code: ['    order.append(node.val)'] },
+    { id: 'recurse-left', code: ['    preorder(node.left, order)'] },
+    { id: 'recurse-right', code: ['    preorder(node.right, order)'] },
+    { id: 'return', code: ['    # control returns to the caller'] },
+  ],
+  inorder: [
+    { id: 'call', code: ['def inorder(node, order):', '    if not node: return'] },
+    { id: 'recurse-left', code: ['    inorder(node.left, order)'] },
+    { id: 'visit', code: ['    order.append(node.val)'] },
+    { id: 'recurse-right', code: ['    inorder(node.right, order)'] },
+    { id: 'return', code: ['    # control returns to the caller'] },
+  ],
+  postorder: [
+    { id: 'call', code: ['def postorder(node, order):', '    if not node: return'] },
+    { id: 'recurse-left', code: ['    postorder(node.left, order)'] },
+    { id: 'recurse-right', code: ['    postorder(node.right, order)'] },
+    { id: 'visit', code: ['    order.append(node.val)'] },
+    { id: 'return', code: ['    # control returns to the caller'] },
+  ],
+};
+
+function buildPreorderRecursiveSteps() {
+  const steps = [];
+  const callStack = [];
+  const output = [];
+  const snapshot = (action, activeLine, current = null) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...callStack],
+    output: [...output],
+    buffer: [],
+  });
+
+  const recurse = (nodeId) => {
+    if (nodeId === null) return;
+    callStack.push(nodeId);
+    snapshot('call', 'call', nodeId);
+    output.push(nodeId);
+    snapshot('visit', 'visit', nodeId);
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('recurse-left', 'recurse-left', nodeId);
+    recurse(node.left);
+    snapshot('recurse-right', 'recurse-right', nodeId);
+    recurse(node.right);
+    callStack.pop();
+    snapshot('return', 'return', nodeId);
+  };
+
+  snapshot('start', 'call');
+  recurse(1);
+  snapshot('finish', 'return');
+  return steps;
+}
+
+function buildInorderRecursiveSteps() {
+  const steps = [];
+  const callStack = [];
+  const output = [];
+  const snapshot = (action, activeLine, current = null) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...callStack],
+    output: [...output],
+    buffer: [],
+  });
+
+  const recurse = (nodeId) => {
+    if (nodeId === null) return;
+    callStack.push(nodeId);
+    snapshot('call', 'call', nodeId);
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('recurse-left', 'recurse-left', nodeId);
+    recurse(node.left);
+    output.push(nodeId);
+    snapshot('visit', 'visit', nodeId);
+    snapshot('recurse-right', 'recurse-right', nodeId);
+    recurse(node.right);
+    callStack.pop();
+    snapshot('return', 'return', nodeId);
+  };
+
+  snapshot('start', 'call');
+  recurse(1);
+  snapshot('finish', 'return');
+  return steps;
+}
+
+function buildPostorderRecursiveSteps() {
+  const steps = [];
+  const callStack = [];
+  const output = [];
+  const snapshot = (action, activeLine, current = null) => steps.push({
+    action,
+    activeLine,
+    current,
+    container: [...callStack],
+    output: [...output],
+    buffer: [],
+  });
+
+  const recurse = (nodeId) => {
+    if (nodeId === null) return;
+    callStack.push(nodeId);
+    snapshot('call', 'call', nodeId);
+    const node = TREE_TRAVERSAL_NODE_MAP.get(nodeId);
+    snapshot('recurse-left', 'recurse-left', nodeId);
+    recurse(node.left);
+    snapshot('recurse-right', 'recurse-right', nodeId);
+    recurse(node.right);
+    output.push(nodeId);
+    snapshot('visit', 'visit', nodeId);
+    callStack.pop();
+    snapshot('return', 'return', nodeId);
+  };
+
+  snapshot('start', 'call');
+  recurse(1);
+  snapshot('finish', 'return');
+  return steps;
+}
+
+const TREE_TRAVERSAL_RECURSIVE_SCENARIOS = {
+  preorder: { steps: buildPreorderRecursiveSteps(), container: 'stack' },
+  inorder: { steps: buildInorderRecursiveSteps(), container: 'stack' },
+  postorder: { steps: buildPostorderRecursiveSteps(), container: 'stack' },
+};
+
 const AVL_ROTATION_CODE_LINES = {
   ll: [
     { id: 'detect', code: ['# balance(30) = +2: LL case'] },
@@ -12543,10 +12675,13 @@ function TreeTraversalDiagram({ step, t }) {
 function TreeTraversalVisual() {
   const { t } = useUiCopy();
   const [mode, setMode] = useState('preorder');
+  const [execMode, setExecMode] = useState('iterative');
   const [activeStep, setActiveStep] = useState(0);
-  const scenario = TREE_TRAVERSAL_SCENARIOS[mode];
+  const isRecursive = execMode === 'recursive' && mode !== 'level';
+  const scenario = isRecursive ? TREE_TRAVERSAL_RECURSIVE_SCENARIOS[mode] : TREE_TRAVERSAL_SCENARIOS[mode];
   const step = scenario.steps[activeStep];
   const isQueue = scenario.container === 'queue';
+  const codeLines = isRecursive ? TREE_TRAVERSAL_RECURSIVE_CODE_LINES[mode] : TREE_TRAVERSAL_CODE_LINES[mode];
   const modeLabels = {
     preorder: t('前序', 'Preorder'),
     inorder: t('中序', 'Inorder'),
@@ -12563,23 +12698,35 @@ function TreeTraversalVisual() {
     init: t('初始化容器', 'Initialize the container'),
     loop: t('检查容器', 'Check the container'),
     pop: isQueue ? t('队首出队', 'Dequeue the front') : t('栈顶出栈', 'Pop the stack'),
-    visit: mode === 'postorder' ? t('写入反向缓冲区', 'Append to the reverse buffer') : t('访问节点', 'Visit the node'),
+    visit: mode === 'postorder' && !isRecursive ? t('写入反向缓冲区', 'Append to the reverse buffer') : t('访问节点', 'Visit the node'),
     'push-right': t('右子节点入栈', 'Push the right child'),
     'push-left': t('左子节点入栈', 'Push the left child'),
     descend: t('沿左链入栈', 'Push the left chain'),
     'move-right': t('转向右子树', 'Move to the right subtree'),
     'add-left': t('左子节点入队', 'Enqueue the left child'),
     'add-right': t('右子节点入队', 'Enqueue the right child'),
-    finish: mode === 'postorder' ? t('反转缓冲区', 'Reverse the buffer') : t('返回序列', 'Return the sequence'),
+    call: t('进入递归调用', 'Enter the recursive call'),
+    'recurse-left': t('递归处理左子树', 'Recurse into the left subtree'),
+    'recurse-right': t('递归处理右子树', 'Recurse into the right subtree'),
+    return: t('返回上一层调用', 'Return to the caller'),
+    finish: mode === 'postorder' && !isRecursive ? t('反转缓冲区', 'Reverse the buffer') : t('返回序列', 'Return the sequence'),
   }[step.activeLine];
   const actionCopy = {
     start: {
-      title: isQueue ? t('根节点进入队列', 'Place the root in the queue') : t('初始化显式栈', 'Initialize the explicit stack'),
-      detail: t('容器保存后续需要处理的节点，输出序列当前为空。', 'The container holds nodes that still need processing; the output is empty.'),
+      title: isRecursive
+        ? t('从根节点开始第一次调用', 'Start with the first call on the root')
+        : isQueue ? t('根节点进入队列', 'Place the root in the queue') : t('初始化显式栈', 'Initialize the explicit stack'),
+      detail: isRecursive
+        ? t('调用栈保存尚未返回的调用，输出序列当前为空。', 'The call stack holds calls that have not returned yet; the output is empty.')
+        : t('容器保存后续需要处理的节点，输出序列当前为空。', 'The container holds nodes that still need processing; the output is empty.'),
     },
     pop: {
       title: isQueue ? t('取出队首节点', 'Remove the front node') : t('弹出栈顶节点', 'Pop the top node'),
       detail: t('橙色节点是当前节点。下一步根据遍历顺序访问或扩展它。', 'The orange node is current. The next step visits or expands it according to the traversal order.'),
+    },
+    call: {
+      title: t('进入新的递归调用', 'Enter a new recursive call'),
+      detail: t('橙色节点是当前调用处理的节点；蓝色区域是仍未返回的调用序列。', 'The orange node is what the current call is processing; the blue area shows calls that have not returned yet.'),
     },
     visit: {
       title: t('把当前值追加到输出', 'Append the current value to the output'),
@@ -12617,11 +12764,25 @@ function TreeTraversalVisual() {
       title: t('右子节点加入队尾', 'Enqueue the right child'),
       detail: t('左子节点先入队，因此同一层保持从左到右的顺序。', 'The left child entered first, preserving left-to-right order within the level.'),
     },
+    'recurse-left': {
+      title: t('调用左子树的递归', 'Call the recursion on the left subtree'),
+      detail: t('当前调用会等待左子树的递归完全返回，再继续往下执行。', 'The current call waits for the left-subtree recursion to fully return before continuing.'),
+    },
+    'recurse-right': {
+      title: t('调用右子树的递归', 'Call the recursion on the right subtree'),
+      detail: t('左子树已经返回；现在对右子树做同样的递归调用。', 'The left subtree has already returned; the same recursive call now runs on the right subtree.'),
+    },
+    return: {
+      title: t('当前调用返回上一层', 'The current call returns to its caller'),
+      detail: t('这个节点从调用栈中移除，控制权交还给调用它的父节点。', 'This node is removed from the call stack, and control returns to the parent call that invoked it.'),
+    },
     finish: {
       title: t(`完成：${expected.join(' → ')}`, `Complete: ${expected.join(' → ')}`),
-      detail: mode === 'postorder'
+      detail: mode === 'postorder' && !isRecursive
         ? t('反向缓冲区整体翻转后得到 left-right-root 的后序序列。', 'Reversing the complete buffer produces the left-right-root postorder sequence.')
-        : t('容器为空，所有节点都已按当前模式访问。', 'The container is empty, and every node has been visited in the selected order.'),
+        : isRecursive
+          ? t('所有调用都已返回，输出序列是最终结果。', 'Every call has returned, and the output sequence is the final result.')
+          : t('容器为空，所有节点都已按当前模式访问。', 'The container is empty, and every node has been visited in the selected order.'),
     },
   };
   const copy = actionCopy[step.action];
@@ -12633,10 +12794,10 @@ function TreeTraversalVisual() {
       <header className="tree-traversal-header">
         <div>
           <p className="eyebrow">{t('遍历模板', 'Traversal templates')}</p>
-          <h2>{t('同一棵树的四种迭代遍历', 'Four iterative traversals on one tree')}</h2>
+          <h2>{t('同一棵树的遍历：递归与迭代对照', 'Traversals on one tree: recursive vs. iterative')}</h2>
           <p>{t(
-            '切换模式后，节点结构保持固定；容器规则、访问时机和输出顺序随模式变化。',
-            'The node structure stays fixed; the container rule, visit timing, and output order change by mode.',
+            '切换遍历方式后，节点结构保持固定；再切换递归或迭代，容器规则、访问时机和输出顺序随之变化。',
+            'The node structure stays fixed when you switch traversal order; switching recursive vs. iterative then changes the container rule, visit timing, and output order.',
           )}</p>
         </div>
         <div className="tree-traversal-mode" role="group" aria-label={t('选择遍历模式', 'Choose a traversal mode')}>
@@ -12648,6 +12809,7 @@ function TreeTraversalVisual() {
               onClick={() => {
                 setMode(key);
                 setActiveStep(0);
+                if (key === 'level') setExecMode('iterative');
               }}
               type="button"
             >
@@ -12656,6 +12818,30 @@ function TreeTraversalVisual() {
           ))}
         </div>
       </header>
+
+      {mode !== 'level' && (
+        <div className="tree-traversal-exec-row">
+          <span>{t('执行方式', 'Execution style')}</span>
+          <div className="tree-traversal-mode" role="group" aria-label={t('选择递归或迭代', 'Choose recursive or iterative')}>
+            <button
+              aria-pressed={execMode === 'recursive'}
+              className={execMode === 'recursive' ? 'active' : ''}
+              onClick={() => { setExecMode('recursive'); setActiveStep(0); }}
+              type="button"
+            >
+              {t('递归', 'Recursive')}
+            </button>
+            <button
+              aria-pressed={execMode === 'iterative'}
+              className={execMode === 'iterative' ? 'active' : ''}
+              onClick={() => { setExecMode('iterative'); setActiveStep(0); }}
+              type="button"
+            >
+              {t('迭代', 'Iterative')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={`tree-traversal-step ${step.action === 'finish' ? 'finish' : step.action}`} aria-live="polite">
         <span>{activeStep + 1} / {scenario.steps.length}</span>
@@ -12672,7 +12858,13 @@ function TreeTraversalVisual() {
           <TreeTraversalDiagram step={step} t={t} />
           <div className="tree-traversal-container-panel">
             <div>
-              <span>{isQueue ? t('队列：队首在左', 'Queue: front at left') : t('栈：栈顶在左', 'Stack: top at left')}</span>
+              <span>
+                {isQueue
+                  ? t('队列：队首在左', 'Queue: front at left')
+                  : isRecursive
+                    ? t('调用栈：栈顶在左', 'Call stack: top at left')
+                    : t('栈：栈顶在左', 'Stack: top at left')}
+              </span>
               <strong>{isQueue ? 'FIFO' : 'LIFO'}</strong>
             </div>
             <div className="tree-traversal-container">
@@ -12686,18 +12878,18 @@ function TreeTraversalVisual() {
           </div>
           <div className="tree-traversal-state-cards">
             <div><span>{t('当前节点', 'current')}</span><strong>{step.current ?? '—'}</strong></div>
-            {mode === 'postorder' && <div className="buffer"><span>{t('反向缓冲区', 'reverse buffer')}</span><strong>{sequence(step.buffer)}</strong></div>}
+            {mode === 'postorder' && !isRecursive && <div className="buffer"><span>{t('反向缓冲区', 'reverse buffer')}</span><strong>{sequence(step.buffer)}</strong></div>}
             <div className="output"><span>{t('输出', 'output')}</span><strong>{sequence(step.output)}</strong></div>
           </div>
         </div>
 
-        <div className="tree-traversal-code" aria-label={t('当前迭代遍历代码', 'Current iterative traversal code')}>
+        <div className="tree-traversal-code" aria-label={t('当前遍历代码', 'Current traversal code')}>
           <div className="tree-traversal-code-heading">
-            <span>{t('迭代模板', 'Iterative template')}</span>
+            <span>{isRecursive ? t('递归模板', 'Recursive template') : t('迭代模板', 'Iterative template')}</span>
             <strong>{activeLineLabel}</strong>
           </div>
           <div className="tree-traversal-code-lines">
-            {TREE_TRAVERSAL_CODE_LINES[mode].map((line) => (
+            {codeLines.map((line) => (
               <div
                 aria-current={step.activeLine === line.id ? 'step' : undefined}
                 className={step.activeLine === line.id ? 'active' : ''}
@@ -12712,7 +12904,7 @@ function TreeTraversalVisual() {
 
       <div className="tree-traversal-legend">
         <span><i className="current" />{t('当前节点', 'current')}</span>
-        <span><i className="frontier" />{t('栈或队列中', 'in stack or queue')}</span>
+        <span><i className="frontier" />{isRecursive ? t('在调用栈中', 'on the call stack') : t('栈或队列中', 'in stack or queue')}</span>
         <span><i className="visited" />{t('已访问', 'visited')}</span>
       </div>
 

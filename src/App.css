@@ -5544,6 +5544,27 @@
   color: #ffffff;
 }
 
+.tree-traversal-exec-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgba(38, 69, 82, 0.12);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tree-traversal-exec-row > span {
+  color: #52666e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tree-traversal-exec-row .tree-traversal-mode {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .tree-traversal-step {
   min-height: 88px;
   border-left: 5px solid var(--tt-blue);
@@ -5561,7 +5582,10 @@
 .tree-traversal-step.add-left,
 .tree-traversal-step.add-right,
 .tree-traversal-step.descend,
-.tree-traversal-step.move-right {
+.tree-traversal-step.move-right,
+.tree-traversal-step.call,
+.tree-traversal-step.recurse-left,
+.tree-traversal-step.recurse-right {
   border-left-color: var(--tt-purple);
 }
 
