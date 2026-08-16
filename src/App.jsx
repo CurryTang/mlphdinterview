@@ -1651,10 +1651,10 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'Core Skills 6 · Design Heap',
+    'Core Skills 6 · Heap & Priority Queue',
     'CoreSkills06 Design Heap.md',
     null,
-    { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Medium' },
+    { directory: 'Leetcode', category: 'Heap', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'Core Skills 7 · Design Graph',
@@ -13429,10 +13429,238 @@ function BuildTreeVisual() {
   );
 }
 
+const MEDIAN_STREAM = [5, 15, 1, 3];
+
+const MEDIAN_CODE_LINES = [
+  { id: 'push-small', code: ['heapq.heappush(self.small, -num)'] },
+  { id: 'transfer-to-large', code: ['heapq.heappush(self.large, -heapq.heappop(self.small))'] },
+  { id: 'check-balance', code: ['if len(self.large) > len(self.small):'] },
+  { id: 'transfer-back', code: ['    heapq.heappush(self.small, -heapq.heappop(self.large))'] },
+  { id: 'median', code: ['# findMedian()', 'return (-self.small[0] if len(self.small) > len(self.large)', '        else (-self.small[0] + self.large[0]) / 2)'] },
+];
+
+function buildMedianStreamSteps() {
+  const steps = [];
+  let small = []; // sorted desc, front is the max
+  let large = []; // sorted asc, front is the min
+
+  const snapshot = (action, activeLine, extra = {}) => steps.push({
+    action,
+    activeLine,
+    num: extra.num ?? null,
+    moved: extra.moved ?? null,
+    balanced: extra.balanced ?? null,
+    small: [...small],
+    large: [...large],
+    median: extra.median ?? null,
+  });
+
+  snapshot('start', 'push-small');
+
+  MEDIAN_STREAM.forEach((num) => {
+    snapshot('incoming', 'push-small', { num });
+
+    small.push(num);
+    small.sort((a, b) => b - a);
+    snapshot('push-small', 'push-small', { num, moved: num });
+
+    const movedToLarge = small.shift();
+    large.push(movedToLarge);
+    large.sort((a, b) => a - b);
+    snapshot('transfer-to-large', 'transfer-to-large', { num, moved: movedToLarge });
+
+    if (large.length > small.length) {
+      const movedToSmall = large.shift();
+      small.push(movedToSmall);
+      small.sort((a, b) => b - a);
+      snapshot('transfer-back', 'transfer-back', { num, moved: movedToSmall, balanced: false });
+    } else {
+      snapshot('balanced', 'check-balance', { num, balanced: true });
+    }
+
+    const median = small.length > large.length ? small[0] : (small[0] + large[0]) / 2;
+    snapshot('median', 'median', { num, median });
+  });
+
+  return steps;
+}
+
+const MEDIAN_STREAM_STEPS = buildMedianStreamSteps();
+
+function MedianTwoHeapsVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = MEDIAN_STREAM_STEPS;
+  const step = steps[activeStep];
+
+  const activeLineLabel = {
+    'push-small': t('新数字入 small', 'Push the new number into small'),
+    'transfer-to-large': t('转移 small 的最大值给 large', "Transfer small's maximum to large"),
+    'check-balance': t('检查两堆大小是否失衡', 'Check whether the two heaps are unbalanced'),
+    'transfer-back': t('转移 large 的最小值回 small', "Transfer large's minimum back to small"),
+    median: t('计算中位数', 'Compute the median'),
+  }[step.activeLine];
+
+  const actionCopy = {
+    start: {
+      title: t('两个空堆，还没有插入任何数字', 'Two empty heaps, before any number is inserted'),
+      detail: t('small 是最大堆，保存较小的一半；large 是最小堆，保存较大的一半。', 'small is a max-heap holding the lower half; large is a min-heap holding the upper half.'),
+    },
+    incoming: {
+      title: t(`下一个数字：${step.num}`, `Next number: ${step.num}`),
+      detail: t('先不判断它该进哪一堆，统一按固定顺序处理。', 'There is no need to decide which heap it belongs in first; the fixed order below handles that automatically.'),
+    },
+    'push-small': {
+      title: t(`把 ${step.num} 推入 small`, `Push ${step.num} into small`),
+      detail: t('不管这个数字最终该属于哪一半，都先无条件放进 small。', 'Regardless of which half it actually belongs to, it always goes into small first.'),
+    },
+    'transfer-to-large': {
+      title: t(`把 small 的最大值 ${step.moved} 转移给 large`, `Transfer small's maximum, ${step.moved}, to large`),
+      detail: t('这一步保证 small 剩下的元素都不超过刚转移过去的这个值。', 'This step guarantees every value remaining in small is no greater than the value just transferred.'),
+    },
+    balanced: {
+      title: t('两堆大小差不超过一，不需要转移', 'The size difference is at most one; no transfer is needed'),
+      detail: t('large 并没有比 small 多，跳过转移回 small 的一步。', 'large did not end up larger than small, so the transfer-back step is skipped.'),
+    },
+    'transfer-back': {
+      title: t(`把 large 的最小值 ${step.moved} 转移回 small`, `Transfer large's minimum, ${step.moved}, back to small`),
+      detail: t('转移之后 large 比 small 多了一个，用这一步把大小差恢复到最多为一。', 'The previous transfer left large with one more element than small; this step restores the size difference to at most one.'),
+    },
+    median: {
+      title: t(`中位数是 ${step.median}`, `The median is ${step.median}`),
+      detail: step.small.length > step.large.length
+        ? t('small 比 large 多一个，中位数就是 small 的堆顶。', 'small has one more element than large, so the median is simply the top of small.')
+        : t('两堆大小相等，中位数是两个堆顶的平均值。', 'The two heaps are equal in size, so the median is the average of both tops.'),
+    },
+  };
+  const copy = actionCopy[step.action];
+
+  const renderHeap = (values, tone) => (
+    <div className={`median-heaps-list ${tone}`}>
+      {values.length ? values.map((value, index) => (
+        <span
+          className={[
+            index === 0 ? 'top' : '',
+            value === step.moved ? 'moved' : '',
+            step.action !== 'start' && step.action !== 'median' && value === step.num && index !== 0 ? 'incoming' : '',
+          ].filter(Boolean).join(' ')}
+          key={`${value}-${index}`}
+        >
+          {value}
+          {index === 0 && <i>{t('堆顶', 'top')}</i>}
+        </span>
+      )) : <em>{t('空', 'empty')}</em>}
+    </div>
+  );
+
+  return (
+    <section className="median-heaps-visual" aria-label={t('双堆维护中位数逐步演示', 'Step-through: maintaining a running median with two heaps')}>
+      <header className="median-heaps-header">
+        <div>
+          <p className="eyebrow">{t('双堆维护中位数', 'Two heaps maintaining a running median')}</p>
+          <h2>{t('固定流：5, 15, 1, 3', 'Fixed stream: 5, 15, 1, 3')}</h2>
+          <p>{t(
+            '每个数字都按同一个顺序处理：先入 small，转移堆顶给 large，必要时再转移回来。',
+            'Every number goes through the same order: push into small, transfer its top to large, then transfer back if needed.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`median-heaps-step ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="median-heaps-workspace">
+        <div className="median-heaps-stage-card">
+          <div className="median-heaps-stream">
+            <span>{t('数据流', 'Stream')}</span>
+            <div>
+              {MEDIAN_STREAM.map((value, index) => (
+                <em className={step.num === value && step.action !== 'median' && step.action !== 'start' ? 'pointer' : ''} key={index}>
+                  {value}
+                </em>
+              ))}
+            </div>
+          </div>
+
+          <div className="median-heaps-pair">
+            <div className="median-heaps-panel">
+              <div className="median-heaps-panel-heading">
+                <span>small</span>
+                <strong>{t('最大堆，较小的一半', 'max-heap, lower half')}</strong>
+              </div>
+              {renderHeap(step.small, 'small')}
+            </div>
+            <div className="median-heaps-panel">
+              <div className="median-heaps-panel-heading">
+                <span>large</span>
+                <strong>{t('最小堆，较大的一半', 'min-heap, upper half')}</strong>
+              </div>
+              {renderHeap(step.large, 'large')}
+            </div>
+          </div>
+
+          <div className="median-heaps-median">
+            <span>{t('当前中位数', 'Current median')}</span>
+            <strong>{step.median ?? '—'}</strong>
+          </div>
+        </div>
+
+        <div className="median-heaps-code" aria-label={t('当前双堆代码', 'Current two-heap code')}>
+          <div className="median-heaps-code-heading">
+            <span>{t('addNum 模板', 'addNum template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="median-heaps-code-lines">
+            {MEDIAN_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="median-heaps-legend">
+        <span><i className="top" />{t('堆顶', 'top')}</span>
+        <span><i className="moved" />{t('本步转移的值', 'value moved this step')}</span>
+      </div>
+
+      <div className="median-heaps-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择中位数演示步骤', 'Select a median demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -13508,6 +13736,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'build-tree-demo') {
     return <BuildTreeVisual />;
+  }
+
+  if (match?.[1] === 'median-two-heaps-demo') {
+    return <MedianTwoHeapsVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
