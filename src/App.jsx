@@ -1657,16 +1657,10 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Heap', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'Core Skills 7 · Design Graph',
+    'Core Skills 7 · Graphs',
     'CoreSkills07 Design Graph.md',
     null,
-    { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 8 · Design Disjoint Set',
-    'CoreSkills08 Design Disjoint Set Union Find.md',
-    null,
-    { directory: 'Leetcode', category: 'Implement Data Structures', difficulty: 'Medium' },
+    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'Core Skills 9 · Design Segment Tree',
@@ -1679,42 +1673,6 @@ const leetcodeNoteDefinitions = [
     'CoreSkills10 Insertion Sort.md',
     null,
     { directory: 'Leetcode', category: 'Sorting', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 13 · Matrix DFS',
-    'CoreSkills13 Matrix Depth First Search.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 14 · Matrix BFS',
-    'CoreSkills14 Matrix Breadth First Search.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    "Core Skills 15 · Shortest Path: Dijkstra & Bellman-Ford",
-    'CoreSkills15 Dijkstra Algorithm.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    "Core Skills 16 · Prim's Algorithm",
-    'CoreSkills16 Prim Algorithm.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    "Core Skills 17 · Kruskal's Algorithm",
-    'CoreSkills17 Kruskal Algorithm.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 18 · Topological Sort / Foreign Dictionary',
-    'CoreSkills18 Topological Sort.md',
-    null,
-    { directory: 'Leetcode', category: 'Graphs', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'Core Skills 19 · 0 / 1 Knapsack',
@@ -13657,10 +13615,462 @@ function MedianTwoHeapsVisual() {
   );
 }
 
+const ROTTING_GRID_INITIAL = [
+  [2, 1, 1],
+  [1, 1, 0],
+  [0, 1, 1],
+];
+
+const ROTTING_CODE_LINES = [
+  { id: 'seed', code: ['for r in range(rows):', '    for c in range(cols):', '        if grid[r][c] == 2: q.append((r, c))', '        elif grid[r][c] == 1: fresh += 1'] },
+  { id: 'loop', code: ['while q and fresh:', '    minutes += 1'] },
+  { id: 'relax', code: ['    for _ in range(len(q)):', '        r, c = q.popleft()', '        for dr, dc in DIRECTIONS:', '            nr, nc = r + dr, c + dc', '            if valid(nr, nc) and grid[nr][nc] == 1:', '                grid[nr][nc] = 2', '                fresh -= 1', '                q.append((nr, nc))'] },
+  { id: 'return', code: ['return minutes if fresh == 0 else -1'] },
+];
+
+function buildRottingStepsData() {
+  const grid = ROTTING_GRID_INITIAL.map((row) => [...row]);
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  let fresh = 0;
+  let queue = [];
+
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      if (grid[r][c] === 1) fresh += 1;
+      if (grid[r][c] === 2) queue.push([r, c]);
+    }
+  }
+
+  const steps = [{
+    minute: 0,
+    grid: grid.map((row) => [...row]),
+    newlyRotten: [],
+    freshRemaining: fresh,
+    activeLine: 'seed',
+    done: false,
+  }];
+
+  let minute = 0;
+  while (queue.length > 0 && fresh > 0) {
+    minute += 1;
+    const next = [];
+    const newlyRotten = [];
+    queue.forEach(([r, c]) => {
+      directions.forEach(([dr, dc]) => {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] === 1) {
+          grid[nr][nc] = 2;
+          fresh -= 1;
+          next.push([nr, nc]);
+          newlyRotten.push([nr, nc]);
+        }
+      });
+    });
+    queue = next;
+    steps.push({
+      minute,
+      grid: grid.map((row) => [...row]),
+      newlyRotten,
+      freshRemaining: fresh,
+      activeLine: 'relax',
+      done: false,
+    });
+  }
+
+  steps.push({
+    minute,
+    grid: grid.map((row) => [...row]),
+    newlyRotten: [],
+    freshRemaining: fresh,
+    activeLine: 'return',
+    done: true,
+    answer: fresh === 0 ? minute : -1,
+  });
+
+  return steps;
+}
+
+const ROTTING_STEPS = buildRottingStepsData();
+
+function RottingOrangesBFSVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = ROTTING_STEPS;
+  const step = steps[activeStep];
+
+  const isNewlyRotten = (r, c) => step.newlyRotten.some(([nr, nc]) => nr === r && nc === c);
+
+  const activeLineLabel = {
+    seed: t('初始化：所有腐烂格子入队，统计新鲜橘子数量', 'Initialize: seed every rotten cell into the queue and count fresh oranges'),
+    loop: t('队列非空且还有新鲜橘子时继续', 'Continue while the queue is non-empty and fresh oranges remain'),
+    relax: t('按当前队列长度整体弹出，检查四个方向并把新鲜橘子变腐烂入队', 'Pop the entire current layer, check all four directions, and turn fresh neighbors rotten'),
+    return: t('返回耗费的分钟数，如果还有新鲜橘子剩下就返回 -1', 'Return the elapsed minutes, or -1 if fresh oranges remain'),
+  }[step.activeLine];
+
+  let title;
+  let detail;
+  if (step.minute === 0 && !step.done) {
+    title = t('第 0 分钟：起点是所有腐烂橘子', 'Minute 0: the sources are every already-rotten orange');
+    detail = t('多源 BFS 把所有腐烂格子同时放入队列，而不是只从一个格子出发。', 'Multi-source BFS seeds every rotten cell into the queue at once, instead of starting from a single cell.');
+  } else if (step.done) {
+    title = step.answer === -1
+      ? t('还有新鲜橘子无法到达，返回 -1', 'Some fresh oranges are unreachable, return -1')
+      : t(`全部腐烂，耗费 ${step.answer} 分钟`, `Every orange is rotten, elapsed time is ${step.answer} minutes`);
+    detail = t('BFS 按层扩展，最后一层的编号就是答案。', 'BFS expands layer by layer, and the final layer number is exactly the answer.');
+  } else {
+    title = t(`第 ${step.minute} 分钟：新增 ${step.newlyRotten.length} 个腐烂橘子`, `Minute ${step.minute}: ${step.newlyRotten.length} orange(s) turn rotten`);
+    detail = t('这一层的所有新鲜邻居同时变腐烂，它们与起点的 BFS 距离相同。', 'Every fresh neighbor discovered in this layer turns rotten at once, since they share the same BFS distance from the sources.');
+  }
+
+  return (
+    <section className="mbfs-visual" aria-label={t('多源 BFS：Rotting Oranges 逐步演示', 'Step-through: multi-source BFS on Rotting Oranges')}>
+      <header className="mbfs-header">
+        <div>
+          <p className="eyebrow">{t('多源 BFS，按层扩展', 'Multi-source BFS, layer by layer')}</p>
+          <h2>{t('Rotting Oranges：grid = [[2,1,1],[1,1,0],[0,1,1]]', 'Rotting Oranges: grid = [[2,1,1],[1,1,0],[0,1,1]]')}</h2>
+          <p>{t(
+            '所有腐烂橘子同时是 BFS 的起点，入队时立刻标记，一层代表一分钟。',
+            'Every rotten orange starts as a BFS source at once. Cells are marked the moment they are enqueued, and one layer equals one minute.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`mbfs-step ${step.done ? 'done' : ''}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="mbfs-workspace">
+        <div className="mbfs-stage-card">
+          <div className="mbfs-grid" style={{ '--mbfs-cols': step.grid[0].length }}>
+            {step.grid.map((row, r) => row.map((value, c) => {
+              const highlight = isNewlyRotten(r, c);
+              const cellClass = value === 2 ? 'rotten' : value === 1 ? 'fresh' : 'empty';
+              return (
+                <div className={`mbfs-cell ${cellClass} ${highlight ? 'newly' : ''}`} key={`${r}-${c}`}>
+                  <span>{value}</span>
+                </div>
+              );
+            }))}
+          </div>
+          <div className="mbfs-meta">
+            <div>
+              <span>{t('分钟', 'Minute')}</span>
+              <strong>{step.minute}</strong>
+            </div>
+            <div>
+              <span>{t('剩余新鲜', 'Fresh remaining')}</span>
+              <strong>{step.freshRemaining}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="mbfs-code" aria-label={t('当前 BFS 代码', 'Current BFS code')}>
+          <div className="mbfs-code-heading">
+            <span>{t('多源 BFS 模板', 'Multi-source BFS template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="mbfs-code-lines">
+            {ROTTING_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mbfs-legend">
+        <span><i className="fresh" />{t('新鲜（1）', 'Fresh (1)')}</span>
+        <span><i className="rotten" />{t('腐烂（2）', 'Rotten (2)')}</span>
+        <span><i className="newly" />{t('本层新增腐烂', 'Turned rotten this layer')}</span>
+        <span><i className="empty" />{t('空格（0）', 'Empty (0)')}</span>
+      </div>
+
+      <div className="mbfs-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择 BFS 层数', 'Select a BFS layer')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const UNION_FIND_N = 8;
+
+const UNION_FIND_OPERATIONS = [
+  { type: 'union', a: 0, b: 1, mode: 'naive' },
+  { type: 'union', a: 1, b: 2, mode: 'naive' },
+  { type: 'union', a: 2, b: 3, mode: 'naive' },
+  { type: 'union', a: 3, b: 4, mode: 'naive' },
+  { type: 'union', a: 5, b: 6, mode: 'naive' },
+  { type: 'union', a: 6, b: 7, mode: 'naive' },
+  { type: 'find', x: 0 },
+  { type: 'union', a: 0, b: 5, mode: 'size' },
+];
+
+const UNION_FIND_CODE_LINES = [
+  { id: 'union-naive', code: ['def union(a, b):  # 暂不按大小合并', '    ra, rb = find(a), find(b)', '    if ra != rb:', '        parent[ra] = rb'] },
+  { id: 'find-compress', code: ['def find(x):', '    if parent[x] != x:', '        parent[x] = find(parent[x])  # 路径压缩', '    return parent[x]'] },
+  { id: 'union-size', code: ['def union(a, b):  # 按集合大小合并', '    ra, rb = find(a), find(b)', '    if size[ra] < size[rb]:', '        ra, rb = rb, ra', '    parent[rb] = ra', '    size[ra] += size[rb]'] },
+];
+
+function ufFindNoCompress(parent, x) {
+  let cur = x;
+  while (parent[cur] !== cur) cur = parent[cur];
+  return cur;
+}
+
+function ufComponentsOf(parent) {
+  const groups = new Map();
+  parent.forEach((_, i) => {
+    const root = ufFindNoCompress(parent, i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(i);
+  });
+  return [...groups.entries()]
+    .map(([root, members]) => ({ root, members }))
+    .sort((a, b) => a.root - b.root);
+}
+
+function buildUnionFindSteps() {
+  const parent = Array.from({ length: UNION_FIND_N }, (_, i) => i);
+  const steps = [{
+    kind: 'init',
+    activeLine: 'union-naive',
+    parent: [...parent],
+    changed: [],
+    components: ufComponentsOf(parent),
+    op: null,
+  }];
+
+  UNION_FIND_OPERATIONS.forEach((op) => {
+    if (op.type === 'union' && op.mode === 'naive') {
+      const ra = ufFindNoCompress(parent, op.a);
+      const rb = ufFindNoCompress(parent, op.b);
+      parent[ra] = rb;
+      steps.push({
+        kind: 'union-naive',
+        activeLine: 'union-naive',
+        parent: [...parent],
+        changed: [ra],
+        components: ufComponentsOf(parent),
+        op: { type: 'union', a: op.a, b: op.b, ra, rb },
+      });
+    } else if (op.type === 'find') {
+      const path = [];
+      let cur = op.x;
+      while (parent[cur] !== cur) {
+        path.push(cur);
+        cur = parent[cur];
+      }
+      const root = cur;
+      path.forEach((node) => { parent[node] = root; });
+      steps.push({
+        kind: 'find-compress',
+        activeLine: 'find-compress',
+        parent: [...parent],
+        changed: [...path],
+        components: ufComponentsOf(parent),
+        op: { type: 'find', x: op.x, path, root },
+      });
+    } else if (op.type === 'union' && op.mode === 'size') {
+      const beforeComponents = ufComponentsOf(parent);
+      const ra = ufFindNoCompress(parent, op.a);
+      const rb = ufFindNoCompress(parent, op.b);
+      const sizeA = beforeComponents.find((group) => group.root === ra).members.length;
+      const sizeB = beforeComponents.find((group) => group.root === rb).members.length;
+      let winner = ra;
+      let loser = rb;
+      if (sizeA < sizeB) {
+        winner = rb;
+        loser = ra;
+      }
+      parent[loser] = winner;
+      steps.push({
+        kind: 'union-size',
+        activeLine: 'union-size',
+        parent: [...parent],
+        changed: [loser],
+        components: ufComponentsOf(parent),
+        op: {
+          type: 'union',
+          a: op.a,
+          b: op.b,
+          ra: winner,
+          rb: loser,
+          winnerSize: Math.max(sizeA, sizeB),
+          loserSize: Math.min(sizeA, sizeB),
+        },
+      });
+    }
+  });
+
+  return steps;
+}
+
+const UNION_FIND_STEPS = buildUnionFindSteps();
+
+function UnionFindVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = UNION_FIND_STEPS;
+  const step = steps[activeStep];
+
+  const activeLineLabel = {
+    'union-naive': t('先不比较大小，直接把一个根挂到另一个根下', 'Attach one root under the other without comparing sizes yet'),
+    'find-compress': t('find 时把路径上的每个节点直接指向根', 'find rewires every node on the path to point straight at the root'),
+    'union-size': t('比较两个集合大小，把小集合的根挂到大集合的根下', 'Compare the two set sizes and attach the smaller root under the larger one'),
+  }[step.activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'init') {
+    title = t('8 个节点，初始时各自是自己的根', '8 nodes, each initially its own root');
+    detail = t('parent[i] = i，还没有发生任何合并。', 'parent[i] = i for every node; no union has happened yet.');
+  } else if (step.kind === 'union-naive') {
+    title = t(`union(${step.op.a}, ${step.op.b})：把根 ${step.op.ra} 挂到根 ${step.op.rb} 下`, `union(${step.op.a}, ${step.op.b}): attach root ${step.op.ra} under root ${step.op.rb}`);
+    detail = t('这里故意不按大小合并，让链条越接越长，才能看出路径压缩的效果。', 'This union deliberately skips the by-size optimization so the chain keeps growing, which is what makes path compression visible in the next step.');
+  } else if (step.kind === 'find-compress') {
+    title = t(`find(${step.op.x})：路径压缩`, `find(${step.op.x}): path compression`);
+    detail = t(
+      `find(${step.op.x}) 原本要沿着 ${step.op.path.join(' → ')} → ${step.op.root} 走 ${step.op.path.length} 步，压缩后这些节点全部直接指向根 ${step.op.root}。`,
+      `find(${step.op.x}) originally has to walk ${step.op.path.join(' → ')} → ${step.op.root}, ${step.op.path.length} hop(s). After compression every node on that path points straight at root ${step.op.root}.`,
+    );
+  } else {
+    title = t(`union(${step.op.a}, ${step.op.b})：按大小合并`, `union(${step.op.a}, ${step.op.b}): union by size`);
+    detail = t(
+      `根 ${step.op.ra} 所在集合有 ${step.op.winnerSize} 个节点，根 ${step.op.rb} 所在集合只有 ${step.op.loserSize} 个，小集合挂到大集合下面。`,
+      `Root ${step.op.ra}'s set has ${step.op.winnerSize} node(s) while root ${step.op.rb}'s set has only ${step.op.loserSize}; the smaller set attaches under the larger one.`,
+    );
+  }
+
+  return (
+    <section className="uf-visual" aria-label={t('并查集：路径压缩与按大小合并演示', 'Step-through: union-find with path compression and union by size')}>
+      <header className="uf-header">
+        <div>
+          <p className="eyebrow">{t('并查集，find 与 union', 'Union-Find, find and union')}</p>
+          <h2>{t('8 个节点：先建链条，再看路径压缩', '8 nodes: build a chain, then watch path compression')}</h2>
+          <p>{t(
+            '前 6 次 union 故意不按大小合并，制造出两条链条；第 7 步的 find 触发路径压缩；最后一次 union 按大小合并。',
+            'The first 6 union calls skip the by-size optimization on purpose, building two chains. The 7th step is a find call that triggers path compression. The final union merges the two components by size.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`uf-step ${step.kind}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="uf-workspace">
+        <div className="uf-stage-card">
+          <div className="uf-array">
+            {step.parent.map((p, i) => {
+              const isRoot = p === i;
+              const changed = step.changed.includes(i);
+              return (
+                <div className={`uf-node ${isRoot ? 'root' : ''} ${changed ? 'changed' : ''}`} key={i}>
+                  <span>{i}</span>
+                  <strong>{t(`父 ${p}`, `parent ${p}`)}</strong>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="uf-components">
+            <span>{t('当前连通分量', 'Current connected components')}</span>
+            <div>
+              {step.components.map((group) => (
+                <div className="uf-component" key={group.root}>
+                  <em>{t(`根 ${group.root}`, `root ${group.root}`)}</em>
+                  <div>
+                    {group.members.map((m) => <i key={m}>{m}</i>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="uf-code" aria-label={t('当前并查集代码', 'Current union-find code')}>
+          <div className="uf-code-heading">
+            <span>{t('find / union 模板', 'find / union template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="uf-code-lines">
+            {UNION_FIND_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="uf-legend">
+        <span><i className="root" />{t('根节点（parent[i] = i）', 'Root node (parent[i] = i)')}</span>
+        <span><i className="changed" />{t('本步更新的父指针', 'Parent pointer updated this step')}</span>
+      </div>
+
+      <div className="uf-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择并查集演示步骤', 'Select a union-find demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -13740,6 +14150,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'median-two-heaps-demo') {
     return <MedianTwoHeapsVisual />;
+  }
+
+  if (match?.[1] === 'grid-multi-source-bfs-demo') {
+    return <RottingOrangesBFSVisual />;
+  }
+
+  if (match?.[1] === 'union-find-demo') {
+    return <UnionFindVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
