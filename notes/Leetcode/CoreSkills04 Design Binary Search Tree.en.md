@@ -203,7 +203,9 @@ Every traversal visits each node once, for `O(n)` time. Recursive DFS and iterat
 
 ### 1. Bottom-Up Return Value + Global Best
 
-Iterative postorder processes both children before computing the parent. A cache stores the quantity that each parent can continue composing, while a separate variable records the answer across the full tree.
+A child computes a value first; the parent uses it to compute its own contribution, while a separate variable tracks the best answer seen so far across the scan. The whole-tree answer (`best`) and the quantity the parent needs (`value_for_parent`) are usually not the same thing, and conflating them is a common implementation error. This structure can be written either recursively or as an iterative postorder traversal; which one to use depends on which form is easier to follow for that specific problem, not a fixed choice.
+
+The iterative form simulates the call stack explicitly, caching each node's return value in a dictionary and computing the current node once both children have been processed:
 
 ```python
 def solve(root):
@@ -226,11 +228,13 @@ def solve(root):
     return best
 ```
 
-`processed=False` expands the children first. `processed=True` means both child values are finalized in the cache, so the current node can be computed. Diameter caches height and records `left_height + right_height` as the answer. Maximum Path Sum caches a one-sided downward path sum and records a complete path that may use both branches. The whole-tree answer and the quantity required by the parent differ; conflating them is a common implementation error.
+`processed=False` expands the children first. `processed=True` means both child values are finalized in the cache, so the current node can be computed. Diameter uses this iterative form and caches height, recording `left_height + right_height` as the answer.
+
+The recursive form is more direct and needs no cache dictionary, since a child's return value is simply the result of its own recursive call. Maximum Path Sum uses this form: the recursive call returns a one-sided downward gain, and `self.max_sum` records the best complete path joining both branches.
 
 Count Good Nodes applies the same separation between state and answer aggregation. Its explicit stack passes the path maximum from parent to child, while a separate variable records the count, making it a top-down variant of the pattern.
 
-Used by: Diameter of Binary Tree, Binary Tree Maximum Path Sum, Count Good Nodes in Binary Tree.
+Used by: Diameter of Binary Tree (iterative), Count Good Nodes in Binary Tree (iterative), Binary Tree Maximum Path Sum (recursive).
 
 ### 2. Structural Comparison Recursion
 
@@ -312,9 +316,9 @@ def build_tree(preorder, inorder):
 
 When the next preorder value differs from `inorder[j]`, it is the left child of the stack top. When the values match, the current left subtree is complete. Pop consecutive stack entries that match inorder, then attach the new node as the right child of the last popped node. Each node enters and leaves the stack once, giving `O(n)` time and `O(n)` auxiliary space.
 
-Serialize and Deserialize uses preorder with explicit null markers and a stack of nodes with pending children. Preorder supplies the current root first, and the remaining markers are consumed in the fixed order of left subtree followed by right subtree. Inorder alone places left-side content before the root and cannot identify the root position without another traversal.
+Serialize and Deserialize uses preorder with explicit null markers: preorder supplies the current root first, and the remaining markers are consumed in the fixed order of left subtree followed by right subtree. The recursive form is more direct here and needs no extra stack; the null marker itself tells each recursive call where its subtree ends. Inorder alone places left-side content before the root and cannot identify the root position without another traversal, which is why Construct Binary Tree from Preorder and Inorder Traversal needs an inorder split and can't rely on just preorder plus null markers the way this problem does.
 
-Used by: Construct Binary Tree from Preorder and Inorder Traversal, Serialize and Deserialize Binary Tree.
+Used by: Construct Binary Tree from Preorder and Inorder Traversal (iterative), Serialize and Deserialize Binary Tree (recursive).
 
 ### 5. Recomputed Heights and the Sentinel Fix
 
@@ -1020,13 +1024,15 @@ The demo below steps through this exact example, showing the stack, the `j` poin
 
 ### 14. Binary Tree Maximum Path Sum
 
-A parent can continue through one downward branch, so the cache stores `node.val + max(left_gain, right_gain)`. The complete candidate at the current node may join both branches and updates the global answer. Negative gains are clamped to `0`.
+A parent can continue through only one downward branch, so the recursive call returns `node.val + max(left_gain, right_gain)`. The complete candidate at the current node may join both branches and updates `self.max_sum`. Negative gains are clamped to `0`.
 
 | Item | Value |
 |---|---|
-| Composed patterns | Postorder stack + gain cache + global best |
-| Cached / answer quantity | One-sided downward gain / maximum path with any endpoints |
+| Composed pattern | Bottom-up return value + global best |
+| Return / answer quantity | One-sided downward gain / maximum path with any endpoints |
 | Time / Space | `O(n) / O(h)` |
+
+Recursion reads more directly here than the iterative form: `self.max_sum` is already mutable state in Python, so there's no need for `nonlocal` or an extra height cache to carry a child's return value across stack frames. Whether to write a problem iteratively or recursively depends on which form is easier to follow for that specific problem; not every problem favors the same form. Diameter and Balanced Binary Tree use an iterative postorder traversal specifically because they're demonstrating "simulate the call stack with an explicit stack"; that's not the point being made here, so the plain recursive form is clearer.
 
 #### Quick Coding: Binary Tree Maximum Path Sum
 
@@ -1039,41 +1045,40 @@ def maxPathSum(root):
 <summary>Reference answer</summary>
 
 ```python
-import math
+from typing import Optional
 
 
 class Solution:
-    def maxPathSum(self, root: TreeNode) -> int:
-        gain = {None: 0}
-        best = -math.inf
-        stack = [(root, False)]
-        while stack:
-            node, processed = stack.pop()
-            if node is None:
-                continue
-            if processed:
-                left_gain = max(0, gain[node.left])
-                right_gain = max(0, gain[node.right])
-                best = max(best, node.val + left_gain + right_gain)
-                gain[node] = node.val + max(left_gain, right_gain)
-            else:
-                stack.append((node, True))
-                stack.append((node.left, False))
-                stack.append((node.right, False))
-        return best
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        self.max_sum = float('-inf')
+
+        def dfs(node):
+            if not node:
+                return 0
+
+            max_left = max(0, dfs(node.left))
+            max_right = max(0, dfs(node.right))
+
+            path_sum = node.val + max_left + max_right
+            self.max_sum = max(self.max_sum, path_sum)
+
+            return node.val + max(max_left, max_right)
+
+        dfs(root)
+        return self.max_sum
 ```
 
-The `(node, processed)` state is identical to Diameter: expand the children first, then combine their cached results at the current node. Both problems use the same iterative postorder pattern with different combine functions for height and path gain.
+Each call to `dfs` is naturally its own stack frame, so `max_left`/`max_right` are already the values its children computed, with no manual cache needed. `self.max_sum` updates on entry to every node, and once `dfs` returns, it holds the final answer.
 
 </details>
 
 ### 15. Serialize and Deserialize Binary Tree
 
-The preorder sequence records every node value and writes `#` for every null child. Serialization and deserialization both use explicit stacks to track pending children.
+The preorder sequence records every node value and writes a null marker for every null child. Recursion reads more clearly than the iterative form here: `serialize` is just a preorder traversal, and `deserialize` just consumes tokens in the same order, with no extra stack or `fill_count` bookkeeping needed since the recursive call itself tracks "which child needs filling next."
 
 | Item | Value |
 |---|---|
-| Composed patterns | Preorder reconstruction with null markers |
+| Composed pattern | Preorder reconstruction with null markers |
 | Invariant | Serialization and deserialization use the same token order |
 | Time / Space | `O(n) / O(n)` |
 
@@ -1097,51 +1102,39 @@ from typing import Optional
 
 class Codec:
     def serialize(self, root: Optional[TreeNode]) -> str:
-        tokens = []
-        stack = [root]
-        while stack:
-            node = stack.pop()
-            if node is None:
-                tokens.append("#")
-                continue
-            tokens.append(str(node.val))
-            stack.append(node.right)
-            stack.append(node.left)
-        return ",".join(tokens)
+        res = []
+
+        def dfs(node):
+            if not node:
+                res.append("N")  # "N" marks a null node
+                return
+            res.append(str(node.val))
+            dfs(node.left)
+            dfs(node.right)
+
+        dfs(root)
+        return ",".join(res)
 
     def deserialize(self, data: str) -> Optional[TreeNode]:
-        tokens = data.split(",")
-        idx = 0
-        root_token = tokens[idx]
-        idx += 1
-        if root_token == "#":
-            return None
-        root = TreeNode(int(root_token))
-        stack = [[root, 0]]
-        while idx < len(tokens):
-            token = tokens[idx]
-            idx += 1
-            entry = stack[-1]
-            parent = entry[0]
-            new_node = None if token == "#" else TreeNode(int(token))
-            if entry[1] == 0:
-                parent.left = new_node
-                entry[1] = 1
-            else:
-                parent.right = new_node
-                entry[1] = 2
-            while stack and stack[-1][1] == 2:
-                stack.pop()
-            if new_node is not None:
-                stack.append([new_node, 0])
-        return root
+        vals = iter(data.split(","))
+
+        def dfs():
+            val = next(vals)
+            if val == "N":
+                return None
+            node = TreeNode(int(val))
+            node.left = dfs()
+            node.right = dfs()
+            return node
+
+        return dfs()
 ```
 
-`serialize` is iterative preorder with null markers. Push the right child before the left child so the left child pops first, and emit `"#"` for every null child.
+The `dfs` in `serialize` is an ordinary preorder traversal, except null children also get written; otherwise `deserialize` would have no way to tell whether a child exists.
 
-Each `deserialize` stack entry is `[node, fill_count]`, where `fill_count` records how many of the node's two children have been assigned: `0`, `1`, or `2`. Each token becomes the next pending child of the current stack top. When `fill_count` reaches `2`, the node is complete and is popped. This can pop several ancestors in sequence when the new assignment also completes them. A non-null new node is then pushed to await its own two children.
+`deserialize` wraps the token list in an iterator with `iter()`, so each `next(vals)` pulls the next token in exactly the order `serialize` produced it. It builds the current node first, then recurses into the left subtree, then the right, the same order `serialize` used, so every `next()` call is guaranteed to return the correct next token.
 
-This stack and the Preorder+Inorder construction stack both track pending children. Here, null markers state whether each child exists, so no inorder cross-reference is required.
+This problem and Preorder+Inorder reconstruction are the same broad idea: preorder fixes the next node, and some mechanism tells you where its subtree ends. There, that mechanism is the split position in the inorder sequence, which needs an explicit stack to track. Here, the mechanism is an explicit null marker, and the recursive call itself already knows where the subtree ends, so no extra state is required.
 
 </details>
 

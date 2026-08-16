@@ -203,7 +203,9 @@ def level_order(root):
 
 ### 1. 自底向上返回值 + 全局最优值
 
-迭代后序遍历先处理子节点，再计算父节点。缓存保存每个节点可供父节点继续组合的量，独立变量记录整棵树的答案。
+子节点先算出一个值，父节点用这个值算出当前节点的贡献，同时用一个独立变量记录扫描过程中出现的最优答案。整棵树的答案（`best`）和父节点需要的量（`value_for_parent`）往往不是同一个东西；混用这两个量会产生错误。这个结构既可以写成递归，也可以写成迭代后序遍历，选哪种取决于哪种写法在具体这道题上更容易说清楚，不需要每次都用同一种形式。
+
+迭代版本用显式栈模拟调用栈，把每个节点的返回值缓存在字典里，等它的两个子节点都处理完再计算当前节点：
 
 ```python
 def solve(root):
@@ -226,11 +228,13 @@ def solve(root):
     return best
 ```
 
-`processed=False` 表示先展开子节点；`processed=True` 表示两个子节点的缓存值已经确定，可以计算当前节点。Diameter 缓存高度，答案记录 `left_height + right_height`。Maximum Path Sum 缓存单边向下路径和，答案记录可以同时使用左右分支的完整路径和。整棵树的答案与父节点需要的量不同；混用这两个量会产生错误。
+`processed=False` 表示先展开子节点；`processed=True` 表示两个子节点的缓存值已经确定，可以计算当前节点。Diameter 用这个迭代版本缓存高度，答案记录 `left_height + right_height`。
 
-Count Good Nodes 使用同一项“状态与答案聚合分开”的原则。显式栈把路径最大值从父节点传给子节点，独立变量记录计数，因此属于该模式的自顶向下变体。
+递归版本更直接，不需要额外的缓存字典，因为子节点的返回值就是对应递归调用的结果。Maximum Path Sum 用的是这个形式：递归返回单边向下收益，`self.max_sum` 记录任意两个分支拼接后的最大路径和。
 
-使用题目：Diameter of Binary Tree、Binary Tree Maximum Path Sum、Count Good Nodes in Binary Tree。
+Count Good Nodes 使用同一项“状态与答案聚合分开”的原则，用显式栈把路径最大值从父节点传给子节点，独立变量记录计数，属于该模式的自顶向下变体。
+
+使用题目：Diameter of Binary Tree（迭代）、Count Good Nodes in Binary Tree（迭代）、Binary Tree Maximum Path Sum（递归）。
 
 ### 2. 结构比较递归
 
@@ -312,9 +316,9 @@ def build_tree(preorder, inorder):
 
 下一个前序值与 `inorder[j]` 不同时，它是栈顶节点的左子节点。相同时，当前左子树已经完成；连续弹出与中序值匹配的节点后，新节点连接为最后一个弹出节点的右子节点。每个节点入栈、出栈各一次，时间和额外空间均为 `O(n)`。
 
-Serialize and Deserialize 使用带显式空标记的前序序列和待填充子节点的栈。前序先给出当前根，后续标记按“左子树、右子树”的固定顺序消费。中序序列先出现左侧内容，缺少额外遍历时无法确定当前根的位置，因此不能单独完成无歧义反序列化。
+Serialize and Deserialize 用的是带显式空标记的前序序列：前序先给出当前根，后续标记按“左子树、右子树”的固定顺序消费。这道题递归写法更直接，不需要额外的栈；空标记本身就告诉递归调用子树在哪结束。中序序列先出现左侧内容，缺少额外遍历时无法确定当前根的位置，因此不能单独完成无歧义反序列化，这也是为什么 Construct Binary Tree from Preorder and Inorder Traversal 必须用中序分割，而不能像这道题一样只靠前序加空标记。
 
-使用题目：Construct Binary Tree from Preorder and Inorder Traversal、Serialize and Deserialize Binary Tree。
+使用题目：Construct Binary Tree from Preorder and Inorder Traversal（迭代）、Serialize and Deserialize Binary Tree（递归）。
 
 ### 5. 高度重复计算与哨兵修复
 
@@ -1020,13 +1024,15 @@ class Solution:
 
 ### 14. Binary Tree Maximum Path Sum
 
-父节点只能继续一条向下分支，因此缓存 `node.val + max(left_gain, right_gain)`。当前节点处的完整候选路径可以同时连接左右分支，并用于更新全局答案。负收益按 `0` 丢弃。
+父节点只能继续一条向下分支，因此递归返回 `node.val + max(left_gain, right_gain)`。当前节点处的完整候选路径可以同时连接左右分支，写入 `self.max_sum`。负收益按 `0` 丢弃。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 后序栈 + 收益缓存 + 全局最优值 |
-| 缓存量 / 答案量 | 单边向下收益 / 任意端点最大路径和 |
+| 组合模式 | 自底向上返回值 + 全局最优值 |
+| 返回量 / 答案量 | 单边向下收益 / 任意端点最大路径和 |
 | 时间 / 空间 | `O(n) / O(h)` |
+
+这道题用递归比迭代版本更直接：Python 里 `self.max_sum` 直接是可变状态，不需要 `nonlocal`，也不需要额外的高度缓存字典去跨越栈帧传递子节点的返回值。是否用迭代还是递归，取决于哪种写法在这道题上更容易说清楚，不是所有题目都天然适合同一种写法。Diameter 和 Balanced Binary Tree 用迭代后序遍历，是因为它们本身就在演示"用显式栈模拟调用栈"这个技巧；这里没有这个额外目的，直接写递归更清楚。
 
 #### Quick Coding：Binary Tree Maximum Path Sum
 
@@ -1039,37 +1045,36 @@ def maxPathSum(root):
 <summary>参考答案</summary>
 
 ```python
-import math
+from typing import Optional
 
 
 class Solution:
-    def maxPathSum(self, root: TreeNode) -> int:
-        gain = {None: 0}
-        best = -math.inf
-        stack = [(root, False)]
-        while stack:
-            node, processed = stack.pop()
-            if node is None:
-                continue
-            if processed:
-                left_gain = max(0, gain[node.left])
-                right_gain = max(0, gain[node.right])
-                best = max(best, node.val + left_gain + right_gain)
-                gain[node] = node.val + max(left_gain, right_gain)
-            else:
-                stack.append((node, True))
-                stack.append((node.left, False))
-                stack.append((node.right, False))
-        return best
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        self.max_sum = float('-inf')
+
+        def dfs(node):
+            if not node:
+                return 0
+
+            max_left = max(0, dfs(node.left))
+            max_right = max(0, dfs(node.right))
+
+            path_sum = node.val + max_left + max_right
+            self.max_sum = max(self.max_sum, path_sum)
+
+            return node.val + max(max_left, max_right)
+
+        dfs(root)
+        return self.max_sum
 ```
 
-这里的 `(node, processed)` 与 Diameter 完全相同：先展开子节点，再用缓存结果合并当前节点。两个问题使用同一种迭代后序模式，只是合并函数分别计算高度与路径收益。
+`dfs` 每次递归调用天然对应一层调用帧，`max_left`/`max_right` 就是子节点已经算好的返回值，不需要手动缓存。`self.max_sum` 在每次进入新节点时更新，函数返回后就是最终答案。
 
 </details>
 
 ### 15. Serialize and Deserialize Binary Tree
 
-前序序列记录节点值，并为每个空子节点写入 `#`。序列化和反序列化都使用显式栈维护待处理的子节点。
+前序序列记录节点值，并为每个空子节点写入一个空标记。这道题递归比迭代更清楚：`serialize` 只是一次前序遍历，`deserialize` 只是按同样的顺序消费 token，不需要额外的栈和 `fill_count` 记账；递归调用本身就在追踪"当前该填哪个子节点"。
 
 | 项目 | 内容 |
 |---|---|
@@ -1097,51 +1102,39 @@ from typing import Optional
 
 class Codec:
     def serialize(self, root: Optional[TreeNode]) -> str:
-        tokens = []
-        stack = [root]
-        while stack:
-            node = stack.pop()
-            if node is None:
-                tokens.append("#")
-                continue
-            tokens.append(str(node.val))
-            stack.append(node.right)
-            stack.append(node.left)
-        return ",".join(tokens)
+        res = []
+
+        def dfs(node):
+            if not node:
+                res.append("N")  # 用 "N" 代表空节点
+                return
+            res.append(str(node.val))
+            dfs(node.left)
+            dfs(node.right)
+
+        dfs(root)
+        return ",".join(res)
 
     def deserialize(self, data: str) -> Optional[TreeNode]:
-        tokens = data.split(",")
-        idx = 0
-        root_token = tokens[idx]
-        idx += 1
-        if root_token == "#":
-            return None
-        root = TreeNode(int(root_token))
-        stack = [[root, 0]]
-        while idx < len(tokens):
-            token = tokens[idx]
-            idx += 1
-            entry = stack[-1]
-            parent = entry[0]
-            new_node = None if token == "#" else TreeNode(int(token))
-            if entry[1] == 0:
-                parent.left = new_node
-                entry[1] = 1
-            else:
-                parent.right = new_node
-                entry[1] = 2
-            while stack and stack[-1][1] == 2:
-                stack.pop()
-            if new_node is not None:
-                stack.append([new_node, 0])
-        return root
+        vals = iter(data.split(","))
+
+        def dfs():
+            val = next(vals)
+            if val == "N":
+                return None
+            node = TreeNode(int(val))
+            node.left = dfs()
+            node.right = dfs()
+            return node
+
+        return dfs()
 ```
 
-`serialize` 是带空标记的迭代前序遍历。先压右子节点、再压左子节点，使左子节点先出栈，并为每个空子节点输出 `"#"`。
+`serialize` 里的 `dfs` 就是普通前序遍历，只是空节点也要写一个标记，否则 `deserialize` 无法判断某个子节点是否存在。
 
-`deserialize` 的每个栈元素是 `[node, fill_count]`，其中 `fill_count` 表示该节点已经分配的子节点数量：`0`、`1` 或 `2`。每个新 token 成为当前栈顶的下一个待填充子节点。`fill_count` 达到 `2` 时，该节点已经完成并出栈；如果这个操作同时完成了多个祖先，就连续弹出。非空新节点随后入栈，等待分配自己的两个子节点。
+`deserialize` 用 `iter()` 把 token 列表包成迭代器，每次 `next(vals)` 按序列化时同样的顺序取出下一个 token。先建当前节点，再递归建左子树、右子树，顺序和 `serialize` 完全对应，所以每次 `next()` 取到的 token 总是当前正确的那个。
 
-这个栈与 Preorder+Inorder 重建中的栈都记录待处理的子节点。这里的空标记直接给出子节点是否存在，因此不需要交叉引用中序序列。
+这道题和 Preorder+Inorder 重建是同一个大类：都是"前序定下一个节点，某种机制告诉你子树在哪结束"。那道题里这个机制是中序序列的分割位置，所以需要额外的栈来处理；这里机制就是显式的空标记，递归调用本身天然知道子树的边界，不需要再维护额外状态。
 
 </details>
 
