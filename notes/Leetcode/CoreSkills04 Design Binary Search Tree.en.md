@@ -1013,6 +1013,11 @@ The result is `3(9, 20(15,7))`.
 
 </details>
 
+The demo below steps through this exact example, showing the stack, the `j` pointer, and the tree under construction changing together.
+
+```build-tree-demo
+```
+
 ### 14. Binary Tree Maximum Path Sum
 
 A parent can continue through one downward branch, so the cache stores `node.val + max(left_gain, right_gain)`. The complete candidate at the current node may join both branches and updates the global answer. Negative gains are clamped to `0`.

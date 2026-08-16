@@ -13113,10 +13113,326 @@ function AVLRotationVisual() {
   );
 }
 
+const BUILD_TREE_PREORDER = [3, 9, 20, 15, 7];
+const BUILD_TREE_INORDER = [9, 3, 15, 20, 7];
+const BUILD_TREE_POSITIONS = {
+  3: { x: 350, y: 54 },
+  9: { x: 210, y: 145 },
+  20: { x: 490, y: 145 },
+  15: { x: 420, y: 238 },
+  7: { x: 560, y: 238 },
+};
+
+const BUILD_TREE_CODE_LINES = [
+  { id: 'init', code: ['root = TreeNode(preorder[0])', 'stack = [root]', 'j = 0'] },
+  { id: 'create', code: ['for i in range(1, len(preorder)):', '    node = TreeNode(preorder[i])', '    parent = None'] },
+  { id: 'compare', code: ['    while stack and stack[-1].val == inorder[j]:'] },
+  { id: 'pop', code: ['        parent = stack.pop()', '        j += 1'] },
+  { id: 'attach-right', code: ['    if parent:', '        parent.right = node'] },
+  { id: 'attach-left', code: ['    else:', '        stack[-1].left = node'] },
+  { id: 'push', code: ['    stack.append(node)'] },
+  { id: 'finish', code: ['return root'] },
+];
+
+function buildBuildTreeSteps() {
+  const preorder = BUILD_TREE_PREORDER;
+  const inorder = BUILD_TREE_INORDER;
+  const steps = [];
+  const stack = [preorder[0]];
+  const edges = [];
+  const createdValues = new Set([preorder[0]]);
+  let j = 0;
+
+  const snapshot = (action, activeLine, extra = {}) => steps.push({
+    action,
+    activeLine,
+    i: extra.i ?? null,
+    j,
+    current: extra.current ?? null,
+    compareTop: extra.compareTop ?? null,
+    popped: extra.popped ?? null,
+    stack: [...stack],
+    edges: edges.map((edge) => ({ ...edge })),
+    created: [...createdValues],
+  });
+
+  snapshot('init', 'init', { current: preorder[0] });
+
+  for (let i = 1; i < preorder.length; i++) {
+    const nodeVal = preorder[i];
+    createdValues.add(nodeVal);
+    snapshot('create', 'create', { i, current: nodeVal });
+
+    let parent = null;
+    while (true) {
+      if (!stack.length) break;
+      const top = stack[stack.length - 1];
+      snapshot('compare', 'compare', { i, current: nodeVal, compareTop: top });
+      if (top !== inorder[j]) break;
+      parent = stack.pop();
+      j += 1;
+      snapshot('pop', 'pop', { i, current: nodeVal, popped: parent });
+    }
+
+    if (parent !== null) {
+      edges.push({ parent, child: nodeVal, side: 'right' });
+      snapshot('attach-right', 'attach-right', { i, current: nodeVal });
+    } else {
+      edges.push({ parent: stack[stack.length - 1], child: nodeVal, side: 'left' });
+      snapshot('attach-left', 'attach-left', { i, current: nodeVal });
+    }
+
+    stack.push(nodeVal);
+    snapshot('push', 'push', { i, current: nodeVal });
+  }
+
+  snapshot('finish', 'finish', {});
+  return steps;
+}
+
+const BUILD_TREE_STEPS = buildBuildTreeSteps();
+
+function BuildTreeDiagram({ step, t }) {
+  const placed = new Set([BUILD_TREE_PREORDER[0], ...step.edges.map((edge) => edge.child)]);
+  return (
+    <svg
+      aria-label={t('从前序和中序构建的二叉树', 'The binary tree built from preorder and inorder')}
+      className="build-tree-diagram"
+      role="img"
+      viewBox="0 0 700 292"
+    >
+      {step.edges.map((edge) => {
+        const source = BUILD_TREE_POSITIONS[edge.parent];
+        const target = BUILD_TREE_POSITIONS[edge.child];
+        return (
+          <line
+            className="build-tree-edge"
+            key={`${edge.parent}-${edge.child}`}
+            x1={source.x}
+            x2={target.x}
+            y1={source.y + 27}
+            y2={target.y - 27}
+          />
+        );
+      })}
+      {Object.entries(BUILD_TREE_POSITIONS).map(([value, pos]) => {
+        const nodeVal = Number(value);
+        if (!placed.has(nodeVal)) {
+          return (
+            <g className="build-tree-node ghost" key={nodeVal}>
+              <rect height="54" rx="14" ry="14" width="70" x={pos.x - 35} y={pos.y - 27} />
+            </g>
+          );
+        }
+        const classes = [
+          'build-tree-node',
+          nodeVal === step.current ? 'current' : '',
+          nodeVal === step.popped ? 'popped' : '',
+          nodeVal === step.compareTop ? 'comparing' : '',
+          nodeVal !== step.current && step.stack.includes(nodeVal) ? 'frontier' : '',
+          nodeVal !== step.current && !step.stack.includes(nodeVal) ? 'visited' : '',
+        ].filter(Boolean).join(' ');
+        return (
+          <g className={classes} key={nodeVal}>
+            <rect height="54" rx="14" ry="14" width="70" x={pos.x - 35} y={pos.y - 27} />
+            <text dominantBaseline="middle" textAnchor="middle" x={pos.x} y={pos.y}>{nodeVal}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function BuildTreeVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = BUILD_TREE_STEPS;
+  const step = steps[activeStep];
+  const pendingValue = step.current !== null
+    && step.current !== BUILD_TREE_PREORDER[0]
+    && !step.edges.some((edge) => edge.child === step.current)
+    ? step.current
+    : null;
+  const displayStack = [...step.stack].reverse();
+
+  const activeLineLabel = {
+    init: t('创建根节点并初始化栈', 'Create the root and initialize the stack'),
+    create: t('用下一个前序值创建新节点', 'Create a new node from the next preorder value'),
+    compare: t('比较栈顶值与 inorder[j]', 'Compare the stack top with inorder[j]'),
+    pop: t('弹出栈顶，j 前进一位', 'Pop the stack top and advance j'),
+    'attach-right': t('接到最后弹出节点的右侧', 'Attach as the right child of the last popped node'),
+    'attach-left': t('接到当前栈顶的左侧', 'Attach as the left child of the current stack top'),
+    push: t('新节点入栈，等待右子节点', 'Push the new node, awaiting a right child'),
+    finish: t('返回根节点', 'Return the root'),
+  }[step.activeLine];
+
+  const actionCopy = {
+    init: {
+      title: t('根节点来自 preorder[0]', 'The root comes from preorder[0]'),
+      detail: t('根节点入栈，j 从 0 开始指向 inorder 中下一个待完成的位置。', 'The root is pushed onto the stack; j starts at 0, pointing at the next position inorder must resolve.'),
+    },
+    create: {
+      title: t(`创建节点 ${step.current}`, `Create node ${step.current}`),
+      detail: t('新节点还没有连接到树上，先看它应该接在哪里。', 'The new node is not connected to the tree yet — the next steps decide where it attaches.'),
+    },
+    compare: {
+      title: t(`栈顶 ${step.compareTop} 是否等于 inorder[${step.j}]？`, `Does the stack top ${step.compareTop} equal inorder[${step.j}]?`),
+      detail: t('相等说明栈顶节点的左子树已经在中序序列中完整出现，可以确定它没有更多待定的左侧内容。', 'Equality means the stack-top node’s left subtree has fully appeared in the inorder sequence — nothing about it is still pending on the left.'),
+    },
+    pop: {
+      title: t(`弹出 ${step.popped}，j 变为 ${step.j}`, `Pop ${step.popped}; j becomes ${step.j}`),
+      detail: t('这个节点暂时没有更多子节点等待判断；如果后面没有节点接到它右侧，它就保持只有左子树。', 'This node has nothing further pending for now; unless a later node attaches to its right, it keeps only its left subtree.'),
+    },
+    'attach-right': {
+      title: t(`${step.current} 成为 ${step.edges[step.edges.length - 1]?.parent} 的右子节点`, `${step.current} becomes the right child of ${step.edges[step.edges.length - 1]?.parent}`),
+      detail: t('至少发生过一次弹栈，说明新节点应该接在最后一个弹出节点的右侧。', 'At least one pop happened, so the new node attaches to the right of the last node popped.'),
+    },
+    'attach-left': {
+      title: t(`${step.current} 成为 ${step.stack[step.stack.length - 1]} 的左子节点`, `${step.current} becomes the left child of ${step.stack[step.stack.length - 1]}`),
+      detail: t('没有发生弹栈，说明当前栈顶还在等待左子节点。', 'No pop happened, so the current stack top is still waiting for its left child.'),
+    },
+    push: {
+      title: t(`${step.current} 入栈`, `Push ${step.current}`),
+      detail: t('新节点也可能还有自己的右子节点，所以先入栈等待。', 'The new node may still need a right child of its own, so it waits on the stack.'),
+    },
+    finish: {
+      title: t('构建完成：3(9, 20(15, 7))', 'Build complete: 3(9, 20(15, 7))'),
+      detail: t('每个节点入栈、出栈各一次，时间和额外空间都是 O(n)。', 'Every node is pushed and popped exactly once, so time and extra space are both O(n).'),
+    },
+  };
+  const copy = actionCopy[step.action];
+
+  return (
+    <section className="build-tree-visual" aria-label={t('前序加中序重建二叉树逐步演示', 'Step-through: rebuilding a binary tree from preorder and inorder')}>
+      <header className="build-tree-header">
+        <div>
+          <p className="eyebrow">{t('遍历序列重建', 'Traversal-sequence reconstruction')}</p>
+          <h2>{t('用前序定根，用中序找分界', 'Preorder picks the root, inorder finds the split')}</h2>
+          <p>{t(
+            '固定示例 preorder = [3, 9, 20, 15, 7]，inorder = [9, 3, 15, 20, 7]。栈保存等待右子节点的节点，j 跟随中序序列前进。',
+            'Fixed example preorder = [3, 9, 20, 15, 7], inorder = [9, 3, 15, 20, 7]. The stack holds nodes still waiting for a right child; j advances through the inorder sequence.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`build-tree-step ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{copy.title}</strong>
+        <p>{copy.detail}</p>
+      </div>
+
+      <div className="build-tree-workspace">
+        <div className="build-tree-stage-card">
+          <div className="build-tree-arrays">
+            <div className="build-tree-array-row">
+              <span>{t('preorder', 'preorder')}</span>
+              <div>
+                {BUILD_TREE_PREORDER.map((value, index) => (
+                  <em className={index === step.i ? 'pointer' : ''} key={index}>
+                    {value}
+                    {index === step.i && <i>i</i>}
+                  </em>
+                ))}
+              </div>
+            </div>
+            <div className="build-tree-array-row">
+              <span>{t('inorder', 'inorder')}</span>
+              <div>
+                {BUILD_TREE_INORDER.map((value, index) => (
+                  <em className={index === step.j ? 'pointer' : ''} key={index}>
+                    {value}
+                    {index === step.j && <i>j</i>}
+                  </em>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="build-tree-stage-heading">
+            <span>{t('构建中的树', 'Tree under construction')}</span>
+            <strong>{t('当前执行', 'Now')}: {activeLineLabel}</strong>
+          </div>
+          <BuildTreeDiagram step={step} t={t} />
+
+          {pendingValue !== null && (
+            <div className="build-tree-pending">
+              <span>{t('待连接节点', 'Node awaiting attachment')}</span>
+              <div className="build-tree-pending-node">{pendingValue}</div>
+            </div>
+          )}
+
+          <div className="build-tree-container-panel">
+            <div>
+              <span>{t('栈：等待右子节点，栈顶在左', 'Stack: awaiting a right child, top at left')}</span>
+              <strong>LIFO</strong>
+            </div>
+            <div className="build-tree-container">
+              {displayStack.length ? displayStack.map((value, index) => (
+                <span className={index === 0 ? 'next' : ''} key={`${value}-${index}`}>
+                  {value}
+                  {index === 0 && <i>{t('栈顶', 'top')}</i>}
+                </span>
+              )) : <em>{t('空', 'empty')}</em>}
+            </div>
+          </div>
+        </div>
+
+        <div className="build-tree-code" aria-label={t('当前重建代码', 'Current reconstruction code')}>
+          <div className="build-tree-code-heading">
+            <span>{t('迭代模板', 'Iterative template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="build-tree-code-lines">
+            {BUILD_TREE_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="build-tree-legend">
+        <span><i className="current" />{t('本轮新节点', 'this round’s new node')}</span>
+        <span><i className="comparing" />{t('正在比较', 'being compared')}</span>
+        <span><i className="popped" />{t('刚刚弹出', 'just popped')}</span>
+        <span><i className="frontier" />{t('栈中等待', 'waiting on the stack')}</span>
+        <span><i className="visited" />{t('已确定', 'resolved')}</span>
+      </div>
+
+      <div className="build-tree-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择构建步骤', 'Select a build step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -13188,6 +13504,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'avl-rotation-demo') {
     return <AVLRotationVisual />;
+  }
+
+  if (match?.[1] === 'build-tree-demo') {
+    return <BuildTreeVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

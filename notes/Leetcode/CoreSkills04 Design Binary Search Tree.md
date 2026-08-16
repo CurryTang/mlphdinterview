@@ -1013,6 +1013,11 @@ class Solution:
 
 </details>
 
+下面的演示逐步执行这个例子，可以直接看到栈、`j` 指针和构建中的树如何一起变化。
+
+```build-tree-demo
+```
+
 ### 14. Binary Tree Maximum Path Sum
 
 父节点只能继续一条向下分支，因此缓存 `node.val + max(left_gain, right_gain)`。当前节点处的完整候选路径可以同时连接左右分支，并用于更新全局答案。负收益按 `0` 丢弃。

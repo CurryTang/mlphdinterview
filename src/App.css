@@ -6482,6 +6482,493 @@
   }
 }
 
+/* ── Build tree from preorder + inorder ─────────── */
+.build-tree-visual {
+  --bt-ink: #17343f;
+  --bt-blue: #245f73;
+  --bt-blue-soft: #e7f2f5;
+  --bt-orange: #c96e27;
+  --bt-orange-soft: #fff0df;
+  --bt-green: #177158;
+  --bt-green-soft: #def3ea;
+  --bt-purple: #7254a3;
+  --bt-purple-soft: #eee8f8;
+  max-width: min(100%, 1060px);
+  margin: 1.35rem auto;
+  border: 1px solid rgba(25, 61, 73, 0.24);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 92% 3%, rgba(114, 84, 163, 0.12), transparent 24%),
+    radial-gradient(circle at 5% 44%, rgba(36, 95, 115, 0.1), transparent 22%),
+    linear-gradient(145deg, #ffffff, #edf6f6);
+  box-shadow: 0 18px 42px rgba(31, 53, 66, 0.14);
+  overflow: hidden;
+}
+
+.build-tree-header {
+  border-bottom: 1px solid rgba(38, 69, 82, 0.12);
+  padding: 1rem;
+}
+
+.build-tree-header h2 {
+  margin: 0.16rem 0 0.3rem;
+  color: var(--bt-ink);
+  font-size: clamp(1.2rem, 2.3vw, 1.65rem);
+}
+
+.build-tree-header p:not(.eyebrow) {
+  max-width: 660px;
+  margin: 0;
+  color: #536c74;
+  font-size: 0.84rem;
+}
+
+.build-tree-step {
+  min-height: 88px;
+  border-left: 5px solid var(--bt-blue);
+  border-bottom: 1px solid rgba(38, 69, 82, 0.1);
+  background: rgba(255, 255, 255, 0.62);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  column-gap: 0.7rem;
+  padding: 0.7rem 1rem;
+}
+
+.build-tree-step.create,
+.build-tree-step.compare {
+  border-left-color: var(--bt-purple);
+}
+
+.build-tree-step.pop,
+.build-tree-step.push {
+  border-left-color: var(--bt-green);
+}
+
+.build-tree-step.attach-left,
+.build-tree-step.attach-right {
+  border-left-color: var(--bt-orange);
+}
+
+.build-tree-step.finish {
+  border-left-color: var(--bt-orange);
+  background: linear-gradient(90deg, rgba(255, 240, 223, 0.74), rgba(255, 255, 255, 0.72));
+}
+
+.build-tree-step > span {
+  grid-row: 1 / 3;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--bt-blue);
+  color: #ffffff;
+  padding: 0.36rem 0.55rem;
+  font: 700 0.66rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-step strong {
+  color: #183b47;
+  font-size: 0.94rem;
+}
+
+.build-tree-step p {
+  margin: 0.1rem 0 0;
+  color: #4d6871;
+  font-size: 0.78rem;
+}
+
+.build-tree-workspace {
+  display: grid;
+  grid-template-columns: minmax(430px, 1.12fr) minmax(400px, 0.88fr);
+  align-items: stretch;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.build-tree-stage-card,
+.build-tree-code {
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.build-tree-stage-card {
+  border: 1px solid rgba(35, 69, 82, 0.19);
+  background: linear-gradient(rgba(255, 255, 255, 0.96), rgba(245, 250, 250, 0.96));
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  padding: 0.8rem;
+}
+
+.build-tree-arrays {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.build-tree-array-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.build-tree-array-row > span {
+  color: #52666e;
+  font: 800 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.build-tree-array-row > div {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.build-tree-array-row em {
+  position: relative;
+  min-width: 30px;
+  border: 2px solid rgba(36, 95, 115, 0.22);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #244a51;
+  display: grid;
+  place-content: center;
+  padding: 0.28rem 0.4rem;
+  font: 800 0.76rem "IBM Plex Mono", "Courier New", monospace;
+  font-style: normal;
+}
+
+.build-tree-array-row em.pointer {
+  border-color: var(--bt-orange);
+  background: var(--bt-orange-soft);
+}
+
+.build-tree-array-row em i {
+  position: absolute;
+  bottom: -1.05rem;
+  left: 50%;
+  border-radius: 999px;
+  background: var(--bt-orange);
+  color: #ffffff;
+  padding: 0.05rem 0.32rem;
+  font-size: 0.55rem;
+  font-style: normal;
+  transform: translateX(-50%);
+}
+
+.build-tree-stage-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.build-tree-stage-heading span {
+  color: #244853;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.build-tree-stage-heading strong {
+  color: #526a73;
+  font: 650 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-diagram {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.build-tree-edge {
+  stroke: rgba(36, 95, 115, 0.42);
+  stroke-linecap: round;
+  stroke-width: 4px;
+}
+
+.build-tree-node rect {
+  fill: #ffffff;
+  stroke: rgba(36, 95, 115, 0.28);
+  stroke-width: 2px;
+}
+
+.build-tree-node text {
+  fill: #173d48;
+  font: 850 1.06rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.build-tree-node.ghost rect {
+  fill: transparent;
+  stroke: rgba(36, 95, 115, 0.16);
+  stroke-dasharray: 5 4;
+}
+
+.build-tree-node.frontier rect {
+  fill: var(--bt-purple-soft);
+  stroke: var(--bt-purple);
+}
+
+.build-tree-node.visited rect {
+  fill: var(--bt-green-soft);
+  stroke: var(--bt-green);
+}
+
+.build-tree-node.comparing rect {
+  fill: var(--bt-purple-soft);
+  stroke: var(--bt-purple);
+  stroke-width: 3px;
+  stroke-dasharray: 4 3;
+}
+
+.build-tree-node.popped rect {
+  fill: var(--bt-green-soft);
+  stroke: var(--bt-green);
+  stroke-width: 3px;
+}
+
+.build-tree-node.current rect {
+  fill: var(--bt-orange-soft);
+  stroke: var(--bt-orange);
+  stroke-width: 3px;
+  filter: drop-shadow(0 4px 5px rgba(100, 57, 17, 0.16));
+}
+
+.build-tree-pending {
+  border: 1px dashed rgba(114, 84, 163, 0.4);
+  border-radius: 9px;
+  background: var(--bt-purple-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.build-tree-pending > span {
+  color: #5a4a7a;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.build-tree-pending-node {
+  min-width: 40px;
+  border: 2px solid var(--bt-purple);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4a3670;
+  display: grid;
+  place-content: center;
+  padding: 0.3rem 0.5rem;
+  font: 850 0.85rem "Space Grotesk", "Avenir Next", sans-serif;
+}
+
+.build-tree-container-panel {
+  border: 1px solid rgba(114, 84, 163, 0.16);
+  border-radius: 9px;
+  background: var(--bt-purple-soft);
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+}
+
+.build-tree-container-panel > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #625375;
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.build-tree-container-panel > div:first-child strong {
+  font: 850 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-container {
+  min-height: 45px;
+  display: flex;
+  align-items: stretch;
+  gap: 0.38rem;
+}
+
+.build-tree-container > span {
+  min-width: 48px;
+  border: 2px solid rgba(114, 84, 163, 0.32);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #523a7a;
+  display: grid;
+  place-content: center;
+  position: relative;
+  font: 850 0.78rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-container > span.next {
+  border-color: var(--bt-purple);
+  background: #f8f4fd;
+}
+
+.build-tree-container i {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  border-radius: 999px;
+  background: var(--bt-purple);
+  color: #ffffff;
+  padding: 0.08rem 0.3rem;
+  font-size: 0.49rem;
+  font-style: normal;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.build-tree-container em {
+  align-self: center;
+  color: #756889;
+  font: 750 0.66rem "IBM Plex Mono", "Courier New", monospace;
+  font-style: normal;
+}
+
+.build-tree-code-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.build-tree-code-heading span {
+  color: #244853;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.build-tree-code {
+  border: 1px solid rgba(35, 69, 82, 0.19);
+  background: linear-gradient(160deg, #14323e, #0d2731);
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 0.8rem;
+}
+
+.build-tree-code-heading strong {
+  color: #cfe3e9;
+  font: 650 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-code-lines {
+  min-width: 400px;
+  display: grid;
+  align-content: center;
+  gap: 0.18rem;
+  padding: 0.62rem;
+}
+
+.build-tree-code-lines > div {
+  border: 1px solid transparent;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  display: grid;
+  gap: 0.06rem;
+  padding: 0.28rem 0.45rem;
+}
+
+.build-tree-code-lines > div.active {
+  border-color: #bca7dc;
+  border-left-color: #8d6abd;
+  background: #f1eafa;
+}
+
+.markdown-body .build-tree-code code {
+  display: block;
+  border-radius: 0;
+  background: transparent !important;
+  color: #edf8fa !important;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.markdown-body .build-tree-code-lines > div.active code {
+  color: #392456 !important;
+  font-weight: 850;
+}
+
+.build-tree-legend {
+  border-top: 1px solid rgba(38, 69, 82, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  padding: 0.52rem 1rem;
+  color: #607780;
+  font: 700 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.build-tree-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.build-tree-legend i {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 4px;
+}
+
+.build-tree-legend i.current { background: var(--bt-orange-soft); border: 2px solid var(--bt-orange); }
+.build-tree-legend i.comparing { background: var(--bt-purple-soft); border: 2px dashed var(--bt-purple); }
+.build-tree-legend i.popped { background: var(--bt-green-soft); border: 2px solid var(--bt-green); }
+.build-tree-legend i.frontier { background: var(--bt-purple-soft); border: 2px solid var(--bt-purple); }
+.build-tree-legend i.visited { background: var(--bt-green-soft); border: 2px solid var(--bt-green); }
+
+.build-tree-controls {
+  border-top: 1px solid rgba(38, 69, 82, 0.1);
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem 0.85rem;
+}
+
+.build-tree-controls button {
+  border: 1px solid rgba(28, 69, 86, 0.2);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #244a51;
+  cursor: pointer;
+  padding: 0.44rem 0.65rem;
+  font-weight: 750;
+}
+
+.build-tree-controls button.primary {
+  border-color: var(--bt-blue);
+  background: var(--bt-blue);
+  color: #ffffff;
+}
+
+.build-tree-controls button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.build-tree-controls input {
+  width: 100%;
+  accent-color: var(--bt-blue);
+}
+
+@media (max-width: 720px) {
+  .build-tree-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .build-tree-controls input {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
 /* ── Largest rectangle in histogram (sentinel stack) ── */
 .largest-rectangle-visual {
   --lr-ink: #14323e;
