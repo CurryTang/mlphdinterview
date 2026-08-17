@@ -304,7 +304,7 @@ class Solution:
 
 `heapq.nlargest` maintains exactly a size-`k` heap internally, so this one line is equivalent to writing the bounded-heap template by hand.
 
-Interviewers often follow up by asking for an average-`O(n)` solution: quickselect, which reuses partition and only recurses into one side each round.
+Interviewers often follow up by asking for an average-`O(n)` solution: quickselect, which reuses partition and only recurses into one side each round. The in-place partitioning template itself is covered in [[CoreSkills10 Insertion Sort#Quick Sort|Quick Sort]].
 
 ```python
 import random
@@ -338,6 +338,11 @@ class Solution:
 ```
 
 A random pivot keeps the worst case unlikely to show up within the scope of an interview, and the average time is `O(n)`. The heap version is shorter and easier to get right under pressure; quickselect is a follow-up answer worth knowing, not the version to lead with.
+
+The demo below breaks partition into individual steps: how the pivot is chosen, how the scan and store pointers move, where the pivot finally lands, and why each round only needs to recurse into one side.
+
+```quickselect-partition-demo
+```
 
 </details>
 

@@ -304,7 +304,7 @@ class Solution:
 
 `heapq.nlargest` 内部维护的正是一个大小为 `k` 的堆，这一行等价于手写的有界堆模板。
 
-面试官经常会追问平均 `O(n)` 的写法：快速选择复用 partition，每轮只递归一侧。
+面试官经常会追问平均 `O(n)` 的写法：快速选择复用 partition，每轮只递归一侧；partition 本身的原地划分模板见 [[CoreSkills10 Insertion Sort#Quick Sort|Quick Sort]]。
 
 ```python
 import random
@@ -338,6 +338,11 @@ class Solution:
 ```
 
 随机 pivot 让最坏情况在面试考察范围内不太可能出现，平均时间是 `O(n)`。堆的写法更短、更容易在压力下写对，快速选择是知道就能加分的进阶答案，不是必须先写的版本。
+
+下面的演示把 partition 的每一步拆开：pivot 怎么选、scan 和 store 两个指针怎么移动、pivot 最终换到哪个位置，以及每一轮为什么只需要继续递归一侧。
+
+```quickselect-partition-demo
+```
 
 </details>
 

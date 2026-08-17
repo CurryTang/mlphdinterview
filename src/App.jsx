@@ -14067,10 +14067,387 @@ function UnionFindVisual() {
   );
 }
 
+const QUICKSELECT_NUMS = [3, 2, 1, 5, 6, 4];
+const QUICKSELECT_K = 2;
+
+const QUICKSELECT_CODE_LINES = [
+  { id: 'setup', code: ['target = len(nums) - k'] },
+  { id: 'pick-pivot', code: ['pivot = nums[right]  # 演示固定选最右元素，代码里用随机 pivot'] },
+  { id: 'init-store', code: ['store = left'] },
+  { id: 'scan-loop', code: ['for i in range(left, right):'] },
+  { id: 'compare', code: ['    if nums[i] < pivot:'] },
+  { id: 'swap', code: ['        nums[i], nums[store] = nums[store], nums[i]', '        store += 1'] },
+  { id: 'place-pivot', code: ['nums[store], nums[right] = nums[right], nums[store]', 'pivot_index = store'] },
+  { id: 'check-target', code: ['if pivot_index == target:', '    return nums[pivot_index]'] },
+  { id: 'go-right', code: ['if pivot_index < target:', '    left = pivot_index + 1'] },
+  { id: 'go-left', code: ['else:', '    right = pivot_index - 1'] },
+];
+
+function buildQuickSelectSteps() {
+  const nums = [...QUICKSELECT_NUMS];
+  const n = nums.length;
+  const target = n - QUICKSELECT_K;
+  const steps = [];
+  const settledPivots = [];
+  let left = 0;
+  let right = n - 1;
+  let round = 0;
+
+  steps.push({
+    phase: 'init',
+    activeLine: 'setup',
+    array: [...nums],
+    left,
+    right,
+    target,
+    round,
+    settledPivots: [...settledPivots],
+  });
+
+  while (true) {
+    round += 1;
+    const pivot = nums[right];
+    const pivotAt = right;
+    let store = left;
+
+    steps.push({
+      phase: 'round-start',
+      activeLine: 'pick-pivot',
+      array: [...nums],
+      left,
+      right,
+      target,
+      round,
+      pivot,
+      pivotAt,
+      storeIndex: store,
+      scanIndex: null,
+      settledPivots: [...settledPivots],
+    });
+
+    for (let i = left; i < right; i += 1) {
+      const willSwap = nums[i] < pivot;
+      steps.push({
+        phase: 'compare',
+        activeLine: 'compare',
+        array: [...nums],
+        left,
+        right,
+        target,
+        round,
+        pivot,
+        pivotAt,
+        storeIndex: store,
+        scanIndex: i,
+        willSwap,
+        settledPivots: [...settledPivots],
+      });
+      if (willSwap) {
+        const storeBefore = store;
+        const tmp = nums[i];
+        nums[i] = nums[store];
+        nums[store] = tmp;
+        store += 1;
+        steps.push({
+          phase: 'swap',
+          activeLine: 'swap',
+          array: [...nums],
+          left,
+          right,
+          target,
+          round,
+          pivot,
+          pivotAt,
+          storeIndex: store,
+          scanIndex: i,
+          swappedIndices: [i, storeBefore],
+          settledPivots: [...settledPivots],
+        });
+      }
+    }
+
+    const storeVal = nums[store];
+    nums[store] = nums[right];
+    nums[right] = storeVal;
+    const pivotIndex = store;
+
+    steps.push({
+      phase: 'place-pivot',
+      activeLine: 'place-pivot',
+      array: [...nums],
+      left,
+      right,
+      target,
+      round,
+      pivotIndex,
+      swappedIndices: [store, right],
+      settledPivots: [...settledPivots],
+    });
+
+    settledPivots.push(pivotIndex);
+
+    if (pivotIndex === target) {
+      steps.push({
+        phase: 'done',
+        activeLine: 'check-target',
+        array: [...nums],
+        left,
+        right,
+        target,
+        round,
+        pivotIndex,
+        answer: nums[pivotIndex],
+        settledPivots: [...settledPivots],
+      });
+      break;
+    }
+
+    if (pivotIndex < target) {
+      steps.push({
+        phase: 'go-right',
+        activeLine: 'go-right',
+        array: [...nums],
+        left,
+        right,
+        target,
+        round,
+        pivotIndex,
+        settledPivots: [...settledPivots],
+      });
+      left = pivotIndex + 1;
+    } else {
+      steps.push({
+        phase: 'go-left',
+        activeLine: 'go-left',
+        array: [...nums],
+        left,
+        right,
+        target,
+        round,
+        pivotIndex,
+        settledPivots: [...settledPivots],
+      });
+      right = pivotIndex - 1;
+    }
+  }
+
+  return steps;
+}
+
+const QUICKSELECT_STEPS = buildQuickSelectSteps();
+
+function QuickSelectPartitionVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = QUICKSELECT_STEPS;
+  const step = steps[activeStep];
+
+  const activeLineLabel = {
+    setup: t('计算目标下标：第 k 大对应升序排序后的第几个位置', 'Compute the target index: which position the kth largest lands on after ascending sort'),
+    'pick-pivot': t('选取 pivot（演示固定选最右元素，便于复现）', 'Choose the pivot (fixed to the rightmost element here so the trace is reproducible)'),
+    'init-store': t('store 指针从区间左端开始', 'The store pointer starts at the left end of the range'),
+    'scan-loop': t('scan 指针从左到右扫描区间', 'The scan pointer sweeps the range left to right'),
+    compare: t('比较当前元素与 pivot', 'Compare the current element with the pivot'),
+    swap: t('比 pivot 小就换到 store 位置，store 前进一位', 'If it is smaller than the pivot, swap it to the store position and advance store'),
+    'place-pivot': t('把 pivot 换到 store 位置，完成这一轮划分', 'Swap the pivot into the store position, finishing this round of partitioning'),
+    'check-target': t('pivot 落位下标是否正好是 target', 'Check whether the pivot landed exactly on the target index'),
+    'go-right': t('target 在右边，丢弃左边，只递归右侧', 'The target is on the right; discard the left side and recurse only into the right'),
+    'go-left': t('target 在左边，丢弃右边，只递归左侧', 'The target is on the left; discard the right side and recurse only into the left'),
+  }[step.activeLine];
+
+  let title;
+  let detail;
+  if (step.phase === 'init') {
+    title = t(
+      `目标下标 target = ${step.array.length} - ${QUICKSELECT_K} = ${step.target}`,
+      `Target index: target = ${step.array.length} - ${QUICKSELECT_K} = ${step.target}`,
+    );
+    detail = t(
+      'quickselect 只需要让 pivot 落在 target 位置，不需要把整个数组排好序。',
+      'Quickselect only needs the pivot to land on the target index; it never needs to fully sort the array.',
+    );
+  } else if (step.phase === 'round-start') {
+    title = t(
+      `第 ${step.round} 轮：区间 [${step.left}, ${step.right}]，选 nums[${step.pivotAt}] = ${step.pivot} 作为 pivot`,
+      `Round ${step.round}: range [${step.left}, ${step.right}], pivot = nums[${step.pivotAt}] = ${step.pivot}`,
+    );
+    detail = t(
+      '为了让演示可复现，这里固定选最右边的元素作为 pivot；实际代码用随机 pivot 是为了避免特定输入构造出最坏情况。',
+      'To keep the trace reproducible, this demo always picks the rightmost element as the pivot; the real code uses a random pivot to avoid a worst case built from a specific input.',
+    );
+  } else if (step.phase === 'compare') {
+    title = t(
+      `比较 nums[${step.scanIndex}] = ${step.array[step.scanIndex]} 与 pivot ${step.pivot}`,
+      `Compare nums[${step.scanIndex}] = ${step.array[step.scanIndex]} with pivot ${step.pivot}`,
+    );
+    detail = step.willSwap
+      ? t('比 pivot 小，需要换到 store 指针位置。', 'Smaller than the pivot, so it needs to move to the store position.')
+      : t('不小于 pivot，留在原地，scan 继续前进。', 'Not smaller than the pivot, so it stays put while scan keeps moving.');
+  } else if (step.phase === 'swap') {
+    title = t(
+      `交换下标 ${step.swappedIndices[0]} 与 ${step.swappedIndices[1]}，store 前进到 ${step.storeIndex}`,
+      `Swap indices ${step.swappedIndices[0]} and ${step.swappedIndices[1]}; store advances to ${step.storeIndex}`,
+    );
+    detail = t(
+      'store 指针始终指向"已确认小于 pivot 的区域"的右边界。',
+      'The store pointer always marks the right boundary of the region confirmed to be smaller than the pivot.',
+    );
+  } else if (step.phase === 'place-pivot') {
+    title = t(
+      `把 pivot 换到 store 位置：交换下标 ${step.swappedIndices[0]} 与 ${step.swappedIndices[1]}，pivot 落位在下标 ${step.pivotIndex}`,
+      `Swap the pivot into the store position: swap indices ${step.swappedIndices[0]} and ${step.swappedIndices[1]}; the pivot lands at index ${step.pivotIndex}`,
+    );
+    detail = t(
+      '这一步之后，下标左边的元素都比 pivot 小，右边的都不小于 pivot，这是 Lomuto partition 的核心不变量。',
+      'After this step, everything left of the index is smaller than the pivot and everything right is not smaller, the core invariant of Lomuto partition.',
+    );
+  } else if (step.phase === 'go-right') {
+    title = t(
+      `pivot_index(${step.pivotIndex}) < target(${step.target})，只递归右侧`,
+      `pivot_index(${step.pivotIndex}) < target(${step.target}); recurse only into the right side`,
+    );
+    detail = t(
+      '左边的元素已经确定不是答案，不会再被访问；下一轮区间变成右侧剩余部分。',
+      'The left side is already confirmed not to hold the answer and will never be visited again; the next round works only on the remaining right side.',
+    );
+  } else if (step.phase === 'go-left') {
+    title = t(
+      `pivot_index(${step.pivotIndex}) > target(${step.target})，只递归左侧`,
+      `pivot_index(${step.pivotIndex}) > target(${step.target}); recurse only into the left side`,
+    );
+    detail = t(
+      '右边的元素已经确定不是答案，不会再被访问；下一轮区间变成左侧剩余部分。',
+      'The right side is already confirmed not to hold the answer and will never be visited again; the next round works only on the remaining left side.',
+    );
+  } else {
+    title = t(
+      `pivot_index 恰好等于 target，返回 nums[${step.pivotIndex}] = ${step.answer}`,
+      `pivot_index equals target exactly; return nums[${step.pivotIndex}] = ${step.answer}`,
+    );
+    detail = t(
+      'quickselect 不需要把整个数组排完，只要 pivot 落在 target 位置就可以直接返回，这是它平均比堆排序更快的原因。',
+      'Quickselect never needs to finish sorting the array; once the pivot lands on the target index it can return immediately, which is why it is faster on average than the heap version.',
+    );
+  }
+
+  const isSettled = (index) => index < step.left || index > step.right;
+  const isFinalPivot = (index) => (step.settledPivots ?? []).includes(index) || (step.phase === 'done' && index === step.pivotIndex);
+
+  return (
+    <section className="qs-visual" aria-label={t('Quickselect Partition 逐步演示', 'Step-through: quickselect partition')}>
+      <header className="qs-header">
+        <div>
+          <p className="eyebrow">{t('Quickselect，复用 partition，每轮只递归一侧', 'Quickselect, reusing partition and recursing into only one side per round')}</p>
+          <h2>{t(
+            `nums = [${QUICKSELECT_NUMS.join(', ')}], k = ${QUICKSELECT_K}`,
+            `nums = [${QUICKSELECT_NUMS.join(', ')}], k = ${QUICKSELECT_K}`,
+          )}</h2>
+          <p>{t(
+            '和 Quick Sort 用的是同一个 Lomuto partition：区别只在于每轮只需要沿着 pivot 落位的方向继续，不需要两侧都递归。',
+            'This uses the exact same Lomuto partition as Quick Sort. The only difference is that each round only continues toward the side where the pivot landed, instead of recursing into both.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`qs-step ${step.phase}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="qs-workspace">
+        <div className="qs-stage-card">
+          <div className="qs-array">
+            {step.array.map((value, index) => {
+              const classes = [
+                index === step.scanIndex ? 'scan' : '',
+                index === step.storeIndex ? 'store' : '',
+                index === step.pivotAt ? 'pivot' : '',
+                (step.phase === 'place-pivot' && index === step.pivotIndex) ? 'pivot' : '',
+                index === step.target ? 'target' : '',
+                isFinalPivot(index) ? 'final' : '',
+                isSettled(index) ? 'settled' : '',
+              ].filter(Boolean).join(' ');
+              return (
+                <div className={`qs-cell ${classes}`} key={index}>
+                  <span>{value}</span>
+                  <em>{index}</em>
+                </div>
+              );
+            })}
+          </div>
+          <div className="qs-meta">
+            <div>
+              <span>{t('区间', 'Range')}</span>
+              <strong>[{step.left}, {step.right}]</strong>
+            </div>
+            <div>
+              <span>{t('target', 'target')}</span>
+              <strong>{step.target}</strong>
+            </div>
+            <div>
+              <span>{t('轮次', 'Round')}</span>
+              <strong>{step.round ?? 0}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="qs-code" aria-label={t('当前 quickselect 代码', 'Current quickselect code')}>
+          <div className="qs-code-heading">
+            <span>{t('quickselect 模板', 'Quickselect template')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="qs-code-lines">
+            {QUICKSELECT_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="qs-legend">
+        <span><i className="pivot" />{t('pivot', 'pivot')}</span>
+        <span><i className="scan" />{t('scan（正在比较）', 'scan (being compared)')}</span>
+        <span><i className="store" />{t('store（小于 pivot 的边界）', 'store (boundary of values smaller than the pivot)')}</span>
+        <span><i className="target" />{t('target（目标下标）', 'target (goal index)')}</span>
+        <span><i className="settled" />{t('已排除，不会再访问', 'excluded, never visited again')}</span>
+      </div>
+
+      <div className="qs-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择 quickselect 演示步骤', 'Select a quickselect demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -14158,6 +14535,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'union-find-demo') {
     return <UnionFindVisual />;
+  }
+
+  if (match?.[1] === 'quickselect-partition-demo') {
+    return <QuickSelectPartitionVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
