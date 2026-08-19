@@ -28,14 +28,16 @@ stationary return time:
 2. [The Chapman-Kolmogorov equation](#the-chapman-kolmogorov-equation)
 3. [State augmentation: building a Markov chain from a non-Markov process](#state-augmentation-building-a-markov-chain-from-a-non-markov-process)
 4. [First-step analysis](#first-step-analysis)
-5. [Stationary distribution and return time](#stationary-distribution-and-return-time)
-6. [Example 1: Two-state weather](#example-1-two-state-weather)
-7. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
-8. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
-9. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
-10. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
-11. [Common pitfalls](#common-pitfalls)
-12. [One-sentence summary](#one-sentence-summary)
+5. [Absorbing states: absorption probability and expected time to absorption](#absorbing-states-absorption-probability-and-expected-time-to-absorption)
+6. [Stationary distribution: steady-state behavior, first passage, and return time](#stationary-distribution-steady-state-behavior-first-passage-and-return-time)
+7. [Example 1: Two-state weather](#example-1-two-state-weather)
+8. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
+9. [Random walks: common properties and simple examples](#random-walks-common-properties-and-simple-examples)
+10. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
+11. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
+12. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
+13. [Common pitfalls](#common-pitfalls)
+14. [One-sentence summary](#one-sentence-summary)
 
 ---
 
@@ -275,7 +277,41 @@ total time = one initial step + expected remaining time from the next state
 
 ---
 
-## Stationary distribution and return time
+## Absorbing states: absorption probability and expected time to absorption
+
+A state `i` is an absorbing state if, once entered, the process never leaves it:
+
+$$
+P_{ii} = 1
+$$
+
+If a Markov chain has one or more absorbing states, and from any non-absorbing state the process eventually enters some absorbing state with probability 1, the chain is called an absorbing chain.
+
+Two kinds of questions are typically asked about absorbing chains:
+
+```text
+Absorption probability: starting from state i, what is the probability of
+eventually being absorbed by each particular absorbing state?
+Expected time to absorption: starting from state i, how many steps are
+expected before absorption?
+```
+
+Both are solved with first-step analysis, and the two setups look almost identical, differing only in the boundary conditions and the recursive term:
+
+$$
+\begin{aligned}
+\text{Absorption probability } h_i &: \quad h_i = \sum_j P_{ij} h_j,\qquad h_i = 1\ \text{(target absorbing state)},\ h_i = 0\ \text{(any other absorbing state)} \\
+\text{Expected time to absorption } E_i &: \quad E_i = 1 + \sum_j P_{ij} E_j,\qquad E_i = 0\ \text{(any absorbing state)}
+\end{aligned}
+$$
+
+The absorption-probability equation has no "+1" term, since absorption probability does not count steps, only which absorbing state is eventually reached. The expected-time equation has the extra "+1," since every step counts toward the time, matching the same $E_i = 1 + \sum_j P_{ij} E_j$ template from the first-step analysis section above.
+
+The Gambler's Ruin example below has two absorbing states (`0` and `N`), and is used to demonstrate both kinds of questions.
+
+---
+
+## Stationary distribution: steady-state behavior, first passage, and return time
 
 A stationary distribution is a long-run stable distribution $\pi$ satisfying:
 
@@ -283,15 +319,53 @@ $$
 \pi P = \pi,\qquad \sum_i \pi_i = 1
 $$
 
+### Steady-state behavior: convergence of $P^n$
+
+If the chain is finite, irreducible, and aperiodic (together called ergodic), then regardless of the starting state, the probability of landing in each state after `n` steps converges to the same $\pi$:
+
+$$
+\lim_{n\to\infty} P_{ij}^{(n)} = \pi_j,\qquad \text{for every starting state } i
+$$
+
+In other words, every row of $P^n$ converges to the same row vector $\pi$, independent of the starting state. This is the actual meaning of "steady state": not that transitions stop happening, but that the probability of landing in each state stops depending on time or the starting state.
+
+Verify this concretely using the $P^n$ values for the Sunny / Rainy chain above. This chain's stationary distribution is:
+
+$$
+\pi_S = \frac23,\qquad \pi_R = \frac13
+$$
+
+$$
+P^5 =
+\begin{bmatrix}
+0.6701 & 0.3299 \\
+0.6598 & 0.3402
+\end{bmatrix},
+\qquad
+P^{10} \approx
+\begin{bmatrix}
+0.66670 & 0.33330 \\
+0.66660 & 0.33340
+\end{bmatrix},
+\qquad
+P^{20} \approx
+\begin{bmatrix}
+0.66667 & 0.33333 \\
+0.66667 & 0.33333
+\end{bmatrix}
+$$
+
+The two rows get closer and closer, both converging to $(\pi_S,\pi_R)=(2/3,1/3)$, regardless of whether the chain started from Sunny or Rainy.
+
+### Return time: mean recurrence time
+
 If the chain is finite, irreducible, and positive recurrent, then the expected time to return to state `i` for the first time, starting from `i`, is:
 
 $$
 \mathbb{E}_i[T_i^+] = \frac{1}{\pi_i}
 $$
 
-This identity is called the mean recurrence time formula.
-
-Its meaning is:
+This identity is called the mean recurrence time formula. Its meaning is:
 
 ```text
 In the long run, the system spends a pi_i fraction of its time in state i.
@@ -299,6 +373,26 @@ Therefore, state i appears once every 1 / pi_i steps on average.
 ```
 
 The formula does not apply directly to every problem, but it is very useful when asked for the expected time to return to a starting state.
+
+### The difference between first passage time and return time
+
+First passage time $T_{ij}$ is the number of steps until the process first reaches state `j`, starting from state `i` (with `j` allowed to differ from `i`). Return time $T_i^+$ is the special case of first passage time where the process starts at `i` and the target is `i` itself.
+
+The two are computed differently:
+
+```text
+Return time E[T_i^+]: has the stationary-distribution shortcut, equal to 1 / pi_i.
+First passage time E[T_ij] (i != j): generally has no such shortcut;
+it requires first-step analysis: E_i = 1 + sum_k P_ik E_k, with boundary E_j = 0.
+```
+
+The value $E_S=5$ computed earlier in Example 1 (Two-State Weather) is a first passage time: the expected number of days from Sunny until the first day it rains, written $E_{S\to R}$. This is a different quantity from the return time "from Sunny back to Sunny":
+
+$$
+\mathbb E_S[T_S^+] = \frac{1}{\pi_S} = \frac{1}{2/3} = 1.5,\qquad E_{S\to R} = 5
+$$
+
+`1.5` days and `5` days answer two different questions: the first is "on average, how long until the state returns to Sunny," the second is "starting from Sunny, how long until it first rains." Both numbers are correct, but they cannot be substituted for each other.
 
 ---
 
@@ -392,6 +486,146 @@ This example demonstrates another common use of a Markov chain: instead of findi
 
 ```text
 answer at the current state = weighted average of the answers at the next states
+```
+
+### The probability at the other absorbing state
+
+Gambler's Ruin has two absorbing states: `0` (ruin) and `N` (reaching the target). The $h_i$ computed above is the probability of "absorption at `N`"; since there are only two absorbing states, the probability of "absorption at `0`" is:
+
+$$
+P(\text{absorbed at } 0 \mid \text{starting from } i) = 1 - h_i = \frac{N-i}{N}
+$$
+
+For example, with $N=8$, starting from $i=3$: the probability of absorption at `N` is `3/8 = 0.375`, and the probability of absorption at `0` is `5/8 = 0.625`; the two sum to `1`.
+
+### Expected time to absorption
+
+Let $E_i$ be the expected number of steps from `i` until absorption (at either `0` or `N`), with boundary conditions:
+
+$$
+E_0 = 0, \qquad E_N = 0
+$$
+
+In the symmetric case ($p=q=1/2$), the intermediate states satisfy:
+
+$$
+E_i = 1 + \frac12 E_{i+1} + \frac12 E_{i-1}
+$$
+
+Rearranged into a second-order linear recurrence:
+
+$$
+E_{i+1} - 2E_i + E_{i-1} = -2
+$$
+
+The general solution is a particular solution plus a homogeneous solution. The homogeneous equation $E_{i+1}-2E_i+E_{i-1}=0$ has the general solution $A+Bi$, an affine function of `i`. A particular solution can be guessed as $E_i^{(p)} = -i^2$ (since $(i+1)^2-2i^2+(i-1)^2=2$, and negating gives exactly `-2`). So the general solution is:
+
+$$
+E_i = -i^2 + A + Bi
+$$
+
+Substituting the boundary condition $E_0=0$ gives $A=0$; substituting $E_N=0$ gives $-N^2+BN=0 \Rightarrow B=N$. So:
+
+$$
+\boxed{E_i = i(N-i)}
+$$
+
+Verify with $N=6$: $E_1,\ldots,E_5 = 5, 8, 9, 8, 5$, which matches solving the linear system directly, and is symmetric about the midpoint $i=N/2$: the farther from both absorbing barriers, the longer the expected time to absorption.
+
+The asymmetric case ($p \ne q$) is solved with the same first-step equation, except the recurrence becomes $E_i = 1+pE_{i+1}+qE_{i-1}$, and the homogeneous solution involves $(q/p)^i$. The result is:
+
+$$
+E_i = \frac{i}{q-p} - \frac{N}{q-p}\cdot\frac{1-(q/p)^i}{1-(q/p)^N}
+$$
+
+For example, with $p=0.6, q=0.4, N=6$: $E_1,\ldots,E_5 \approx 5.96, 8.27, 8.14, 6.39, 3.56$, which can be verified directly against the linear system. Because of the positive drift ($p>q$), starting from a larger `i` reaches absorption at `N` faster, so the expected time is no longer symmetric about the midpoint; it is longer on the side closer to `0`.
+
+---
+
+## Random walks: common properties and simple examples
+
+A one-dimensional simple random walk is defined as $X_n = X_0 + \sum_{i=1}^n \xi_i$, where $\xi_1,\xi_2,\ldots$ are iid with $P(\xi_i=+1)=p$ and $P(\xi_i=-1)=q=1-p$. This is a special case of a Markov chain: the state is the current position, and the next step depends only on the current position (plus or minus one), not on earlier history. Gambler's Ruin is exactly this random walk with two absorbing barriers (`0` and `N`); removing the barriers so the state space becomes all integers changes the properties.
+
+### Common properties
+
+**Mean and variance grow linearly with the number of steps.** The mean and variance of a single step $\xi_i$:
+
+$$
+\mathbb E[\xi_i] = p - q, \qquad \mathrm{Var}(\xi_i) = 1-(p-q)^2 = 4pq
+$$
+
+(since $p+q=1$, $(p-q)^2=(2p-1)^2$, and expanding gives $1-(p-q)^2=4p-4p^2=4pq$). By the mean and variance formulas for a sum of iid terms:
+
+$$
+\mathbb E[X_n] = X_0 + n(p-q), \qquad \mathrm{Var}(X_n) = 4npq
+$$
+
+**Symmetric case is recurrent; asymmetric case is transient.** When $p=q=1/2$, the random walk returns to its starting point infinitely often with probability 1. But the expected time to return to the starting point is infinite, which is the essential difference between an infinite state space and the finite state space of Gambler's Ruin: a finite, irreducible chain's expected return time is always finite (`1/pi_i`), while an infinite state space may be recurrent without having this property. When $p \ne 1/2$, the random walk drifts almost surely to $+\infty$ (if $p>1/2$) or $-\infty$ (if $p<1/2$), and returns to the starting point only with some probability less than 1.
+
+**Higher-dimensional generalization: Pólya's recurrence theorem.** Symmetric random walks in one and two dimensions are recurrent; symmetric random walks in three or more dimensions are transient: the particle drifts almost surely to infinity and never exactly returns to the origin.
+
+### Example: direct computation of mean and variance
+
+A random walk moves `+1` with probability $p=0.55$ and `-1` with probability $q=0.45$ at each step, starting from $X_0=0$. Find the mean and variance of the position after 20 steps.
+
+Plugging directly into the formula:
+
+$$
+\mathbb E[X_{20}] = 20\times(0.55-0.45) = 2, \qquad \mathrm{Var}(X_{20}) = 4\times20\times0.55\times0.45 = 19.8
+$$
+
+### Example: a random walk with one reflecting and one absorbing barrier
+
+Problem:
+
+```text
+The state space is {0, 1, 2, 3}.
+From state 0, the next step always moves to state 1 (a reflecting barrier).
+From states 1 and 2, the walk moves left or right with probability 1/2 each
+(a symmetric random walk).
+State 3 is absorbing.
+Starting from state 0, how many steps are expected before absorption?
+```
+
+The difference from Gambler's Ruin is in the boundary condition: Gambler's Ruin has an absorbing barrier at both ends, while here one end is reflecting (the next step is deterministic) and the other is absorbing. The reflecting barrier only affects the equation for $E_0$; the equations for the interior states are identical to an ordinary symmetric random walk.
+
+Let $E_i$ be the expected number of steps from state `i` until absorption, with $E_3=0$:
+
+$$
+\begin{aligned}
+E_0 &= 1 + E_1 &&\text{(reflecting: always moves to 1)} \\
+E_1 &= 1 + \frac12 E_0 + \frac12 E_2 \\
+E_2 &= 1 + \frac12 E_1 + \frac12 E_3 = 1 + \frac12 E_1
+\end{aligned}
+$$
+
+Substituting $E_0=1+E_1$ into the second equation:
+
+$$
+E_1 = 1 + \frac12(1+E_1) + \frac12 E_2 = \frac32 + \frac12 E_1 + \frac12 E_2 \quad\Longrightarrow\quad E_1 = 3 + E_2
+$$
+
+Substituting into the third equation:
+
+$$
+E_2 = 1 + \frac12(3+E_2) = \frac52 + \frac12 E_2 \quad\Longrightarrow\quad E_2 = 5
+$$
+
+Back-substituting:
+
+$$
+E_1 = 3+5=8, \qquad E_0 = 1+8=9
+$$
+
+Answer: starting from state `0`, the expected number of steps until absorption is `9`.
+
+```text
+The difference between a reflecting barrier and an absorbing barrier:
+Reflecting barrier: the next step's distribution is deterministic (or
+degenerate), pushing the particle back into the interior of the state space.
+Absorbing barrier: once entered, the process never leaves, P_ii = 1.
+The same first-step equation template handles both kinds of boundary;
+only the transition rule at each state differs.
 ```
 
 ---
