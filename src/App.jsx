@@ -1840,6 +1840,12 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'Order Statistics', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'Quant 9 · 假设检验与最大似然估计：方向、边界与偏差方差',
+    'Quant09 Hypothesis Testing Maximum Likelihood.md',
+    null,
+    { directory: 'quant', category: 'Estimation & Testing', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
