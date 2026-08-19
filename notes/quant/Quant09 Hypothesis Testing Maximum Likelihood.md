@@ -90,194 +90,180 @@ $$
 
 ## 模块二：似然函数与最大似然估计
 
-### 5. 指数分布 $\mathrm{Exp}(\lambda)$ 的最大似然估计
+### 5. 均值参数化下指数分布的最大似然估计
 
-**思路**：指数分布的支撑集 $[0,\infty)$ 不依赖参数 $\lambda$，属于标准情形：写出对数似然，求导置零解出驻点，再验证二阶导数为负确认是最大值。
+**思路**：把指数分布参数化成均值 $\beta$（而不是更常见的速率 $\lambda$），密度是 $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$。支撑集 $[0,\infty)$ 同样不依赖 $\beta$，属于标准情形：对数似然求导置零，再用二阶导数确认是最大值。
 
-**推导**：设 $x_1,\ldots,x_n$ 是来自 $\mathrm{Exp}(\lambda)$ 的独立样本，密度为 $f(x\mid\lambda)=\lambda e^{-\lambda x}$。似然函数：
+**推导**：设 $x_1,\ldots,x_n$ 是来自该分布的独立样本。似然函数：
 
 $$
-L(\lambda)=\prod_{i=1}^n \lambda e^{-\lambda x_i}=\lambda^n e^{-\lambda\sum_i x_i}
+L(\beta)=\prod_{i=1}^n\frac1\beta e^{-x_i/\beta}=\beta^{-n}e^{-\sum_i x_i/\beta}
 $$
 
 取对数：
 
 $$
-\ell(\lambda)=n\ln\lambda-\lambda\sum_i x_i
+\ell(\beta)=-n\ln\beta-\frac{\sum_i x_i}{\beta}
 $$
 
-对 $\lambda$ 求导并置零：
+对 $\beta$ 求导并置零：
 
 $$
-\ell'(\lambda)=\frac{n}{\lambda}-\sum_i x_i=0\quad\Longrightarrow\quad \hat\lambda=\frac{n}{\sum_i x_i}=\frac{1}{\bar X}
+\ell'(\beta)=-\frac n\beta+\frac{\sum_i x_i}{\beta^2}=0\quad\Longrightarrow\quad \hat\beta=\frac{\sum_i x_i}{n}=\bar X
 $$
 
-二阶导数 $\ell''(\lambda)=-\dfrac{n}{\lambda^2}<0$，确认这是最大值。
-
-**要点**：支撑集不依赖参数时，最大似然估计走的是标准路径：对数似然求导置零，再用二阶导数确认是最大值。
-
-### 6. 均匀分布 $\mathrm{Unif}[0,\theta]$ 的最大似然估计：偏差、方差与无偏修正
-
-**思路**：这里的支撑集 $[0,\theta]$ 依赖参数 $\theta$，标准的求导置零会失效（似然对 $\theta$ 求导后恒不为零）。正确做法是先把似然写成 $\theta$ 的函数并标出合法定义域，再直接观察这个函数在合法范围内的单调性，从边界读出最大值点。
-
-**推导**：设 $x_1,\ldots,x_n$ 独立同分布于 $\mathrm{Unif}[0,\theta]$，密度 $f(x\mid\theta)=\frac1\theta\mathbf 1\{0\le x\le\theta\}$。似然函数：
+代入 $\hat\beta=\bar X$ 计算二阶导数：
 
 $$
-L(\theta)=\prod_{i=1}^n\frac1\theta\mathbf 1\{0\le x_i\le\theta\}=\theta^{-n}\mathbf 1\{\theta\ge X_{(n)}\}
+\ell''(\beta)=\frac n{\beta^2}-\frac{2\sum_i x_i}{\beta^3},\qquad \ell''(\bar X)=\frac n{\bar X^2}-\frac{2n\bar X}{\bar X^3}=-\frac n{\bar X^2}<0
 $$
 
-指示函数要求 $\theta$ 至少和每一个观测值一样大，也就是至少等于样本最大值 $X_{(n)}$；这就是似然的合法定义域 $\theta\ge X_{(n)}$。
+确认这是最大值。
 
-在这个定义域上，$\theta^{-n}$ 是 $\theta$ 的严格递减函数，所以似然在合法范围内最大的位置是最小的合法 $\theta$，也就是定义域的左端点：
+**要点**：均值参数化下最大似然估计直接是样本均值 $\hat\beta=\bar X$，比速率参数化下的 $\hat\lambda=1/\bar X$ 少一步取倒数；两者描述同一个分布，参数化方式不同，估计量的具体形式也随之不同。
 
-$$
-\boxed{\hat\theta=X_{(n)}}
-$$
+### 6. $\mathrm{Unif}[\theta,2\theta]$ 的最大似然估计：偏差、方差与无偏修正
 
-样本最大值本身就是最大似然估计，这一步不需要求导，直接的单调性观察就足够。
+**思路**：这里的支撑集 $[\theta,2\theta]$ 上下两端都依赖参数 $\theta$，比只有一端依赖参数的情形多一层：需要同时写出两个约束条件，再判断哪一个约束是紧的（binding）。似然仍然是 $\theta$ 的严格递减函数，推导思路和单端点情形一致。
 
-接下来求 $\hat\theta$ 的偏差和方差，需要 $X_{(n)}$ 的分布。单个观测的 CDF 是 $F(t)=t/\theta$，仿照 CDF 求导的标准做法：
+**推导**：设 $x_1,\ldots,x_n$ 独立同分布于 $\mathrm{Unif}[\theta,2\theta]$，密度 $f(x\mid\theta)=\frac1\theta\mathbf 1\{\theta\le x\le2\theta\}$。似然函数：
 
 $$
-F_{X_{(n)}}(t)=\left(\frac t\theta\right)^n,\qquad f_{X_{(n)}}(t)=\frac{n\,t^{n-1}}{\theta^n},\qquad 0\le t\le\theta
+L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
+$$
+
+两个指示函数给出 $\theta$ 的合法范围：$\theta\le X_{(1)}$（每个观测值都不能小于下端点）和 $\theta\ge X_{(n)}/2$（每个观测值都不能超过上端点 $2\theta$）。合法定义域是 $\theta\in\left[\dfrac{X_{(n)}}2,\,X_{(1)}\right]$（对真实样本这个区间非空）。
+
+在这个区间上 $\theta^{-n}$ 严格递减，似然最大的位置是区间左端点：
+
+$$
+\boxed{\hat\theta=\frac{X_{(n)}}2}
+$$
+
+$X_{(1)}$ 的约束只用来确认定义域非空，并不改变最大值点的位置，最大值完全由上端点约束 $X_{(n)}/2$ 决定。
+
+求 $\hat\theta$ 的偏差和方差需要 $X_{(n)}$ 的分布。令 $U_i=X_i/\theta-1$，由 $X_i\in[\theta,2\theta]$ 知 $U_i\in[0,1]$，且 $U_i\sim\mathrm{Unif}[0,1]$，于是 $X_{(n)}=\theta(1+U_{(n)})$，其中 $U_{(n)}$ 是 $n$ 个独立 $\mathrm{Unif}[0,1]$ 的最大值。沿用上一讲关于均匀分布最大值的标准结论：
+
+$$
+\mathbb E[U_{(n)}]=\frac n{n+1},\qquad \mathrm{Var}(U_{(n)})=\frac n{(n+1)^2(n+2)}
 $$
 
 一阶矩：
 
 $$
-\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{n\,t^{n-1}}{\theta^n}\,dt=\frac{n}{\theta^n}\cdot\frac{\theta^{n+1}}{n+1}=\frac{n}{n+1}\theta
+\mathbb E[X_{(n)}]=\theta\left(1+\frac n{n+1}\right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
 $$
 
 $$
-\mathrm{Bias}(\hat\theta)=\mathbb E[\hat\theta]-\theta=\frac{n}{n+1}\theta-\theta=-\frac{\theta}{n+1}
+\mathrm{Bias}(\hat\theta)=\theta\cdot\frac{2n+1}{2(n+1)}-\theta=\theta\cdot\frac{2n+1-2(n+1)}{2(n+1)}=-\frac{\theta}{2(n+1)}
 $$
 
-偏差为负：样本最大值不可能超过真实的 $\theta$，$\hat\theta$ 系统性地低估 $\theta$。
-
-二阶矩，同一个积分多乘一个 $t$：
+方差不受平移影响，只由缩放系数决定：
 
 $$
-\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{n\,t^{n-1}}{\theta^n}\,dt=\frac{n}{n+2}\theta^2
+\mathrm{Var}(X_{(n)})=\theta^2\,\mathrm{Var}(U_{(n)})=\frac{n\,\theta^2}{(n+1)^2(n+2)},\qquad \mathrm{Var}(\hat\theta)=\frac14\mathrm{Var}(X_{(n)})=\frac{n\,\theta^2}{4(n+1)^2(n+2)}
 $$
 
-方差：
+无偏修正：按偏差的比例放大 $\hat\theta$：
 
 $$
-\mathrm{Var}(\hat\theta)=\frac{n}{n+2}\theta^2-\left(\frac{n}{n+1}\theta\right)^2=\theta^2\left[\frac{n}{n+2}-\frac{n^2}{(n+1)^2}\right]
+\tilde\theta=\frac{2(n+1)}{2n+1}\hat\theta=\frac{(n+1)X_{(n)}}{2n+1},\qquad \mathbb E[\tilde\theta]=\theta
 $$
 
-通分到 $(n+2)(n+1)^2$：
+**要点**：支撑集两端都依赖参数时，先把每个约束分别写出来，再判断哪一个约束是紧的；本题两个约束里只有上端点约束决定了最大值的位置，下端点约束只保证定义域非空。
 
-$$
-\frac{n}{n+2}-\frac{n^2}{(n+1)^2}=\frac{n(n+1)^2-n^2(n+2)}{(n+2)(n+1)^2}=\frac{n\left[(n+1)^2-n(n+2)\right]}{(n+2)(n+1)^2}=\frac{n}{(n+2)(n+1)^2}
-$$
-
-中括号内 $(n+1)^2-n(n+2)=n^2+2n+1-n^2-2n=1$，所以：
-
-$$
-\mathrm{Var}(\hat\theta)=\frac{n\,\theta^2}{(n+1)^2(n+2)}
-$$
-
-最后构造无偏估计：把 $\hat\theta$ 按偏差比例放大即可抵消偏差：
-
-$$
-\tilde\theta=\frac{n+1}{n}X_{(n)},\qquad \mathbb E[\tilde\theta]=\frac{n+1}{n}\cdot\frac{n}{n+1}\theta=\theta
-$$
-
-**要点**：支撑集依赖参数是识别"边界论证"这个情形的信号；一旦识别出来，不要尝试求导，直接看似然作为参数的函数是递增还是递减，最大值就在合法定义域相应的端点上。
-
-> 似然函数的支撑集依赖参数时（例如 $\mathrm{Unif}[0,\theta]$），似然通常在参数定义域的边界上取到最大值，而不是在导数为零的驻点；这时候求导会得到一个恒不为零的表达式，正确的做法是直接观察似然是参数的单调函数，从而判断最大值在哪个边界。
+> 似然函数的支撑集依赖参数时，不论是单端点还是双端点依赖，似然通常在参数定义域的边界上取到最大值，而不是在导数为零的驻点；双端点依赖时先分别写出每个约束给出的合法范围，再观察似然在交集上的单调性，从而判断哪一侧边界起作用。
 
 ---
 
 ## 模块三：似然比与充分统计量
 
-### 7. $N(0,1)$ 对 $N(\mu,1)$ 的似然比统计量与充分统计量的识别
+### 7. $N(0,\sigma^2)$ 对 $N(\mu,\sigma^2)$ 的似然比统计量与充分统计量的识别
 
-**思路**：似然比检验的统计量是两个似然的比值；把比值化简成指数形式后，通常能看出它是某个样本统计量的单调函数，这个统计量就是充分统计量。
+**思路**：似然比检验的统计量是两个似然的比值；这里把方差保留为已知常数 $\sigma^2$（不固定成 1），说明结论不依赖 $\sigma^2$ 取什么具体值。把比值化简成指数形式后，通常能看出它是某个样本统计量的单调函数，这个统计量就是充分统计量。
 
-**推导**：设 $x_1,\ldots,x_n$ 独立同分布于方差已知为 1 的正态分布，原假设 $H_0:\mu=0$，备择假设 $H_1:\mu=\mu_0>0$（记号简化为 $\mu$）。两个似然之比：
+**推导**：设 $x_1,\ldots,x_n$ 独立同分布于方差已知为 $\sigma^2$ 的正态分布，原假设 $H_0:\mu=0$，备择假设 $H_1:\mu=\mu_0>0$（记号简化为 $\mu$）。两个似然之比：
 
 $$
-T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}2\right)}{\exp\left(-\dfrac{x_i^2}2\right)}
+T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2}\right)}{\exp\left(-\dfrac{x_i^2}{2\sigma^2}\right)}
 $$
 
 对每一项的指数部分展开并相减：
 
 $$
--\frac{(x_i-\mu)^2}2+\frac{x_i^2}2=-\frac{x_i^2-2\mu x_i+\mu^2}2+\frac{x_i^2}2=\mu x_i-\frac{\mu^2}2
+-\frac{(x_i-\mu)^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=-\frac{x_i^2-2\mu x_i+\mu^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}
 $$
 
 对 $i$ 求和后取指数：
 
 $$
-T=\exp\left(\sum_{i=1}^n\left[\mu x_i-\frac{\mu^2}2\right]\right)=\exp\left(\mu\sum_{i=1}^n x_i-\frac{n\mu^2}2\right)
+T=\exp\left(\sum_{i=1}^n\left[\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}\right]\right)=\exp\left(\frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2}\right)
 $$
 
-当 $\mu>0$ 时，$T$ 是 $\sum_i x_i$ 的严格递增函数，指数中的 $-n\mu^2/2$ 是不依赖数据的常数。于是事件"$T>c$"等价于"$\sum_i x_i>c''$"，也等价于"$\bar X>c'$"（对某个阈值 $c'$）。似然比检验的拒绝域完全由样本均值 $\bar X$ 决定，样本携带的、用于区分 $\mu=0$ 和 $\mu>0$ 的全部信息都包含在 $\bar X$ 这一个统计量里，$\bar X$ 是这个检验问题的充分统计量。
+当 $\mu>0$ 时，系数 $\mu/\sigma^2>0$，$T$ 是 $\sum_i x_i$ 的严格递增函数，指数中的 $-n\mu^2/(2\sigma^2)$ 是不依赖数据的常数。于是事件"$T>c$"等价于"$\sum_i x_i>c''$"，也等价于"$\bar X>c'$"（对某个阈值 $c'$）。似然比检验的拒绝域完全由样本均值 $\bar X$ 决定，和 $\sigma^2$ 的具体取值无关；样本携带的、用于区分 $\mu=0$ 和 $\mu>0$ 的全部信息都包含在 $\bar X$ 这一个统计量里，$\bar X$ 是这个检验问题的充分统计量。
 
-一个相关但更复杂的变体值得提一句：如果备择假设改成"$N$ 个观测中恰好有一个（不知道是哪个）均值被平移了 $A$"，由于具体是哪一个观测被平移未知，$H_1$ 下的似然是对 $N$ 个等可能选择做的混合：
+一个相关但更复杂的变体值得提一句：如果备择假设改成"$N$ 组独立测量中恰好有一组（不知道是哪一组）均值被平移了 $A$"，由于具体是哪一组被平移未知，$H_1$ 下的似然是对 $N$ 个等可能选择做的混合：
 
 $$
 L_1=\frac1N\sum_{j=1}^N\prod_{i=1}^N f\big(x_i-A\cdot\mathbf 1\{i=j\}\big)
 $$
 
-把公共因子 $\prod_i f(x_i)$ 提出来之后，剩下的是逐项似然比 $\dfrac{f(x_j-A)}{f(x_j)}$ 按 $1/N$ 加权求和；这个逐项比值和上面主推导里的代数完全一样，只是对"哪个观测可能被平移"这个未知量按全概率公式做了求和：
+把公共因子 $\prod_i f(x_i)$ 提出来之后，剩下的是逐项似然比 $\dfrac{f(x_j-A)}{f(x_j)}$ 按 $1/N$ 加权求和；这个逐项比值和上面主推导里的代数完全一样，只是对"哪一组可能被平移"这个未知量按全概率公式做了求和：
 
 $$
 \frac{f(x_j-A)}{f(x_j)}=\exp\left[\frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2}\right]
 $$
 
-**要点**：似然比化简后如果能写成某个统计量的单调函数，这个统计量就是充分统计量；混合备择假设不改变单个观测的似然比代数，只是在外层多套一层对未知类别的全概率求和。
+**要点**：似然比化简后如果能写成某个统计量的单调函数，这个统计量就是充分统计量，且这个结论不依赖 $\sigma^2$ 的具体取值；混合备择假设不改变单个观测的似然比代数，只是在外层多套一层对未知类别的全概率求和。
 
-> 正态分布（或大多数指数族分布）的似然比，展开平方项之后，和样本相关的部分几乎总能合并成样本均值或样本和的函数；似然比是这个统计量的单调函数，就说明这个统计量是充分统计量。
+> 正态分布（或大多数指数族分布）的似然比，展开平方项之后，和样本相关的部分几乎总能合并成样本均值或样本和的函数，系数里保留一般的 $\sigma^2$ 也不影响这个结论；似然比是这个统计量的单调函数，就说明这个统计量是充分统计量。
 
 ---
 
 ## 模块四：矩估计
 
-### 8. $f(x\mid\theta)=\dfrac{2x}{\theta^2}$（$0\le x\le\theta$）的矩估计
+### 8. $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$（$0\le x\le\theta$）的矩估计
 
 **思路**：矩估计的路径固定：算出总体矩关于参数的表达式，把总体矩替换成对应的样本矩，解出参数。
 
 **推导**：先确认这是一个合法密度：
 
 $$
-\int_0^\theta\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^2}2=1
+\int_0^\theta\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^3}3=1
 $$
 
 一阶矩：
 
 $$
-\mathbb E[X]=\int_0^\theta x\cdot\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^3}3=\frac{2\theta}3
+\mathbb E[X]=\int_0^\theta x\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^4}4=\frac{3\theta}4
 $$
 
 令样本均值等于这个总体矩，解出 $\theta$：
 
 $$
-\bar X=\frac{2\theta}3\quad\Longrightarrow\quad \hat\theta_C=\frac32\bar X
+\bar X=\frac{3\theta}4\quad\Longrightarrow\quad \hat\theta_C=\frac43\bar X
 $$
 
 这个估计量是无偏的：
 
 $$
-\mathbb E[\hat\theta_C]=\frac32\cdot\frac{2\theta}3=\theta
+\mathbb E[\hat\theta_C]=\frac43\cdot\frac{3\theta}4=\theta
 $$
 
 后面对比方差还需要 $X$ 的方差。二阶矩：
 
 $$
-\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^4}4=\frac{\theta^2}2
+\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^5}5=\frac{3\theta^2}5
 $$
 
 $$
-\mathrm{Var}(X)=\frac{\theta^2}2-\left(\frac{2\theta}3\right)^2=\frac{\theta^2}2-\frac{4\theta^2}9=\frac{9\theta^2-8\theta^2}{18}=\frac{\theta^2}{18}
+\mathrm{Var}(X)=\frac{3\theta^2}5-\left(\frac{3\theta}4\right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
 $$
 
-$\hat\theta_C=\frac32\bar X$ 是样本均值的线性变换，方差按线性变换的规则缩放：
+$\hat\theta_C=\frac43\bar X$ 是样本均值的线性变换，方差按线性变换的规则缩放：
 
 $$
-\mathrm{Var}(\hat\theta_C)=\left(\frac32\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac94\cdot\frac{\theta^2}{18n}=\frac{\theta^2}{8n}
+\mathrm{Var}(\hat\theta_C)=\left(\frac43\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
 $$
 
 **要点**：矩估计的求解顺序固定不变：写出总体矩、令其等于样本矩、解出参数；方差的计算同样先算单个观测的方差，再按估计量对样本均值的线性系数缩放。
@@ -286,19 +272,19 @@ $$
 
 ## 模块五：例题：MLE 与矩估计的偏差与方差对比
 
-### 9. 比较 MLE 与矩估计：以 $f(x\mid\theta)=\dfrac{2x}{\theta^2}$ 为例
+### 9. 比较 MLE 与矩估计：以 $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$ 为例
 
-**思路**：模块四已经得到这个密度的矩估计 $\hat\theta_C$。现在对同一个密度重复问题 6 的边界论证求最大似然估计 $\hat\theta_A$，再把两个估计量的偏差、方差、均方误差放在一起比较。
+**思路**：模块四已经得到这个密度的矩估计 $\hat\theta_C$。现在对同一个密度做和问题 6 相同的单调性论证求最大似然估计 $\hat\theta_A$（这里的支撑集只有上端点依赖参数，只需要一个约束，比问题 6 的双端点情形更简单），再把两个估计量的偏差、方差、均方误差放在一起比较。
 
 **推导**：
 
 第一步，最大似然估计。似然函数：
 
 $$
-L(\theta)=\prod_{i=1}^n\frac{2x_i}{\theta^2}\mathbf 1\{\theta\ge x_i\}=\frac{2^n\prod_i x_i}{\theta^{2n}}\mathbf 1\{\theta\ge X_{(n)}\}
+L(\theta)=\prod_{i=1}^n\frac{3x_i^2}{\theta^3}\mathbf 1\{\theta\ge x_i\}=\frac{3^n\prod_i x_i^2}{\theta^{3n}}\mathbf 1\{\theta\ge X_{(n)}\}
 $$
 
-和问题 6 一样，这在合法定义域 $\theta\ge X_{(n)}$ 上是 $\theta$ 的严格递减函数，最大值在定义域左端点取到：
+这在合法定义域 $\theta\ge X_{(n)}$ 上是 $\theta$ 的严格递减函数，最大值在定义域左端点取到：
 
 $$
 \hat\theta_A=X_{(n)}
@@ -307,41 +293,47 @@ $$
 第二步，求 $X_{(n)}$ 在这个密度下的分布。单个观测的 CDF：
 
 $$
-F(x)=\int_0^x\frac{2t}{\theta^2}\,dt=\left(\frac x\theta\right)^2
+F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left(\frac x\theta\right)^3
 $$
 
 所以：
 
 $$
-F_{X_{(n)}}(t)=\left(\frac t\theta\right)^{2n},\qquad f_{X_{(n)}}(t)=\frac{2n\,t^{2n-1}}{\theta^{2n}}
+F_{X_{(n)}}(t)=\left(\frac t\theta\right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
 $$
 
 第三步，矩和偏差：
 
 $$
-\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{2n\,t^{2n-1}}{\theta^{2n}}\,dt=\frac{2n}{2n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{2n+1}\approx-\frac{\theta}{2n}\ (n\text{ 较大时})
+\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{3n+1}\approx-\frac{\theta}{3n}\ (n\text{ 较大时})
 $$
 
 $$
-\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{2n\,t^{2n-1}}{\theta^{2n}}\,dt=\frac{2n}{2n+2}\theta^2=\frac{n}{n+1}\theta^2
+\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+2}\theta^2
 $$
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{n}{n+1}\theta^2-\frac{4n^2}{(2n+1)^2}\theta^2=\frac{n(2n+1)^2-4n^2(n+1)}{(n+1)(2n+1)^2}\theta^2
+\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left(\frac{3n}{3n+1}\right)^2\theta^2
 $$
 
-分子展开：$n(4n^2+4n+1)-4n^3-4n^2=4n^3+4n^2+n-4n^3-4n^2=n$，所以：
+令 $m=3n$，把括号部分通分到 $(m+2)(m+1)^2$：
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{n\,\theta^2}{(n+1)(2n+1)^2}\approx\frac{\theta^2}{4n^2}\ (n\text{ 较大时})
+\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[(m+1)^2-m(m+2)\right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
+$$
+
+因为 $(m+1)^2-m(m+2)=m^2+2m+1-m^2-2m=1$。代入 $m=3n$：
+
+$$
+\mathrm{Var}(\hat\theta_A)=\frac{3n\,\theta^2}{(3n+2)(3n+1)^2}\approx\frac{\theta^2}{9n^2}\ (n\text{ 较大时})
 $$
 
 第四步，对比两个估计量：
 
 | 估计量 | 偏差 | 方差 | 均方误差（$n$ 较大时近似） |
 |---|---|---|---|
-| $\hat\theta_A$（MLE，$=X_{(n)}$） | $-\dfrac{\theta}{2n+1}\approx-\dfrac\theta{2n}$ | $\dfrac{n\theta^2}{(n+1)(2n+1)^2}\approx\dfrac{\theta^2}{4n^2}$ | $\approx\dfrac{\theta^2}{2n^2}$ |
-| $\hat\theta_C$（矩估计，$=\frac32\bar X$） | $0$ | $\dfrac{\theta^2}{8n}$ | $\dfrac{\theta^2}{8n}$ |
+| $\hat\theta_A$（MLE，$=X_{(n)}$） | $-\dfrac{\theta}{3n+1}\approx-\dfrac\theta{3n}$ | $\dfrac{3n\theta^2}{(3n+2)(3n+1)^2}\approx\dfrac{\theta^2}{9n^2}$ | $\approx\dfrac{2\theta^2}{9n^2}$ |
+| $\hat\theta_C$（矩估计，$=\frac43\bar X$） | $0$ | $\dfrac{\theta^2}{15n}$ | $\dfrac{\theta^2}{15n}$ |
 
 MLE 的偏差量级是 $O(1/n)$，随样本量增大趋于零；它的方差量级是 $O(1/n^2)$，比矩估计 $O(1/n)$ 的方差低一个数量级。当 $n$ 足够大时，$O(1/n^2)$ 的均方误差远小于 $O(1/n)$，MLE 尽管有偏，均方误差意义下明显优于无偏的矩估计。
 

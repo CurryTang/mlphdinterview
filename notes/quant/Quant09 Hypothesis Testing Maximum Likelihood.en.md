@@ -90,194 +90,180 @@ Equivalently, this can be written directly as the sum of both tail probabilities
 
 ## Module 2: The Likelihood Function and Maximum Likelihood Estimation
 
-### 5. Maximum Likelihood Estimation for $\mathrm{Exp}(\lambda)$
+### 5. Maximum Likelihood Estimation for the Exponential Distribution Under a Mean Parameterization
 
-**Idea**: The support of the exponential distribution, $[0,\infty)$, does not depend on $\lambda$, so this is the standard case: write the log-likelihood, differentiate and set it to zero to find the stationary point, then confirm a maximum with the second derivative.
+**Idea**: Parameterize the exponential distribution by its mean $\beta$ instead of the more common rate $\lambda$, so the density is $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$. The support $[0,\infty)$ still does not depend on $\beta$, so this remains the standard case: differentiate the log-likelihood, set it to zero, and confirm a maximum with the second derivative.
 
-**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from $\mathrm{Exp}(\lambda)$, with density $f(x\mid\lambda)=\lambda e^{-\lambda x}$. The likelihood function:
+**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from this distribution. The likelihood function:
 
 $$
-L(\lambda)=\prod_{i=1}^n \lambda e^{-\lambda x_i}=\lambda^n e^{-\lambda\sum_i x_i}
+L(\beta)=\prod_{i=1}^n\frac1\beta e^{-x_i/\beta}=\beta^{-n}e^{-\sum_i x_i/\beta}
 $$
 
 Taking logs:
 
 $$
-\ell(\lambda)=n\ln\lambda-\lambda\sum_i x_i
+\ell(\beta)=-n\ln\beta-\frac{\sum_i x_i}{\beta}
 $$
 
-Differentiating with respect to $\lambda$ and setting the result to zero:
+Differentiating with respect to $\beta$ and setting the result to zero:
 
 $$
-\ell'(\lambda)=\frac{n}{\lambda}-\sum_i x_i=0\quad\Longrightarrow\quad \hat\lambda=\frac{n}{\sum_i x_i}=\frac{1}{\bar X}
+\ell'(\beta)=-\frac n\beta+\frac{\sum_i x_i}{\beta^2}=0\quad\Longrightarrow\quad \hat\beta=\frac{\sum_i x_i}{n}=\bar X
 $$
 
-The second derivative $\ell''(\lambda)=-\dfrac{n}{\lambda^2}<0$ confirms this is a maximum.
-
-**Takeaway**: When the support does not depend on the parameter, maximum likelihood estimation follows the standard path: differentiate the log-likelihood, set it to zero, and confirm a maximum with the second derivative.
-
-### 6. Maximum Likelihood Estimation for $\mathrm{Unif}[0,\theta]$: Bias, Variance, and an Unbiased Correction
-
-**Idea**: The support $[0,\theta]$ here depends on $\theta$, so the standard differentiate-and-set-to-zero approach fails (differentiating the likelihood with respect to $\theta$ gives an expression that is never zero). The correct approach is to write the likelihood as a function of $\theta$ with its valid domain marked out, then observe its monotonicity on that domain directly, and read the maximum off the boundary.
-
-**Derivation**: Let $x_1,\ldots,x_n$ be iid $\mathrm{Unif}[0,\theta]$, with density $f(x\mid\theta)=\frac1\theta\mathbf 1\{0\le x\le\theta\}$. The likelihood function:
+Evaluating the second derivative at $\hat\beta=\bar X$:
 
 $$
-L(\theta)=\prod_{i=1}^n\frac1\theta\mathbf 1\{0\le x_i\le\theta\}=\theta^{-n}\mathbf 1\{\theta\ge X_{(n)}\}
+\ell''(\beta)=\frac n{\beta^2}-\frac{2\sum_i x_i}{\beta^3},\qquad \ell''(\bar X)=\frac n{\bar X^2}-\frac{2n\bar X}{\bar X^3}=-\frac n{\bar X^2}<0
 $$
 
-The indicator requires $\theta$ to be at least as large as every observed data point, that is, at least as large as the sample maximum $X_{(n)}$; this is exactly the valid domain $\theta\ge X_{(n)}$.
+confirming this is a maximum.
 
-On that domain, $\theta^{-n}$ is a strictly decreasing function of $\theta$, so the likelihood is maximized at the smallest valid $\theta$, the left endpoint of the domain:
+**Takeaway**: Under the mean parameterization, the maximum likelihood estimator is simply the sample mean $\hat\beta=\bar X$, one step shorter than the rate parameterization's $\hat\lambda=1/\bar X$. Both describe the same distribution; the parameterization differs, and so does the resulting estimator's exact form.
 
-$$
-\boxed{\hat\theta=X_{(n)}}
-$$
+### 6. Maximum Likelihood Estimation for $\mathrm{Unif}[\theta,2\theta]$: Bias, Variance, and an Unbiased Correction
 
-The sample maximum itself is the maximum likelihood estimator. This step needs no differentiation; the monotonicity observation alone is enough.
+**Idea**: Here the support $[\theta,2\theta]$ depends on $\theta$ at both endpoints, one layer more complex than a case where only one endpoint depends on the parameter: both constraints must be written out, and then it must be determined which one is binding. The likelihood is still a strictly decreasing function of $\theta$, so the reasoning follows the same path as the single-endpoint case.
 
-Finding the bias and variance of $\hat\theta$ requires the distribution of $X_{(n)}$. A single observation has CDF $F(t)=t/\theta$, so following the standard CDF-differentiation approach:
+**Derivation**: Let $x_1,\ldots,x_n$ be iid $\mathrm{Unif}[\theta,2\theta]$, with density $f(x\mid\theta)=\frac1\theta\mathbf 1\{\theta\le x\le2\theta\}$. The likelihood function:
 
 $$
-F_{X_{(n)}}(t)=\left(\frac t\theta\right)^n,\qquad f_{X_{(n)}}(t)=\frac{n\,t^{n-1}}{\theta^n},\qquad 0\le t\le\theta
+L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
+$$
+
+The two indicators give the valid range for $\theta$: $\theta\le X_{(1)}$ (no observation can fall below the lower endpoint) and $\theta\ge X_{(n)}/2$ (no observation can exceed the upper endpoint $2\theta$). The valid domain is $\theta\in\left[\dfrac{X_{(n)}}2,\,X_{(1)}\right]$ (non-empty for any real sample).
+
+On this domain $\theta^{-n}$ is strictly decreasing, so the likelihood is maximized at the domain's left endpoint:
+
+$$
+\boxed{\hat\theta=\frac{X_{(n)}}2}
+$$
+
+The constraint from $X_{(1)}$ only confirms the domain is non-empty; it does not change where the maximum sits. The maximum is determined entirely by the upper-endpoint constraint $X_{(n)}/2$.
+
+Finding the bias and variance of $\hat\theta$ requires the distribution of $X_{(n)}$. Let $U_i=X_i/\theta-1$; since $X_i\in[\theta,2\theta]$, this gives $U_i\in[0,1]$ with $U_i\sim\mathrm{Unif}[0,1]$, so $X_{(n)}=\theta(1+U_{(n)})$, where $U_{(n)}$ is the maximum of $n$ independent $\mathrm{Unif}[0,1]$ variables. Reusing the previous chapter's standard result for the maximum of a uniform sample:
+
+$$
+\mathbb E[U_{(n)}]=\frac n{n+1},\qquad \mathrm{Var}(U_{(n)})=\frac n{(n+1)^2(n+2)}
 $$
 
 The first moment:
 
 $$
-\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{n\,t^{n-1}}{\theta^n}\,dt=\frac{n}{\theta^n}\cdot\frac{\theta^{n+1}}{n+1}=\frac{n}{n+1}\theta
+\mathbb E[X_{(n)}]=\theta\left(1+\frac n{n+1}\right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
 $$
 
 $$
-\mathrm{Bias}(\hat\theta)=\mathbb E[\hat\theta]-\theta=\frac{n}{n+1}\theta-\theta=-\frac{\theta}{n+1}
+\mathrm{Bias}(\hat\theta)=\theta\cdot\frac{2n+1}{2(n+1)}-\theta=\theta\cdot\frac{2n+1-2(n+1)}{2(n+1)}=-\frac{\theta}{2(n+1)}
 $$
 
-The bias is negative: the sample maximum can never exceed the true $\theta$, so $\hat\theta$ systematically underestimates $\theta$.
-
-The second moment, from the same integral with an extra factor of $t$:
+The variance is unaffected by the shift and is determined only by the scaling factor:
 
 $$
-\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{n\,t^{n-1}}{\theta^n}\,dt=\frac{n}{n+2}\theta^2
+\mathrm{Var}(X_{(n)})=\theta^2\,\mathrm{Var}(U_{(n)})=\frac{n\,\theta^2}{(n+1)^2(n+2)},\qquad \mathrm{Var}(\hat\theta)=\frac14\mathrm{Var}(X_{(n)})=\frac{n\,\theta^2}{4(n+1)^2(n+2)}
 $$
 
-The variance:
+An unbiased estimator can be built by scaling $\hat\theta$ up in proportion to its bias:
 
 $$
-\mathrm{Var}(\hat\theta)=\frac{n}{n+2}\theta^2-\left(\frac{n}{n+1}\theta\right)^2=\theta^2\left[\frac{n}{n+2}-\frac{n^2}{(n+1)^2}\right]
+\tilde\theta=\frac{2(n+1)}{2n+1}\hat\theta=\frac{(n+1)X_{(n)}}{2n+1},\qquad \mathbb E[\tilde\theta]=\theta
 $$
 
-Putting the bracket over a common denominator $(n+2)(n+1)^2$:
+**Takeaway**: When the support depends on the parameter at both endpoints, write out each constraint separately, then determine which one is binding. Here only the upper-endpoint constraint determines where the maximum sits; the lower-endpoint constraint only guarantees the domain is non-empty.
 
-$$
-\frac{n}{n+2}-\frac{n^2}{(n+1)^2}=\frac{n(n+1)^2-n^2(n+2)}{(n+2)(n+1)^2}=\frac{n\left[(n+1)^2-n(n+2)\right]}{(n+2)(n+1)^2}=\frac{n}{(n+2)(n+1)^2}
-$$
-
-since $(n+1)^2-n(n+2)=n^2+2n+1-n^2-2n=1$. So:
-
-$$
-\mathrm{Var}(\hat\theta)=\frac{n\,\theta^2}{(n+1)^2(n+2)}
-$$
-
-Finally, an unbiased estimator can be built by scaling $\hat\theta$ up in proportion to its bias:
-
-$$
-\tilde\theta=\frac{n+1}{n}X_{(n)},\qquad \mathbb E[\tilde\theta]=\frac{n+1}{n}\cdot\frac{n}{n+1}\theta=\theta
-$$
-
-**Takeaway**: A parameter-dependent support is the signal for a boundary argument. Once identified, do not attempt to differentiate; check directly whether the likelihood is increasing or decreasing as a function of the parameter, and the maximum sits at the corresponding endpoint of the valid domain.
-
-> When the support of the likelihood depends on the parameter (as in $\mathrm{Unif}[0,\theta]$), the likelihood is typically maximized at a boundary of the parameter's domain rather than at a stationary point where the derivative vanishes. Differentiating in that case produces an expression that is never zero. The correct approach is to observe directly that the likelihood is a monotonic function of the parameter and read the maximum off the boundary.
+> When the support of the likelihood depends on the parameter, whether at one endpoint or both, the likelihood is typically maximized at a boundary of the parameter's domain rather than at a stationary point where the derivative vanishes. With dependence at both endpoints, write out the valid range implied by each constraint separately, then examine the likelihood's monotonicity on their intersection to determine which boundary is binding.
 
 ---
 
 ## Module 3: Likelihood Ratios and Sufficient Statistics
 
-### 7. The Likelihood Ratio for $N(0,1)$ versus $N(\mu,1)$ and Identifying the Sufficient Statistic
+### 7. The Likelihood Ratio for $N(0,\sigma^2)$ versus $N(\mu,\sigma^2)$ and Identifying the Sufficient Statistic
 
-**Idea**: The likelihood ratio test statistic is the ratio of two likelihoods. Simplifying it into exponential form usually reveals that it is a monotonic function of some sample statistic, and that statistic is the sufficient statistic.
+**Idea**: The likelihood ratio test statistic is the ratio of two likelihoods. Keeping the variance as a general known constant $\sigma^2$, rather than fixing it at 1, shows that the conclusion does not depend on the specific value of $\sigma^2$. Simplifying the ratio into exponential form usually reveals that it is a monotonic function of some sample statistic, and that statistic is the sufficient statistic.
 
-**Derivation**: Let $x_1,\ldots,x_n$ be iid normal with known variance 1, with null hypothesis $H_0:\mu=0$ and alternative $H_1:\mu=\mu_0>0$ (writing $\mu$ for $\mu_0$). The ratio of the two likelihoods:
+**Derivation**: Let $x_1,\ldots,x_n$ be iid normal with known variance $\sigma^2$, with null hypothesis $H_0:\mu=0$ and alternative $H_1:\mu=\mu_0>0$ (writing $\mu$ for $\mu_0$). The ratio of the two likelihoods:
 
 $$
-T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}2\right)}{\exp\left(-\dfrac{x_i^2}2\right)}
+T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2}\right)}{\exp\left(-\dfrac{x_i^2}{2\sigma^2}\right)}
 $$
 
 Expanding and subtracting the exponents of each term:
 
 $$
--\frac{(x_i-\mu)^2}2+\frac{x_i^2}2=-\frac{x_i^2-2\mu x_i+\mu^2}2+\frac{x_i^2}2=\mu x_i-\frac{\mu^2}2
+-\frac{(x_i-\mu)^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=-\frac{x_i^2-2\mu x_i+\mu^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}
 $$
 
 Summing over $i$ and exponentiating:
 
 $$
-T=\exp\left(\sum_{i=1}^n\left[\mu x_i-\frac{\mu^2}2\right]\right)=\exp\left(\mu\sum_{i=1}^n x_i-\frac{n\mu^2}2\right)
+T=\exp\left(\sum_{i=1}^n\left[\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}\right]\right)=\exp\left(\frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2}\right)
 $$
 
-For $\mu>0$, $T$ is a strictly increasing function of $\sum_i x_i$, and the term $-n\mu^2/2$ in the exponent is a constant that does not depend on the data. So the event "$T>c$" is equivalent to "$\sum_i x_i>c''$", which is equivalent to "$\bar X>c'$" for some threshold $c'$. The rejection region of the likelihood ratio test is determined entirely by the sample mean $\bar X$: all the information the sample carries for distinguishing $\mu=0$ from $\mu>0$ is contained in the single statistic $\bar X$, which is sufficient for this testing problem.
+For $\mu>0$, the coefficient $\mu/\sigma^2>0$, so $T$ is a strictly increasing function of $\sum_i x_i$, and the term $-n\mu^2/(2\sigma^2)$ in the exponent is a constant that does not depend on the data. So the event "$T>c$" is equivalent to "$\sum_i x_i>c''$", which is equivalent to "$\bar X>c'$" for some threshold $c'$. The rejection region of the likelihood ratio test is determined entirely by the sample mean $\bar X$, independent of the specific value of $\sigma^2$: all the information the sample carries for distinguishing $\mu=0$ from $\mu>0$ is contained in the single statistic $\bar X$, which is sufficient for this testing problem.
 
-A related, more elaborate variant is worth a brief mention. If the alternative instead states that exactly one of $N$ observations (unknown which one) has had its mean shifted by $A$, then since the identity of the shifted observation is unknown, the likelihood under $H_1$ is a mixture over the $N$ equally likely choices:
+A related, more elaborate variant is worth a brief mention. If the alternative instead states that exactly one of $N$ independent measurement groups (unknown which one) has had its mean shifted by $A$, then since the identity of the shifted group is unknown, the likelihood under $H_1$ is a mixture over the $N$ equally likely choices:
 
 $$
 L_1=\frac1N\sum_{j=1}^N\prod_{i=1}^N f\big(x_i-A\cdot\mathbf 1\{i=j\}\big)
 $$
 
-Factoring out the common product $\prod_i f(x_i)$ leaves a $1/N$-weighted sum of per-observation likelihood ratios $\dfrac{f(x_j-A)}{f(x_j)}$. This per-term ratio uses exactly the same algebra as the main derivation above; the only difference is an outer sum, by the law of total probability, over which observation might have been shifted:
+Factoring out the common product $\prod_i f(x_i)$ leaves a $1/N$-weighted sum of per-observation likelihood ratios $\dfrac{f(x_j-A)}{f(x_j)}$. This per-term ratio uses exactly the same algebra as the main derivation above; the only difference is an outer sum, by the law of total probability, over which group might have been shifted:
 
 $$
 \frac{f(x_j-A)}{f(x_j)}=\exp\left[\frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2}\right]
 $$
 
-**Takeaway**: If a simplified likelihood ratio can be written as a monotonic function of some statistic, that statistic is sufficient. A mixture alternative does not change the per-observation likelihood-ratio algebra; it only adds an outer sum over the unknown category by the law of total probability.
+**Takeaway**: If a simplified likelihood ratio can be written as a monotonic function of some statistic, that statistic is sufficient, and this conclusion does not depend on the specific value of $\sigma^2$. A mixture alternative does not change the per-observation likelihood-ratio algebra; it only adds an outer sum over the unknown category by the law of total probability.
 
-> For the normal distribution (and most exponential-family distributions), expanding the squared terms in a likelihood ratio almost always lets the sample-dependent part collapse into a function of the sample mean or sample sum. If the likelihood ratio is a monotonic function of that statistic, the statistic is sufficient.
+> For the normal distribution (and most exponential-family distributions), expanding the squared terms in a likelihood ratio almost always lets the sample-dependent part collapse into a function of the sample mean or sample sum, and keeping a general $\sigma^2$ in the coefficients does not affect this conclusion. If the likelihood ratio is a monotonic function of that statistic, the statistic is sufficient.
 
 ---
 
 ## Module 4: The Method of Moments
 
-### 8. Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$ (for $0\le x\le\theta$)
+### 8. Method of Moments for $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$ (for $0\le x\le\theta$)
 
 **Idea**: The method of moments follows a fixed path: compute the population moment as a function of the parameter, replace it with the corresponding sample moment, and solve for the parameter.
 
 **Derivation**: First confirm this is a valid density:
 
 $$
-\int_0^\theta\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^2}2=1
+\int_0^\theta\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^3}3=1
 $$
 
 The first moment:
 
 $$
-\mathbb E[X]=\int_0^\theta x\cdot\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^3}3=\frac{2\theta}3
+\mathbb E[X]=\int_0^\theta x\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^4}4=\frac{3\theta}4
 $$
 
 Setting the sample mean equal to this population moment and solving for $\theta$:
 
 $$
-\bar X=\frac{2\theta}3\quad\Longrightarrow\quad \hat\theta_C=\frac32\bar X
+\bar X=\frac{3\theta}4\quad\Longrightarrow\quad \hat\theta_C=\frac43\bar X
 $$
 
 This estimator is unbiased:
 
 $$
-\mathbb E[\hat\theta_C]=\frac32\cdot\frac{2\theta}3=\theta
+\mathbb E[\hat\theta_C]=\frac43\cdot\frac{3\theta}4=\theta
 $$
 
 Comparing variances later requires $\mathrm{Var}(X)$. The second moment:
 
 $$
-\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{2x}{\theta^2}\,dx=\frac{2}{\theta^2}\cdot\frac{\theta^4}4=\frac{\theta^2}2
+\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^5}5=\frac{3\theta^2}5
 $$
 
 $$
-\mathrm{Var}(X)=\frac{\theta^2}2-\left(\frac{2\theta}3\right)^2=\frac{\theta^2}2-\frac{4\theta^2}9=\frac{9\theta^2-8\theta^2}{18}=\frac{\theta^2}{18}
+\mathrm{Var}(X)=\frac{3\theta^2}5-\left(\frac{3\theta}4\right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
 $$
 
-Since $\hat\theta_C=\frac32\bar X$ is a linear rescaling of the sample mean, its variance scales accordingly:
+Since $\hat\theta_C=\frac43\bar X$ is a linear rescaling of the sample mean, its variance scales accordingly:
 
 $$
-\mathrm{Var}(\hat\theta_C)=\left(\frac32\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac94\cdot\frac{\theta^2}{18n}=\frac{\theta^2}{8n}
+\mathrm{Var}(\hat\theta_C)=\left(\frac43\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
 $$
 
 **Takeaway**: The method-of-moments procedure never changes: write the population moment, set it equal to the sample moment, solve for the parameter. Variance computations follow the same pattern: find the variance of a single observation first, then rescale by the linear coefficient relating the estimator to the sample mean.
@@ -286,19 +272,19 @@ $$
 
 ## Module 5: Worked Example: Comparing MLE and Method-of-Moments Bias and Variance
 
-### 9. Comparing MLE and Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$
+### 9. Comparing MLE and Method of Moments for $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$
 
-**Idea**: Module 4 already gives the method-of-moments estimator $\hat\theta_C$ for this density. Repeating problem 6's boundary argument for the same density gives the maximum likelihood estimator $\hat\theta_A$. Comparing bias, variance, and mean squared error for the two settles which is preferable.
+**Idea**: Module 4 already gives the method-of-moments estimator $\hat\theta_C$ for this density. Repeating the same monotonicity argument as problem 6 for the same density gives the maximum likelihood estimator $\hat\theta_A$ (here the support depends on the parameter at only the upper endpoint, needing just one constraint, simpler than problem 6's two-endpoint case). Comparing bias, variance, and mean squared error for the two settles which is preferable.
 
 **Derivation**:
 
 Step 1, maximum likelihood estimation. The likelihood function:
 
 $$
-L(\theta)=\prod_{i=1}^n\frac{2x_i}{\theta^2}\mathbf 1\{\theta\ge x_i\}=\frac{2^n\prod_i x_i}{\theta^{2n}}\mathbf 1\{\theta\ge X_{(n)}\}
+L(\theta)=\prod_{i=1}^n\frac{3x_i^2}{\theta^3}\mathbf 1\{\theta\ge x_i\}=\frac{3^n\prod_i x_i^2}{\theta^{3n}}\mathbf 1\{\theta\ge X_{(n)}\}
 $$
 
-As in problem 6, this is a strictly decreasing function of $\theta$ on the valid domain $\theta\ge X_{(n)}$, so the maximum is at the left endpoint:
+This is a strictly decreasing function of $\theta$ on the valid domain $\theta\ge X_{(n)}$, so the maximum is at the left endpoint:
 
 $$
 \hat\theta_A=X_{(n)}
@@ -307,41 +293,47 @@ $$
 Step 2, the distribution of $X_{(n)}$ under this density. A single observation has CDF:
 
 $$
-F(x)=\int_0^x\frac{2t}{\theta^2}\,dt=\left(\frac x\theta\right)^2
+F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left(\frac x\theta\right)^3
 $$
 
 so:
 
 $$
-F_{X_{(n)}}(t)=\left(\frac t\theta\right)^{2n},\qquad f_{X_{(n)}}(t)=\frac{2n\,t^{2n-1}}{\theta^{2n}}
+F_{X_{(n)}}(t)=\left(\frac t\theta\right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
 $$
 
 Step 3, moments and bias:
 
 $$
-\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{2n\,t^{2n-1}}{\theta^{2n}}\,dt=\frac{2n}{2n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{2n+1}\approx-\frac{\theta}{2n}\text{ for large }n
+\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{3n+1}\approx-\frac{\theta}{3n}\text{ for large }n
 $$
 
 $$
-\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{2n\,t^{2n-1}}{\theta^{2n}}\,dt=\frac{2n}{2n+2}\theta^2=\frac{n}{n+1}\theta^2
+\mathbb E[X_{(n)}^2]=\int_0^\theta t^2\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+2}\theta^2
 $$
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{n}{n+1}\theta^2-\frac{4n^2}{(2n+1)^2}\theta^2=\frac{n(2n+1)^2-4n^2(n+1)}{(n+1)(2n+1)^2}\theta^2
+\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left(\frac{3n}{3n+1}\right)^2\theta^2
 $$
 
-Expanding the numerator: $n(4n^2+4n+1)-4n^3-4n^2=4n^3+4n^2+n-4n^3-4n^2=n$. So:
+Let $m=3n$ and put the bracketed part over a common denominator $(m+2)(m+1)^2$:
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{n\,\theta^2}{(n+1)(2n+1)^2}\approx\frac{\theta^2}{4n^2}\text{ for large }n
+\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[(m+1)^2-m(m+2)\right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
+$$
+
+since $(m+1)^2-m(m+2)=m^2+2m+1-m^2-2m=1$. Substituting $m=3n$:
+
+$$
+\mathrm{Var}(\hat\theta_A)=\frac{3n\,\theta^2}{(3n+2)(3n+1)^2}\approx\frac{\theta^2}{9n^2}\text{ for large }n
 $$
 
 Step 4, comparing the two estimators:
 
 | Estimator | Bias | Variance | MSE (large-$n$ approximation) |
 |---|---|---|---|
-| $\hat\theta_A$ (MLE, $=X_{(n)}$) | $-\dfrac{\theta}{2n+1}\approx-\dfrac\theta{2n}$ | $\dfrac{n\theta^2}{(n+1)(2n+1)^2}\approx\dfrac{\theta^2}{4n^2}$ | $\approx\dfrac{\theta^2}{2n^2}$ |
-| $\hat\theta_C$ (MOM, $=\frac32\bar X$) | $0$ | $\dfrac{\theta^2}{8n}$ | $\dfrac{\theta^2}{8n}$ |
+| $\hat\theta_A$ (MLE, $=X_{(n)}$) | $-\dfrac{\theta}{3n+1}\approx-\dfrac\theta{3n}$ | $\dfrac{3n\theta^2}{(3n+2)(3n+1)^2}\approx\dfrac{\theta^2}{9n^2}$ | $\approx\dfrac{2\theta^2}{9n^2}$ |
+| $\hat\theta_C$ (MOM, $=\frac43\bar X$) | $0$ | $\dfrac{\theta^2}{15n}$ | $\dfrac{\theta^2}{15n}$ |
 
 The MLE's bias is of order $O(1/n)$ and vanishes as the sample size grows. Its variance is of order $O(1/n^2)$, an order of magnitude smaller than the method-of-moments estimator's $O(1/n)$ variance. Once $n$ is large enough, an $O(1/n^2)$ mean squared error is far smaller than an $O(1/n)$ one, so the MLE, despite being biased, wins decisively over the unbiased method-of-moments estimator in mean-squared-error terms.
 
