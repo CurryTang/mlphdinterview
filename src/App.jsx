@@ -1752,6 +1752,12 @@ const leetcodeNoteDefinitions = [
     null,
     { directory: 'Leetcode', category: 'Binary Search', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Core Skills 32 · Tries',
+    'CoreSkills32 Design Trie.md',
+    null,
+    { directory: 'Leetcode', category: 'Tries', difficulty: 'Hard' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
@@ -14444,10 +14450,645 @@ function QuickSelectPartitionVisual() {
   );
 }
 
+function triePathPrefixes(path) {
+  const prefixes = [''];
+  for (let i = 1; i <= path.length; i += 1) prefixes.push(path.slice(0, i));
+  return prefixes;
+}
+
+function TrieDiagram({ positions, visibleNodes, endNodes, nodeClass, edgeClass, ariaLabel, viewBox }) {
+  const paths = Object.keys(positions);
+  return (
+    <svg aria-label={ariaLabel} className="trie-diagram" role="img" viewBox={viewBox}>
+      {paths.filter((path) => path !== '').map((path) => {
+        const parent = path.slice(0, -1);
+        if (!visibleNodes.has(path) || !visibleNodes.has(parent)) return null;
+        const source = positions[parent];
+        const target = positions[path];
+        return (
+          <line
+            className={`trie-edge ${edgeClass ? edgeClass(path) : ''}`}
+            key={path}
+            x1={source.x}
+            x2={target.x}
+            y1={source.y + 22}
+            y2={target.y - 22}
+          />
+        );
+      })}
+      {paths.map((path) => {
+        const pos = positions[path];
+        const visible = visibleNodes.has(path);
+        const isEnd = endNodes.has(path);
+        const char = path === '' ? '•' : path[path.length - 1];
+        const classes = [
+          'trie-node',
+          visible ? '' : 'ghost',
+          isEnd ? 'end' : '',
+          nodeClass ? nodeClass(path) : '',
+        ].filter(Boolean).join(' ');
+        return (
+          <g className={classes} key={path || 'root'}>
+            <circle cx={pos.x} cy={pos.y} r={isEnd ? 23 : 19} />
+            {visible && <text dominantBaseline="middle" textAnchor="middle" x={pos.x} y={pos.y}>{char}</text>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+const TRIE_CORE_WORDS = ['cat', 'car', 'card', 'dog'];
+const TRIE_CORE_QUERIES = [
+  { type: 'search', term: 'car' },
+  { type: 'search', term: 'ca' },
+  { type: 'startsWith', term: 'ca' },
+  { type: 'search', term: 'cars' },
+];
+const TRIE_CORE_POSITIONS = {
+  '': { x: 400, y: 40 },
+  c: { x: 250, y: 120 },
+  ca: { x: 250, y: 200 },
+  cat: { x: 150, y: 280 },
+  car: { x: 350, y: 280 },
+  card: { x: 350, y: 360 },
+  d: { x: 550, y: 120 },
+  do: { x: 550, y: 200 },
+  dog: { x: 550, y: 280 },
+};
+
+const TRIE_CORE_CODE_LINES = [
+  { id: 'root', code: ['def insert(self, word):', '    node = self.root'] },
+  { id: 'create-child', code: ['    for ch in word:', '        if ch not in node.children:', '            node.children[ch] = TrieNode()'] },
+  { id: 'reuse-child', code: ['    for ch in word:', '        node = node.children[ch]'] },
+  { id: 'mark-end', code: ['    node.is_end = True'] },
+  { id: 'traverse-char', code: ['def _traverse(self, s):', '    node = self.root', '    for ch in s:', '        node = node.children[ch]'] },
+  { id: 'traverse-fail', code: ['        if ch not in node.children:', '            return None'] },
+  { id: 'check-end', code: ['def search(self, word):', '    node = self._traverse(word)', '    return node is not None and node.is_end'] },
+  { id: 'check-prefix', code: ['def startsWith(self, prefix):', '    return self._traverse(prefix) is not None'] },
+];
+
+function buildTrieCoreSteps() {
+  const steps = [];
+  const nodes = new Set(['']);
+  const endWords = new Set();
+
+  steps.push({
+    phase: 'intro',
+    activeLine: 'root',
+    nodes: [...nodes],
+    endWords: [...endWords],
+    highlightPath: [''],
+    currentPath: '',
+  });
+
+  TRIE_CORE_WORDS.forEach((word) => {
+    let path = '';
+    for (let i = 0; i < word.length; i += 1) {
+      const nextPath = path + word[i];
+      const isNew = !nodes.has(nextPath);
+      if (isNew) nodes.add(nextPath);
+      steps.push({
+        phase: 'insert-char',
+        activeLine: isNew ? 'create-child' : 'reuse-child',
+        word,
+        char: word[i],
+        isNew,
+        nodes: [...nodes],
+        endWords: [...endWords],
+        highlightPath: triePathPrefixes(nextPath),
+        currentPath: nextPath,
+      });
+      path = nextPath;
+    }
+    endWords.add(path);
+    steps.push({
+      phase: 'mark-end',
+      activeLine: 'mark-end',
+      word,
+      nodes: [...nodes],
+      endWords: [...endWords],
+      highlightPath: triePathPrefixes(path),
+      currentPath: path,
+    });
+  });
+
+  TRIE_CORE_QUERIES.forEach((query) => {
+    let path = '';
+    let broken = false;
+    steps.push({
+      phase: 'query-start',
+      activeLine: query.type === 'search' ? 'check-end' : 'check-prefix',
+      query,
+      nodes: [...nodes],
+      endWords: [...endWords],
+      highlightPath: [''],
+      currentPath: '',
+    });
+    for (let i = 0; i < query.term.length; i += 1) {
+      const nextPath = path + query.term[i];
+      if (!nodes.has(nextPath)) {
+        steps.push({
+          phase: 'query-fail',
+          activeLine: 'traverse-fail',
+          query,
+          failChar: query.term[i],
+          nodes: [...nodes],
+          endWords: [...endWords],
+          highlightPath: triePathPrefixes(path),
+          currentPath: path,
+        });
+        broken = true;
+        break;
+      }
+      path = nextPath;
+      steps.push({
+        phase: 'query-step',
+        activeLine: 'traverse-char',
+        query,
+        nodes: [...nodes],
+        endWords: [...endWords],
+        highlightPath: triePathPrefixes(path),
+        currentPath: path,
+      });
+    }
+    const result = broken ? false : (query.type === 'search' ? endWords.has(path) : true);
+    steps.push({
+      phase: 'query-result',
+      activeLine: query.type === 'search' ? 'check-end' : 'check-prefix',
+      query,
+      result,
+      nodes: [...nodes],
+      endWords: [...endWords],
+      highlightPath: broken ? [] : triePathPrefixes(path),
+      currentPath: broken ? null : path,
+    });
+  });
+
+  return steps;
+}
+
+const TRIE_CORE_STEPS = buildTrieCoreSteps();
+
+function TrieCoreVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = TRIE_CORE_STEPS;
+  const step = steps[activeStep];
+  const visibleNodes = new Set(step.nodes);
+  const endNodes = new Set(step.endWords);
+  const highlightSet = new Set(step.highlightPath);
+
+  const activeLineLabel = {
+    root: t('从根节点开始', 'Start from the root'),
+    'create-child': t('这个字符对应的子节点不存在，新建一个', "This character's child does not exist yet, so create one"),
+    'reuse-child': t('这个字符对应的子节点已经存在，直接复用', "This character's child already exists, reuse it"),
+    'mark-end': t('把当前节点标记为一个完整单词的结尾', 'Mark the current node as the end of a complete word'),
+    'traverse-char': t('沿着已有的子节点继续前进', 'Continue along an existing child'),
+    'traverse-fail': t('当前字符没有对应的子节点，路径中断', 'No child exists for this character; the path breaks'),
+    'check-end': t('路径完整之后，还要检查 is_end 是否为真', 'Once the path completes, also check whether is_end is true'),
+    'check-prefix': t('路径存在就够了，不需要检查 is_end', 'Existence of the path is enough; is_end is never checked'),
+  }[step.activeLine];
+
+  let title;
+  let detail;
+  if (step.phase === 'intro') {
+    title = t('空 Trie，只有一个根节点', 'An empty trie, just the root node');
+    detail = t('根节点不代表任何字符，它是所有单词共享的起点。', 'The root represents no character; it is the shared starting point for every word.');
+  } else if (step.phase === 'insert-char') {
+    title = step.isNew
+      ? t(`insert("${step.word}")：字符 '${step.char}' 新建节点`, `insert("${step.word}"): character '${step.char}' creates a new node`)
+      : t(`insert("${step.word}")：字符 '${step.char}' 复用已有节点`, `insert("${step.word}"): character '${step.char}' reuses an existing node`);
+    detail = step.isNew
+      ? t('这条路径第一次出现这个字符，必须新建节点才能继续往下走。', 'This character has never appeared on this path before, so a new node has to be created to continue.')
+      : t('之前插入的单词已经建过这个节点，共享前缀不需要重复创建。', 'An earlier insert already created this node; a shared prefix never needs to be built twice.');
+  } else if (step.phase === 'mark-end') {
+    title = t(`insert("${step.word}")：标记结尾`, `insert("${step.word}"): mark the end`);
+    detail = t('节点本身只代表一个字符，is_end 才是"这里是一个完整单词"的标记。', 'A node only represents one character; is_end is the marker that says "a complete word ends here."');
+  } else if (step.phase === 'query-start') {
+    const label = step.query.type === 'search' ? 'search' : 'startsWith';
+    title = t(`${label}("${step.query.term}")：从根节点开始查找`, `${label}("${step.query.term}"): start the lookup from the root`);
+    detail = t('查找和插入用同一套移动规则，区别只在没有子节点时要不要新建。', 'Lookup follows the same movement rule as insert; the only difference is that a missing child is never created.');
+  } else if (step.phase === 'query-step') {
+    title = t(`匹配到 '${step.currentPath[step.currentPath.length - 1]}'，继续前进`, `Matched '${step.currentPath[step.currentPath.length - 1]}', continue`);
+    detail = t('子节点存在，指针移动到它，继续处理下一个字符。', 'The child exists, so the pointer moves onto it and the next character is processed.');
+  } else if (step.phase === 'query-fail') {
+    title = t(`没有 '${step.failChar}' 这个子节点，直接判否`, `No child for '${step.failChar}'; the answer is immediately no`);
+    detail = t('路径在这里断掉，后面不管还剩多少字符都不用再看了。', 'The path breaks here; whatever characters remain in the query never need to be examined.');
+  } else {
+    const label = step.query.type === 'search' ? 'search' : 'startsWith';
+    title = t(
+      `${label}("${step.query.term}") 返回 ${step.result ? 'True' : 'False'}`,
+      `${label}("${step.query.term}") returns ${step.result ? 'True' : 'False'}`,
+    );
+    detail = step.query.type === 'search'
+      ? t(
+        step.result
+          ? '路径完整存在，并且终点节点的 is_end 为真。'
+          : step.currentPath === null
+            ? '路径在中途断开了，说明这个字符串根本没有被插入过，也不是任何单词的前缀。'
+            : '路径完整存在，但终点节点的 is_end 为假：这里只是别的单词的前缀，不是一个完整单词。',
+        step.result
+          ? 'The path exists in full, and the node it ends on has is_end set to true.'
+          : step.currentPath === null
+            ? 'The path broke partway through, which means this string was never inserted and is not a prefix of anything either.'
+            : 'The path exists in full, but the node it ends on has is_end set to false: it is only a prefix of some other word, not a complete word on its own.',
+      )
+      : t(
+        step.result ? '路径存在，不需要关心终点是不是完整单词。' : '路径在中途断开，不存在这个前缀。',
+        step.result ? 'The path exists; whether it happens to end a complete word is irrelevant.' : 'The path breaks partway through; this prefix does not exist.',
+      );
+  }
+
+  return (
+    <section aria-label={t('Trie 插入与查找逐步演示', 'Step-through: trie insertion and lookup')} className="tc-visual">
+      <header className="tc-header">
+        <div>
+          <p className="eyebrow">{t('Trie，共享前缀 + 结尾标记', 'Trie: shared prefixes plus an end-of-word marker')}</p>
+          <h2>{t('插入 cat / car / card / dog', 'Insert cat / car / card / dog')}</h2>
+          <p>{t(
+            '先看这四个单词怎么共享节点建成一棵树，再看 search 和 startsWith 怎么复用同一套移动规则。',
+            'First watch how these four words share nodes to form one tree, then watch how search and startsWith reuse the exact same movement rule.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`tc-step ${step.phase}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="tc-workspace">
+        <div className="tc-stage-card">
+          <TrieDiagram
+            ariaLabel={t('Trie 结构图', 'Trie structure diagram')}
+            edgeClass={(path) => (highlightSet.has(path) ? 'active' : '')}
+            endNodes={endNodes}
+            nodeClass={(path) => [
+              path === step.currentPath ? 'current' : '',
+              path !== step.currentPath && highlightSet.has(path) ? 'active' : '',
+              step.phase === 'insert-char' && step.isNew && path === step.currentPath ? 'new' : '',
+              step.phase === 'query-fail' ? 'fail' : '',
+            ].filter(Boolean).join(' ')}
+            positions={TRIE_CORE_POSITIONS}
+            viewBox="0 0 700 400"
+            visibleNodes={visibleNodes}
+          />
+        </div>
+
+        <div aria-label={t('当前代码', 'Current code')} className="tc-code">
+          <div className="tc-code-heading">
+            <span>{t('insert / search / startsWith', 'insert / search / startsWith')}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="tc-code-lines">
+            {TRIE_CORE_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="tc-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('本次经过的路径', 'Path visited this step')}</span>
+        <span><i className="new" />{t('本步新建', 'Created this step')}</span>
+        <span><i className="end" />{t('完整单词结尾（is_end）', 'End of a complete word (is_end)')}</span>
+        <span><i className="ghost" />{t('还未创建', 'Not created yet')}</span>
+      </div>
+
+      <div className="tc-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择 Trie 演示步骤', 'Select a trie demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const TRIE_WILDCARD_WORDS = ['bad', 'dad', 'cat'];
+const TRIE_WILDCARD_QUERY = '.at';
+const TRIE_WILDCARD_POSITIONS = {
+  '': { x: 400, y: 40 },
+  b: { x: 200, y: 120 },
+  ba: { x: 200, y: 200 },
+  bad: { x: 200, y: 280 },
+  d: { x: 400, y: 120 },
+  da: { x: 400, y: 200 },
+  dad: { x: 400, y: 280 },
+  c: { x: 600, y: 120 },
+  ca: { x: 600, y: 200 },
+  cat: { x: 600, y: 280 },
+};
+
+const TRIE_WILDCARD_CODE_LINES = [
+  { id: 'base-case', code: ['def dfs(node, i):', '    if i == len(word):', '        return node.is_end'] },
+  { id: 'branch', code: ['    ch = word[i]', '    if ch == ".":', '        return any(', '            dfs(child, i + 1)', '            for child in node.children.values()', '        )'] },
+  { id: 'literal-miss', code: ['    if ch not in node.children:', '        return False'] },
+  { id: 'literal-continue', code: ['    return dfs(node.children[ch], i + 1)'] },
+];
+
+function buildTrieWildcardSteps() {
+  const nodes = new Set(['']);
+  const endWords = new Set();
+  TRIE_WILDCARD_WORDS.forEach((word) => {
+    let path = '';
+    for (const ch of word) {
+      path += ch;
+      nodes.add(path);
+    }
+    endWords.add(path);
+  });
+
+  const rootChildren = [];
+  TRIE_WILDCARD_WORDS.forEach((word) => {
+    if (!rootChildren.includes(word[0])) rootChildren.push(word[0]);
+  });
+
+  const steps = [];
+  const branchStatus = {};
+  rootChildren.forEach((c) => { branchStatus[c] = 'pending'; });
+
+  steps.push({
+    phase: 'intro',
+    activeLine: 'base-case',
+    highlightPath: [''],
+    currentPath: null,
+    branchStatus: { ...branchStatus },
+  });
+
+  steps.push({
+    phase: 'wildcard-branch',
+    activeLine: 'branch',
+    highlightPath: ['', ...rootChildren],
+    currentPath: null,
+    branchStatus: { ...branchStatus, ...Object.fromEntries(rootChildren.map((c) => [c, 'active'])) },
+  });
+
+  let solved = false;
+
+  rootChildren.forEach((c0) => {
+    if (solved) {
+      return;
+    }
+    branchStatus[c0] = 'active';
+    let path = c0;
+    steps.push({
+      phase: 'branch-enter',
+      activeLine: 'literal-continue',
+      branch: c0,
+      highlightPath: triePathPrefixes(path),
+      currentPath: path,
+      branchStatus: { ...branchStatus },
+    });
+
+    let failed = false;
+    for (let i = 1; i < TRIE_WILDCARD_QUERY.length; i += 1) {
+      const ch = TRIE_WILDCARD_QUERY[i];
+      const nextPath = path + ch;
+      if (!nodes.has(nextPath)) {
+        steps.push({
+          phase: 'branch-fail',
+          activeLine: 'literal-miss',
+          branch: c0,
+          failChar: ch,
+          highlightPath: triePathPrefixes(path),
+          currentPath: path,
+          branchStatus: { ...branchStatus },
+        });
+        failed = true;
+        break;
+      }
+      path = nextPath;
+      steps.push({
+        phase: 'branch-step',
+        activeLine: 'literal-continue',
+        branch: c0,
+        highlightPath: triePathPrefixes(path),
+        currentPath: path,
+        branchStatus: { ...branchStatus },
+      });
+    }
+
+    const success = !failed && endWords.has(path);
+    branchStatus[c0] = success ? 'success' : 'failed';
+    steps.push({
+      phase: 'branch-result',
+      activeLine: failed ? 'literal-miss' : 'base-case',
+      branch: c0,
+      result: success,
+      highlightPath: triePathPrefixes(path),
+      currentPath: path,
+      branchStatus: { ...branchStatus },
+    });
+
+    if (success) {
+      solved = true;
+    }
+  });
+
+  steps.push({
+    phase: 'done',
+    activeLine: 'branch',
+    highlightPath: [],
+    currentPath: null,
+    branchStatus: { ...branchStatus },
+    result: solved,
+  });
+
+  return steps;
+}
+
+const TRIE_WILDCARD_STEPS = buildTrieWildcardSteps();
+
+function TrieWildcardVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = TRIE_WILDCARD_STEPS;
+  const step = steps[activeStep];
+  const visibleNodes = new Set(Object.keys(TRIE_WILDCARD_POSITIONS));
+  const endNodes = new Set(
+    TRIE_WILDCARD_WORDS.map((word) => word),
+  );
+  const highlightSet = new Set(step.highlightPath);
+
+  const activeLineLabel = {
+    'base-case': t('字符已经用完，检查这个节点是不是单词结尾', 'The characters are exhausted; check whether this node ends a word'),
+    branch: t('当前字符是通配符，遍历所有子节点分别递归', 'The current character is a wildcard; recurse into every child'),
+    'literal-miss': t('普通字符，但没有对应的子节点', 'An ordinary character, but no matching child exists'),
+    'literal-continue': t('普通字符，沿着对应的子节点继续递归', 'An ordinary character; recurse into the matching child'),
+  }[step.activeLine];
+
+  let title;
+  let detail;
+  if (step.phase === 'intro') {
+    title = t(`WordDictionary 里已有 bad / dad / cat，查询 ".at"`, `WordDictionary already holds bad / dad / cat; query ".at"`);
+    detail = t('第 0 个字符是通配符，可以匹配任意一个子节点。', 'Character 0 is a wildcard, which can match any child.');
+  } else if (step.phase === 'wildcard-branch') {
+    title = t(`遇到 "."：分别尝试 ${Object.keys(step.branchStatus).map((c) => `'${c}'`).join(', ')}`, `Hitting ".": try ${Object.keys(step.branchStatus).map((c) => `'${c}'`).join(', ')} in turn`);
+    detail = t(
+      '这一步对应代码里的 any(...)：只要有一个分支返回 True，整体就返回 True。',
+      'This corresponds to any(...) in the code: if a single branch returns True, the whole call returns True.',
+    );
+  } else if (step.phase === 'branch-enter') {
+    title = t(`尝试分支 '${step.branch}'`, `Trying branch '${step.branch}'`);
+    detail = t('从这个子节点开始，继续匹配查询串里剩下的普通字符。', "Starting from this child, continue matching the rest of the query's ordinary characters.");
+  } else if (step.phase === 'branch-step') {
+    title = t(`分支 '${step.branch}'：匹配到 '${step.currentPath[step.currentPath.length - 1]}'`, `Branch '${step.branch}': matched '${step.currentPath[step.currentPath.length - 1]}'`);
+    detail = t('这个位置不是通配符，只需要检查这一个子节点是否存在。', 'This position is not a wildcard, so only this one child needs to be checked.');
+  } else if (step.phase === 'branch-fail') {
+    title = t(`分支 '${step.branch}'：没有 '${step.failChar}' 这个子节点，本分支返回 False`, `Branch '${step.branch}': no child for '${step.failChar}'; this branch returns False`);
+    detail = t('这个分支走不通，但不影响其他分支继续尝试。', "This branch is a dead end, but it does not stop the other branches from being tried.");
+  } else if (step.phase === 'branch-result') {
+    title = step.result
+      ? t(`分支 '${step.branch}'：到达单词结尾，返回 True`, `Branch '${step.branch}': reached the end of a word, returns True`)
+      : t(`分支 '${step.branch}'：路径存在但不是完整单词，返回 False`, `Branch '${step.branch}': the path exists but is not a complete word, returns False`);
+    detail = step.result
+      ? t('any(...) 拿到一个 True，短路返回，不用再尝试剩下的分支。', 'any(...) receives a True and short-circuits; the remaining branches never run.')
+      : t('这个分支的结果是 False，继续看下一个分支。', 'This branch resolves to False, so the next branch is tried.');
+  } else {
+    title = t(
+      `search(".at") 返回 ${step.result ? 'True' : 'False'}`,
+      `search(".at") returns ${step.result ? 'True' : 'False'}`,
+    );
+    detail = t(
+      '"bad" 和 "dad" 的分支都在第二个字符处失配，"cat" 的分支走到底并且是完整单词，所以整体是 True。',
+      'The "bad" and "dad" branches both fail at the second character, while the "cat" branch reaches a complete word, so the overall result is True.',
+    );
+  }
+
+  return (
+    <section aria-label={t('通配符查找逐步演示', 'Step-through: wildcard search')} className="ws-visual">
+      <header className="ws-header">
+        <div>
+          <p className="eyebrow">{t('通配符 "." 触发多分支 DFS', 'A wildcard "." triggers a multi-branch DFS')}</p>
+          <h2>{t('search(".at")', 'search(".at")')}</h2>
+          <p>{t(
+            '普通字符只走一条路径，通配符会在当前节点的所有子节点上分别递归，任意一个分支成功就返回 True。',
+            'An ordinary character follows a single path. A wildcard recurses into every child of the current node, and the call returns True as soon as any branch succeeds.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className={`ws-step ${step.phase}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="ws-workspace">
+        <div className="ws-stage-card">
+          <TrieDiagram
+            ariaLabel={t('Trie 结构图', 'Trie structure diagram')}
+            edgeClass={(path) => (highlightSet.has(path) ? 'active' : '')}
+            endNodes={endNodes}
+            nodeClass={(path) => {
+              const branchChar = path.length > 0 ? path[0] : null;
+              const status = branchChar ? step.branchStatus[branchChar] : null;
+              return [
+                path === step.currentPath ? 'current' : '',
+                path !== step.currentPath && highlightSet.has(path) ? 'active' : '',
+                status === 'success' ? 'branch-success' : '',
+                status === 'failed' && highlightSet.has(path) ? 'branch-failed' : '',
+              ].filter(Boolean).join(' ');
+            }}
+            positions={TRIE_WILDCARD_POSITIONS}
+            viewBox="0 0 800 340"
+            visibleNodes={visibleNodes}
+          />
+          <div className="ws-branches">
+            {Object.entries(step.branchStatus).map(([char, status]) => (
+              <div className={`ws-branch ${status}`} key={char}>
+                <span>'{char}'</span>
+                <strong>{{
+                  pending: t('待定', 'pending'),
+                  active: t('尝试中', 'trying'),
+                  success: t('成功', 'success'),
+                  failed: t('失败', 'failed'),
+                }[status]}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div aria-label={t('当前代码', 'Current code')} className="ws-code">
+          <div className="ws-code-heading">
+            <span>{t('search 的 DFS 模板', "search's DFS template")}</span>
+            <strong>{activeLineLabel}</strong>
+          </div>
+          <div className="ws-code-lines">
+            {TRIE_WILDCARD_CODE_LINES.map((line) => (
+              <div
+                aria-current={step.activeLine === line.id ? 'step' : undefined}
+                className={step.activeLine === line.id ? 'active' : ''}
+                key={line.id}
+              >
+                {line.code.map((code) => <code key={code}>{code}</code>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="ws-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('本次经过的路径', 'Path visited this step')}</span>
+        <span><i className="branch-success" />{t('成功分支', 'Successful branch')}</span>
+        <span><i className="branch-failed" />{t('失败分支', 'Failed branch')}</span>
+      </div>
+
+      <div className="ws-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择通配符演示步骤', 'Select a wildcard demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -14539,6 +15180,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'quickselect-partition-demo') {
     return <QuickSelectPartitionVisual />;
+  }
+
+  if (match?.[1] === 'trie-core-demo') {
+    return <TrieCoreVisual />;
+  }
+
+  if (match?.[1] === 'trie-wildcard-demo') {
+    return <TrieWildcardVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {
