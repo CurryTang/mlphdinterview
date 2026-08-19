@@ -30,11 +30,67 @@ $$
 
 > The p-value is defined as the probability, under the null hypothesis, of observing the current result or something more extreme. Deciding the test direction (one-tailed or two-tailed, and which side to integrate) starts from whether the observed value sits above or below its expected value under the null. The most common mistakes are dropping the equality (using $>$ instead of $\ge$) and using a two-tailed test where a one-tailed test is called for.
 
+### Choosing the Test Direction and Three Formulas
+
+Let $T$ be the test statistic (in a discrete counting scenario, this is often just the count $X$ itself), with the distribution of $T$ under $H_0$ known and the observed value $t_{\text{obs}}$. Which tail to use is determined by the direction of the alternative hypothesis $H_1$:
+
+- $H_1:\theta>\theta_0$ (the parameter is larger than the null claims): right-tailed test, $p=\mathbb P(T\ge t_{\text{obs}}\mid H_0)$
+- $H_1:\theta<\theta_0$ (the parameter is smaller than the null claims): left-tailed test, $p=\mathbb P(T\le t_{\text{obs}}\mid H_0)$
+- $H_1:\theta\ne\theta_0$ (the parameter differs from the null's claimed value, with no assumed direction): two-tailed test, $p=2\min\big(\mathbb P(T\ge t_{\text{obs}}\mid H_0),\ \mathbb P(T\le t_{\text{obs}}\mid H_0)\big)$ (capped at 1 if the result exceeds 1)
+
+The choice among the three formulas is determined entirely by the direction of $H_1$, not by the observed value itself; the observed value is only used to determine whether it sits above or below the expected value under $H_0$, which then fixes which side to integrate. When a problem does not state a direction for $H_1$ and only asks whether the parameter equals a given value, treat it as two-tailed.
+
+The "double the tail" step in the two-tailed formula is exact when the null distribution of $T$ is symmetric about its mean (for example $\mathrm{Binomial}(n,\frac12)$ or a normal distribution), since the two tail probabilities are then equal and doubling one gives their sum. When the distribution is not symmetric (for example the $p=\frac1{27}$ binomial in problem 2 below), doubling is a common approximation; the more rigorous definition sums the probabilities of all outcomes whose likelihood does not exceed the observed value's likelihood. Either convention is acceptable in an interview as long as it is stated explicitly.
+
+### 2. Right-Tailed Test for the Proportion of Jokers in a 54-Card Deck
+
+**Idea**: The null hypothesis here is not $p=\frac12$ but an arbitrary given proportion, which shows that the right-tailed formula applies to any binomial distribution and is not limited to the $p=\frac12$ special case.
+
+**Derivation**: A 54-card deck (including 2 Jokers) is drawn from with replacement 5 times, and 3 Jokers are observed out of the 5 draws. The null hypothesis is that the deck holds exactly 2 Jokers, so the probability of drawing a Joker on a given draw is $p_0=\dfrac2{54}=\dfrac1{27}$. Let $X$ be the number of Jokers drawn in the 5 draws, so $X\sim\mathrm{Binomial}(5,\frac1{27})$, with $\mathbb E[X]=5\times\frac1{27}=\frac5{27}\approx0.185$.
+
+Observing $X=3$, well above the expected $0.185$, sets the alternative hypothesis to $H_1:p>\frac1{27}$ (the true proportion of Jokers is higher), calling for a right-tailed test:
+
+$$
+p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left(\frac1{27}\right)^k\left(\frac{26}{27}\right)^{5-k}=\frac{6891}{14348907}\approx0.00048
+$$
+
+**Takeaway**: The right-tailed formula $\mathbb P(T\ge t_{\text{obs}})$ does not require the null-hypothesis success probability to be $\frac12$; write down the correct distribution of $T$ under $H_0$ (here $\mathrm{Binomial}(5,\frac1{27})$) and the formula itself carries over unchanged.
+
+### 3. Testing Whether a Coin's Heads Probability Is Significantly Low
+
+**Idea**: With the alternative hypothesis switched to "the parameter is smaller than claimed," the right-tailed formula becomes a left-tailed formula. Reusing problem 1's exact setup ($n=10,p_0=\frac12$) with the observed value moved to the other side of the distribution makes the comparison direct.
+
+**Derivation**: Let $X$ be the number of heads in 10 independent coin flips, with null hypothesis $H_0:p=\frac12$, so $\mathbb E[X]=5$. This time the observed value is $X=2$, well below 5, setting the alternative hypothesis to $H_1:p<\frac12$ and calling for a left-tailed test:
+
+$$
+p\text{-value}=\mathbb P(X\le2)=\frac{\binom{10}{0}+\binom{10}{1}+\binom{10}{2}}{2^{10}}=\frac{1+10+45}{1024}=\frac{56}{1024}\approx0.0547
+$$
+
+This value equals problem 1's right-tailed p-value exactly, because $\mathrm{Binomial}(10,\frac12)$ is symmetric about 5, so $X=2$ and $X=8$ are mirror-image positions and $\mathbb P(X\le2)=\mathbb P(X\ge8)$.
+
+**Takeaway**: The left-tailed formula reverses the inequality direction of the right-tailed formula, replacing $\mathbb P(T\ge t_{\text{obs}})$ with $\mathbb P(T\le t_{\text{obs}})$. Under a symmetric distribution, two observed values equally far from the mean on opposite sides give the same one-tailed p-value.
+
+### 4. Testing Whether a Coin Is Fair (Two-Tailed)
+
+**Idea**: The data is identical to problem 1's ($n=10$, 8 heads observed), but the alternative hypothesis changes from "the heads probability is higher" to "the heads probability is not equal to $\frac12$," with no assumed direction. The same data under different hypotheses gives different p-values; the test direction is determined by the hypothesis, not the data.
+
+**Derivation**: $X\sim\mathrm{Binomial}(10,\frac12)$, with $X=8$ observed. The alternative hypothesis is $H_1:p\ne\frac12$, calling for a two-tailed test. Since $\mathrm{Binomial}(10,\frac12)$ is symmetric about its mean, the two tail probabilities are equal, so problem 1's one-tailed probability is doubled:
+
+$$
+p\text{-value}=2\times\mathbb P(X\ge8)=2\times\frac{56}{1024}=\frac{112}{1024}\approx0.1094
+$$
+
+Equivalently, this can be written directly as the sum of both tail probabilities: $\mathbb P(X\ge8)+\mathbb P(X\le2)=\dfrac{56}{1024}+\dfrac{56}{1024}=\dfrac{112}{1024}$.
+
+**Takeaway**:
+
+> For the same observed data, the right-tailed test gives $p\approx0.0547$ and the two-tailed test gives $p\approx0.1094$, exactly double. The test direction is determined by how the alternative hypothesis is stated; before writing a test, confirm whether the problem asks "is it higher/lower" or "is it not equal."
+
 ---
 
 ## Module 2: The Likelihood Function and Maximum Likelihood Estimation
 
-### 2. Maximum Likelihood Estimation for $\mathrm{Exp}(\lambda)$
+### 5. Maximum Likelihood Estimation for $\mathrm{Exp}(\lambda)$
 
 **Idea**: The support of the exponential distribution, $[0,\infty)$, does not depend on $\lambda$, so this is the standard case: write the log-likelihood, differentiate and set it to zero to find the stationary point, then confirm a maximum with the second derivative.
 
@@ -60,7 +116,7 @@ The second derivative $\ell''(\lambda)=-\dfrac{n}{\lambda^2}<0$ confirms this is
 
 **Takeaway**: When the support does not depend on the parameter, maximum likelihood estimation follows the standard path: differentiate the log-likelihood, set it to zero, and confirm a maximum with the second derivative.
 
-### 3. Maximum Likelihood Estimation for $\mathrm{Unif}[0,\theta]$: Bias, Variance, and an Unbiased Correction
+### 6. Maximum Likelihood Estimation for $\mathrm{Unif}[0,\theta]$: Bias, Variance, and an Unbiased Correction
 
 **Idea**: The support $[0,\theta]$ here depends on $\theta$, so the standard differentiate-and-set-to-zero approach fails (differentiating the likelihood with respect to $\theta$ gives an expression that is never zero). The correct approach is to write the likelihood as a function of $\theta$ with its valid domain marked out, then observe its monotonicity on that domain directly, and read the maximum off the boundary.
 
@@ -136,7 +192,7 @@ $$
 
 ## Module 3: Likelihood Ratios and Sufficient Statistics
 
-### 4. The Likelihood Ratio for $N(0,1)$ versus $N(\mu,1)$ and Identifying the Sufficient Statistic
+### 7. The Likelihood Ratio for $N(0,1)$ versus $N(\mu,1)$ and Identifying the Sufficient Statistic
 
 **Idea**: The likelihood ratio test statistic is the ratio of two likelihoods. Simplifying it into exponential form usually reveals that it is a monotonic function of some sample statistic, and that statistic is the sufficient statistic.
 
@@ -180,7 +236,7 @@ $$
 
 ## Module 4: The Method of Moments
 
-### 5. Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$ (for $0\le x\le\theta$)
+### 8. Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$ (for $0\le x\le\theta$)
 
 **Idea**: The method of moments follows a fixed path: compute the population moment as a function of the parameter, replace it with the corresponding sample moment, and solve for the parameter.
 
@@ -230,9 +286,9 @@ $$
 
 ## Module 5: Worked Example: Comparing MLE and Method-of-Moments Bias and Variance
 
-### 6. Comparing MLE and Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$
+### 9. Comparing MLE and Method of Moments for $f(x\mid\theta)=\dfrac{2x}{\theta^2}$
 
-**Idea**: Module 4 already gives the method-of-moments estimator $\hat\theta_C$ for this density. Repeating problem 3's boundary argument for the same density gives the maximum likelihood estimator $\hat\theta_A$. Comparing bias, variance, and mean squared error for the two settles which is preferable.
+**Idea**: Module 4 already gives the method-of-moments estimator $\hat\theta_C$ for this density. Repeating problem 6's boundary argument for the same density gives the maximum likelihood estimator $\hat\theta_A$. Comparing bias, variance, and mean squared error for the two settles which is preferable.
 
 **Derivation**:
 
@@ -242,7 +298,7 @@ $$
 L(\theta)=\prod_{i=1}^n\frac{2x_i}{\theta^2}\mathbf 1\{\theta\ge x_i\}=\frac{2^n\prod_i x_i}{\theta^{2n}}\mathbf 1\{\theta\ge X_{(n)}\}
 $$
 
-As in problem 3, this is a strictly decreasing function of $\theta$ on the valid domain $\theta\ge X_{(n)}$, so the maximum is at the left endpoint:
+As in problem 6, this is a strictly decreasing function of $\theta$ on the valid domain $\theta\ge X_{(n)}$, so the maximum is at the left endpoint:
 
 $$
 \hat\theta_A=X_{(n)}
