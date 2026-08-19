@@ -1834,6 +1834,12 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'Recursion', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Quant 8 · 顺序统计量：CDF 求导与条件截断',
+    'Quant08 Order Statistics Conditional Truncation.md',
+    null,
+    { directory: 'quant', category: 'Order Statistics', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
