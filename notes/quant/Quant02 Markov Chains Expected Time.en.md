@@ -25,15 +25,17 @@ stationary return time:
 ## Contents
 
 1. [Markov chain basics](#markov-chain-basics)
-2. [First-step analysis](#first-step-analysis)
-3. [Stationary distribution and return time](#stationary-distribution-and-return-time)
-4. [Example 1: Two-state weather](#example-1-two-state-weather)
-5. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
-6. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
-7. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
-8. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
-9. [Common pitfalls](#common-pitfalls)
-10. [One-sentence summary](#one-sentence-summary)
+2. [The Chapman-Kolmogorov equation](#the-chapman-kolmogorov-equation)
+3. [State augmentation: building a Markov chain from a non-Markov process](#state-augmentation-building-a-markov-chain-from-a-non-markov-process)
+4. [First-step analysis](#first-step-analysis)
+5. [Stationary distribution and return time](#stationary-distribution-and-return-time)
+6. [Example 1: Two-state weather](#example-1-two-state-weather)
+7. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
+8. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
+9. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
+10. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
+11. [Common pitfalls](#common-pitfalls)
+12. [One-sentence summary](#one-sentence-summary)
 
 ---
 
@@ -79,6 +81,165 @@ P =
 0.4 & 0.6
 \end{bmatrix}
 $$
+
+---
+
+## The Chapman-Kolmogorov equation
+
+The one-step transition probability is $P_{ij}$, but many problems need the probability of landing in some state after `n` steps:
+
+$$
+P_{ij}^{(n)} = P(X_{t+n} = j \mid X_t = i)
+$$
+
+The Chapman-Kolmogorov equation splits the `n`-step transition probability into two legs: take `m` steps to some intermediate state `k`, then take the remaining `n - m` steps from `k`:
+
+$$
+P_{ij}^{(m+n)} = \sum_k P_{ik}^{(m)} P_{kj}^{(n)}
+$$
+
+The derivation needs only the law of total probability plus one use of the Markov property:
+
+$$
+\begin{aligned}
+P_{ij}^{(m+n)}
+&= P(X_{t+m+n}=j \mid X_t=i) \\
+&= \sum_k P(X_{t+m}=k,\, X_{t+m+n}=j \mid X_t=i) \\
+&= \sum_k P(X_{t+m}=k \mid X_t=i)\, P(X_{t+m+n}=j \mid X_{t+m}=k,\, X_t=i) \\
+&= \sum_k P(X_{t+m}=k \mid X_t=i)\, P(X_{t+m+n}=j \mid X_{t+m}=k) \\
+&= \sum_k P_{ik}^{(m)} P_{kj}^{(n)}
+\end{aligned}
+$$
+
+The third step expands over the intermediate state `k` using the law of total probability. The fourth step is where the Markov property does the work: once $X_{t+m}=k$ is known, the distribution of $X_{t+m+n}$ no longer depends on the earlier $X_t$.
+
+In matrix form:
+
+$$
+P^{(m+n)} = P^{(m)} P^{(n)}
+$$
+
+Since $P^{(1)} = P$, applying this repeatedly gives: the `n`-step transition matrix is the `n`-th power of the transition matrix:
+
+$$
+P^{(n)} = P^n
+$$
+
+Verify this with the Sunny / Rainy transition matrix from above. The two-step transition matrix:
+
+$$
+P^2 =
+\begin{bmatrix}
+0.8 & 0.2 \\
+0.4 & 0.6
+\end{bmatrix}^2
+=
+\begin{bmatrix}
+0.72 & 0.28 \\
+0.56 & 0.44
+\end{bmatrix}
+$$
+
+The three-step transition matrix can be computed directly as $P^3 = P \cdot P \cdot P$, or split via the Chapman-Kolmogorov equation into `1 + 2` steps:
+
+$$
+P^{(3)} = P^{(1)} P^{(2)} = P \cdot P^2
+$$
+
+Working out just the entry for staying Sunny after three steps:
+
+$$
+P_{SS}^{(3)} = P_{SS}^{(1)} P_{SS}^{(2)} + P_{SR}^{(1)} P_{RS}^{(2)} = 0.8 \times 0.72 + 0.2 \times 0.56 = 0.688
+$$
+
+Both routes give the same matrix:
+
+$$
+P^3 =
+\begin{bmatrix}
+0.688 & 0.312 \\
+0.624 & 0.376
+\end{bmatrix}
+$$
+
+```text
+What the Chapman-Kolmogorov equation does:
+Splits an m+n-step problem into "m steps, then n steps,"
+summing over the intermediate state in between.
+The matrix form is the easiest to remember:
+the n-step transition matrix is the transition matrix raised to the n-th power.
+```
+
+---
+
+## State augmentation: building a Markov chain from a non-Markov process
+
+If the distribution of the next step depends not only on the current state but also on the state one step further back (or earlier still), the process does not satisfy the Markov property on the original state space. But as long as "how many past steps the future depends on" is finite and fixed, the state can be redefined as a combination of the most recent few steps, restoring the Markov property on the new state space.
+
+The general principle: if the distribution of $Y_{t+1}$ depends on both $Y_t$ and $Y_{t-1}$, define a new state $X_t = (Y_{t-1}, Y_t)$. Since the distribution of $X_{t+1} = (Y_t, Y_{t+1})$ is determined entirely by $X_t = (Y_{t-1}, Y_t)$, with no need to look further back, $\{X_t\}$ is a first-order Markov chain on the new state space.
+
+### An example that fails the Markov property
+
+Suppose there are three cities, A, B, and C, and the next city depends not only on the current city but also on the previous one:
+
+```text
+Coming from A to B, the probability of going to C next is 0.5
+Coming from C to B, the probability of going to C next is 0.3
+```
+
+In both "A to B" and "C to B," the current city is B, but the probability of going to C next differs (0.5 versus 0.3). If the state is just "current city," the next step's distribution still depends on the previous city, so the Markov property fails.
+
+### State augmentation: redefining the state as an ordered pair
+
+Redefine the state as the ordered pair "(previous city, current city)." The new state space is:
+
+$$
+\{AA, AB, AC, BA, BB, BC, CA, CB, CC\}
+$$
+
+where state $AB$ means "the previous city was A and the current city is B." The full transition rule needs to be specified: for every (previous city, current city) combination, the distribution of the next city.
+
+| Previous, current | Next = A | Next = B | Next = C |
+|---|---|---|---|
+| A, A | 0.5 | 0.3 | 0.2 |
+| A, B | 0.1 | 0.4 | 0.5 |
+| A, C | 0.3 | 0.3 | 0.4 |
+| B, A | 0.4 | 0.4 | 0.2 |
+| B, B | 0.2 | 0.5 | 0.3 |
+| B, C | 0.3 | 0.2 | 0.5 |
+| C, A | 0.5 | 0.2 | 0.3 |
+| C, B | 0.2 | 0.5 | 0.3 |
+| C, C | 0.3 | 0.3 | 0.4 |
+
+Each row sums to 1, so this is a valid table of conditional distributions.
+
+On the new state space, the transition rule is: if the current state is $XY$ (previous city X, current city Y), the next city Z is drawn from the distribution in row (X, Y) of the table above, and the new state becomes $YZ$. For example, from state $AB$, if the next city is C, the new state is $BC$; this transition depends only on the current state $AB$, with no need to look further back, so the Markov property holds again on the new state space.
+
+The new state space has 9 states, but from any given state, at most 3 next states are reachable: from $XY$, the only reachable states are $YA$, $YB$, and $YC$, since the new state's first character must equal the old state's second character. The transition matrix is sparse, which is a general feature of state augmentation: the augmented state space grows, but the number of outgoing edges per state does not.
+
+### Verifying with one concrete calculation
+
+Starting from state $AB$ (previous city A, current city B), what is the probability of landing in state $CC$ (the last two cities both C) after two more steps?
+
+The first step, from $(A,B)$, goes to C with probability 0.5 (row A, B in the table); after this step the state becomes $BC$. The second step, from $(B,C)$, goes to C with probability 0.5 (row B, C in the table). Both steps must land exactly on "go to C" to reach state $CC$:
+
+$$
+P(X_2 = CC \mid X_0 = AB) = 0.5 \times 0.5 = 0.25
+$$
+
+This result can also be verified using the Chapman-Kolmogorov equation from the previous section, applied to the $9 \times 9$ transition matrix over the augmented state space: fill in the $9 \times 9$ transition matrix following the rule above, then compute the entry of its square at position $(AB, CC)$, which is again 0.25.
+
+```text
+Signal that a state fails the Markov property:
+Under the same "current state," the transition probabilities differ
+because of earlier history.
+
+Fix:
+Redefine the state as a combination of the most recent k steps.
+As long as k is finite and fixed, the Markov property holds again
+on the new state space, at the cost of the state count growing from
+|S| to at most |S|^k.
+```
 
 ---
 
@@ -469,7 +630,7 @@ P(k -> k - 1) = k / 5
 P(k -> k + 1) = (5 - k) / 5
 ```
 
-If the next-step probabilities also depended on which particular lights were on, compression to `k` alone would not be valid.
+If the next-step probabilities also depended on which particular lights were on, compression to `k` alone would not be valid; the fix is the state-augmentation approach described earlier: widen the state definition to include enough history, rather than forcing the Markov property onto an under-specified compressed state.
 
 ---
 
@@ -478,6 +639,10 @@ If the next-step probabilities also depended on which particular lights were on,
 ```text
 Expected time in a Markov chain = first-step equation.
 Expected return time to a starting state = 1 / stationary probability.
+The n-step transition matrix equals the transition matrix raised to the n-th
+power; that is the matrix form of the Chapman-Kolmogorov equation.
+When a state fails the Markov property, widening it to a combination of the
+most recent k steps restores it.
 The five-light-bulb problem has 2^5 = 32 equally likely full states,
 so the mean return time to the all-off state is 32 seconds.
 ```
