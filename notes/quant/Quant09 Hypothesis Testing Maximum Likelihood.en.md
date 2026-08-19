@@ -92,9 +92,9 @@ Equivalently, this can be written directly as the sum of both tail probabilities
 
 ### 5. Maximum Likelihood Estimation for the Exponential Distribution Under a Mean Parameterization
 
-**Idea**: Parameterize the exponential distribution by its mean $\beta$ instead of the more common rate $\lambda$, so the density is $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$. The support $[0,\infty)$ still does not depend on $\beta$, so this remains the standard case: differentiate the log-likelihood, set it to zero, and confirm a maximum with the second derivative.
+**Idea**: Parameterize the exponential distribution by its mean $\beta$ instead of the more common rate $\lambda=1/\beta$. The support $[0,\infty)$ does not depend on $\beta$, so this remains the standard case: differentiate the log-likelihood, set it to zero, and confirm a maximum with the second derivative.
 
-**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from this distribution. The likelihood function:
+**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from an exponential distribution with mean $\beta$, with density $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$ ($x\ge0$). Find the maximum likelihood estimator $\hat\beta$ of $\beta$. The likelihood function:
 
 $$
 L(\beta)=\prod_{i=1}^n\frac1\beta e^{-x_i/\beta}=\beta^{-n}e^{-\sum_i x_i/\beta}
@@ -126,7 +126,7 @@ confirming this is a maximum.
 
 **Idea**: Here the support $[\theta,2\theta]$ depends on $\theta$ at both endpoints, one layer more complex than a case where only one endpoint depends on the parameter: both constraints must be written out, and then it must be determined which one is binding. The likelihood is still a strictly decreasing function of $\theta$, so the reasoning follows the same path as the single-endpoint case.
 
-**Derivation**: Let $x_1,\ldots,x_n$ be iid $\mathrm{Unif}[\theta,2\theta]$, with density $f(x\mid\theta)=\frac1\theta\mathbf 1\{\theta\le x\le2\theta\}$. The likelihood function:
+**Derivation**: Let $x_1,\ldots,x_n$ be iid $\mathrm{Unif}[\theta,2\theta]$, with density $f(x\mid\theta)=\frac1\theta\mathbf 1\{\theta\le x\le2\theta\}$. Find the maximum likelihood estimator $\hat\theta$ of $\theta$, along with its bias and variance. The likelihood function:
 
 $$
 L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
@@ -182,7 +182,7 @@ $$
 
 **Idea**: The likelihood ratio test statistic is the ratio of two likelihoods. Keeping the variance as a general known constant $\sigma^2$, rather than fixing it at 1, shows that the conclusion does not depend on the specific value of $\sigma^2$. Simplifying the ratio into exponential form usually reveals that it is a monotonic function of some sample statistic, and that statistic is the sufficient statistic.
 
-**Derivation**: Let $x_1,\ldots,x_n$ be iid normal with known variance $\sigma^2$, with null hypothesis $H_0:\mu=0$ and alternative $H_1:\mu=\mu_0>0$ (writing $\mu$ for $\mu_0$). The ratio of the two likelihoods:
+**Derivation**: Let $x_1,\ldots,x_n$ be iid normal with known variance $\sigma^2$, with null hypothesis $H_0:\mu=0$ and alternative $H_1:\mu=\mu_0>0$ (writing $\mu$ for $\mu_0$). The goal is to simplify the likelihood ratio statistic and identify the sufficient statistic that determines the rejection region. The ratio of the two likelihoods:
 
 $$
 T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2}\right)}{\exp\left(-\dfrac{x_i^2}{2\sigma^2}\right)}
@@ -226,7 +226,7 @@ $$
 
 **Idea**: The method of moments follows a fixed path: compute the population moment as a function of the parameter, replace it with the corresponding sample moment, and solve for the parameter.
 
-**Derivation**: First confirm this is a valid density:
+**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from the density $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$ ($0\le x\le\theta$). Find the method-of-moments estimator $\hat\theta_C$ of $\theta$. First confirm this is a valid density:
 
 $$
 \int_0^\theta\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^3}3=1
@@ -276,7 +276,7 @@ $$
 
 **Idea**: Module 4 already gives the method-of-moments estimator $\hat\theta_C$ for this density. Repeating the same monotonicity argument as problem 6 for the same density gives the maximum likelihood estimator $\hat\theta_A$ (here the support depends on the parameter at only the upper endpoint, needing just one constraint, simpler than problem 6's two-endpoint case). Comparing bias, variance, and mean squared error for the two settles which is preferable.
 
-**Derivation**:
+**Derivation**: Let $x_1,\ldots,x_n$ be an independent sample from the density $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$ ($0\le x\le\theta$). Find the maximum likelihood estimator $\hat\theta_A$, and compare its bias, variance, and mean squared error against the method-of-moments estimator $\hat\theta_C$ from Module 4.
 
 Step 1, maximum likelihood estimation. The likelihood function:
 
