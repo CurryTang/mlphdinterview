@@ -480,6 +480,52 @@ class Twitter:
 
 </details>
 
+#### An Alternative: K-Way Merge
+
+`getNewsFeed` can also be implemented as a K-way merge: hand each followee's most recent 10 tweets, as an iterator, to `heapq.merge`, and lazily merge out the top 10.
+
+```python
+import heapq
+import itertools
+from collections import defaultdict
+from typing import List
+
+
+class Twitter:
+    def __init__(self):
+        self.time = 0
+        self.tweets = defaultdict(list)
+        self.follow_map = defaultdict(set)
+
+    def postTweet(self, userId: int, tweetId: int) -> None:
+        self.tweets[userId].append((self.time, tweetId))
+        self.time += 1
+
+    def getNewsFeed(self, userId: int) -> List[int]:
+        followed = self.follow_map[userId] | {userId}
+        user_tweets = [reversed(self.tweets[u][-10:]) for u in followed if self.tweets[u]]
+        merged = heapq.merge(*user_tweets, key=lambda x: x[0], reverse=True)
+        return [tweetId for _, tweetId in itertools.islice(merged, 10)]
+
+    def follow(self, followerId: int, followeeId: int) -> None:
+        self.follow_map[followerId].add(followeeId)
+
+    def unfollow(self, followerId: int, followeeId: int) -> None:
+        self.follow_map[followerId].discard(followeeId)
+```
+
+This version renames the attribute from `following` to `follow_map` to avoid sharing a name with the `follow` method; naming it `self.follow` directly would let the instance attribute shadow the method.
+
+The two versions look like a "lazy K-way merge" versus "flatten candidates, then heap" comparison, but the measured result runs opposite to intuition: once the number of followees (`F`) is meaningfully larger than 10, the K-way merge version is faster, and the gap widens as `F` grows. The reason is the amount of data each version actually touches:
+
+- `heapq.nlargest(10, candidates)` must fully iterate the `candidates` list, whose length is `10F`, comparing every single element. It is a complete linear scan.
+- `heapq.merge` only needs an initial heap of size `F` (one current head per stream), then refills the popped stream's slot on each of the 10 pops. The whole process touches roughly `F + 10 log F` elements, never the full `10F`.
+- As `F` grows, the gap between `10F` (what `nlargest` scans) and `F + 10 log F` (what `merge` actually touches) widens, and so does the K-way merge version's advantage.
+
+The `key=lambda x: x[0]` is unnecessary: a `(time, tweetId)` tuple already compares by time first. Dropping `key` saves a bit more call overhead, but does not change the conclusion above.
+
+The deciding factor is the relationship between the number of candidate streams (here, the number of followees) and the length of each stream. When the stream count is small relative to the total candidate count (each stream is long), flattening everything and running `heapq.nlargest`/`heapq.nsmallest` is more efficient. When the stream count itself is large and each stream is short, as in this problem where each stream holds at most 10 tweets, a K-way merge avoids scanning the full candidate set and is usually faster. This is also why `heapq.merge` is the preferred tool for external merge sort or for merging several sorted logs or paginated database results.
+
 ### 7. Find Median From Data Stream
 
 A direct application of the two-heap template. Every `addNum` strictly follows the order "push into `small` first, transfer its top to `large`, then transfer back if needed," which guarantees that `small`'s maximum never exceeds `large`'s minimum at any point, and that the two heaps' sizes never differ by more than one.

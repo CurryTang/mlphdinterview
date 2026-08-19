@@ -480,6 +480,52 @@ class Twitter:
 
 </details>
 
+#### 另一种写法：K 路归并版本
+
+`getNewsFeed` 也可以用 K 路归并实现：把每个关注对象最近 10 条推文的迭代器交给 `heapq.merge`，惰性地归并出前 10 条。
+
+```python
+import heapq
+import itertools
+from collections import defaultdict
+from typing import List
+
+
+class Twitter:
+    def __init__(self):
+        self.time = 0
+        self.tweets = defaultdict(list)
+        self.follow_map = defaultdict(set)
+
+    def postTweet(self, userId: int, tweetId: int) -> None:
+        self.tweets[userId].append((self.time, tweetId))
+        self.time += 1
+
+    def getNewsFeed(self, userId: int) -> List[int]:
+        followed = self.follow_map[userId] | {userId}
+        user_tweets = [reversed(self.tweets[u][-10:]) for u in followed if self.tweets[u]]
+        merged = heapq.merge(*user_tweets, key=lambda x: x[0], reverse=True)
+        return [tweetId for _, tweetId in itertools.islice(merged, 10)]
+
+    def follow(self, followerId: int, followeeId: int) -> None:
+        self.follow_map[followerId].add(followeeId)
+
+    def unfollow(self, followerId: int, followeeId: int) -> None:
+        self.follow_map[followerId].discard(followeeId)
+```
+
+这版把属性名从 `following` 改成了 `follow_map`，为的是避免和 `follow` 方法同名；如果直接叫 `self.follow`，实例属性会覆盖同名方法。
+
+两种写法看起来是"惰性 K 路归并"和"全量候选加堆"的对比，但实测结果和直觉相反：在关注数（`F`）明显大于 10 的场景下，K 路归并版本更快，差距随 `F` 增大而扩大。原因在于两者真正触达的数据量不同：
+
+- `heapq.nlargest(10, candidates)` 必须完整遍历 `candidates` 这个长度为 `10F` 的列表，对每个元素都执行一次比较，是一次完整的线性扫描。
+- `heapq.merge` 只需要为每一路建一个大小为 `F` 的初始堆（每一路贡献当前最新的一条），之后每弹出一个结果就从对应的那一路补一个新元素，只要 10 次弹出。整个过程只触达大约 `F + 10 log F`个元素，不需要看到全部 `10F` 条候选。
+- `F` 越大，`10F`（nlargest 要扫描的元素数）和 `F + 10 log F`（merge 实际触达的元素数）之间的差距越大，K 路归并的优势也越明显。
+
+`key=lambda x: x[0]` 这一步其实是多余的：`(time, tweetId)` 这样的 tuple 本身就按时间优先比较，去掉 `key` 能再省一点调用开销，但不影响上面的结论。
+
+判断标准是候选流的路数（这里是关注数）和每一路的长度的关系：路数远小于总候选数（也就是每一路都比较长）时，一次性物化再用 `heapq.nlargest`/`heapq.nsmallest` 更划算；路数本身较大、每一路又很短（就像这道题，每一路最多 10 条）时，K 路归并能避免扫描全部候选，通常更快。这也是外部归并排序、合并多个有序日志或数据库分页结果时优先选择 `heapq.merge` 的原因。
+
 ### 7. Find Median From Data Stream
 
 双堆模板的直接应用。`addNum` 每次都严格按"先入 `small`，转移堆顶给 `large`，必要时再转移回来"的顺序执行，保证任何时候 `small` 的最大值不超过 `large` 的最小值，且两堆大小最多相差一。
