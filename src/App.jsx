@@ -1900,6 +1900,30 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: '性能优化面经', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    '操作系统 1 · 进程与线程基础',
+    'QuantDevOS01 Process Thread Basics.md',
+    null,
+    { directory: 'quant', category: '操作系统面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    '操作系统 2 · 线程同步与死锁',
+    'QuantDevOS02 Synchronization Deadlock.md',
+    null,
+    { directory: 'quant', category: '操作系统面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    '操作系统 3 · 进程间通信与调度',
+    'QuantDevOS03 IPC Scheduling.md',
+    null,
+    { directory: 'quant', category: '操作系统面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    '操作系统 4 · 虚拟内存与链接',
+    'QuantDevOS04 Virtual Memory Linking.md',
+    null,
+    { directory: 'quant', category: '操作系统面经', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({

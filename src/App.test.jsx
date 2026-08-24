@@ -818,7 +818,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
-    expect(screen.getByText('本板块共 19 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 23 篇笔记')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
 
     expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
