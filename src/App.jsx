@@ -1924,6 +1924,24 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: '操作系统面经', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    '计算机网络 1 · IO 模型与多路复用',
+    'QuantDevNet01 IO Models Multiplexing.md',
+    null,
+    { directory: 'quant', category: '计算机网络面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    '计算机网络 2 · Reactor、Proactor 与线程池',
+    'QuantDevNet02 Reactor Proactor ThreadPool.md',
+    null,
+    { directory: 'quant', category: '计算机网络面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    '计算机网络 3 · 手撕 Socket Server',
+    'QuantDevNet03 Handwritten Socket Server.md',
+    null,
+    { directory: 'quant', category: '计算机网络面经', difficulty: 'Medium' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
