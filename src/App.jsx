@@ -1876,6 +1876,30 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    '性能优化 1 · 性能分析方法论与工具链',
+    'QuantDevPerf01 Profiling Methodology Toolchain.md',
+    null,
+    { directory: 'quant', category: '性能优化面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    '性能优化 2 · 多线程与 CPU 优化',
+    'QuantDevPerf02 Multithreading CPU Optimization.md',
+    null,
+    { directory: 'quant', category: '性能优化面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    '性能优化 3 · 内存性能优化',
+    'QuantDevPerf03 Memory Optimization.md',
+    null,
+    { directory: 'quant', category: '性能优化面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    '性能优化 4 · Coredump 配置、产生与分析',
+    'QuantDevPerf04 Coredump Configuration Analysis.md',
+    null,
+    { directory: 'quant', category: '性能优化面经', difficulty: 'Medium' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
