@@ -1841,6 +1841,12 @@ const quantNoteDefinitions = [
     { directory: 'quant', category: 'Estimation & Testing', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
+    'Quant 10 · 风险中性定价与最优下注策略：鞅论、Problem of Points 与效用函数',
+    'Quant10 Betting Risk Neutral Pricing Martingales.md',
+    null,
+    { directory: 'quant', category: 'Martingales & Betting', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
     'C++ 面经 1 · 面向对象基础与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
