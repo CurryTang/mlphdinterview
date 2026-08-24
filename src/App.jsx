@@ -1840,6 +1840,42 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: 'Estimation & Testing', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'C++ 面经 1 · 面向对象基础与类设计',
+    'QuantDevCPP01 OOP Fundamentals Class Design.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'C++ 面经 2 · 内存模型与指针陷阱',
+    'QuantDevCPP02 Memory Model Pointers.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'C++ 面经 3 · 多态、虚函数与关键字',
+    'QuantDevCPP03 Polymorphism Virtual Functions Keywords.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'C++ 面经 4 · 现代 C++：移动语义与智能指针',
+    'QuantDevCPP04 Move Semantics Smart Pointers.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'C++ 面经 5 · STL 容器与底层实现',
+    'QuantDevCPP05 STL Containers Internals.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'C++ 面经 6 · 手撕代码与高级数据结构',
+    'QuantDevCPP06 Coding Practice Advanced Data Structures.md',
+    null,
+    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
