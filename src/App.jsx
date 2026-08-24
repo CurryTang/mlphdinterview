@@ -1942,6 +1942,42 @@ const quantNoteDefinitions = [
     null,
     { directory: 'quant', category: '计算机网络面经', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'Effective Modern C++ 1 · 类型推导与 auto（条款 1-6）',
+    'QuantDevEMC01 Deducing Types Auto.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Effective Modern C++ 2 · 迈向现代 C++（条款 7-17）',
+    'QuantDevEMC02 Moving To Modern Cpp.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Effective Modern C++ 3 · 智能指针（条款 18-22）',
+    'QuantDevEMC03 Smart Pointers.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Effective Modern C++ 4 · 右值引用、移动语义与完美转发（条款 23-30）',
+    'QuantDevEMC04 Rvalue References Move Semantics.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Effective Modern C++ 5 · Lambda 表达式与工程细节（条款 31-34、41-42）',
+    'QuantDevEMC05 Lambda Expressions Tweaks.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Effective Modern C++ 6 · 并发 API（条款 35-40）',
+    'QuantDevEMC06 Concurrency API.md',
+    null,
+    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
