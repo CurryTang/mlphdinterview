@@ -1675,18 +1675,6 @@ const leetcodeNoteDefinitions = [
     { directory: 'Leetcode', category: 'Sorting', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'Core Skills 19 · 0 / 1 Knapsack',
-    'CoreSkills19 0-1 Knapsack.md',
-    null,
-    { directory: 'Leetcode', category: 'Dynamic Programming', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Core Skills 20 · Unbounded Knapsack',
-    'CoreSkills20 Unbounded Knapsack.md',
-    null,
-    { directory: 'Leetcode', category: 'Dynamic Programming', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
     'Core Skills 21 · Dynamic Programming',
     'CoreSkills21 Decode Ways Dynamic Programming.md',
     null,
@@ -1757,6 +1745,12 @@ const leetcodeNoteDefinitions = [
     'CoreSkills32 Design Trie.md',
     null,
     { directory: 'Leetcode', category: 'Tries', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Core Skills 33 · Backtracking',
+    'CoreSkills33 Backtracking.md',
+    null,
+    { directory: 'Leetcode', category: 'Backtracking', difficulty: 'Medium' },
   ),
 ];
 
@@ -15097,10 +15091,1198 @@ function TrieWildcardVisual() {
   );
 }
 
+const BACKTRACKING_PATTERNS = [
+  {
+    id: 'subsets',
+    number: 78,
+    title: 'Subsets',
+    tone: 'subset',
+    pattern: '子集型',
+    signature: 'backtrack(start)',
+    choices: 'nums[start:]',
+    recurse: 'backtrack(i + 1)',
+    collect: '每进入一个节点就收一次，没有 base case',
+    guard: '输入互不相同，不需要去重',
+    prune: '无',
+    size: '2^n 个节点',
+  },
+  {
+    id: 'permutations',
+    number: 46,
+    title: 'Permutations',
+    tone: 'permute',
+    pattern: '排列型',
+    signature: 'backtrack() + used[]',
+    choices: '所有 used[i] == False 的下标',
+    recurse: 'backtrack()，靠 used 排除已选',
+    collect: 'len(path) == len(nums) 时收',
+    guard: '输入互不相同，不需要去重',
+    prune: '无',
+    size: 'n! 个叶子',
+  },
+  {
+    id: 'combination-sum',
+    number: 39,
+    title: 'Combination Sum',
+    tone: 'combo',
+    pattern: '组合型（元素可复用）',
+    signature: 'backtrack(start, remain)',
+    choices: 'candidates[start:]',
+    recurse: 'backtrack(i, ...)，传 i 允许再选自己',
+    collect: 'remain == 0 时收',
+    guard: '输入互不相同，不需要去重',
+    prune: '排序后 candidates[i] > remain 直接 break',
+    size: '深度约 target / min(candidates)',
+  },
+  {
+    id: 'subsets-ii',
+    number: 90,
+    title: 'Subsets II',
+    tone: 'dedup',
+    pattern: '子集型 + 去重',
+    signature: 'backtrack(start)，先 nums.sort()',
+    choices: 'nums[start:]，跳过同层重复值',
+    recurse: 'backtrack(i + 1)',
+    collect: '每进入一个节点就收一次',
+    guard: 'if i > start and nums[i] == nums[i-1]: continue',
+    prune: '同层去重本身就是剪枝',
+    size: '小于 2^n',
+  },
+  {
+    id: 'combination-sum-ii',
+    number: 40,
+    title: 'Combination Sum II',
+    tone: 'dedup',
+    pattern: '组合型 + 去重',
+    signature: 'backtrack(start, remain)，先排序',
+    choices: 'candidates[start:]，跳过同层重复值',
+    recurse: 'backtrack(i + 1, ...)，每个下标只用一次',
+    collect: 'remain == 0 时收',
+    guard: 'if i > start and 值与前一个相同: continue',
+    prune: 'candidates[i] > remain 时 break',
+    size: '小于 2^n',
+  },
+  {
+    id: 'letter-combinations',
+    number: 17,
+    title: 'Letter Combinations',
+    tone: 'product',
+    pattern: '笛卡尔积型',
+    signature: 'backtrack(index)',
+    choices: 'keypad[digits[index]]',
+    recurse: 'backtrack(index + 1)，层号即下标',
+    collect: 'index == len(digits) 时收',
+    guard: '不涉及去重',
+    prune: '无，整棵树都是答案',
+    size: '最多 4^n 个叶子',
+  },
+  {
+    id: 'palindrome-partitioning',
+    number: 131,
+    title: 'Palindrome Partitioning',
+    tone: 'cut',
+    pattern: '切割型',
+    signature: 'backtrack(start)',
+    choices: '所有以 start 开头的子串 s[start:end+1]',
+    recurse: 'backtrack(end + 1)，下一刀接着切',
+    collect: 'start == len(s) 时收',
+    guard: '不涉及去重',
+    prune: '这一段不是回文就不递归',
+    size: '最多 2^(n-1) 种切法',
+  },
+  {
+    id: 'word-search',
+    number: 79,
+    title: 'Word Search',
+    tone: 'grid',
+    pattern: '网格型',
+    signature: 'backtrack(r, c, index)',
+    choices: '上下左右四个方向',
+    recurse: 'backtrack(nr, nc, index + 1)',
+    collect: 'index == len(word) 时返回 True',
+    guard: '同一格子不能重复使用',
+    prune: '字符不匹配、越界、已占用都直接返回 False',
+    size: '每个起点一棵四叉树',
+  },
+  {
+    id: 'n-queens',
+    number: 51,
+    title: 'N-Queens',
+    tone: 'board',
+    pattern: '棋盘型',
+    signature: 'backtrack(row) + cols/diag/anti',
+    choices: '这一行的 n 个列',
+    recurse: 'backtrack(row + 1)，一层一行',
+    collect: 'row == n 时收整张棋盘',
+    guard: '按行放置，行冲突天然不存在',
+    prune: '三个集合把冲突检查降到 O(1)',
+    size: '上界 n!，实际远小于此',
+  },
+];
+
+const BACKTRACKING_PATTERNS_EN = {
+  subsets: {
+    pattern: 'Subset',
+    choices: 'nums[start:]',
+    recurse: 'backtrack(i + 1)',
+    collect: 'Collect once on entering every node; no base case',
+    guard: 'Input is distinct, so no dedup needed',
+    prune: 'None',
+    size: '2^n nodes',
+  },
+  permutations: {
+    pattern: 'Permutation',
+    signature: 'backtrack() + used[]',
+    choices: 'Every index where used[i] == False',
+    recurse: 'backtrack(), with used excluding what is taken',
+    collect: 'Collect when len(path) == len(nums)',
+    guard: 'Input is distinct, so no dedup needed',
+    prune: 'None',
+    size: 'n! leaves',
+  },
+  'combination-sum': {
+    pattern: 'Combination with reuse',
+    choices: 'candidates[start:]',
+    recurse: 'backtrack(i, ...) — passing i allows re-picking',
+    collect: 'Collect when remain == 0',
+    guard: 'Input is distinct, so no dedup needed',
+    prune: 'After sorting, candidates[i] > remain allows break',
+    size: 'Depth about target / min(candidates)',
+  },
+  'subsets-ii': {
+    pattern: 'Subset + dedup',
+    signature: 'backtrack(start) after nums.sort()',
+    choices: 'nums[start:], skipping same-level repeats',
+    recurse: 'backtrack(i + 1)',
+    collect: 'Collect once on entering every node',
+    guard: 'if i > start and nums[i] == nums[i-1]: continue',
+    prune: 'Same-level dedup is itself the pruning',
+    size: 'Fewer than 2^n',
+  },
+  'combination-sum-ii': {
+    pattern: 'Combination + dedup',
+    signature: 'backtrack(start, remain) after sorting',
+    choices: 'candidates[start:], skipping same-level repeats',
+    recurse: 'backtrack(i + 1, ...) — each index used once',
+    collect: 'Collect when remain == 0',
+    guard: 'if i > start and value equals the previous: continue',
+    prune: 'break once candidates[i] > remain',
+    size: 'Fewer than 2^n',
+  },
+  'letter-combinations': {
+    pattern: 'Cartesian product',
+    signature: 'backtrack(index)',
+    choices: 'keypad[digits[index]]',
+    recurse: 'backtrack(index + 1) — the level is the index',
+    collect: 'Collect when index == len(digits)',
+    guard: 'No dedup involved',
+    prune: 'None; the whole tree is answers',
+    size: 'At most 4^n leaves',
+  },
+  'palindrome-partitioning': {
+    pattern: 'Partition',
+    signature: 'backtrack(start)',
+    choices: 'Every substring s[start:end+1]',
+    recurse: 'backtrack(end + 1) — the next cut follows',
+    collect: 'Collect when start == len(s)',
+    guard: 'No dedup involved',
+    prune: 'A non-palindromic piece is never recursed into',
+    size: 'At most 2^(n-1) partitions',
+  },
+  'word-search': {
+    pattern: 'Grid',
+    signature: 'backtrack(r, c, index)',
+    choices: 'The four neighbouring cells',
+    recurse: 'backtrack(nr, nc, index + 1)',
+    collect: 'Return True when index == len(word)',
+    guard: 'A cell cannot be reused within one path',
+    prune: 'Mismatch, out of bounds, or occupied returns False',
+    size: 'One 4-ary tree per start cell',
+  },
+  'n-queens': {
+    pattern: 'Board',
+    signature: 'backtrack(row) + cols/diag/anti',
+    choices: 'The n columns of this row',
+    recurse: 'backtrack(row + 1) — one level per row',
+    collect: 'Collect the whole board when row == n',
+    guard: 'Row conflicts are impossible by construction',
+    prune: 'Three sets bring conflict checks down to O(1)',
+    size: 'Bounded by n!, far smaller in practice',
+  },
+};
+
+function BacktrackingPatternAtlas() {
+  const { isEnglish, t } = useUiCopy();
+  const [activePattern, setActivePattern] = useState('subsets');
+  const basePattern = BACKTRACKING_PATTERNS.find(({ id }) => id === activePattern)
+    ?? BACKTRACKING_PATTERNS[0];
+  const pattern = isEnglish
+    ? { ...basePattern, ...BACKTRACKING_PATTERNS_EN[basePattern.id] }
+    : basePattern;
+
+  return (
+    <section
+      aria-label={t('九道回溯题模板对照', 'Nine backtracking problems compared')}
+      className={`bp-atlas ${pattern.tone}`}
+    >
+      <header className="bp-header">
+        <div>
+          <p className="eyebrow">{t('同一个骨架，三个槽位', 'One skeleton · three slots')}</p>
+          <h2>{t('先认决策模式，再决定传 start 还是开 used', 'Identify the decision pattern first, then choose start or used')}</h2>
+          <p>{t(
+            '每道题都是 make / backtrack / undo 这三行，差别只在 choices 怎么枚举、答案什么时候收、以及要不要去重。',
+            'Every problem is the same make / backtrack / undo trio. Only the enumeration of choices, the moment an answer is collected, and the need for dedup differ.',
+          )}</p>
+        </div>
+        <code>{pattern.signature}</code>
+      </header>
+
+      <div aria-label={t('选择回溯题目', 'Choose a backtracking problem')} className="bp-tabs" role="tablist">
+        {BACKTRACKING_PATTERNS.map((candidate) => (
+          <button
+            aria-selected={candidate.id === activePattern}
+            className={candidate.id === activePattern ? 'active' : ''}
+            key={candidate.id}
+            onClick={() => setActivePattern(candidate.id)}
+            role="tab"
+            type="button"
+          >
+            <span>LC {candidate.number}</span>
+            <strong>{candidate.title}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="bp-summary">
+        <div>
+          <span>{t('决策模式', 'Decision pattern')}</span>
+          <strong>{pattern.pattern}</strong>
+        </div>
+        <div>
+          <span>{t('树的规模', 'Tree size')}</span>
+          <strong>{pattern.size}</strong>
+        </div>
+      </div>
+
+      <div className="bp-flow">
+        <div>
+          <span>{t('1 · choices 枚举什么', '1 · What choices enumerates')}</span>
+          <strong>{pattern.choices}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('2 · 剪枝与去重', '2 · Pruning and dedup')}</span>
+          <strong>{pattern.prune}</strong>
+          <small>{pattern.guard}</small>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('3 · 递归怎么传参', '3 · What the recursion passes')}</span>
+          <strong>{pattern.recurse}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('4 · 什么时候收答案', '4 · When an answer is collected')}</span>
+          <strong>{pattern.collect}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BacktrackTreeDiagram({ ariaLabel, edgeClass, nodeClass, nodes, viewBox }) {
+  const byId = {};
+  nodes.forEach((node) => { byId[node.id] = node; });
+
+  return (
+    <svg aria-label={ariaLabel} className="bt-tree" role="img" viewBox={viewBox}>
+      {nodes.filter((node) => node.id !== '').map((node) => {
+        const parent = byId[node.id.slice(0, -1)];
+        return (
+          <line
+            className={`bt-edge ${edgeClass(node.id)}`}
+            key={`edge-${node.id}`}
+            x1={parent.x}
+            x2={node.x}
+            y1={parent.y + 16}
+            y2={node.y - 16}
+          />
+        );
+      })}
+      {nodes.map((node) => {
+        const width = Math.max(52, node.label.length * 10 + 20);
+        return (
+          <g className={`bt-node ${nodeClass(node.id)}`} key={`node-${node.id}`}>
+            <rect height="32" rx="8" width={width} x={node.x - width / 2} y={node.y - 16} />
+            <text textAnchor="middle" x={node.x} y={node.y + 5}>{node.label}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+const BT_SUBSET_NUMS = [1, 2, 3];
+
+const BT_SUBSET_NODES = [
+  { id: '', label: '[ ]', x: 366, y: 44 },
+  { id: '0', label: '[1]', x: 170, y: 142 },
+  { id: '1', label: '[2]', x: 434, y: 142 },
+  { id: '2', label: '[3]', x: 634, y: 142 },
+  { id: '01', label: '[1,2]', x: 92, y: 240 },
+  { id: '02', label: '[1,3]', x: 258, y: 240 },
+  { id: '12', label: '[2,3]', x: 434, y: 240 },
+  { id: '012', label: '[1,2,3]', x: 92, y: 338 },
+];
+
+const BT_SUBSET_CODE_LINES = [
+  { id: 'collect', code: ['def backtrack(start):', '    result.append(path[:])'] },
+  { id: 'loop', code: ['    for i in range(start, len(nums)):'] },
+  { id: 'choose', code: ['        path.append(nums[i])'] },
+  { id: 'recurse', code: ['        backtrack(i + 1)'] },
+  { id: 'undo', code: ['        path.pop()'] },
+];
+
+function buildSubsetTreeSteps() {
+  const nums = BT_SUBSET_NUMS;
+  const steps = [];
+  const path = [];
+  const result = [];
+  const visited = [];
+  const stack = [];
+
+  const snap = (kind, node, extra) => steps.push({
+    kind,
+    node,
+    path: [...path],
+    result: result.map((entry) => [...entry]),
+    visited: [...visited],
+    stack: [...stack],
+    ...extra,
+  });
+
+  const walk = (start, nodeId) => {
+    stack.push({ node: nodeId, start });
+    result.push([...path]);
+    visited.push(nodeId);
+    snap('collect', nodeId, { start });
+
+    for (let i = start; i < nums.length; i += 1) {
+      const childId = nodeId + String(i);
+      path.push(nums[i]);
+      snap('choose', childId, { index: i, value: nums[i], parent: nodeId });
+      walk(i + 1, childId);
+      path.pop();
+      snap('undo', nodeId, { index: i, value: nums[i], child: childId });
+    }
+
+    stack.pop();
+  };
+
+  snap('start', '', { start: 0 });
+  walk(0, '');
+  snap('done', '', { start: 0 });
+  return steps;
+}
+
+const BT_SUBSET_STEPS = buildSubsetTreeSteps();
+
+function formatList(values) {
+  return `[${values.join(', ')}]`;
+}
+
+function BacktrackingTreeVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = BT_SUBSET_STEPS;
+  const step = steps[activeStep];
+  const visited = new Set(step.visited);
+  const collected = new Set(step.visited);
+  const onPath = new Set();
+  for (let i = 0; i <= step.node.length; i += 1) {
+    onPath.add(step.node.slice(0, i));
+  }
+
+  const activeLine = {
+    start: 'collect',
+    collect: 'collect',
+    choose: 'choose',
+    undo: 'undo',
+    done: 'loop',
+  }[step.kind];
+
+  const lineLabel = {
+    collect: t('每个节点一进来就收一次答案', 'Every node collects an answer on entry'),
+    choose: t('path.append：进入子树前做选择', 'path.append: choose before entering the subtree'),
+    undo: t('path.pop：离开子树后撤销选择', 'path.pop: un-choose after leaving the subtree'),
+    loop: t('循环走完，函数返回', 'The loop finished and the function returns'),
+  }[activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'start') {
+    title = t('从根节点出发，path 是空的', 'Start at the root with an empty path');
+    detail = t(
+      '根节点代表"什么都没选"。子集型的答案不是叶子，而是树上的每一个节点，所以空集也是一个答案。',
+      'The root means "nothing chosen yet." In a subset problem the answers are not the leaves but every node in the tree, so the empty set is an answer too.',
+    );
+  } else if (step.kind === 'collect') {
+    title = t(
+      `收答案：result 现在有 ${step.result.length} 项`,
+      `Collect: result now holds ${step.result.length} entries`,
+    );
+    detail = t(
+      `result.append(path[:]) 拷贝了当前的 ${formatList(step.path)}。写成 result.append(path) 会存进引用，后面 pop 掉之后这一项会跟着变空。`,
+      `result.append(path[:]) copies the current ${formatList(step.path)}. Writing result.append(path) would store a reference, and later pops would empty this entry.`,
+    );
+  } else if (step.kind === 'choose') {
+    title = t(
+      `选择 nums[${step.index}] = ${step.value}，进入子树`,
+      `Choose nums[${step.index}] = ${step.value} and enter the subtree`,
+    );
+    detail = t(
+      `path 变成 ${formatList(step.path)}，递归调用 backtrack(${step.index + 1})。传 i + 1 而不是 start + 1，意思是"接着我刚选的这个元素往后挑，不回头"。`,
+      `path becomes ${formatList(step.path)} and backtrack(${step.index + 1}) is called. Passing i + 1 rather than start + 1 means "keep picking after the element I just chose, never turning back."`,
+    );
+  } else if (step.kind === 'undo') {
+    title = t(
+      `子树走完，撤销 ${step.value}`,
+      `Subtree finished, undo ${step.value}`,
+    );
+    detail = t(
+      `path.pop() 把 path 改回 ${formatList(step.path)}。不撤销的话，下一个兄弟分支会看到上一个分支留下的元素，答案直接错。`,
+      `path.pop() restores path to ${formatList(step.path)}. Without the undo the next sibling branch would inherit the previous branch's leftovers and the answers would be wrong.`,
+    );
+  } else {
+    title = t('搜索结束，8 个子集全部收齐', 'Search complete: all 8 subsets collected');
+    detail = t(
+      'path 回到空、递归栈清空，正好说明每一次 append 都配上了一次 pop。',
+      'path is empty again and the recursion stack is clear, which is exactly the evidence that every append was matched by a pop.',
+    );
+  }
+
+  return (
+    <section aria-label={t('Subsets 决策树逐步演示', 'Step-through: the Subsets decision tree')} className="bt-visual">
+      <header className="bt-header">
+        <div>
+          <p className="eyebrow">{t('LC 78 · Subsets，nums = [1, 2, 3]', 'LC 78 · Subsets with nums = [1, 2, 3]')}</p>
+          <h2>{t('choose / recurse / undo 在树上是什么动作', 'What choose / recurse / undo look like on the tree')}</h2>
+          <p>{t(
+            '看三件事：path 怎么随深度变化、答案在哪一刻被收走、以及返回父节点时 pop 撤销了什么。',
+            'Watch three things: how path changes with depth, the moment each answer is collected, and what pop undoes when control returns to the parent.',
+          )}</p>
+        </div>
+      </header>
+
+      <div aria-live="polite" className={`bt-step ${step.kind}`}>
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="bt-workspace">
+        <div className="bt-stage-card">
+          <BacktrackTreeDiagram
+            ariaLabel={t('Subsets 决策树', 'The Subsets decision tree')}
+            edgeClass={(id) => (onPath.has(id) ? 'active' : visited.has(id) ? 'done' : 'ghost')}
+            nodeClass={(id) => [
+              id === step.node ? 'current' : '',
+              id !== step.node && onPath.has(id) ? 'active' : '',
+              !onPath.has(id) && collected.has(id) ? 'done' : '',
+              !visited.has(id) ? 'ghost' : '',
+            ].filter(Boolean).join(' ')}
+            nodes={BT_SUBSET_NODES}
+            viewBox="0 0 720 380"
+          />
+        </div>
+
+        <div className="bt-side">
+          <div aria-label={t('当前代码', 'Current code')} className="bt-code">
+            <div className="bt-code-heading">
+              <span>subsets</span>
+              <strong>{lineLabel}</strong>
+            </div>
+            <div className="bt-code-lines">
+              {BT_SUBSET_CODE_LINES.map((line) => (
+                <div
+                  aria-current={activeLine === line.id ? 'step' : undefined}
+                  className={activeLine === line.id ? 'active' : ''}
+                  key={line.id}
+                >
+                  {line.code.map((code) => <code key={code}>{code}</code>)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bt-state">
+            <div>
+              <span>path</span>
+              <strong>{formatList(step.path)}</strong>
+            </div>
+            <div>
+              <span>{t('递归栈深度', 'Stack depth')}</span>
+              <strong>{step.stack.length}</strong>
+            </div>
+          </div>
+
+          <div className="bt-results">
+            <span>result（{step.result.length}）</span>
+            <div>
+              {step.result.map((entry, index) => (
+                <code
+                  className={index === step.result.length - 1 && step.kind === 'collect' ? 'fresh' : ''}
+                  key={`${entry.join('-')}-${index}`}
+                >
+                  {formatList(entry)}
+                </code>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bt-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('当前 path 经过的节点', 'Nodes on the current path')}</span>
+        <span><i className="done" />{t('已经收过答案', 'Already collected')}</span>
+        <span><i className="ghost" />{t('还没访问到', 'Not visited yet')}</span>
+      </div>
+
+      <div className="bt-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择决策树演示步骤', 'Select a decision-tree demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const BT_DEDUP_NUMS = [1, 2, 2];
+
+const BT_DEDUP_NODES = [
+  { id: '', label: '[ ]', x: 380, y: 44 },
+  { id: '0', label: '[1]', x: 176, y: 142 },
+  { id: '1', label: '[2]', x: 452, y: 142 },
+  { id: '2', label: '[2]', x: 654, y: 142 },
+  { id: '01', label: '[1,2]', x: 96, y: 242 },
+  { id: '02', label: '[1,2]', x: 264, y: 242 },
+  { id: '12', label: '[2,2]', x: 452, y: 242 },
+  { id: '012', label: '[1,2,2]', x: 96, y: 340 },
+];
+
+const BT_DEDUP_CODE_LINES = [
+  { id: 'collect', code: ['nums.sort()', '', 'def backtrack(start):', '    result.append(path[:])'] },
+  { id: 'loop', code: ['    for i in range(start, len(nums)):'] },
+  { id: 'guard', code: ['        if i > start and nums[i] == nums[i - 1]:', '            continue'] },
+  { id: 'choose', code: ['        path.append(nums[i])'] },
+  { id: 'recurse', code: ['        backtrack(i + 1)'] },
+  { id: 'undo', code: ['        path.pop()'] },
+];
+
+function buildDedupTreeSteps() {
+  const nums = BT_DEDUP_NUMS;
+  const steps = [];
+  const path = [];
+  const result = [];
+  const visited = [];
+  const skipped = [];
+  let currentStart = 0;
+
+  const snap = (kind, node, extra) => steps.push({
+    kind,
+    node,
+    start: currentStart,
+    path: [...path],
+    result: result.map((entry) => [...entry]),
+    visited: [...visited],
+    skipped: [...skipped],
+    ...extra,
+  });
+
+  const walk = (start, nodeId) => {
+    currentStart = start;
+    result.push([...path]);
+    visited.push(nodeId);
+    snap('collect', nodeId);
+
+    for (let i = start; i < nums.length; i += 1) {
+      const childId = nodeId + String(i);
+      if (i > start && nums[i] === nums[i - 1]) {
+        skipped.push(childId);
+        snap('skip', nodeId, { index: i, value: nums[i], child: childId });
+        continue;
+      }
+      path.push(nums[i]);
+      snap('choose', childId, { index: i, value: nums[i] });
+      walk(i + 1, childId);
+      path.pop();
+      currentStart = start;
+      snap('undo', nodeId, { index: i, value: nums[i], child: childId });
+    }
+  };
+
+  snap('start', '');
+  walk(0, '');
+  currentStart = 0;
+  snap('done', '');
+  return steps;
+}
+
+const BT_DEDUP_STEPS = buildDedupTreeSteps();
+
+function BacktrackingDedupVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = BT_DEDUP_STEPS;
+  const step = steps[activeStep];
+  const visited = new Set(step.visited);
+  const skipped = new Set(step.skipped);
+  const onPath = new Set();
+  for (let i = 0; i <= step.node.length; i += 1) {
+    onPath.add(step.node.slice(0, i));
+  }
+
+  const activeLine = {
+    start: 'collect',
+    collect: 'collect',
+    skip: 'guard',
+    choose: 'choose',
+    undo: 'undo',
+    done: 'loop',
+  }[step.kind];
+
+  const lineLabel = {
+    collect: t('子集型每个节点都收答案', 'A subset problem collects at every node'),
+    guard: t('同层重复值，跳过整棵子树', 'A same-level duplicate: skip the whole subtree'),
+    choose: t('这一层第一次选这个值，保留', 'First pick of this value at this level: keep it'),
+    undo: t('撤销选择，回到父节点', 'Un-choose and return to the parent'),
+    loop: t('循环走完，函数返回', 'The loop finished and the function returns'),
+  }[activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'start') {
+    title = t('nums 排序后是 [1, 2, 2]', 'After sorting, nums is [1, 2, 2]');
+    detail = t(
+      '排序不是为了让答案有序，而是让相同的值相邻。否则 nums[i] == nums[i-1] 这个判断根本抓不到重复。',
+      'Sorting is not about ordering the output; it makes equal values adjacent. Without it the nums[i] == nums[i-1] check catches nothing.',
+    );
+  } else if (step.kind === 'collect') {
+    title = t(
+      `收答案 ${formatList(step.path)}，result 有 ${step.result.length} 项`,
+      `Collect ${formatList(step.path)}; result holds ${step.result.length} entries`,
+    );
+    detail = t(
+      '子集型的答案是每一个节点，所以进入节点就收，不需要 base case。',
+      'In a subset problem every node is an answer, so collection happens on entry and no base case is needed.',
+    );
+  } else if (step.kind === 'skip') {
+    title = t(
+      `i = ${step.index} > start = ${step.start}，且 nums[${step.index}] == nums[${step.index - 1}]，剪掉`,
+      `i = ${step.index} > start = ${step.start} and nums[${step.index}] == nums[${step.index - 1}], so prune`,
+    );
+    detail = t(
+      `这是这一层第二次遇到值 ${step.value}。它展开出来的子树和前一个分支完全一样，留着就会产生重复答案，所以整棵子树都不进。`,
+      `This is the second time value ${step.value} appears at this level. The subtree it would expand is identical to the previous branch, so keeping it would duplicate answers and the whole subtree is skipped.`,
+    );
+  } else if (step.kind === 'choose') {
+    title = step.index === step.start
+      ? t(
+        `i = ${step.index} 等于 start，是这一层第一次选 ${step.value}，保留`,
+        `i = ${step.index} equals start: the first pick of ${step.value} at this level, so keep it`,
+      )
+      : t(
+        `选择 nums[${step.index}] = ${step.value}`,
+        `Choose nums[${step.index}] = ${step.value}`,
+      );
+    detail = step.index === step.start
+      ? t(
+        '注意这里的值和上一个分支相同，但 i == start 说明它是这一层的第一个候选，代表"父节点第一次选这个值"，必须保留。把条件写成 i > 0 就会把它一起剪掉。',
+        'The value matches the previous branch, but i == start marks it as this level\'s first candidate, meaning "the parent picks this value for the first time," so it must stay. Writing the guard as i > 0 would cut it too.',
+      )
+      : t(
+        `path 变成 ${formatList(step.path)}，递归调用 backtrack(${step.index + 1})。`,
+        `path becomes ${formatList(step.path)} and backtrack(${step.index + 1}) is called.`,
+      );
+  } else if (step.kind === 'undo') {
+    title = t(`撤销 ${step.value}，回到 ${formatList(step.path)}`, `Undo ${step.value}, back to ${formatList(step.path)}`);
+    detail = t(
+      '和不带去重的版本完全一样：append 和 pop 严格成对。',
+      'Identical to the version without dedup: every append is strictly matched by a pop.',
+    );
+  } else {
+    title = t('结束：6 个不重复子集，剪掉 2 棵重复子树', 'Done: 6 distinct subsets, 2 duplicate subtrees pruned');
+    detail = t(
+      '不加那一行 continue 会得到 8 个结果，其中 [2] 和 [2,2] 各出现两次。剪掉的正好是这两棵子树。',
+      'Without that continue the search returns 8 results, with [2] and [2,2] appearing twice each. The two pruned subtrees are exactly those duplicates.',
+    );
+  }
+
+  return (
+    <section aria-label={t('Subsets II 同层去重逐步演示', 'Step-through: same-level dedup in Subsets II')} className="bd-visual">
+      <header className="bd-header">
+        <div>
+          <p className="eyebrow">{t('LC 90 · Subsets II，nums = [1, 2, 2]', 'LC 90 · Subsets II with nums = [1, 2, 2]')}</p>
+          <h2>{t('i > start 到底剪掉了哪两棵子树', 'Which two subtrees i > start actually removes')}</h2>
+          <p>{t(
+            '同一层的两个相同值会展开出完全一样的子树，必须剪；不同层的两个相同值是"选了两个 2"，是合法答案。',
+            'Two equal values at the same level expand identical subtrees and must be cut. Two equal values at different levels mean "two 2s were picked" and form a valid answer.',
+          )}</p>
+        </div>
+      </header>
+
+      <div aria-live="polite" className={`bd-step ${step.kind}`}>
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="bd-workspace">
+        <div className="bd-stage-card">
+          <BacktrackTreeDiagram
+            ariaLabel={t('Subsets II 决策树', 'The Subsets II decision tree')}
+            edgeClass={(id) => (
+              skipped.has(id) ? 'cut' : onPath.has(id) ? 'active' : visited.has(id) ? 'done' : 'ghost'
+            )}
+            nodeClass={(id) => [
+              skipped.has(id) ? 'cut' : '',
+              !skipped.has(id) && id === step.node ? 'current' : '',
+              !skipped.has(id) && id !== step.node && onPath.has(id) ? 'active' : '',
+              !skipped.has(id) && !onPath.has(id) && visited.has(id) ? 'done' : '',
+              !skipped.has(id) && !visited.has(id) ? 'ghost' : '',
+            ].filter(Boolean).join(' ')}
+            nodes={BT_DEDUP_NODES}
+            viewBox="0 0 740 382"
+          />
+        </div>
+
+        <div className="bd-side">
+          <div aria-label={t('当前代码', 'Current code')} className="bd-code">
+            <div className="bd-code-heading">
+              <span>subsetsWithDup</span>
+              <strong>{lineLabel}</strong>
+            </div>
+            <div className="bd-code-lines">
+              {BT_DEDUP_CODE_LINES.map((line) => (
+                <div
+                  aria-current={activeLine === line.id ? 'step' : undefined}
+                  className={activeLine === line.id ? 'active' : ''}
+                  key={line.id}
+                >
+                  {line.code.map((code, index) => <code key={`${line.id}-${index}`}>{code || ' '}</code>)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bd-state">
+            <div>
+              <span>path</span>
+              <strong>{formatList(step.path)}</strong>
+            </div>
+            <div>
+              <span>start</span>
+              <strong>{step.start ?? '—'}</strong>
+            </div>
+            <div>
+              <span>{t('已剪子树', 'Subtrees cut')}</span>
+              <strong>{step.skipped.length}</strong>
+            </div>
+          </div>
+
+          <div className="bd-results">
+            <span>result（{step.result.length}）</span>
+            <div>
+              {step.result.map((entry, index) => (
+                <code
+                  className={index === step.result.length - 1 && step.kind === 'collect' ? 'fresh' : ''}
+                  key={`${entry.join('-')}-${index}`}
+                >
+                  {formatList(entry)}
+                </code>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bd-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('当前 path', 'Current path')}</span>
+        <span><i className="done" />{t('已访问', 'Visited')}</span>
+        <span><i className="cut" />{t('同层重复，已剪', 'Same-level duplicate, pruned')}</span>
+      </div>
+
+      <div className="bd-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择去重演示步骤', 'Select a dedup demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const NQUEENS_N = 4;
+
+const NQUEENS_CODE_LINES = [
+  { id: 'base', code: ['def backtrack(row):', '    if row == n:', '        result.append(snapshot())', '        return'] },
+  { id: 'check', code: ['    for col in range(n):', '        if (col in cols or (row - col) in diag', '                or (row + col) in anti):', '            continue'] },
+  { id: 'make', code: ['        cols.add(col)', '        diag.add(row - col)', '        anti.add(row + col)'] },
+  { id: 'recurse', code: ['        backtrack(row + 1)'] },
+  { id: 'undo', code: ['        cols.remove(col)', '        diag.remove(row - col)', '        anti.remove(row + col)'] },
+];
+
+function buildNQueensSteps() {
+  const n = NQUEENS_N;
+  const cols = new Set();
+  const diag = new Set();
+  const anti = new Set();
+  const queens = [];
+  const solutions = [];
+  const steps = [];
+
+  const sorted = (set) => [...set].sort((a, b) => a - b);
+  const snap = (kind, extra) => steps.push({
+    kind,
+    queens: [...queens],
+    cols: sorted(cols),
+    diag: sorted(diag),
+    anti: sorted(anti),
+    solutions: solutions.map((entry) => [...entry]),
+    ...extra,
+  });
+
+  const backtrack = (row) => {
+    if (row === n) {
+      solutions.push([...queens]);
+      snap('solution', { row });
+      return;
+    }
+
+    let rejected = [];
+    const rowRejects = [];
+    let tried = 0;
+    for (let col = 0; col < n; col += 1) {
+      let reason = null;
+      if (cols.has(col)) reason = 'col';
+      else if (diag.has(row - col)) reason = 'diag';
+      else if (anti.has(row + col)) reason = 'anti';
+
+      if (reason) {
+        rejected.push({ col, reason });
+        rowRejects.push({ col, reason });
+        continue;
+      }
+
+      if (rejected.length > 0) {
+        snap('reject', { row, rejected });
+        rejected = [];
+      }
+
+      tried += 1;
+
+      cols.add(col);
+      diag.add(row - col);
+      anti.add(row + col);
+      queens.push(col);
+      snap('place', { row, col });
+
+      backtrack(row + 1);
+
+      queens.pop();
+      cols.delete(col);
+      diag.delete(row - col);
+      anti.delete(row + col);
+      snap('remove', { row, col });
+    }
+
+    if (rejected.length > 0) {
+      snap('reject', { row, rejected });
+    }
+    snap('exhausted', { row, rejected: rowRejects, tried });
+  };
+
+  snap('start', { row: 0 });
+  backtrack(0);
+  snap('done', { row: 0 });
+  return steps;
+}
+
+const NQUEENS_STEPS = buildNQueensSteps();
+
+function NQueensVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = NQUEENS_STEPS;
+  const step = steps[activeStep];
+  const n = NQUEENS_N;
+  const colSet = new Set(step.cols);
+  const diagSet = new Set(step.diag);
+  const antiSet = new Set(step.anti);
+  const rejectedCols = new Map((step.rejected ?? []).map(({ col, reason }) => [col, reason]));
+
+  const reasonLabel = {
+    col: t('列冲突', 'column conflict'),
+    diag: t('主对角线冲突', 'main-diagonal conflict'),
+    anti: t('副对角线冲突', 'anti-diagonal conflict'),
+  };
+
+  const reasonMark = { col: '│', diag: '╲', anti: '╱' };
+
+  const activeLine = {
+    start: 'base',
+    reject: 'check',
+    place: 'make',
+    remove: 'undo',
+    exhausted: 'check',
+    solution: 'base',
+    done: 'base',
+  }[step.kind];
+
+  const lineLabel = {
+    base: t('row == n：整张棋盘填满，收答案', 'row == n: the board is full, collect the answer'),
+    check: t('三个集合各查一次，O(1) 判冲突', 'One lookup in each of the three sets: an O(1) conflict check'),
+    make: t('放下皇后，同时把三个坐标加进集合', 'Place the queen and add all three coordinates to the sets'),
+    undo: t('拿走皇后，三个集合各删一项', 'Remove the queen and delete one entry from each set'),
+  }[activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'start') {
+    title = t('空棋盘，三个集合都是空的', 'An empty board with all three sets empty');
+    detail = t(
+      '按行放置，第 row 层负责第 row 行，行冲突天然不可能发生，只剩列、主对角线、副对角线要查。',
+      'Queens go row by row, so level row handles row row. Row conflicts are impossible by construction, leaving only column, main diagonal, and anti-diagonal to check.',
+    );
+  } else if (step.kind === 'reject') {
+    const parts = step.rejected.map(({ col, reason }) => `col ${col}（${reasonLabel[reason]}）`);
+    const partsEn = step.rejected.map(({ col, reason }) => `col ${col} (${reasonLabel[reason]})`);
+    title = t(`第 ${step.row} 行：跳过 ${step.rejected.length} 个列`, `Row ${step.row}: skipping ${step.rejected.length} column(s)`);
+    detail = t(
+      `${parts.join('，')}。这些列被已放置的皇后控制着，continue 掉就等于剪掉了它们下面的整棵子树。`,
+      `${partsEn.join(', ')}. These columns are controlled by queens already placed, so the continue prunes every subtree beneath them.`,
+    );
+  } else if (step.kind === 'place') {
+    title = t(
+      `第 ${step.row} 行放在 col ${step.col}`,
+      `Row ${step.row}: place at col ${step.col}`,
+    );
+    detail = t(
+      `make 一次做三件事：cols 加 ${step.col}，diag 加 row - col = ${step.row - step.col}，anti 加 row + col = ${step.row + step.col}。同一条对角线上的格子，这两个差值和和值分别相同，所以集合查一次就够。`,
+      `One make does three things: add ${step.col} to cols, add row - col = ${step.row - step.col} to diag, and add row + col = ${step.row + step.col} to anti. Cells on one diagonal share that difference or that sum, so a single set lookup suffices.`,
+    );
+  } else if (step.kind === 'remove') {
+    title = t(
+      `撤销第 ${step.row} 行的 col ${step.col}`,
+      `Undo col ${step.col} in row ${step.row}`,
+    );
+    detail = t(
+      '这棵子树已经走完，三个集合各删掉一项，棋盘恢复到放这个皇后之前的样子，然后继续试这一行的下一列。',
+      'That subtree is finished, so one entry is deleted from each of the three sets, the board returns to its state before this queen, and the next column of this row gets tried.',
+    );
+  } else if (step.kind === 'exhausted') {
+    title = step.tried === 0
+      ? t(`第 ${step.row} 行一个合法列都没有，直接回溯`, `Row ${step.row} has no legal column at all, so backtrack`)
+      : t(
+        `第 ${step.row} 行的 ${step.tried} 个合法列都试过了，全部失败，回溯`,
+        `All ${step.tried} legal column(s) in row ${step.row} were tried and failed, so backtrack`,
+      );
+    detail = step.tried === 0
+      ? t(
+        '这一行每一列都被前面的皇后控制住了。for 循环一次都没进到 make，函数直接返回，控制权回到上一行。',
+        'Every column in this row is controlled by an earlier queen. The loop never reaches make, the function returns, and control goes back to the previous row.',
+      )
+      : t(
+        '标记出来的列一开始就被控制住，能放的列往下走也没走通。for 循环结束，函数返回，上一行继续试它的下一个列。',
+        'The marked columns were controlled from the start, and the columns that could be filled led nowhere deeper. The loop ends, the function returns, and the previous row tries its next column.',
+      );
+  } else if (step.kind === 'solution') {
+    title = t(
+      `找到第 ${step.solutions.length} 个解：${formatList(step.queens)}`,
+      `Solution ${step.solutions.length} found: ${formatList(step.queens)}`,
+    );
+    detail = t(
+      '数组里第 row 项是第 row 行皇后所在的列。收完答案马上 return，回溯继续找下一个解。',
+      'Entry row of the array is the column of the queen in row row. The answer is collected, the function returns immediately, and backtracking continues looking for the next one.',
+    );
+  } else {
+    title = t('搜索结束，n = 4 一共 2 个解', 'Search complete: n = 4 has exactly 2 solutions');
+    detail = t(
+      '第一层的 4 个分支里，只有 col = 1 和 col = 2 能走到底。三个集合此刻都空了，说明每次 add 都配上了 remove。',
+      'Of the four first-level branches, only col = 1 and col = 2 reach the bottom. All three sets are empty again, which shows every add was matched by a remove.',
+    );
+  }
+
+  return (
+    <section aria-label={t('4 皇后回溯逐步演示', 'Step-through: backtracking on 4-Queens')} className="nq-visual">
+      <header className="nq-header">
+        <div>
+          <p className="eyebrow">{t('LC 51 · N-Queens，n = 4', 'LC 51 · N-Queens with n = 4')}</p>
+          <h2>{t('三个集合就是这道题的 state', 'The three sets are this problem\'s entire state')}</h2>
+          <p>{t(
+            'cols / diag / anti 分别记录被占用的列、主对角线和副对角线。make 是三个 add，undo 是三个 remove。',
+            'cols / diag / anti record the occupied columns, main diagonals, and anti-diagonals. make is three adds and undo is three removes.',
+          )}</p>
+        </div>
+      </header>
+
+      <div aria-live="polite" className={`nq-step ${step.kind}`}>
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="nq-workspace">
+        <div className="nq-stage-card">
+          <div className="nq-board" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
+            {Array.from({ length: n * n }, (unused, cell) => {
+              const row = Math.floor(cell / n);
+              const col = cell % n;
+              const hasQueen = step.queens[row] === col;
+              const attacked = !hasQueen
+                && (colSet.has(col) || diagSet.has(row - col) || antiSet.has(row + col));
+              const isCursorRow = step.row === row && (step.kind === 'reject' || step.kind === 'exhausted' || step.kind === 'place' || step.kind === 'remove');
+              const rejectedHere = isCursorRow && rejectedCols.has(col);
+              const focused = (step.kind === 'place' || step.kind === 'remove') && step.row === row && step.col === col;
+              return (
+                <div
+                  className={[
+                    'nq-cell',
+                    (row + col) % 2 === 0 ? 'light' : 'dark',
+                    hasQueen ? 'queen' : '',
+                    attacked ? 'attacked' : '',
+                    isCursorRow ? 'cursor-row' : '',
+                    rejectedHere ? 'rejected' : '',
+                    focused ? 'focused' : '',
+                  ].filter(Boolean).join(' ')}
+                  key={cell}
+                >
+                  {hasQueen
+                    ? <b>Q</b>
+                    : rejectedHere
+                      ? <s title={reasonLabel[rejectedCols.get(col)]}>{reasonMark[rejectedCols.get(col)]}</s>
+                      : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="nq-sets">
+            <div>
+              <span>cols</span>
+              <strong>{`{${step.cols.join(', ')}}`}</strong>
+            </div>
+            <div>
+              <span>diag (row − col)</span>
+              <strong>{`{${step.diag.join(', ')}}`}</strong>
+            </div>
+            <div>
+              <span>anti (row + col)</span>
+              <strong>{`{${step.anti.join(', ')}}`}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="nq-side">
+          <div aria-label={t('当前代码', 'Current code')} className="nq-code">
+            <div className="nq-code-heading">
+              <span>solveNQueens</span>
+              <strong>{lineLabel}</strong>
+            </div>
+            <div className="nq-code-lines">
+              {NQUEENS_CODE_LINES.map((line) => (
+                <div
+                  aria-current={activeLine === line.id ? 'step' : undefined}
+                  className={activeLine === line.id ? 'active' : ''}
+                  key={line.id}
+                >
+                  {line.code.map((code, index) => <code key={`${line.id}-${index}`}>{code}</code>)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="nq-solutions">
+            <span>{t(`已找到的解（${step.solutions.length}）`, `Solutions found (${step.solutions.length})`)}</span>
+            <div>
+              {step.solutions.length === 0
+                ? <em>{t('还没有', 'none yet')}</em>
+                : step.solutions.map((entry, index) => (
+                  <code key={`${entry.join('-')}-${index}`}>{formatList(entry)}</code>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="nq-legend">
+        <span><i className="queen" />{t('皇后', 'Queen')}</span>
+        <span><i className="attacked" />{t('被现有皇后控制', 'Controlled by a placed queen')}</span>
+        <span><i className="rejected" />{t('本行被 continue 跳过的列（│ 列 ╲ 主对角线 ╱ 副对角线）', 'Column skipped by continue in this row (│ column, ╲ main diagonal, ╱ anti-diagonal)')}</span>
+        <span><i className="free" />{t('可放置', 'Free')}</span>
+      </div>
+
+      <div className="nq-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择 N 皇后演示步骤', 'Select an N-Queens demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|backtracking-dedup-demo|n-queens-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -15200,6 +16382,22 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'trie-wildcard-demo') {
     return <TrieWildcardVisual />;
+  }
+
+  if (match?.[1] === 'backtracking-patterns') {
+    return <BacktrackingPatternAtlas />;
+  }
+
+  if (match?.[1] === 'backtracking-tree-demo') {
+    return <BacktrackingTreeVisual />;
+  }
+
+  if (match?.[1] === 'backtracking-dedup-demo') {
+    return <BacktrackingDedupVisual />;
+  }
+
+  if (match?.[1] === 'n-queens-demo') {
+    return <NQueensVisual />;
   }
 
   if (match?.[1] === 'three-sum-demo') {

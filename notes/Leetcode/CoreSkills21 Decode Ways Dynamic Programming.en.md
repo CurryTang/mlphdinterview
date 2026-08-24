@@ -825,6 +825,73 @@ One-sentence memory aid:
 
 > Reverse order for 0/1 knapsack to prevent reusing the same item; forward order for complete knapsack to explicitly allow reusing the same item.
 
+## Knapsack Quick Reference: 1D Template, Initialization, Loop Order
+
+Both worked examples above come wrapped in a problem statement. Strip the wrapper away and the 1D knapsack is only these two blocks:
+
+```python
+# 0/1 knapsack: each item used at most once, maximize value
+dp = [0] * (W + 1)
+for weight, value in items:
+    for c in range(W, weight - 1, -1):     # descending
+        dp[c] = max(dp[c], dp[c - weight] + value)
+return dp[W]
+
+# Complete knapsack: each item usable unlimited times, maximize value
+dp = [0] * (W + 1)
+for weight, value in items:
+    for c in range(weight, W + 1):         # ascending
+        dp[c] = max(dp[c], dp[c - weight] + value)
+return dp[W]
+```
+
+The only difference is the direction of the inner loop. Going down, `dp[c - weight]` still holds the state from after the previous item was processed, so the current item is used at most once. Going up, `dp[c - weight]` may already include the current item, so the same item stacks.
+
+The lower bound in `range(W, weight - 1, -1)` is `weight - 1` because `range` excludes its endpoint, which makes `weight` the last capacity actually visited. Capacities below `weight` cannot hold the item at all, so skipping them is correct.
+
+Both versions run in $O(nW)$ time and $O(W)$ space. Note that `W` appears in the complexity: once the capacity reaches something like $10^9$, knapsack DP is off the table and the problem wants greedy, number theory, or search instead.
+
+### Initialization Depends on "Exactly Full" vs "At Most"
+
+The initial values of `dp` are not automatically 0. They encode whether capacities other than 0 start out legal:
+
+| Goal | `dp[0]` | Other entries | Meaning |
+|---|---|---|---|
+| Max value, partial fill allowed | `0` | `0` | Any capacity can simply hold nothing |
+| Max value, must fill exactly | `0` | `-inf` | This capacity is not reachable yet, so it is illegal |
+| Min count, must fill exactly | `0` | `+inf` (or `amount + 1` as a sentinel) | Same idea, opposite direction |
+| Number of ways | `1` | `0` | Capacity 0 is reached in exactly one way: pick nothing |
+| Feasibility | `True` | `False` | Capacity 0 is always reachable |
+
+The coin change code above uses `inf = amount + 1` rather than a true infinity because reaching `amount` takes at most `amount` coins of denomination 1. `amount + 1` already exceeds every legal answer, and it sidesteps any discussion of `inf + 1` overflow.
+
+### Counting Problems: Combinations and Permutations Need Different Loop Orders
+
+The counting variant hides one more trap: whether items or capacities sit in the outer loop decides whether you are counting combinations or permutations.
+
+```python
+# Combinations: {1,2} and {2,1} count once — items outside
+for coin in coins:
+    for s in range(coin, amount + 1):
+        dp[s] += dp[s - coin]
+
+# Permutations: {1,2} and {2,1} count twice — capacities outside
+for s in range(1, amount + 1):
+    for coin in coins:
+        if coin <= s:
+            dp[s] += dp[s - coin]
+```
+
+With items outside, each item is considered only during its own pass, which pins the selection order to the item enumeration order, so a given set is counted exactly once. With capacities outside, every coin gets a chance to be the "last coin" at the same capacity, which makes order significant. Coin Change II asks for combinations and Combination Sum IV asks for permutations; the code is nearly identical, and swapping the loop order produces the wrong answer.
+
+### Common Pitfalls
+
+- Wrong loop direction: writing a 0/1 knapsack in ascending order turns it into a complete knapsack, and items get picked repeatedly.
+- Initialization that ignores the problem statement: filling the whole array with 0 when the problem demands an exact fill makes unreachable capacities look like valid solutions.
+- Reversed loop order in a counting problem: combinations written as permutations passes small samples and overshoots on larger ones.
+- Forgetting to skip cells where `weight > c`, or writing the descending lower bound as `-1`, which lets `dp[c - weight]` index negatively.
+- Trying to recover which items were chosen after collapsing to 1D: the single array has already overwritten the intermediate layers, so reporting the actual selection requires keeping the 2D table.
+
 ## Kadane's Algorithm: Maximum Subarray Sum
 
 Kadane's algorithm solves Maximum Subarray:

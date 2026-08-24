@@ -213,7 +213,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
-    expect(screen.getByText('本板块共 23 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 22 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i })).toBeInTheDocument();
@@ -401,6 +401,67 @@ describe('App', () => {
 
     expect(visual.querySelector('.rain-water-total strong')).toHaveTextContent('6');
     expect(within(visual).getByText('重新播放')).toBeInTheDocument();
+  });
+
+  it('renders the backtracking decision tree, dedup, and N-Queens visuals', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills33')
+          ? [
+            '# Backtracking',
+            '',
+            '```backtracking-patterns',
+            '```',
+            '',
+            '```backtracking-tree-demo',
+            '```',
+            '',
+            '```backtracking-dedup-demo',
+            '```',
+            '',
+            '```n-queens-demo',
+            '```',
+          ].join('\n')
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 33 · Backtracking/i }));
+
+    const atlas = await screen.findByRole('region', { name: '九道回溯题模板对照' });
+    expect(within(atlas).getByText('backtrack(start)')).toBeInTheDocument();
+    fireEvent.click(within(atlas).getByRole('tab', { name: /Permutations/ }));
+    expect(within(atlas).getByText('排列型')).toBeInTheDocument();
+
+    const tree = screen.getByRole('region', { name: 'Subsets 决策树逐步演示' });
+    fireEvent.change(within(tree).getByRole('slider', { name: '选择决策树演示步骤' }), {
+      target: { value: '7' },
+    });
+    expect(within(tree).getByText('收答案：result 现在有 4 项')).toBeInTheDocument();
+    expect(within(tree).getAllByText('[1, 2, 3]').length).toBeGreaterThan(0);
+    expect(tree.querySelectorAll('.bt-results code')).toHaveLength(4);
+
+    const dedup = screen.getByRole('region', { name: 'Subsets II 同层去重逐步演示' });
+    fireEvent.change(within(dedup).getByRole('slider', { name: '选择去重演示步骤' }), {
+      target: { value: '11' },
+    });
+    expect(dedup.querySelectorAll('.bt-node.cut')).toHaveLength(1);
+
+    const queens = screen.getByRole('region', { name: '4 皇后回溯逐步演示' });
+    fireEvent.change(within(queens).getByRole('slider', { name: '选择 N 皇后演示步骤' }), {
+      target: { value: '34' },
+    });
+    expect(within(queens).getByText('[1, 3, 0, 2]')).toBeInTheDocument();
+    expect(queens.querySelectorAll('.nq-cell.queen')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('region', { name: 'Nine backtracking problems compared' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Step-through: backtracking on 4-Queens' })).toBeInTheDocument();
   });
 
   it('opens the System Design section with the new overview notes', async () => {
