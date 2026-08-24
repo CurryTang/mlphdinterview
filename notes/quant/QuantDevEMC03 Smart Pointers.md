@@ -1,5 +1,7 @@
 # Effective Modern C++ 3 · 智能指针（条款 18-22）
 
+> 声明：本篇是围绕 Scott Meyers《Effective Modern C++》相关条款主题独立整理的学习笔记，内容为原创总结、示例代码与图解，不摘录、不改写原书文字，仅标注对应的条款编号和主题方便对照阅读，不构成对原书版权内容的复制。
+
 `QuantDevCPP04` 已经讲过 `unique_ptr`、`shared_ptr`、`weak_ptr` 三者的基本所有权模型、`shared_ptr` 控制块的结构、以及用 `weak_ptr` 打破循环引用这几个最常被问到的基础问题，本文不再重复这些内容。Scott Meyers 在《Effective Modern C++》第 4 章里关心的是更靠近工程实践的一层：智能指针在内存布局上到底多花了多少字节、`make_shared`/`make_unique` 什么时候不该用、以及为什么 Pimpl 惯用法配合 `unique_ptr` 会出现一个看起来莫名其妙的编译错误。这些细节平时写业务代码不一定会撞到，但一旦踩中往往表现为诡异的 `sizeof` 差异、`double free` 崩溃或者"不完整类型"编译报错，排查成本很高，因此是面试里区分"用过智能指针"和"理解智能指针实现"的分水岭。下面按条款 18-22 逐条展开，每条先给核心结论，再给能落地的代码。
 
 ```text
@@ -211,17 +213,17 @@ auto sp = std::make_shared<std::vector<int>>(initList);   // {10, 20} 两个元�
 **核心结论**：Pimpl（pointer to implementation）惯用法把类的私有实现细节藏在一个指向前向声明结构体的指针后面，目的是让实现细节需要的头文件只出现在 `.cpp` 里，减少头文件的编译依赖，加快修改实现细节时的重新编译速度。但如果 pimpl 指针用的是 `unique_ptr`，并且依赖编译器隐式生成析构函数，会在客户端代码里触发一个看起来莫名其妙的"不完整类型"编译错误——这正是本条款要解决的问题。
 
 ```mermaid
-flowchart LR
-    subgraph Header["Widget.h（客户端可见）"]
-        A["class Widget { unique_ptr&lt;Impl&gt; pImpl; ~Widget(); }"]
-        B["struct Impl; // 仅前向声明"]
+flowchart TB
+    Client["client.cpp<br/>#include Widget.h"] -->|"只依赖头文件"| A
+    subgraph header["Widget.h（客户端可见）"]
+        A["class Widget<br/>unique_ptr&lt;Impl&gt; pImpl;<br/>~Widget(); // 只声明"]
+        B["struct Impl;<br/>// 仅前向声明"]
     end
-    subgraph Impl_cpp["Widget.cpp（仅实现细节可见）"]
-        C["struct Impl { 完整定义，可以 #include 任意重量级头文件 }"]
-        D["Widget::~Widget() = default;"]
+    subgraph cpp["Widget.cpp（只有这个文件可见）"]
+        C["struct Impl { ... };<br/>完整定义，可以 #include<br/>任意重量级头文件"]
+        D["Widget::~Widget() = default;<br/>// 这里才需要 Impl 完整类型"]
+        C -->|"完整类型在此可见"| D
     end
-    Client["client.cpp #include Widget.h"] -->|"只依赖 Widget.h，不需要重新编译"| Header
-    Impl_cpp -->|"Impl 完整定义只在这里可见"| D
 ```
 
 问题的根源在于析构函数**在哪里实例化**。如果头文件里这样写：
@@ -295,29 +297,38 @@ Widget& Widget::operator=(Widget&&) noexcept = default;
 
 ## 快速选择题
 
-**1. 以下哪种 `unique_ptr` 删除器形式通常不会增加 `unique_ptr` 对象本身的大小？**
+```quiz
+title: 快速选择题 1
+question: 以下哪种 `unique_ptr` 删除器形式通常不会增加 `unique_ptr` 对象本身的大小？
+answer: C
 A. 函数指针删除器
 B. 带一个 `int` 成员的仿函数删除器
 C. 无捕获的 lambda 删除器
 D. `std::function` 包装的删除器
+explanation: 无捕获 lambda 的闭包类型不携带任何数据，编译器可以通过空基类优化把它折叠进 `unique_ptr` 内部，不占用额外空间；函数指针必须存储具体取值，带状态的仿函数和 `std::function` 同样需要额外存储。
+```
 
-**答案：C** — 无捕获 lambda 的闭包类型不携带任何数据，编译器可以通过空基类优化把它折叠进 `unique_ptr` 内部，不占用额外空间；函数指针必须存储具体取值，带状态的仿函数和 `std::function` 同样需要额外存储。
-
-**2. `std::unique_ptr<Widget, void(*)(Widget*)>` 相比默认删除器的 `unique_ptr<Widget>`，体积通常会怎样变化？**
+```quiz
+title: 快速选择题 2
+question: `std::unique_ptr<Widget, void(*)(Widget*)>` 相比默认删除器的 `unique_ptr<Widget>`，体积通常会怎样变化？
+answer: B
 A. 不变
 B. 增加一个指针大小
 C. 增加两个指针大小
 D. 变为原来的四倍
+explanation: 函数指针的取值本身要作为数据成员存储，通常多花一个指针大小的空间。
+```
 
-**答案：B** — 函数指针的取值本身要作为数据成员存储，通常多花一个指针大小的空间。
-
-**3. 关于 `shared_ptr` 与 `unique_ptr` 的体积对比，下列说法正确的是？**
+```quiz
+title: 快速选择题 3
+question: 关于 `shared_ptr` 与 `unique_ptr` 的体积对比，下列说法正确的是？
+answer: B
 A. 两者体积总是相同
 B. `shared_ptr` 通常是裸指针的两倍大小，`unique_ptr`（无状态删除器时）通常和裸指针一样大
 C. `unique_ptr` 通常比 `shared_ptr` 大，因为要存删除器
 D. 两者都需要额外的控制块
-
-**答案：B** — `shared_ptr` 要同时存指向对象和指向控制块的两个指针；`unique_ptr` 在无状态删除器时只存一个裸指针大小。
+explanation: `shared_ptr` 要同时存指向对象和指向控制块的两个指针；`unique_ptr` 在无状态删除器时只存一个裸指针大小。
+```
 
 **4. 下面这段代码的主要问题是什么？**
 ```cpp
@@ -332,66 +343,90 @@ D. 没有问题，这是标准用法
 
 **答案：C** — 两次都是"从裸指针构造"，各自触发一次控制块创建，两个控制块互不知情，最终导致 double free。
 
-**5. 修复上一题的正确做法是什么？**
+```quiz
+title: 快速选择题 5
+question: 修复上一题的正确做法是什么？
+answer: B
 A. 把 `sp2` 换成 `weak_ptr`
 B. 让 `sp2` 拷贝 `sp1`：`std::shared_ptr<Widget> sp2 = sp1;`
 C. 给两个 `shared_ptr` 都加自定义删除器
 D. 用 `sp2.reset(p)`
+explanation: 只有拷贝已有的 `shared_ptr` 才会共用同一个控制块；`reset(p)` 本质上还是"从裸指针构造"，同样会创建新的控制块。
+```
 
-**答案：B** — 只有拷贝已有的 `shared_ptr` 才会共用同一个控制块；`reset(p)` 本质上还是"从裸指针构造"，同样会创建新的控制块。
-
-**6. 在一个对象内部想安全地交出指向 `*this` 的 `shared_ptr`，应该怎么做？**
+```quiz
+title: 快速选择题 6
+question: 在一个对象内部想安全地交出指向 `*this` 的 `shared_ptr`，应该怎么做？
+answer: B
 A. 直接 `return std::shared_ptr<Widget>(this);`
 B. 让类继承 `std::enable_shared_from_this`，调用 `shared_from_this()`
 C. 用 `weak_ptr(this).lock()`
 D. 用 `std::make_shared<Widget>(*this)`
+explanation: `enable_shared_from_this` 内部的 `weak_ptr` 由外部已存在的 `shared_ptr` 填充，`shared_from_this()` 返回的 `shared_ptr` 与外部共用同一个控制块；直接用裸指针构造会重复创建控制块。
+```
 
-**答案：B** — `enable_shared_from_this` 内部的 `weak_ptr` 由外部已存在的 `shared_ptr` 填充，`shared_from_this()` 返回的 `shared_ptr` 与外部共用同一个控制块；直接用裸指针构造会重复创建控制块。
-
-**7. 如果对象还没有被任何 `shared_ptr` 管理就调用 `shared_from_this()`，会发生什么？**
+```quiz
+title: 快速选择题 7
+question: 如果对象还没有被任何 `shared_ptr` 管理就调用 `shared_from_this()`，会发生什么？
+answer: B
 A. 总是返回空指针，没有副作用
 B. C++17 之前未定义行为，C++17 起抛出 `std::bad_weak_ptr`
 C. 编译错误
 D. 自动创建一个新的 `shared_ptr` 接管对象
+explanation: 内部 `weak_ptr` 此时处于过期/空状态，C++17 标准明确规定这种情况会抛出 `std::bad_weak_ptr` 异常。
+```
 
-**答案：B** — 内部 `weak_ptr` 此时处于过期/空状态，C++17 标准明确规定这种情况会抛出 `std::bad_weak_ptr` 异常。
-
-**8. 缓存场景下，为什么用 `weak_ptr` 存缓存条目比用 `shared_ptr` 更合适？**
+```quiz
+title: 快速选择题 8
+question: 缓存场景下，为什么用 `weak_ptr` 存缓存条目比用 `shared_ptr` 更合适？
+answer: B
 A. `weak_ptr` 读写速度更快
 B. `weak_ptr` 不增加强引用计数，不会阻止对象在真正所有者释放后被回收，避免缓存本身造成泄漏
 C. `weak_ptr` 占用内存更小
 D. `shared_ptr` 不支持存进容器
+explanation: 如果缓存持有 `shared_ptr`，任何进过缓存的对象都不会真正被释放；用 `weak_ptr` 则缓存只在对象仍存活时提供复用，不影响其生命周期。
+```
 
-**答案：B** — 如果缓存持有 `shared_ptr`，任何进过缓存的对象都不会真正被释放；用 `weak_ptr` 则缓存只在对象仍存活时提供复用，不影响其生命周期。
-
-**9. 下列哪种情况下应该避免使用 `make_shared`，改用 `new` + `shared_ptr` 构造函数？**
+```quiz
+title: 快速选择题 9
+question: 下列哪种情况下应该避免使用 `make_shared`，改用 `new` + `shared_ptr` 构造函数？
+answer: D
 A. 需要自定义删除器
 B. 对象体积很大，且预计会有长期存活的 `weak_ptr` 指向它
 C. 需要用花括号初始化列表语义构造容器
 D. 以上都是
+explanation: 三种情况 `make_shared` 都无法直接使用或不合适：不支持自定义删除器，花括号会被当成普通构造参数而非 `initializer_list`，且大对象+长寿命 `weak_ptr` 场景下单次分配会拖延对象内存的释放。
+```
 
-**答案：D** — 三种情况 `make_shared` 都无法直接使用或不合适：不支持自定义删除器，花括号会被当成普通构造参数而非 `initializer_list`，且大对象+长寿命 `weak_ptr` 场景下单次分配会拖延对象内存的释放。
-
-**10. `make_shared<std::vector<int>>(10, 20)` 实际构造出的是什么？**
+```quiz
+title: 快速选择题 10
+question: `make_shared<std::vector<int>>(10, 20)` 实际构造出的是什么？
+answer: B
 A. 包含两个元素 `{10, 20}` 的 vector
 B. 包含 10 个值为 20 的元素的 vector
 C. 编译错误
 D. 一个空 vector
+explanation: 花括号语法在传给模板参数时是非推导上下文，`make_shared` 只能把参数当作普通构造函数参数转发，因此匹配到的是 `vector(count, value)` 构造函数。
+```
 
-**答案：B** — 花括号语法在传给模板参数时是非推导上下文，`make_shared` 只能把参数当作普通构造函数参数转发，因此匹配到的是 `vector(count, value)` 构造函数。
-
-**11. Pimpl 惯用法中，为什么 `unique_ptr<Impl>` 依赖编译器隐式生成的析构函数会在客户端代码里编译报错？**
+```quiz
+title: 快速选择题 11
+question: Pimpl 惯用法中，为什么 `unique_ptr<Impl>` 依赖编译器隐式生成的析构函数会在客户端代码里编译报错？
+answer: B
 A. `unique_ptr` 不支持前向声明的类型作为模板参数
 B. 隐式析构函数在客户端代码里实例化，此时需要对 `Impl` 完整类型调用 `delete`，但客户端只看到前向声明
 C. `Impl` 必须是抽象类
 D. 头文件里禁止使用 `unique_ptr`
+explanation: 隐式内联的析构函数在第一次被用到的地方（通常是客户端代码析构 `Widget` 对象时）实例化，`unique_ptr` 默认删除器此时需要 `Impl` 的完整定义来生成 `delete` 代码，而客户端只 `#include` 了只有前向声明的头文件。
+```
 
-**答案：B** — 隐式内联的析构函数在第一次被用到的地方（通常是客户端代码析构 `Widget` 对象时）实例化，`unique_ptr` 默认删除器此时需要 `Impl` 的完整定义来生成 `delete` 代码，而客户端只 `#include` 了只有前向声明的头文件。
-
-**12. 为什么把 pimpl 指针换成 `shared_ptr` 能绕开条款 22 的编译错误？**
+```quiz
+title: 快速选择题 12
+question: 为什么把 pimpl 指针换成 `shared_ptr` 能绕开条款 22 的编译错误？
+answer: B
 A. `shared_ptr` 从不调用 `delete`
 B. `shared_ptr` 的删除器在构造时就被类型擦除进控制块，完整类型的要求在构造时（通常在 .cpp 里）就已满足，而不是推迟到析构时才检查
 C. `shared_ptr` 自动生成 `Impl` 的完整定义
 D. `shared_ptr` 不支持前向声明类型
-
-**答案：B** — `shared_ptr` 的删除器不烙印在自身类型里，而是构造时类型擦除存进控制块；析构时只需通过控制块里的删除器发起调用，不再需要 `Impl` 完整类型，这与 `unique_ptr` 把完整类型要求推迟到析构时正好相反。
+explanation: `shared_ptr` 的删除器不烙印在自身类型里，而是构造时类型擦除存进控制块；析构时只需通过控制块里的删除器发起调用，不再需要 `Impl` 完整类型，这与 `unique_ptr` 把完整类型要求推迟到析构时正好相反。
+```

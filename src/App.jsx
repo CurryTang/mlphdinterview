@@ -6595,6 +6595,306 @@ function VirtualizationContainerVisual() {
   );
 }
 
+function VtableDispatchVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('dynamic');
+  const isDynamic = mode === 'dynamic';
+
+  return (
+    <section className="vtable-visual" aria-label={t('虚函数动态绑定与非虚函数静态绑定对比', 'Virtual dynamic dispatch vs non-virtual static dispatch')}>
+      <header className="vtable-header">
+        <div>
+          <p className="eyebrow">{t('同一个指针，同一个对象', 'Same pointer, same object')}</p>
+          <h2>{isDynamic
+            ? t('speak() 是虚函数：运行时查表', 'speak() is virtual: resolved at runtime')
+            : t('speak() 不是虚函数：编译期写死', 'speak() is non-virtual: resolved at compile time')}</h2>
+          <p>{t('Base* ptr 实际指向一个 Derived 对象，speak() 最终调用谁只取决于它是不是虚函数。', 'Base* ptr actually points at a Derived object. Which speak() runs depends only on whether it is virtual.')}</p>
+        </div>
+        <div className="vtable-tabs" role="group" aria-label={t('选择是否为虚函数', 'Choose virtual or non-virtual')}>
+          <button type="button" className={isDynamic ? 'active' : ''} onClick={() => setMode('dynamic')}>virtual</button>
+          <button type="button" className={!isDynamic ? 'active' : ''} onClick={() => setMode('static')}>non-virtual</button>
+        </div>
+      </header>
+
+      <div className="vtable-code">
+        <code>Base* ptr = new Derived();</code>
+        <code>ptr-&gt;speak();</code>
+      </div>
+
+      <div className="vtable-flow">
+        <div className="vtable-node object">
+          <span>{t('内存中的对象', 'Object in memory')}</span>
+          <strong>Derived</strong>
+          <div className={`vtable-vptr ${isDynamic ? 'active' : 'unused'}`}>
+            <b>vptr</b>
+            <small>{isDynamic ? t('本次调用会用到', 'used this call') : t('本次调用不会用到', 'unused this call')}</small>
+          </div>
+          <div className="vtable-field">int age</div>
+        </div>
+
+        <div className="vtable-arrow" aria-hidden="true">
+          <span className={isDynamic ? 'active' : ''}>{isDynamic ? '⇢' : '⇢'}</span>
+        </div>
+
+        <div className={`vtable-node table ${isDynamic ? 'active' : 'skipped'}`}>
+          <span>{isDynamic ? t("Derived 的 vtable", "Derived's vtable") : t('vtable（未被查询）', 'vtable (never consulted)')}</span>
+          <div className="vtable-slot hit"><code>speak</code><b>Derived::speak</b></div>
+          <div className="vtable-slot"><code>eat</code><b>Base::eat</b></div>
+        </div>
+
+        <div className="vtable-arrow" aria-hidden="true"><span className="active">→</span></div>
+
+        <div className={`vtable-node result ${isDynamic ? 'correct' : 'surprise'}`}>
+          <span>{t('实际执行', 'Actually runs')}</span>
+          <strong>{isDynamic ? 'Derived::speak()' : 'Base::speak()'}</strong>
+          <small>{isDynamic
+            ? t('符合直觉：调用了对象真正类型的版本', "matches intuition: the object's real type wins")
+            : t('容易被忽略的坑：编译器只看指针的声明类型', "the easy-to-miss trap: the compiler only looks at the pointer's declared type")}</small>
+        </div>
+      </div>
+
+      <footer className="vtable-footer">
+        <span>{t('记住', 'Remember')}</span>
+        <strong>{t('只有虚函数才会经过 vptr 查表；非虚函数在编译期就已经绑定到指针的声明类型上，与指针实际指向的对象类型无关。', "Only virtual functions go through the vptr lookup; non-virtual functions are bound at compile time to the pointer's declared type, regardless of the object it actually points at.")}</strong>
+      </footer>
+    </section>
+  );
+}
+
+function FalseSharingVisual() {
+  const { t } = useUiCopy();
+  const [padded, setPadded] = useState(false);
+
+  return (
+    <section className="false-sharing-visual" aria-label={t('伪共享与 cache line 填充对比', 'False sharing vs cache-line padding')}>
+      <header className="false-sharing-header">
+        <div>
+          <p className="eyebrow">{t('两个线程，两个互不相关的变量', 'Two threads, two unrelated variables')}</p>
+          <h2>{padded
+            ? t('填充后：a、b 各自占一条 cache line', 'Padded: a and b each own a cache line')
+            : t('未填充：a、b 挤在同一条 cache line 里', 'Unpadded: a and b share one cache line')}</h2>
+          <p>{t('线程 0 只写 a，线程 1 只写 b，逻辑上完全独立。', 'Thread 0 only writes a, thread 1 only writes b — logically independent.')}</p>
+        </div>
+        <div className="false-sharing-tabs" role="group" aria-label={t('选择是否填充', 'Choose padded or not')}>
+          <button type="button" className={!padded ? 'active' : ''} onClick={() => setPadded(false)}>{t('未填充', 'unpadded')}</button>
+          <button type="button" className={padded ? 'active' : ''} onClick={() => setPadded(true)}>alignas(64)</button>
+        </div>
+      </header>
+
+      <div className="false-sharing-cores">
+        <div className="false-sharing-core">
+          <span>{t('核心 0', 'Core 0')}</span>
+          <strong>{t('反复写 a', 'repeatedly writes a')}</strong>
+        </div>
+        <div className="false-sharing-core">
+          <span>{t('核心 1', 'Core 1')}</span>
+          <strong>{t('反复写 b', 'repeatedly writes b')}</strong>
+        </div>
+      </div>
+
+      <div className={`false-sharing-lines ${padded ? 'padded' : 'unpadded'}`}>
+        {padded ? (
+          <>
+            <div className="false-sharing-line a-only">
+              <span>{t('cache line #1（64 字节）', 'cache line #1 (64 bytes)')}</span>
+              <div className="false-sharing-bytes">
+                <b className="byte-a">a</b>
+                {Array.from({ length: 7 }).map((_, i) => <i key={i} />)}
+              </div>
+              <small>{t('只被核心 0 缓存', 'cached only by core 0')}</small>
+            </div>
+            <div className="false-sharing-line b-only">
+              <span>{t('cache line #2（64 字节）', 'cache line #2 (64 bytes)')}</span>
+              <div className="false-sharing-bytes">
+                <b className="byte-b">b</b>
+                {Array.from({ length: 7 }).map((_, i) => <i key={i} />)}
+              </div>
+              <small>{t('只被核心 1 缓存', 'cached only by core 1')}</small>
+            </div>
+          </>
+        ) : (
+          <div className="false-sharing-line shared">
+            <span>{t('同一条 cache line（64 字节）', 'the same cache line (64 bytes)')}</span>
+            <div className="false-sharing-bytes">
+              <b className="byte-a">a</b>
+              <b className="byte-b">b</b>
+              {Array.from({ length: 6 }).map((_, i) => <i key={i} />)}
+            </div>
+            <small className="warn">{t('两个核心反复互相 invalidate 对方的缓存副本', "each core keeps invalidating the other's cached copy")}</small>
+          </div>
+        )}
+      </div>
+
+      <footer className={`false-sharing-footer ${padded ? 'good' : 'bad'}`}>
+        <span>{t('结果', 'Result')}</span>
+        <strong>{padded
+          ? t('两个核心各自访问自己的 cache line，没有额外的一致性流量。', "each core hits its own cache line — no extra coherence traffic.")
+          : t('MESI 协议不断在两个核心间搬运这条 cache line，性能明显下降。', 'MESI keeps bouncing this cache line between cores, and performance drops sharply.')}</strong>
+      </footer>
+    </section>
+  );
+}
+
+function ForkCowVisual() {
+  const { t } = useUiCopy();
+  const [written, setWritten] = useState(false);
+
+  return (
+    <section className="cow-visual" aria-label={t('fork 写时复制机制演示', 'fork copy-on-write mechanism')}>
+      <header className="cow-header">
+        <div>
+          <p className="eyebrow">{t('fork() 之后', 'After fork()')}</p>
+          <h2>{written
+            ? t('子进程写入触发缺页，内核复制出独立页面', 'A write by the child triggers a page fault and a private copy')
+            : t('父子进程共享同一块物理页，都只读', 'Parent and child share one physical page, both read-only')}</h2>
+        </div>
+        <div className="cow-tabs" role="group" aria-label={t('选择是否已写入', 'Choose before or after the write')}>
+          <button type="button" className={!written ? 'active' : ''} onClick={() => setWritten(false)}>{t('刚 fork', 'just forked')}</button>
+          <button type="button" className={written ? 'active' : ''} onClick={() => setWritten(true)}>{t('子进程写入后', 'after child writes')}</button>
+        </div>
+      </header>
+
+      <div className="cow-stage">
+        <div className="cow-process">
+          <span>{t('父进程页表', "Parent's page table")}</span>
+          <strong>{t('堆页 P1 → 只读', 'heap page P1 → read-only')}</strong>
+        </div>
+        <div className="cow-process">
+          <span>{t('子进程页表', "Child's page table")}</span>
+          <strong className={written ? 'changed' : ''}>
+            {written ? t('堆页 P1 → 可写（新副本）', 'heap page P1 → writable (new copy)') : t('堆页 P1 → 只读', 'heap page P1 → read-only')}
+          </strong>
+        </div>
+
+        <div className="cow-frames">
+          <div className="cow-frame original">
+            <span>{t('物理页 A（原始内容）', 'physical page A (original content)')}</span>
+            <small>{written ? t('父进程独占', 'owned by the parent now') : t('父子共同指向', 'pointed to by both')}</small>
+          </div>
+          {written && (
+            <div className="cow-frame copy">
+              <span>{t('物理页 B（写入触发的副本）', 'physical page B (copy made on write)')}</span>
+              <small>{t('子进程独占', 'owned by the child')}</small>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <footer className="cow-footer">
+        <span>{t('记住', 'Remember')}</span>
+        <strong>{t('复制不是在 fork() 那一刻发生的，而是在真正写入的那一刻由缺页异常触发。', 'The copy does not happen at fork() itself — it happens at the moment of the actual write, triggered by a page fault.')}</strong>
+      </footer>
+    </section>
+  );
+}
+
+const EPOLL_FD_COUNT = 8;
+const EPOLL_ACTIVE_FDS = [2, 5];
+
+function EpollVsSelectVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('epoll');
+  const isEpoll = mode === 'epoll';
+
+  return (
+    <section className="epoll-visual" aria-label={t('select/poll 线性扫描与 epoll 就绪列表对比', 'select/poll linear scan vs epoll ready list')}>
+      <header className="epoll-header">
+        <div>
+          <p className="eyebrow">{t('8 个已注册的 fd，只有 2 个真正有数据', '8 registered fds, only 2 actually have data')}</p>
+          <h2>{isEpoll
+            ? t('epoll：内核直接把就绪的 fd 放进列表', 'epoll: the kernel pushes ready fds straight into a list')
+            : t('select / poll：每次调用都要挨个问一遍', 'select / poll: every call scans every fd')}</h2>
+        </div>
+        <div className="epoll-tabs" role="group" aria-label={t('选择多路复用方式', 'Choose the multiplexing mechanism')}>
+          <button type="button" className={!isEpoll ? 'active' : ''} onClick={() => setMode('select')}>select / poll</button>
+          <button type="button" className={isEpoll ? 'active' : ''} onClick={() => setMode('epoll')}>epoll</button>
+        </div>
+      </header>
+
+      <div className="epoll-fds">
+        {Array.from({ length: EPOLL_FD_COUNT }).map((_, i) => {
+          const isActive = EPOLL_ACTIVE_FDS.includes(i);
+          const stateClass = !isEpoll ? 'scanned' : isActive ? 'pushed' : '';
+          return (
+            <div className={`epoll-fd ${isActive ? 'ready' : 'idle'} ${stateClass}`} key={i}>
+              <span>fd{i}</span>
+              <small>{isActive ? t('有数据', 'has data') : t('无数据', 'no data')}</small>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="epoll-note">
+        {isEpoll
+          ? t('只有 fd2、fd5 触发回调直接进入就绪列表；其余 6 个 fd 完全不参与这次 epoll_wait。', 'Only fd2 and fd5 fire their callback and land in the ready list; the other 6 fds are never touched by this epoll_wait.')
+          : t('内核（或库）必须遍历全部 8 个 fd 才能知道哪些就绪，复杂度是 O(n)，与真正就绪的数量无关。', 'The kernel (or library) must scan all 8 fds to find the ready ones — O(n), regardless of how many are actually ready.')}
+      </div>
+
+      <div className="epoll-result">
+        <span>{t('epoll_wait / select 返回', 'epoll_wait / select returns')}</span>
+        <strong>fd2, fd5</strong>
+      </div>
+    </section>
+  );
+}
+
+function SharedPtrCycleVisual() {
+  const { t } = useUiCopy();
+  const [fixed, setFixed] = useState(false);
+
+  return (
+    <section className="sp-cycle-visual" aria-label={t('shared_ptr 循环引用与 weak_ptr 修复对比', 'shared_ptr cycle vs the weak_ptr fix')}>
+      <header className="sp-cycle-header">
+        <div>
+          <p className="eyebrow">{t('A 持有指向 B 的指针，B 也持有指向 A 的指针', 'A holds a pointer to B, and B holds a pointer to A')}</p>
+          <h2>{fixed
+            ? t('B → A 换成 weak_ptr：外部引用释放后两者都能正确析构', 'B → A becomes weak_ptr: releasing the external reference destroys both correctly')
+            : t('两端都用 shared_ptr：外部引用释放后谁都不会被析构', 'Both sides use shared_ptr: releasing the external reference destroys neither')}</h2>
+        </div>
+        <div className="sp-cycle-tabs" role="group" aria-label={t('选择是否修复循环引用', 'Choose broken or fixed')}>
+          <button type="button" className={!fixed ? 'active' : ''} onClick={() => setFixed(false)}>{t('循环引用', 'cycle')}</button>
+          <button type="button" className={fixed ? 'active' : ''} onClick={() => setFixed(true)}>{t('打破循环', 'break the cycle')}</button>
+        </div>
+      </header>
+
+      <div className="sp-cycle-external">
+        <span>{t('外部作用域', 'external scope')}</span>
+        <b>shared_ptr&lt;A&gt; outer;</b>
+      </div>
+
+      <div className="sp-cycle-stage">
+        <div className="sp-cycle-node">
+          <span>A</span>
+          <small>use_count = {fixed ? 1 : 2}</small>
+          <em>{t('含 1 个外部 shared_ptr', 'includes 1 external shared_ptr')}</em>
+        </div>
+        <div className="sp-cycle-links">
+          <div className="sp-cycle-arrow forward">
+            <span>shared_ptr</span>
+            <b>A → B</b>
+          </div>
+          <div className={`sp-cycle-arrow backward ${fixed ? 'weak' : ''}`}>
+            <span>{fixed ? 'weak_ptr' : 'shared_ptr'}</span>
+            <b>B → A</b>
+          </div>
+        </div>
+        <div className="sp-cycle-node">
+          <span>B</span>
+          <small>use_count = 1</small>
+          <em>{t('只被 A 持有', 'held only by A')}</em>
+        </div>
+      </div>
+
+      <div className={`sp-cycle-outcome ${fixed ? 'good' : 'bad'}`}>
+        <strong>{t('外部持有 A 的 shared_ptr 释放后：', 'After the external shared_ptr to A is released:')}</strong>
+        <p>{fixed
+          ? t("A 的 use_count 归零 → A 析构 → A 持有的 shared_ptr<B> 释放 → B 的 use_count 归零 → B 析构。", "A's use_count hits 0 → A destructs → A's shared_ptr<B> is released → B's use_count hits 0 → B destructs.")
+          : t('A 的 use_count 变成 1（仍被 B 持有），B 的 use_count 仍是 1（被 A 持有），两者永远等不到 0，内存泄露。', "A's use_count drops to 1 (still held by B), B's use_count stays 1 (held by A) — neither ever reaches 0, and both leak.")}</p>
+      </div>
+    </section>
+  );
+}
+
 const RECORD_EXAMPLE_SPEEDS = [7, 4, 6, 2, 5, 1, 3];
 
 const RECORD_EXAMPLE_STATES = (() => {
@@ -16420,7 +16720,7 @@ function NQueensVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|backtracking-dedup-demo|n-queens-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|backtracking-dedup-demo|n-queens-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -16584,6 +16884,26 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'virtualization-container-visual') {
     return <VirtualizationContainerVisual />;
+  }
+
+  if (match?.[1] === 'vtable-dispatch-demo') {
+    return <VtableDispatchVisual />;
+  }
+
+  if (match?.[1] === 'false-sharing-demo') {
+    return <FalseSharingVisual />;
+  }
+
+  if (match?.[1] === 'fork-cow-demo') {
+    return <ForkCowVisual />;
+  }
+
+  if (match?.[1] === 'epoll-vs-select-demo') {
+    return <EpollVsSelectVisual />;
+  }
+
+  if (match?.[1] === 'shared-ptr-cycle-demo') {
+    return <SharedPtrCycleVisual />;
   }
 
   if (match) {

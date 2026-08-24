@@ -231,98 +231,134 @@ private:
 
 ## 快速选择题
 
-**1. Reactor 模式下，真正的 `read()`/`write()` 系统调用由谁发起？**
+```quiz
+title: 快速选择题 1
+question: Reactor 模式下，真正的 `read()`/`write()` 系统调用由谁发起？
+answer: B
 A. 操作系统在后台自动完成
 B. 应用程序在收到就绪通知后自己发起
 C. 由多路复用系统调用本身完成
 D. 由内核线程池代为完成
+explanation: Reactor 只负责通过多路复用机制感知fd是否就绪并分发事件，真正的读写操作是应用程序（handler）自己调用完成的。
+```
 
-**答案：B** — Reactor 只负责通过多路复用机制感知fd是否就绪并分发事件，真正的读写操作是应用程序（handler）自己调用完成的。
-
-**2. Proactor 模式下，数据从内核缓冲区拷贝到用户缓冲区这一步由谁完成？**
+```quiz
+title: 快速选择题 2
+question: Proactor 模式下，数据从内核缓冲区拷贝到用户缓冲区这一步由谁完成？
+answer: B
 A. 应用程序在收到通知后调用read完成
 B. 操作系统在通知应用程序之前就已经完成
 C. 由用户手动调用一次内存拷贝函数完成
 D. Proactor模式不涉及这一步拷贝
+explanation: Proactor建立在真正的异步IO之上，操作系统完成包括数据拷贝在内的全部IO工作后才通知应用程序，应用程序不需要再调用read。
+```
 
-**答案：B** — Proactor建立在真正的异步IO之上，操作系统完成包括数据拷贝在内的全部IO工作后才通知应用程序，应用程序不需要再调用read。
-
-**3. Reactor与Proactor的核心区别，最准确的描述是？**
+```quiz
+title: 快速选择题 3
+question: Reactor与Proactor的核心区别，最准确的描述是？
+answer: B
 A. Reactor用于Linux，Proactor用于Windows，仅此而已
 B. Reactor是同步模型，Proactor是异步模型，区别在于谁执行真正的IO操作
 C. Reactor只能处理TCP连接，Proactor只能处理UDP
 D. Proactor不需要事件循环，Reactor需要
+explanation: 二者的本质区别落在"谁执行真正的读写"：Reactor下应用程序自己发起并同步完成IO，Proactor下操作系统完成全部IO后才通知应用程序。
+```
 
-**答案：B** — 二者的本质区别落在"谁执行真正的读写"：Reactor下应用程序自己发起并同步完成IO，Proactor下操作系统完成全部IO后才通知应用程序。
-
-**4. 下列关于Linux原生异步IO（POSIX AIO / Linux AIO）的说法，正确的是？**
+```quiz
+title: 快速选择题 4
+question: 下列关于Linux原生异步IO（POSIX AIO / Linux AIO）的说法，正确的是？
+answer: B
 A. 功能完善成熟，是Linux下高性能服务器的主流选择
 B. 长期以来功能有限、支持的操作类型少、实现不够成熟，难以支撑高性能网络服务器
 C. 和epoll完全等价，只是接口形式不同
 D. 只存在于理论中，Linux内核从未真正实现过
+explanation: Linux原生异步IO这套机制长期存在局限（例如很多实现依赖线程池模拟、支持的操作类型有限），因此高性能网络服务器普遍转向基于epoll的Reactor架构。
+```
 
-**答案：B** — Linux原生异步IO这套机制长期存在局限（例如很多实现依赖线程池模拟、支持的操作类型有限），因此高性能网络服务器普遍转向基于epoll的Reactor架构。
-
-**5. Nginx、Redis、muduo这类Linux下的高性能网络软件，主要采用的架构是？**
+```quiz
+title: 快速选择题 5
+question: Nginx、Redis、muduo这类Linux下的高性能网络软件，主要采用的架构是？
+answer: C
 A. 基于Windows IOCP的Proactor
 B. 基于POSIX AIO的真正异步IO
 C. 基于epoll实现的Reactor
 D. 完全不使用事件驱动架构，采用纯多进程阻塞IO
+explanation: 由于Linux原生异步IO支持有限，这些软件普遍基于epoll构建Reactor架构，用Reactor去逼近部分Proactor效果。
+```
 
-**答案：C** — 由于Linux原生异步IO支持有限，这些软件普遍基于epoll构建Reactor架构，用Reactor去逼近部分Proactor效果。
-
-**6. io_uring在这个话题里最准确的定位是？**
+```quiz
+title: 快速选择题 6
+question: io_uring在这个话题里最准确的定位是？
+answer: B
 A. 它是select的替代品，和异步IO无关
 B. Linux较新内核引入的机制，尝试从根本上改善原生异步IO能力，但尚未取代Reactor成为主流
 C. 它是Windows IOCP在Linux上的直接移植
 D. 它已经完全取代了epoll，成为Linux网络编程的默认标准
+explanation: io_uring通过共享环形缓冲区等设计显著改善了Linux异步IO的能力和覆盖范围，是Proactor在Linux上变得可行的新方向，但目前大多数系统仍以Reactor为主。
+```
 
-**答案：B** — io_uring通过共享环形缓冲区等设计显著改善了Linux异步IO的能力和覆盖范围，是Proactor在Linux上变得可行的新方向，但目前大多数系统仍以Reactor为主。
-
-**7. Redis的事件驱动模型最准确的描述是？**
+```quiz
+title: 快速选择题 7
+question: Redis的事件驱动模型最准确的描述是？
+answer: B
 A. 多Reactor多线程模型
 B. 单Reactor单线程模型：一个线程跑事件循环并亲自完成读写和命令执行
 C. 基于IOCP的Proactor模型
 D. 没有事件循环，纯轮询实现
+explanation: Redis基于自己的ae事件库封装epoll等多路复用机制，用一个线程跑事件循环并同步完成读写与命令执行，属于单Reactor单线程模型；虽然后续版本引入了部分多线程处理网络IO和惰性删除，但命令执行的核心仍是单线程。
+```
 
-**答案：B** — Redis基于自己的ae事件库封装epoll等多路复用机制，用一个线程跑事件循环并同步完成读写与命令执行，属于单Reactor单线程模型；虽然后续版本引入了部分多线程处理网络IO和惰性删除，但命令执行的核心仍是单线程。
-
-**8. 单Reactor单线程模型最大的局限是什么？**
+```quiz
+title: 快速选择题 8
+question: 单Reactor单线程模型最大的局限是什么？
+answer: B
 A. 无法处理TCP连接，只能处理UDP
 B. 业务逻辑耗时会阻塞整个事件循环，且无法利用多核
 C. 无法使用epoll，只能用select
 D. 只能支持一个客户端连接
+explanation: 唯一线程既跑事件循环又处理业务逻辑，一旦某次业务处理耗时较长会阻塞后续所有事件的处理，且完全无法利用多核CPU并行处理。
+```
 
-**答案：B** — 唯一线程既跑事件循环又处理业务逻辑，一旦某次业务处理耗时较长会阻塞后续所有事件的处理，且完全无法利用多核CPU并行处理。
-
-**9. 单Reactor多线程和多Reactor多线程的本质区别是？**
+```quiz
+title: 快速选择题 9
+question: 单Reactor多线程和多Reactor多线程的本质区别是？
+answer: B
 A. 前者只能处理少量连接，后者能处理任意连接数量
 B. 前者的事件监听/分发始终是单线程，后者把事件监听/分发本身也拆分到多个并行的从Reactor线程上
 C. 两者没有本质区别，只是叫法不同
 D. 前者不使用线程池，后者必须使用线程池
+explanation: 单Reactor多线程只是把业务逻辑并行化了，accept和事件分发仍是单线程；多Reactor多线程连事件监听分发这一步本身也拆到多个独立的从Reactor并行执行，能应对更大规模的并发连接。
+```
 
-**答案：B** — 单Reactor多线程只是把业务逻辑并行化了，accept和事件分发仍是单线程；多Reactor多线程连事件监听分发这一步本身也拆到多个独立的从Reactor并行执行，能应对更大规模的并发连接。
-
-**10. 线程池要解决的核心问题是？**
+```quiz
+title: 快速选择题 10
+question: 线程池要解决的核心问题是？
+answer: B
 A. 减少内存占用
 B. 避免每个任务到来都创建新线程、处理完再销毁所带来的频繁创建销毁开销
 C. 让程序变成单线程运行
 D. 替代所有的锁机制
+explanation: 线程创建和销毁本身有不小的开销（内核对象、栈内存分配、调度器登记等），高并发场景下频繁触发会累积成显著性能损耗，线程池通过预先创建、复用线程来分摊这个成本。
+```
 
-**答案：B** — 线程创建和销毁本身有不小的开销（内核对象、栈内存分配、调度器登记等），高并发场景下频繁触发会累积成显著性能损耗，线程池通过预先创建、复用线程来分摊这个成本。
-
-**11. 在文中给出的线程池实现里，工作线程在条件变量上等待的谓词为什么要写成 `stop_.load() || !tasks_.empty()`？**
+```quiz
+title: 快速选择题 11
+question: 在文中给出的线程池实现里，工作线程在条件变量上等待的谓词为什么要写成 `stop_.load() || !tasks_.empty()`？
+answer: B
 A. 只是代码风格问题，写成 `!tasks_.empty()` 也完全等价
 B. 如果只判断队列非空，析构时notify_all唤醒的线程若发现队列恰好为空会重新进入等待，永远检测不到停止标志，导致join永久阻塞
 C. 因为std::atomic<bool>不能单独作为条件使用
 D. 这样写是为了让所有线程同时被唤醒并抢占同一个任务
+explanation: 停止标志必须作为唤醒条件的一部分，否则线程被唤醒后如果队列为空会立刻重新等待，永远不会退出循环，析构函数里的join会一直阻塞。
+```
 
-**答案：B** — 停止标志必须作为唤醒条件的一部分，否则线程被唤醒后如果队列为空会立刻重新等待，永远不会退出循环，析构函数里的join会一直阻塞。
-
-**12. 线程池析构函数中，正确的执行顺序应该是？**
+```quiz
+title: 快速选择题 12
+question: 线程池析构函数中，正确的执行顺序应该是？
+answer: C
 A. 直接对所有线程调用join，不需要设置停止标志
 B. 先notify_all，再设置停止标志，最后join
 C. 先设置停止标志，再notify_all唤醒所有等待线程，最后逐个join等待退出
 D. 先join，再设置停止标志和notify_all
-
-**答案：C** — 必须先置位停止标志，再notify_all唤醒所有可能还在等待的线程让它们检查到标志并退出循环，最后join等待每个线程真正结束；顺序颠倒或遗漏notify_all都会导致某些线程永远无法被唤醒，join死等。
+explanation: 必须先置位停止标志，再notify_all唤醒所有可能还在等待的线程让它们检查到标志并退出循环，最后join等待每个线程真正结束；顺序颠倒或遗漏notify_all都会导致某些线程永远无法被唤醒，join死等。
+```

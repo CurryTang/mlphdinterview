@@ -329,41 +329,49 @@ g++ -g 编译  →  运行触发崩溃 / coredumpctl dump 取出 core  →  gdb 
 
 ## 快速选择题
 
-1. 下列哪个命令能让当前 shell 启动的进程在崩溃时生成不限制大小的 core 文件？
+```quiz
+title: 快速选择题 1
+question: 下列哪个命令能让当前 shell 启动的进程在崩溃时生成不限制大小的 core 文件？
+answer: B
+A. `ulimit -f unlimited`
+B. `ulimit -c unlimited`
+C. `sysctl -w kernel.core_pattern=unlimited`
+D. `export CORE_DUMP=1`
+explanation: `ulimit -c` 控制的正是当前 shell 及其子进程允许生成的 core 文件大小上限，`unlimited` 表示不做限制；`ulimit -f` 控制的是文件大小限制（和 core dump 无关），`core_pattern` 只控制生成路径/命名规则而不是"是否允许"。
+```
 
-   A. `ulimit -f unlimited`
-   B. `ulimit -c unlimited`
-   C. `sysctl -w kernel.core_pattern=unlimited`
-   D. `export CORE_DUMP=1`
+```quiz
+title: 快速选择题 2
+question: 一个 systemd 管理的服务，交互式 shell 里已经执行了 `ulimit -c unlimited`，但服务崩溃后仍然没有 core 文件，最可能的原因是：
+answer: B
+A. `ulimit -c unlimited` 语法写错了
+B. systemd 启动的进程不是这个交互式 shell 的子进程，没有继承该限制，需要在 unit 文件里配置 `LimitCORE=infinity`
+C. systemd 服务永远不会崩溃
+D. `ulimit -c` 只对 `bash` 生效，对 `zsh` 无效
+explanation: `RLIMIT_CORE` 是按进程继承的，systemd 启动的服务进程的父进程是 `systemd` 本身，不是登录 shell，因此登录 shell 里设置的 `ulimit -c` 不会传递给它，必须在对应的 `.service` 文件里显式加 `LimitCORE=infinity`。
+```
 
-**答案：B** — `ulimit -c` 控制的正是当前 shell 及其子进程允许生成的 core 文件大小上限，`unlimited` 表示不做限制；`ulimit -f` 控制的是文件大小限制（和 core dump 无关），`core_pattern` 只控制生成路径/命名规则而不是"是否允许"。
+```quiz
+title: 快速选择题 3
+question: 在一台 `/proc/sys/kernel/core_pattern` 内容为 `|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h %e` 的机器上，进程崩溃后应该：
+answer: B
+A. 在进程启动时的工作目录下找 `core` 或 `core.PID` 文件
+B. 用 `coredumpctl list` / `coredumpctl dump` 查看和导出 core dump
+C. 检查 `/tmp` 目录
+D. 崩溃不会生成任何 core 相关记录
+explanation: `core_pattern` 以 `|` 开头表示 core 数据被管道转交给 `systemd-coredump` 统一处理，不再写成普通文件，工作目录下不会出现 core 文件，需要通过 `coredumpctl` 查询和导出。
+```
 
-2. 一个 systemd 管理的服务，交互式 shell 里已经执行了 `ulimit -c unlimited`，但服务崩溃后仍然没有 core 文件，最可能的原因是：
-
-   A. `ulimit -c unlimited` 语法写错了
-   B. systemd 启动的进程不是这个交互式 shell 的子进程，没有继承该限制，需要在 unit 文件里配置 `LimitCORE=infinity`
-   C. systemd 服务永远不会崩溃
-   D. `ulimit -c` 只对 `bash` 生效，对 `zsh` 无效
-
-**答案：B** — `RLIMIT_CORE` 是按进程继承的，systemd 启动的服务进程的父进程是 `systemd` 本身，不是登录 shell，因此登录 shell 里设置的 `ulimit -c` 不会传递给它，必须在对应的 `.service` 文件里显式加 `LimitCORE=infinity`。
-
-3. 在一台 `/proc/sys/kernel/core_pattern` 内容为 `|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h %e` 的机器上，进程崩溃后应该：
-
-   A. 在进程启动时的工作目录下找 `core` 或 `core.PID` 文件
-   B. 用 `coredumpctl list` / `coredumpctl dump` 查看和导出 core dump
-   C. 检查 `/tmp` 目录
-   D. 崩溃不会生成任何 core 相关记录
-
-**答案：B** — `core_pattern` 以 `|` 开头表示 core 数据被管道转交给 `systemd-coredump` 统一处理，不再写成普通文件，工作目录下不会出现 core 文件，需要通过 `coredumpctl` 查询和导出。
-
-4. 下列哪个信号的默认动作**不会**产生 core dump？
-
-   A. `SIGSEGV`
-   B. `SIGABRT`
-   C. `SIGKILL`
-   D. `SIGFPE`
-
-**答案：C** — `SIGKILL` 的默认动作是直接终止进程（Term），不产生 core dump，也无法被捕获或忽略，这正是 `kill -9` 常被用来强制杀掉进程但完全拿不到任何崩溃现场信息的原因；`SIGSEGV`/`SIGABRT`/`SIGFPE` 的默认动作都是 Core。
+```quiz
+title: 快速选择题 4
+question: 下列哪个信号的默认动作不会产生 core dump？
+answer: C
+A. `SIGSEGV`
+B. `SIGABRT`
+C. `SIGKILL`
+D. `SIGFPE`
+explanation: `SIGKILL` 的默认动作是直接终止进程（Term），不产生 core dump，也无法被捕获或忽略，这正是 `kill -9` 常被用来强制杀掉进程但完全拿不到任何崩溃现场信息的原因；`SIGSEGV`/`SIGABRT`/`SIGFPE` 的默认动作都是 Core。
+```
 
 5. 下面这段代码最可能触发哪个信号？
 
@@ -379,47 +387,57 @@ int c = a / b;
 
 **答案：C** — 整数除零触发的是 `SIGFPE`（浮点异常，尽管名字带"浮点"，但整数除零/溢出是它最常见的触发场景），而不是浮点数除零（浮点除零在 IEEE 754 下得到 `inf`，不触发信号）。
 
-6. `assert(x > 0)` 在断言失败时，底层依赖的是哪个机制来终止进程？
+```quiz
+title: 快速选择题 6
+question: `assert(x > 0)` 在断言失败时，底层依赖的是哪个机制来终止进程？
+answer: B
+A. 直接抛出 `SIGSEGV`
+B. 调用 `abort()`，触发 `SIGABRT`
+C. 调用 `exit(1)`，正常退出不产生 core dump
+D. 触发 `SIGBUS`
+explanation: `assert` 宏在条件为假时会打印诊断信息并调用 `abort()`，`abort()` 会向进程自身发送 `SIGABRT`，默认动作是终止并产生 core dump。
+```
 
-   A. 直接抛出 `SIGSEGV`
-   B. 调用 `abort()`，触发 `SIGABRT`
-   C. 调用 `exit(1)`，正常退出不产生 core dump
-   D. 触发 `SIGBUS`
+```quiz
+title: 快速选择题 7
+question: 用 gdb 分析 core 文件时，第一条最应该执行的命令是：
+answer: B
+A. `print main`
+B. `bt`
+C. `info registers`
+D. `list`
+explanation: `bt`（backtrace）打印崩溃时刻完整的调用栈，是定位崩溃发生在哪个函数、哪一层调用的起点；`info registers`、`list`、`print` 都需要先确定关注哪一帧之后才有针对性地使用。
+```
 
-**答案：B** — `assert` 宏在条件为假时会打印诊断信息并调用 `abort()`，`abort()` 会向进程自身发送 `SIGABRT`，默认动作是终止并产生 core dump。
+```quiz
+title: 快速选择题 8
+question: 编译时不加 `-g` 直接分析 core 文件，会发生什么？
+answer: B
+A. gdb 无法打开 core 文件
+B. 能看到调用栈的大致地址，但无法直接对应到源码行号和变量名，可读性大幅下降
+C. 完全等价于加了 `-g`，因为符号信息总是从 core 文件本身读取
+D. core 文件根本不会生成
+explanation: 调试符号（行号、变量名、类型信息）来自编译产物里的调试信息 section，不是运行时状态的一部分，core 文件本身不携带这些信息；不加 `-g` 时 gdb 只能显示裸地址和有限的符号（如果没有被 strip），`bt`/`list`/`print` 的可用性会显著下降。
+```
 
-7. 用 gdb 分析 core 文件时，第一条最应该执行的命令是：
+```quiz
+title: 快速选择题 9
+question: 关于生产环境是否应该开启 core dump，下列说法最准确的是：
+answer: C
+A. 生产环境必须始终关闭 core dump，没有例外
+B. 生产环境必须始终开启 core dump，否则无法排查问题
+C. 需要在"事后取证能力"与"敏感数据落盘风险、磁盘占用成本"之间权衡，常见做法是关闭或限量，并配合 ASan/Valgrind 等更早期的检测手段减少对 core dump 的依赖
+D. 只要磁盘够大，开不开 core dump 没有区别
+explanation: 是否开启是一个工程权衡：完整的 core dump 有利于事后排查，但可能包含敏感数据且体积巨大，实践上通常在预发/测试环境开启、生产环境关闭或严格限量，并用更早期的检测工具减少真正需要 core dump 兜底的场景。
+```
 
-   A. `print main`
-   B. `bt`
-   C. `info registers`
-   D. `list`
-
-**答案：B** — `bt`（backtrace）打印崩溃时刻完整的调用栈，是定位崩溃发生在哪个函数、哪一层调用的起点；`info registers`、`list`、`print` 都需要先确定关注哪一帧之后才有针对性地使用。
-
-8. 编译时不加 `-g` 直接分析 core 文件，会发生什么？
-
-   A. gdb 无法打开 core 文件
-   B. 能看到调用栈的大致地址，但无法直接对应到源码行号和变量名，可读性大幅下降
-   C. 完全等价于加了 `-g`，因为符号信息总是从 core 文件本身读取
-   D. core 文件根本不会生成
-
-**答案：B** — 调试符号（行号、变量名、类型信息）来自编译产物里的调试信息 section，不是运行时状态的一部分，core 文件本身不携带这些信息；不加 `-g` 时 gdb 只能显示裸地址和有限的符号（如果没有被 strip），`bt`/`list`/`print` 的可用性会显著下降。
-
-9. 关于生产环境是否应该开启 core dump，下列说法最准确的是：
-
-   A. 生产环境必须始终关闭 core dump，没有例外
-   B. 生产环境必须始终开启 core dump，否则无法排查问题
-   C. 需要在"事后取证能力"与"敏感数据落盘风险、磁盘占用成本"之间权衡，常见做法是关闭或限量，并配合 ASan/Valgrind 等更早期的检测手段减少对 core dump 的依赖
-   D. 只要磁盘够大，开不开 core dump 没有区别
-
-**答案：C** — 是否开启是一个工程权衡：完整的 core dump 有利于事后排查，但可能包含敏感数据且体积巨大，实践上通常在预发/测试环境开启、生产环境关闭或严格限量，并用更早期的检测工具减少真正需要 core dump 兜底的场景。
-
-10. 一个设置了 `setuid` 位的可执行文件运行时崩溃，即使 `ulimit -c unlimited` 也常常拿不到 core 文件，原因是：
-
-    A. `setuid` 程序不会崩溃
-    B. 内核出于安全考虑，默认不为 `setuid`/`setgid` 程序生成 core dump，除非显式配置 `/proc/sys/fs/suid_dumpable`
-    C. `ulimit -c` 对 `setuid` 程序无效，必须用 `sysctl` 代替
-    D. 这类程序必须用 `sudo gdb` 才能生成 core
-
-**答案：B** — 这是一条独立于 `ulimit -c` 的安全策略：`setuid`/`setgid` 程序的内存中可能包含提权后才能访问的敏感数据，内核默认禁止为其生成 core dump，避免低权限用户通过诱导其崩溃来窃取高权限进程内存内容；需要调试时可以临时调整 `fs.suid_dumpable`，但这本身是有安全代价的操作。
+```quiz
+title: 快速选择题 10
+question: 一个设置了 `setuid` 位的可执行文件运行时崩溃，即使 `ulimit -c unlimited` 也常常拿不到 core 文件，原因是：
+answer: B
+A. `setuid` 程序不会崩溃
+B. 内核出于安全考虑，默认不为 `setuid`/`setgid` 程序生成 core dump，除非显式配置 `/proc/sys/fs/suid_dumpable`
+C. `ulimit -c` 对 `setuid` 程序无效，必须用 `sysctl` 代替
+D. 这类程序必须用 `sudo gdb` 才能生成 core
+explanation: 这是一条独立于 `ulimit -c` 的安全策略：`setuid`/`setgid` 程序的内存中可能包含提权后才能访问的敏感数据，内核默认禁止为其生成 core dump，避免低权限用户通过诱导其崩溃来窃取高权限进程内存内容；需要调试时可以临时调整 `fs.suid_dumpable`，但这本身是有安全代价的操作。
+```

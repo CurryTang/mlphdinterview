@@ -1,5 +1,7 @@
 # Effective Modern C++ 6 · 并发 API（条款 35-40）
 
+> 声明：本篇是围绕 Scott Meyers《Effective Modern C++》相关条款主题独立整理的学习笔记，内容为原创总结、示例代码与图解，不摘录、不改写原书文字，仅标注对应的条款编号和主题方便对照阅读，不构成对原书版权内容的复制。
+
 这一讲对应《Effective Modern C++》第 7 章 "The Concurrency API" 的六个条款。注意这一章的落脚点不是"并发理论"本身——互斥量、条件变量、死锁、线程池大小怎么定这些通用问题在本项目 OS 系列和性能系列里已经讲过——而是 C++11 标准库把这些概念包装成语言级 API 之后，暴露出来的一组极具 C++ 特色的设计取舍和陷阱：`std::thread` 和 `std::async` 该选哪个、`std::async` 的默认调度策略为什么是个坑、`std::thread` 析构为什么会直接终止程序、`std::future` 的析构行为为什么"看情况"、一次性事件通知该用什么原语、以及 `std::atomic` 和 `volatile` 这两个经常被面试题混着问的关键字到底谁该管并发。这些问题的共同特点是：写出来的代码大概率能编译、能跑、甚至测试时表现正常，但在特定调度时序或特定编译器优化下才会暴露出未定义行为或资源泄漏，属于"平时看不出来，出事就是大事"的一类 bug。
 
 ```text
@@ -341,140 +343,156 @@ void consumer() {
 
 ## 快速选择题
 
-**1. 关于 `std::async` 相比手写 `std::thread` 的优势，以下哪项说法错误？**
+```quiz
+title: 快速选择题 1
+question: 关于 `std::async` 相比手写 `std::thread` 的优势，以下哪项说法错误？
+answer: C
 A. `std::async` 返回的 `future` 可以直接拿到任务的返回值
 B. `std::async` 任务内抛出的未捕获异常会在调用者 `get()` 时被重新抛出
 C. `std::async` 保证任务一定会在新线程上并发执行
 D. 大量任务用 `std::async` 相比逐个开 `std::thread` 更不容易造成线程超订
+explanation: `std::async` 默认策略允许实现选择同步执行（deferred），并不保证一定并发执行；要保证并发执行必须显式指定 `std::launch::async`。
+```
 
-**答案：C** — `std::async` 默认策略允许实现选择同步执行（deferred），并不保证一定并发执行；要保证并发执行必须显式指定 `std::launch::async`。
-
----
-
-**2. `std::thread` 的线程函数中抛出一个未被捕获的异常，会发生什么？**
+```quiz
+title: 快速选择题 2
+question: `std::thread` 的线程函数中抛出一个未被捕获的异常，会发生什么？
+answer: B
 A. 异常被自动吞掉，线程正常结束
 B. 调用 `std::terminate()`，程序终止
 C. 异常被存入某个隐式的共享状态，等待 `join()` 时重新抛出
 D. 该异常被转换为一个错误码返回
+explanation: `std::thread` 的线程函数没有内建的异常传播机制，未捕获异常会导致 `std::terminate()` 被调用；这正是任务式（`std::async`）编程相对线程式的优势之一。
+```
 
-**答案：B** — `std::thread` 的线程函数没有内建的异常传播机制，未捕获异常会导致 `std::terminate()` 被调用；这正是任务式（`std::async`）编程相对线程式的优势之一。
-
----
-
-**3. `std::async` 不指定启动策略时，默认策略是什么？**
+```quiz
+title: 快速选择题 3
+question: `std::async` 不指定启动策略时，默认策略是什么？
+answer: C
 A. `std::launch::async`
 B. `std::launch::deferred`
 C. `std::launch::async | std::launch::deferred`
 D. 由链接的线程库版本决定，标准未规定组合方式
+explanation: 默认策略是 `std::launch::async | std::launch::deferred` 的组合，实现可以在运行时自由选择同步或异步执行任务。
+```
 
-**答案：C** — 默认策略是 `std::launch::async | std::launch::deferred` 的组合，实现可以在运行时自由选择同步或异步执行任务。
-
----
-
-**4. 一个使用默认启动策略的 `std::async` 任务被实现选择为 deferred 执行，此时对其 future 调用 `wait_for(0s)` 会返回什么？**
+```quiz
+title: 快速选择题 4
+question: 一个使用默认启动策略的 `std::async` 任务被实现选择为 deferred 执行，此时对其 future 调用 `wait_for(0s)` 会返回什么？
+answer: C
 A. `std::future_status::timeout`
 B. `std::future_status::ready`
 C. `std::future_status::deferred`
 D. 抛出异常，因为 deferred 任务不支持 `wait_for`
+explanation: deferred 任务在被 `get()`/`wait()` 触发之前根本没有开始执行，`wait_for` 会返回 `std::future_status::deferred`，而不是 `timeout` 或 `ready`；忽略这个分支的轮询循环会死循环。
+```
 
-**答案：C** — deferred 任务在被 `get()`/`wait()` 触发之前根本没有开始执行，`wait_for` 会返回 `std::future_status::deferred`，而不是 `timeout` 或 `ready`；忽略这个分支的轮询循环会死循环。
-
----
-
-**5. 关于 `std::thread` 对象析构时的行为，以下哪项正确？**
+```quiz
+title: 快速选择题 5
+question: 关于 `std::thread` 对象析构时的行为，以下哪项正确？
+answer: C
 A. 如果该对象是可结合（joinable）的，析构函数会自动调用 `join()`
 B. 如果该对象是可结合的，析构函数会自动调用 `detach()`
 C. 如果该对象是可结合的，析构函数调用 `std::terminate()`
 D. 析构函数总是安全的，无论是否可结合
+explanation: 标准库既不隐式 `join` 也不隐式 `detach`（两者都可能引入难以调试的问题），而是强制在析构时调用 `std::terminate()`，逼迫程序员在每条代码路径上显式处理线程的结束方式。
+```
 
-**答案：C** — 标准库既不隐式 `join` 也不隐式 `detach`（两者都可能引入难以调试的问题），而是强制在析构时调用 `std::terminate()`，逼迫程序员在每条代码路径上显式处理线程的结束方式。
-
----
-
-**6. 为什么标准库不让 `std::thread` 的析构函数自动 `detach()` 来避免 `terminate`？**
+```quiz
+title: 快速选择题 6
+question: 为什么标准库不让 `std::thread` 的析构函数自动 `detach()` 来避免 `terminate`？
+answer: B
 A. 因为 `detach()` 本身在标准里就是未定义行为
 B. 因为分离出去的线程可能继续访问已经被销毁的局部对象，产生比挂起更隐蔽的错误
 C. 因为 `detach()` 的性能开销比 `join()` 高很多
 D. 因为 `detach()` 会导致内存泄漏，比 `terminate()` 更危险
+explanation: 隐式 `detach` 的问题在于分离后的线程生命周期完全失控，如果它继续访问外层函数已经销毁的栈上对象，会产生比"隐式 join 导致意外阻塞"更难排查的悬空引用问题，所以标准库选择都不做，而是用 `terminate` 强制暴露错误。
+```
 
-**答案：B** — 隐式 `detach` 的问题在于分离后的线程生命周期完全失控，如果它继续访问外层函数已经销毁的栈上对象，会产生比"隐式 join 导致意外阻塞"更难排查的悬空引用问题，所以标准库选择都不做，而是用 `terminate` 强制暴露错误。
-
----
-
-**7. 用 RAII 包装 `std::thread`（如条款 37 建议的 ThreadRAII）主要解决的是什么问题？**
+```quiz
+title: 快速选择题 7
+question: 用 RAII 包装 `std::thread`（如条款 37 建议的 ThreadRAII）主要解决的是什么问题？
+answer: B
 A. 提升线程创建的性能
 B. 保证线程在所有代码路径（包括异常展开路径）上都被正确 join 或 detach
 C. 自动限制同时存在的线程数量，防止超订
 D. 让 `std::thread` 支持返回值
+explanation: RAII 包装类把"析构时该 join 还是 detach"的决策固化在析构函数里，从而保证正常返回、提前返回、异常传播等所有路径都会被覆盖到，不需要在每条路径手动补调用。
+```
 
-**答案：B** — RAII 包装类把"析构时该 join 还是 detach"的决策固化在析构函数里，从而保证正常返回、提前返回、异常传播等所有路径都会被覆盖到，不需要在每条路径手动补调用。
-
----
-
-**8. 关于 `std::future` 的析构行为，以下哪个场景会像"隐式 join"一样阻塞？**
+```quiz
+title: 快速选择题 8
+question: 关于 `std::future` 的析构行为，以下哪个场景会像"隐式 join"一样阻塞？
+answer: D
 A. 来自 `std::promise` 的 `future` 析构
 B. 来自 `std::packaged_task` 的 `future` 析构
 C. 来自 `std::async(std::launch::deferred, ...)` 且从未调用 `get()`/`wait()` 的 `future` 析构
 D. 来自 `std::async(std::launch::async, ...)` 且是对应共享状态最后一个引用、任务尚未完成的 `future` 析构
+explanation: 这是唯一的特殊情况：`std::async` 以 `async` 策略启动的任务，其对应共享状态的最后一个 future 在析构时，如果任务还没完成会阻塞等待，行为上等价隐式 join；其它三种情况都是普通析构，不阻塞。
+```
 
-**答案：D** — 这是唯一的特殊情况：`std::async` 以 `async` 策略启动的任务，其对应共享状态的最后一个 future 在析构时，如果任务还没完成会阻塞等待，行为上等价隐式 join；其它三种情况都是普通析构，不阻塞。
-
----
-
-**9. 为什么只有 `std::async` 启动的任务会有这种特殊的 future 析构阻塞行为，而 `std::promise`/`std::packaged_task` 没有？**
+```quiz
+title: 快速选择题 9
+question: 为什么只有 `std::async` 启动的任务会有这种特殊的 future 析构阻塞行为，而 `std::promise`/`std::packaged_task` 没有？
+answer: B
 A. 因为 `std::promise`/`std::packaged_task` 的共享状态实现方式不同，不支持阻塞
 B. 因为 `std::async` 隐藏了底层的 `std::thread`，调用者手上没有别的句柄能保证任务在程序退出前跑完，只能靠 future 析构兜底
 C. 因为 `std::promise`/`std::packaged_task` 从不会关联未完成的异步任务
 D. 这是标准委员会的历史遗留不一致，没有设计原因
+explanation: `std::promise`/`std::packaged_task` 通常搭配调用者自己创建的 `std::thread`，线程本身的 join/detach 责任已经由条款 37 的规则覆盖；而 `std::async` 不暴露底层线程句柄，只能让 future 析构承担"确保任务跑完"的责任。
+```
 
-**答案：B** — `std::promise`/`std::packaged_task` 通常搭配调用者自己创建的 `std::thread`，线程本身的 join/detach 责任已经由条款 37 的规则覆盖；而 `std::async` 不暴露底层线程句柄，只能让 future 析构承担"确保任务跑完"的责任。
-
----
-
-**10. 想用条件变量实现"一次性事件通知"，为什么需要用带谓词形式的 `wait`（如 `cv.wait(lk, pred)`）而不是裸的 `cv.wait(lk)`？**
+```quiz
+title: 快速选择题 10
+question: 想用条件变量实现"一次性事件通知"，为什么需要用带谓词形式的 `wait`（如 `cv.wait(lk, pred)`）而不是裸的 `cv.wait(lk)`？
+answer: C
 A. 带谓词形式性能更好
 B. 裸 `wait` 不需要配合互斥量使用
 C. 防止事件在等待线程开始等待之前就已经发生，导致等待线程错过通知、永远阻塞
 D. 带谓词形式可以支持多个事件同时通知
+explanation: 如果不检查标志位就直接挂起等待，事件恰好在 `wait()` 调用之前就已经发生并通知过一次的话，这次通知会被错过，等待线程会一直阻塞；谓词形式先检查条件、不满足才挂起，能正确处理这种时序。
+```
 
-**答案：C** — 如果不检查标志位就直接挂起等待，事件恰好在 `wait()` 调用之前就已经发生并通知过一次的话，这次通知会被错过，等待线程会一直阻塞；谓词形式先检查条件、不满足才挂起，能正确处理这种时序。
-
----
-
-**11. `std::promise<void>` / `std::future<void>` 用于一次性事件通知时，相比条件变量方案的主要优势是什么？**
+```quiz
+title: 快速选择题 11
+question: `std::promise<void>` / `std::future<void>` 用于一次性事件通知时，相比条件变量方案的主要优势是什么？
+answer: B
 A. 性能开销更低，因为不需要堆分配
 B. 天然正确处理"事件已经发生、之后才开始等待"的场景，不需要额外的互斥量和谓词判断
 C. 支持无限次重复触发同一个事件
 D. 不需要任何形式的线程同步机制
+explanation: `future.wait()` 内建正确处理"`set_value()` 已经被调用过"的情况，调用即返回，不需要像条件变量那样自己维护标志位和谓词；代价是共享状态需要堆分配，开销比条件变量更高，因此更适合一次性场景。
+```
 
-**答案：B** — `future.wait()` 内建正确处理"`set_value()` 已经被调用过"的情况，调用即返回，不需要像条件变量那样自己维护标志位和谓词；代价是共享状态需要堆分配，开销比条件变量更高，因此更适合一次性场景。
-
----
-
-**12. 一个 `std::promise<void>` 对象，其 `set_value()` 可以被调用几次？**
+```quiz
+title: 快速选择题 12
+question: 一个 `std::promise<void>` 对象，其 `set_value()` 可以被调用几次？
+answer: B
 A. 任意多次，多次调用会被忽略
 B. 恰好一次，第二次调用会抛出异常
 C. 每个关联的 `future` 调用一次
 D. 取决于是否使用了 `std::launch::async`
+explanation: `set_value()` 在同一个 `promise` 上只能成功调用一次，第二次调用会抛出 `std::future_error`；这也是这个方案只适合一次性事件、不适合重复通知的原因。
+```
 
-**答案：B** — `set_value()` 在同一个 `promise` 上只能成功调用一次，第二次调用会抛出 `std::future_error`；这也是这个方案只适合一次性事件、不适合重复通知的原因。
-
----
-
-**13. `volatile` 和 `std::atomic` 在多线程场景下的本质区别是什么？**
+```quiz
+title: 快速选择题 13
+question: `volatile` 和 `std::atomic` 在多线程场景下的本质区别是什么？
+answer: B
 A. `volatile` 保证原子性但不保证内存序，`std::atomic` 两者都保证
 B. `volatile` 只约束编译器不对该变量做特定优化，不提供原子性也不提供跨线程内存序；`std::atomic` 两者都提供
 C. 两者提供的保证完全相同，只是语法不同
 D. `volatile` 用于用户态变量，`std::atomic` 用于内核态变量
+explanation: `volatile` 与并发正确性无关，只影响编译器的优化决策（不缓存、不消除访问）；`std::atomic` 才同时提供原子性和内存序保证，是并发共享变量的正确工具。
+```
 
-**答案：B** — `volatile` 与并发正确性无关，只影响编译器的优化决策（不缓存、不消除访问）；`std::atomic` 才同时提供原子性和内存序保证，是并发共享变量的正确工具。
-
----
-
-**14. `volatile` 的正确使用场景是以下哪一种？**
+```quiz
+title: 快速选择题 14
+question: `volatile` 的正确使用场景是以下哪一种？
+answer: C
 A. 多个线程共享的计数器
 B. 用互斥量保护的临界区内的标志位
 C. 内存映射的硬件寄存器，其值可能因硬件活动而在编译器视野之外发生改变
 D. 用于替代 `std::atomic<bool>` 实现线程间的忙等信号
-
-**答案：C** — `volatile` 的设计目的是应对"会在 C++ 抽象机正常执行流程之外被改变"的内存，典型例子是内存映射寄存器、信号处理函数修改的内存、`setjmp`/`longjmp` 相关内存，这些都与多线程同步无关；用 `volatile` 实现线程间信号（如 D 选项）是常见但错误的用法。
+explanation: `volatile` 的设计目的是应对"会在 C++ 抽象机正常执行流程之外被改变"的内存，典型例子是内存映射寄存器、信号处理函数修改的内存、`setjmp`/`longjmp` 相关内存，这些都与多线程同步无关；用 `volatile` 实现线程间信号（如 D 选项）是常见但错误的用法。
+```
