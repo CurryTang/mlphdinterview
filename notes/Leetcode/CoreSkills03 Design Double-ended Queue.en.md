@@ -27,7 +27,7 @@ Implement a deque that supports insertion and deletion at both the front and the
 
 A deque is not only used to practice implementing data structures. It can also maintain a monotonic set of candidate values: new elements enter from the back, and expired elements leave from the front. This pattern can compute the maximum value of every fixed-size window in linear time.
 
-For the full derivation and code, see [[CoreSkills29 Sliding Window|Sliding Window Problem 5: Sliding Window Maximum]].
+For the full derivation and code, see [[CoreSkills18 Sliding Window|Sliding Window Problem 5: Sliding Window Maximum]].
 
 ## Reference Solution
 

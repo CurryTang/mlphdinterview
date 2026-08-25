@@ -214,20 +214,20 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
     expect(screen.getByText('本板块共 22 篇笔记')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Core Skills 31 · Binary Search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 17 · Two Pointers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 18 · Sliding Window/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 19 · Stack & Monotonic Stack/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Core Skills 20 · Binary Search/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 17 · Two Pointers/i }));
 
     expect(await screen.findByRole('heading', { name: /Two Pointers/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills28 Two Pointers.md')).toHaveLength(2);
+    expect(screen.getAllByText('CoreSkills17 Two Pointers.md')).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 18 · Sliding Window/i }));
 
     expect(await screen.findByRole('heading', { name: /中文教程/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills29 Sliding Window.md')).toHaveLength(2);
+    expect(screen.getAllByText('CoreSkills18 Sliding Window.md')).toHaveLength(2);
   });
 
   it('renders the interactive 3Sum two-pointer walkthrough', async () => {
@@ -235,7 +235,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills28')
+        text: async () => requestUrl.includes('CoreSkills17')
           ? '# Two Pointers\n\n```three-sum-demo\n```'
           : '# LeetCode tutorial',
       };
@@ -244,7 +244,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 17 · Two Pointers/i }));
 
     expect(await screen.findByRole('region', { name: '3Sum 双指针演示' })).toBeInTheDocument();
     expect(screen.getByText('排序并初始化')).toBeInTheDocument();
@@ -260,7 +260,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills29')
+        text: async () => requestUrl.includes('CoreSkills18')
           ? '# Sliding Window\n\n```sliding-window-demo\n```'
           : '# LeetCode tutorial',
       };
@@ -269,7 +269,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 18 · Sliding Window/i }));
 
     const visual = await screen.findByRole('region', { name: '滑动窗口万能模板演示' });
     expect(within(visual).getByText('右扩：加入 A')).toBeInTheDocument();
@@ -287,7 +287,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills29')
+        text: async () => requestUrl.includes('CoreSkills18')
           ? '# Sliding Window\n\n```sliding-window-patterns\n```'
           : '# LeetCode tutorial',
       };
@@ -296,7 +296,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 18 · Sliding Window/i }));
 
     const atlas = await screen.findByRole('region', { name: '五道滑动窗口题模板对照' });
     fireEvent.click(within(atlas).getByRole('tab', { name: /LC 567.*Permutation in String/i }));
@@ -312,7 +312,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills29')
+        text: async () => requestUrl.includes('CoreSkills18')
           ? '# Sliding Window\n\n```longest-substring-demo\n```'
           : '# LeetCode tutorial',
       };
@@ -321,7 +321,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 29 · Sliding Window/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 18 · Sliding Window/i }));
 
     const visual = await screen.findByRole('region', { name: '最长无重复子串代码映射演示' });
     expect(within(visual).getByText('同一行骨架，逐项填入本题条件')).toBeInTheDocument();
@@ -343,7 +343,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills30')
+        text: async () => requestUrl.includes('CoreSkills19')
           ? '# Stack\n\n```monotonic-stack-demo\n```'
           : '# LeetCode tutorial',
       };
@@ -352,7 +352,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 30 · Stack & Monotonic Stack/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 19 · Stack & Monotonic Stack/i }));
 
     const visual = await screen.findByRole('region', { name: '单调栈统一模板演示' });
     expect(within(visual).getByText('下标都在等待右侧第一个答案')).toBeInTheDocument();
@@ -381,7 +381,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills28')
+        text: async () => requestUrl.includes('CoreSkills17')
           ? '# Two Pointers\n\n```rain-water-demo\n```'
           : '# LeetCode tutorial',
       };
@@ -390,7 +390,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 28 · Two Pointers/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 17 · Two Pointers/i }));
 
     const visual = await screen.findByRole('region', { name: '接雨水双指针演示' });
     expect(within(visual).getByText(/较低的历史最高墙先结算/)).toBeInTheDocument();
@@ -408,7 +408,7 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('CoreSkills33')
+        text: async () => requestUrl.includes('CoreSkills22')
           ? [
             '# Backtracking',
             '',
@@ -437,7 +437,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
-    fireEvent.click(screen.getByRole('button', { name: /Core Skills 33 · Backtracking/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 22 · Backtracking/i }));
 
     const atlas = await screen.findByRole('region', { name: '十道回溯题模板对照' });
     expect(within(atlas).getByText('backtrack(start)')).toBeInTheDocument();
@@ -700,6 +700,19 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#SystemDesign06%20Async%20Messaging%20Systems.md');
+    });
+  });
+
+  it('redirects legacy LeetCode note routes to the contiguous chapter numbers', async () => {
+    window.history.replaceState(null, '', '/#CoreSkills33%20Backtracking.md');
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Core Skills 22 · Backtracking/i })).toBeInTheDocument();
+    expect(screen.getAllByText('CoreSkills22 Backtracking.md')).toHaveLength(2);
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#CoreSkills22%20Backtracking.md');
     });
   });
 

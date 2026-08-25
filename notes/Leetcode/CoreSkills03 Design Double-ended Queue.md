@@ -27,7 +27,7 @@
 
 双端队列不只用来练数据结构实现。它还可以维护一组单调的候选值：新元素从队尾进入，失效元素从队首离开。这个模式可以在线性时间内求出每个固定窗口的最大值。
 
-完整推导和代码见 [[CoreSkills29 Sliding Window|Sliding Window 第五题：Sliding Window Maximum]]。
+完整推导和代码见 [[CoreSkills18 Sliding Window|Sliding Window 第五题：Sliding Window Maximum]]。
 
 ## 参考解法
 

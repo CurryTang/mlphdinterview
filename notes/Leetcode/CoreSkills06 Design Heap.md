@@ -304,7 +304,7 @@ class Solution:
 
 `heapq.nlargest` 内部维护的正是一个大小为 `k` 的堆，这一行等价于手写的有界堆模板。
 
-面试官经常会追问平均 `O(n)` 的写法：快速选择复用 partition，每轮只递归一侧；partition 本身的原地划分模板见 [[CoreSkills10 Insertion Sort#Quick Sort|Quick Sort]]。
+面试官经常会追问平均 `O(n)` 的写法：快速选择复用 partition，每轮只递归一侧；partition 本身的原地划分模板见 [[CoreSkills09 Insertion Sort#Quick Sort|Quick Sort]]。
 
 ```python
 import random

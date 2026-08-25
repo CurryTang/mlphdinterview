@@ -304,7 +304,7 @@ class Solution:
 
 `heapq.nlargest` maintains exactly a size-`k` heap internally, so this one line is equivalent to writing the bounded-heap template by hand.
 
-Interviewers often follow up by asking for an average-`O(n)` solution: quickselect, which reuses partition and only recurses into one side each round. The in-place partitioning template itself is covered in [[CoreSkills10 Insertion Sort#Quick Sort|Quick Sort]].
+Interviewers often follow up by asking for an average-`O(n)` solution: quickselect, which reuses partition and only recurses into one side each round. The in-place partitioning template itself is covered in [[CoreSkills09 Insertion Sort#Quick Sort|Quick Sort]].
 
 ```python
 import random
