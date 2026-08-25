@@ -24,25 +24,12 @@ In interviews, the two standard arguments used to prove greedy correctness are:
 
 ## 2. Four Universal Greedy Templates
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                4 Universal Greedy Decision Templates                             │
-├───────────────────────────────┬───────────────────────────────┬──────────────────────────────────┤
-│ Template Category             │ Invariant & Operational Logic │ Classic Representative Problems  │
-├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
-│ 1. Prefix Reset               │ When running sum < 0, history │ Maximum Subarray (LC 53)         │
-│                               │ is a net negative; reset start│ Gas Station (LC 134)             │
-├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
-│ 2. Reachable Envelope & BFS   │ Maintain max_reach; advance   │ Jump Game (LC 55)                │
-│    Window Expansion           │ layer-by-layer for min steps  │ Jump Game II (LC 45)             │
-├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
-│ 3. Forced Choice & Slicing    │ Min element has no predecessor│ Hand of Straights (LC 846)       │
-│                               │ Disqualify violating elements │ Merge Triplets (LC 1899)         │
-├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
-│ 4. Boundary Merge & Range     │ Cut when reaching max(last[c])│ Partition Labels (LC 763)        │
-│    State Tracking             │ Track [min, max] balance range│ Valid Parenthesis String (LC 678)│
-└───────────────────────────────┴───────────────────────────────┴──────────────────────────────────┘
-```
+| Template Category | Invariant & Operational Logic | Classic Representative Problems |
+| :--- | :--- | :--- |
+| **1. Prefix Reset** | When running sum `< 0`, history is a pure drag on the future; discard and reset start immediately. | **Maximum Subarray** (LC 53)<br>**Gas Station** (LC 134) |
+| **2. Reachable Envelope & BFS Window** | Maintain farthest reachable boundary `max_reach`; advance layer-by-layer for minimum steps. | **Jump Game** (LC 55)<br>**Jump Game II** (LC 45) |
+| **3. Forced Choice & Disqualification** | Minimum element has no predecessor, forced to start a sequence; disqualify violating candidates upfront. | **Hand of Straights** (LC 846)<br>**Merge Triplets** (LC 1899) |
+| **4. Boundary Merge & Range Tracking** | Cut immediately when reaching `max(last[c])`; track unclosed bracket range `[min, max]` under wildcards. | **Partition Labels** (LC 763)<br>**Valid Parenthesis String** (LC 678) |
 
 ```greedy-patterns
 ```
@@ -562,28 +549,16 @@ public:
 
 ## 4. Summary & Top Interview Pitfall Matrix
 
-```text
-                           [NeetCode 150 Greedy Summary Matrix]
-┌──────────────────────────┬─────────────────────────────┬───────────────────────────┬─────────────┐
-│ Problem                  │ Core Invariant              │ Fatal Trap                │ Complexity  │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 53. Maximum Subarray     │ Reset when running sum < 0  │ All-negative initialized 0│ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 55. Jump Game            │ Maintain max_reach boundary │ Blind backtracking on 0   │ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 45. Jump Game II         │ Implicit BFS (i==cur_end)   │ Loop to n-1 overshoots    │ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 134. Gas Station         │ Deficit eliminates prefix   │ Missing total_surplus check│ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 846. Hand of Straights   │ Min card forces straight    │ Missing len % groupSize   │ O(n log n)  │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 1899. Merge Triplets     │ Disqualify violating items  │ Expecting single match    │ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 763. Partition Labels    │ Cut at max(last[c])         │ No precomputation         │ O(n) / O(1) │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
-│ 678. Valid Parenthesis   │ Track [cmin, cmax] bounds   │ Forgetting cmin clamp at 0│ O(n) / O(1) │
-└──────────────────────────┴─────────────────────────────┴───────────────────────────┴─────────────┘
-```
+| Problem | Core Invariant | Fatal Trap | Complexity |
+| :--- | :--- | :--- | :--- |
+| **53. Maximum Subarray** | Reset running sum when `cur_sum < 0` | Initializing `max_sum = 0` for all-negative arrays | Time $O(n)$<br>Space $O(1)$ |
+| **55. Jump Game** | Maintain `max_reach` envelope monotonically | Blind backtracking on 0 (only need `max_reach` to cross) | Time $O(n)$<br>Space $O(1)$ |
+| **45. Jump Game II** | Implicit BFS level window (`steps += 1` when `i == cur_end`) | Looping to `n - 1` triggers an extra step at the finish line | Time $O(n)$<br>Space $O(1)$ |
+| **134. Gas Station** | Deficit eliminates prefix; jump candidate start to `i + 1` | Missing global total surplus validation (`total_surplus >= 0`) | Time $O(n)$<br>Space $O(1)$ |
+| **846. Hand of Straights** | Minimum card has no predecessor, forced to start straights | Missing `len(hand) % groupSize == 0` validation | Time $O(n \log n)$<br>Space $O(n)$ |
+| **1899. Merge Triplets** | Disqualify violating triplets upfront, merge all safe items | Expecting a single triplet to match all 3 target components | Time $O(n)$<br>Space $O(1)$ |
+| **763. Partition Labels** | Cut partition immediately when `i == max(last[c])` | Slicing on the fly without precomputing last occurrence table | Time $O(n)$<br>Space $O(1)$ |
+| **678. Valid Parenthesis String** | Track unclosed left bracket balance range `[cmin, cmax]` | Forgetting to clamp `cmin` lower bound at 0 | Time $O(n)$<br>Space $O(1)$ |
 
 **Key Takeaways**:
 - Always present the invariant and exchange argument to the interviewer before writing code.
