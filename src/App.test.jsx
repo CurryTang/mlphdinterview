@@ -842,10 +842,33 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
-    expect(screen.getByText('本板块共 33 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 34 篇笔记')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
 
     expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
     expect(screen.getAllByText('Quant07 Recursion Absent-Minded Passenger.md')).toHaveLength(2);
+  });
+
+  it('opens Effective Modern C++ 7 for C++17 and C++20 core features', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('QuantDevEMC07')
+          ? '# Effective Modern C++ 7 · C++17 与 C++20 核心新特性深度解构\n\nif constexpr 与 Concepts。'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Effective Modern C\+\+ 7/i }));
+
+    expect(await screen.findByRole('heading', { name: /Effective Modern C\+\+ 7 · C\+\+17 与 C\+\+20 核心新特性深度解构/i })).toBeInTheDocument();
+    expect(screen.getByText('if constexpr 与 Concepts。')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByRole('button', { name: /Effective Modern C\+\+ 7 · C\+\+17 & C\+\+20 Core Modern Features/i })).toBeInTheDocument();
   });
 });

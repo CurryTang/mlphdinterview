@@ -2178,6 +2178,17 @@ const quantNoteDefinitions = [
       difficulty: 'Hard',
     },
   ),
+  createTutorialDefinition(
+    'Effective Modern C++ 7 · C++17 与 C++20 核心新特性深度解构',
+    'QuantDevEMC07 C++17 and C++20 Key Modern Features.md',
+    'QuantDevEMC07 C++17 and C++20 Key Modern Features.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 7 · C++17 & C++20 Core Modern Features',
+      category: 'Effective Modern C++',
+      difficulty: 'Hard',
+    },
+  ),
 ];
 
 const quantNotes = quantNoteDefinitions.map((definition) => ({
