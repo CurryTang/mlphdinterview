@@ -212,6 +212,11 @@ class Solution:
 | base case | `len(path) == len(nums)` |
 | 收答案时机 | 只在叶子节点收 |
 
+下面这个演示走的是 Permutations 的完整决策树（`nums = [1, 2, 3]`）。注意观察三件事：`used` 数组如何动态锁定已被选中的元素、为什么每一层都从 0 扫起且遇到已使用的元素直接 `continue`、以及答案只在最深处的叶子节点（`len(path) == 3`）收集：
+
+```permutations-demo
+```
+
 ```python
 from typing import List
 
@@ -259,6 +264,11 @@ class Solution:
 | `path` | 当前已选的数字 |
 | base case | `remain == 0` 收答案，`remain < 0` 剪掉 |
 | 剪枝 | 排序后 `candidates[i] > remain` 直接 `break` |
+
+下面这个演示走的是 Combination Sum 的完整决策树（`candidates = [2, 3, 6, 7], target = 7`）。注意观察 `remain` 预算如何递减、递归传 `i` 带来的同元素重复选取（如 `[2, 2, 3]`）、以及排序后 `candidates[i] > remain` 一击致命的剪枝（`break`）：
+
+```combination-sum-demo
+```
 
 因为同一个数字可以重复选，递归时传的是 `i` 而不是 `i + 1`：
 

@@ -15841,7 +15841,9 @@ function BacktrackTreeDiagram({ ariaLabel, edgeClass, nodeClass, nodes, viewBox 
   return (
     <svg aria-label={ariaLabel} className="bt-tree" role="img" viewBox={viewBox}>
       {nodes.filter((node) => node.id !== '').map((node) => {
-        const parent = byId[node.id.slice(0, -1)];
+        const parentId = node.parentId ?? node.id.slice(0, -1);
+        const parent = byId[parentId];
+        if (!parent) return null;
         return (
           <line
             className={`bt-edge ${edgeClass(node.id)}`}
@@ -15854,7 +15856,7 @@ function BacktrackTreeDiagram({ ariaLabel, edgeClass, nodeClass, nodes, viewBox 
         );
       })}
       {nodes.map((node) => {
-        const width = Math.max(52, node.label.length * 10 + 20);
+        const width = Math.max(52, node.label.length * 8.5 + 18);
         return (
           <g className={`bt-node ${nodeClass(node.id)}`} key={`node-${node.id}`}>
             <rect height="32" rx="8" width={width} x={node.x - width / 2} y={node.y - 16} />
@@ -16723,10 +16725,639 @@ function NQueensVisual() {
   );
 }
 
+const PM_NUMS = [1, 2, 3];
+
+const PM_NODES = [
+  { id: '', label: '[ ]', x: 390, y: 36 },
+  { id: '0', label: '[1]', x: 135, y: 118 },
+  { id: '1', label: '[2]', x: 390, y: 118 },
+  { id: '2', label: '[3]', x: 645, y: 118 },
+  { id: '01', label: '[1,2]', x: 80, y: 200 },
+  { id: '02', label: '[1,3]', x: 190, y: 200 },
+  { id: '10', label: '[2,1]', x: 335, y: 200 },
+  { id: '12', label: '[2,3]', x: 445, y: 200 },
+  { id: '20', label: '[3,1]', x: 590, y: 200 },
+  { id: '21', label: '[3,2]', x: 700, y: 200 },
+  { id: '012', label: '[1,2,3]', x: 80, y: 290 },
+  { id: '021', label: '[1,3,2]', x: 190, y: 290 },
+  { id: '102', label: '[2,1,3]', x: 335, y: 290 },
+  { id: '120', label: '[2,3,1]', x: 445, y: 290 },
+  { id: '201', label: '[3,1,2]', x: 590, y: 290 },
+  { id: '210', label: '[3,2,1]', x: 700, y: 290 },
+];
+
+const PM_CODE_LINES = [
+  { id: 'base', code: ['def backtrack():', '    if len(path) == len(nums):', '        result.append(path[:])', '        return'] },
+  { id: 'loop', code: ['    for i in range(len(nums)):'] },
+  { id: 'guard', code: ['        if used[i]:', '            continue'] },
+  { id: 'choose', code: ['        used[i] = True', '        path.append(nums[i])'] },
+  { id: 'recurse', code: ['        backtrack()'] },
+  { id: 'undo', code: ['        path.pop()', '        used[i] = False'] },
+];
+
+function buildPermutationsSteps() {
+  const nums = PM_NUMS;
+  const steps = [];
+  const path = [];
+  const used = [false, false, false];
+  const result = [];
+  const visited = [];
+
+  const snap = (kind, node, extra) => steps.push({
+    kind,
+    node,
+    path: [...path],
+    used: [...used],
+    result: result.map((entry) => [...entry]),
+    visited: [...visited],
+    ...extra,
+  });
+
+  const walk = (nodeId) => {
+    visited.push(nodeId);
+    if (path.length === nums.length) {
+      result.push([...path]);
+      snap('collect', nodeId);
+      return;
+    }
+
+    for (let i = 0; i < nums.length; i += 1) {
+      if (used[i]) {
+        snap('skip', nodeId, { index: i, value: nums[i] });
+        continue;
+      }
+
+      const childId = nodeId + String(i);
+      used[i] = true;
+      path.push(nums[i]);
+      snap('choose', childId, { index: i, value: nums[i] });
+
+      walk(childId);
+
+      path.pop();
+      used[i] = false;
+      snap('undo', nodeId, { index: i, value: nums[i], child: childId });
+    }
+  };
+
+  snap('start', '');
+  walk('');
+  snap('done', '');
+  return steps;
+}
+
+const PM_STEPS = buildPermutationsSteps();
+
+function PermutationsVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = PM_STEPS;
+  const step = steps[activeStep];
+  const visited = new Set(step.visited);
+  const collected = new Set(step.result.map((r) => r.map((val) => PM_NUMS.indexOf(val)).join('')));
+  const onPath = new Set();
+  for (let i = 0; i <= step.node.length; i += 1) {
+    onPath.add(step.node.slice(0, i));
+  }
+
+  const activeLine = {
+    start: 'base',
+    collect: 'base',
+    skip: 'guard',
+    choose: 'choose',
+    undo: 'undo',
+    done: 'loop',
+  }[step.kind];
+
+  const lineLabel = {
+    base: t('len(path) == len(nums) 触发叶子收集', 'len(path) == len(nums) triggers leaf collection'),
+    guard: t('used[i] 为 True，跳过已占用元素', 'used[i] is True, skip occupied element'),
+    choose: t('标记 used[i] 并加入 path', 'Mark used[i] and append to path'),
+    undo: t('回溯：pop 并释放 used[i]', 'Backtrack: pop and release used[i]'),
+    loop: t('遍历完成，函数返回', 'Loop finished, function returns'),
+  }[activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'start') {
+    title = t('从根节点出发，used 全为 False', 'Start at root with used array all False');
+    detail = t(
+      '全排列问题顺序重要，每一层都从 0 遍历到 n-1，通过 used 数组判断哪些元素已被放入当前排列中。',
+      'In permutations order matters. Every level iterates 0 to n-1, using the used array to check which elements are already in the current path.',
+    );
+  } else if (step.kind === 'choose') {
+    title = t(
+      `选中 nums[${step.index}] = ${step.value}，used[${step.index}] 设为 True`,
+      `Choose nums[${step.index}] = ${step.value}, set used[${step.index}] = True`,
+    );
+    detail = t(
+      `path 变为 ${formatList(step.path)}，进入下一层递归。used[${step.index}] 锁定该元素，防止更深层再次选中它。`,
+      `path becomes ${formatList(step.path)}, entering next recursion level. used[${step.index}] locks this element so deeper levels do not pick it again.`,
+    );
+  } else if (step.kind === 'skip') {
+    title = t(
+      `nums[${step.index}] = ${step.value} 已在 used 中（True），跳过`,
+      `nums[${step.index}] = ${step.value} already used (True), skip`,
+    );
+    detail = t(
+      '排列型每一层从 i = 0 扫起，遇到已在当前路径使用的元素直接 continue。',
+      'Permutation loops start from i = 0 at every level; used elements in current path are skipped with continue.',
+    );
+  } else if (step.kind === 'collect') {
+    title = t(
+      `叶子节点！收集全排列 ${formatList(step.path)}（第 ${step.result.length}/6 个）`,
+      `Leaf node! Collected permutation ${formatList(step.path)} (${step.result.length}/6)`,
+    );
+    detail = t(
+      'len(path) == len(nums) 触发 base case，result.append(path[:]) 拷贝当前排列并立即 return。',
+      'len(path) == len(nums) triggers the base case. result.append(path[:]) copies the permutation and returns immediately.',
+    );
+  } else if (step.kind === 'undo') {
+    title = t(
+      `回溯：pop 掉 ${step.value}，释放 used[${step.index}] = False`,
+      `Backtrack: pop ${step.value} and reset used[${step.index}] = False`,
+    );
+    detail = t(
+      `状态恢复为 path = ${formatList(step.path)}。同层的下一个 i 可以继续尝试其他可用元素。`,
+      `State restored to path = ${formatList(step.path)}. The next i at this level can now try other available elements.`,
+    );
+  } else {
+    title = t('搜索完成：共找到 3! = 6 个全排列', 'Search complete: found 3! = 6 permutations');
+    detail = t(
+      '所有 used 状态均已还原为 False，递归栈完全清空。',
+      'All used states are reset to False and the recursion stack is empty.',
+    );
+  }
+
+  return (
+    <section aria-label={t('Permutations 决策树逐步演示', 'Step-through: the Permutations decision tree')} className="pm-visual">
+      <header className="pm-header bt-header">
+        <div>
+          <p className="eyebrow">{t('LC 46 · Permutations，nums = [1, 2, 3]', 'LC 46 · Permutations with nums = [1, 2, 3]')}</p>
+          <h2>{t('全排列决策树与 used 数组状态', 'Permutations decision tree and used array state')}</h2>
+          <p>{t(
+            '看三件事：每层从 0 开始扫但受 used 限制、每次进入/离开子树时 used 标志的置位与复位、以及答案只在最深处的叶子节点收集。',
+            'Watch three things: looping from 0 at every level gated by used, setting/resetting used flags on entry/exit, and collecting answers only at the leaf nodes.',
+          )}</p>
+        </div>
+      </header>
+
+      <div aria-live="polite" className={`bt-step ${step.kind}`}>
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="bt-workspace">
+        <div className="bt-stage-card">
+          <div className="pm-used-strip">
+            <span className="title">used[]:</span>
+            {PM_NUMS.map((num, i) => {
+              const isUsed = step.used[i];
+              const isCurrent = step.index === i && (step.kind === 'choose' || step.kind === 'skip' || step.kind === 'undo');
+              return (
+                <div
+                  className={`pm-used-item ${isUsed ? 'is-used' : 'is-free'} ${isCurrent ? 'is-current' : ''}`}
+                  key={i}
+                >
+                  <span>nums[{i}]={num}</span>
+                  <code>{isUsed ? 'T (Used)' : 'F (Free)'}</code>
+                </div>
+              );
+            })}
+          </div>
+
+          <BacktrackTreeDiagram
+            ariaLabel={t('Permutations 决策树', 'The Permutations decision tree')}
+            edgeClass={(id) => (onPath.has(id) ? 'active' : visited.has(id) ? 'done' : 'ghost')}
+            nodeClass={(id) => [
+              id === step.node ? 'current' : '',
+              id !== step.node && onPath.has(id) ? 'active' : '',
+              !onPath.has(id) && collected.has(id) ? 'done' : '',
+              !visited.has(id) ? 'ghost' : '',
+            ].filter(Boolean).join(' ')}
+            nodes={PM_NODES}
+            viewBox="0 0 780 340"
+          />
+        </div>
+
+        <div className="bt-side">
+          <div aria-label={t('当前代码', 'Current code')} className="bt-code">
+            <div className="bt-code-heading">
+              <span>permute</span>
+              <strong>{lineLabel}</strong>
+            </div>
+            <div className="bt-code-lines">
+              {PM_CODE_LINES.map((line) => (
+                <div
+                  aria-current={activeLine === line.id ? 'step' : undefined}
+                  className={activeLine === line.id ? 'active' : ''}
+                  key={line.id}
+                >
+                  {line.code.map((code) => <code key={code}>{code || ' '}</code>)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bt-state">
+            <div>
+              <span>path</span>
+              <strong>{formatList(step.path)}</strong>
+            </div>
+            <div>
+              <span>{t('当前 i', 'Current i')}</span>
+              <strong>{step.index !== undefined ? `${step.index} (nums[${step.index}]=${PM_NUMS[step.index]})` : '—'}</strong>
+            </div>
+          </div>
+
+          <div className="bt-results">
+            <span>result（{step.result.length} / 6）</span>
+            <div>
+              {step.result.map((entry, index) => (
+                <code
+                  className={index === step.result.length - 1 && step.kind === 'collect' ? 'fresh' : ''}
+                  key={`${entry.join('-')}-${index}`}
+                >
+                  {formatList(entry)}
+                </code>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bt-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('当前 path', 'Current path')}</span>
+        <span><i className="done" />{t('已探索分支 / 已收排列', 'Explored branch / Collected permutation')}</span>
+        <span><i className="ghost" />{t('尚未访问', 'Not visited yet')}</span>
+      </div>
+
+      <div className="bt-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择全排列演示步骤', 'Select a permutations demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const CS_CANDIDATES = [2, 3, 6, 7];
+const CS_TARGET = 7;
+
+const CS_NODES = [
+  { id: '', label: '[ ] rem:7', x: 390, y: 35 },
+  { id: '0', label: '[2] rem:5', x: 175, y: 115 },
+  { id: '1', label: '[3] rem:4', x: 400, y: 115 },
+  { id: '2', label: '[6] rem:1', x: 580, y: 115 },
+  { id: '3', label: '[7] rem:0 ★', x: 700, y: 115 },
+  { id: '00', label: '[2,2] rem:3', x: 95, y: 200 },
+  { id: '01', label: '[2,3] rem:2', x: 255, y: 200 },
+  { id: '11', label: '[3,3] rem:1', x: 400, y: 200 },
+  { id: '000', label: '[2,2,2] rem:1', x: 45, y: 285 },
+  { id: '001', label: '[2,2,3] rem:0 ★', x: 155, y: 285 },
+  // Cut nodes
+  { id: '000_cut_0', parentId: '000', label: '✂ 2>1 (break)', x: 45, y: 345 },
+  { id: '00_cut_2', parentId: '00', label: '✂ 6>3 (break)', x: 115, y: 252 },
+  { id: '01_cut_1', parentId: '01', label: '✂ 3>2 (break)', x: 255, y: 255 },
+  { id: '0_cut_2', parentId: '0', label: '✂ 6>5 (break)', x: 275, y: 155 },
+  { id: '11_cut_1', parentId: '11', label: '✂ 3>1 (break)', x: 400, y: 255 },
+  { id: '1_cut_2', parentId: '1', label: '✂ 6>4 (break)', x: 490, y: 155 },
+  { id: '2_cut_2', parentId: '2', label: '✂ 6>1 (break)', x: 580, y: 175 },
+];
+
+const CS_CODE_LINES = [
+  { id: 'base', code: ['def backtrack(start, remain):', '    if remain == 0:', '        result.append(path[:])', '        return'] },
+  { id: 'loop', code: ['    for i in range(start, len(candidates)):'] },
+  { id: 'prune', code: ['        if candidates[i] > remain:', '            break  # 排序后提前终止整个循环'] },
+  { id: 'choose', code: ['        path.append(candidates[i])'] },
+  { id: 'recurse', code: ['        backtrack(i, remain - candidates[i])  # 传 i 允许同元素复用'] },
+  { id: 'undo', code: ['        path.pop()'] },
+];
+
+function buildCombinationSumSteps() {
+  const candidates = CS_CANDIDATES;
+  const target = CS_TARGET;
+  const steps = [];
+  const path = [];
+  const result = [];
+  const visited = [];
+  const pruned = [];
+
+  const snap = (kind, node, extra) => steps.push({
+    kind,
+    node,
+    path: [...path],
+    result: result.map((entry) => [...entry]),
+    visited: [...visited],
+    pruned: [...pruned],
+    ...extra,
+  });
+
+  const walk = (start, remain, nodeId) => {
+    visited.push(nodeId);
+    if (remain === 0) {
+      result.push([...path]);
+      snap('collect', nodeId, { start, remain });
+      return;
+    }
+
+    for (let i = start; i < candidates.length; i += 1) {
+      const val = candidates[i];
+      if (val > remain) {
+        const cutId = `${nodeId}_cut_${i}`;
+        pruned.push(cutId);
+        snap('prune', nodeId, {
+          start,
+          remain,
+          index: i,
+          value: val,
+          cutId,
+        });
+        break;
+      }
+
+      const childId = nodeId + String(i);
+      path.push(val);
+      snap('choose', childId, {
+        start,
+        remain: remain - val,
+        index: i,
+        value: val,
+        parent: nodeId,
+      });
+
+      walk(i, remain - val, childId);
+
+      path.pop();
+      snap('undo', nodeId, {
+        start,
+        remain,
+        index: i,
+        value: val,
+        child: childId,
+      });
+    }
+  };
+
+  snap('start', '', { start: 0, remain: target });
+  walk(0, target, '');
+  snap('done', '', { start: 0, remain: 0 });
+  return steps;
+}
+
+const CS_STEPS = buildCombinationSumSteps();
+
+function CombinationSumVisual() {
+  const { t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = CS_STEPS;
+  const step = steps[activeStep];
+  const visited = new Set(step.visited);
+  const pruned = new Set(step.pruned);
+  const collected = new Set(step.result.map((r) => {
+    if (r.join(',') === '2,2,3') return '001';
+    if (r.join(',') === '7') return '3';
+    return '';
+  }));
+  const onPath = new Set();
+  for (let i = 0; i <= step.node.length; i += 1) {
+    onPath.add(step.node.slice(0, i));
+  }
+
+  const sumPath = step.path.reduce((acc, curr) => acc + curr, 0);
+  const progressPercent = Math.min(100, Math.round((sumPath / CS_TARGET) * 100));
+
+  const activeLine = {
+    start: 'base',
+    collect: 'base',
+    prune: 'prune',
+    choose: 'choose',
+    undo: 'undo',
+    done: 'loop',
+  }[step.kind];
+
+  const lineLabel = {
+    base: t('remain == 0 命中目标和', 'remain == 0 target sum reached'),
+    prune: t('candidates[i] > remain：break 剪掉后续所有较大分支', 'candidates[i] > remain: break cuts all larger branches'),
+    choose: t('选入数字，remain 相应扣减', 'Choose candidate and deduct from remain'),
+    undo: t('回溯：pop 并恢复 remain', 'Backtrack: pop and restore remain'),
+    loop: t('循环结束，返回上一层', 'Loop finished, returns to caller'),
+  }[activeLine];
+
+  let title;
+  let detail;
+  if (step.kind === 'start') {
+    title = t('初始状态：candidates = [2, 3, 6, 7], target = 7', 'Initial state: candidates = [2, 3, 6, 7], target = 7');
+    detail = t(
+      '数组已升序排序。从 backtrack(0, 7) 开始递归搜索，remain 实时记录距目标总和的差额。',
+      'Array is sorted ascending. backtrack(0, 7) starts the search, remain tracks distance to target.',
+    );
+  } else if (step.kind === 'choose') {
+    title = t(
+      `选 candidates[${step.index}] = ${step.value}，remain 降为 ${step.remain}`,
+      `Choose candidates[${step.index}] = ${step.value}, remain becomes ${step.remain}`,
+    );
+    detail = t(
+      `path 变为 ${formatList(step.path)}。递归调用 backtrack(${step.index}, ${step.remain})：传 i 而不是 i+1，允许当前元素在下一层继续复用！`,
+      `path becomes ${formatList(step.path)}. Recurse backtrack(${step.index}, ${step.remain}): passing i allows this number to be reused!`,
+    );
+  } else if (step.kind === 'prune') {
+    title = t(
+      `candidates[${step.index}] = ${step.value} > remain (${step.remain})，执行 break 剪枝！`,
+      `candidates[${step.index}] = ${step.value} > remain (${step.remain}), executing break pruning!`,
+    );
+    detail = t(
+      '因为 candidates 已升序排序，当前元素超额意味着后续所有元素（更大）必然超额，直接 break 结束循环，剪掉整批分支！',
+      'Because candidates is sorted, if this element exceeds remain, all subsequent larger elements will too. break terminates the loop and cuts all further branches!',
+    );
+  } else if (step.kind === 'collect') {
+    title = t(
+      `命中目标！remain == 0，收答案 ${formatList(step.path)}（第 ${step.result.length}/2 个）`,
+      `Target met! remain == 0, collected ${formatList(step.path)} (${step.result.length}/2)`,
+    );
+    detail = t(
+      '刚好凑齐 target = 7！result.append(path[:]) 拷贝快照并 return。',
+      'Exactly summed to target = 7! result.append(path[:]) copies snapshot and returns.',
+    );
+  } else if (step.kind === 'undo') {
+    title = t(
+      `回溯：pop 掉 ${step.value}，恢复 remain 为 ${step.remain}`,
+      `Backtrack: pop ${step.value}, restore remain to ${step.remain}`,
+    );
+    detail = t(
+      `path 改回 ${formatList(step.path)}，for 循环继续探索下一个候选数。`,
+      `path restored to ${formatList(step.path)}. The loop proceeds to test the next candidate.`,
+    );
+  } else {
+    title = t('搜索完成：共找到 2 组组合解 [[2, 2, 3], [7]]', 'Search complete: found 2 combination solutions [[2, 2, 3], [7]]');
+    detail = t(
+      '通过"传 i 允许复用"和"有序 break 剪枝"，高效搜索且不生成任何重复组合（如 [3,2,2]）。',
+      'With "pass i for reuse" and "sorted break pruning", it searches efficiently without duplicating combinations like [3,2,2].',
+    );
+  }
+
+  return (
+    <section aria-label={t('Combination Sum 决策树逐步演示', 'Step-through: the Combination Sum decision tree')} className="cs-visual">
+      <header className="cs-header bt-header">
+        <div>
+          <p className="eyebrow">{t('LC 39 · Combination Sum，candidates = [2, 3, 6, 7], target = 7', 'LC 39 · Combination Sum with [2, 3, 6, 7], target = 7')}</p>
+          <h2>{t('预算扣减、同元素复用与 break 剪枝', 'Budget countdown, candidate reuse, and break pruning')}</h2>
+          <p>{t(
+            '看三件事：递归传 i 允许数字重复选取（[2, 2, 3]）、remain 预算如何随选择递减、以及 candidates[i] > remain 时 break 如何瞬间斩断后续分支。',
+            'Watch three things: recursion passing i for repetition ([2, 2, 3]), remain decreasing with choices, and break instantly pruning all larger candidates.',
+          )}</p>
+        </div>
+      </header>
+
+      <div aria-live="polite" className={`bt-step ${step.kind}`}>
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="bt-workspace">
+        <div className="bt-stage-card">
+          <div className="cs-budget-bar">
+            <div className="cs-budget-meta">
+              <span>{t('目标 target: 7', 'Target: 7')}</span>
+              <span>{t(`已选总和: ${sumPath} (${step.path.join('+') || '0'})`, `Sum: ${sumPath} (${step.path.join('+') || '0'})`)}</span>
+              <span>{t(`剩余预算 remain: ${step.remain}`, `Remain: ${step.remain}`)}</span>
+            </div>
+            <div className="cs-budget-track">
+              <div
+                className={`cs-budget-fill ${step.remain === 0 ? 'zero' : ''}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <BacktrackTreeDiagram
+            ariaLabel={t('Combination Sum 决策树', 'The Combination Sum decision tree')}
+            edgeClass={(id) => (
+              pruned.has(id) ? 'cut' : onPath.has(id) ? 'active' : visited.has(id) ? 'done' : 'ghost'
+            )}
+            nodeClass={(id) => [
+              pruned.has(id) ? 'cut' : '',
+              !pruned.has(id) && id === step.node ? 'current' : '',
+              !pruned.has(id) && id !== step.node && onPath.has(id) ? 'active' : '',
+              !pruned.has(id) && !onPath.has(id) && visited.has(id) ? 'done' : '',
+              !pruned.has(id) && collected.has(id) ? 'done solution' : '',
+              !pruned.has(id) && !visited.has(id) ? 'ghost' : '',
+            ].filter(Boolean).join(' ')}
+            nodes={CS_NODES}
+            viewBox="0 0 780 370"
+          />
+        </div>
+
+        <div className="bt-side">
+          <div aria-label={t('当前代码', 'Current code')} className="bt-code">
+            <div className="bt-code-heading">
+              <span>combinationSum</span>
+              <strong>{lineLabel}</strong>
+            </div>
+            <div className="bt-code-lines">
+              {CS_CODE_LINES.map((line) => (
+                <div
+                  aria-current={activeLine === line.id ? 'step' : undefined}
+                  className={activeLine === line.id ? 'active' : ''}
+                  key={line.id}
+                >
+                  {line.code.map((code) => <code key={code}>{code || ' '}</code>)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bt-state">
+            <div>
+              <span>path</span>
+              <strong>{formatList(step.path)}</strong>
+            </div>
+            <div>
+              <span>remain</span>
+              <strong style={{ color: step.remain === 0 ? '#18775a' : undefined }}>{step.remain}</strong>
+            </div>
+            <div>
+              <span>start (i)</span>
+              <strong>{step.start ?? 0}</strong>
+            </div>
+            <div>
+              <span>{t('已剪枝数', 'Pruned')}</span>
+              <strong>{step.pruned.length}</strong>
+            </div>
+          </div>
+
+          <div className="bt-results">
+            <span>result（{step.result.length} / 2）</span>
+            <div>
+              {step.result.map((entry, index) => (
+                <code
+                  className={index === step.result.length - 1 && step.kind === 'collect' ? 'fresh' : ''}
+                  key={`${entry.join('-')}-${index}`}
+                >
+                  {formatList(entry)}
+                </code>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bt-legend">
+        <span><i className="current" />{t('当前节点', 'Current node')}</span>
+        <span><i className="active" />{t('当前 path', 'Current path')}</span>
+        <span><i className="done" />{t('已探索 / 解', 'Explored / Solution')}</span>
+        <span><i className="cut" />{t('> remain，break 剪枝', '> remain, break pruned')}</span>
+        <span><i className="ghost" />{t('尚未访问', 'Not visited yet')}</span>
+      </div>
+
+      <div className="bt-controls">
+        <button disabled={activeStep === 0} onClick={() => setActiveStep((current) => Math.max(0, current - 1))} type="button">
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          aria-label={t('选择组合总和演示步骤', 'Select a combination sum demo step')}
+          max={steps.length - 1}
+          min="0"
+          onChange={(event) => setActiveStep(Number(event.target.value))}
+          type="range"
+          value={activeStep}
+        />
+        <button
+          className="primary"
+          disabled={activeStep === steps.length - 1}
+          onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          type="button"
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|backtracking-dedup-demo|n-queens-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -16834,6 +17465,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'backtracking-tree-demo') {
     return <BacktrackingTreeVisual />;
+  }
+
+  if (match?.[1] === 'permutations-demo') {
+    return <PermutationsVisual />;
+  }
+
+  if (match?.[1] === 'combination-sum-demo') {
+    return <CombinationSumVisual />;
   }
 
   if (match?.[1] === 'backtracking-dedup-demo') {

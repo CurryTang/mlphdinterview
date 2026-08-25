@@ -15072,7 +15072,9 @@ button.overview-support-card.active {
 
 /* ── Backtracking: shared decision-tree diagram ── */
 .bt-visual,
-.bd-visual {
+.bd-visual,
+.pm-visual,
+.cs-visual {
   --bt-ink: #1b2f3d;
   --bt-blue: #24618f;
   --bt-blue-soft: #e6f0f8;
@@ -15104,8 +15106,40 @@ button.overview-support-card.active {
     linear-gradient(145deg, #ffffff, #f6f0f2);
 }
 
+.pm-visual {
+  --bt-ink: #201a35;
+  --bt-blue: #5b3fa3;
+  --bt-blue-soft: #efeaf8;
+  --bt-orange: #d96f1c;
+  --bt-orange-soft: #fff1e2;
+  --bt-green: #18775a;
+  --bt-green-soft: #e1f5ec;
+  border-color: rgba(56, 38, 92, 0.24);
+  background:
+    radial-gradient(circle at 92% 3%, rgba(91, 63, 163, 0.1), transparent 24%),
+    radial-gradient(circle at 5% 44%, rgba(217, 111, 28, 0.08), transparent 22%),
+    linear-gradient(145deg, #ffffff, #f5f1fa);
+}
+
+.cs-visual {
+  --bt-ink: #16322b;
+  --bt-blue: #1c735d;
+  --bt-blue-soft: #e3f5ef;
+  --bt-orange: #c86822;
+  --bt-orange-soft: #fff1e3;
+  --bt-green: #157948;
+  --bt-green-soft: #dff6e9;
+  border-color: rgba(28, 115, 93, 0.24);
+  background:
+    radial-gradient(circle at 92% 3%, rgba(28, 115, 93, 0.1), transparent 24%),
+    radial-gradient(circle at 5% 44%, rgba(200, 104, 34, 0.08), transparent 22%),
+    linear-gradient(145deg, #ffffff, #edf7f3);
+}
+
 .bt-header,
 .bd-header,
+.pm-header,
+.cs-header,
 .nq-header {
   border-bottom: 1px solid rgba(31, 62, 82, 0.12);
   padding: 1rem;
@@ -15113,6 +15147,8 @@ button.overview-support-card.active {
 
 .bt-header h2,
 .bd-header h2,
+.pm-header h2,
+.cs-header h2,
 .nq-header h2 {
   margin: 0.16rem 0 0.3rem;
   color: var(--bt-ink, #1b2f3d);
@@ -15121,6 +15157,8 @@ button.overview-support-card.active {
 
 .bt-header p:not(.eyebrow),
 .bd-header p:not(.eyebrow),
+.pm-header p:not(.eyebrow),
+.cs-header p:not(.eyebrow),
 .nq-header p:not(.eyebrow) {
   max-width: 680px;
   margin: 0;
@@ -15154,6 +15192,8 @@ button.overview-support-card.active {
   border-left-color: var(--bt-green, #1c7355);
 }
 
+.bt-step.skip,
+.bt-step.prune,
 .bd-step.skip,
 .nq-step.reject,
 .nq-step.exhausted {
@@ -15306,6 +15346,98 @@ button.overview-support-card.active {
 .bt-node.cut text {
   fill: var(--bt-red);
   text-decoration: line-through;
+}
+
+.bt-node.solution rect {
+  fill: var(--bt-green-soft);
+  stroke: var(--bt-green);
+  stroke-width: 2.8;
+}
+
+.pm-used-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(56, 38, 92, 0.16);
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pm-used-strip span.title {
+  font: 700 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  color: #55447a;
+  margin-right: 0.15rem;
+}
+
+.pm-used-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  font: 600 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  border: 1px solid rgba(56, 38, 92, 0.2);
+  background: #fbf9ff;
+  color: #3b2c5c;
+  transition: all 0.15s ease;
+}
+
+.pm-used-item.is-used {
+  background: #feece8;
+  border-color: #e06c50;
+  color: #9c2710;
+  font-weight: 750;
+}
+
+.pm-used-item.is-free {
+  background: #e8f7f0;
+  border-color: #38a176;
+  color: #116847;
+}
+
+.pm-used-item.is-current {
+  box-shadow: 0 0 0 2.2px #d96f1c;
+}
+
+.cs-budget-bar {
+  width: 100%;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.45rem 0.65rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(28, 115, 93, 0.16);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.cs-budget-meta {
+  display: flex;
+  justify-content: space-between;
+  font: 700 0.64rem "IBM Plex Mono", "Courier New", monospace;
+  color: #275245;
+}
+
+.cs-budget-track {
+  height: 8px;
+  background: #e1ede8;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.cs-budget-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1c735d, #2fb391);
+  transition: width 0.2s ease, background-color 0.2s ease;
+  border-radius: 999px;
+}
+
+.cs-budget-fill.zero {
+  background: #157948;
 }
 
 .bt-code,

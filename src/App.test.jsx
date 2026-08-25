@@ -403,7 +403,7 @@ describe('App', () => {
     expect(within(visual).getByText('重新播放')).toBeInTheDocument();
   });
 
-  it('renders the backtracking decision tree, dedup, and N-Queens visuals', async () => {
+  it('renders the backtracking decision tree, permutations, combination sum, dedup, and N-Queens visuals', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);
       return {
@@ -416,6 +416,12 @@ describe('App', () => {
             '```',
             '',
             '```backtracking-tree-demo',
+            '```',
+            '',
+            '```permutations-demo',
+            '```',
+            '',
+            '```combination-sum-demo',
             '```',
             '',
             '```backtracking-dedup-demo',
@@ -446,6 +452,20 @@ describe('App', () => {
     expect(within(tree).getAllByText('[1, 2, 3]').length).toBeGreaterThan(0);
     expect(tree.querySelectorAll('.bt-results code')).toHaveLength(4);
 
+    const perm = screen.getByRole('region', { name: 'Permutations 决策树逐步演示' });
+    expect(perm.querySelectorAll('.pm-used-item')).toHaveLength(3);
+    fireEvent.change(within(perm).getByRole('slider', { name: '选择全排列演示步骤' }), {
+      target: { value: '7' },
+    });
+    expect(within(perm).getByText('叶子节点！收集全排列 [1, 2, 3]（第 1/6 个）')).toBeInTheDocument();
+
+    const comb = screen.getByRole('region', { name: 'Combination Sum 决策树逐步演示' });
+    expect(comb.querySelectorAll('.cs-budget-bar')).toHaveLength(1);
+    fireEvent.change(within(comb).getByRole('slider', { name: '选择组合总和演示步骤' }), {
+      target: { value: '7' },
+    });
+    expect(within(comb).getByText('命中目标！remain == 0，收答案 [2, 2, 3]（第 1/2 个）')).toBeInTheDocument();
+
     const dedup = screen.getByRole('region', { name: 'Subsets II 同层去重逐步演示' });
     fireEvent.change(within(dedup).getByRole('slider', { name: '选择去重演示步骤' }), {
       target: { value: '11' },
@@ -461,6 +481,8 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('region', { name: 'Nine backtracking problems compared' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Step-through: the Permutations decision tree' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Step-through: the Combination Sum decision tree' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Step-through: backtracking on 4-Queens' })).toBeInTheDocument();
   });
 

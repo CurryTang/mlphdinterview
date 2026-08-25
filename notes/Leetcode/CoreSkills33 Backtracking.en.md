@@ -212,6 +212,11 @@ Given an array `nums` of distinct integers (length 1 to 6), return all possible 
 | Base case | `len(path) == len(nums)` |
 | When to collect | Only at leaves |
 
+The following interactive walkthrough steps through the complete Permutations decision tree on `nums = [1, 2, 3]`. Watch three key dynamics: how the `used` array dynamically locks/unlocks elements, why every level loops from 0 and skips with `continue`, and how solutions are only collected at the deepest leaf nodes (`len(path) == 3`):
+
+```permutations-demo
+```
+
 ```python
 from typing import List
 
@@ -259,6 +264,11 @@ Given an array `candidates` of distinct positive integers and a target, find eve
 | `path` | Numbers currently chosen |
 | Base case | Collect at `remain == 0`, prune at `remain < 0` |
 | Pruning | After sorting, `candidates[i] > remain` allows an immediate `break` |
+
+The following interactive walkthrough steps through the complete Combination Sum decision tree on `candidates = [2, 3, 6, 7]` with `target = 7`. Watch how `remain` decreases toward 0, how passing `i` enables repeating the same number (e.g. `[2, 2, 3]`), and how sorting enables instant `break` pruning on oversize branches:
+
+```combination-sum-demo
+```
 
 Because the same number can be reused, the recursion passes `i` rather than `i + 1`:
 
