@@ -439,10 +439,12 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 33 · Backtracking/i }));
 
-    const atlas = await screen.findByRole('region', { name: '九道回溯题模板对照' });
+    const atlas = await screen.findByRole('region', { name: '十道回溯题模板对照' });
     expect(within(atlas).getByText('backtrack(start)')).toBeInTheDocument();
     fireEvent.click(within(atlas).getByRole('tab', { name: /Permutations/ }));
     expect(within(atlas).getByText('排列型')).toBeInTheDocument();
+    fireEvent.click(within(atlas).getByRole('tab', { name: /Generate Parentheses/ }));
+    expect(within(atlas).getByText('约束构造型 / 前缀平衡')).toBeInTheDocument();
 
     const tree = screen.getByRole('region', { name: 'Subsets 决策树逐步演示' });
     fireEvent.change(within(tree).getByRole('slider', { name: '选择决策树演示步骤' }), {
@@ -480,7 +482,7 @@ describe('App', () => {
     expect(queens.querySelectorAll('.nq-cell.queen')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('region', { name: 'Nine backtracking problems compared' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Ten backtracking problems compared' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Step-through: the Permutations decision tree' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Step-through: the Combination Sum decision tree' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Step-through: backtracking on 4-Queens' })).toBeInTheDocument();

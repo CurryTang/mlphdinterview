@@ -15607,6 +15607,20 @@ const BACKTRACKING_PATTERNS = [
     size: '小于 2^n',
   },
   {
+    id: 'generate-parentheses',
+    number: 22,
+    title: 'Generate Parentheses',
+    tone: 'bracket',
+    pattern: '约束构造型 / 前缀平衡',
+    signature: 'backtrack(open, close)',
+    choices: "两个选择：'(' 或 ')'",
+    recurse: '放 ( 则 open + 1，放 ) 则 close + 1',
+    collect: 'open == n and close == n 时收',
+    guard: 'open < n 才能放 (；close < open 才能放 )',
+    prune: '只要 close == open 就绝不能放 )（避免前缀失衡）',
+    size: '第 n 个卡特兰数 C_n = (2n)! / ((n+1)! n!)',
+  },
+  {
     id: 'letter-combinations',
     number: 17,
     title: 'Letter Combinations',
@@ -15713,6 +15727,16 @@ const BACKTRACKING_PATTERNS_EN = {
     prune: 'break once candidates[i] > remain',
     size: 'Fewer than 2^n',
   },
+  'generate-parentheses': {
+    pattern: 'Constrained construction / Prefix balance',
+    signature: 'backtrack(open, close)',
+    choices: "Two choices: '(' or ')'",
+    recurse: 'open + 1 on adding (, close + 1 on adding )',
+    collect: 'Collect when open == n and close == n',
+    guard: 'open < n to add (; close < open to add )',
+    prune: 'Never add ) when close == open (avoids illegal prefixes)',
+    size: 'Catalan number C_n = (2n)! / ((n+1)! n!)',
+  },
   'letter-combinations': {
     pattern: 'Cartesian product',
     signature: 'backtrack(index)',
@@ -15766,7 +15790,7 @@ function BacktrackingPatternAtlas() {
 
   return (
     <section
-      aria-label={t('九道回溯题模板对照', 'Nine backtracking problems compared')}
+      aria-label={t('十道回溯题模板对照', 'Ten backtracking problems compared')}
       className={`bp-atlas ${pattern.tone}`}
     >
       <header className="bp-header">

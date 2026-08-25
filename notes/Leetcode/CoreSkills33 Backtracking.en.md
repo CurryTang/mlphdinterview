@@ -1,4 +1,4 @@
-# Backtracking · One Template for Nine Problems
+# Backtracking · One Template for Ten Problems
 
 Backtracking is not a separate algorithm. It is DFS over a decision tree, with the state restored on the way out of every node.
 
@@ -23,12 +23,13 @@ Each statement below is a condensed restatement of the original LeetCode problem
 | 3 | [39. Combination Sum](https://leetcode.com/problems/combination-sum/description/) | Combination with reuse | Recurse on `i`, not `i + 1` |
 | 4 | [90. Subsets II](https://leetcode.com/problems/subsets-ii/description/) | Subset + dedup | Sort, then skip duplicates at the same level |
 | 5 | [40. Combination Sum II](https://leetcode.com/problems/combination-sum-ii/description/) | Combination + dedup | Same-level dedup vs element reuse |
-| 6 | [17. Letter Combinations of a Phone Number](https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/) | Cartesian product | The level number is the index; no `start` |
-| 7 | [131. Palindrome Partitioning](https://leetcode.com/problems/palindrome-partitioning/description/) | Partition | A cut point is the same thing as a combination index |
-| 8 | [79. Word Search](https://leetcode.com/problems/word-search/description/) | Grid | Mark cells in place, restore on the way out |
-| 9 | [51. N-Queens](https://leetcode.com/problems/n-queens/description/) | Board | Three sets bring conflict checking down to O(1) |
+| 6 | [22. Generate Parentheses](https://leetcode.com/problems/generate-parentheses/description/) | Constrained construction | Maintain prefix balance via `open < n` and `close < open` |
+| 7 | [17. Letter Combinations of a Phone Number](https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/) | Cartesian product | The level number is the index; no `start` |
+| 8 | [131. Palindrome Partitioning](https://leetcode.com/problems/palindrome-partitioning/description/) | Partition | A cut point is the same thing as a combination index |
+| 9 | [79. Word Search](https://leetcode.com/problems/word-search/description/) | Grid | Mark cells in place, restore on the way out |
+| 10 | [51. N-Queens](https://leetcode.com/problems/n-queens/description/) | Board | Three sets bring conflict checking down to O(1) |
 
-Here is how all nine land on the same skeleton:
+Here is how all ten land on the same skeleton:
 
 ```backtracking-patterns
 ```
@@ -421,7 +422,64 @@ What gets confused most often here is that "same-level dedup" and "elements cann
 
 With `candidates = [1,1,6], target = 8`, the answer `[1,1,6]` is valid because it uses two different indices holding 1, while letting both `1`s expand at the same level produces two copies of `[1,1,6]`. So the vertical direction stays and the horizontal direction gets cut.
 
-## 6. Letter Combinations of a Phone Number
+## 6. Generate Parentheses
+
+### Statement
+
+Given $n$ pairs of parentheses ($1 \le n \le 8$), write a function to generate all combinations of well-formed parentheses.
+
+### Filling the Template
+
+This problem represents the **constrained string construction / prefix balance** pattern. Unlike combination or permutation problems, each step offers only two fixed choices: adding `'('` or adding `')'`. There is no need for a `for` loop; two separate `if` branches form the binary decision tree:
+
+| Slot | This problem |
+|---|---|
+| `choices` | Append `'('` or append `')'` |
+| `path` | The list of parentheses characters appended so far |
+| Base case | `len(path) == 2 * n` (or `open_count == n and close_count == n`) |
+| Prefix validity (Pruning) | 1. Can only add `'('` when `open_count < n`<br>2. Can only add `')'` when `close_count < open_count` (closing count never exceeds opening count) |
+
+```python
+from typing import List
+
+
+class Solution:
+    def generateParenthesis(self, n: int) -> List[str]:
+        result, path = [], []
+
+        def backtrack(open_count: int, close_count: int) -> None:
+            if len(path) == 2 * n:
+                result.append("".join(path))
+                return
+
+            if open_count < n:
+                path.append("(")
+                backtrack(open_count + 1, close_count)
+                path.pop()
+
+            if close_count < open_count:
+                path.append(")")
+                backtrack(open_count, close_count + 1)
+                path.pop()
+
+        backtrack(0, 0)
+        return result
+```
+
+### Core Invariants and Catalan Numbers
+
+1. **Prefix Balance Invariant**:
+   Why is there no need to validate strings with a stack at the end? Because throughout the search tree, enforcing `close_count <= open_count` prevents any locally illegal prefix (such as `")("`) from ever being constructed. Pruning eliminates all invalid branches at creation time.
+2. **Why No `for` Loop**:
+   A `for` loop iterates over variable choices at the same depth. When the choice is binary with distinct admission guards, two explicit `if` statements are cleaner and have lower overhead.
+3. **Complexity & Catalan Numbers**:
+   The number of valid parentheses combinations for $n$ pairs is given by the $n$-th **Catalan Number**:
+   $$
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left(\frac{4^n}{n^{1.5}}\right)
+   $$
+   Materializing each valid solution takes $O(n)$ string concatenation time, so total time complexity is $O\left(\frac{4^n}{\sqrt{n}}\right)$, and space complexity is $O(n)$ for the recursion call stack of depth $2n$.
+
+## 7. Letter Combinations of a Phone Number
 
 ### Statement
 
@@ -470,7 +528,7 @@ The leading `if not digits: return []` cannot be dropped. Without it, `backtrack
 
 This tree is a full Cartesian product with no pruning at all: `n` digits with at most 4 letters each give at most $4^n$ leaves, so time is $O(n \cdot 4^n)$.
 
-## 7. Palindrome Partitioning
+## 8. Palindrome Partitioning
 
 ### Statement
 
@@ -534,7 +592,7 @@ The palindrome check takes indices rather than doing `s[start:end+1] == s[start:
 
 There are `n-1` positions between `n` characters where a cut may or may not happen, so the worst case has $2^{n-1}$ partitions and time is $O(n \cdot 2^n)$.
 
-## 8. Word Search
+## 9. Word Search
 
 ### Statement
 
@@ -590,7 +648,7 @@ The general grid-traversal pattern appears in the Graphs chapter; the only addit
 
 The upper bound is $O(m \cdot n \cdot 4^L)$ where `L` is the length of `word`: each starting cell expands at most one 4-ary tree of depth `L`.
 
-## 9. N-Queens
+## 10. N-Queens
 
 ### Statement
 
@@ -673,6 +731,7 @@ Given a backtracking problem, ask these four questions in order.
 | Subset | All subsets wanted, any length | `nums[start:]` | Every node | 78, 90 |
 | Combination | Fixed condition, order irrelevant | `nums[start:]` | When the condition holds | 39, 40, 77 |
 | Permutation | Different order is a different answer | Every unused element | `len(path) == n` | 46, 47 |
+| Constrained construction | Generate valid string with prefix balance invariant | `(` or `)` | `len(path) == 2n` | 22 |
 | Partition | Cut a sequence into valid pieces | Every prefix starting at `start` | `start == len(s)` | 131, 93 |
 | Cartesian product | Level `k`'s choices come from input `k` | `options[index]` | `index == len(input)` | 17 |
 | Grid | Find a path in a matrix | Four directions | The whole target matched | 79, 212 |
@@ -685,6 +744,7 @@ Given a backtracking problem, ask these four questions in order.
 | Order irrelevant, no reuse | `backtrack(i + 1)` | Look forward, and not at myself |
 | Order irrelevant, reuse allowed | `backtrack(i)` | Look forward, myself included |
 | Order matters | `backtrack()` plus `used[i]` | Scan everything, skip what is taken |
+| Parentheses construction | `backtrack(open + 1, close)` / `backtrack(open, close + 1)` | Two if branches maintain balance |
 | Partitioning | `backtrack(end + 1)` | The next cut starts after this piece |
 | Consuming input per level | `backtrack(index + 1)` | Each level handles one input |
 
@@ -704,7 +764,7 @@ Whether a problem needs deduplication depends on whether the input contains dupl
 | Technique | Code | Applies to |
 |---|---|---|
 | Sort plus early `break` | `if nums[i] > remain: break` | Sorted candidates draining a monotone budget |
-| Feasibility check | `if not is_valid(choice): continue` | N-Queens, Sudoku, palindrome partitioning |
+| Feasibility check | `if not is_valid(choice): continue` | N-Queens, Sudoku, palindrome partitioning, prefix balance |
 | Not enough left | `if len(nums) - i < need: break` | Combinations of a fixed length |
 | Memoization | `if state in seen: return` | Word Break and other overlapping subproblems |
 
@@ -717,6 +777,7 @@ Sorting is both the prerequisite for deduplication and the prerequisite for `bre
 | Subsets | $2^n$ nodes | $O(n \cdot 2^n)$ |
 | Permutations | $n!$ leaves | $O(n \cdot n!)$ |
 | Combinations of length k | $\binom{n}{k}$ leaves | $O(k \cdot \binom{n}{k})$ |
+| Generate parentheses | Catalan number $C_n = \frac{1}{n+1}\binom{2n}{n}$ | $O(\frac{4^n}{\sqrt{n}})$ |
 | Phone keypad | $4^n$ leaves | $O(n \cdot 4^n)$ |
 | Palindrome partitioning | $2^{n-1}$ partitions | $O(n \cdot 2^n)$ |
 | Grid search | One 4-ary tree per start cell | $O(mn \cdot 4^L)$ |

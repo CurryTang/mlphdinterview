@@ -14889,6 +14889,7 @@ button.overview-support-card.active {
 .bp-atlas.permute { --bp-accent: #6958a7; --bp-soft: #f1eefb; }
 .bp-atlas.combo { --bp-accent: #24759a; --bp-soft: #e8f5fa; }
 .bp-atlas.dedup { --bp-accent: #b45461; --bp-soft: #fff0f2; }
+.bp-atlas.bracket { --bp-accent: #0284c7; --bp-soft: #f0f9ff; }
 .bp-atlas.product { --bp-accent: #b87528; --bp-soft: #fff2df; }
 .bp-atlas.cut { --bp-accent: #4a7a2c; --bp-soft: #eef7e6; }
 .bp-atlas.grid { --bp-accent: #2f6d86; --bp-soft: #e9f3f7; }

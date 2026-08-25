@@ -1,4 +1,4 @@
-# Backtracking · 9 题一套模板
+# Backtracking · 10 题一套模板
 
 回溯不是一种新算法，它就是在决策树上做 DFS，并且在离开一个节点时把状态改回去。
 
@@ -23,12 +23,13 @@ base case：什么时候把 path 收进答案
 | 3 | [39. Combination Sum](https://leetcode.com/problems/combination-sum/description/) | 组合型（可重复） | 递归传 `i` 而不是 `i + 1` |
 | 4 | [90. Subsets II](https://leetcode.com/problems/subsets-ii/description/) | 子集型 + 去重 | 排序后跳过同层重复 |
 | 5 | [40. Combination Sum II](https://leetcode.com/problems/combination-sum-ii/description/) | 组合型 + 去重 | 同层去重与元素复用的区别 |
-| 6 | [17. Letter Combinations of a Phone Number](https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/) | 多叉笛卡尔积 | 层号就是下标，没有 `start` |
-| 7 | [131. Palindrome Partitioning](https://leetcode.com/problems/palindrome-partitioning/description/) | 切割型 | 切点等价于组合里的下标 |
-| 8 | [79. Word Search](https://leetcode.com/problems/word-search/description/) | 网格型 | 原地标记访问，回溯时还原 |
-| 9 | [51. N-Queens](https://leetcode.com/problems/n-queens/description/) | 棋盘型 | 用三个集合把冲突检查降到 O(1) |
+| 6 | [22. Generate Parentheses](https://leetcode.com/problems/generate-parentheses/description/) | 约束构造型 | 用 `open < n` 与 `close < open` 保持前缀合法 |
+| 7 | [17. Letter Combinations of a Phone Number](https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/) | 多叉笛卡尔积 | 层号就是下标，没有 `start` |
+| 8 | [131. Palindrome Partitioning](https://leetcode.com/problems/palindrome-partitioning/description/) | 切割型 | 切点等价于组合里的下标 |
+| 9 | [79. Word Search](https://leetcode.com/problems/word-search/description/) | 网格型 | 原地标记访问，回溯时还原 |
+| 10 | [51. N-Queens](https://leetcode.com/problems/n-queens/description/) | 棋盘型 | 用三个集合把冲突检查降到 O(1) |
 
-先看这九题怎么落到同一个骨架上：
+先看这十题怎么落到同一个骨架上：
 
 ```backtracking-patterns
 ```
@@ -421,7 +422,64 @@ class Solution:
 
 `candidates = [1,1,6], target = 8` 时，`[1,1,6]` 是合法答案（用了两个不同下标的 1），而两个 `1` 在同一层各展开一次会得到两份 `[1,1,6]`，所以纵向要留、横向要剪。
 
-## 6. Letter Combinations of a Phone Number
+## 6. Generate Parentheses
+
+### 题意
+
+数字 $n$ 代表生成括号的对数（$1 \le n \le 8$），设计一个函数，用于能够生成所有可能的并且**有效**的括号组合。
+
+### 填模板
+
+这道题是**约束构造型（前缀平衡）**的经典代表。与组合/排列问题不同，它每一层只有两个固定选项：`'('` 或 `')'`，因此不需要写 `for` 循环，直接用两个独立的 `if` 分支代表二叉决策树：
+
+| 槽位 | 本题内容 |
+|---|---|
+| `choices` | 追加 `'('` 或追加 `')'` |
+| `path` | 当前已拼接的括号字符列表 |
+| base case | `len(path) == 2 * n`（或者 `open_count == n and close_count == n`） |
+| 前缀合法性（剪枝） | 1. `open_count < n` 时才能放 `'('`<br>2. `close_count < open_count` 时才能放 `')'`（右括号数量绝不能超过左括号） |
+
+```python
+from typing import List
+
+
+class Solution:
+    def generateParenthesis(self, n: int) -> List[str]:
+        result, path = [], []
+
+        def backtrack(open_count: int, close_count: int) -> None:
+            if len(path) == 2 * n:
+                result.append("".join(path))
+                return
+
+            if open_count < n:
+                path.append("(")
+                backtrack(open_count + 1, close_count)
+                path.pop()
+
+            if close_count < open_count:
+                path.append(")")
+                backtrack(open_count, close_count + 1)
+                path.pop()
+
+        backtrack(0, 0)
+        return result
+```
+
+### 核心认知与卡特兰数
+
+1. **前缀合法性不变式（Prefix Balance Invariant）**：
+   为什么不需要在生成完整字符串后再用栈去验证括号串是否合法？因为在构造的每一步，只要保证 `close_count <= open_count`，就绝对不可能出现 `")("` 这样在局部非法的情况。剪枝直接在生成过程中消灭了所有非法前缀。
+2. **为什么没有 `for` 循环**：
+   `for` 循环本质是在同层枚举所有可能的选项。当选项只有固定的 2 个（加左括号、加右括号）且每个选项有各自独立的准入条件时，展开写成两个 `if` 结构更清晰、常数更小。
+3. **复杂度与卡特兰数**：
+   $n$ 对括号生成的合法组合数恰好等于第 $n$ 个**卡特兰数（Catalan Number）**：
+   $$
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left(\frac{4^n}{n^{1.5}}\right)
+   $$
+   生成每个答案需要 $O(n)$ 的字符串拼接时间，因此总时间复杂度为 $O\left(\frac{4^n}{\sqrt{n}}\right)$，空间复杂度为 $O(n)$（递归栈深为 $2n$）。
+
+## 7. Letter Combinations of a Phone Number
 
 ### 题意
 
@@ -470,7 +528,7 @@ class Solution:
 
 这棵树是完全的笛卡尔积，没有任何剪枝：`n` 个数字、每个最多 4 个字母，叶子数最多 $4^n$，时间 $O(n \cdot 4^n)$。
 
-## 7. Palindrome Partitioning
+## 8. Palindrome Partitioning
 
 ### 题意
 
@@ -534,7 +592,7 @@ class Solution:
 
 `n` 个字符之间有 `n-1` 个位置可以选择切或不切，所以最坏情况下有 $2^{n-1}$ 种切法，时间 $O(n \cdot 2^n)$。
 
-## 8. Word Search
+## 9. Word Search
 
 ### 题意
 
@@ -590,7 +648,7 @@ class Solution:
 
 时间上界是 $O(m \cdot n \cdot 4^L)$，`L` 是 `word` 的长度：每个起点最多展开一棵四叉树，深度 `L`。
 
-## 9. N-Queens
+## 10. N-Queens
 
 ### 题意
 
@@ -673,6 +731,7 @@ class Solution:
 | 子集型 | 要所有子集，长度不限 | `nums[start:]` | 每个节点 | 78, 90 |
 | 组合型 | 要固定条件的组合，顺序无关 | `nums[start:]` | 满足条件时 | 39, 40, 77 |
 | 排列型 | 顺序不同算不同答案 | 所有未使用的元素 | `len(path) == n` | 46, 47 |
+| 约束构造型 | 按规则生成有效串，带前缀平衡不变式 | `(` 或 `)` 两个选项 | `len(path) == 2n` | 22 |
 | 切割型 | 把序列切成若干合法段 | 以 `start` 开头的所有前缀 | `start == len(s)` | 131, 93 |
 | 笛卡尔积型 | 第 `k` 层的选项由第 `k` 个输入决定 | `options[index]` | `index == len(input)` | 17 |
 | 网格型 | 在矩阵里找路径 | 四个方向 | 匹配完整个目标 | 79, 212 |
@@ -685,6 +744,7 @@ class Solution:
 | 顺序无关，元素不可复用 | `backtrack(i + 1)` | 往后看，且不回头选自己 |
 | 顺序无关，元素可复用 | `backtrack(i)` | 往后看，但可以再选自己 |
 | 顺序相关 | `backtrack()` + `used[i]` | 每层看全部，跳过用过的 |
+| 括号约束生成 | `backtrack(open + 1, close)` / `backtrack(open, close + 1)` | 两个 if 分支维持平衡 |
 | 切割 | `backtrack(end + 1)` | 下一刀从这一段之后开始 |
 | 按层消费输入 | `backtrack(index + 1)` | 每层固定处理一个输入 |
 
@@ -704,7 +764,7 @@ class Solution:
 | 剪枝手段 | 写法 | 适用 |
 |---|---|---|
 | 排序 + 提前 `break` | `if nums[i] > remain: break` | 候选有序且单调消耗预算 |
-| 可行性检查 | `if not is_valid(choice): continue` | N-Queens、数独、回文切割 |
+| 可行性检查 | `if not is_valid(choice): continue` | N-Queens、数独、回文切割、括号前缀 |
 | 剩余量不足 | `if len(nums) - i < need: break` | 组合题要求固定长度 |
 | 记忆化 | `if state in seen: return` | Word Break、可重叠子问题 |
 
@@ -717,9 +777,11 @@ class Solution:
 | 子集 | $2^n$ 个节点 | $O(n \cdot 2^n)$ |
 | 排列 | $n!$ 个叶子 | $O(n \cdot n!)$ |
 | 长度为 k 的组合 | $\binom{n}{k}$ 个叶子 | $O(k \cdot \binom{n}{k})$ |
+| 括号生成 | 卡特兰数 $C_n = \frac{1}{n+1}\binom{2n}{n}$ | $O(\frac{4^n}{\sqrt{n}})$ |
 | 电话键盘 | $4^n$ 个叶子 | $O(n \cdot 4^n)$ |
 | 回文切割 | $2^{n-1}$ 种切法 | $O(n \cdot 2^n)$ |
 | 网格搜索 | 每个起点一棵四叉树 | $O(mn \cdot 4^L)$ |
+| N 皇后 | 上界 $n!$ | $O(n!)$ |
 | N 皇后 | 上界 $n!$ | $O(n!)$ |
 
 那个乘在前面的因子基本都是“拷贝一份答案”的代价。面试里说清楚“节点数 × 每节点工作量”这个结构，比背下具体式子更有用。
