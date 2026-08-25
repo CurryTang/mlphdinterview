@@ -15984,6 +15984,583 @@ const BACKTRACKING_PATTERNS_EN = {
   },
 };
 
+const GREEDY_PATTERNS = [
+  {
+    id: 'max-subarray',
+    number: '53',
+    title: 'Maximum Subarray',
+    tone: 'kadane',
+    signature: 'cur_sum = max(num, cur_sum + num)',
+    pattern: '前缀重置 / Kadane 算法',
+    invariant: '若历史累加和 cur_sum < 0，对后续子数组只有负贡献，必须果断归零重置',
+    whyGreedy: '抛弃负前缀绝不会漏掉全局最大子数组（任何包含负前缀的解都可以通过切除该前缀变得更大）',
+    coreState: 'cur_sum = max(x, cur_sum + x); max_sum = max(max_sum, cur_sum)',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '全为负数时不能初始化 max_sum = 0，必须初始化为 -infinity 或 nums[0]',
+  },
+  {
+    id: 'jump-game',
+    number: '55',
+    title: 'Jump Game',
+    tone: 'reach',
+    signature: 'max_reach = max(max_reach, i + nums[i])',
+    pattern: '最远可达边界单调维护',
+    invariant: '只要当前下标 i <= max_reach，说明 i 是可达的；更新 max_reach 即可吞吐全部可能跳跃',
+    whyGreedy: '我们不需要穷举每一步跳多少，只需维护“最远能跳到哪”这一外包络线（Envelope）',
+    coreState: 'if i > max_reach: return False; max_reach = max(max_reach, i + nums[i])',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '遇到 0 不必特殊回溯，只要 max_reach 跨过该 0 即可继续前进；若 i > max_reach 则被困死',
+  },
+  {
+    id: 'jump-game-ii',
+    number: '45',
+    title: 'Jump Game II',
+    tone: 'window',
+    signature: 'steps += 1; cur_end = farthest',
+    pattern: '隐式 BFS / 层次最远窗口贪心',
+    invariant: '第 k 步能覆盖的区间为 [cur_start, cur_end]；在当前区间内求出第 k+1 步的最远边界 farthest',
+    whyGreedy: '每一步都贪心地在该层覆盖范围内收集能跳到下一层的最大上限，步数必然最少',
+    coreState: 'farthest = max(farthest, i + nums[i]); if i == cur_end: steps += 1; cur_end = farthest',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '循环只需遍历到 n - 2，若遍历到 n - 1 会在刚好到达终点时多触发一次无意义的 steps += 1',
+  },
+  {
+    id: 'gas-station',
+    number: '134',
+    title: 'Gas Station',
+    tone: 'circuit',
+    signature: 'if tank < 0: start = i + 1; tank = 0',
+    pattern: '总净赤字校验 + 局部断点跳跃',
+    invariant: '若 sum(gas) >= sum(cost)，必存在唯一解；从 start 出发若在 i 处断油，则 [start, i] 内所有点都无法作为起点',
+    whyGreedy: '从 start 走到中间任意点 k 时剩余油量 >= 0；若从 k 出发相当于少了 start 积累的油，只会更早断油，因此起点直接跳至 i+1',
+    coreState: 'tank += gas[i] - cost[i]; if tank < 0: start = i + 1; tank = 0',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '必须同时记录 total_surplus += gas[i] - cost[i]，遍历结束后若 total_surplus < 0 必须返回 -1',
+  },
+  {
+    id: 'hand-of-straights',
+    number: '846',
+    title: 'Hand of Straights',
+    tone: 'forced',
+    signature: 'count[first + k] -= count[first]',
+    pattern: '最小元素强制开顺子 / 频次切片',
+    invariant: '当前剩余的全局最小牌 x 在任何合法顺子里都绝不可能出现在中间或末尾，必须作为顺子起点',
+    whyGreedy: '因为不存在 x - 1，所以所有 count[x] 张牌都必须开新顺子，具有 100% 强制性',
+    coreState: 'for card in range(first, first + groupSize): if count[card] < need: return False',
+    timeSpace: 'Time: O(n log n) | Space: O(n)',
+    trap: '总牌数无法整除 groupSize 时直接返回 False；遍历堆顶时需跳过 count 已被减为 0 的历史牌',
+  },
+  {
+    id: 'merge-triplets',
+    number: '1899',
+    title: 'Merge Triplets to Form Target',
+    tone: 'filter',
+    signature: 'has_a |= (t[0]==target[0]) ...',
+    pattern: '坐标独立性 + 单调超限剔除',
+    invariant: '任何分量超过 target[0..2] 的三元组永久禁用；其余安全三元组各分量独立，取 max 绝不会超标',
+    whyGreedy: 'max 操作单调不减；只要能分别在安全三元组中找到匹配 target[0], target[1], target[2] 的三元组，全合并即可',
+    coreState: 'if t[0] <= target[0] and t[1] <= target[1] and t[2] <= target[2]: match |= (t == target)',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '误以为需要严格找到单个三元组全匹配，实际上只要安全三元组在 3 个坐标上分别达标即可合并',
+  },
+  {
+    id: 'partition-labels',
+    number: '763',
+    title: 'Partition Labels',
+    tone: 'partition',
+    signature: 'end = max(end, last[char]); if i == end: cut()',
+    pattern: '字符最后出现位置与区间合并',
+    invariant: '当前片段必须延伸到其中所有出现过的字符的最后一次出现位置的最大值 end',
+    whyGreedy: '当扫描到达 i == end 时，当前片段内所有字符在后续都不会再出现，此时切断保证片段数量最多且每个片段最短',
+    coreState: 'end = max(end, last[s[i]]); if i == end: res.append(i - start + 1); start = i + 1',
+    timeSpace: 'Time: O(n) | Space: O(1) (26 chars)',
+    trap: '必须先完整做一遍预处理得到每个字符的 last 索引，不能在一次遍历中边猜边切',
+  },
+  {
+    id: 'valid-parenthesis-string',
+    number: '678',
+    title: 'Valid Parenthesis String',
+    tone: 'range',
+    signature: 'cmin = max(0, cmin - 1); cmax += 1',
+    pattern: '未匹配左括号数量范围追踪 [cmin, cmax]',
+    invariant: '遇到通配符 * 时，左括号需求量从单一确定值变为连续区间 [cmin, cmax]',
+    whyGreedy: '将 * 分别视为 )、空字符、(，只需追踪可能的最少未匹配左括号 cmin 和最多 cmax；cmin 下限截断至 0',
+    coreState: 'if cmax < 0: return False; cmin = max(cmin, 0); # return cmin == 0',
+    timeSpace: 'Time: O(n) | Space: O(1)',
+    trap: '中途 cmax < 0 说明把所有 * 当做 ( 都不够抵消右括号，必不合法；遍历结束只有 cmin == 0 才能完全闭合',
+  },
+];
+
+const GREEDY_PATTERNS_EN = {
+  'max-subarray': {
+    pattern: 'Prefix Reset / Kadane',
+    invariant: 'If running sum cur_sum < 0, it only drags future subarrays down; reset to zero immediately',
+    whyGreedy: 'Discarding negative prefixes never misses the optimal subarray (chopping off a negative prefix only increases subarray sum)',
+    coreState: 'cur_sum = max(x, cur_sum + x); max_sum = max(max_sum, cur_sum)',
+    trap: 'For all-negative arrays, do not initialize max_sum = 0; initialize to -infinity or nums[0]',
+  },
+  'jump-game': {
+    pattern: 'Monotonic Reachable Envelope',
+    invariant: 'As long as i <= max_reach, index i is reachable; extending max_reach encapsulates all valid paths',
+    whyGreedy: 'No need to branch over every jump step; maintaining the farthest envelope suffices',
+    coreState: 'if i > max_reach: return False; max_reach = max(max_reach, i + nums[i])',
+    trap: 'Zeros do not require backtracking unless i > max_reach (i.e. stuck completely)',
+  },
+  'jump-game-ii': {
+    pattern: 'Implicit BFS Level Window',
+    invariant: 'k-th jump covers [cur_start, cur_end]; find the farthest reach for the (k+1)-th jump within this window',
+    whyGreedy: 'Greedily collecting the maximum reach per jump level guarantees minimum jump count',
+    coreState: 'farthest = max(farthest, i + nums[i]); if i == cur_end: steps += 1; cur_end = farthest',
+    trap: 'Loop up to n - 2; looping to n - 1 causes an extra false jump at the finish line',
+  },
+  'gas-station': {
+    pattern: 'Total Deficit Check + Candidate Jump',
+    invariant: 'If sum(gas) >= sum(cost), a unique start exists; if fuel drops < 0 at i, no index in [start, i] can be the start',
+    whyGreedy: 'From start to any intermediate k had >= 0 fuel; starting from k with 0 fuel exhausts even sooner, so skip to i + 1',
+    coreState: 'tank += gas[i] - cost[i]; if tank < 0: start = i + 1; tank = 0',
+    trap: 'Must record total_surplus; if total_surplus < 0 after the full loop, return -1',
+  },
+  'hand-of-straights': {
+    pattern: 'Forced Move / Minimum Key Slicing',
+    invariant: 'The minimum remaining card x has no predecessor x-1, so it must start count[x] new straights',
+    whyGreedy: 'Because x cannot fit anywhere else in any valid configuration, treating it as straight start is 100% forced',
+    coreState: 'for card in range(first, first + groupSize): if count[card] < need: return False',
+    trap: 'Return False early if len % groupSize != 0; skip heap tops whose count is already 0',
+  },
+  'merge-triplets': {
+    pattern: 'Coordinate Independence + Disqualification',
+    invariant: 'Triplets with any component > target[k] are permanently disqualified; safe triplets never exceed target under max',
+    whyGreedy: 'max is non-decreasing; safe triplets matching target[0], target[1], target[2] can all be merged together safely',
+    coreState: 'if t[0] <= target[0] and t[1] <= target[1] and t[2] <= target[2]: match |= (t == target)',
+    trap: 'Do not search for a single triplet matching all 3 coordinates; components can be matched from separate safe triplets',
+  },
+  'partition-labels': {
+    pattern: 'Last Occurrence & Interval Merging',
+    invariant: 'Current partition must stretch to cover the maximum last[c] of all characters seen so far',
+    whyGreedy: 'When i == end, all characters in [start, end] will never appear again; cutting now yields the maximum count of valid segments',
+    coreState: 'end = max(end, last[s[i]]); if i == end: res.append(i - start + 1); start = i + 1',
+    trap: 'Precompute last occurrence map upfront before making partition decisions',
+  },
+  'valid-parenthesis-string': {
+    pattern: 'Unclosed Left-Bracket Range Tracking',
+    invariant: 'Wildcard * turns the count of unclosed ( into a continuous range [cmin, cmax]',
+    whyGreedy: 'Track [cmin, cmax] bounds where * acts as ), empty, or (; clamp cmin at 0',
+    coreState: 'if cmax < 0: return False; cmin = max(cmin, 0); # return cmin == 0',
+    trap: 'cmax < 0 means even all * as ( cannot balance ); at the end only cmin == 0 is valid',
+  },
+};
+
+function GreedyPatternAtlas() {
+  const { isEnglish, t } = useUiCopy();
+  const [activePattern, setActivePattern] = useState('max-subarray');
+  const basePattern = GREEDY_PATTERNS.find(({ id }) => id === activePattern)
+    ?? GREEDY_PATTERNS[0];
+  const pattern = isEnglish
+    ? { ...basePattern, ...GREEDY_PATTERNS_EN[basePattern.id] }
+    : basePattern;
+
+  return (
+    <section
+      aria-label={t('八道贪心题全景对照', 'Eight greedy problems compared')}
+      className={`gp-atlas ${pattern.tone}`}
+    >
+      <header className="gp-header">
+        <div>
+          <p className="eyebrow">{t('贪心核心心智模型', 'Core Greedy Mental Model')}</p>
+          <h2>{t('强制选择 · 最远包络 · 前缀断点重置', 'Forced Move · Reachable Envelope · Prefix Reset')}</h2>
+          <p>{t(
+            '可靠的贪心永远建立在不变量与替换论证上，绝非局部盲目求快。',
+            'Sound greedy choices always rely on invariants and exchange arguments, never blind local haste.',
+          )}</p>
+        </div>
+        <code>{pattern.signature}</code>
+      </header>
+
+      <div aria-label={t('选择贪心题目', 'Choose a greedy problem')} className="gp-tabs" role="tablist">
+        {GREEDY_PATTERNS.map((candidate) => (
+          <button
+            aria-selected={candidate.id === activePattern}
+            className={candidate.id === activePattern ? 'active' : ''}
+            key={candidate.id}
+            onClick={() => setActivePattern(candidate.id)}
+            role="tab"
+            type="button"
+          >
+            <span>LC {candidate.number}</span>
+            <strong>{candidate.title}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="gp-summary">
+        <div>
+          <span>{t('决策模式', 'Decision pattern')}</span>
+          <strong>{pattern.pattern}</strong>
+        </div>
+        <div>
+          <span>{t('复杂度', 'Complexity')}</span>
+          <strong>{pattern.timeSpace}</strong>
+        </div>
+      </div>
+
+      <div className="gp-flow">
+        <div>
+          <span>{t('1 · 核心不变量', '1 · Core Invariant')}</span>
+          <strong>{pattern.invariant}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('2 · 为什么贪心不漏解', '2 · Why Greedy Works')}</span>
+          <strong>{pattern.whyGreedy}</strong>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('3 · 状态转移', '3 · State Transition')}</span>
+          <code>{pattern.coreState}</code>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>{t('4 · 易错陷阱', '4 · Common Pitfall')}</span>
+          <strong className="gp-trap">{pattern.trap}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const JUMP_GAME_CASES = [
+  {
+    id: 'solvable',
+    title: 'nums = [2, 3, 1, 1, 4] (可达终点 · True)',
+    titleEn: 'nums = [2, 3, 1, 1, 4] (Reachable · True)',
+    nums: [2, 3, 1, 1, 4],
+    steps: [
+      { i: 0, jump: 2, reach: 2, desc: '初始 i=0：从 0 跳最多 2 步，max_reach = max(0, 0+2) = 2', descEn: 'Start i=0: max_reach = max(0, 0+2) = 2' },
+      { i: 1, jump: 3, reach: 4, desc: 'i=1 <= 2 (可达)：从 1 跳最多 3 步，max_reach = max(2, 1+3) = 4 >= 4 (已达终点！)', descEn: 'i=1 <= 2 (reachable): jump 3 reaches max_reach = max(2, 1+3) = 4 >= 4 (Finish!)' },
+      { i: 2, jump: 1, reach: 4, desc: 'i=2 <= 4 (可达)：max_reach = max(4, 2+1) = 4', descEn: 'i=2 <= 4: max_reach = max(4, 2+1) = 4' },
+      { i: 3, jump: 1, reach: 4, desc: 'i=3 <= 4 (可达)：max_reach = max(4, 3+1) = 4', descEn: 'i=3 <= 4: max_reach = max(4, 3+1) = 4' },
+      { i: 4, jump: 4, reach: 8, desc: '到达终点 index 4，返回 True！', descEn: 'Reached final index 4, return True!' },
+    ],
+  },
+  {
+    id: 'blocked',
+    title: 'nums = [3, 2, 1, 0, 4] (被困 0 处 · False)',
+    titleEn: 'nums = [3, 2, 1, 0, 4] (Trapped by 0 · False)',
+    nums: [3, 2, 1, 0, 4],
+    steps: [
+      { i: 0, jump: 3, reach: 3, desc: '初始 i=0：max_reach = max(0, 0+3) = 3', descEn: 'Start i=0: max_reach = max(0, 0+3) = 3' },
+      { i: 1, jump: 2, reach: 3, desc: 'i=1 <= 3：max_reach = max(3, 1+2) = 3', descEn: 'i=1 <= 3: max_reach = max(3, 1+2) = 3' },
+      { i: 2, jump: 1, reach: 3, desc: 'i=2 <= 3：max_reach = max(3, 2+1) = 3', descEn: 'i=2 <= 3: max_reach = max(3, 2+1) = 3' },
+      { i: 3, jump: 0, reach: 3, desc: 'i=3 <= 3：此时 nums[3]=0，max_reach = max(3, 3+0) = 3', descEn: 'i=3 <= 3: nums[3]=0, max_reach = max(3, 3+0) = 3' },
+      { i: 4, jump: 4, reach: 3, desc: 'i=4 > max_reach (3)！当前位置不可达，被困死，返回 False！', descEn: 'i=4 > max_reach (3)! Index 4 is unreachable, trapped, return False!' },
+    ],
+  },
+];
+
+function JumpGameVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeCaseId, setActiveCaseId] = useState('solvable');
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const activeCase = JUMP_GAME_CASES.find((c) => c.id === activeCaseId) ?? JUMP_GAME_CASES[0];
+  const step = activeCase.steps[stepIndex] ?? activeCase.steps[0];
+
+  return (
+    <section aria-label={t('跳跃游戏贪心包络线演示', 'Jump Game greedy envelope walkthrough')} className="jump-vis">
+      <header className="jump-header">
+        <div>
+          <p className="eyebrow">{t('最远可达包络线机制', 'Farthest Reachable Envelope')}</p>
+          <h2>{t('Jump Game：维护 max_reach 消除回溯', 'Jump Game: Maintain max_reach without backtracking')}</h2>
+          <p>{t(
+            '不需要穷举跳 1 步还是 2 步，只需维护历史能覆盖的最远边界 max_reach。',
+            'No need to branch over every jump length; simply maintain the farthest envelope max_reach.',
+          )}</p>
+        </div>
+        <div className="jump-case-tabs" role="tablist">
+          {JUMP_GAME_CASES.map((c) => (
+            <button
+              key={c.id}
+              className={c.id === activeCaseId ? 'active' : ''}
+              onClick={() => { setActiveCaseId(c.id); setStepIndex(0); }}
+              role="tab"
+              type="button"
+            >
+              {isEnglish ? c.titleEn : c.title}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className="jump-grid">
+        {activeCase.nums.map((val, idx) => {
+          const isCurrent = idx === step.i;
+          const isReachable = idx <= step.reach;
+          const isFarthest = idx === Math.min(step.reach, activeCase.nums.length - 1);
+          return (
+            <div
+              key={idx}
+              className={`jump-cell ${isCurrent ? 'current' : ''} ${isReachable ? 'reachable' : 'unreachable'} ${isFarthest ? 'farthest' : ''}`}
+            >
+              <span className="jump-idx">i={idx}</span>
+              <strong className="jump-val">{val}</strong>
+              <span className="jump-reach">→ {idx + val}</span>
+              {isCurrent && <span className="jump-badge current">{t('当前位置 i', 'Current i')}</span>}
+              {isFarthest && <span className="jump-badge reach">{t('最远 reach', 'max_reach')}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="jump-control-bar">
+        <label>
+          <span>{t('执行步骤', 'Step')}: {stepIndex + 1} / {activeCase.steps.length}</span>
+          <input
+            aria-label={t('选择跳跃游戏演示步骤', 'Select Jump Game step')}
+            max={activeCase.steps.length - 1}
+            min="0"
+            onChange={(e) => setStepIndex(Number(e.target.value))}
+            type="range"
+            value={stepIndex}
+          />
+        </label>
+        <button
+          className="jump-next-btn"
+          disabled={stepIndex >= activeCase.steps.length - 1}
+          onClick={() => setStepIndex((prev) => Math.min(activeCase.steps.length - 1, prev + 1))}
+          type="button"
+        >
+          {t('下一步 →', 'Next Step →')}
+        </button>
+      </div>
+
+      <div className="jump-desc-card">
+        <strong>{t('不变量判定', 'Invariant State')}: </strong>
+        <span>{isEnglish ? step.descEn : step.desc}</span>
+      </div>
+    </section>
+  );
+}
+
+const GAS_STATION_STEPS = [
+  {
+    i: 0,
+    gas: 1,
+    cost: 3,
+    net: -2,
+    tank: -2,
+    start: 0,
+    nextStart: 1,
+    desc: '从起点 0 出发：net = 1 - 3 = -2。cur_tank = -2 < 0 断油！起点 0 废弃，下一候选起点跳至 start = 1，重置 cur_tank = 0。',
+    descEn: 'Start at station 0: net = 1 - 3 = -2. cur_tank = -2 < 0 (Deficit)! Station 0 disqualified, next candidate start = 1, reset cur_tank = 0.',
+  },
+  {
+    i: 1,
+    gas: 2,
+    cost: 4,
+    net: -2,
+    tank: -2,
+    start: 1,
+    nextStart: 2,
+    desc: '从起点 1 出发：net = 2 - 4 = -2。cur_tank = -2 < 0 断油！起点 1 废弃，下一候选起点跳至 start = 2，重置 cur_tank = 0。',
+    descEn: 'Start at station 1: net = 2 - 4 = -2. cur_tank = -2 < 0 (Deficit)! Station 1 disqualified, next candidate start = 2, reset cur_tank = 0.',
+  },
+  {
+    i: 2,
+    gas: 3,
+    cost: 5,
+    net: -2,
+    tank: -2,
+    start: 2,
+    nextStart: 3,
+    desc: '从起点 2 出发：net = 3 - 5 = -2。cur_tank = -2 < 0 断油！起点 2 废弃，下一候选起点跳至 start = 3，重置 cur_tank = 0。',
+    descEn: 'Start at station 2: net = 3 - 5 = -2. cur_tank = -2 < 0 (Deficit)! Station 2 disqualified, next candidate start = 3, reset cur_tank = 0.',
+  },
+  {
+    i: 3,
+    gas: 4,
+    cost: 1,
+    net: 3,
+    tank: 3,
+    start: 3,
+    nextStart: 3,
+    desc: '从起点 3 出发：net = 4 - 1 = +3。cur_tank = +3 >= 0 顺畅通行！继续保留 start = 3。',
+    descEn: 'Start at station 3: net = 4 - 1 = +3. cur_tank = +3 >= 0 (Surplus)! Keep start = 3 and advance.',
+  },
+  {
+    i: 4,
+    gas: 5,
+    cost: 2,
+    net: 3,
+    tank: 6,
+    start: 3,
+    nextStart: 3,
+    desc: '从起点 3 继续到达 4：net = 5 - 2 = +3。cur_tank = 3 + 3 = 6 >= 0。总净油量 total_surplus = (-2)*3 + 3*2 = 0 >= 0。全局有解，唯一有效起点为 index 3！',
+    descEn: 'Continue from station 3 to station 4: net = 5 - 2 = +3. cur_tank = 3 + 3 = 6 >= 0. Total surplus = 0 >= 0. Unique valid start is index 3!',
+  },
+];
+
+function GasStationVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = GAS_STATION_STEPS[stepIndex] ?? GAS_STATION_STEPS[0];
+
+  const stations = [
+    { idx: 0, gas: 1, cost: 3, net: -2 },
+    { idx: 1, gas: 2, cost: 4, net: -2 },
+    { idx: 2, gas: 3, cost: 5, net: -2 },
+    { idx: 3, gas: 4, cost: 1, net: 3 },
+    { idx: 4, gas: 5, cost: 2, net: 3 },
+  ];
+
+  return (
+    <section aria-label={t('加油站断点重置演示', 'Gas Station deficit reset walkthrough')} className="gas-vis">
+      <header className="gas-header">
+        <div>
+          <p className="eyebrow">{t('断点跳跃定理', 'Deficit Reset Theorem')}</p>
+          <h2>{t('Gas Station：排除负累赘与候选点跳跃', 'Gas Station: Deficit Disqualification and Candidate Jump')}</h2>
+          <p>{t(
+            '若在 j 处断油，则 [start, j] 内所有加油站都不可能作为起点，直接跳到 j + 1。',
+            'If fuel runs out at j, no station in [start, j] can be the start; jump straight to j + 1.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className="gas-track">
+        {stations.map((st) => {
+          const isInspected = st.idx === step.i;
+          const isCandidate = st.idx === step.start;
+          const isFailed = st.idx < step.nextStart && step.tank < 0;
+          return (
+            <div
+              key={st.idx}
+              className={`gas-station-card ${isInspected ? 'inspect' : ''} ${isCandidate ? 'candidate' : ''} ${isFailed ? 'failed' : ''}`}
+            >
+              <div className="gas-card-top">
+                <span>Station {st.idx}</span>
+                {isCandidate && <strong className="cand-tag">{t('候选起点', 'Candidate')}</strong>}
+              </div>
+              <div className="gas-stats">
+                <div><span>Gas:</span> <strong>{st.gas}</strong></div>
+                <div><span>Cost:</span> <strong>{st.cost}</strong></div>
+                <div><span>Net:</span> <strong className={st.net >= 0 ? 'pos' : 'neg'}>{st.net >= 0 ? `+${st.net}` : st.net}</strong></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="gas-control-bar">
+        <label>
+          <span>{t('探索步数', 'Step')}: {stepIndex + 1} / {GAS_STATION_STEPS.length} (Station {step.i})</span>
+          <input
+            aria-label={t('选择加油站演示步骤', 'Select Gas Station step')}
+            max={GAS_STATION_STEPS.length - 1}
+            min="0"
+            onChange={(e) => setStepIndex(Number(e.target.value))}
+            type="range"
+            value={stepIndex}
+          />
+        </label>
+        <button
+          className="gas-next-btn"
+          disabled={stepIndex >= GAS_STATION_STEPS.length - 1}
+          onClick={() => setStepIndex((prev) => Math.min(GAS_STATION_STEPS.length - 1, prev + 1))}
+          type="button"
+        >
+          {t('下一步 →', 'Next Step →')}
+        </button>
+      </div>
+
+      <div className="gas-desc-card">
+        <strong>{t('状态快照', 'State Snapshot')}: </strong>
+        <span>{isEnglish ? step.descEn : step.desc}</span>
+      </div>
+    </section>
+  );
+}
+
+const PARTITION_STEPS = [
+  { i: 0, char: 'a', lastIdx: 8, end: 8, cuts: [], desc: 'i=0 (\'a\')：last[\'a\'] = 8 -> 初始 end = 8。当前片段必须至少延伸到 8。', descEn: 'i=0 (\'a\'): last[\'a\'] = 8 -> end = 8. Partition must reach at least index 8.' },
+  { i: 4, char: 'c', lastIdx: 7, end: 8, cuts: [], desc: 'i=4 (\'c\')：last[\'c\'] = 7 <= 8 -> end 保持 8。', descEn: 'i=4 (\'c\'): last[\'c\'] = 7 <= 8 -> end remains 8.' },
+  { i: 8, char: 'a', lastIdx: 8, end: 8, cuts: [9], desc: 'i=8 (\'a\')：i == end (8)！当前片段内所有字符在后续不再出现，切出第一段长度 9 ("ababcbaca")！下一段从 9 开始。', descEn: 'i=8 (\'a\'): i == end (8)! All chars inside never appear again. Cut Part 1 of length 9 ("ababcbaca")! Start next at 9.' },
+  { i: 11, char: 'e', lastIdx: 15, end: 15, cuts: [9], desc: 'i=11 (\'e\')：last[\'e\'] = 15 -> end 扩展到 15。', descEn: 'i=11 (\'e\'): last[\'e\'] = 15 -> end expanded to 15.' },
+  { i: 15, char: 'e', lastIdx: 15, end: 15, cuts: [9, 7], desc: 'i=15 (\'e\')：i == end (15)！切出第二段长度 7 ("defegde")！下一段从 16 开始。', descEn: 'i=15 (\'e\'): i == end (15)! Cut Part 2 of length 7 ("defegde")! Start next at 16.' },
+  { i: 23, char: 'j', lastIdx: 23, end: 23, cuts: [9, 7, 8], desc: 'i=23 (\'j\')：i == end (23)！切出第三段长度 8 ("hijhklij")！最终答案 [9, 7, 8]。', descEn: 'i=23 (\'j\'): i == end (23)! Cut Part 3 of length 8 ("hijhklij")! Final answer: [9, 7, 8].' },
+];
+
+function PartitionLabelsVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = PARTITION_STEPS[stepIndex] ?? PARTITION_STEPS[0];
+
+  const rawStr = 'ababcbacadefegdehijhklij';
+
+  return (
+    <section aria-label={t('划分字母区间贪心切分演示', 'Partition Labels greedy cut walkthrough')} className="part-vis">
+      <header className="part-header">
+        <div>
+          <p className="eyebrow">{t('最后出现位置包络切割', 'Last-Occurrence Envelope')}</p>
+          <h2>{t('Partition Labels：贪心扩展右边界并在 i == end 处切断', 'Partition Labels: Expand boundary and cut when i == end')}</h2>
+          <p>{t(
+            '预处理每个字符的最后出现位置 last[c]，当 i 追上当前片段的最大 last 时立即切断。',
+            'Precompute last[c] for every char; cut immediately when pointer i reaches max last index.',
+          )}</p>
+        </div>
+      </header>
+
+      <div className="part-str-track">
+        {rawStr.split('').map((ch, idx) => {
+          const isInspected = idx === step.i;
+          const isInWindow = idx <= step.end;
+          return (
+            <div
+              key={idx}
+              className={`part-char-box ${isInspected ? 'inspect' : ''} ${isInWindow ? 'in-window' : ''}`}
+            >
+              <span className="part-idx">{idx}</span>
+              <strong className="part-char">{ch}</strong>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="part-cuts-summary">
+        <span>{t('当前已切割片段', 'Current Cut Partitions')}: </span>
+        {step.cuts.length === 0 ? <em>{t('暂未切出完整片段', 'None yet')}</em> : (
+          <strong>[{step.cuts.join(', ')}]</strong>
+        )}
+      </div>
+
+      <div className="part-control-bar">
+        <label>
+          <span>{t('演示关键帧', 'Keyframe')}: {stepIndex + 1} / {PARTITION_STEPS.length} (Index {step.i})</span>
+          <input
+            aria-label={t('选择划分字母区间演示步骤', 'Select Partition Labels step')}
+            max={PARTITION_STEPS.length - 1}
+            min="0"
+            onChange={(e) => setStepIndex(Number(e.target.value))}
+            type="range"
+            value={stepIndex}
+          />
+        </label>
+        <button
+          className="part-next-btn"
+          disabled={stepIndex >= PARTITION_STEPS.length - 1}
+          onClick={() => setStepIndex((prev) => Math.min(PARTITION_STEPS.length - 1, prev + 1))}
+          type="button"
+        >
+          {t('下一步 →', 'Next Step →')}
+        </button>
+      </div>
+
+      <div className="part-desc-card">
+        <strong>{t('切分决策', 'Cut Decision')}: </strong>
+        <span>{isEnglish ? step.descEn : step.desc}</span>
+      </div>
+    </section>
+  );
+}
+
 function BacktrackingPatternAtlas() {
   const { isEnglish, t } = useUiCopy();
   const [activePattern, setActivePattern] = useState('subsets');
@@ -17586,7 +18163,7 @@ function CombinationSumVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -17686,6 +18263,22 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'trie-wildcard-demo') {
     return <TrieWildcardVisual />;
+  }
+
+  if (match?.[1] === 'greedy-patterns') {
+    return <GreedyPatternAtlas />;
+  }
+
+  if (match?.[1] === 'jump-game-demo') {
+    return <JumpGameVisual />;
+  }
+
+  if (match?.[1] === 'gas-station-demo') {
+    return <GasStationVisual />;
+  }
+
+  if (match?.[1] === 'partition-labels-demo') {
+    return <PartitionLabelsVisual />;
   }
 
   if (match?.[1] === 'backtracking-patterns') {

@@ -488,6 +488,69 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: 'Step-through: backtracking on 4-Queens' })).toBeInTheDocument();
   });
 
+  it('renders the greedy pattern atlas and interactive walkthroughs for jump game, gas station, and partition labels', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills12')
+          ? [
+            '# Greedy',
+            '',
+            '```greedy-patterns',
+            '```',
+            '',
+            '```jump-game-demo',
+            '```',
+            '',
+            '```gas-station-demo',
+            '```',
+            '',
+            '```partition-labels-demo',
+            '```',
+          ].join('\n')
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 12 · Greedy Algorithms/i }));
+
+    const atlas = await screen.findByRole('region', { name: '八道贪心题全景对照' });
+    expect(within(atlas).getByText('cur_sum = max(num, cur_sum + num)')).toBeInTheDocument();
+    fireEvent.click(within(atlas).getByRole('tab', { name: /Jump Game II/ }));
+    expect(within(atlas).getByText('隐式 BFS / 层次最远窗口贪心')).toBeInTheDocument();
+    fireEvent.click(within(atlas).getByRole('tab', { name: /Gas Station/ }));
+    expect(within(atlas).getByText('总净赤字校验 + 局部断点跳跃')).toBeInTheDocument();
+
+    const jump = screen.getByRole('region', { name: '跳跃游戏贪心包络线演示' });
+    expect(within(jump).getByText('Jump Game：维护 max_reach 消除回溯')).toBeInTheDocument();
+    fireEvent.change(within(jump).getByRole('slider', { name: '选择跳跃游戏演示步骤' }), {
+      target: { value: '1' },
+    });
+    expect(within(jump).getByText(/max_reach = max\(2, 1\+3\) = 4/)).toBeInTheDocument();
+
+    const gas = screen.getByRole('region', { name: '加油站断点重置演示' });
+    expect(within(gas).getByText('Gas Station：排除负累赘与候选点跳跃')).toBeInTheDocument();
+    fireEvent.change(within(gas).getByRole('slider', { name: '选择加油站演示步骤' }), {
+      target: { value: '3' },
+    });
+    expect(within(gas).getByText(/从起点 3 出发/)).toBeInTheDocument();
+
+    const part = screen.getByRole('region', { name: '划分字母区间贪心切分演示' });
+    expect(within(part).getByText(/Partition Labels/)).toBeInTheDocument();
+    fireEvent.change(within(part).getByRole('slider', { name: '选择划分字母区间演示步骤' }), {
+      target: { value: '2' },
+    });
+    expect(within(part).getByText(/\[9\]/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('region', { name: 'Eight greedy problems compared' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Jump Game greedy envelope walkthrough' })).toBeInTheDocument();
+  });
+
   it('opens the System Design section with the new overview notes', async () => {
     render(<App />);
 

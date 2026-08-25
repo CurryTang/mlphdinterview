@@ -1,315 +1,317 @@
-# Greedy Algorithms：从强制选择到不变量
+# Core Skills 12 · 贪心算法：从强制选择、最远包络到不变量证明
 
-## Greedy 的核心判断
+## 1. 贪心算法的核心心智模型
 
-Greedy 不是“每一步看起来最爽就这么做”。真正可靠的贪心通常来自两类信号：
+在刷题和面试中，很多候选人对贪心算法（Greedy）的印象停留在“凭直觉每一步选当前看起来最好的”。然而在真正的算法面试中，**单凭直觉写贪心极易掉入局部最优无法收敛至全局最优的陷阱**。
 
-1. **强制选择**：当前最小、最早、最紧急的元素没有别的合法去处。
-2. **支配关系**：做出某个局部选择后，不会让未来更差，甚至只会让未来更容易。
+可靠的贪心策略背后必然对应严格的数学性质：
+1. **贪心选择性质（Greedy Choice Property）**：全局最优解可以通过一系列局部最优选择来达到。
+2. **最优子结构（Optimal Substructure）**：做出局部贪心选择后，原问题缩减为一个规模更小但结构完全相同的独立子问题。
 
-面试里讲 Greedy，最好不要只说“直觉上应该这样”。更好的说法是：
-
-```text
-我先找一个必须被处理的元素。
-这个元素在任何合法解里都只能以某种方式出现。
-所以我现在处理它不会丢掉任何可行解。
-处理完后，剩下的问题和原问题同形。
-```
-
-这就是 exchange argument / forced move 的思路。
-
-## Hand of Straights：一手顺子
-
-题目：
+在面试中证明贪心正确性，最标准的两大论证武器是：
+- **强制选择（Forced Move / Unique Placement）**：某个最极端（最小、最早结束、最紧迫）的元素在任何合法解中都**没有其他放置可能**，因此优先处理它不会丢失任何合法解。
+- **替换论证（Exchange Argument / Dominance）**：假设存在一个不包含当前贪心选择的最优解 $OPT$，我们可以将其中的某个决策替换为当前贪心决策，而得到的解 $OPT'$ 质量绝不会变差（甚至更优）。
 
 ```text
-给定 hand 和 groupSize。
-能不能把所有牌分成若干组，每组长度都是 groupSize，
-并且每组都是连续整数？
+看到贪心问题该检查的 4 步思考框架：
+1. 观察极限与边界：是否存在某个“必须最先解决”的元素（如最小的数、最早截止的时间、最右的边界）？
+2. 检验无后效性：当前局部选择是否会对未来的其他选择施加不可逆的负面束缚？若有束缚，往往需要回溯或动态规划。
+3. 维护单调不变量（Invariant）：例如“当前能到达的最远右边界 max_reach”、“当前子数组的非负前缀和”、“未匹配左括号的最小/最大可能数量 [cmin, cmax]”。
+4. 排除负向累赘：一旦某个局部前缀的净收益变为负数，继续携带它只会拖累未来，必须果断重置起点。
 ```
 
-例子：
+---
+
+## 2. 经典 4 大贪心万能模板
 
 ```text
-hand = [1, 2, 3, 6, 2, 3, 4, 7, 8]
-groupSize = 3
-
-可以分成：
-[1, 2, 3]
-[2, 3, 4]
-[6, 7, 8]
-
-answer = true
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 4 大核心贪心决策模板                                              │
+├───────────────────────────────┬───────────────────────────────┬──────────────────────────────────┤
+│ 模板分类                      │ 核心不变量与操作机制          │ 典型代表题目                     │
+├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
+│ 1. 前缀收益归零与断点重置     │ 历史累加和 < 0 时对未来纯拉低 │ Maximum Subarray (LC 53)         │
+│    (Prefix Reset)             │ 效益，立即抛弃并重置起点      │ Gas Station (LC 134)             │
+├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
+│ 2. 覆盖包络线与隐式 BFS 窗口  │ 维护最远可达边界 max_reach；  │ Jump Game (LC 55)                │
+│    (Envelope & BFS Window)    │ 逐层寻找下一跳最大覆盖范围    │ Jump Game II (LC 45)             │
+├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
+│ 3. 极端约束强制固定与频次切片 │ 最小元素无前驱，被迫开序列；  │ Hand of Straights (LC 846)       │
+│    (Forced Choice & Sorting)  │ 超标分量一票否决              │ Merge Triplets (LC 1899)         │
+├───────────────────────────────┼───────────────────────────────┼──────────────────────────────────┤
+│ 4. 边界合并与状态区间追踪     │ 字符最后出现位置闭合切断；    │ Partition Labels (LC 763)        │
+│    (Interval & Range Bounds)  │ 通配符追踪 [min, max] 容许域  │ Valid Parenthesis String (LC 678)│
+└───────────────────────────────┴───────────────────────────────┴──────────────────────────────────┘
 ```
 
-反例：
+```greedy-patterns
+```
+
+---
+
+## 3. NeetCode 150 经典贪心八题深度解构
+
+---
+
+### 题 1：Maximum Subarray（最大子数组和 · LC 53）
+
+#### 问题描述
+给定一个整数数组 `nums`，找到一个具有最大和的连续子数组（子数组最少包含一个元素），返回其最大和。
+
+#### 贪心决策与不变量证明
+设当前连续子数组的和为 `cur_sum`。遍历元素 `x` 时：
+- 如果 `cur_sum > 0`，则将 `x` 加入当前子数组必然对 `x` 有增益（即使 `x` 为负，当前整体依然保留了之前的正收益）；
+- 如果 `cur_sum <= 0`，说明历史前缀已经变成“负资产”，把负资产加到 `x` 上只会让以 `x` 开头的子数组变小！因此**必须果断抛弃历史前缀，让当前子数组从 `x` 重新开始**。
 
 ```text
-hand = [1, 2, 3, 4, 5]
-groupSize = 4
-
-总牌数 5 不能被 4 整除。
-answer = false
+Kadane 贪心状态转移：
+    cur_sum = max(x, cur_sum + x)
+    max_sum = max(max_sum, cur_sum)
 ```
-
-## 突破口：最小的牌没得选
-
-如果当前剩下的最小牌是 `x`，它能放在哪里？
-
-它不可能是某个顺子的第二张：
-
-```text
-x - 1, x, x + 1, ...
-```
-
-因为 `x - 1` 比 `x` 更小，但当前已经没有更小的牌了。
-
-它也不可能是第三张、第四张。原因一样：那需要更小的前驱牌。
-
-所以：
-
-> 当前剩下的最小牌 `x`，必须作为某个顺子的开头。
-
-这就是这题的贪心选择。
-
-如果 `x` 有 `count[x]` 张，那么这 `count[x]` 张 `x` 都必须开头。于是后面必须同时有：
-
-```text
-count[x] 张 x + 1
-count[x] 张 x + 2
-...
-count[x] 张 x + groupSize - 1
-```
-
-只要其中某张牌不够，答案立刻是 `False`。
-
-## 为什么可以一次扣掉 count[x] 张
-
-假设当前最小牌是 `x`，并且：
-
-```text
-count[x] = 3
-groupSize = 4
-```
-
-这 3 张 `x` 都必须开 3 个不同的顺子：
-
-```text
-x, x+1, x+2, x+3
-x, x+1, x+2, x+3
-x, x+1, x+2, x+3
-```
-
-所以与其一组一组扣，不如批量扣：
-
-```text
-count[x] -= 3
-count[x + 1] -= 3
-count[x + 2] -= 3
-count[x + 3] -= 3
-```
-
-这不是优化技巧，而是贪心正确性的直接结果：
-
-```text
-最小牌没有选择空间，所以它的所有副本都被迫开新顺子。
-```
-
-## 标准解法：Counter + Min Heap
-
-算法流程：
-
-1. 如果 `len(hand) % groupSize != 0`，直接返回 `False`。
-2. 用 `Counter` 统计每张牌的数量。
-3. 把所有不同牌面放进小顶堆，用来找到当前最小牌。
-4. 每次取堆顶 `first`：
-   - 如果 `count[first] == 0`，说明它已经被之前的顺子消耗完，弹出。
-   - 否则它是当前还没处理完的最小牌，必须开新顺子。
-5. 设 `need = count[first]`，对 `first` 到 `first + groupSize - 1` 每张牌都扣掉 `need`。
-6. 如果某张牌数量不够，返回 `False`。
-
-代码：
 
 ```python
-from collections import Counter
-from heapq import heapify, heappop
 from typing import List
 
 class Solution:
-    def isNStraightHand(self, hand: List[int], groupSize: int) -> bool:
-        if len(hand) % groupSize != 0:
-            return False
+    def maxSubArray(self, nums: List[int]) -> int:
+        max_sum = nums[0]
+        cur_sum = 0
+        
+        for num in nums:
+            cur_sum = max(num, cur_sum + num)
+            max_sum = max(max_sum, cur_sum)
+            
+        return max_sum
+```
 
-        count = Counter(hand)
-        min_heap = list(count)
-        heapify(min_heap)
+```cpp
+#include <vector>
+#include <algorithm>
+#include <climits>
 
-        while min_heap:
-            first = min_heap[0]
+class Solution {
+public:
+    int maxSubArray(const std::vector<int>& nums) {
+        int max_sum = nums[0];
+        int cur_sum = 0;
+        for (int num : nums) {
+            cur_sum = std::max(num, cur_sum + num);
+            max_sum = std::max(max_sum, cur_sum);
+        }
+        return max_sum;
+    }
+};
+```
 
-            if count[first] == 0:
-                heappop(min_heap)
-                continue
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
+- **易错陷阱**：数组全为负数时（如 `[-3, -2, -1]`），`max_sum` 不能初始化为 `0`，必须初始化为 `nums[0]`。
 
-            need = count[first]
-            for card in range(first, first + groupSize):
-                if count[card] < need:
-                    return False
-                count[card] -= need
+---
 
+### 题 2：Jump Game（跳跃游戏 · LC 55）
+
+#### 问题描述
+给定一个非负整数数组 `nums`，最初位于第一个下标。数组中的每个元素代表你在该位置可以跳跃的最大长度。判断你是否能够到达最后一个下标。
+
+#### 贪心决策与不变量证明
+不需要搜索每一种跳跃步数（那会退化成 $O(2^n)$ 回溯）。**我们只需要维护一个全局不变量：当前能够到达的最远下标 `max_reach`**。
+- 遍历下标 `i`：如果 `i > max_reach`，说明当前点在之前的任何跳跃范围内都不可达，直接返回 `False`。
+- 否则，当前点 `i` 是可达的，可以用 `i + nums[i]` 尝试扩展最远覆盖包络线：`max_reach = max(max_reach, i + nums[i])`。
+- 如果 `max_reach >= n - 1`，说明已经可以到达终点，可提前返回 `True`。
+
+```jump-game-demo
+```
+
+```python
+class Solution:
+    def canJump(self, nums: List[int]) -> bool:
+        max_reach = 0
+        n = len(nums)
+        
+        for i, jump in enumerate(nums):
+            if i > max_reach:
+                return False
+            max_reach = max(max_reach, i + jump)
+            if max_reach >= n - 1:
+                return True
+                
         return True
 ```
 
-## 这段代码的关键细节
+```cpp
+#include <vector>
+#include <algorithm>
 
-### 1. 为什么先检查整除
-
-每组长度固定是 `groupSize`，所有牌都必须用完。
-
-所以总牌数必须满足：
-
-```text
-len(hand) % groupSize == 0
+class Solution {
+public:
+    bool canJump(const std::vector<int>& nums) {
+        int max_reach = 0;
+        int n = nums.size();
+        for (int i = 0; i < n; ++i) {
+            if (i > max_reach) return false;
+            max_reach = std::max(max_reach, i + nums[i]);
+            if (max_reach >= n - 1) return true;
+        }
+        return true;
+    }
+};
 ```
 
-否则不用进入贪心逻辑。
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
 
-### 2. 为什么堆里可能有 count 为 0 的牌
+---
 
-例如：
+### 题 3：Jump Game II（跳跃游戏 II · LC 45）
+
+#### 问题描述
+给定一个长度为 `n` 的非负整数数组 `nums`，生成到达最后一个下标所需的最少跳跃次数（假设总是可以到达终点）。
+
+#### 贪心决策：隐式 BFS 分层窗口
+求最少步数本质是图的最短路。如果将跳跃看作图的边，第 $k$ 次跳跃能到达的全部节点构成一个连续窗口 `[cur_start, cur_end]`。
+- 我们不需要用显式队列维护 BFS，只需在遍历当前窗口 `[cur_start, cur_end]` 时，记录所有点能跳到的**最远边界 `farthest = max(farthest, i + nums[i])`**。
+- 当指针 `i` 走到当前跳跃窗口的终点 `cur_end` 时，说明当前这一跳的潜力已被全部榨干，必须发起下一次跳跃：
+  - `steps += 1`
+  - 将窗口右端点推进到 `cur_end = farthest`。
 
 ```text
-hand = [1, 2, 3, 2, 3, 4]
-groupSize = 3
+隐式 BFS 窗口推进示意：
+Index:       0     1     2     3     4
+Nums:       [2,    3,    1,    1,    4]
+Step 0:    [ * ] (i=0, cur_end=0, farthest=2) -> i==cur_end -> step=1, cur_end=2
+Step 1:          [ *     * ]                  -> 在 [1, 2] 内探索得 farthest=4 -> i==2 -> step=2, cur_end=4
+Step 2:                            [ * ] (已覆盖终点 index 4, 结束)
 ```
-
-处理 `1` 时会扣掉：
-
-```text
-1, 2, 3
-```
-
-这可能让 `2` 或 `3` 提前变成 `0`。但它们还留在 heap 里。
-
-所以每次看堆顶时，要先跳过已经用完的牌：
 
 ```python
-if count[first] == 0:
-    heappop(min_heap)
-    continue
+class Solution:
+    def jump(self, nums: List[int]) -> int:
+        n = len(nums)
+        if n <= 1:
+            return 0
+            
+        steps = 0
+        cur_end = 0
+        farthest = 0
+        
+        # 注意：遍历到 n - 2 即可！如果遍历到 n - 1，刚好到达终点时会多触发一次无意义的 steps += 1
+        for i in range(n - 1):
+            farthest = max(farthest, i + nums[i])
+            if i == cur_end:
+                steps += 1
+                cur_end = farthest
+                if cur_end >= n - 1:
+                    break
+                    
+        return steps
 ```
 
-### 3. 为什么不用每次真的生成一组
+```cpp
+#include <vector>
+#include <algorithm>
 
-如果 `first` 有 `need` 张，那么必须生成 `need` 组从 `first` 开始的顺子。
+class Solution {
+public:
+    int jump(const std::vector<int>& nums) {
+        int n = nums.size();
+        if (n <= 1) return 0;
+        
+        int steps = 0;
+        int cur_end = 0;
+        int farthest = 0;
+        
+        for (int i = 0; i < n - 1; ++i) {
+            farthest = std::max(farthest, i + nums[i]);
+            if (i == cur_end) {
+                ++steps;
+                cur_end = farthest;
+                if (cur_end >= n - 1) break;
+            }
+        }
+        return steps;
+    }
+};
+```
 
-批量扣减比逐组生成更直接：
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
+- **核心避坑点**：循环上限必须是 `n - 2`（即 `range(n - 1)`）。因为一旦当前覆盖范围已经到达或超过 `n - 1`，我们已经在终点，不需要再跳第 `steps + 1` 步。
+
+---
+
+### 题 4：Gas Station（加油站 · LC 134）
+
+#### 问题描述
+在一条环路上有 `n` 个加油站，其中第 `i` 个加油站有汽油 `gas[i]` 升。从第 `i` 个加油站开往第 `i+1` 个加油站需要消耗汽油 `cost[i]` 升。求从哪个加油站出发可以绕环路行驶一周。若不存在则返回 `-1`。
+
+#### 贪心定理与严密数学证明
+1. **全局可达性定理**：如果 $\sum gas[i] < \sum cost[i]$，总油量小于总消耗，必然无解返回 `-1`；反之若 $\sum gas[i] \ge \sum cost[i]$，**环路上必定存在唯一一个可行起点**。
+2. **断点跳跃定理（核心贪心）**：
+   - 假设我们从起点 `start` 出发，一路顺畅走到 `j - 1`，但在到达 `j` 时累积油量首次出现 `tank < 0`（断油）。
+   - **结论：在区间 `[start, j]` 之间的任何一个加油站 $k$（$start \le k \le j$），都绝对不可能作为环路的有效起点！**
+   - **证明**：因为从 `start` 出发能顺利走到 $k$，说明到达 $k$ 时油箱里的剩余油量 $\ge 0$。连带着从前面带过来的非负油量都没能跨过 `j`，如果直接以 $k$ 为起点（初始油量为 0），到达 `j` 时油量只会更少，必然更早断油！
+   - **贪心操作**：直接将下一个候选起点跃迁至 `start = j + 1`，油箱重置 `tank = 0`。
+
+```gas-station-demo
+```
 
 ```python
-for card in range(first, first + groupSize):
-    count[card] -= need
+class Solution:
+    def canCompleteCircuit(self, gas: List[int], cost: List[int]) -> int:
+        total_surplus = 0
+        cur_tank = 0
+        start = 0
+        
+        for i in range(len(gas)):
+            net = gas[i] - cost[i]
+            total_surplus += net
+            cur_tank += net
+            
+            # 从当前 start 出发在 i 处断油，[start, i] 内全军覆没，跳到 i + 1
+            if cur_tank < 0:
+                start = i + 1
+                cur_tank = 0
+                
+        return start if total_surplus >= 0 else -1
 ```
 
-它表达的是：
+```cpp
+#include <vector>
 
-```text
-所有以 first 开头的顺子，一次性结算。
+class Solution {
+public:
+    int canCompleteCircuit(const std::vector<int>& gas, const std::vector<int>& cost) {
+        int total_surplus = 0;
+        int cur_tank = 0;
+        int start = 0;
+        
+        for (int i = 0; i < gas.size(); ++i) {
+            int net = gas[i] - cost[i];
+            total_surplus += net;
+            cur_tank += net;
+            if (cur_tank < 0) {
+                start = i + 1;
+                cur_tank = 0;
+            }
+        }
+        
+        return total_surplus >= 0 ? start : -1;
+    }
+};
 ```
 
-## 正确性证明
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
 
-维护一个不变量：
+---
 
-```text
-每次 while 循环开始时，所有比 heap 顶部更小的牌都已经被合法分组消耗完。
-```
+### 题 5：Hand of Straights（一手顺子 / 划分连续组 · LC 846）
 
-现在看当前最小的剩余牌 `first`。
+#### 问题描述
+给定整数数组 `hand` 和整数 `groupSize`。判断能否将全部牌重新排列分成若干组，使得每组大小均为 `groupSize` 且由连续递增的整数组成。
 
-因为没有比 `first` 更小的牌，所以 `first` 在任何合法解里都不可能出现在顺子的中间或末尾。
-
-因此它必须作为顺子的开头。
-
-如果 `first` 有 `need` 张，那么必须开 `need` 个顺子。每个顺子都需要：
-
-```text
-first, first + 1, ..., first + groupSize - 1
-```
-
-所以这些牌每一种都至少需要 `need` 张。
-
-如果某一种不够，任何解都不可能存在。
-
-如果都够，我们扣掉它们。扣完以后，所有 `first` 都被合法使用了，剩下的牌仍然是同一个问题：
-
-```text
-能不能把剩余牌分成固定长度的连续组？
-```
-
-所以继续处理新的最小牌即可。
-
-当所有牌都被扣完时，说明每一步强制选择都成功，答案是 `True`。
-
-## 复杂度
-
-设：
-
-```text
-n = hand.length
-u = 不同牌面的数量
-g = groupSize
-```
-
-Counter 需要：
-
-```text
-O(n)
-```
-
-建堆需要：
-
-```text
-O(u)
-```
-
-每个不同牌面最多从堆里弹出一次：
-
-```text
-O(u log u)
-```
-
-批量扣减部分最多对每个“顺子起点”扫描 `groupSize` 张牌，最坏可以写成：
-
-```text
-O(u * groupSize)
-```
-
-因为 `u <= n`，面试里通常可以说：
-
-```text
-Time:  O(n log n)
-Space: O(n)
-```
-
-更精确一点：
-
-```text
-Time:  O(n + u log u + u * groupSize)
-Space: O(u)
-```
-
-## 另一种写法：排序去重后扫描
-
-如果不想用 heap，也可以直接排序所有不同牌面。
-
-思路一样：
-
-```text
-按从小到大处理每个牌面。
-如果 count[x] > 0，它必须开 count[x] 个顺子。
-```
-
-代码：
+#### 贪心决策：全局最小值无前驱强制开顺子
+如果当前剩余的最小牌面是 `x`，请问 `x` 能放在哪个顺子里？
+- `x` 能不能作为某个顺子的第二张、第三张？**绝对不能！** 因为那需要存在比 `x` 更小的牌 `x - 1`，但 `x` 已经是全局剩余牌中最小的一张，`x - 1` 已经不存在！
+- 因此：**当前剩余的最小牌面 `x` 具有 100% 的强制性，它必须作为以 `x` 为首的顺子 `[x, x+1, ..., x + groupSize - 1]` 的起点！**
+- 如果当前 `x` 有 `need = count[x]` 张，那么必须一次性扣除 `count[x + k] -= need`（$0 \le k < groupSize$）。只要其中任何一张牌数量不足 `need`，说明无法配平，立即返回 `False`。
 
 ```python
 from collections import Counter
@@ -319,102 +321,287 @@ class Solution:
     def isNStraightHand(self, hand: List[int], groupSize: int) -> bool:
         if len(hand) % groupSize != 0:
             return False
-
+            
         count = Counter(hand)
-
+        
+        # 按照牌面从小到大强制结算
         for first in sorted(count):
             need = count[first]
             if need == 0:
                 continue
-
+                
             for card in range(first, first + groupSize):
                 if count[card] < need:
                     return False
                 count[card] -= need
-
+                
         return True
 ```
 
-这版更短，也很适合面试。
+```cpp
+#include <vector>
+#include <map>
 
-复杂度：
-
-```text
-Time:  O(n + u log u + u * groupSize)
-Space: O(u)
+class Solution {
+public:
+    bool isNStraightHand(const std::vector<int>& hand, int groupSize) {
+        if (hand.size() % groupSize != 0) return false;
+        
+        std::map<int, int> count;
+        for (int card : hand) {
+            count[card]++;
+        }
+        
+        for (auto [first, freq] : count) {
+            if (freq == 0) continue;
+            
+            for (int k = 0; k < groupSize; ++k) {
+                int card = first + k;
+                if (count[card] < freq) return false;
+                count[card] -= freq;
+            }
+        }
+        return true;
+    }
+};
 ```
 
-## 手动走一遍
+- **复杂度**：时间 $O(u \log u + u \cdot groupSize)$（其中 $u \le n$ 是不同牌面的数量），空间 $O(u)$。
 
-输入：
+---
 
-```text
-hand = [1, 2, 3, 6, 2, 3, 4, 7, 8]
-groupSize = 3
+### 题 6：Merge Triplets to Form Target Triplet（合并三元组达到目标 · LC 1899）
+
+#### 问题描述
+给定一个二维整数数组 `triplets`，其中 `triplets[i] = [ai, bi, ci]`。同时给定目标三元组 `target = [x, y, z]`。你可以任意次选择两个三元组取各分量的最大值 `[max(a1, a2), max(b1, b2), max(c1, c2)]` 进行合并。问最终能否得到 `target`？
+
+#### 贪心决策：超标候选一票否决与坐标独立性
+`max` 操作具有**单调不减性**（一旦某个坐标的值超过了目标值，就永远无法通过后续合并降低）。
+1. **一票否决安全过滤**：如果一个三元组 `t` 的任何一个分量超过了目标分量（即 `t[0] > target[0] or t[1] > target[1] or t[2] > target[2]`），这个三元组**绝对不能参与任何合并**，必须直接忽略！
+2. **贪心全合并**：对于剩下所有安全的三元组（三个分量均 $\le target$），我们将它们全部合并起来，各个分量也绝不会超过 `target`！
+3. **达标判定**：只要在这些安全三元组中，能分别找到 $t[0] == target[0]$、$t[1] == target[1]$ 和 $t[2] == target[2]$ 的候选者，那么全部合并后必然精确得到 `target`。
+
+```python
+class Solution:
+    def mergeTriplets(self, triplets: List[List[int]], target: List[int]) -> bool:
+        tx, ty, tz = target
+        has_x = has_y = has_z = False
+        
+        for a, b, c in triplets:
+            # 只要有一个分量超标，该三元组废弃
+            if a > tx or b > ty or c > tz:
+                continue
+                
+            if a == tx: has_x = True
+            if b == ty: has_y = True
+            if c == tz: has_z = True
+            
+            if has_x and has_y and has_z:
+                return True
+                
+        return False
 ```
 
-频率：
+```cpp
+#include <vector>
 
-```text
-1:1, 2:2, 3:2, 4:1, 6:1, 7:1, 8:1
+class Solution {
+public:
+    bool mergeTriplets(const std::vector<std::vector<int>>& triplets, const std::vector<int>& target) {
+        int tx = target[0], ty = target[1], tz = target[2];
+        bool has_x = false, has_y = false, has_z = false;
+        
+        for (const auto& t : triplets) {
+            if (t[0] > tx || t[1] > ty || t[2] > tz) continue;
+            
+            if (t[0] == tx) has_x = true;
+            if (t[1] == ty) has_y = true;
+            if (t[2] == tz) has_z = true;
+            
+            if (has_x && has_y && has_z) return true;
+        }
+        return false;
+    }
+};
 ```
 
-当前最小牌是 `1`：
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
 
-```text
-need = 1
-扣 1, 2, 3
+---
+
+### 题 7：Partition Labels（划分字母区间 · LC 763）
+
+#### 问题描述
+给你一个字符串 `s`。我们要把这个字符串划分为尽可能多的片段，同一字母最多出现在一个片段中。返回一个表示每个字符串片段的长度的列表。
+
+#### 贪心决策：最远出现位置包络与即时切断
+1. **预处理**：扫描一遍字符串，记录每个字符最后一次出现的下标 `last[c]`。
+2. **贪心扫描**：维护当前片段的起始点 `start` 和最远必需延伸边界 `end`：
+   - 遍历到字符 `s[i]` 时，当前片段必须至少延伸到 `last[s[i]]`，因此 `end = max(end, last[s[i]])`。
+   - 当指针 `i` 走到 `end` 时（`i == end`），说明**当前片段内包含的所有字符在后面都不会再出现**！
+   - 此时可以贪心地立刻在此处切断，记录片段长度 `i - start + 1`，并开启新片段 `start = i + 1`。这样能保证切出的片段数最多、各片段长度最短。
+
+```partition-labels-demo
 ```
 
-剩下：
-
-```text
-2:1, 3:1, 4:1, 6:1, 7:1, 8:1
+```python
+class Solution:
+    def partitionLabels(self, s: str) -> List[int]:
+        last = {c: i for i, c in enumerate(s)}
+        
+        partitions = []
+        start = 0
+        end = 0
+        
+        for i, c in enumerate(s):
+            end = max(end, last[c])
+            if i == end:
+                partitions.append(i - start + 1)
+                start = i + 1
+                
+        return partitions
 ```
 
-当前最小牌是 `2`：
+```cpp
+#include <vector>
+#include <string>
+#include <algorithm>
 
-```text
-need = 1
-扣 2, 3, 4
+class Solution {
+public:
+    std::vector<int> partitionLabels(const std::string& s) {
+        int last[26] = {0};
+        for (int i = 0; i < s.size(); ++i) {
+            last[s[i] - 'a'] = i;
+        }
+        
+        std::vector<int> partitions;
+        int start = 0;
+        int end = 0;
+        
+        for (int i = 0; i < s.size(); ++i) {
+            end = std::max(end, last[s[i] - 'a']);
+            if (i == end) {
+                partitions.push_back(i - start + 1);
+                start = i + 1;
+            }
+        }
+        return partitions;
+    }
+};
 ```
 
-剩下：
+- **复杂度**：时间 $O(n)$，空间 $O(1)$（字符集大小固定为 26）。
 
-```text
-6:1, 7:1, 8:1
+---
+
+### 题 8：Valid Parenthesis String（有效的括号字符串 · LC 678）
+
+#### 问题描述
+给定一个只包含 `'('`、`')'` 和 `'*'` 的字符串。`'*'` 可以被视为 `'('`、`')'` 或一个空字符串 `""`。判断该字符串是否有效。
+
+#### 贪心决策：状态区间范围追踪 `[cmin, cmax]`
+如果使用回溯或 DP，每个 `*` 有 3 种分支，最坏复杂度会达到 $O(3^n)$ 或 $O(n^2)$。
+贪心的精髓在于：**我们不需要记录所有分支，只需要追踪当前未匹配左括号数量的闭区间范围 `[cmin, cmax]`**：
+- `cmax`：将所有通配符 `*` 都贪心地当作 `'('` 时的未匹配左括号数（上限）；
+- `cmin`：将所有通配符 `*` 都贪心地当作 `')'` 时的未匹配左括号数（下限，遇到 0 时不能为负，截断为 0）。
+
+状态转移规则：
+1. 遇到 `'('`：`cmin += 1, cmax += 1`
+2. 遇到 `')'`：`cmin = max(0, cmin - 1), cmax -= 1`
+3. 遇到 `'*'`：`cmin = max(0, cmin - 1)`（当 `)` 或 `""`）, `cmax += 1`（当 `(`）
+4. 剪枝合法性检验：
+   - 若 `cmax < 0`，说明把所有 `*` 全部当成 `'('` 都无法抵消多余的 `')'`，立即返回 `False`；
+   - 遍历结束后，只要 `cmin == 0`，说明在容许范围内存在一种抵消方案使得最终未匹配左括号恰好为 0，返回 `True`。
+
+```python
+class Solution:
+    def checkValidString(self, s: str) -> bool:
+        cmin = 0 # 尽可能将 * 视作 ) 时，最少未闭合的 '(' 数量
+        cmax = 0 # 尽可能将 * 视作 ( 时，最多未闭合的 '(' 数量
+        
+        for ch in s:
+            if ch == '(':
+                cmin += 1
+                cmax += 1
+            elif ch == ')':
+                cmin -= 1
+                cmax -= 1
+            else: # '*'
+                cmin -= 1
+                cmax += 1
+                
+            if cmax < 0:
+                return False
+                
+            cmin = max(cmin, 0)
+            
+        return cmin == 0
 ```
 
-当前最小牌是 `6`：
+```cpp
+#include <string>
+#include <algorithm>
 
-```text
-need = 1
-扣 6, 7, 8
+class Solution {
+public:
+    bool checkValidString(const std::string& s) {
+        int cmin = 0;
+        int cmax = 0;
+        
+        for (char ch : s) {
+            if (ch == '(') {
+                ++cmin;
+                ++cmax;
+            } else if (ch == ')') {
+                --cmin;
+                --cmax;
+            } else {
+                --cmin;
+                ++cmax;
+            }
+            
+            if (cmax < 0) return false;
+            cmin = std::max(cmin, 0);
+        }
+        
+        return cmin == 0;
+    }
+};
 ```
 
-全部用完，返回 `True`。
+- **复杂度**：时间 $O(n)$，空间 $O(1)$。
 
-## 常见坑
+---
 
-- 忘记先判断总长度是否能被 `groupSize` 整除。
-- 只扣一张 `first`，没有批量扣掉 `count[first]` 张。
-- 用 heap 时忘记跳过 `count[first] == 0` 的旧堆顶。
-- 误以为最小牌可以放在顺子中间。最小牌没有前驱，所以只能开头。
-- 用普通 list 每次 `pop(0)` 找最小值，导致不必要的 `O(n^2)` 开销。
-- 遇到 `count[card] == 0` 才返回 false，但其实 `count[card] < need` 就已经不够。
+## 4. 贪心算法面试避坑与对比速查
 
-## 面试回答模板
+```text
+                               【NeetCode 贪心八题极速自查矩阵】
+┌──────────────────────────┬─────────────────────────────┬───────────────────────────┬─────────────┐
+│ 题目                     │ 核心判定                    │ 致命陷阱                  │ 复杂度      │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 53. Maximum Subarray     │ 前缀和 < 0 立即归零         │ 全负数数组初始化为 0      │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 55. Jump Game            │ 维护 max_reach 包络线       │ 遇到 0 盲目回溯           │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 45. Jump Game II         │ 隐式 BFS 窗口 (i==cur_end)  │ 循环遍历至 n - 1 导致多跳 │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 134. Gas Station         │ 断油点前全排除，跳至 i+1   │ 忘记全局 total_surplus    │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 846. Hand of Straights   │ 最小牌必须作为顺子起点      │ 未检查 len % groupSize    │ O(n log n)  │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 1899. Merge Triplets     │ 超标分量一票否决            │ 误以为要单个三元组全匹配  │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 763. Partition Labels    │ max(last[c]) 到达即切断     │ 边扫描边切断无预处理      │ O(n) / O(1) │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────┼─────────────┤
+│ 678. Valid Parenthesis   │ 范围追踪 [cmin, cmax]       │ 忘记 cmin 下限截断为 0    │ O(n) / O(1) │
+└──────────────────────────┴─────────────────────────────┴───────────────────────────┴─────────────┘
+```
 
-可以这样讲：
-
-1. 先检查 `len(hand)` 是否能被 `groupSize` 整除。
-2. 用 Counter 统计每张牌数量。
-3. 贪心点是：当前最小剩余牌不可能接在任何更小牌后面，所以必须作为顺子开头。
-4. 如果最小牌 `first` 有 `need` 张，就必须开 `need` 个从 `first` 开始的顺子。
-5. 因此 `first, first + 1, ..., first + groupSize - 1` 每张牌都要至少有 `need` 张。
-6. 不够就返回 `False`；够就批量扣减。
-7. 一直处理到所有牌用完，返回 `True`。
-
-一句话总结：
-
-> Hand of Straights 的 Greedy 不是“随便从小开始”，而是“最小牌没有前驱，所以被迫从小开始”。
+**要记住**
+- 面试时先讲“不变量”和“为什么这个局部选择不会漏解”，切忌直接甩代码。
+- 凡是遇到“前缀累计收益可能拖累后续”的序列问题，优先联想 Kadane 和 Gas Station 的断点重置。
+- 凡是遇到“覆盖范围最少步数”问题，优先使用 Jump Game II 的隐式 BFS 窗口模型。
+- 凡是多维 `max`/`min` 目标合并问题，优先考虑超标元素的**一票否决预过滤**。
+- 遇到带有通配符的括号匹配，不要写指数级回溯，追踪未匹配括号的 `[min, max]` 范围是唯一的 $O(n)$ 最优解。

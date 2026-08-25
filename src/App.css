@@ -16540,3 +16540,611 @@ button.overview-support-card.active {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Greedy: eight-problem pattern atlas & interactive visualizers ── */
+.gp-atlas {
+  --gp-accent: #0f766e;
+  --gp-soft: #f0fdfa;
+  margin: 1.35rem auto;
+  max-width: min(100%, 1020px);
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 28%, transparent);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--gp-accent) 13%, transparent), transparent 25%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 248, 248, 0.92));
+  box-shadow: 0 12px 28px rgba(31, 53, 66, 0.11);
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+.gp-atlas.kadane { --gp-accent: #0d9488; --gp-soft: #f0fdfa; }
+.gp-atlas.reach { --gp-accent: #0284c7; --gp-soft: #f0f9ff; }
+.gp-atlas.window { --gp-accent: #6366f1; --gp-soft: #eef2ff; }
+.gp-atlas.circuit { --gp-accent: #d97706; --gp-soft: #fffbeb; }
+.gp-atlas.forced { --gp-accent: #e11d48; --gp-soft: #fff1f2; }
+.gp-atlas.filter { --gp-accent: #0891b2; --gp-soft: #ecfeff; }
+.gp-atlas.partition { --gp-accent: #16a34a; --gp-soft: #f0fdf4; }
+.gp-atlas.range { --gp-accent: #9333ea; --gp-soft: #faf5ff; }
+
+.gp-header {
+  border-bottom: 1px solid rgba(31, 67, 82, 0.12);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.gp-header h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #102f39;
+  font-size: clamp(1.18rem, 2.2vw, 1.55rem);
+}
+
+.gp-header p:not(.eyebrow) {
+  max-width: 640px;
+  margin: 0;
+  color: #4c676f;
+  font-size: 0.84rem;
+}
+
+.gp-header > code {
+  max-width: 320px;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 32%, transparent);
+  border-radius: 7px;
+  background: var(--gp-soft);
+  color: var(--gp-accent);
+  padding: 0.58rem 0.68rem;
+  font: 700 0.69rem/1.45 "IBM Plex Mono", "Courier New", monospace;
+  text-align: right;
+}
+
+.gp-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.72rem 1rem;
+}
+
+.gp-tabs button {
+  min-width: 0;
+  border: 1px solid rgba(31, 67, 82, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #36565e;
+  cursor: pointer;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.52rem 0.56rem;
+  text-align: left;
+}
+
+.gp-tabs button:hover {
+  border-color: color-mix(in srgb, var(--gp-accent) 48%, transparent);
+}
+
+.gp-tabs button.active {
+  border-color: var(--gp-accent);
+  background: var(--gp-soft);
+  box-shadow: inset 0 -3px var(--gp-accent);
+}
+
+.gp-tabs span {
+  color: var(--gp-accent);
+  font: 800 0.61rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.gp-tabs strong {
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.gp-summary {
+  border-top: 1px solid rgba(31, 67, 82, 0.1);
+  border-bottom: 1px solid rgba(31, 67, 82, 0.1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.72rem 1rem;
+}
+
+.gp-summary > div {
+  min-height: 60px;
+  border: 1px solid rgba(31, 67, 82, 0.13);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: 0.52rem 0.68rem;
+}
+
+.gp-summary span {
+  color: #55727a;
+  font-size: 0.69rem;
+}
+
+.gp-summary strong {
+  color: #102f39;
+  font-size: 0.82rem;
+}
+
+.gp-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.gp-flow > div {
+  border: 1px solid rgba(31, 67, 82, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  align-content: start;
+  gap: 0.28rem;
+  padding: 0.58rem 0.65rem;
+}
+
+.gp-flow span {
+  color: var(--gp-accent);
+  font: 700 0.65rem "IBM Plex Mono", "Courier New", monospace;
+}
+
+.gp-flow strong {
+  color: #143640;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.gp-flow code {
+  color: var(--gp-accent);
+  font: 700 0.67rem/1.3 "IBM Plex Mono", monospace;
+  background: var(--gp-soft);
+  padding: 0.2rem 0.3rem;
+  border-radius: 4px;
+}
+
+.gp-flow b {
+  align-self: center;
+  color: color-mix(in srgb, var(--gp-accent) 55%, #7a949d);
+  font-size: 1.05rem;
+}
+
+.gp-flow .gp-trap {
+  color: #b91c1c;
+}
+
+/* ── Jump Game Visualizer ── */
+.jump-vis {
+  margin: 1.35rem auto;
+  max-width: min(100%, 960px);
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  border-radius: 9px;
+  background: linear-gradient(145deg, #ffffff, #f0f9ff);
+  box-shadow: 0 10px 24px rgba(2, 132, 199, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.jump-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(2, 132, 199, 0.15);
+  padding-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.jump-case-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jump-case-tabs button {
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  border-radius: 6px;
+  background: white;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: #0369a1;
+}
+
+.jump-case-tabs button.active {
+  background: #0284c7;
+  color: white;
+  font-weight: 700;
+}
+
+.jump-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.jump-cell {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  padding: 0.75rem 0.5rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.jump-cell.current {
+  border-color: #0284c7;
+  background: #e0f2fe;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+}
+
+.jump-cell.reachable {
+  border-color: #38bdf8;
+}
+
+.jump-cell.unreachable {
+  border-color: #f87171;
+  background: #fef2f2;
+  opacity: 0.6;
+}
+
+.jump-cell.farthest {
+  outline: 2px dashed #0284c7;
+}
+
+.jump-idx {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.jump-val {
+  font-size: 1.35rem;
+  color: #0f172a;
+}
+
+.jump-reach {
+  font-size: 0.72rem;
+  color: #0284c7;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.jump-badge {
+  font-size: 0.6rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.jump-badge.current {
+  background: #0284c7;
+  color: white;
+}
+
+.jump-badge.reach {
+  background: #0369a1;
+  color: white;
+}
+
+.jump-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(2, 132, 199, 0.12);
+}
+
+.jump-control-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #0369a1;
+  flex: 1;
+}
+
+.jump-control-bar input[type="range"] {
+  flex: 1;
+  max-width: 320px;
+}
+
+.jump-next-btn {
+  background: #0284c7;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jump-next-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jump-desc-card {
+  background: white;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+/* ── Gas Station Visualizer ── */
+.gas-vis {
+  margin: 1.35rem auto;
+  max-width: min(100%, 960px);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  border-radius: 9px;
+  background: linear-gradient(145deg, #ffffff, #fffbeb);
+  box-shadow: 0 10px 24px rgba(217, 119, 6, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.gas-header {
+  border-bottom: 1px solid rgba(217, 119, 6, 0.15);
+  padding-bottom: 0.75rem;
+}
+
+.gas-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.gas-station-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  padding: 0.65rem 0.55rem;
+  display: grid;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.gas-station-card.inspect {
+  border-color: #d97706;
+  background: #fef3c7;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+}
+
+.gas-station-card.candidate {
+  border-color: #16a34a;
+}
+
+.gas-station-card.failed {
+  border-color: #f87171;
+  background: #fef2f2;
+}
+
+.gas-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.cand-tag {
+  background: #16a34a;
+  color: white;
+  font-size: 0.58rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.gas-stats {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.74rem;
+}
+
+.gas-stats > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.gas-stats .pos { color: #16a34a; }
+.gas-stats .neg { color: #dc2626; }
+
+.gas-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(217, 119, 6, 0.12);
+}
+
+.gas-control-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #b45309;
+  flex: 1;
+}
+
+.gas-control-bar input[type="range"] {
+  flex: 1;
+  max-width: 320px;
+}
+
+.gas-next-btn {
+  background: #d97706;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gas-next-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gas-desc-card {
+  background: white;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+/* ── Partition Labels Visualizer ── */
+.part-vis {
+  margin: 1.35rem auto;
+  max-width: min(100%, 960px);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  border-radius: 9px;
+  background: linear-gradient(145deg, #ffffff, #f0fdf4);
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.part-header {
+  border-bottom: 1px solid rgba(22, 163, 74, 0.15);
+  padding-bottom: 0.75rem;
+}
+
+.part-str-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.part-char-box {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: white;
+  padding: 0.25rem 0.4rem;
+  display: grid;
+  justify-items: center;
+  min-width: 28px;
+  transition: all 0.2s ease;
+}
+
+.part-char-box.inspect {
+  border-color: #16a34a;
+  background: #dcfce7;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(22, 163, 74, 0.2);
+}
+
+.part-char-box.in-window {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.part-idx {
+  font-size: 0.58rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.part-char {
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.part-cuts-summary {
+  font-size: 0.85rem;
+  color: #166534;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.part-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(22, 163, 74, 0.12);
+}
+
+.part-control-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #15803d;
+  flex: 1;
+}
+
+.part-control-bar input[type="range"] {
+  flex: 1;
+  max-width: 320px;
+}
+
+.part-next-btn {
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.part-next-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.part-desc-card {
+  background: white;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+@container (max-width: 820px) {
+  .gp-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gp-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .gp-flow b {
+    display: none;
+  }
+
+  .jump-grid,
+  .gas-track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
