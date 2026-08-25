@@ -1787,10 +1787,10 @@ const draftNotes = draftNoteDefinitions.map((definition) => ({
 
 const quantNoteDefinitions = [
   createTutorialDefinition(
-    'Quant 1 · 期望与计数：Indicator、Records 与 Multinomial',
+    'Quant 1 · 期望与计数：指示变量、前缀极值与多项分布',
     'Quant01 Expectation Counting Multinomial.md',
     null,
-    { directory: 'quant', category: 'Expectation', difficulty: 'Medium' },
+    { directory: 'quant', category: 'Expectation & Counting', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'Quant 2 · Markov Chains：状态压缩与期望时间',
