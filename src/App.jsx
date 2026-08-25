@@ -1555,59 +1555,86 @@ Feature Store:
 `;
 
 const mlsysNoteDefinitions = [
-  createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md'),
-  createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md'),
-  createTutorialDefinition('MLSYS3 · Roofline Analysis', 'MLSYS3.md', 'MLSYS3.en.md'),
-  createTutorialDefinition('MLSYS4 · CUDA Reduce Kernel 完全指南', 'MLSYS4.md', 'MLSYS4.en.md'),
-  createTutorialDefinition('MLSYS5 · CUDA Parallel Primitives: Histogram & Scan', 'MLSYS5.md', 'MLSYS5.en.md'),
-  createTutorialDefinition('MLSYS6 · Memory-Bound Kernel 优化', 'MLSYS6.md', 'MLSYS6.en.md'),
+  createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md', {
+    titleEn: 'MLSYS1 · GPU Architecture Basics',
+  }),
+  createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md', {
+    titleEn: 'MLSYS2 · CUDA Programming Model & GPU Architecture',
+  }),
+  createTutorialDefinition('MLSYS3 · Roofline Analysis', 'MLSYS3.md', 'MLSYS3.en.md', {
+    titleEn: 'MLSYS3 · Roofline Analysis',
+  }),
+  createTutorialDefinition('MLSYS4 · CUDA Reduce Kernel 完全指南', 'MLSYS4.md', 'MLSYS4.en.md', {
+    titleEn: 'MLSYS4 · Complete Guide to CUDA Reduce Kernels',
+  }),
+  createTutorialDefinition('MLSYS5 · CUDA Parallel Primitives: Histogram & Scan', 'MLSYS5.md', 'MLSYS5.en.md', {
+    titleEn: 'MLSYS5 · CUDA Parallel Primitives: Histogram & Scan',
+  }),
+  createTutorialDefinition('MLSYS6 · Memory-Bound Kernel 优化', 'MLSYS6.md', 'MLSYS6.en.md', {
+    titleEn: 'MLSYS6 · Memory-Bound Kernel Optimization',
+  }),
   createTutorialDefinition(
     'MLSYS7 · Compute-Bound Kernel (1)',
     'MLSYS7 Compute-Bound Kernel (1).md',
     'MLSYS7 Compute-Bound Kernel (1).en.md',
+    { titleEn: 'MLSYS7 · Compute-Bound Kernel (1)' },
   ),
   createTutorialDefinition(
     'MLSYS8 · Compute-Bound Kernel (2)',
     'MLSYS8 Compute-Bound Kernel (2).md',
     'MLSYS8 Compute-Bound Kernel (2).en.md',
+    { titleEn: 'MLSYS8 · Compute-Bound Kernel (2)' },
   ),
   createTutorialDefinition(
     'MLSYS9 · Compute-Bound Kernel (3)',
     'MLSYS9 Compute-bound kernel (3).md',
     'MLSYS9 Compute-bound kernel (3).en.md',
+    { titleEn: 'MLSYS9 · Compute-Bound Kernel (3)' },
   ),
-  createTutorialDefinition('MLSYS10 · 分布式训练并行范式', 'MLSYS10 parallelism.md', 'MLSYS10 parallelism.en.md'),
-  createTutorialDefinition('MLSYS11 · nano-vllm 精读 (1)', 'MLSYS11 nano-vllm-1.md', 'MLSYS11 nano-vllm-1.en.md'),
-  createTutorialDefinition('MLSYS12 · nano-vllm 精读 (2)', 'MLSYS12 nano-vllm-2.md', 'MLSYS12 nano-vllm-2.en.md'),
+  createTutorialDefinition('MLSYS10 · 分布式训练并行范式', 'MLSYS10 parallelism.md', 'MLSYS10 parallelism.en.md', {
+    titleEn: 'MLSYS10 · Distributed Training Parallelism Paradigms',
+  }),
+  createTutorialDefinition('MLSYS11 · nano-vllm 精读 (1)', 'MLSYS11 nano-vllm-1.md', 'MLSYS11 nano-vllm-1.en.md', {
+    titleEn: 'MLSYS11 · nano-vllm Code Walkthrough (1)',
+  }),
+  createTutorialDefinition('MLSYS12 · nano-vllm 精读 (2)', 'MLSYS12 nano-vllm-2.md', 'MLSYS12 nano-vllm-2.en.md', {
+    titleEn: 'MLSYS12 · nano-vllm Code Walkthrough (2)',
+  }),
   createTutorialDefinition(
     'MLSYS13 · Low-bit Quantization 核心方法详解',
     'MLSYS13 Quantization and precision.md',
     'MLSYS13 Quantization and precision.en.md',
+    { titleEn: 'MLSYS13 · Low-Bit Quantization Methods' },
   ),
   createTutorialDefinition(
     'MLSYS14 · Post-Training Infra：从 TRL 到 Forge',
     'MLSYS14 Post-Training Infra.md',
     'MLSYS14 Post-Training Infra.en.md',
+    { titleEn: 'MLSYS14 · Post-Training Infra: TRL to Forge' },
   ),
   createTutorialDefinition(
     'MLSYS15 · Efficient Attention：现代长上下文架构',
     'MLSYS15 Efficient Attention Modern Architectures.md',
-    null,
+    'MLSYS15 Efficient Attention Modern Architectures.en.md',
+    { titleEn: 'MLSYS15 · Efficient Attention: Modern Long-Context Architectures' },
   ),
   createTutorialDefinition(
     'MLSYS16 · KV Cache：内存管理与前缀复用',
     'MLSYS15 KV Cache Prefix Caching IndexShare.md',
-    null,
+    'MLSYS15 KV Cache Prefix Caching IndexShare.en.md',
+    { titleEn: 'MLSYS16 · KV Cache: Memory Management & Prefix Reuse' },
   ),
   createTutorialDefinition(
     'MLSYS17 · Inference：并行解码与草稿验证',
     'MLSYS15 LLM Inference Speculative Decoding DFlash.md',
-    null,
+    'MLSYS15 LLM Inference Speculative Decoding DFlash.en.md',
+    { titleEn: 'MLSYS17 · LLM Inference: Speculative Decoding & Verification' },
   ),
   createTutorialDefinition(
     'MLSYS18 · MoE Systems：路由、通信与 Kernel',
     'MLSYS16 Modern MoE SonicMoE.md',
-    null,
+    'MLSYS16 Modern MoE SonicMoE.en.md',
+    { titleEn: 'MLSYS18 · MoE Systems: Routing, Communication & Kernels' },
   ),
 ];
 
@@ -1768,11 +1795,13 @@ const draftNoteDefinitions = isDraftMode
         'LLM八股 Overview · JD 高频主题拆解',
         'Draft LLM Interview Overview.md',
         llmDraftOverviewContent,
+        { titleEn: 'LLM Interview Overview · Job Description Key Themes' },
       ),
       createDraftTutorialDefinition(
         'Quant 草稿 · 概率基础公式与记忆框架',
         'Draft Probability Basics.md',
         probabilityDraftContent,
+        { titleEn: 'Quant Draft · Probability Formulas & Memory Framework' },
       ),
     ]
   : [];
@@ -1789,200 +1818,365 @@ const quantNoteDefinitions = [
   createTutorialDefinition(
     'Quant 1 · 期望与计数：指示变量、前缀极值与多项分布',
     'Quant01 Expectation Counting Multinomial.md',
-    null,
-    { directory: 'quant', category: 'Expectation & Counting', difficulty: 'Medium' },
+    'Quant01 Expectation Counting Multinomial.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 1 · Expectation & Counting: Indicator Variables & Multinomial',
+      category: 'Expectation & Counting',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 2 · Markov Chains：状态压缩与期望时间',
     'Quant02 Markov Chains Expected Time.md',
-    null,
-    { directory: 'quant', category: 'Markov', difficulty: 'Medium' },
+    'Quant02 Markov Chains Expected Time.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 2 · Markov Chains: State Compression & Expected Time',
+      category: 'Markov',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 3 · 连续分布：CDF、几何区域与变量变换',
     'Quant03 Continuous Distribution Geometry Transform.md',
-    null,
-    { directory: 'quant', category: 'Distribution', difficulty: 'Medium' },
+    'Quant03 Continuous Distribution Geometry Transform.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 3 · Continuous Distributions: CDF, Geometry & Transformations',
+      category: 'Distribution',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 4 · 协方差、相关系数与相关矩阵 PSD',
     'Quant04 Correlation Matrix PSD.md',
-    null,
-    { directory: 'quant', category: 'Probability', difficulty: 'Medium' },
+    'Quant04 Correlation Matrix PSD.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 4 · Covariance, Correlation & PSD Matrices',
+      category: 'Probability',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 5 · 正态分布：二维正态、Cholesky 与符号相关',
     'Quant05 Normal Sign Correlation.md',
-    null,
-    { directory: 'quant', category: 'Normal Distribution', difficulty: 'Medium' },
+    'Quant05 Normal Sign Correlation.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 5 · Normal Distributions: Bivariate, Cholesky & Sign Correlation',
+      category: 'Normal Distribution',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 6 · 高维积分：大数定律与控制收敛',
     'Quant06 High Dimensional Integral Dominated Convergence.md',
-    null,
-    { directory: 'quant', category: 'Analysis & Probability', difficulty: 'Hard' },
+    'Quant06 High Dimensional Integral Dominated Convergence.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 6 · High-Dimensional Integrals: LLN & Dominated Convergence',
+      category: 'Analysis & Probability',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'Quant 7 · 递推法：健忘乘客与状态压缩',
     'Quant07 Recursion Absent-Minded Passenger.md',
-    null,
-    { directory: 'quant', category: 'Recursion', difficulty: 'Medium' },
+    'Quant07 Recursion Absent-Minded Passenger.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 7 · Recursion: Absent-Minded Passenger & State Compression',
+      category: 'Recursion',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Quant 8 · 顺序统计量：CDF 求导与条件截断',
     'Quant08 Order Statistics Conditional Truncation.md',
-    null,
-    { directory: 'quant', category: 'Order Statistics', difficulty: 'Hard' },
+    'Quant08 Order Statistics Conditional Truncation.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 8 · Order Statistics: CDF Derivatives & Conditional Truncation',
+      category: 'Order Statistics',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'Quant 9 · 假设检验与最大似然估计：方向、边界与偏差方差',
     'Quant09 Hypothesis Testing Maximum Likelihood.md',
-    null,
-    { directory: 'quant', category: 'Estimation & Testing', difficulty: 'Hard' },
+    'Quant09 Hypothesis Testing Maximum Likelihood.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 9 · Hypothesis Testing & MLE: Boundaries & Bias-Variance',
+      category: 'Estimation & Testing',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'Quant 10 · 风险中性定价与最优下注策略：鞅论、Problem of Points 与效用函数',
     'Quant10 Betting Risk Neutral Pricing Martingales.md',
-    null,
-    { directory: 'quant', category: 'Martingales & Betting', difficulty: 'Hard' },
+    'Quant10 Betting Risk Neutral Pricing Martingales.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 10 · Risk-Neutral Pricing & Optimal Betting: Martingales & Utility',
+      category: 'Martingales & Betting',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 1 · 面向对象基础与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 1 · OOP Fundamentals & Class Design',
+      category: 'C++ 面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 2 · 内存模型与指针陷阱',
     'QuantDevCPP02 Memory Model Pointers.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 2 · Memory Model & Pointer Pitfalls',
+      category: 'C++ 面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 3 · 多态、虚函数与关键字',
     'QuantDevCPP03 Polymorphism Virtual Functions Keywords.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 3 · Polymorphism, Virtual Functions & Keywords',
+      category: 'C++ 面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 4 · 现代 C++：移动语义与智能指针',
     'QuantDevCPP04 Move Semantics Smart Pointers.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 4 · Modern C++: Move Semantics & Smart Pointers',
+      category: 'C++ 面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 5 · STL 容器与底层实现',
     'QuantDevCPP05 STL Containers Internals.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 5 · STL Containers & Internals',
+      category: 'C++ 面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'C++ 面经 6 · 手撕代码与高级数据结构',
     'QuantDevCPP06 Coding Practice Advanced Data Structures.md',
     null,
-    { directory: 'quant', category: 'C++ 面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'C++ Interview 6 · Coding Practice & Advanced Data Structures',
+      category: 'C++ 面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '性能优化 1 · 性能分析方法论与工具链',
     'QuantDevPerf01 Profiling Methodology Toolchain.md',
     null,
-    { directory: 'quant', category: '性能优化面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Perf Optimization 1 · Profiling Methodology & Toolchain',
+      category: '性能优化面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     '性能优化 2 · 多线程与 CPU 优化',
     'QuantDevPerf02 Multithreading CPU Optimization.md',
     null,
-    { directory: 'quant', category: '性能优化面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Perf Optimization 2 · Multithreading & CPU Optimization',
+      category: '性能优化面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '性能优化 3 · 内存性能优化',
     'QuantDevPerf03 Memory Optimization.md',
     null,
-    { directory: 'quant', category: '性能优化面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Perf Optimization 3 · Memory Performance Optimization',
+      category: '性能优化面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '性能优化 4 · Coredump 配置、产生与分析',
     'QuantDevPerf04 Coredump Configuration Analysis.md',
     null,
-    { directory: 'quant', category: '性能优化面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Perf Optimization 4 · Coredump Configuration & Analysis',
+      category: '性能优化面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     '操作系统 1 · 进程与线程基础',
     'QuantDevOS01 Process Thread Basics.md',
     null,
-    { directory: 'quant', category: '操作系统面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'OS 1 · Process & Thread Basics',
+      category: '操作系统面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     '操作系统 2 · 线程同步与死锁',
     'QuantDevOS02 Synchronization Deadlock.md',
     null,
-    { directory: 'quant', category: '操作系统面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'OS 2 · Thread Synchronization & Deadlocks',
+      category: '操作系统面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '操作系统 3 · 进程间通信与调度',
     'QuantDevOS03 IPC Scheduling.md',
     null,
-    { directory: 'quant', category: '操作系统面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'OS 3 · Inter-Process Communication & Scheduling',
+      category: '操作系统面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     '操作系统 4 · 虚拟内存与链接',
     'QuantDevOS04 Virtual Memory Linking.md',
     null,
-    { directory: 'quant', category: '操作系统面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'OS 4 · Virtual Memory & Linking',
+      category: '操作系统面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '计算机网络 1 · IO 模型与多路复用',
     'QuantDevNet01 IO Models Multiplexing.md',
     null,
-    { directory: 'quant', category: '计算机网络面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Computer Networks 1 · I/O Models & Multiplexing',
+      category: '计算机网络面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '计算机网络 2 · Reactor、Proactor 与线程池',
     'QuantDevNet02 Reactor Proactor ThreadPool.md',
     null,
-    { directory: 'quant', category: '计算机网络面经', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Computer Networks 2 · Reactor, Proactor & Thread Pools',
+      category: '计算机网络面经',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     '计算机网络 3 · 手撕 Socket Server',
     'QuantDevNet03 Handwritten Socket Server.md',
     null,
-    { directory: 'quant', category: '计算机网络面经', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Computer Networks 3 · Handwritten Socket Server',
+      category: '计算机网络面经',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 1 · 类型推导与 auto（条款 1-6）',
     'QuantDevEMC01 Deducing Types Auto.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 1 · Type Deduction & auto (Items 1-6)',
+      category: 'Effective Modern C++',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 2 · 迈向现代 C++（条款 7-17）',
     'QuantDevEMC02 Moving To Modern Cpp.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 2 · Moving to Modern C++ (Items 7-17)',
+      category: 'Effective Modern C++',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 3 · 智能指针（条款 18-22）',
     'QuantDevEMC03 Smart Pointers.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 3 · Smart Pointers (Items 18-22)',
+      category: 'Effective Modern C++',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 4 · 右值引用、移动语义与完美转发（条款 23-30）',
     'QuantDevEMC04 Rvalue References Move Semantics.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 4 · Rvalues, Move Semantics & Perfect Forwarding (Items 23-30)',
+      category: 'Effective Modern C++',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 5 · Lambda 表达式与工程细节（条款 31-34、41-42）',
     'QuantDevEMC05 Lambda Expressions Tweaks.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Medium' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 5 · Lambdas & Engineering Details (Items 31-34, 41-42)',
+      category: 'Effective Modern C++',
+      difficulty: 'Medium',
+    },
   ),
   createTutorialDefinition(
     'Effective Modern C++ 6 · 并发 API（条款 35-40）',
     'QuantDevEMC06 Concurrency API.md',
     null,
-    { directory: 'quant', category: 'Effective Modern C++', difficulty: 'Hard' },
+    {
+      directory: 'quant',
+      titleEn: 'Effective Modern C++ 6 · Concurrency API (Items 35-40)',
+      category: 'Effective Modern C++',
+      difficulty: 'Hard',
+    },
   ),
 ];
 
@@ -1998,7 +2192,7 @@ const mlCodingNoteDefinitions = [
   createTutorialDefinition(
     'ML Coding · 从零实现 LLM',
     'MLCoding01 Unicode Pretokenization.md',
-    null,
+    'MLCoding01 Unicode Pretokenization.en.md',
     {
       directory: 'MLCoding',
       titleEn: 'ML Coding · From-Scratch LLM Implementation',
@@ -2007,9 +2201,15 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
-    '强化学习练习',
+    '强化学习练习 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
+    {
+      directory: 'Mlsys',
+      titleEn: 'RL Practice · 35 Questions on RL Infra',
+      category: 'Reinforcement Learning',
+      difficulty: 'Medium',
+    },
   ),
 ];
 
@@ -2025,30 +2225,31 @@ const systemDesignNoteDefinitions = [
   createTutorialDefinition(
     'System Design 00 · 方法总览',
     'SystemDesign00 Overview.md',
-    null,
-    { directory: 'SystemDesign', category: 'Overview', difficulty: 'Intro' },
+    'SystemDesign00 Overview.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 00 · Overview & Methodology', category: 'Overview', difficulty: 'Intro' },
   ),
   createTutorialDefinition(
     'System Design 01 · 无状态设计范式',
     'SystemDesign01 Stateless Service.md',
-    null,
-    { directory: 'SystemDesign', category: 'Design Pattern', difficulty: 'Medium' },
+    'SystemDesign01 Stateless Service.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 01 · Stateless Service Patterns', category: 'Design Pattern', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'System Design 01B · 虚拟化与容器',
     'SystemDesign01B Virtualization Containers.md',
-    null,
-    { directory: 'SystemDesign', category: 'Compute Isolation', difficulty: 'Medium' },
+    'SystemDesign01B Virtualization Containers.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 01B · Virtualization & Containers', category: 'Compute Isolation', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'System Design 02 · 数据库基本范式',
     'SystemDesign02 Database Paradigms.md',
-    null,
-    { directory: 'SystemDesign', category: 'Database', difficulty: 'Medium' },
+    'SystemDesign02 Database Paradigms.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 02 · Database Paradigms', category: 'Database', difficulty: 'Medium' },
   ),
   {
     id: 'SystemDesign03 Database Scaling.md',
     title: 'System Design 03 · 数据库扩展三件套',
+    titleEn: 'System Design 03 · Database Scaling Trio',
     fileName: 'SystemDesign03 Database Scaling.md',
     zhFileName: 'SystemDesign03 Database Scaling.md',
     enFileName: 'SystemDesign03 Database Scaling.en.md',
@@ -2060,45 +2261,45 @@ const systemDesignNoteDefinitions = [
   createTutorialDefinition(
     'System Design 04 · 存储系统',
     'SystemDesign04 Storage Systems.md',
-    null,
-    { directory: 'SystemDesign', category: 'Storage', difficulty: 'Medium' },
+    'SystemDesign04 Storage Systems.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 04 · Storage Systems', category: 'Storage', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'System Design 05 · 可靠性与复制',
     'SystemDesign05 Reliability Replication.md',
-    null,
-    { directory: 'SystemDesign', category: 'Reliability', difficulty: 'Medium' },
+    'SystemDesign05 Reliability Replication.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 05 · Reliability & Replication', category: 'Reliability', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
     'System Design 06 · 异步消息系统',
     'SystemDesign06 Async Messaging Systems.md',
-    null,
-    { directory: 'SystemDesign', category: 'Messaging', difficulty: 'Hard' },
+    'SystemDesign06 Async Messaging Systems.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 06 · Async Messaging Systems', category: 'Messaging', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'System Design 07 · 图片分享与 Feed',
     'SystemDesign07 Photo Sharing Feed.md',
-    null,
-    { directory: 'SystemDesign', category: 'Case Study', difficulty: 'Hard' },
+    'SystemDesign07 Photo Sharing Feed.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 07 · Photo Sharing & Feed', category: 'Case Study', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'System Design 08 · 异步 LLM RL 训练平台',
     'SystemDesign08 LLM Async RL Platform.md',
-    null,
-    { directory: 'SystemDesign', category: 'ML Infrastructure', difficulty: 'Hard' },
+    'SystemDesign08 LLM Async RL Platform.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 08 · Async LLM RL Training Platform', category: 'ML Infrastructure', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'System Design 09 · 一致性哈希',
     'SystemDesign09 Consistent Hashing.md',
-    null,
-    { directory: 'SystemDesign', category: 'Distributed Systems', difficulty: 'Medium' },
+    'SystemDesign09 Consistent Hashing.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 09 · Consistent Hashing', category: 'Distributed Systems', difficulty: 'Medium' },
   ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',
     'SystemDesign99 Glossary.md',
-    null,
-    { directory: 'SystemDesign', category: 'Glossary', difficulty: 'Reference' },
+    'SystemDesign99 Glossary.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 99 · Glossary & Key Concepts', category: 'Glossary', difficulty: 'Reference' },
   ),
 ];
 
@@ -2518,10 +2719,11 @@ function createInlineVariant(fileName, content) {
   };
 }
 
-function createDraftTutorialDefinition(title, zhFileName, content) {
+function createDraftTutorialDefinition(title, zhFileName, content, options = {}) {
   return {
     id: zhFileName,
     title,
+    titleEn: options.titleEn ?? title,
     fileName: zhFileName,
     zhFileName,
     enFileName: '',
@@ -18243,10 +18445,10 @@ function App() {
         <div className="app-shell">
       <aside className="notes-panel">
         <header className="panel-header">
-          <p className="eyebrow">{activeLanguage === 'en' ? 'Current section' : '当前板块'}</p>
+          <p className="eyebrow">{language === 'en' ? 'Current section' : '当前板块'}</p>
           <h1>{localizedSelectedSection.title}</h1>
           <p className="panel-meta">
-            {activeLanguage === 'en'
+            {language === 'en'
               ? `${activeSectionNotes.length} notes in this section`
               : `本板块共 ${activeSectionNotes.length} 篇笔记`}
           </p>
@@ -18256,12 +18458,12 @@ function App() {
         </header>
 
         <label className="search">
-          <span>{activeLanguage === 'en' ? 'Search' : '搜索'} {localizedSelectedSection.title}</span>
+          <span>{language === 'en' ? 'Search' : '搜索'} {localizedSelectedSection.title}</span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={activeLanguage === 'en' ? 'Type a note title or filename' : '输入笔记标题或文件名'}
+            placeholder={language === 'en' ? 'Type a note title or filename' : '输入笔记标题或文件名'}
           />
         </label>
 
@@ -18274,15 +18476,15 @@ function App() {
               type="button"
             >
               <span className="note-title">
-                {activeLanguage === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
+                {language === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
               </span>
               <span className="note-subtitle">
-                {tutorial.variants[activeLanguage]?.fileName ?? tutorial.fileName}
+                {language === 'en' ? (tutorial.enFileName || tutorial.fileName) : tutorial.zhFileName}
               </span>
             </button>
           ))}
           {filteredTutorials.length === 0 && (
-            <p className="list-empty">{activeLanguage === 'en' ? 'No notes matched your search.' : '没有匹配的笔记。'}</p>
+            <p className="list-empty">{language === 'en' ? 'No notes matched your search.' : '没有匹配的笔记。'}</p>
           )}
         </div>
       </aside>
@@ -18293,24 +18495,24 @@ function App() {
             <header className="reader-header">
               <div className="reader-header-top">
                 <div>
-                  <p className="reader-label">{localizedSelectedSection.title} / {activeLanguage === 'en' ? 'Interview Notes' : '面试笔记'}</p>
+                  <p className="reader-label">{localizedSelectedSection.title} / {language === 'en' ? 'Interview Notes' : '面试笔记'}</p>
                   <h2>
-                    {activeLanguage === 'en'
+                    {language === 'en'
                       ? (selectedTutorial.titleEn ?? selectedTutorial.title)
                       : selectedTutorial.title}
                   </h2>
-                  <p>{selectedVariant?.fileName ?? selectedTutorial.fileName}</p>
+                  <p>{language === 'en' ? (selectedTutorial.enFileName || selectedTutorial.fileName) : selectedTutorial.zhFileName}</p>
                 </div>
 
                 <div className="reader-controls">
-                  <div className="language-toggle" aria-label={activeLanguage === 'en' ? 'Language selector' : '语言选择'} role="group">
+                  <div className="language-toggle" aria-label={language === 'en' ? 'Language selector' : '语言选择'} role="group">
                     {languageOptions.map((option) => (
                       <button
                         key={option.id}
-                        className={`language-button ${activeLanguage === option.id ? 'active' : ''}`}
+                        className={`language-button ${language === option.id ? 'active' : ''}`}
                         onClick={() => setLanguage(option.id)}
                         type="button"
-                        aria-pressed={activeLanguage === option.id}
+                        aria-pressed={language === option.id}
                       >
                         {option.label}
                       </button>

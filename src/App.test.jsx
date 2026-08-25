@@ -129,6 +129,7 @@ describe('App', () => {
 
     expect(screen.getByRole('button', { name: /english/i })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('This is the English version.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /MLSYS1 · GPU Architecture Basics/i })).toBeInTheDocument();
   });
 
   it('renders interactive multiple-choice practice blocks', async () => {
