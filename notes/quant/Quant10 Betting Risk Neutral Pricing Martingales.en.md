@@ -174,6 +174,52 @@ $$
 2. In subsequent games, dynamically size bets via $X(a,b) = W(a+1,b) - W(a,b)$.
 3. **Physical win probability does not alter replication bets**: The replication strategy hedges market exposure based on the traded odds ($1{:}1 \implies q=0.5$). Sizing bets using $p=0.7$ breaks self-financing and fails to guarantee the exact $\$2000 / \$0$ targets.
 
+### 7. Self-Test with Fresh Numbers: Nonzero Downside Payoff + Physical vs. Risk-Neutral Probability
+
+This is the fullest version of the question as it tends to appear in interviews: swap out the numbers from the template above and add the "does the true win probability change anything" question, bundled into one self-test problem.
+
+**Problem**: Teams A and B play a Best-of-7 final. You start with $W_0=\$7{,}000$ and want a self-financing betting strategy such that your wealth becomes exactly $\$12{,}000$ if A wins the series and exactly $\$2{,}000$ if A loses (note the losing payoff is no longer $\$0$ — the first difference from the template example). Every game trades at fixed $1{:}1$ odds. (a) How much should you bet on A in Game 1? (b) At a score of $(2,1)$ (A ahead), what is your fair wealth $W(2,1)$, and how much should you bet on the next game? (c) If you believe A's true probability of winning the series is $p=70\%$, does that change any of the bet sizes or prices above?
+
+**Derivation (a): check the initial capital for consistency, then solve Game 1**: Before computing anything, there is a check that is easy to skip but matters — given $W_T=12000,\ W_L=2000$, if the strategy must be strictly self-financing starting from $(0,0)$, the fair value of $(0,0)$ is not a free choice. Under fair odds $q=\tfrac12$, $(0,0)$ is symmetric, so $P(0,0)=\tfrac12$, which forces
+
+$$
+W(0,0) = W_L + (W_T-W_L)\times\frac12 = 2000 + 10000\times\frac12 = 7000
+$$
+
+This exactly matches the stated $W_0=\$7{,}000$ — not a coincidence, but the necessary condition for the problem to be internally consistent (if the given $W_0$ did not equal $(W_T+W_L)/2$, an exact self-financing replication from that $W_0$ would be mathematically impossible, and the right move in an interview is to point that out rather than push ahead). With consistency confirmed, substitute into the template to get $W(1,0)$ and $W(0,1)$:
+
+$$
+W(1,0) = 2000 + 10000\times\frac{21}{32} = 8562.5, \qquad W(0,1) = 2000+10000\times\frac{11}{32}=5437.5
+$$
+
+$$
+X_1 = \frac{W(1,0)-W(0,1)}{2} = \frac{8562.5-5437.5}{2} = \boxed{\$1562.5}
+$$
+
+Check: $7000+1562.5=8562.5=W(1,0)$ and $7000-1562.5=5437.5=W(0,1)$, both consistent.
+
+**Derivation (b): holdings and the next bet at score $(2,1)$**: Looking up (or recursing) $P(2,1)=\tfrac{11}{16}$, $P(3,1)=\tfrac78$, $P(2,2)=\tfrac12$, and substituting into the template:
+
+$$
+W(2,1) = 2000+10000\times\frac{11}{16} = \boxed{\$8875}
+$$
+
+$$
+W(3,1) = 2000+10000\times\frac78 = 10750, \qquad W(2,2) = 2000+10000\times\frac12=7000
+$$
+
+$$
+X_{(2,1)} = \frac{W(3,1)-W(2,2)}{2} = \frac{10750-7000}{2} = \boxed{\$1875}
+$$
+
+Check: $8875+1875=10750=W(3,1)$ (fair wealth after A extends the lead to 3–1) and $8875-1875=7000=W(2,2)$ (fair wealth after B ties it at 2–2), both consistent.
+
+**Derivation (c): does knowing the true probability $p=70\%$ change anything?**: None of the numbers above change. This traces back to Module 1, Section 2 — as long as the odds stay locked at $1{:}1$, building a strategy that is strictly self-financing and pays out exactly $W_T$/$W_L$ at the end requires using the risk-neutral probability implied by the odds, $q=\tfrac12$, not anyone's subjective estimate of the true win rate. $p=70\%$ is information about how strong Team A actually is; "how to replicate a fixed terminal payoff exactly using $1{:}1$ bets" is a separate question. What $p=70\%$ does tell you is that **this replication strategy itself is a positive-expectation trade**: if you genuinely believe A's true win probability is $70\%$, then the strategy priced at $q=\tfrac12$ is buying a contingent claim you believe is worth more than the market price — a long-run version of that judgment is exactly the "how much leverage should I take on an edge" question that Example 1 (Kelly criterion) addresses. But as long as the goal remains "replicate $W_T/W_L$ exactly," the bet sizes must be computed with $q=\tfrac12$ only — betting more because you favor A turns the exact-replication strategy into something that no longer hits $W_T$ or $W_L$ precisely; it adds a directional side bet with its own extra variance.
+
+**Common follow-up / interview trap**
+
+> "Is the true probability $p=70\%$ completely useless here, so why does the question even give it?": It is not useless — it answers a different question. Given $p=70\%$, you can evaluate whether this exact-replication trade is worth doing (its true expected profit is positive, since you are paying the $q=50\%$ market price for a claim you believe is worth $70\%$), or how aggressively to size a position if you are willing to tolerate some terminal uncertainty in exchange for a better expected return (the Kelly-criterion family of questions). It cannot be used to answer "how much should I bet to replicate $W_T/W_L$ exactly" — plugging $p=70\%$ into the $P(a,b)$ recursion and using that instead is the single most common way candidates lose points on this question, since the resulting numbers are neither self-financing nor executable as an exact hedge in the market.
+
 ---
 
 ## Module 3: Three Advanced Examples
@@ -363,4 +409,37 @@ B. It requires the betting strategy to be self-financing
 C. It relies on the risk-neutral probability q rather than physical win rate p
 D. It holds unconditionally for arbitrary, possibly unbounded stopping times without any regularity requirements
 explanation: Optional stopping requires regularity conditions (such as bounded stopping times or uniform integrability). It cannot be applied blindly to unbounded stopping times without verification.
+```
+
+```quiz
+title: Quick Quiz 13
+question: A series pays WT if A wins and WL if A loses (not necessarily 0). With 1:1 odds and a start at (0,0), what must the initial capital W0 satisfy for the strategy to be exactly self-financing?
+answer: B
+A. W0 can be any value, independent of WT and WL
+B. W0 must equal (WT + WL) / 2, because P(0,0) = 1/2 by symmetry
+C. W0 must equal WT, to cover the worst case
+D. W0 must equal WL, to guarantee no loss
+explanation: Under fair odds, (0,0) is symmetric, so P(0,0) = 1/2, giving W(0,0) = WL + (WT-WL) x 1/2 = (WT+WL)/2. If the stated initial capital does not equal this value, the "strictly self-financing, exact terminal payoff" setup is mathematically inconsistent, and that should be flagged before computing anything.
+```
+
+```quiz
+title: Quick Quiz 14
+question: In the general version where the losing payoff WL need not be 0, given the two next-game wealth states W(a+1,b) and W(a,b+1), the fair-odds bet size at (a,b) is:
+answer: A
+A. (W(a+1,b) - W(a,b+1)) / 2
+B. W(a+1,b) - W(a,b+1)
+C. (W(a+1,b) + W(a,b+1)) / 2
+D. W(a+1,b) directly
+explanation: The bet must satisfy both W(a,b)+X=W(a+1,b) (A wins) and W(a,b)-X=W(a,b+1) (A loses) simultaneously; subtracting the two equations gives X=(W(a+1,b)-W(a,b+1))/2, the general form of the template formula at any intermediate score, not just game 1.
+```
+
+```quiz
+title: Quick Quiz 15
+question: Suppose Team A's true probability of winning the series is p=70%, but the replication strategy is still sized using the risk-neutral probability q=50%. Which statement is most accurate?
+answer: C
+A. This is a mistake; all bet sizes should be recomputed using p=70%
+B. p=70% carries no useful information at all and can be ignored
+C. Sizing bets with q=50% guarantees the exact WT/WL payout; p=70% tells you this trade has positive expected value from your own point of view, which is a separate question
+D. p and q must be equal, or the strategy cannot be executed
+explanation: Exact replication of a fixed terminal payoff must use the odds-implied risk-neutral probability q, independent of the true win rate p. p=70% answers a different question: whether this market-priced replication trade is worth doing at all — if the true win probability really is higher, the trade has positive expected value, but that does not change the q used to size the exact-replication bets.
 ```
