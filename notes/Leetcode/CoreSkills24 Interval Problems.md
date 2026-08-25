@@ -75,6 +75,91 @@ s2 > e1
 
 说明它们断开，前一个区间可以安全输出。
 
+## 万能模板：先套这一个
+
+区间题看着有 7 个 pattern，但真正的"骨架"只有两种。记住这两套骨架，比记住 7 道题的代码更管用。
+
+拿到题先排序，然后问自己一句话：
+
+```text
+我需要的是……
+
+├── 合并结果 / 输出区间列表？
+│     → 骨架 A：sort by start + 维护一个 current 区间
+│       代表题：Merge Intervals, Insert Interval
+│
+├── 删到最少剩余、让其余的互不重叠？
+│     → 骨架 A 的贪心变体：sort by END + 保留 end 更小的
+│       代表题：Non-overlapping Intervals
+│
+├── 只想知道会不会冲突（返回布尔值）？
+│     → 骨架 A 的最简版：sort by start + 只比较相邻两个
+│       代表题：Meeting Rooms
+│
+├── 想知道"同一时刻最多有几个区间在线"？
+│     → 骨架 B：事件计数 / 堆
+│       代表题：Meeting Rooms II, Sweep Line, Car Pooling
+│
+└── 每个 query 要找"当前覆盖它的最优区间"？
+      → 骨架 B 的升级版：堆里放候选区间，边扫边淘汰过期区间
+        代表题：Minimum Interval to Include Each Query
+```
+
+### 骨架 A：排序 + 单指针扫描 + 和一个滚动状态比较
+
+```python
+def solve(intervals):
+    intervals.sort(key=lambda x: x[SORT_KEY])  # 0 = 按 start，1 = 按 end
+    state = INIT_STATE                          # 通常是"当前正在维护的区间"或它的一个边界
+
+    for start, end in intervals:
+        if CONFLICT(start, end, state):
+            ACTION_ON_CONFLICT()
+        else:
+            ACTION_ON_NO_CONFLICT()
+
+    return RESULT
+```
+
+四道题的区别只在于怎么填这四个空：
+
+| 题型 | SORT_KEY | state 初始值 | CONFLICT 判断 | 冲突时的动作 | 不冲突时的动作 |
+|---|---|---|---|---|---|
+| Merge Intervals | start | 第一个区间 | `next.start <= state.end` | `state.end = max(state.end, next.end)` | 输出 state，`state = next` |
+| Meeting Rooms（能否参加） | start | 第一个区间的 end | `next.start < state` | `return False` | `state = next.end` |
+| Non-overlapping Intervals | **end** | `-inf` | `next.start < state` | `removed += 1`（丢弃 next） | `state = next.end` |
+
+一眼就能看出来：Merge 和 Meeting Rooms 用的是**同一个判断条件**（`next.start` 和 state 比较），区别只是 state 存的是"整个区间"还是"一个 end 值"；Non-overlapping 唯一不同的地方是排序键换成了 end——因为这题的贪心策略是"优先保留结束更早的区间"，只有按 end 排序才能保证第一个遇到的就是该保留的那个。
+
+Insert Interval 本质上是骨架 A 的增量版：因为输入已经按 start 排好序，不需要重新排序，只要在正确位置"插入" `newInterval` 再跑一遍同样的合并逻辑就行。笔记前面给出的三段式写法（左边直接输出、重叠区间扩张、右边直接输出）只是把这个合并过程按位置拆开来写，效果完全一样，只是省掉了一次 $O(n\log n)$ 的排序，效率更高。
+
+### 骨架 B：把区间拆成事件，扫一遍数活跃数量
+
+```python
+def solve_active_count(intervals):
+    events = []
+    for start, end in intervals:
+        events.append((start, +1))
+        events.append((end, -1))
+    events.sort()  # 同一时间点，(-1) 会自动排在 (+1) 前面
+
+    active = best = 0
+    for _, delta in events:
+        active += delta
+        best = max(best, active)
+    return best
+```
+
+这套骨架直接给出 Meeting Rooms II 和 Sweep Line 的答案（`best` 就是最大同时在线数量，也就是最少需要的房间数）。有一个容易被问到的细节：为什么 `[1,2]` 和 `[2,3]` 不应该算作需要两个房间？因为按 `(time, delta)` 排序时，`(2, -1)` 会排在 `(2, +1)` 前面（`-1 < +1`），也就是"先释放、再占用"，这正好对应"会议结束的那一刻，房间立刻可以给下一场会议用"这个直觉，不需要额外写判断逻辑，排序本身就把这条边界规则处理对了。
+
+如果题目还要求你知道"具体是哪几个区间在重叠"，不只是数量，就换成堆：把 `state = next.end` 换成一个 min-heap（存当前占用中的区间的 end），每次新区间来先看堆顶的 end 是不是已经 $\le$ 当前 start，是的话说明有房间空出来了，`pop` 之后再 `push`。这就是 Meeting Rooms II 解法 A 的写法，本质上是骨架 B 的另一种实现方式。
+
+Minimum Interval to Include Each Query 是骨架 B 的再升级：堆里存的不是单纯的 end，而是 `(区间长度, end)`，每来一个 query 就把 `start <= query` 的区间都丢进堆，再把堆顶里 `end < query`（已经过期、不可能再覆盖任何后续 query）的区间弹出去，剩下堆顶就是当前能覆盖这个 query 的最短区间。
+
+### 什么时候骨架不够用
+
+7 个 pattern 里，唯一没法套进骨架 A/B 的是"既要维护候选区间，又要按长度排序找最优"这种双重排序需求（也就是 Minimum Interval Query），这也是为什么它单独用了一个自定义排序的 heap。遇到区间题先问自己是骨架 A 还是骨架 B，套不进去再考虑要不要在骨架 B 的堆里塞更多信息。
+
 ## Pattern 1：Merge Intervals
 
 题目：

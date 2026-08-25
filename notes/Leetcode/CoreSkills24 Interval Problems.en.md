@@ -75,6 +75,91 @@ s2 > e1
 
 That means they are disjoint, so the previous interval can be safely output.
 
+## The universal template: start here
+
+Interval problems look like 7 separate patterns, but the real "skeleton" is only two. Memorizing these two skeletons is more useful than memorizing 7 pieces of code.
+
+Sort first, then ask yourself one question:
+
+```text
+What do I actually need?
+
+├── Merge results / output a list of intervals?
+│     -> Skeleton A: sort by start + maintain a current interval
+│       Examples: Merge Intervals, Insert Interval
+│
+├── Remove as few as possible so the rest don't overlap?
+│     -> Skeleton A's greedy variant: sort by END + keep the one with the smaller end
+│       Example: Non-overlapping Intervals
+│
+├── Just need a boolean: is there any conflict at all?
+│     -> Skeleton A's simplest form: sort by start + compare only adjacent pairs
+│       Example: Meeting Rooms
+│
+├── Need "how many intervals are active at the same time, at most"?
+│     -> Skeleton B: event counting / heap
+│       Examples: Meeting Rooms II, Sweep Line, Car Pooling
+│
+└── For each query, find the best interval covering it right now?
+      -> Skeleton B upgraded: heap of candidate intervals, evict expired ones while scanning
+        Example: Minimum Interval to Include Each Query
+```
+
+### Skeleton A: sort + single-pointer scan compared against a rolling state
+
+```python
+def solve(intervals):
+    intervals.sort(key=lambda x: x[SORT_KEY])  # 0 = by start, 1 = by end
+    state = INIT_STATE                          # usually "the interval currently being built" or one of its boundaries
+
+    for start, end in intervals:
+        if CONFLICT(start, end, state):
+            ACTION_ON_CONFLICT()
+        else:
+            ACTION_ON_NO_CONFLICT()
+
+    return RESULT
+```
+
+The four problems differ only in how these four blanks get filled in:
+
+| Problem | SORT_KEY | Initial state | CONFLICT check | Action on conflict | Action on no conflict |
+|---|---|---|---|---|---|
+| Merge Intervals | start | the first interval | `next.start <= state.end` | `state.end = max(state.end, next.end)` | output state, `state = next` |
+| Meeting Rooms (can attend?) | start | end of the first interval | `next.start < state` | `return False` | `state = next.end` |
+| Non-overlapping Intervals | **end** | `-inf` | `next.start < state` | `removed += 1` (drop next) | `state = next.end` |
+
+At a glance, Merge and Meeting Rooms use **exactly the same comparison** (`next.start` against state) — the only difference is whether state stores the whole interval or just an end value. Non-overlapping Intervals is the only one that sorts by end instead of start, because its greedy rule is "keep whichever interval ends earliest," and only sorting by end guarantees the first interval you encounter is the one you should keep.
+
+Insert Interval is really just an incremental version of Skeleton A: the input is already sorted by start, so instead of re-sorting, you just "insert" `newInterval` at the right position and run the same merge logic. The three-zone code shown earlier (left intervals output directly, overlapping ones expand the new interval, right intervals output directly) is just this same merge process split up by position — same result, minus one $O(n\log n)$ sort.
+
+### Skeleton B: turn intervals into events, sweep once to count how many are active
+
+```python
+def solve_active_count(intervals):
+    events = []
+    for start, end in intervals:
+        events.append((start, +1))
+        events.append((end, -1))
+    events.sort()  # at the same timestamp, (-1) automatically sorts before (+1)
+
+    active = best = 0
+    for _, delta in events:
+        active += delta
+        best = max(best, active)
+    return best
+```
+
+This skeleton directly gives the answer to Meeting Rooms II and Sweep Line (`best` is the maximum number of intervals active at once, i.e. the minimum number of rooms needed). One detail that's easy to get asked about: why doesn't `[1,2]` and `[2,3]` require two rooms? Because sorting by `(time, delta)` puts `(2, -1)` before `(2, +1)` (since `-1 < +1`) — "release, then occupy" — which matches the intuition that the instant a meeting ends, its room is immediately free for the next one. No extra branch is needed; the sort itself gets this boundary case right for free.
+
+If the question also asks *which* intervals are overlapping, not just the count, switch to a heap: replace `state = next.end` with a min-heap of end times for intervals currently occupying a room. For each new interval, check whether the heap's smallest end is already $\le$ the current start — if so, a room just freed up, so `pop` before you `push`. That's exactly Meeting Rooms II's solution A, which is just another implementation of Skeleton B.
+
+Minimum Interval to Include Each Query is Skeleton B taken one step further: the heap stores `(interval length, end)` instead of a bare end value. For each query, push every interval with `start <= query` into the heap, then pop anything whose `end < query` (it's expired and can never cover any later query either). Whatever's left on top of the heap is the shortest interval currently covering that query.
+
+### When the skeletons aren't enough
+
+Of the 7 patterns, the only one that doesn't fit cleanly into Skeleton A or B is the one needing two independent orderings at once — maintaining candidate intervals by validity while also ranking them by length (Minimum Interval Query), which is why it needs a heap with a custom sort key. When you hit an interval problem, first ask whether it's Skeleton A or B; only reach for extra state inside Skeleton B's heap if neither fits as-is.
+
 ## Pattern 1: Merge Intervals
 
 Problem:
