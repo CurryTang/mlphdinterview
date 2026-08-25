@@ -2,16 +2,6 @@
 
 ## Q1 Basic environment setup and hello world kernel
 
-```quiz
-title: Practice
-question: When compiling a CUDA extension with PyTorch JIT, where should code containing the `<<<>>>` kernel launch syntax live?
-answer: B
-A. cpp_sources
-B. cuda_sources
-C. setup.py
-explanation: `<<<>>>` is compiled by nvcc, so it belongs in the CUDA source portion.
-```
-
 ### Project file structure
 
 ```

@@ -2351,10 +2351,6 @@ const homeCopy = {
     languageSelector: '首页语言',
     heroEyebrow: 'Interview Notes',
     heroTitle: 'ML / LLM 技术复习笔记',
-    heroDescription:
-      '这是一套供自己反复复习的 ML / LLM 技术笔记，内容包括 MLSYS、CUDA kernel、分布式训练、LLM inference、ML coding、quant 和算法练习。',
-    startMlsys: '开始读 MLSYS',
-    tryPractice: '做一道练习',
     siteSummary: '站点概览',
     stats: {
       sections: '板块',
@@ -2381,10 +2377,6 @@ const homeCopy = {
     languageSelector: 'Homepage language',
     heroEyebrow: 'Interview Notes',
     heroTitle: 'ML / LLM interview notes',
-    heroDescription:
-      'The notes I use to review ML systems, CUDA kernels, distributed training, LLM inference, ML coding, quant, and algorithm problems.',
-    startMlsys: 'Start MLSYS',
-    tryPractice: 'Try a practice problem',
     siteSummary: 'Site summary',
     stats: {
       sections: 'Sections',
@@ -18180,15 +18172,6 @@ function App() {
                 </div>
               </div>
               <h1>{localizedHome.heroTitle}</h1>
-              <p>{localizedHome.heroDescription}</p>
-              <div className="home-actions">
-                <button className="primary-action" type="button" onClick={() => navigateToSection('mlsys')}>
-                  {localizedHome.startMlsys}
-                </button>
-                <button className="secondary-action" type="button" onClick={() => navigateToTutorial('MLSYS1.md')}>
-                  {localizedHome.tryPractice}
-                </button>
-              </div>
             </div>
 
             <div className="home-hero-panel" aria-label={localizedHome.siteSummary}>

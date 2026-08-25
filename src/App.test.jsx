@@ -63,7 +63,6 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: /ML \/ LLM 技术复习笔记/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /开始读 MLSYS/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^mlsys/i })).toBeInTheDocument();
   });
 
@@ -112,7 +111,7 @@ describe('App', () => {
   it('keeps the same tutorial selected while switching languages in place', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
     fireEvent.click(await screen.findByRole('button', { name: /MLSYS1 · GPU 体系结构入门/i }));
 
     const initialHeading = await screen.findByRole('heading', {
@@ -135,7 +134,7 @@ describe('App', () => {
   it('renders interactive multiple-choice practice blocks', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
     expect(await screen.findByText('Quick Check')).toBeInTheDocument();
     expect(screen.getByText(/CUDA thread blocks/)).toBeInTheDocument();
@@ -157,7 +156,7 @@ describe('App', () => {
   it('renders enhanced code blocks with language labels', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
     expect(await screen.findByText('Python')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
@@ -167,7 +166,7 @@ describe('App', () => {
   it('does not treat Python equality operators as Obsidian highlights', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
     const pythonFrame = (await screen.findByText('Python')).closest('.code-frame');
     expect(pythonFrame.querySelector('code')).toHaveTextContent(
@@ -179,7 +178,7 @@ describe('App', () => {
   it('renders Markdown math through KaTeX without losing LaTeX commands', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
     expect(await screen.findByText(/Inline math/)).toBeInTheDocument();
 
@@ -194,7 +193,7 @@ describe('App', () => {
   it('keeps the reader sidebar scoped to the current section', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开始读 MLSYS/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
     expect(await screen.findByRole('heading', { name: /MLSYS1/i })).toBeInTheDocument();
 
