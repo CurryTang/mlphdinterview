@@ -15818,7 +15818,8 @@ button.overview-support-card.active {
 .false-sharing-visual,
 .cow-visual,
 .epoll-visual,
-.sp-cycle-visual {
+.sp-cycle-visual,
+.rw-ruin-visual {
   --qd-ink: #17313f;
   --qd-blue: #267b9a;
   --qd-green: #438069;
@@ -15839,7 +15840,8 @@ button.overview-support-card.active {
 .false-sharing-header,
 .cow-header,
 .epoll-header,
-.sp-cycle-header {
+.sp-cycle-header,
+.rw-ruin-header {
   border-bottom: 1px solid rgba(24, 49, 63, 0.12);
   display: flex;
   align-items: center;
@@ -15852,7 +15854,8 @@ button.overview-support-card.active {
 .false-sharing-header h2,
 .cow-header h2,
 .epoll-header h2,
-.sp-cycle-header h2 {
+.sp-cycle-header h2,
+.rw-ruin-header h2 {
   margin: 0.18rem 0 0.3rem;
   color: #102735;
   font: 700 clamp(1.1rem, 2.3vw, 1.5rem) "Space Grotesk", "Avenir Next", sans-serif;
@@ -15863,7 +15866,8 @@ button.overview-support-card.active {
 .false-sharing-header p:not(.eyebrow),
 .cow-header p:not(.eyebrow),
 .epoll-header p:not(.eyebrow),
-.sp-cycle-header p:not(.eyebrow) {
+.sp-cycle-header p:not(.eyebrow),
+.rw-ruin-header p:not(.eyebrow) {
   margin: 0;
   color: #58707b;
   font-size: 0.86rem;
@@ -15873,7 +15877,8 @@ button.overview-support-card.active {
 .false-sharing-tabs,
 .cow-tabs,
 .epoll-tabs,
-.sp-cycle-tabs {
+.sp-cycle-tabs,
+.rw-ruin-tabs {
   flex: 0 0 auto;
   border: 1px solid rgba(24, 49, 63, 0.15);
   border-radius: 9px;
@@ -15886,7 +15891,8 @@ button.overview-support-card.active {
 .false-sharing-tabs button,
 .cow-tabs button,
 .epoll-tabs button,
-.sp-cycle-tabs button {
+.sp-cycle-tabs button,
+.rw-ruin-tabs button {
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -15901,7 +15907,8 @@ button.overview-support-card.active {
 .false-sharing-tabs button.active,
 .cow-tabs button.active,
 .epoll-tabs button.active,
-.sp-cycle-tabs button.active {
+.sp-cycle-tabs button.active,
+.rw-ruin-tabs button.active {
   background: #17313f;
   box-shadow: 0 4px 12px rgba(24, 49, 63, 0.17);
   color: #fff;
@@ -16539,6 +16546,124 @@ button.overview-support-card.active {
   .sp-cycle-stage {
     grid-template-columns: 1fr;
   }
+
+  .rw-ruin-outcome {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* random walk / gambler's ruin visual */
+
+.rw-ruin-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0.6rem 1.15rem;
+}
+
+.rw-ruin-barrier {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.rw-ruin-barrier.upper {
+  stroke: var(--qd-green);
+}
+
+.rw-ruin-barrier.lower {
+  stroke: var(--qd-red);
+}
+
+.rw-ruin-zero {
+  stroke: rgba(24, 49, 63, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.rw-ruin-label {
+  font: 700 10px "IBM Plex Mono", "Courier New", monospace;
+}
+
+.rw-ruin-label.upper {
+  fill: var(--qd-green);
+}
+
+.rw-ruin-label.lower {
+  fill: var(--qd-red);
+}
+
+.rw-ruin-label.zero {
+  fill: #6c818a;
+}
+
+.rw-ruin-path {
+  fill: none;
+  stroke: var(--qd-blue);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.rw-ruin-path.won {
+  stroke: var(--qd-green);
+}
+
+.rw-ruin-path.lost {
+  stroke: var(--qd-red);
+}
+
+.rw-ruin-outcome {
+  border-top: 1px solid rgba(24, 49, 63, 0.12);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.72rem;
+  padding: 0.75rem 1.15rem;
+}
+
+.rw-ruin-outcome span {
+  border-radius: 999px;
+  font: 700 0.59rem "IBM Plex Mono", "Courier New", monospace;
+  padding: 0.28rem 0.44rem;
+  white-space: nowrap;
+}
+
+.rw-ruin-outcome.good span {
+  border: 1px solid rgba(67, 128, 105, 0.3);
+  color: var(--qd-green);
+}
+
+.rw-ruin-outcome.bad span {
+  border: 1px solid rgba(181, 71, 63, 0.3);
+  color: var(--qd-red);
+}
+
+.rw-ruin-outcome strong {
+  color: #284754;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.rw-ruin-outcome button {
+  border: 1px solid rgba(38, 123, 154, 0.3);
+  border-radius: 8px;
+  background: #e8f3f7;
+  color: var(--qd-blue);
+  cursor: pointer;
+  font: 700 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  padding: 0.4rem 0.7rem;
+  white-space: nowrap;
+}
+
+.rw-ruin-outcome button:hover {
+  background: #d9ecf2;
+}
+
+.rw-ruin-note {
+  margin: 0;
+  padding: 0 1.15rem 0.9rem;
+  color: #6c818a;
+  font-size: 0.72rem;
+  line-height: 1.5;
 }
 
 /* ── Greedy: eight-problem pattern atlas & interactive visualizers ── */

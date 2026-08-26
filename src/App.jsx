@@ -1926,6 +1926,16 @@ const quantNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'Quant 11 · 鞅、停时与最优停时定理：一维随机游走的应用',
+    'Quant11 Martingales Stopping Times Random Walks.md',
+    null,
+    {
+      directory: 'quant',
+      category: 'Martingales & Betting',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     'C++ 面经 1 · 面向对象基础与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
@@ -7102,6 +7112,101 @@ function SharedPtrCycleVisual() {
           ? t("A 的 use_count 归零 → A 析构 → A 持有的 shared_ptr<B> 释放 → B 的 use_count 归零 → B 析构。", "A's use_count hits 0 → A destructs → A's shared_ptr<B> is released → B's use_count hits 0 → B destructs.")
           : t('A 的 use_count 变成 1（仍被 B 持有），B 的 use_count 仍是 1（被 A 持有），两者永远等不到 0，内存泄露。', "A's use_count drops to 1 (still held by B), B's use_count stays 1 (held by A) — neither ever reaches 0, and both leak.")}</p>
       </div>
+    </section>
+  );
+}
+
+const RANDOM_WALK_RUIN_PARAMS = {
+  symmetric: { p: 0.5, a: 3, b: 5 },
+  asymmetric: { p: 0.4, a: 2, b: 3 },
+};
+
+function simulateRandomWalkRuin(p, a, b, maxSteps = 500) {
+  const path = [0];
+  let position = 0;
+  for (let step = 0; step < maxSteps; step += 1) {
+    position += Math.random() < p ? 1 : -1;
+    path.push(position);
+    if (position === b || position === -a) break;
+  }
+  return path;
+}
+
+function RandomWalkRuinVisual() {
+  const { t } = useUiCopy();
+  const [mode, setMode] = useState('symmetric');
+  const [path, setPath] = useState(() => {
+    const { p, a, b } = RANDOM_WALK_RUIN_PARAMS.symmetric;
+    return simulateRandomWalkRuin(p, a, b);
+  });
+
+  const params = RANDOM_WALK_RUIN_PARAMS[mode];
+  const { a, b } = params;
+
+  const resimulate = (nextMode) => {
+    const { p, a: nextA, b: nextB } = RANDOM_WALK_RUIN_PARAMS[nextMode ?? mode];
+    setPath(simulateRandomWalkRuin(p, nextA, nextB));
+  };
+
+  const width = 560;
+  const height = 260;
+  const marginX = 40;
+  const marginY = 20;
+  const yRange = a + b;
+  const plotWidth = width - marginX * 2;
+  const plotHeight = height - marginY * 2;
+
+  const xForStep = (step) => marginX + (path.length <= 1 ? 0 : (step / (path.length - 1)) * plotWidth);
+  const yForPos = (pos) => marginY + ((b - pos) / yRange) * plotHeight;
+
+  const points = path.map((pos, step) => `${xForStep(step).toFixed(1)},${yForPos(pos).toFixed(1)}`).join(' ');
+  const finalPos = path[path.length - 1];
+  const hitUpper = finalPos === b;
+  const hitLower = finalPos === -a;
+  const steps = path.length - 1;
+
+  return (
+    <section className="rw-ruin-visual" aria-label={t('一维随机游走吸收边界模拟', 'One-dimensional random walk with absorbing barriers')}>
+      <header className="rw-ruin-header">
+        <div>
+          <p className="eyebrow">{t('单次路径模拟', 'A single simulated path')}</p>
+          <h2>{mode === 'symmetric'
+            ? t('对称随机游走：p = 0.5，a = 3，b = 5', 'Symmetric random walk: p = 0.5, a = 3, b = 5')
+            : t('不对称随机游走：p = 0.4，a = 2，b = 3（向下概率更大）', 'Asymmetric random walk: p = 0.4, a = 2, b = 3 (biased downward)')}</h2>
+        </div>
+        <div className="rw-ruin-tabs" role="group" aria-label={t('选择参数', 'Choose parameters')}>
+          <button type="button" className={mode === 'symmetric' ? 'active' : ''} onClick={() => { setMode('symmetric'); resimulate('symmetric'); }}>{t('对称', 'symmetric')}</button>
+          <button type="button" className={mode === 'asymmetric' ? 'active' : ''} onClick={() => { setMode('asymmetric'); resimulate('asymmetric'); }}>{t('不对称', 'asymmetric')}</button>
+        </div>
+      </header>
+
+      <svg className="rw-ruin-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('随机游走路径图', 'Random walk path chart')}>
+        <line x1={marginX} y1={yForPos(b)} x2={width - marginX} y2={yForPos(b)} className="rw-ruin-barrier upper" />
+        <line x1={marginX} y1={yForPos(-a)} x2={width - marginX} y2={yForPos(-a)} className="rw-ruin-barrier lower" />
+        <line x1={marginX} y1={yForPos(0)} x2={width - marginX} y2={yForPos(0)} className="rw-ruin-zero" />
+        <text x={width - marginX + 6} y={yForPos(b) + 4} className="rw-ruin-label upper">b={b}</text>
+        <text x={width - marginX + 6} y={yForPos(-a) + 4} className="rw-ruin-label lower">-a={-a}</text>
+        <text x={width - marginX + 6} y={yForPos(0) + 4} className="rw-ruin-label zero">0</text>
+        <polyline points={points} className={`rw-ruin-path ${hitUpper ? 'won' : hitLower ? 'lost' : ''}`} />
+      </svg>
+
+      <div className={`rw-ruin-outcome ${hitUpper ? 'good' : hitLower ? 'bad' : ''}`}>
+        <span>{t('本次模拟结果', 'This simulation')}</span>
+        <strong>
+          {t('共 ', 'Total ')}{steps}{t(' 步，', ' steps, ')}
+          {hitUpper
+            ? t('撞到上边界 b', 'hit the upper barrier b')
+            : hitLower
+              ? t('撞到下边界 -a', 'hit the lower barrier -a')
+              : t('模拟步数上限已到，尚未分出胜负', 'reached the simulation step cap without absorption')}
+        </strong>
+        <button type="button" onClick={() => resimulate()}>{t('重新模拟', 'Resimulate')}</button>
+      </div>
+
+      <p className="rw-ruin-note">{t(
+        '这是单次随机实现，会因为随机性而波动；上面推导出的 P(先到 b) 和 E[T] 是对所有可能路径取平均之后的理论值，不是某一次具体路径的结果。',
+        'This is a single random realization and will vary from run to run; the P(hit b first) and E[T] derived above are theoretical averages over all possible paths, not the result of any one specific path.',
+      )}</p>
     </section>
   );
 }
@@ -18247,7 +18352,7 @@ function CombinationSumVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|random-walk-ruin-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -18459,6 +18564,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'shared-ptr-cycle-demo') {
     return <SharedPtrCycleVisual />;
+  }
+
+  if (match?.[1] === 'random-walk-ruin-demo') {
+    return <RandomWalkRuinVisual />;
   }
 
   if (match) {
