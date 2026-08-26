@@ -2222,6 +2222,61 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'ML Coding 02 · 基础算子补完：GELU、BatchNorm、Kaiming Init、Dropout、Conv2d、线性回归、梯度累积',
+    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.md',
+    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 02 · Fundamentals Roundup: GELU, BatchNorm, Kaiming Init, Dropout, Conv2d, Linear Regression',
+      category: 'From Scratch',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 03 · 注意力机制全家桶：从 MHA 到 GQA、滑动窗口、线性注意力、KV Cache 与 Flash Attention',
+    'MLCoding03 Attention Variants GQA Sliding Window KV Cache.md',
+    'MLCoding03 Attention Variants GQA Sliding Window KV Cache.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 03 · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache, and Flash Attention',
+      category: 'From Scratch',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 04 · 架构组件：LoRA 低秩微调、ViT Patch Embedding 与 Mixture of Experts',
+    'MLCoding04 LoRA ViT Patch Embedding MoE.md',
+    'MLCoding04 LoRA ViT Patch Embedding MoE.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 04 · Architecture Extensions: LoRA, ViT Patch Embedding, and Mixture of Experts',
+      category: 'From Scratch',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 05 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码',
+    'MLCoding05 Sampling Beam Search Speculative Decoding.md',
+    'MLCoding05 Sampling Beam Search Speculative Decoding.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 05 · Decoding Strategies: Top-k/Top-p Sampling, Beam Search, and Speculative Decoding',
+      category: 'From Scratch',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 06 · 量化与对齐：INT8 量化和 DPO / GRPO / PPO / OPD 损失函数',
+    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.md',
+    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 06 · Quantization & Alignment: INT8 Quantization and DPO / GRPO / PPO / OPD Losses',
+      category: 'From Scratch',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     '强化学习练习 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
