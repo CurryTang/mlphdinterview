@@ -27,17 +27,18 @@ stationary return time:
 1. [Markov chain basics](#markov-chain-basics)
 2. [The Chapman-Kolmogorov equation](#the-chapman-kolmogorov-equation)
 3. [State augmentation: building a Markov chain from a non-Markov process](#state-augmentation-building-a-markov-chain-from-a-non-markov-process)
-4. [First-step analysis](#first-step-analysis)
-5. [Absorbing states: absorption probability and expected time to absorption](#absorbing-states-absorption-probability-and-expected-time-to-absorption)
-6. [Stationary distribution: steady-state behavior, first passage, and return time](#stationary-distribution-steady-state-behavior-first-passage-and-return-time)
-7. [Example 1: Two-state weather](#example-1-two-state-weather)
-8. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
-9. [Random walks: common properties and simple examples](#random-walks-common-properties-and-simple-examples)
-10. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
-11. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
-12. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
-13. [Common pitfalls](#common-pitfalls)
-14. [One-sentence summary](#one-sentence-summary)
+4. [Lumpability: compressing a Markov chain into a coarser Markov chain](#lumpability-compressing-a-markov-chain-into-a-coarser-markov-chain)
+5. [First-step analysis](#first-step-analysis)
+6. [Absorbing states: absorption probability and expected time to absorption](#absorbing-states-absorption-probability-and-expected-time-to-absorption)
+7. [Stationary distribution: steady-state behavior, first passage, and return time](#stationary-distribution-steady-state-behavior-first-passage-and-return-time)
+8. [Example 1: Two-state weather](#example-1-two-state-weather)
+9. [Example 2: Gambler's ruin](#example-2-gamblers-ruin)
+10. [Random walks: common properties and simple examples](#random-walks-common-properties-and-simple-examples)
+11. [Example 3: Five-light-bulb toggling](#example-3-five-light-bulb-toggling)
+12. [Five-light-bulb solution 1: State compression and equations](#five-light-bulb-solution-1-state-compression-and-equations)
+13. [Five-light-bulb solution 2: Stationary return time](#five-light-bulb-solution-2-stationary-return-time)
+14. [Common pitfalls](#common-pitfalls)
+15. [One-sentence summary](#one-sentence-summary)
 
 ---
 
@@ -241,6 +242,103 @@ Redefine the state as a combination of the most recent k steps.
 As long as k is finite and fixed, the Markov property holds again
 on the new state space, at the cost of the state count growing from
 |S| to at most |S|^k.
+```
+
+---
+
+## Lumpability: compressing a Markov chain into a coarser Markov chain
+
+The previous section made the state space **bigger** to restore the Markov property. This section covers the opposite move: under the right condition, the state space doesn't need to grow at all; it can be **compressed** into coarser equivalence classes, and the compressed process is still a valid Markov chain. This condition is called **lumpability**, first given by Kemeny and Snell.
+
+### The criterion: when states can be merged
+
+Partition the original state space $S$ into disjoint equivalence classes $A_1, A_2, \ldots, A_k$. If for **any** two states $x, y$ in the same class $A_j$, their total transition probability into another class $A_l$ is equal:
+
+$$
+\sum_{z \in A_l} P(x, z) = \sum_{z \in A_l} P(y, z) \qquad \text{for all } j, l
+$$
+
+then tracking only "which class am I currently in" produces a process that is itself a Markov chain, with transition probabilities equal to that common value. Intuitively: if every detailed state within a class has exactly the same distribution over "which class comes next," then "which specific state within the class" is redundant information and can be discarded.
+
+### Example: a random walk on a tetrahedron (the complete graph $K_4$)
+
+**Problem**: An ant does a random walk on the 4 vertices of a regular tetrahedron: at each step it moves to one of the other 3 vertices, chosen uniformly. Starting from some vertex, what is the expected number of steps to visit all 4 vertices?
+
+The tetrahedron's graph has a key structural fact: all 4 vertices are pairwise adjacent ($\binom{4}{2}=6$ edges, exactly the tetrahedron's 6 edges), so the graph is the complete graph $K_4$. This "every pair of vertices is adjacent" symmetry is the entire reason the state space can be drastically compressed later.
+
+**Why the naive state definition is unwieldy**: if you define the state honestly as "current vertex + which subset has been visited," the state count is on the order of $4 \times 2^4$, and the probability of "stepping onto a new vertex" seems to depend on both "where you are now" and "exactly which vertices you've visited."
+
+**Compressing with lumpability**: let $i$ be "the number of distinct vertices visited so far" (including the current one). Because the graph is complete, no matter which vertex you're currently standing on, it is adjacent to all 3 other vertices, so among the 3 next-step options, exactly $(i-1)$ are "other already-visited vertices" and $(4-i)$ are "never-visited new vertices." These two counts always sum to 3, and neither depends on exactly which vertices were visited or where you currently stand. In other words, every detailed state within the equivalence class "$i$ vertices visited" (regardless of which ones, regardless of current position) has exactly the same probability $(4-i)/3$ of transitioning to "$i+1$ vertices visited," and probability 0 of transitioning to any other class: this satisfies the Kemeny–Snell criterion above, so the merge is valid.
+
+The compressed chain has only 4 states ($i=1,2,3,4$), a birth-death chain:
+
+```mermaid
+flowchart LR
+  S1["1 vertex visited<br/>(start)"] -->|"1"| S2["2 visited"]
+  S2 -->|"2 / 3"| S3["3 visited"]
+  S3 -->|"1 / 3"| S4["4 visited<br/>(all covered)"]
+```
+
+Starting from $i=1$, the very first step is guaranteed to hit a new vertex (every one of the other 3 is unvisited), so $P(1\to2)=1$; $P(2\to3)=2/3$; $P(3\to4)=1/3$. Let $T_i$ be the number of steps to go from "$i$ visited" to "$i+1$ visited"; it's geometric with success probability $(4-i)/3$, so $\mathbb E[T_i] = 3/(4-i)$:
+
+$$
+\mathbb E[T] = \sum_{i=1}^{3} \frac{3}{4-i} = \frac{3}{3} + \frac{3}{2} + \frac{3}{1} = 1 + 1.5 + 3 = 5.5
+$$
+
+It takes an expected **5.5 steps** to visit all 4 vertices of the tetrahedron.
+
+### The connection to the Coupon Collector Problem
+
+If you've seen the Coupon Collector Problem before (there are $n$ types of coupons, each draw is uniform over all types, and the question is the expected number of draws to collect every type; the answer is $n H_n = n\sum_{k=1}^n \frac1k$), you'll notice "$i$ vertices visited so far" is exactly the same state definition as "$i$ types collected so far" in the coupon problem, and the reason both compress the same way is identical: every step is a uniform draw over the full set of candidates, so *which* ones you've collected doesn't matter, only *how many*.
+
+Matching them up precisely: the tetrahedron's first step is guaranteed to hit a new vertex (the starting vertex itself is already counted in $i=1$), so from the second step onward the remaining process is exactly a coupon-collector problem with $n=3$ remaining types, with expected steps $3 H_3 = 3(1+\tfrac12+\tfrac13) = 3\times\tfrac{11}{6} = 5.5$, matching the direct sum above exactly. In general, a random walk on the complete graph $K_n$ has expected cover time:
+
+$$
+\mathbb E[T_{K_n}] = (n-1) H_{n-1}
+$$
+
+When you see "random walk on a graph, expected time to cover all vertices," first check whether the graph is complete (or whether any two unvisited vertices are dynamically equivalent). If so, you can usually just apply the coupon-collector result directly, without re-deriving it.
+
+### Counterexample: why the same state definition fails on a cube
+
+Compare this to a cube ($Q_3$, 8 vertices, each of degree 3) to see exactly how much is riding on "complete graph." The cube is not a complete graph: each vertex is adjacent to only 3 neighbors, and is not directly adjacent to the 3 vertices at distance 2 or the 1 antipodal vertex at distance 3. "Distance" has real structure on this graph, unlike $K_4$ where every pair of vertices is on equal footing.
+
+This means "number of distinct vertices visited" is **not** lumpable on the cube: standing at the same vertex, having visited the same number of vertices, whether the next step hits a new vertex depends on the specific path taken (e.g., whether the 3 already-visited vertices happen to be neighbors of the current vertex); it's not something the visit count alone can summarize.
+
+But there is another quantity on the cube that *is* lumpable: the current vertex's **graph distance from the starting vertex**, $d \in \{0,1,2,3\}$. Because the cube is vertex-transitive (the graph looks identical from any vertex's point of view), starting from any vertex at distance $d$, its 3 neighbors split into fixed counts at distances $d-1$, $d$, $d+1$ (on the cube, vertices within the same distance layer are never adjacent to each other, so it's exactly $d-1$ and $d+1$); this fixed count depends only on $d$, not on which specific vertex or which path was taken, so it satisfies the Kemeny–Snell criterion. Verifying layer by layer:
+
+| Current distance $d$ | Split of the 3 neighbors | Transition probabilities |
+|---|---|---|
+| $d=0$ (start) | all 3 at $d=1$ | $P(0\to1)=1$ |
+| $d=1$ | 1 back to $d=0$, 2 to $d=2$ | $P(1\to0)=\tfrac13,\ P(1\to2)=\tfrac23$ |
+| $d=2$ | 2 back to $d=1$, 1 to $d=3$ | $P(2\to1)=\tfrac23,\ P(2\to3)=\tfrac13$ |
+| $d=3$ (antipode) | all 3 at $d=2$ | $P(3\to2)=1$ |
+
+This is the "graph distance" version of a birth-death chain, and its expected hitting time to the antipodal vertex can be solved directly with first-step analysis. Let $h_d$ be the expected number of steps from distance $d$ to $d=3$:
+
+$$
+h_3=0,\quad h_2 = 1+\tfrac23 h_1,\quad h_1 = 1+\tfrac13 h_0+\tfrac23 h_2,\quad h_0=1+h_1
+$$
+
+Solving gives $h_2=7,\ h_1=9,\ h_0=10$: starting at one vertex of a cube, it takes an expected **10 steps** to reach the opposite corner, which is the standard answer to this classic problem.
+
+Comparing the two examples gives a general intuition: when you see "random walk on a graph," ask "how symmetric is this graph? Are any two unvisited vertices dynamically equivalent?" If the graph is complete (or vertex-transitive), you can often replace "exact identity" with a coarse count/equivalence class as the state, compressing the state space from exponential to linear. Whether that equivalence class should be "visit count" or "graph distance from some reference point" depends on whether the graph's symmetry makes "any two vertices" equivalent (complete graphs) or "any two vertices at the same distance" equivalent (distance-regular graphs like the cube); picking the wrong compression means the compressed process is no longer a Markov chain.
+
+```text
+Lumpability criterion (Kemeny-Snell):
+Partition the states into equivalence classes. If every pair of states
+within the same class has equal total transition probability into any
+other class, the compressed coarse-grained process is still a Markov chain.
+
+Tetrahedron (complete graph K4):
+Classify by "number of vertices visited, i" -- works, equivalent to the
+coupon collector problem, E[T] = (n-1)H_(n-1).
+
+Cube (not a complete graph):
+Classify by "number of vertices visited" -- fails, because which
+neighbors are new depends on the specific path taken;
+classify by "graph distance from the start, d" -- works, a standard
+birth-death chain, E[start to antipode] = 10.
 ```
 
 ---
