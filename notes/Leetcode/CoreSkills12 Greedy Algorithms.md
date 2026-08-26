@@ -1,4 +1,4 @@
-# Core Skills 12 · 贪心算法：从强制选择、最远包络到不变量证明
+# Core Skills 12 · 贪心算法：从 Kadane 原理、强制选择到最远包络
 
 ## 1. 贪心算法的核心心智模型
 
@@ -22,7 +22,115 @@
 
 ---
 
-## 2. 经典 4 大贪心万能模板
+## 2. 深入解构 Kadane 算法：原理、动态规划与贪心双重视角
+
+### 2.1 什么是 Kadane 算法？它解决了什么问题？
+
+**Kadane 算法（Kadane's Algorithm）** 由卡内基梅隆大学（CMU）统计学家 **Joseph Born Kadane** 于 1984 年提出（并在计算机大师 Jon Bentley 的名著《编程珠玑》*Programming Pearls* 中被广为传阅）。
+
+它所解决的是计算机科学中最经典的基石问题之一——**最大子数组和问题（Maximum Subarray Problem）**：
+> 给定一个整数数组 `nums`（包含正数、负数与零），找到一个具有最大和的**连续非空子数组** $\max_{0 \le i \le j < n} \sum_{k=i}^j nums[k]$，并返回其最大和。
+
+在 Kadane 算法出现之前，该问题的求解复杂度经历了一系列演进：
+1. **暴力枚举（Brute Force）**：枚举所有起点 $i$ 与终点 $j$，再用循环求和，时间复杂度 $O(n^3)$；
+2. **前缀和优化（Prefix Sums）**：预计算前缀和数组 $P$，则任意区间和可在 $O(1)$ 计算，但枚举 $(i, j)$ 仍需 $O(n^2)$；
+3. **分治法（Divide and Conquer）**：将数组一分为二，递归求解左半、右半和跨越中点的最大子数组，时间复杂度 $O(n \log n)$；
+4. **Kadane 算法**：仅需**单次线性扫描**，将时间复杂度彻底压至理论下界 **$O(n)$**，空间复杂度仅需 **$O(1)$**！
+
+---
+
+### 2.2 核心原理：动态规划视角 vs 贪心前缀重置视角
+
+Kadane 算法之所以精妙，在于它既可以被严谨地解释为**一维动态规划的状态压缩**，也可以被直观地理解为**贪心前缀止损重置机制**。
+
+#### 视角 1：动态规划（DP）的状态设计与无后效性
+如果简单地将状态定义为“前 $i$ 个元素中的最大子数组和”，我们会立刻遇到一个致命困境：这个最大子数组可能出现在数组前面的任意位置，**它不一定以 $nums[i]$ 结尾**！当处理第 $i+1$ 个元素时，我们无法将其与之前的子数组连续拼接，状态失去了递推的“连续性连接点”（违背无后效性）。
+
+Kadane 的核心突破在于定义了一个**具有局部连续约束的状态**：
+- **定义 $dp[i]$ 为：以第 $i$ 个元素 $nums[i]$ 结尾的最大连续子数组和**（强制包含 $nums[i]$）。
+
+此时，对于第 $i$ 个元素 $nums[i]$，只有两种抉择：
+1. **接在前面**：将 $nums[i]$ 拼接到以 $nums[i-1]$ 结尾的最优子数组后面，收益为 $dp[i-1] + nums[i]$；
+2. **另起炉灶**：抛弃前面的所有元素，单由 $nums[i]$ 作为新子数组的起点，收益为 $nums[i]$。
+
+因此状态转移方程为：
+$$dp[i] = \max(nums[i], dp[i-1] + nums[i]) = \max(0, dp[i-1]) + nums[i]$$
+
+全局最大和即为所有局部结尾状态的最大值：
+$$\text{GlobalMax} = \max_{0 \le i < n} dp[i]$$
+
+由于 $dp[i]$ 的计算只依赖于紧邻的前一个状态 $dp[i-1]$，我们可以直接将整个 DP 数组压缩为一个标量变量 `cur_sum`，从而实现 **$O(1)$ 常数额外空间**。
+
+---
+
+#### 视角 2：贪心前缀重置（Momentum vs Liability / 资产与负债）
+从贪心角度思考，遍历到元素 $x$ 时，历史累积的前缀和 `cur_sum` 对当前决策的作用只有两种：
+- **正向资产（Positive Momentum）**：若 `cur_sum > 0`，说明历史前缀具有正收益。将正数带入当前元素 $x$，无论 $x$ 本身是正是负，整体和必定大于单拿 $x$（$x + \text{cur\_sum} > x$）。
+- **纯负债拖累（Pure Liability / Drag）**：若 `cur_sum \le 0`，说明历史前缀已经沦为“负资产”。如果把这部分负资产加到 $x$ 上，只会让以 $x$ 开头的任何子数组变小！因此**必须果断止损归零（`cur_sum = 0`），抛弃全部历史拖累，让新子数组直接从 $x$ 重新起步**。
+
+```kadane-demo
+```
+
+---
+
+### 2.3 数学严密证明（反证法 / Proof by Contradiction）
+
+为什么“一旦前缀和变负就直接归零重置”绝不会漏掉全局最优解？
+
+**定理**：设全局最大连续子数组为 $nums[L \dots R]$（其和为 $S^*$）。那么对于该最优子数组内部的任意前缀 $nums[L \dots k]$（其中 $L \le k < R$），其前缀和必须满足：
+$$\sum_{j=L}^k nums[j] \ge 0$$
+
+**反证证明**：
+1. 假设存在某个位置 $k$（$L \le k < R$），使得该前缀和为负：
+   $$S_{\text{prefix}} = \sum_{j=L}^k nums[j] < 0$$
+2. 现在我们从原最优子数组 $nums[L \dots R]$ 中切除这段负前缀，观察剩余的后缀子数组 $nums[k+1 \dots R]$ 之和 $S_{\text{suffix}}$：
+   $$S_{\text{suffix}} = \sum_{j=k+1}^R nums[j] = S^* - S_{\text{prefix}}$$
+3. 因为 $S_{\text{prefix}} < 0$，所以 $-S_{\text{prefix}} > 0$，可得：
+   $$S_{\text{suffix}} = S^* + (-S_{\text{prefix}}) > S^*$$
+4. 也就是说，切除负前缀后的剩余子数组之和 $S_{\text{suffix}}$ 竟然严格大于原全局最大和 $S^*$！
+5. 这与 $S^*$ 是全局最大子数组和的前提产生直接矛盾！
+
+**结论**：**全局最优子数组内部的任何一个真前缀，其和都绝对不可能为负数**。因此，Kadane 算法一旦检测到累积前缀和 $< 0$ 就立即归零重置，**剔除的全是数学上证明不可能产生全局最优解的无效路径**，故算法具备 100% 的完备性与正确性。
+
+---
+
+### 2.4 Kadane 算法的核心代码骨架与思维迁移
+
+```python
+def kadane(nums: list[int]) -> int:
+    max_sum = nums[0]
+    cur_sum = 0
+    
+    for x in nums:
+        # 核心转移：若 cur_sum 为负则归零，再加上当前值 x
+        cur_sum = max(x, cur_sum + x)
+        max_sum = max(max_sum, cur_sum)
+        
+    return max_sum
+```
+
+```cpp
+#include <vector>
+#include <algorithm>
+
+int kadane(const std::vector<int>& nums) {
+    int max_sum = nums[0];
+    int cur_sum = 0;
+    for (int x : nums) {
+        cur_sum = std::max(x, cur_sum + x);
+        max_sum = std::max(max_sum, cur_sum);
+    }
+    return max_sum;
+}
+```
+
+#### 思维迁移：Kadane 的前缀重置思想在其他高频题中的应用
+1. **Gas Station（加油站 · LC 134）**：将各站的净收益定义为 $net[i] = gas[i] - cost[i]$。当油箱剩余油量 $tank < 0$ 时，说明从起点到当前站构成了净负债前缀，其间任何加油站都无法作为有效起点，候选起点直接跳跃至 $i + 1$。
+2. **Best Time to Buy and Sell Stock（买卖股票最佳时机 · LC 121）**：若将每日价格差 $\Delta p_i = price[i] - price[i-1]$ 视为数组，求单次最大利润等价于求 $\Delta p$ 的最大子数组和（Kadane 算法的直接变体）。
+
+---
+
+## 3. 经典 4 大贪心万能模板
 
 | 模板分类 | 核心不变量与操作机制 | 典型代表题目 |
 | :--- | :--- | :--- |
@@ -36,7 +144,7 @@
 
 ---
 
-## 3. NeetCode 150 经典贪心八题深度解构
+## 4. NeetCode 150 经典贪心八题深度解构
 
 ---
 
@@ -74,7 +182,6 @@ class Solution:
 ```cpp
 #include <vector>
 #include <algorithm>
-#include <climits>
 
 class Solution {
 public:
@@ -159,15 +266,6 @@ public:
 - 当指针 `i` 走到当前跳跃窗口的终点 `cur_end` 时，说明当前这一跳的潜力已被全部榨干，必须发起下一次跳跃：
   - `steps += 1`
   - 将窗口右端点推进到 `cur_end = farthest`。
-
-```text
-隐式 BFS 窗口推进示意：
-Index:       0     1     2     3     4
-Nums:       [2,    3,    1,    1,    4]
-Step 0:    [ * ] (i=0, cur_end=0, farthest=2) -> i==cur_end -> step=1, cur_end=2
-Step 1:          [ *     * ]                  -> 在 [1, 2] 内探索得 farthest=4 -> i==2 -> step=2, cur_end=4
-Step 2:                            [ * ] (已覆盖终点 index 4, 结束)
-```
 
 ```python
 class Solution:
@@ -532,7 +630,7 @@ class Solution:
 
 class Solution {
 public:
-    bool checkValidString(const std::string& s) {
+    bool checkValidString(const std::vector<char>& s) {
         int cmin = 0;
         int cmax = 0;
         
@@ -561,7 +659,8 @@ public:
 
 ---
 
-## 4. 贪心算法面试避坑与对比速查
+## 5. 贪心算法面试避坑与对比速查
+
 | 序号 / 题目 | 核心贪心判定 | 致命避坑陷阱 | 复杂度 |
 | :--- | :--- | :--- | :--- |
 | **53. Maximum Subarray** | 前缀和 `< 0` 立即归零并重新开始 | 全负数数组时 `max_sum` 绝不能初始化为 0 | 时间 $O(n)$<br>空间 $O(1)$ |

@@ -16228,6 +16228,90 @@ function GreedyPatternAtlas() {
   );
 }
 
+const KADANE_STEPS = [
+  { i: 0, val: -2, curSum: -2, maxSum: -2, reset: true, subStart: 0, subEnd: 0, desc: '初始元素 -2：cur_sum = -2 < 0。前缀和为负，立即止损归零重置，max_sum = -2。', descEn: 'Initial element -2: cur_sum = -2 < 0. Negative prefix causes drag; reset to 0 immediately, max_sum = -2.' },
+  { i: 1, val: 1, curSum: 1, maxSum: 1, reset: false, subStart: 1, subEnd: 1, desc: '遇到 1：从 0 开始加上 1 -> cur_sum = 1 > 0。形成有效正收益，更新 max_sum = 1。', descEn: 'Element 1: start fresh from 0 + 1 -> cur_sum = 1 > 0. Positive momentum formed, update max_sum = 1.' },
+  { i: 2, val: -3, curSum: -2, maxSum: 1, reset: true, subStart: 1, subEnd: 2, desc: '遇到 -3：cur_sum = 1 + (-3) = -2 < 0。前缀再次沦为负资产，果断归零重置！max_sum 维持 1。', descEn: 'Element -3: cur_sum = 1 + (-3) = -2 < 0. Prefix becomes a liability again; reset to 0! max_sum remains 1.' },
+  { i: 3, val: 4, curSum: 4, maxSum: 4, reset: false, subStart: 3, subEnd: 3, desc: '遇到 4：从 0 开始加上 4 -> cur_sum = 4。开启全新的优质子数组 [4]，更新 max_sum = 4。', descEn: 'Element 4: 0 + 4 -> cur_sum = 4. Start a promising new subarray [4], update max_sum = 4.' },
+  { i: 4, val: -1, curSum: 3, maxSum: 4, reset: false, subStart: 3, subEnd: 4, desc: '遇到 -1：cur_sum = 4 + (-1) = 3 > 0。尽管遇到负数，但历史前缀仍有 +3 净利润，继续保留子数组 [4, -1]！', descEn: 'Element -1: cur_sum = 4 + (-1) = 3 > 0. Despite negative num, historical profit remains +3, keep subarray [4, -1]!' },
+  { i: 5, val: 2, curSum: 5, maxSum: 5, reset: false, subStart: 3, subEnd: 5, desc: '遇到 2：cur_sum = 3 + 2 = 5 > 0。正收益持续扩张，更新 max_sum = 5（子数组 [4, -1, 2]）。', descEn: 'Element 2: cur_sum = 3 + 2 = 5 > 0. Momentum expands, update max_sum = 5 for subarray [4, -1, 2].' },
+  { i: 6, val: 1, curSum: 6, maxSum: 6, reset: false, subStart: 3, subEnd: 6, desc: '遇到 1：cur_sum = 5 + 1 = 6 > 0。达到全局峰值！更新 max_sum = 6（子数组 [4, -1, 2, 1]）。', descEn: 'Element 1: cur_sum = 5 + 1 = 6 > 0. Hits global maximum! Update max_sum = 6 for [4, -1, 2, 1].' },
+  { i: 7, val: -5, curSum: 1, maxSum: 6, reset: false, subStart: 3, subEnd: 7, desc: '遇到 -5：cur_sum = 6 + (-5) = 1 > 0。虽然利润缩减为 1，但尚未变成负资产，max_sum 保持 6。', descEn: 'Element -5: cur_sum = 6 + (-5) = 1 > 0. Profit drops to 1 but not negative, max_sum remains 6.' },
+  { i: 8, val: 4, curSum: 5, maxSum: 6, reset: false, subStart: 3, subEnd: 8, desc: '遇到 4：cur_sum = 1 + 4 = 5。全数组扫描结束，全局最大连续子数组为 [4, -1, 2, 1]，最大和为 6！', descEn: 'Element 4: cur_sum = 1 + 4 = 5. Full array scanned, global max subarray is [4, -1, 2, 1] with sum = 6!' },
+];
+
+function KadaneVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = KADANE_STEPS[stepIndex] ?? KADANE_STEPS[0];
+  const nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
+
+  return (
+    <section aria-label={t('Kadane 算法前缀动量与重置演示', 'Kadane algorithm momentum and reset walkthrough')} className="kadane-vis">
+      <header className="kadane-header">
+        <div>
+          <p className="eyebrow">{t('前缀动量 vs 负债归零', 'Prefix Momentum vs Liability Reset')}</p>
+          <h2>{t('Kadane 算法：正向利润累加与负前缀即时止损', 'Kadane\'s Algorithm: Accumulate Profit & Reset Negative Drag')}</h2>
+          <p>{t(
+            '当 cur_sum > 0 时带入下一项是有益资本；当 cur_sum < 0 时沦为负资产，切除后未来总和必更大。',
+            'When cur_sum > 0, it is beneficial asset; when cur_sum < 0, it becomes a liability—cutting it increases future sums.',
+          )}</p>
+        </div>
+        <div className="kadane-scoreboard">
+          <div><span>cur_sum:</span> <strong className={step.curSum >= 0 ? 'pos' : 'neg'}>{step.curSum}</strong></div>
+          <div><span>max_sum:</span> <strong className="max-tag">{step.maxSum}</strong></div>
+        </div>
+      </header>
+
+      <div className="kadane-track">
+        {nums.map((val, idx) => {
+          const isInspected = idx === step.i;
+          const isInSubarray = idx >= step.subStart && idx <= step.subEnd;
+          const isPeakSubarray = idx >= 3 && idx <= 6 && stepIndex >= 6;
+          return (
+            <div
+              key={idx}
+              className={`kadane-cell ${isInspected ? 'inspect' : ''} ${isInSubarray ? 'active-sub' : ''} ${isPeakSubarray ? 'peak' : ''}`}
+            >
+              <span className="kadane-idx">i={idx}</span>
+              <strong className={`kadane-val ${val >= 0 ? 'pos' : 'neg'}`}>{val >= 0 ? `+${val}` : val}</strong>
+              {isInspected && <span className="kadane-badge current">{t('当前项', 'Current')}</span>}
+              {idx === step.subStart && isInSubarray && <span className="kadane-badge start">{t('起点 L', 'Start L')}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="kadane-control-bar">
+        <label>
+          <span>{t('步进步骤', 'Step')}: {stepIndex + 1} / {KADANE_STEPS.length} (Index {step.i})</span>
+          <input
+            aria-label={t('选择 Kadane 演示步骤', 'Select Kadane step')}
+            max={KADANE_STEPS.length - 1}
+            min="0"
+            onChange={(e) => setStepIndex(Number(e.target.value))}
+            type="range"
+            value={stepIndex}
+          />
+        </label>
+        <button
+          className="kadane-next-btn"
+          disabled={stepIndex >= KADANE_STEPS.length - 1}
+          onClick={() => setStepIndex((prev) => Math.min(KADANE_STEPS.length - 1, prev + 1))}
+          type="button"
+        >
+          {t('下一步 →', 'Next Step →')}
+        </button>
+      </div>
+
+      <div className="kadane-desc-card">
+        <strong>{t('状态决策', 'Decision')}: </strong>
+        <span>{isEnglish ? step.descEn : step.desc}</span>
+      </div>
+    </section>
+  );
+}
+
 const JUMP_GAME_CASES = [
   {
     id: 'solvable',
@@ -18163,7 +18247,7 @@ function CombinationSumVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -18267,6 +18351,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'greedy-patterns') {
     return <GreedyPatternAtlas />;
+  }
+
+  if (match?.[1] === 'kadane-demo') {
+    return <KadaneVisual />;
   }
 
   if (match?.[1] === 'jump-game-demo') {

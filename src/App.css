@@ -16719,6 +16719,167 @@ button.overview-support-card.active {
   color: #b91c1c;
 }
 
+/* ── Kadane's Algorithm Visualizer ── */
+.kadane-vis {
+  margin: 1.35rem auto;
+  max-width: min(100%, 960px);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  border-radius: 9px;
+  background: linear-gradient(145deg, #ffffff, #f0fdfa);
+  box-shadow: 0 10px 24px rgba(13, 148, 136, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.kadane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(13, 148, 136, 0.15);
+  padding-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.kadane-scoreboard {
+  display: flex;
+  gap: 0.8rem;
+  background: white;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.kadane-scoreboard > div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kadane-scoreboard .pos { color: #0d9488; }
+.kadane-scoreboard .neg { color: #dc2626; }
+.kadane-scoreboard .max-tag {
+  background: #0d9488;
+  color: white;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.kadane-track {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.kadane-cell {
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  padding: 0.55rem 0.3rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.kadane-cell.inspect {
+  border-color: #0d9488;
+  background: #ccfbf1;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+}
+
+.kadane-cell.active-sub {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+}
+
+.kadane-cell.peak {
+  border-color: #059669;
+  background: #ecfdf5;
+}
+
+.kadane-idx {
+  font-size: 0.6rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.kadane-val {
+  font-size: 1.05rem;
+}
+
+.kadane-val.pos { color: #0f766e; }
+.kadane-val.neg { color: #dc2626; }
+
+.kadane-badge {
+  font-size: 0.55rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.kadane-badge.current {
+  background: #0d9488;
+  color: white;
+}
+
+.kadane-badge.start {
+  background: #6366f1;
+  color: white;
+}
+
+.kadane-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(13, 148, 136, 0.12);
+}
+
+.kadane-control-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #0f766e;
+  flex: 1;
+}
+
+.kadane-control-bar input[type="range"] {
+  flex: 1;
+  max-width: 320px;
+}
+
+.kadane-next-btn {
+  background: #0d9488;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kadane-next-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kadane-desc-card {
+  background: white;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
 /* ── Jump Game Visualizer ── */
 .jump-vis {
   margin: 1.35rem auto;

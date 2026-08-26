@@ -497,6 +497,9 @@ describe('App', () => {
           ? [
             '# Greedy',
             '',
+            '```kadane-demo',
+            '```',
+            '',
             '```greedy-patterns',
             '```',
             '',
@@ -518,7 +521,14 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 12 · Greedy Algorithms/i }));
 
-    const atlas = await screen.findByRole('region', { name: '八道贪心题全景对照' });
+    const kadane = await screen.findByRole('region', { name: 'Kadane 算法前缀动量与重置演示' });
+    expect(within(kadane).getByText('Kadane 算法：正向利润累加与负前缀即时止损')).toBeInTheDocument();
+    fireEvent.change(within(kadane).getByRole('slider', { name: '选择 Kadane 演示步骤' }), {
+      target: { value: '6' },
+    });
+    expect(within(kadane).getByText(/达到全局峰值！更新 max_sum = 6/)).toBeInTheDocument();
+
+    const atlas = screen.getByRole('region', { name: '八道贪心题全景对照' });
     expect(within(atlas).getByText('cur_sum = max(num, cur_sum + num)')).toBeInTheDocument();
     fireEvent.click(within(atlas).getByRole('tab', { name: /Jump Game II/ }));
     expect(within(atlas).getByText('隐式 BFS / 层次最远窗口贪心')).toBeInTheDocument();
@@ -547,7 +557,8 @@ describe('App', () => {
     expect(within(part).getByText(/\[9\]/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('region', { name: 'Eight greedy problems compared' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Kadane algorithm momentum and reset walkthrough' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Eight greedy problems compared' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Jump Game greedy envelope walkthrough' })).toBeInTheDocument();
   });
 

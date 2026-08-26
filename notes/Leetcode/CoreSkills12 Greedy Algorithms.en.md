@@ -1,4 +1,4 @@
-# Core Skills 12 · Greedy Algorithms: Forced Moves, Reachable Envelopes, and Invariant Proofs
+# Core Skills 12 · Greedy Algorithms: From Kadane's Principle and Forced Moves to Reachable Envelopes
 
 ## 1. The Core Mental Model of Greedy Algorithms
 
@@ -22,7 +22,114 @@ In interviews, the two standard arguments used to prove greedy correctness are:
 
 ---
 
-## 2. Four Universal Greedy Templates
+## 2. Deep Dive into Kadane's Algorithm: Principles, DP & Greedy Duality
+
+### 2.1 What is Kadane's Algorithm? What problem does it solve?
+
+**Kadane's Algorithm** was proposed in 1984 by Carnegie Mellon University (CMU) statistician **Joseph Born Kadane** (and famously featured in Jon Bentley's classic *Programming Pearls*).
+
+It resolves one of the fundamental cornerstone problems in computer science—the **Maximum Subarray Problem**:
+> Given an array of integers `nums` (containing positives, negatives, and zeros), find a **contiguous non-empty subarray** with the largest sum $\max_{0 \le i \le j < n} \sum_{k=i}^j nums[k]$, and return its sum.
+
+Before Kadane's algorithm, solutions to this problem progressed through several computational milestones:
+1. **Brute Force**: Enumerate all start indices $i$ and end indices $j$, then sum the range in a loop: Time $O(n^3)$;
+2. **Prefix Sums**: Precompute prefix sums $P$ so any range sum is computed in $O(1)$, but iterating $(i, j)$ pairs still takes $O(n^2)$;
+3. **Divide and Conquer**: Split the array in half, recursively solving left, right, and crossing subarrays: Time $O(n \log n)$;
+4. **Kadane's Algorithm**: A **single linear pass** reaching the theoretical lower bound of **$O(n)$ time** and **$O(1)$ auxiliary space**!
+
+---
+
+### 2.2 Core Principle: DP Perspective vs Greedy Prefix Reset Perspective
+
+Kadane's algorithm is celebrated because it can be interpreted both as **a state-compressed 1D Dynamic Programming** formulation and as **a greedy prefix liability-reset mechanism**.
+
+#### Perspective 1: Dynamic Programming (DP) State Design & Non-Aftereffect
+If we naively define the state as "the maximum subarray sum within the first $i$ elements", we immediately hit a fatal issue: that maximum subarray might end anywhere before $i$, **not necessarily at $nums[i]$**! When moving to element $i+1$, we cannot guarantee contiguous connection with that previous subarray, losing optimal substructure.
+
+Kadane's breakthrough was defining a **locally contiguous state**:
+- **Define $dp[i]$ as: The maximum contiguous subarray sum ending strictly at element $nums[i]$** (must include $nums[i]$).
+
+For element $nums[i]$, there are only two choices:
+1. **Extend**: Append $nums[i]$ to the optimal subarray ending at $nums[i-1]$, yielding $dp[i-1] + nums[i]$;
+2. **Restart**: Discard all preceding elements, starting a new subarray at $nums[i]$, yielding $nums[i]$.
+
+Thus, the recurrence relation is:
+$$dp[i] = \max(nums[i], dp[i-1] + nums[i]) = \max(0, dp[i-1]) + nums[i]$$
+
+The global maximum is the maximum among all local endpoints:
+$$\text{GlobalMax} = \max_{0 \le i < n} dp[i]$$
+
+Since $dp[i]$ depends solely on the immediate predecessor $dp[i-1]$, the entire DP array collapses into a single scalar variable `cur_sum`, achieving **$O(1)$ space**.
+
+---
+
+#### Perspective 2: Greedy Prefix Reset (Positive Momentum vs Negative Drag)
+From a greedy standpoint, when inspecting element $x$, the historical prefix `cur_sum` plays one of two roles:
+- **Positive Asset (Momentum)**: If `cur_sum > 0`, the historical prefix has net positive value. Adding positive profit to $x$ will strictly increase the sum for any subarray ending at $x$ ($x + \text{cur\_sum} > x$).
+- **Pure Liability (Drag)**: If `cur_sum \le 0`, the historical prefix is a net liability. Adding a negative prefix to $x$ drags down any subarray starting at $x$. Therefore, **we must discard the negative drag immediately (`cur_sum = 0`) and restart the subarray from $x$**.
+
+```kadane-demo
+```
+
+---
+
+### 2.3 Mathematical Proof by Contradiction
+
+Why does resetting whenever `cur_sum < 0` guarantee that we never discard the global optimal subarray?
+
+**Theorem**: Let $nums[L \dots R]$ be the global maximum contiguous subarray (with sum $S^*$). For any internal prefix $nums[L \dots k]$ (where $L \le k < R$), its prefix sum must satisfy:
+$$\sum_{j=L}^k nums[j] \ge 0$$
+
+**Proof by Contradiction**:
+1. Suppose there exists some index $k$ ($L \le k < R$) where the prefix sum is strictly negative:
+   $$S_{\text{prefix}} = \sum_{j=L}^k nums[j] < 0$$
+2. If we excise this negative prefix from $nums[L \dots R]$, the remaining suffix subarray $nums[k+1 \dots R]$ has sum $S_{\text{suffix}}$:
+   $$S_{\text{suffix}} = \sum_{j=k+1}^R nums[j] = S^* - S_{\text{prefix}}$$
+3. Because $S_{\text{prefix}} < 0$, we have $-S_{\text{prefix}} > 0$, which yields:
+   $$S_{\text{suffix}} = S^* + (-S_{\text{prefix}}) > S^*$$
+4. That means the shorter subarray $nums[k+1 \dots R]$ has a sum strictly greater than $S^*$!
+5. This directly contradicts the premise that $S^*$ was the global maximum subarray sum!
+
+**Conclusion**: **No true prefix of the global optimal subarray can ever have a negative sum**. Therefore, Kadane's algorithm only eliminates candidates that are mathematically proven to be suboptimal, ensuring 100% correctness and completeness.
+
+---
+
+### 2.4 Kadane's Code Skeleton & Mental Transfer
+
+```python
+def kadane(nums: list[int]) -> int:
+    max_sum = nums[0]
+    cur_sum = 0
+    
+    for x in nums:
+        cur_sum = max(x, cur_sum + x)
+        max_sum = max(max_sum, cur_sum)
+        
+    return max_sum
+```
+
+```cpp
+#include <vector>
+#include <algorithm>
+
+int kadane(const std::vector<int>& nums) {
+    int max_sum = nums[0];
+    int cur_sum = 0;
+    for (int x : nums) {
+        cur_sum = std::max(x, cur_sum + x);
+        max_sum = std::max(max_sum, cur_sum);
+    }
+    return max_sum;
+}
+```
+
+#### Mental Transfer: Applying Prefix Resets in Other Problems
+1. **Gas Station (LC 134)**: Define net gas gain as $net[i] = gas[i] - cost[i]$. When `tank < 0`, the journey from `start` to $i$ forms a net deficit prefix. No intermediate station in $[start, i]$ can be valid; the candidate start jumps to $i + 1$.
+2. **Best Time to Buy and Sell Stock (LC 121)**: Viewing daily price differences $\Delta p_i = price[i] - price[i-1]$ as an array, maximizing single-transaction profit is equivalent to finding the maximum subarray sum on $\Delta p$.
+
+---
+
+## 3. Four Universal Greedy Templates
 
 | Template Category | Invariant & Operational Logic | Classic Representative Problems |
 | :--- | :--- | :--- |
@@ -36,7 +143,7 @@ In interviews, the two standard arguments used to prove greedy correctness are:
 
 ---
 
-## 3. Deep Dive into the 8 NeetCode 150 Greedy Problems
+## 4. Deep Dive into the 8 NeetCode 150 Greedy Problems
 
 ---
 
@@ -518,7 +625,7 @@ class Solution:
 
 class Solution {
 public:
-    bool checkValidString(const std::string& s) {
+    bool checkValidString(const std::vector<char>& s) {
         int cmin = 0;
         int cmax = 0;
         
@@ -547,7 +654,7 @@ public:
 
 ---
 
-## 4. Summary & Top Interview Pitfall Matrix
+## 5. Summary & Top Interview Pitfall Matrix
 
 | Problem | Core Invariant | Fatal Trap | Complexity |
 | :--- | :--- | :--- | :--- |
