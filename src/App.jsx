@@ -1779,6 +1779,12 @@ const leetcodeNoteDefinitions = [
     'CoreSkills22 Backtracking.en.md',
     { directory: 'Leetcode', titleEn: 'Core Skills 22 · Backtracking', category: 'Backtracking', difficulty: 'Medium' },
   ),
+  createTutorialDefinition(
+    'CoreSkills 23 · 动态规划',
+    'CoreSkills23 Dynamic Programming Patterns.md',
+    'CoreSkills23 Dynamic Programming Patterns.en.md',
+    { directory: 'Leetcode', titleEn: 'CoreSkills 23 · Dynamic Programming Patterns', category: 'Dynamic Programming', difficulty: 'Hard' },
+  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({
