@@ -108,21 +108,6 @@ def kadane(nums: list[int]) -> int:
     return max_sum
 ```
 
-```cpp
-#include <vector>
-#include <algorithm>
-
-int kadane(const std::vector<int>& nums) {
-    int max_sum = nums[0];
-    int cur_sum = 0;
-    for (int x : nums) {
-        cur_sum = std::max(x, cur_sum + x);
-        max_sum = std::max(max_sum, cur_sum);
-    }
-    return max_sum;
-}
-```
-
 #### Mental Transfer: Applying Prefix Resets in Other Problems
 1. **Gas Station (LC 134)**: Define net gas gain as $net[i] = gas[i] - cost[i]$. When `tank < 0`, the journey from `start` to $i$ forms a net deficit prefix. No intermediate station in $[start, i]$ can be valid; the candidate start jumps to $i + 1$.
 2. **Best Time to Buy and Sell Stock (LC 121)**: Viewing daily price differences $\Delta p_i = price[i] - price[i-1]$ as an array, maximizing single-transaction profit is equivalent to finding the maximum subarray sum on $\Delta p$.
@@ -157,12 +142,6 @@ Let `cur_sum` be the sum of the current contiguous subarray. When iterating over
 - If `cur_sum > 0`, appending `x` benefits `x` (even if `x` is negative, the prefix still contributes positive value).
 - If `cur_sum <= 0`, the historical prefix has become a "liability". Adding a negative prefix to `x` only reduces the sum of any subarray starting at `x`. **We must discard the negative prefix and restart the subarray from `x`**.
 
-```text
-Kadane's State Transition:
-    cur_sum = max(x, cur_sum + x)
-    max_sum = max(max_sum, cur_sum)
-```
-
 ```python
 from typing import List
 
@@ -176,24 +155,6 @@ class Solution:
             max_sum = max(max_sum, cur_sum)
             
         return max_sum
-```
-
-```cpp
-#include <vector>
-#include <algorithm>
-
-class Solution {
-public:
-    int maxSubArray(const std::vector<int>& nums) {
-        int max_sum = nums[0];
-        int cur_sum = 0;
-        for (int num : nums) {
-            cur_sum = std::max(num, cur_sum + num);
-            max_sum = std::max(max_sum, cur_sum);
-        }
-        return max_sum;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
@@ -216,6 +177,8 @@ We do not need to branch over every jump size ($O(2^n)$). **We only maintain a g
 ```
 
 ```python
+from typing import List
+
 class Solution:
     def canJump(self, nums: List[int]) -> bool:
         max_reach = 0
@@ -229,25 +192,6 @@ class Solution:
                 return True
                 
         return True
-```
-
-```cpp
-#include <vector>
-#include <algorithm>
-
-class Solution {
-public:
-    bool canJump(const std::vector<int>& nums) {
-        int max_reach = 0;
-        int n = nums.size();
-        for (int i = 0; i < n; ++i) {
-            if (i > max_reach) return false;
-            max_reach = std::max(max_reach, i + nums[i]);
-            if (max_reach >= n - 1) return true;
-        }
-        return true;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
@@ -267,6 +211,8 @@ Finding the minimum steps is equivalent to unweighted shortest path BFS. All ind
   - Advance the window: `cur_end = farthest`.
 
 ```python
+from typing import List
+
 class Solution:
     def jump(self, nums: List[int]) -> int:
         n = len(nums)
@@ -287,33 +233,6 @@ class Solution:
                     break
                     
         return steps
-```
-
-```cpp
-#include <vector>
-#include <algorithm>
-
-class Solution {
-public:
-    int jump(const std::vector<int>& nums) {
-        int n = nums.size();
-        if (n <= 1) return 0;
-        
-        int steps = 0;
-        int cur_end = 0;
-        int farthest = 0;
-        
-        for (int i = 0; i < n - 1; ++i) {
-            farthest = std::max(farthest, i + nums[i]);
-            if (i == cur_end) {
-                ++steps;
-                cur_end = farthest;
-                if (cur_end >= n - 1) break;
-            }
-        }
-        return steps;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
@@ -338,6 +257,8 @@ There are `n` gas stations along a circular route, where the amount of gas at st
 ```
 
 ```python
+from typing import List
+
 class Solution:
     def canCompleteCircuit(self, gas: List[int], cost: List[int]) -> int:
         total_surplus = 0
@@ -354,31 +275,6 @@ class Solution:
                 cur_tank = 0
                 
         return start if total_surplus >= 0 else -1
-```
-
-```cpp
-#include <vector>
-
-class Solution {
-public:
-    int canCompleteCircuit(const std::vector<int>& gas, const std::vector<int>& cost) {
-        int total_surplus = 0;
-        int cur_tank = 0;
-        int start = 0;
-        
-        for (int i = 0; i < gas.size(); ++i) {
-            int net = gas[i] - cost[i];
-            total_surplus += net;
-            cur_tank += net;
-            if (cur_tank < 0) {
-                start = i + 1;
-                cur_tank = 0;
-            }
-        }
-        
-        return total_surplus >= 0 ? start : -1;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
@@ -420,34 +316,6 @@ class Solution:
         return True
 ```
 
-```cpp
-#include <vector>
-#include <map>
-
-class Solution {
-public:
-    bool isNStraightHand(const std::vector<int>& hand, int groupSize) {
-        if (hand.size() % groupSize != 0) return false;
-        
-        std::map<int, int> count;
-        for (int card : hand) {
-            count[card]++;
-        }
-        
-        for (auto [first, freq] : count) {
-            if (freq == 0) continue;
-            
-            for (int k = 0; k < groupSize; ++k) {
-                int card = first + k;
-                if (count[card] < freq) return false;
-                count[card] -= freq;
-            }
-        }
-        return true;
-    }
-};
-```
-
 - **Complexity**: Time $O(u \log u + u \cdot groupSize)$ where $u$ is the number of distinct cards, Space $O(u)$.
 
 ---
@@ -464,6 +332,8 @@ The `max` operator is **monotonically non-decreasing**. If any component exceeds
 3. **Validation**: We only need to check if the safe triplets collectively contain values equal to `target[0]`, `target[1]`, and `target[2]`.
 
 ```python
+from typing import List
+
 class Solution:
     def mergeTriplets(self, triplets: List[List[int]], target: List[int]) -> bool:
         tx, ty, tz = target
@@ -481,29 +351,6 @@ class Solution:
                 return True
                 
         return False
-```
-
-```cpp
-#include <vector>
-
-class Solution {
-public:
-    bool mergeTriplets(const std::vector<std::vector<int>>& triplets, const std::vector<int>& target) {
-        int tx = target[0], ty = target[1], tz = target[2];
-        bool has_x = false, has_y = false, has_z = false;
-        
-        for (const auto& t : triplets) {
-            if (t[0] > tx || t[1] > ty || t[2] > tz) continue;
-            
-            if (t[0] == tx) has_x = true;
-            if (t[1] == ty) has_y = true;
-            if (t[2] == tz) has_z = true;
-            
-            if (has_x && has_y && has_z) return true;
-        }
-        return false;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
@@ -526,6 +373,8 @@ Given a string `s`, partition it into as many parts as possible so that each let
 ```
 
 ```python
+from typing import List
+
 class Solution:
     def partitionLabels(self, s: str) -> List[int]:
         last = {c: i for i, c in enumerate(s)}
@@ -541,35 +390,6 @@ class Solution:
                 start = i + 1
                 
         return partitions
-```
-
-```cpp
-#include <vector>
-#include <string>
-#include <algorithm>
-
-class Solution {
-public:
-    std::vector<int> partitionLabels(const std::string& s) {
-        int last[26] = {0};
-        for (int i = 0; i < s.size(); ++i) {
-            last[s[i] - 'a'] = i;
-        }
-        
-        std::vector<int> partitions;
-        int start = 0;
-        int end = 0;
-        
-        for (int i = 0; i < s.size(); ++i) {
-            end = std::max(end, last[s[i] - 'a']);
-            if (i == end) {
-                partitions.push_back(i - start + 1);
-                start = i + 1;
-            }
-        }
-        return partitions;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$ (26 English characters).
@@ -589,7 +409,7 @@ Instead of $O(3^n)$ recursion, track the closed interval of possible open parent
 State transitions:
 1. `'('`: `cmin += 1, cmax += 1`
 2. `')'`: `cmin = max(0, cmin - 1), cmax -= 1`
-3. `'*'`: `cmin = max(0, cmin - 1), cmax += 1`
+3. `'*'`: `cmin = max(0, cmin - 1)`, `cmax += 1`
 4. Validation:
    - If `cmax < 0`, excess `')'` cannot be matched even if all `*` become `'('`—return `False`.
    - At the end, return `cmin == 0`.
@@ -617,37 +437,6 @@ class Solution:
             cmin = max(cmin, 0)
             
         return cmin == 0
-```
-
-```cpp
-#include <string>
-#include <algorithm>
-
-class Solution {
-public:
-    bool checkValidString(const std::vector<char>& s) {
-        int cmin = 0;
-        int cmax = 0;
-        
-        for (char ch : s) {
-            if (ch == '(') {
-                ++cmin;
-                ++cmax;
-            } else if (ch == ')') {
-                --cmin;
-                --cmax;
-            } else {
-                --cmin;
-                ++cmax;
-            }
-            
-            if (cmax < 0) return false;
-            cmin = std::max(cmin, 0);
-        }
-        
-        return cmin == 0;
-    }
-};
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
