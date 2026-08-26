@@ -610,53 +610,38 @@ D. C 里 `void*` 可以隐式转换为任意对象指针类型，C++ 里必须�
 explanation: `extern "C"` 关闭了 name mangling 之后，同名函数不再能通过参数类型编码出不同的链接符号，多个重载版本会产生符号冲突，因此 `extern "C"` 块内的函数不能重载；A、B、D 都是正确说法。
 ```
 
-2. 下列代码中，字符串字面量 `"const_str"` 通常存放在哪个内存分区？
-
-```cpp
-void func() {
-    const char* p = "const_str";
-}
+```quiz
+title: 快速选择题 2
+question: 在 `void func() { const char* p = "const_str"; }` 中，字符串字面量 `"const_str"` 通常存放在哪个内存分区？
+answer: C
+A. 栈区，随函数调用产生和销毁
+B. 堆区，因为字符串本质是动态分配的
+C. 常量区（只读数据段 rodata），生命周期贯穿整个程序运行期
+D. BSS 段，因为字符串在使用前值未知
+explanation: 字符串字面量存放在只读的常量区（rodata），生命周期是整个程序运行期，不随 `func` 的调用/返回而产生或销毁；只有指针变量 `p` 自己是栈上的局部变量。
 ```
 
-   A. 栈区，随函数调用产生和销毁
-   B. 堆区，因为字符串本质是动态分配的
-   C. 常量区（只读数据段 rodata），生命周期贯穿整个程序运行期
-   D. BSS 段，因为字符串在使用前值未知
-
-**答案：C** — 字符串字面量存放在只读的常量区，生命周期是整个程序运行期，不随 `func` 的调用/返回而产生或销毁；只有指针变量 `p` 自己是栈上的局部变量。
-
-3. 在 x86-64 Linux + gcc 默认对齐规则下，下列结构体的 `sizeof` 是多少？
-
-```cpp
-struct S {
-    char a;
-    double b;
-    short c;
-};
+```quiz
+title: 快速选择题 3
+question: 在 x86-64 Linux + gcc 默认对齐规则下，`struct S { char a; double b; short c; };` 的 `sizeof(S)` 是多少？
+answer: C
+A. 13
+B. 16
+C. 24
+D. 20
+explanation: `a` 占偏移 0（1 字节）；`b` 是 `double`，需要 8 字节对齐，偏移 1~7 是 padding，`b` 落在偏移 8~15；`c` 是 `short`，2 字节对齐，紧接着放在偏移 16~17；已用到偏移 18，结构体整体对齐值是最大成员对齐值 8，18 向上取整到 24，所以 `sizeof(S) == 24`。
 ```
 
-   A. 13
-   B. 16
-   C. 24
-   D. 20
-
-**答案：C** — `a` 占偏移 0（1 字节）；`b` 是 `double`，需要 8 字节对齐，偏移 1~7 是 padding，`b` 落在偏移 8~15；`c` 是 `short`，2 字节对齐，紧接着放在偏移 16~17；已用到偏移 18，结构体整体对齐值是最大成员对齐值 8，18 向上取整到 24，所以 `sizeof(S) == 24`。
-
-4. 关于 `union` 的说法，下列错误的是：
-
-```cpp
-union U {
-    char a[7];
-    int b;
-};
+```quiz
+title: 快速选择题 4
+question: 关于 `union U { char a[7]; int b; };` 的说法，下列错误的是：
+answer: D
+A. `sizeof(U)` 等于最大成员的大小按最大对齐值向上取整的结果
+B. `U` 的所有成员共享同一块起始地址相同的内存
+C. 本例中 `sizeof(U)` 是 8（`char[7]` 占 7 字节，按 `int` 的 4 字节对齐向上取整到 8）
+D. 同一时刻可以安全地既把 `U` 当 `a` 使用又当 `b` 使用，两者互不影响
+explanation: `union` 的成员共享同一块内存，同一时刻只有一个成员的写入是"有效"的，把 `a` 写入后再当 `b` 读，读到的是根据 `a` 的字节重新解释出的内容，两者绝不是互不影响的独立存储；A、B、C 都是正确描述。
 ```
-
-   A. `sizeof(U)` 等于最大成员的大小按最大对齐值向上取整的结果
-   B. `U` 的所有成员共享同一块起始地址相同的内存
-   C. 本例中 `sizeof(U)` 是 8（`char[7]` 占 7 字节，按 `int` 的 4 字节对齐向上取整到 8）
-   D. 同一时刻可以安全地既把 `U` 当 `a` 使用又当 `b` 使用，两者互不影响
-
-**答案：D** — `union` 的成员共享同一块内存，同一时刻只有一个成员的写入是"有效"的，把 `a` 写入后再当 `b` 读，读到的是根据 `a` 的字节重新解释出的内容，两者绝不是互不影响的独立存储；A、B、C 都是正确描述（`char[7]` 占 7 字节，`int` 对齐值 4，7 向上取整到 8）。
 
 ```quiz
 title: 快速选择题 5
@@ -669,38 +654,27 @@ D. `malloc`/`free` 会自动调用构造函数和析构函数，只是不做类�
 explanation: `malloc`/`free` 只负责分配/释放原始内存字节，完全不会调用构造函数或析构函数，这正是它和 `new`/`delete` 最核心的区别之一；A、B、C 都是正确说法。
 ```
 
-6. 下列代码存在的问题是：
-
-```cpp
-void process() {
-    Resource* r = new Resource();
-    riskyOperation(); // 可能抛出异常
-    delete r;
-}
+```quiz
+title: 快速选择题 6
+question: 在 `void process() { Resource* r = new Resource(); riskyOperation(); delete r; }` 中，如果 `riskyOperation()` 可能抛出异常，这段代码存在什么问题？
+answer: B
+A. 没有问题，`delete r` 一定会被执行
+B. 如果 `riskyOperation()` 抛出异常，`delete r` 会被跳过造成内存泄露，应该用 RAII（如智能指针）管理 `r`
+C. `new Resource()` 语法错误，应该写成 `new Resource`
+D. 只有 `Resource` 类自己定义了异常才会有问题，普通类不会
+explanation: 一旦 `riskyOperation()` 在 `delete r` 之前抛出异常，函数会提前退出，`delete r` 这一行永远不会执行，`r` 指向的堆内存就会泄露；标准解法是用 RAII（比如把 `r` 换成 `std::unique_ptr<Resource>`），让释放动作绑定在局部对象的析构函数上，无论正常返回还是异常展开都会被调用。
 ```
 
-   A. 没有问题，`delete r` 一定会被执行
-   B. 如果 `riskyOperation()` 抛出异常，`delete r` 会被跳过，造成内存泄露，应该用 RAII（比如智能指针）管理 `r`
-   C. `new Resource()` 语法错误，应该写成 `new Resource`
-   D. 只有 `Resource` 类自己定义了异常才会有问题，普通类不会
-
-**答案：B** — 一旦 `riskyOperation()` 在 `delete r` 之前抛出异常，函数会提前退出，`delete r` 这一行永远不会执行，`r` 指向的堆内存就会泄露；标准解法是用 RAII（比如把 `r` 换成 `std::unique_ptr<Resource>`），让释放动作绑定在局部对象的析构函数上，无论正常返回还是异常展开都会被调用。
-
-7. 关于下列代码中 `sizeof` 的结果，说法正确的是：
-
-```cpp
-char arr[] = "abcdef";
-void func(char arr[]) {
-    // 函数内部
-}
+```quiz
+title: 快速选择题 7
+question: 对于全局定义 `char arr[] = "abcdef";` 与函数 `void func(char arr[])`，关于 `sizeof` 的结果说法正确的是：
+answer: C
+A. 在定义处 `sizeof(arr)` 和 `strlen(arr)` 的结果永远相等
+B. 在 `func` 内部，`sizeof(arr)` 等于原始数组的字节数（7），因为编译器会记住调用时传入的数组信息
+C. 在 `func` 内部，`arr` 的类型已经退化为 `char*`，`sizeof(arr)` 只返回指针大小（如 8 字节），与原始数组长度无关
+D. `strlen(arr)` 在 `func` 内部会因为数组退化为指针而无法正确计算长度
+explanation: 数组作为函数形参会退化为指针类型，`func` 内部的 `arr` 类型是 `char*`，`sizeof(arr)` 只反映指针自身的大小（64 位下为 8 字节）；`strlen` 是运行时按内容线性扫描到 `\0`，不受指针退化影响，在 `func` 内部依然能正确返回 6。
 ```
-
-   A. `sizeof(arr)`（在定义处，全局/局部数组）和 `strlen(arr)` 的结果永远相等
-   B. 在 `func` 内部，`sizeof(arr)` 等于原始数组的字节数（7），因为编译器会记住调用时传入的数组信息
-   C. 在 `func` 内部，`arr` 的类型已经退化为 `char*`，`sizeof(arr)` 只返回指针大小（如 8），与原始数组长度无关
-   D. `strlen(arr)` 在 `func` 内部会因为数组退化为指针而无法正确计算长度
-
-**答案：C** — 数组作为函数参数会退化成指针，`func` 内部的 `arr` 类型是 `char*`，`sizeof(arr)` 只反映指针自身的大小，和原数组长度（7，含 `\0`）无关；`strlen` 是运行时按内容扫描到 `\0`，不受退化影响，在 `func` 内部依然能正确返回 6，所以 A、D 也不对（A 里定义处 `sizeof(arr)` 是 7，`strlen(arr)` 是 6，二者本来就不相等）。
 
 ```quiz
 title: 快速选择题 8
@@ -724,21 +698,16 @@ D. C 语言的引用比 C++ 的引用更早出现
 explanation: C 语言里根本不存在"引用"这个类型概念，只有指针；C 的 `&` 运算符是取地址运算符，不是引用，这是纯粹的运算符，得到的结果仍然是一个指针值。引用是 C++ 在 C 的基础上新增的语言特性，A、C、D 都是对这一点的误解。
 ```
 
-10. 下列哪种情况属于典型的悬垂指针（dangling pointer）场景？
-
-```cpp
-int* getPointer() {
-    int local = 42;
-    return &local;
-}
+```quiz
+title: 快速选择题 10
+question: 在 `int* getPointer() { int local = 42; return &local; }` 中，返回 `&local` 会造成什么问题？
+answer: B
+A. 这是安全的，因为 `local` 的值 42 会被拷贝返回
+B. 属于典型的悬垂指针（Dangling Pointer）：`local` 是栈局部变量，函数返回后栈帧销毁，返回的指针指向已失效的内存
+C. 只要调用方在函数返回后立刻使用该指针就是安全的
+D. 这段代码无法通过编译
+explanation: `local` 是函数内的局部变量，存在栈区，函数返回时它的生命周期结束，栈帧被回收（后续函数调用可能覆盖这块内存），返回指向它的地址得到的是悬垂指针，解引用是未定义行为，即使"立刻使用"在实践中也不安全。
 ```
-
-   A. 这是安全的，因为 `local` 的值 42 会被拷贝返回
-   B. 这是典型的悬垂指针场景：`local` 是栈上局部变量，函数返回后栈帧被回收，返回的指针指向已经失效的内存
-   C. 只要调用方立刻使用返回的指针就是安全的
-   D. 这段代码无法通过编译
-
-**答案：B** — `local` 是函数内的局部变量，存在栈区，函数返回时它的生命周期结束，栈帧被回收（后续函数调用可能覆盖这块内存），返回指向它的地址得到的是悬垂指针，解引用是未定义行为，即使"立刻使用"在实践中也不安全（很多编译器会给出警告，但这是可以编译通过的合法语法错误用法）。
 
 ```quiz
 title: 快速选择题 11

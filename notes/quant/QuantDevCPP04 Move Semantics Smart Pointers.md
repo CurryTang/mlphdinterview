@@ -353,54 +353,38 @@ D. `getTempObject()`（返回类型为按值返回的临时对象）
 explanation: `a` 是一个有名字、可以取地址、语句结束后仍然存在的变量，是典型左值；A、B、D 都是没有名字、语句结束即销毁的临时结果，属于右值。
 ```
 
-2. 关于下面这段代码，输出结果是什么？
-
-```cpp
-void f(int&& x) {
-    int y = x;      // x 在函数体内被当作什么？
-    std::cout << y << std::endl;
-}
-f(10);
+```quiz
+title: 快速选择题 2
+question: 阅读代码：`void f(int&& x) { int y = x; std::cout << y << std::endl; } f(10);`，输出结果是什么？
+answer: B
+A. 编译错误，因为 `int&&` 不能接收字面量 `10`
+B. 正常编译运行，输出 10；`x` 作为具名的右值引用参数，在函数体内使用时是左值，`int y = x` 是普通拷贝
+C. 正常编译运行，但 `y` 的值是未定义的
+D. 需要写成 `int y = std::move(x)` 才能编译通过
+explanation: `f(10)` 中 `10` 是右值，可以绑定到 `int&&` 参数，合法；进入函数体后 `x` 作为具名变量本身是左值，`int y = x` 是普通拷贝初始化，对内置类型 `int` 而言拷贝和移动没有区别，输出 10。
 ```
 
-   A. 编译错误，因为 `int&&` 不能接收字面量 `10`
-   B. 正常编译运行，输出 10；`x` 作为具名的右值引用参数，在函数体内使用时是左值，`int y = x` 只是普通的整型拷贝
-   C. 正常编译运行，但 `y` 的值是未定义的
-   D. 需要写成 `int y = std::move(x)` 才能编译通过
-
-**答案：B** — `f(10)` 中 `10` 是右值，可以绑定到 `int&&` 参数，合法；进入函数体后 `x` 作为具名变量本身是左值，`int y = x` 是普通拷贝初始化，对内置类型 `int` 而言拷贝和"移动"没有区别，输出 10。
-
-3. 关于万能引用（universal reference），下列说法正确的是：
-
-```cpp
-template <typename T>
-void f(T&& x);          // (1)
-
-void g(std::string&& x); // (2)
+```quiz
+title: 快速选择题 3
+question: 关于万能引用，对于 `template <typename T> void f(T&& x);` (1) 与 `void g(std::string&& x);` (2)，下列说法正确的是：
+answer: B
+A. (1) 和 (2) 中的 `&&` 都是万能引用
+B. (1) 中的 `T&&` 是万能引用（因为 `T` 参与推导），(2) 中的 `std::string&&` 是普通右值引用（类型确定无推导）
+C. (1) 和 (2) 都是普通右值引用，只能绑定右值
+D. 只有出现在 `auto` 声明里的 `T&&` 才是万能引用
+explanation: 判断万能引用的关键是"该 `&&` 修饰的类型是否在当前上下文被推导"：(1) 的 `T` 在调用点推导，可绑定左值和右值；(2) 的 `std::string` 是具体类型，只能绑定右值。
 ```
 
-   A. (1) 和 (2) 中的 `&&` 都是万能引用
-   B. (1) 中的 `T&&` 是万能引用（因为 `T` 由模板参数推导），(2) 中的 `std::string&&` 是普通右值引用（因为 `std::string` 是具体类型，没有类型推导）
-   C. (1) 和 (2) 都是普通右值引用，只能绑定右值
-   D. 只有出现在 `auto` 声明里的 `T&&` 才是万能引用，模板函数参数里的不算
-
-**答案：B** — 判断万能引用的关键是"这个 `&&` 所修饰的类型是否在当前上下文中被推导"：(1) 里的 `T` 是模板参数，会在调用点被推导，`T&&` 可以绑定左值也可以绑定右值；(2) 里 `std::string` 是写死的具体类型，不存在推导，`std::string&&` 只能绑定右值。`auto&&` 同样属于万能引向的一种（`auto` 也是一种类型推导上下文），但不是唯一场景，D 错误。
-
-4. 一个模板函数需要把参数原封不动转发给另一个函数并保留其值类别，下列写法正确的是：
-
-```cpp
-template <typename T>
-void wrapper(T&& arg) {
-    target(/* 这里怎么写 */);
-}
+```quiz
+title: 快速选择题 4
+question: 模板函数需要把参数原封不动转发给 `target` 并保留其值类别，`template <typename T> void wrapper(T&& arg) { target(/* ... */); }` 中应填入：
+answer: C
+A. `target(arg)`
+B. `target(std::move(arg))`
+C. `target(std::forward<T>(arg))`
+D. A、B、C 效果完全相同
+explanation: `std::forward<T>(arg)` 根据推导出的 `T` 进行条件类型转换，是完美转发的标准写法；直接传 `arg` 会退化为左值，`std::move` 则无条件转为右值。
 ```
-
-   A. `target(arg)`
-   B. `target(std::move(arg))`
-   C. `target(std::forward<T>(arg))`
-   D. A、B、C 效果完全相同
-
-**答案：C** — `std::forward<T>(arg)` 根据 `T` 被推导出的类型做条件转换，是完美转发的标准写法；A 直接传递会让 `arg`（具名参数，本身是左值）一律按左值转发，右值实参也会退化成拷贝；B 无条件转换成右值，会导致调用方传入左值时也被错误地当右值处理，可能破坏调用方对该左值后续状态的预期。
 
 ```quiz
 title: 快速选择题 5
@@ -413,20 +397,16 @@ D. `std::move` 只能用于自定义类型，不能用于内置类型如 `int`
 explanation: `std::move` 等价于 `static_cast<T&&>`，只做类型标记，不执行任何数据搬移；C 错误，没有移动构造函数时会安全地退化为拷贝构造，不会编译错误；D 错误，`std::move` 对任何类型都合法，只是对内置类型没有实际的"移动优化"意义。
 ```
 
-6. 下列代码执行后，输出的是什么？
-
-```cpp
-std::unique_ptr<int> p1 = std::make_unique<int>(42);
-std::unique_ptr<int> p2 = std::move(p1);
-std::cout << (p1 == nullptr) << " " << *p2 << std::endl;
+```quiz
+title: 快速选择题 6
+question: 阅读代码：`std::unique_ptr<int> p1 = std::make_unique<int>(42); std::unique_ptr<int> p2 = std::move(p1); std::cout << (p1 == nullptr) << " " << *p2;`，输出是什么？
+answer: B
+A. `0 42`
+B. `1 42`
+C. 编译错误，因为 `unique_ptr` 不能被移动
+D. 运行时崩溃，因为 `p1` 变成了悬空指针
+explanation: `unique_ptr` 支持移动，`std::move(p1)` 把所有权转移给 `p2`，之后 `p1` 变为空指针（`p1 == nullptr` 为真即 1），`p2` 正确持有原值 42。
 ```
-
-   A. `0 42`
-   B. `1 42`
-   C. 编译错误，因为 `unique_ptr` 不能被移动
-   D. 运行时崩溃，因为 `p1` 变成了悬空指针
-
-**答案：B** — `unique_ptr` 支持移动（禁止的是拷贝），`std::move(p1)` 把所有权转移给 `p2`，之后 `p1` 变为空指针（`p1 == nullptr` 为真，即 1），`p2` 正确持有原值 42；`p1` 是空指针而不是悬空指针，`*p2` 访问的是转移后仍然有效的内存，不会崩溃。
 
 ```quiz
 title: 快速选择题 7
@@ -461,33 +441,16 @@ D. 只要还有 `shared_ptr` 存在，`weak_ptr` 的存在就会阻止被管理�
 explanation: `weak_ptr` 不参与强引用计数，不会阻止对象被释放；对象是否被释放只取决于强引用计数是否归零，与 `weak_ptr` 数量无关。A、B、C 都是控制块的正确行为描述。
 ```
 
-10. 关于下面这段代码，运行结果最可能是：
-
-```cpp
-struct Node {
-    std::shared_ptr<Node> next;
-    ~Node() { std::cout << "destroyed\n"; }
-};
-
-void run() {
-    auto n1 = std::make_shared<Node>();
-    auto n2 = std::make_shared<Node>();
-    n1->next = n2;
-    n2->next = n1;
-}
-
-int main() {
-    run();
-    std::cout << "run() returned\n";
-}
+```quiz
+title: 快速选择题 10
+question: 阅读代码：`struct Node { std::shared_ptr<Node> next; ~Node() { std::cout << "destroyed\n"; } }; void run() { auto n1 = std::make_shared<Node>(); auto n2 = std::make_shared<Node>(); n1->next = n2; n2->next = n1; } int main() { run(); std::cout << "run() returned\n"; }`，运行结果是：
+answer: B
+A. 输出 `run() returned`，随后打印两次 `destroyed`
+B. 只输出 `run() returned`，两个 `Node` 对象都不会被析构，发生内存泄露
+C. 编译错误，`Node` 不能包含指向自身类型的 `shared_ptr` 成员
+D. 运行时抛出异常，因为检测到了循环引用
+explanation: `n1` 和 `n2` 互相持有对方的 `shared_ptr`，构成循环引用；`run()` 返回后强引用计数从 2 降到 1 而不是 0，析构函数不会被调用，造成静默内存泄露。
 ```
-
-   A. 输出 `run() returned`，随后打印两次 `destroyed`
-   B. 只输出 `run() returned`，两个 `Node` 对象都不会被析构，造成内存泄露
-   C. 编译错误，`Node` 不能包含指向自身类型的 `shared_ptr` 成员
-   D. 运行时抛出异常，因为检测到了循环引用
-
-**答案：B** — `n1` 和 `n2` 互相持有对方的 `shared_ptr`，构成经典循环引用；`run()` 返回后局部变量 `n1`、`n2` 析构，但两个 `Node` 对象各自还被对方的 `next` 成员持有一份强引用，强引用计数都从 2 降到 1 而不是 0，析构函数不会被调用，`shared_ptr` 不会在运行时检测或抛异常来提示这种情况，是典型的静默内存泄露。
 
 ```quiz
 title: 快速选择题 11

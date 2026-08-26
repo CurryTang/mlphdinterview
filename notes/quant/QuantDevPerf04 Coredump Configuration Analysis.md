@@ -373,19 +373,16 @@ D. `SIGFPE`
 explanation: `SIGKILL` 的默认动作是直接终止进程（Term），不产生 core dump，也无法被捕获或忽略，这正是 `kill -9` 常被用来强制杀掉进程但完全拿不到任何崩溃现场信息的原因；`SIGSEGV`/`SIGABRT`/`SIGFPE` 的默认动作都是 Core。
 ```
 
-5. 下面这段代码最可能触发哪个信号？
-
-```cpp
-int a = 5, b = 0;
-int c = a / b;
+```quiz
+title: 快速选择题 5
+question: 阅读代码：`int a = 5, b = 0; int c = a / b;`，最可能触发哪个信号？
+answer: C
+A. `SIGSEGV`
+B. `SIGBUS`
+C. `SIGFPE`
+D. `SIGABRT`
+explanation: 整数除零触发的是 `SIGFPE`（浮点异常，尽管名字带"浮点"，但整数除零/溢出是它最常见的触发场景），而不是浮点数除零（浮点除零在 IEEE 754 下得到 `inf`，不触发信号）。
 ```
-
-   A. `SIGSEGV`
-   B. `SIGBUS`
-   C. `SIGFPE`
-   D. `SIGABRT`
-
-**答案：C** — 整数除零触发的是 `SIGFPE`（浮点异常，尽管名字带"浮点"，但整数除零/溢出是它最常见的触发场景），而不是浮点数除零（浮点除零在 IEEE 754 下得到 `inf`，不触发信号）。
 
 ```quiz
 title: 快速选择题 6

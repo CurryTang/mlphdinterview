@@ -781,23 +781,16 @@ D. vptr 指向的是这个对象的基类的 vtable，与对象的实际派生�
 explanation: vtable 是编译期为每个含虚函数的类生成的，同类对象共享；vptr 是运行时每个对象各自持有、指向"当前动态类型"vtable 的隐藏指针，与 A、C、D 描述相反。
 ```
 
-3. 阅读下面代码，判断输出：
-```cpp
-struct Base {
-    Base() { init(); }
-    virtual void init() { std::cout << "Base::init\n"; }
-};
-struct Derived : Base {
-    void init() override { std::cout << "Derived::init\n"; }
-};
-int main() { Derived d; }
+```quiz
+title: 快速选择题 3
+question: 阅读代码：`struct Base { Base() { init(); } virtual void init() { std::cout << "Base::init\n"; } }; struct Derived : Base { void init() override { std::cout << "Derived::init\n"; } }; int main() { Derived d; }`，判断输出：
+answer: B
+A. Derived::init
+B. Base::init
+C. 先输出 Base::init 再输出 Derived::init
+D. 未定义行为，输出不确定
+explanation: `Base()` 执行期间，对象的 vptr 还指向 `Base` 的 vtable（`Derived` 部分尚未构造），此时调用虚函数 `init()` 只会分发到 `Base::init`，不会等到构造完成后再"补上"对 `Derived::init` 的调用。
 ```
-   A. Derived::init
-   B. Base::init
-   C. 先输出 Base::init 再输出 Derived::init
-   D. 未定义行为，输出不确定
-
-**答案：B** — `Base()` 执行期间，对象的 vptr 还指向 `Base` 的 vtable（`Derived` 部分尚未构造），此时调用虚函数 `init()` 只会分发到 `Base::init`，不会等到构造完成后再"补上"对 `Derived::init` 的调用。
 
 ```quiz
 title: 快速选择题 4
@@ -821,23 +814,16 @@ D. 类的静态数据成员被该类所有对象共享，通常需要在类外�
 explanation: 静态成员函数没有隐式 this 指针，不绑定到任何具体对象，因此不能直接访问非静态成员（非静态成员的访问必须依附于某个具体对象）；只能访问类的静态成员。
 ```
 
-6. 阅读下面代码，判断 `w.setValue(1)` 这一行能否编译通过：
-```cpp
-class Widget {
-public:
-    int getValue() const { return value_; }
-    void setValue(int v) { value_ = v; }
-private:
-    int value_ = 0;
-};
-const Widget w;
+```quiz
+title: 快速选择题 6
+question: 阅读代码：`class Widget { public: int getValue() const { return value_; } void setValue(int v) { value_ = v; } private: int value_ = 0; }; const Widget w;`，判断 `w.setValue(1)` 能否编译通过：
+answer: B
+A. 可以，const 对象也能调用任意成员函数
+B. 不能，const 对象只能调用 const 成员函数，setValue 不是 const 成员函数
+C. 可以，因为 setValue 的参数不是 const
+D. 不能，因为 Widget 类没有声明拷贝构造函数
+explanation: `w` 是 const 对象，只能调用被声明为 const 的成员函数；`setValue` 没有 const 修饰，会修改 `*this`，编译器直接拒绝这次调用，与拷贝构造函数、参数是否 const 都无关。
 ```
-   A. 可以，const 对象也能调用任意成员函数
-   B. 不能，const 对象只能调用 const 成员函数，setValue 不是 const 成员函数
-   C. 可以，因为 setValue 的参数不是 const
-   D. 不能，因为 Widget 类没有声明拷贝构造函数
-
-**答案：B** — `w` 是 const 对象，只能调用被声明为 const 的成员函数；`setValue` 没有 const 修饰，会修改 `*this`，编译器直接拒绝这次调用，与拷贝构造函数、参数是否 const 都无关。
 
 ```quiz
 title: 快速选择题 7
@@ -850,21 +836,16 @@ D. reinterpret_cast 和 static_cast 一样，对下行转换会做运行时安�
 explanation: dynamic_cast 依赖 RTTI，只能用于多态类型；A 错在 static_cast 是编译期检查，只有 dynamic_cast 做运行时检查；C 错在 const_cast 只能增删 const/volatile，不能改变指针指向的类型；D 错在 reinterpret_cast 和 static_cast 一样不做运行时安全检查，"运行时检查"是 dynamic_cast 独有的特征。
 ```
 
-8. 阅读下面代码，判断输出：
-```cpp
-typedef char* PCHAR;
-PCHAR a, b;
-#define PCHAR2 char*
-PCHAR2 c, d;
-std::cout << std::is_same<decltype(a), decltype(b)>::value << " "
-          << std::is_same<decltype(c), decltype(d)>::value;
+```quiz
+title: 快速选择题 8
+question: 阅读代码：`typedef char* PCHAR; PCHAR a, b; #define PCHAR2 char* PCHAR2 c, d;`，判断类型是否相同：
+answer: B
+A. a, b 类型相同；c, d 类型相同
+B. a, b 类型相同（都是 char*）；c, d 类型不同（c 是 char*，d 是 char）
+C. a, b 类型不同；c, d 类型相同
+D. 全部不同
+explanation: `typedef char* PCHAR;` 让 `PCHAR` 成为一个真正的类型，`PCHAR a, b;` 里 a、b 都是 `char*`，类型相同；`#define PCHAR2 char*` 是纯文本替换，`PCHAR2 c, d;` 展开成 `char* c, d;`，`*` 只修饰 c，c 是 `char*`，d 是普通 `char`，类型不同。
 ```
-   A. 1 1
-   B. 1 0
-   C. 0 1
-   D. 0 0
-
-**答案：B** — `typedef char* PCHAR;` 让 `PCHAR` 成为一个真正的类型，`PCHAR a, b;` 里 a、b 都是 `char*`，类型相同；`#define PCHAR2 char*` 是纯文本替换，`PCHAR2 c, d;` 展开成 `char* c, d;`，`*` 只修饰 c，c 是 `char*`，d 是普通 `char`，类型不同。
 
 ```quiz
 title: 快速选择题 9
