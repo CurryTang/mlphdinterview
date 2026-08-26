@@ -151,6 +151,156 @@ The principle of space optimization is:
 
 Do not destroy the semantics of the states just to save space. In interviews, it is better to explain the full DP first, then explain how to optimize it.
 
+## Six skeletons at a glance: classify before coding
+
+The three steps above explain how to turn a recurrence you already understand into code. An earlier question is: what should the state look like? DP problems look numerous, but state shapes really come in only six forms. When you get a problem, ask first: is the state an index, a closed interval, a knapsack capacity, prefixes of two sequences, a grid cell, or a small set of named states?
+
+```text
+What is the state dimension?
+
+├── one index i (first i elements / climb to step i)
+│     → Skeleton A: 1D linear DP
+│       Examples: Climbing Stairs, House Robber, Decode Ways, Word Break, LIS, Coin Change, Max Product Subarray
+│
+├── one closed interval [i, j] (substring / balloon interval), fill by increasing length
+│     → Skeleton B: interval DP
+│       Examples: Palindrome family, Burst Balloons
+│
+├── items + capacity (take or not / reusable / counting)
+│     → Skeleton C: 0/1 knapsack / complete knapsack / counting knapsack
+│       Examples: Partition Equal Subset Sum, Coin Change II, Target Sum
+│
+├── prefixes of two sequences (i, j)
+│     → Skeleton D: two-sequence DP
+│       Examples: LCS, Edit Distance, Interleaving String, Distinct Subsequences, Regex Matching
+│
+├── grid cell (r, c) with a fixed sweep direction
+│     → Skeleton E: grid DP
+│       Examples: Unique Paths
+│       Exception: Longest Increasing Path has no fixed direction → memoized DFS
+│
+└── a few named states at each step (hold / cooldown / free)
+      → Skeleton F: state-machine DP
+        Examples: Stock with Cooldown
+```
+
+(Kadane's maximum subarray sum and Jump Game also appear later in this note, but their focus is how DP compresses into Greedy, so they do not get their own skeleton.)
+
+## Skeleton A: 1D linear DP
+
+```python
+def solve_1d(arr):
+    n = len(arr)
+    dp = [INIT] * (n + 1)   # or n, depending on index convention
+    # BASE: fill dp[0] / dp[1] / ...
+    for i in range(START, n):
+        dp[i] = TRANSITION(dp, i, arr)   # depends only on O(1)~O(k) earlier states
+    return ANSWER(dp)                    # dp[n] or max(dp), etc.
+```
+
+| Problem | State | Transition | base | Iteration | Answer |
+|---|---|---|---|---|---|
+| Climbing Stairs | `dp[i]` = ways to reach step i | `dp[i]=dp[i-1]+dp[i-2]` | `dp[0]=1,dp[1]=1` | `i=2..n` | `dp[n]` |
+| Min Cost Climbing Stairs | `dp[i]` = min cost to reach i | `dp[i]=cost[i]+min(dp[i-1],dp[i-2])` | `dp[0]=cost[0],dp[1]=cost[1]` | `i=2..n-1` | `min(dp[n-1],dp[n-2])` |
+| House Robber | `dp[i]` = max money considering first i houses | `dp[i]=max(dp[i-1],dp[i-2]+nums[i-1])` | `dp[0]=0,dp[1]=nums[0]` | `i=2..n` | `dp[n]` |
+| House Robber II | same, split the ring into two linear runs | run Robber on `[0..n-2]` and `[1..n-1]` | same as linear Robber | two linear passes | `max` of the two answers |
+| Decode Ways | `dp[i]` = ways for suffix `s[i:]` | valid 1-digit `+dp[i+1]`; valid 2-digit (`10..26`) `+dp[i+2]` | `dp[n]=1` | right to left | `dp[0]` |
+| Word Break | `dp[i]` = whether `s[:i]` can be segmented | `dp[j] and s[j:i] in dict` | `dp[0]=True` | `i=1..n`, inner `j` | `dp[n]` |
+| Longest Increasing Subsequence | `dp[i]` = LIS length ending at `i` | `dp[i]=max(dp[j])+1` (`nums[j]<nums[i]`) | all `1` | nested `i,j<i` | `max(dp)` |
+| Coin Change | `dp[a]` = fewest coins to make amount `a` | `dp[a]=min(dp[a-c])+1` | `dp[0]=0`, others `inf` | amounts ascending | `dp[amount]` (`inf`→`-1`) |
+| Maximum Product Subarray | max/min product ending at `i` | roll `max_here,min_here` together | first element | one pass | global `max` |
+
+Below we first walk through Decode Ways end to end, then fill in the remaining problems from this table.
+
+## Skeleton B: interval DP
+
+```python
+def solve_interval(s):
+    n = len(s)
+    dp = [[INIT] * n for _ in range(n)]
+    # BASE: length 1 (sometimes also length 0 / 2)
+    for length in range(2, n + 1):       # increase by interval length
+        for i in range(0, n - length + 1):
+            j = i + length - 1
+            dp[i][j] = TRANSITION(dp, i, j, s)
+    return ANSWER(dp)
+```
+
+| Problem | State | Transition | base | Iteration | Answer |
+|---|---|---|---|---|---|
+| Longest Palindromic Substring | `dp[i][j]` = whether `s[i..j]` is a palindrome | ends equal and (length≤2 or `dp[i+1][j-1]`) | single chars `True` | by length | record longest `(i,j)` |
+| Palindromic Substrings | same boolean table | same | same | same | count `True` cells |
+| Burst Balloons | `dp[i][j]` = max coins bursting open interval `(i,j)` | `max_k a[i]*a[k]*a[j]+dp[i][k]+dp[k][j]` (`k` last) | adjacent `i,j` are 0 | length↑; pad ends with `1` | `dp[0][n+1]` |
+
+## Skeleton C: knapsack family
+
+```python
+def solve_knapsack(items, capacity):
+    dp = [INIT] * (capacity + 1)
+    dp[0] = BASE0
+    for x in items:                      # items outside → combinations; amount outside → permutations
+        for j in range(...):             # 0/1: descending; complete: ascending
+            dp[j] = COMBINE(dp[j], dp[j - x], x)
+    return ANSWER(dp)
+```
+
+| Problem | State | Transition | base | Iteration | Answer |
+|---|---|---|---|---|---|
+| Partition Equal Subset Sum | `dp[j]` = whether sum `j` is reachable | `dp[j]\|=dp[j-x]` (0/1) | `dp[0]=True` | items outside, capacity descending | `dp[sum/2]` |
+| Coin Change II | `dp[a]` = number of combinations for `a` | `dp[a]+=dp[a-c]` (complete) | `dp[0]=1` | coins outside, amounts ascending | `dp[amount]` |
+| Target Sum | reduce to subset-sum counting | same as 0/1 counting knapsack | `dp[0]=1` | items outside, capacity descending | `dp[(sum+target)/2]` |
+
+The three problems in this table, plus Coin Change later, are derived in the "0/1 knapsack" and "complete knapsack" sections below.
+
+## Skeleton D: two-sequence DP
+
+```python
+def solve_two_seq(a, b):
+    m, n = len(a), len(b)
+    dp = [[INIT] * (n + 1) for _ in range(m + 1)]
+    # BASE: fill row 0 / column 0
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            dp[i][j] = TRANSITION(dp, i, j, a, b)
+    return dp[m][n]
+```
+
+| Problem | State | Transition highlights | base |
+|---|---|---|---|
+| LCS | `dp[i][j]` = LCS length of `a[:i]` and `b[:j]` | equal → `+1`, else `max(up,left)` | row/col 0 = 0 |
+| Edit Distance | min ops to turn `a[:i]` into `b[:j]` | equal copy diagonal; else insert/delete/replace +1 | `dp[i][0]=i`,`dp[0][j]=j` |
+| Interleaving String | whether `s1[:i]+s2[:j]` can form `s3[:i+j]` | take from above via `s1` or from left via `s2` | empty matches empty prefix |
+| Distinct Subsequences | how many subsequences of `s[:i]` equal `t[:j]` | equal chars: use or skip; else only skip | `dp[i][0]=1` |
+| Regex Matching | whether `s[:i]` matches `p[:j]` | `.` any one char; `*` zero times (`j-2`) or more (if match, `i-1`) | empty pattern; `x*` can match empty |
+
+## Skeleton E: grid DP (with memoization exception)
+
+```python
+def unique_paths(m, n):
+    dp = [[0] * n for _ in range(m)]
+    for i in range(m):
+        dp[i][0] = 1
+    for j in range(n):
+        dp[0][j] = 1
+    for i in range(1, m):
+        for j in range(1, n):
+            dp[i][j] = dp[i - 1][j] + dp[i][j - 1]
+    return dp[m - 1][n - 1]
+```
+
+Longest Increasing Path in a Matrix **cannot** be filled with a single row/column sweep: matrix values are arbitrary, so there is no single topological sweep order. The correct approach is memoized DFS from each cell: only walk to strictly larger neighbors, which implicitly forms a DAG (acyclic, overlapping subproblems cacheable). This is still DP (optimal substructure + overlapping subproblems + memo); you just do not write an explicit fill loop.
+
+## Skeleton F: state-machine DP
+
+```python
+# hold / sold(cooldown) / free
+for price in prices:
+    hold, sold, free = TRANSITIONS(...)
+return max(sold, free)
+```
+
+See the three-state equations in the Stock Cooldown section below.
+
 ## Example: Decode Ways
 
 Now let us go through the full process with Decode Ways.
@@ -323,6 +473,174 @@ class Solution:
 
         return one
 ```
+
+## Climbing Stairs
+
+State: `dp[i]` = number of ways to climb to step `i`.
+
+$$dp[i] = dp[i-1] + dp[i-2]$$
+
+Base: `$dp[0]=1$`, `$dp[1]=1$` (or directly `$dp[1]=1,dp[2]=2$`).
+
+Iteration: `$i=2..n$`. Answer: `$dp[n]$`.
+
+```python
+class Solution:
+    def climbStairs(self, n: int) -> int:
+        if n <= 2:
+            return n
+        a, b = 1, 2
+        for _ in range(3, n + 1):
+            a, b = b, a + b
+        return b
+```
+
+Complexity: Time `$O(n)$`, Space `$O(1)$`.
+
+Pitfall: do not touch `$dp[2]$` when `$n=1$`; this is isomorphic to Fibonacci, which is enough to say in an interview.
+
+## Min Cost Climbing Stairs
+
+You may start at index `0` or `1`. `dp[i]` = minimum total cost after reaching step `i` and paying `cost[i]`.
+
+$$dp[i] = cost[i] + \min(dp[i-1], dp[i-2])$$
+
+The answer is not `$dp[n]$` (the top has no step and thus no cost), but `$\min(dp[n-1], dp[n-2])$`: the last step can come from the penultimate or antepenultimate stair.
+
+```python
+class Solution:
+    def minCostClimbingStairs(self, cost: list[int]) -> int:
+        n = len(cost)
+        a, b = cost[0], cost[1]
+        for i in range(2, n):
+            a, b = b, cost[i] + min(a, b)
+        return min(a, b)
+```
+
+Complexity: Time `$O(n)$`, Space `$O(1)$`.
+
+Pitfall: forgetting "the top has no cost" and returning `$dp[n-1]$`.
+
+## House Robber
+
+You cannot rob adjacent houses. `dp[i]` = maximum money considering only the first `i` houses.
+
+$$dp[i] = \max(dp[i-1], dp[i-2] + nums[i-1])$$
+
+```python
+class Solution:
+    def rob(self, nums: list[int]) -> int:
+        prev2, prev1 = 0, 0
+        for x in nums:
+            prev2, prev1 = prev1, max(prev1, prev2 + x)
+        return prev1
+```
+
+Complexity: Time `$O(n)$`, Space `$O(1)$`.
+
+Pitfall: empty / single-element arrays need care; whether the index is `nums[i-1]` or `nums[i]` must stay consistent with the `dp` length convention.
+
+## House Robber II
+
+Houses form a ring: the first and last are adjacent and cannot both be robbed. Split into two linear House Robber runs and take the larger:
+
+```text
+max( rob(nums[0..n-2]), rob(nums[1..n-1]) )
+```
+
+When `$n=1$`, return `$nums[0]$` directly.
+
+```python
+class Solution:
+    def rob(self, nums: list[int]) -> int:
+        if len(nums) == 1:
+            return nums[0]
+        def rob_linear(arr):
+            a = b = 0
+            for x in arr:
+                a, b = b, max(b, a + x)
+            return b
+        return max(rob_linear(nums[:-1]), rob_linear(nums[1:]))
+```
+
+Complexity: Time `$O(n)$`, Space `$O(1)$`.
+
+Pitfall: missing the `$n=1$` special case; or slicing the two ranges wrong and skipping or double-counting a middle house.
+
+## Word Break
+
+`$dp[i]$` = whether prefix `$s[:i]$` can be segmented into dictionary words.
+
+$$dp[i] = \bigvee_{j<i}\bigl(dp[j] \land s[j:i]\in dict\bigr)$$
+
+```python
+class Solution:
+    def wordBreak(self, s: str, wordDict: list[str]) -> bool:
+        words = set(wordDict)
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True
+        for i in range(1, n + 1):
+            for j in range(i):
+                if dp[j] and s[j:i] in words:
+                    dp[i] = True
+                    break
+        return dp[n]
+```
+
+Complexity: Time `$O(n^2\cdot L)$` (`$L$` is the cost of slice comparison; a trie can help), Space `$O(n)$`.
+
+Pitfall: `$dp[0]=True$` means the empty prefix is always segmented; convert `wordDict` to a `set` when the dictionary is large, otherwise `in` is a linear scan.
+
+## Longest Increasing Subsequence
+
+`$dp[i]$` = length of the longest strictly increasing subsequence ending at `$nums[i]$`.
+
+$$dp[i] = 1 + \max_{j<i,\,nums[j]<nums[i]} dp[j]$$
+
+(Use `1` when no smaller predecessor exists.) The answer is `$\max_i dp[i]$`, not `$dp[n-1]$`.
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: list[int]) -> int:
+        n = len(nums)
+        dp = [1] * n
+        for i in range(n):
+            for j in range(i):
+                if nums[j] < nums[i]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)
+```
+
+Complexity: Time `$O(n^2)$`, Space `$O(n)$`.
+
+Footnote: patience sorting + binary search reaches `$O(n\log n)$`; that is a separate optimization track. Here we give the standard `$O(n^2)$` DP table so the state and transition are clear first.
+
+Pitfall: the answer is `max(dp)`, not `dp[-1]`; "strictly increasing" uses `<`, not `<=`.
+
+## Maximum Product Subarray
+
+It looks like a variant of Kadane's maximum subarray **sum**, but multiplication can flip signs on negatives, so you must maintain both the maximum and minimum products ending at the current position:
+
+```text
+max_here' = max(x, max_here*x, min_here*x)
+min_here' = min(x, max_here*x, min_here*x)
+```
+
+```python
+class Solution:
+    def maxProduct(self, nums: list[int]) -> int:
+        ans = max_here = min_here = nums[0]
+        for x in nums[1:]:
+            candidates = (x, max_here * x, min_here * x)
+            max_here, min_here = max(candidates), min(candidates)
+            ans = max(ans, max_here)
+        return ans
+```
+
+Complexity: Time `$O(n)$`, Space `$O(1)$`.
+
+Pitfall: keeping only `max_here` misses the answer `24` on inputs like `[-2, 3, -4]` (two negatives multiply to a positive); when you hit `0`, `max_here`/`min_here` naturally reset to restart from the current element, so no extra special case is needed.
 
 ## Example: Best Time to Buy and Sell Stock with Cooldown
 
@@ -535,6 +853,92 @@ hold --sell--> sold --cooldown one day--> rest --buy--> hold
 
 So the two approaches are essentially the same; they just record information differently. In interviews, if the problem has process constraints like "holding / just sold / out of the market and allowed to buy," the three-state machine is less error-prone.
 
+## Interval DP: substrings and interval problems
+
+The state is a closed interval `[i, j]` (substring, balloon interval). Transitions depend on shorter subintervals, so you must fill by increasing interval length, not by rows or columns.
+
+## Longest Palindromic Substring
+
+Use interval boolean DP: `$dp[i][j]$` means whether `$s[i..j]$` is a palindrome.
+
+$$dp[i][j] = (s[i]=s[j]) \land (j-i<2 \lor dp[i+1][j-1])$$
+
+Fill by increasing length while recording the start and length of the longest palindromic interval. Center expansion also works; here the point is the interval-DP shape.
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        n = len(s)
+        dp = [[False] * n for _ in range(n)]
+        start = length = 0
+        for i in range(n - 1, -1, -1):
+            for j in range(i, n):
+                if s[i] == s[j] and (j - i < 2 or dp[i + 1][j - 1]):
+                    dp[i][j] = True
+                    if j - i + 1 > length:
+                        start, length = i, j - i + 1
+        return s[start:start + length]
+```
+
+(Filling right-to-left and top-to-bottom is equivalent to increasing length; you can also write an explicit outer `length` loop.)
+
+Complexity: Time `$O(n^2)$`, Space `$O(n^2)$`.
+
+Pitfall: the transition depends on `$dp[i+1][j-1]$`, so shorter intervals must already be done; single characters are palindromes and should count toward the initial longest length.
+
+## Palindromic Substrings
+
+Use the same boolean table; only change the answer from "record the longest one" to "count every `$dp[i][j]=True$`".
+
+```python
+class Solution:
+    def countSubstrings(self, s: str) -> int:
+        n = len(s)
+        dp = [[False] * n for _ in range(n)]
+        ans = 0
+        for i in range(n - 1, -1, -1):
+            for j in range(i, n):
+                if s[i] == s[j] and (j - i < 2 or dp[i + 1][j - 1]):
+                    dp[i][j] = True
+                    ans += 1
+        return ans
+```
+
+Complexity: Time `$O(n^2)$`, Space `$O(n^2)$`.
+
+Pitfall: do not only count the "longest" palindromes from center expansion; every valid `(i, j)` counts once, including all length-1 single characters.
+
+## Burst Balloons
+
+Pad a virtual balloon `1` on both ends. Define an open interval: `$dp[i][j]$` = maximum coins from bursting every balloon between `$i$` and `$j$`.
+
+Key trick: enumerate the balloon `$k$` burst **last** inside the interval, not first. When `$k$` is last, both sides are already empty, so `$k$`'s neighbors at that moment are exactly the virtual boundaries `$a[i]$` and `$a[j]$`:
+
+$$dp[i][j] = \max_{i<k<j}\bigl(dp[i][k] + a[i]\cdot a[k]\cdot a[j] + dp[k][j]\bigr)$$
+
+Fill in increasing `$j-i$` order. The answer is `$dp[0][n+1]$` (`$n$` is the original length; after two virtual pads there are `$n+2$` positions).
+
+```python
+class Solution:
+    def maxCoins(self, nums: list[int]) -> int:
+        a = [1] + nums + [1]
+        n = len(a)
+        dp = [[0] * n for _ in range(n)]
+        for length in range(2, n):
+            for i in range(0, n - length):
+                j = i + length
+                for k in range(i + 1, j):
+                    dp[i][j] = max(
+                        dp[i][j],
+                        dp[i][k] + a[i] * a[k] * a[j] + dp[k][j],
+                    )
+        return dp[0][n - 1]
+```
+
+Complexity: Time `$O(n^3)$`, Space `$O(n^2)$`.
+
+Pitfall: thinking "which balloon to burst first" makes subproblem boundaries depend on "which balloons remain," so the transition is unclear; after switching to "which balloon is last in this interval," the left and right subintervals no longer interfere and can recurse independently.
+
 ## Knapsack Problems: 0/1 Knapsack vs Complete Knapsack
 
 The core question in knapsack DP is:
@@ -552,6 +956,35 @@ complete knapsack: each item can be used infinitely many times
 ```
 
 The code for these two problems often differs by only one loop direction, but the semantics are completely different.
+
+## 0/1 Knapsack Example: Partition Equal Subset Sum
+
+Before Target Sum, look at a more direct 0/1 knapsack feasibility problem: given an array, can you split it into two subsets with equal sums?
+
+If the total is odd, there is no solution. Otherwise the goal is to pick some numbers (each at most once) that sum to `$target = sum / 2$`:
+
+$$dp[j] = dp[j] \lor dp[j - x]$$
+
+`$dp[j]$` means "whether sum `$j$` is reachable"; this is a boolean 0/1 knapsack.
+
+```python
+class Solution:
+    def canPartition(self, nums: list[int]) -> bool:
+        total = sum(nums)
+        if total % 2:
+            return False
+        target = total // 2
+        dp = [False] * (target + 1)
+        dp[0] = True
+        for x in nums:
+            for j in range(target, x - 1, -1):
+                dp[j] = dp[j] or dp[j - x]
+        return dp[target]
+```
+
+Complexity: Time `$O(n\cdot target)$`, Space `$O(target)$`.
+
+Pitfall: as with Target Sum below, the capacity loop must be descending; otherwise the same `x` can be used multiple times in one round and it degrades into a complete knapsack.
 
 ## 0/1 Knapsack Example: Target Sum
 
@@ -789,6 +1222,25 @@ class Solution:
 
 Here `s` goes forward because one `coin` can be reused repeatedly.
 
+## Complete Knapsack Example: Coin Change II
+
+Coin Change asks for the fewest coins; Coin Change II is the counting version of complete knapsack: `$dp[a]$` = number of combinations that make amount `$a$` (not permutations).
+
+```python
+class Solution:
+    def change(self, amount: int, coins: list[int]) -> int:
+        dp = [0] * (amount + 1)
+        dp[0] = 1
+        for c in coins:                 # coins outside → combinations
+            for a in range(c, amount + 1):
+                dp[a] += dp[a - c]
+        return dp[amount]
+```
+
+Complexity: Time `$O(amount\cdot|coins|)$`, Space `$O(amount)$`.
+
+Pitfall: putting coins inside and amounts outside treats `(1, 2)` and `(2, 1)` as different plans and counts permutations instead of combinations. That is exactly the pitfall from the earlier section on "counting problems: combination vs permutation loop order," made concrete here. `dp[0]=1` means there is one way to make 0: choose nothing.
+
 ## How to Choose Between 0/1 Knapsack and Complete Knapsack
 
 First ask whether items can be reused:
@@ -870,12 +1322,12 @@ The coin change code above uses `inf = amount + 1` rather than a true infinity b
 The counting variant hides one more trap: whether items or capacities sit in the outer loop decides whether you are counting combinations or permutations.
 
 ```python
-# Combinations: {1,2} and {2,1} count once — items outside
+# Combinations: {1,2} and {2,1} count once  -  items outside
 for coin in coins:
     for s in range(coin, amount + 1):
         dp[s] += dp[s - coin]
 
-# Permutations: {1,2} and {2,1} count twice — capacities outside
+# Permutations: {1,2} and {2,1} count twice  -  capacities outside
 for s in range(1, amount + 1):
     for coin in coins:
         if coin <= s:
@@ -891,6 +1343,156 @@ With items outside, each item is considered only during its own pass, which pins
 - Reversed loop order in a counting problem: combinations written as permutations passes small samples and overshoots on larger ones.
 - Forgetting to skip cells where `weight > c`, or writing the descending lower bound as `-1`, which lets `dp[c - weight]` index negatively.
 - Trying to recover which items were chosen after collapsing to 1D: the single array has already overwritten the intermediate layers, so reporting the actual selection requires keeping the 2D table.
+
+## Two-sequence DP: advance two strings together
+
+The state becomes two indices `$(i, j)$`, the prefix lengths of the two strings. Transitions usually come from three directions: `$dp[i-1][j-1]$` (both pointers move), `$dp[i-1][j]$` (only the first string), `$dp[i][j-1]$` (only the second string).
+
+## Longest Common Subsequence
+
+`$dp[i][j]$` = LCS length of `text1[:i]` and `text2[:j]`.
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1]+1 & \text{text1}[i-1]=\text{text2}[j-1]\\ \max(dp[i-1][j],dp[i][j-1]) & \text{otherwise}\end{cases}$$
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        m, n = len(text1), len(text2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if text1[i - 1] == text2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[m][n]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(mn)$` (can roll down to `$O(\min(m,n))$`).
+
+Pitfall: when the two characters match you must take the diagonal `+1`; writing `max(up, left) + 1` double-counts the same character.
+
+## Edit Distance
+
+`$dp[i][j]$` = minimum operations to turn `word1[:i]` into `word2[:j]`.
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1] & \text{word1}[i-1]=\text{word2}[j-1]\\ 1+\min(dp[i-1][j],\ dp[i][j-1],\ dp[i-1][j-1]) & \text{otherwise}\end{cases}$$
+
+The three candidates are delete, insert, and replace.
+
+```python
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        m, n = len(word1), len(word2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if word1[i - 1] == word2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        return dp[m][n]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(mn)$`.
+
+Pitfall: the base case is the cost of deleting a prefix empty or inserting a prefix from empty, i.e. `$i$` and `$j$`; when characters match, copy the diagonal and do not add `1`.
+
+## Interleaving String
+
+`$dp[i][j]$` = whether `s1[:i]` and `s2[:j]` can interleave to form `s3[:i+j]`.
+
+$$dp[i][j] = \bigl(dp[i-1][j]\land s1[i-1]=s3[i+j-1]\bigr) \lor \bigl(dp[i][j-1]\land s2[j-1]=s3[i+j-1]\bigr)$$
+
+First check `$\text{len}(s1)+\text{len}(s2)=\text{len}(s3)$`; wrong lengths return `False` immediately.
+
+```python
+class Solution:
+    def isInterleave(self, s1: str, s2: str, s3: str) -> bool:
+        m, n = len(s1), len(s2)
+        if m + n != len(s3):
+            return False
+        dp = [[False] * (n + 1) for _ in range(m + 1)]
+        dp[0][0] = True
+        for i in range(1, m + 1):
+            dp[i][0] = dp[i - 1][0] and s1[i - 1] == s3[i - 1]
+        for j in range(1, n + 1):
+            dp[0][j] = dp[0][j - 1] and s2[j - 1] == s3[j - 1]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                dp[i][j] = (
+                    (dp[i - 1][j] and s1[i - 1] == s3[i + j - 1])
+                    or (dp[i][j - 1] and s2[j - 1] == s3[i + j - 1])
+                )
+        return dp[m][n]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(mn)$`.
+
+Pitfall: forgetting the length check; the index into `s3` is `$i+j-1$`, not `$i+j$` (easy off-by-one with 0-indexing).
+
+## Distinct Subsequences
+
+`$dp[i][j]$` = how many subsequences of `s[:i]` equal `t[:j]`.
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1]+dp[i-1][j] & s[i-1]=t[j-1]\\ dp[i-1][j] & \text{otherwise}\end{cases}$$
+
+Base: `$dp[i][0]=1$` (empty `t` always matches once, i.e. "take nothing"), `$dp[0][j]=0$` (when `$j>0$`, nonempty `t` cannot match empty `s`).
+
+```python
+class Solution:
+    def numDistinct(self, s: str, t: str) -> int:
+        m, n = len(s), len(t)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = 1
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if s[i - 1] == t[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + dp[i - 1][j]
+                else:
+                    dp[i][j] = dp[i - 1][j]
+        return dp[m][n]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(mn)$`.
+
+Pitfall: when characters match, add both "use this char to match the end of t" and "skip this char of s"; dropping `dp[i-1][j]` undercounts.
+
+## Regular Expression Matching
+
+`$dp[i][j]$` = whether `s[:i]` is matched by `p[:j]`.
+
+- Ordinary char or `.`: `$dp[i][j]=dp[i-1][j-1]$`, and the current characters must match.
+- `$p[j-1]='*'$`: `$x*$` matching zero times looks at `$dp[i][j-2]$` (drop the whole `x*`); matching the current character, if `$x$` matches `$s[i-1]$`, also OR `$dp[i-1][j]$` (consume one `s` char and keep the pattern on `x*` for reuse).
+
+```python
+class Solution:
+    def isMatch(self, s: str, p: str) -> bool:
+        m, n = len(s), len(p)
+        dp = [[False] * (n + 1) for _ in range(m + 1)]
+        dp[0][0] = True
+        for j in range(1, n + 1):
+            if p[j - 1] == '*':
+                dp[0][j] = dp[0][j - 2]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if p[j - 1] == '*':
+                    dp[i][j] = dp[i][j - 2]
+                    if p[j - 2] == '.' or p[j - 2] == s[i - 1]:
+                        dp[i][j] = dp[i][j] or dp[i - 1][j]
+                elif p[j - 1] == '.' or p[j - 1] == s[i - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+        return dp[m][n]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(mn)$`.
+
+Pitfall: `*` applies to the previous character, so transitions use `$j-2$` / `$p[j-2]$`, not `$j-1$`; for empty-string matches against patterns like `a*` and `a*b*`, fill row 0 correctly first.
 
 ## Kadane's Algorithm: Maximum Subarray Sum
 
@@ -1629,6 +2231,62 @@ One-sentence summary:
 
 > This problem can change from DP to greedy because "all positions that can reach the end" can be fully represented by "the leftmost position that can reach the end."
 
+## Grid DP: two cases on coordinates (r, c)
+
+## Unique Paths
+
+A robot may only move right or down. How many distinct paths from the top-left to the bottom-right? `$dp[i][j]=dp[i-1][j]+dp[i][j-1]$`. The first row and first column each have only one way, so initialize them all to 1.
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [1] * n
+        for _ in range(1, m):
+            for j in range(1, n):
+                dp[j] += dp[j - 1]
+        return dp[-1]
+```
+
+Complexity: Time `$O(mn)$`, Space `$O(n)$` (rolled into a 1D array).
+
+Pitfall: when `$m=1$` or `$n=1$` the answer should be 1; the rolling-array version above already covers that without an extra special case.
+
+## Longest Increasing Path in a Matrix
+
+This looks like grid DP, but you cannot sweep by rows and columns the way Unique Paths does: values are arbitrarily placed, so no single direction guarantees that "when you compute a cell, every cell it depends on is already done."
+
+The correct approach is memoized DFS from each cell: `$dfs(r,c)$` = length of the longest strictly increasing path starting at that cell, walking only to strictly larger neighbors:
+
+$$dfs(r,c)=1+\max_{\text{strictly larger neighbor}} dfs(nr,nc)$$
+
+(If there is no legal neighbor, the length is 1.) Cache results with memo.
+
+```python
+class Solution:
+    def longestIncreasingPath(self, matrix: list[list[int]]) -> int:
+        if not matrix:
+            return 0
+        m, n = len(matrix), len(matrix[0])
+        memo = {}
+        def dfs(r, c):
+            if (r, c) in memo:
+                return memo[(r, c)]
+            best = 1
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and matrix[nr][nc] > matrix[r][c]:
+                    best = max(best, 1 + dfs(nr, nc))
+            memo[(r, c)] = best
+            return best
+        return max(dfs(i, j) for i in range(m) for j in range(n))
+```
+
+Complexity: Time `$O(mn)$` (each cell is truly computed once), Space `$O(mn)$` (memo plus recursion stack).
+
+Why this is still DP: strictly increasing edges form a directed acyclic graph (DAG). Subproblem `$dfs(r,c)$` is reached by many paths; caching with memo is the standard "optimal substructure + overlapping subproblems." The only difference is that you do not write an explicit double for-loop fill; memoized DFS computes along the DAG's topological order implicitly.
+
+Pitfall: writing `>=` instead of `>` creates cycles on equal values and recursion never ends; forgetting memo expands the same cell repeatedly and degrades to exponential time.
+
 ## Common Pitfalls
 
 - Starting to write code before defining what `dp[i]` means.
@@ -1646,6 +2304,15 @@ One-sentence summary:
 - Treating `nums[i]` in Jump Game as the only destination; it is actually the maximum jump length, so you may jump to any position in the interval `[i + 1, i + nums[i]]`.
 - Saying "always jump the farthest" in Jump Game without a proof; in an interview you should explain why the state set can be represented by the boundary `goal` or `reach`.
 - Forgetting that the condition in the right-to-left greedy for Jump Game is `i + nums[i] >= goal`, not `nums[i] >= goal`.
+
+- Confusing whether the answer is `dp[n]` or `max(dp)`, especially on LIS, Maximum Product Subarray, Min Cost Climbing Stairs, and other problems where the answer is not the last cell.
+- Writing 0/1 knapsack 1D optimization in ascending order, so the same item is reused in one round and it becomes a complete knapsack.
+- Putting amounts outside and coins inside for Coin Change II, turning combinations into permutations.
+- Not filling interval DP by increasing length, so you read an unfinished `dp[i+1][j-1]`.
+- Thinking "which balloon to burst first" in Burst Balloons instead of "which balloon is last in this interval," so subproblem boundaries stay unclear.
+- Forgetting that `*` in Regex Matching applies to the previous character, or missing the empty-string base case for patterns like `a*`.
+- Forgetting the separate `n=1` case in House Robber II.
+- Filling Longest Increasing Path in a Matrix with an ordinary double loop by rows and columns instead of memoized DFS.
 
 ## Complexity
 
@@ -1689,6 +2356,195 @@ Jump Game:
 - Recursion: exponential time, space `O(n)`
 - Top-down / bottom-up DP: time `O(n^2)`, space `O(n)`
 - Greedy: time `O(n)`, space `O(1)`
+
+Climbing Stairs / Min Cost Climbing Stairs / House Robber / House Robber II:
+
+- Time: `O(n)`
+- Space: `O(1)` (rolling variables)
+
+Word Break:
+
+- Time: `O(n^2 · L)`, where `L` is the substring comparison cost
+- Space: `O(n)`
+
+Longest Increasing Subsequence (the O(n²) DP version in this note):
+
+- Time: `O(n^2)`
+- Space: `O(n)`
+
+Maximum Product Subarray:
+
+- Time: `O(n)`
+- Space: `O(1)`
+
+Longest Palindromic Substring / Palindromic Substrings:
+
+- Time: `O(n^2)`
+- Space: `O(n^2)`
+
+Burst Balloons:
+
+- Time: `O(n^3)`
+- Space: `O(n^2)`
+
+Partition Equal Subset Sum:
+
+- Time: `O(n · sum/2)`
+- Space: `O(sum/2)`
+
+Coin Change II:
+
+- Time: `O(amount · |coins|)`
+- Space: `O(amount)`
+
+Longest Common Subsequence / Edit Distance / Interleaving String / Distinct Subsequences / Regular Expression Matching:
+
+- Time: `O(mn)`
+- Space: `O(mn)` (LCS and Edit Distance can roll down to `O(min(m,n))`)
+
+Unique Paths:
+
+- Time: `O(mn)`
+- Space: `O(n)` (rolling array)
+
+Longest Increasing Path in a Matrix:
+
+- Time: `O(mn)`
+- Space: `O(mn)` (memo + recursion stack)
+
+## Quick self-check
+
+```quiz
+title: Quick quiz 1
+question: Relative to House Robber, what is the most critical extra handling in House Robber II?
+answer: B
+A. Switch to 2D dp[i][j]
+B. Split the ring into two linear Robber runs and take max
+C. Must use interval DP
+D. Switch to complete knapsack
+explanation: First and last are adjacent and cannot both be robbed; run linear Robber on nums[0..n-2] and nums[1..n-1], then take max.
+```
+
+```quiz
+title: Quick quiz 2
+question: On 1D DP, what is the most important difference between Coin Change (fewest coins) and Coin Change II (combinations)?
+answer: C
+A. One uses descending and one ascending (when both are complete knapsack)
+B. One must be 2D and one must be 1D
+C. Different objectives (min vs additive counting), and II needs "items outside" for combination semantics
+D. Transitions are identical; only the return value differs
+explanation: Both are complete-knapsack shaped; II needs combinations not permutations, so the coin loop is outside; transitions are min vs additive counting.
+```
+
+```quiz
+title: Quick quiz 3
+question: In the Burst Balloons interval transition, what does k mean?
+answer: A
+A. The balloon burst last inside open interval (i,j)
+B. The balloon burst first inside the open interval
+C. The interval length
+D. The index of a virtual boundary 1
+explanation: When k is last, both sides are empty; the payoff splits into a[i]*a[k]*a[j] plus the two subinterval DPs.
+```
+
+```quiz
+title: Quick quiz 4
+question: When Target Sum reduces to subset sum, the subset target P equals?
+answer: B
+A. (sum - target) / 2
+B. (sum + target) / 2
+C. sum - target
+D. target
+explanation: P+N=sum and P-N=target, so P=(sum+target)/2; it must divide evenly and |target|<=sum.
+```
+
+```quiz
+title: Quick quiz 5
+question: Why can Longest Increasing Path in a Matrix not fill dp by rows like Unique Paths?
+answer: D
+A. Because you may only go right and down
+B. Because you must use O(1) space
+C. Because it is not DP
+D. Larger neighbors point in arbitrary directions, so there is no single valid fill order; use memoized DFS on the DAG
+explanation: Strictly ascending edges form a DAG; memoized DFS is the correct DP form.
+```
+
+```quiz
+title: Quick quiz 6
+question: In Edit Distance, when word1[i-1]==word2[j-1], the correct transition is?
+answer: A
+A. dp[i][j] = dp[i-1][j-1]
+B. dp[i][j] = dp[i-1][j-1] + 1
+C. dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+D. dp[i][j] = dp[i][j-1] + 1
+explanation: Characters already match, so no operation; inherit the diagonal. Only when they differ do you take min among insert/delete/replace plus one.
+```
+
+```quiz
+title: Quick quiz 7
+question: Why must Maximum Product Subarray also maintain min_here?
+answer: C
+A. To handle 0
+B. For O(1) space
+C. A negative sign can flip the minimum product into the maximum; keeping only max loses solutions
+D. The problem asks for the minimum product
+explanation: For example [-2,3,-4]; negative times negative depends on the prior minimum (most negative) product.
+```
+
+```quiz
+title: Quick quiz 8
+question: In Distinct Subsequences, when s[i-1]==t[j-1], the transition should be?
+answer: B
+A. Only add dp[i-1][j-1]
+B. dp[i-1][j-1] + dp[i-1][j] (use or skip the current character)
+C. dp[i][j-1] + dp[i-1][j]
+D. max(dp[i-1][j-1], dp[i-1][j])
+explanation: Match t's last character with the current s character, or skip the current s character; add both path counts.
+```
+
+```quiz
+title: Quick quiz 9
+question: In Regex Matching, when p[j-1]=='*', "match zero times" corresponds to?
+answer: A
+A. dp[i][j-2]
+B. dp[i-1][j]
+C. dp[i-1][j-1]
+D. dp[i][j-1]
+explanation: Drop the whole x* and ask whether p[:j-2] already matches s[:i]; multiple matches OR in dp[i-1][j].
+```
+
+```quiz
+title: Quick quiz 10
+question: Why must the capacity loop be descending in 0/1 knapsack 1D optimization?
+answer: C
+A. It is faster
+B. To turn combinations into permutations
+C. To avoid reusing the same item in the current round
+D. Descending is required for complete knapsack
+explanation: Descending keeps dp[j-x] as the old value from "before taking the current item"; ascending becomes complete knapsack.
+```
+
+```quiz
+title: Quick quiz 11
+question: What is the most accurate meaning of the sold state in Stock with Cooldown?
+answer: B
+A. Any empty position
+B. Just sold today; tomorrow is in cooldown
+C. Holding stock
+D. Cumulative sell count
+explanation: sold specially marks "sold today"; the next day can only enter free, not buy directly.
+```
+
+```quiz
+title: Quick quiz 12
+question: In House Robber II, why can you not directly reuse House Robber's linear DP?
+answer: B
+A. Different data ranges require a different algorithm
+B. First and last houses are adjacent and form a ring, so you must split into two linear subproblems and take the larger answer
+C. A circular array must use interval DP
+D. The dp transition equation itself must change on a circular array
+explanation: The only change from the ring is "cannot rob first and last together"; splitting into [0..n-2] and [1..n-1] linear Robber bypasses that constraint, and the transition inside each segment is unchanged.
+```
 
 ## Interview Answer Template
 

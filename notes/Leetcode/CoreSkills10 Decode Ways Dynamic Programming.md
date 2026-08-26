@@ -151,6 +151,156 @@ dp[i][j] depends on dp[i - 1][...]
 
 不要为了省空间破坏状态语义。面试里更推荐先讲完整 DP，再讲如何优化。
 
+## 六种骨架速查：拿到题先分类
+
+上面三步讲的是"怎么把一个已经想清楚的递推写成代码"，但更早的问题是"这题的状态应该长什么样"。DP 题看起来很多，状态的形状其实只有六种。拿到题先问自己：状态是一个下标、一个闭区间、背包容量、两个序列的前缀、网格坐标，还是有限个命名状态？
+
+```text
+这题的状态维度是什么？
+
+├── 一个下标 i（前 i 个元素 / 爬到第 i 阶）
+│     → 骨架 A：1D 线性 DP
+│       代表题：Climbing Stairs, House Robber, Decode Ways, Word Break, LIS, Coin Change, Max Product Subarray
+│
+├── 一个闭区间 [i, j]（子串 / 气球区间），按长度递增填
+│     → 骨架 B：区间 DP
+│       代表题：Palindrome 系列, Burst Balloons
+│
+├── 物品 + 容量（选或不选 / 可重复选 / 计数）
+│     → 骨架 C：0/1 背包 / 完全背包 / 计数背包
+│       代表题：Partition Equal Subset Sum, Coin Change II, Target Sum
+│
+├── 两个序列的前缀 (i, j)
+│     → 骨架 D：双序列 DP
+│       代表题：LCS, Edit Distance, Interleaving String, Distinct Subsequences, Regex Matching
+│
+├── 网格格子 (r, c)，有固定扫掠方向
+│     → 骨架 E：网格 DP
+│       代表题：Unique Paths
+│       例外：Longest Increasing Path 无固定方向 → 记忆化 DFS
+│
+└── 每一步有少量命名状态（持有 / 冷却 / 空仓）
+      → 骨架 F：状态机 DP
+        代表题：Stock with Cooldown
+```
+
+（Kadane 最大子数组和与 Jump Game 也会在本文后半段出现，但它们的重点是"DP 怎么压缩成 Greedy"，不单独占一种骨架。）
+
+## 骨架 A：1D 线性 DP
+
+```python
+def solve_1d(arr):
+    n = len(arr)
+    dp = [INIT] * (n + 1)   # 或 n，看下标约定
+    # BASE: 填好 dp[0] / dp[1] / ...
+    for i in range(START, n):
+        dp[i] = TRANSITION(dp, i, arr)   # 只依赖 O(1)~O(k) 个更早状态
+    return ANSWER(dp)                    # dp[n] 或 max(dp) 等
+```
+
+| 题 | 状态定义 | 转移 | base | 遍历 | 答案 |
+|---|---|---|---|---|---|
+| Climbing Stairs | `dp[i]` = 爬到 i 阶方案数 | `dp[i]=dp[i-1]+dp[i-2]` | `dp[0]=1,dp[1]=1` | `i=2..n` | `dp[n]` |
+| Min Cost Climbing Stairs | `dp[i]` = 到达 i 的最小花费 | `dp[i]=cost[i]+min(dp[i-1],dp[i-2])` | `dp[0]=cost[0],dp[1]=cost[1]` | `i=2..n-1` | `min(dp[n-1],dp[n-2])` |
+| House Robber | `dp[i]` = 考虑前 i 家最大金额 | `dp[i]=max(dp[i-1],dp[i-2]+nums[i-1])` | `dp[0]=0,dp[1]=nums[0]` | `i=2..n` | `dp[n]` |
+| House Robber II | 同上，环拆成两段线性 | 对 `[0..n-2]` 与 `[1..n-1]` 各跑一次 Robber | 单段同 Robber | 两次线性 | 两段答案取 `max` |
+| Decode Ways | `dp[i]` = 后缀 `s[i:]` 的方案数 | 一位合法 `+dp[i+1]`；两位合法(`10..26`) `+dp[i+2]` | `dp[n]=1` | 从右往左 | `dp[0]` |
+| Word Break | `dp[i]` = `s[:i]` 可否被拆 | `dp[j] and s[j:i] in dict` | `dp[0]=True` | `i=1..n`，内层 `j` | `dp[n]` |
+| Longest Increasing Subsequence | `dp[i]` = 以 `i` 结尾的 LIS 长 | `dp[i]=max(dp[j])+1`（`nums[j]<nums[i]`） | 全 `1` | 双重 `i,j<i` | `max(dp)` |
+| Coin Change | `dp[a]` = 凑出金额 `a` 最少硬币 | `dp[a]=min(dp[a-c])+1` | `dp[0]=0`，其余 `inf` | 金额从小到大 | `dp[amount]`（`inf`→`-1`） |
+| Maximum Product Subarray | 以 `i` 结尾的最大/最小乘积 | 同时滚 `max_here,min_here` | 首元素 | 一次扫描 | 全局 `max` |
+
+下面先走完 Decode Ways 的完整流程，再补齐这张表里剩下的题。
+
+## 骨架 B：区间 DP
+
+```python
+def solve_interval(s):
+    n = len(s)
+    dp = [[INIT] * n for _ in range(n)]
+    # BASE: 长度 1（有时也要长度 0 / 2）
+    for length in range(2, n + 1):       # 按区间长度递增
+        for i in range(0, n - length + 1):
+            j = i + length - 1
+            dp[i][j] = TRANSITION(dp, i, j, s)
+    return ANSWER(dp)
+```
+
+| 题 | 状态定义 | 转移 | base | 遍历 | 答案 |
+|---|---|---|---|---|---|
+| Longest Palindromic Substring | `dp[i][j]` = `s[i..j]` 是否回文 | 两端相等且（长度≤2 或 `dp[i+1][j-1]`） | 单字符 `True` | 按长度 | 记下最长的 `(i,j)` |
+| Palindromic Substrings | 同上布尔表 | 同上 | 同上 | 同上 | 统计 `True` 个数 |
+| Burst Balloons | `dp[i][j]` = 戳开区间 `(i,j)` 最大收益 | `max_k a[i]*a[k]*a[j]+dp[i][k]+dp[k][j]`（`k` 最后戳） | 相邻 `i,j` 为 0 | 长度↑；两端补 `1` | `dp[0][n+1]` |
+
+## 骨架 C：背包族
+
+```python
+def solve_knapsack(items, capacity):
+    dp = [INIT] * (capacity + 1)
+    dp[0] = BASE0
+    for x in items:                      # 物品在外 → 组合；金额在外 → 排列语义不同
+        for j in range(...):             # 0/1：倒序；完全：正序
+            dp[j] = COMBINE(dp[j], dp[j - x], x)
+    return ANSWER(dp)
+```
+
+| 题 | 状态定义 | 转移 | base | 遍历 | 答案 |
+|---|---|---|---|---|---|
+| Partition Equal Subset Sum | `dp[j]` = 能否凑出和 `j` | `dp[j]\|=dp[j-x]`（0/1） | `dp[0]=True` | 物品外，容量倒序 | `dp[sum/2]` |
+| Coin Change II | `dp[a]` = 凑出 `a` 的组合数 | `dp[a]+=dp[a-c]`（完全） | `dp[0]=1` | 硬币外、金额内正序 | `dp[amount]` |
+| Target Sum | 化为子集和计数 | 同 0/1 计数背包 | `dp[0]=1` | 物品外，容量倒序 | `dp[(sum+target)/2]` |
+
+这张表里的三道题、以及后面的 Coin Change，具体推导见下文"0/1 背包"与"完全背包"两节。
+
+## 骨架 D：双序列 DP
+
+```python
+def solve_two_seq(a, b):
+    m, n = len(a), len(b)
+    dp = [[INIT] * (n + 1) for _ in range(m + 1)]
+    # BASE: 填第 0 行 / 第 0 列
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            dp[i][j] = TRANSITION(dp, i, j, a, b)
+    return dp[m][n]
+```
+
+| 题 | 状态定义 | 转移要点 | base |
+|---|---|---|---|
+| LCS | `dp[i][j]` = `a[:i]` 与 `b[:j]` 的 LCS 长 | 相等则 `+1`，否则 `max(上,左)` | 0 行/列 = 0 |
+| Edit Distance | 把 `a[:i]` 变成 `b[:j]` 最少操作 | 相等抄对角；否则 insert/delete/replace +1 | `dp[i][0]=i`,`dp[0][j]=j` |
+| Interleaving String | `s1[:i]+s2[:j]` 能否交错成 `s3[:i+j]` | 从上方吃 `s1` 或从左方吃 `s2` | 空串匹配空前缀 |
+| Distinct Subsequences | `s[:i]` 中有多少子序列等于 `t[:j]` | 字符相等：用或不用；否则只用跳过 | `dp[i][0]=1` |
+| Regex Matching | `s[:i]` 能否被 `p[:j]` 匹配 | `.` 任意单字符；`*` 零次（`j-2`）或多次（匹配则 `i-1`） | 空 pattern；`x*` 可匹配空 |
+
+## 骨架 E：网格 DP（含记忆化例外）
+
+```python
+def unique_paths(m, n):
+    dp = [[0] * n for _ in range(m)]
+    for i in range(m):
+        dp[i][0] = 1
+    for j in range(n):
+        dp[0][j] = 1
+    for i in range(1, m):
+        for j in range(1, n):
+            dp[i][j] = dp[i - 1][j] + dp[i][j - 1]
+    return dp[m - 1][n - 1]
+```
+
+Longest Increasing Path in a Matrix **不能**按行列扫一遍：矩阵值任意，没有单一拓扑扫掠方向。正确做法是对每个格子做记忆化 DFS：只走向严格更大的邻居，隐式构成 DAG，无环，重叠子问题可缓存。这仍是 DP（最优子结构 + 重叠子问题 + memo），只是不写显式填表循环。
+
+## 骨架 F：状态机 DP
+
+```python
+# hold / sold(cooldown) / free
+for price in prices:
+    hold, sold, free = TRANSITIONS(...)
+return max(sold, free)
+```
+
+具体的三态方程见下文 Stock Cooldown 一节。
+
 ## Example：Decode Ways
 
 现在用 Decode Ways 走一遍完整流程。
@@ -323,6 +473,174 @@ class Solution:
 
         return one
 ```
+
+## Climbing Stairs
+
+状态：`dp[i]` = 爬到第 `i` 阶的方案数。
+
+$$dp[i] = dp[i-1] + dp[i-2]$$
+
+Base：`$dp[0]=1$`，`$dp[1]=1$`（或直接 `$dp[1]=1,dp[2]=2$`）。
+
+遍历：`$i=2..n$`。答案：`$dp[n]$`。
+
+```python
+class Solution:
+    def climbStairs(self, n: int) -> int:
+        if n <= 2:
+            return n
+        a, b = 1, 2
+        for _ in range(3, n + 1):
+            a, b = b, a + b
+        return b
+```
+
+复杂度：Time `$O(n)$`，Space `$O(1)$`。
+
+坑：`$n=1$` 时不要访问 `$dp[2]$`；这题和斐波那契同构，面试里说明这一点即可。
+
+## Min Cost Climbing Stairs
+
+可以从下标 `0` 或 `1` 起步。`dp[i]` = 到达台阶 `i` 并支付 `cost[i]` 后的最小总花费。
+
+$$dp[i] = cost[i] + \min(dp[i-1], dp[i-2])$$
+
+答案不是 `$dp[n]$`（顶楼没有台阶，也就没有 cost），而是 `$\min(dp[n-1], dp[n-2])$`：最后一步可以从倒数第一或倒数第二级跨上去。
+
+```python
+class Solution:
+    def minCostClimbingStairs(self, cost: list[int]) -> int:
+        n = len(cost)
+        a, b = cost[0], cost[1]
+        for i in range(2, n):
+            a, b = b, cost[i] + min(a, b)
+        return min(a, b)
+```
+
+复杂度：Time `$O(n)$`，Space `$O(1)$`。
+
+坑：忘记"顶楼无 cost"，把答案写成 `$dp[n-1]$`。
+
+## House Robber
+
+不能抢相邻房屋。`dp[i]` = 只考虑前 `i` 家时的最大金额。
+
+$$dp[i] = \max(dp[i-1], dp[i-2] + nums[i-1])$$
+
+```python
+class Solution:
+    def rob(self, nums: list[int]) -> int:
+        prev2, prev1 = 0, 0
+        for x in nums:
+            prev2, prev1 = prev1, max(prev1, prev2 + x)
+        return prev1
+```
+
+复杂度：Time `$O(n)$`，Space `$O(1)$`。
+
+坑：空数组 / 单元素要单独处理；下标是 `nums[i-1]` 还是 `nums[i]`，要和 `dp` 的长度约定保持一致。
+
+## House Robber II
+
+房屋围成环：第一家和最后一家相邻，不能同时抢。拆成两次线性 House Robber，取较大值：
+
+```text
+max( rob(nums[0..n-2]), rob(nums[1..n-1]) )
+```
+
+`$n=1$` 时直接返回 `$nums[0]$`。
+
+```python
+class Solution:
+    def rob(self, nums: list[int]) -> int:
+        if len(nums) == 1:
+            return nums[0]
+        def rob_linear(arr):
+            a = b = 0
+            for x in arr:
+                a, b = b, max(b, a + x)
+            return b
+        return max(rob_linear(nums[:-1]), rob_linear(nums[1:]))
+```
+
+复杂度：Time `$O(n)$`，Space `$O(1)$`。
+
+坑：漏掉 `$n=1$` 这个特判；或者两段切片写错，漏抢或多抢中间那家。
+
+## Word Break
+
+`$dp[i]$` = 前缀 `$s[:i]$` 能否拆成字典单词。
+
+$$dp[i] = \bigvee_{j<i}\bigl(dp[j] \land s[j:i]\in dict\bigr)$$
+
+```python
+class Solution:
+    def wordBreak(self, s: str, wordDict: list[str]) -> bool:
+        words = set(wordDict)
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True
+        for i in range(1, n + 1):
+            for j in range(i):
+                if dp[j] and s[j:i] in words:
+                    dp[i] = True
+                    break
+        return dp[n]
+```
+
+复杂度：Time `$O(n^2\cdot L)$`（`$L$` 是切片比较的成本，可用字典树优化），Space `$O(n)$`。
+
+坑：`$dp[0]=True$` 表示空前缀总能被拆；字典很大时先把 `wordDict` 转成 `set`，否则 `in` 是线性扫描。
+
+## Longest Increasing Subsequence
+
+`$dp[i]$` = 以 `$nums[i]$` 结尾的最长严格递增子序列长度。
+
+$$dp[i] = 1 + \max_{j<i,\,nums[j]<nums[i]} dp[j]$$
+
+（找不到更小的前驱时为 `1`。）答案是 `$\max_i dp[i]$`，不是 `$dp[n-1]$`。
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: list[int]) -> int:
+        n = len(nums)
+        dp = [1] * n
+        for i in range(n):
+            for j in range(i):
+                if nums[j] < nums[i]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)
+```
+
+复杂度：Time `$O(n^2)$`，Space `$O(n)$`。
+
+脚注：可以用耐心排序 + 二分做到 `$O(n\log n)$`，那是另一条优化线；这里给出的是标准的 `$O(n^2)$` DP 表，先把状态和转移吃透。
+
+坑：答案是 `max(dp)`，不是 `dp[-1]`；"严格递增"用 `<`，不是 `<=`。
+
+## Maximum Product Subarray
+
+和 Kadane 的最大子数组**和**看起来像同一题的变体，但乘法会被负号翻转符号，所以必须同时维护以当前位置结尾的最大乘积和最小乘积：
+
+```text
+max_here' = max(x, max_here*x, min_here*x)
+min_here' = min(x, max_here*x, min_here*x)
+```
+
+```python
+class Solution:
+    def maxProduct(self, nums: list[int]) -> int:
+        ans = max_here = min_here = nums[0]
+        for x in nums[1:]:
+            candidates = (x, max_here * x, min_here * x)
+            max_here, min_here = max(candidates), min(candidates)
+            ans = max(ans, max_here)
+        return ans
+```
+
+复杂度：Time `$O(n)$`，Space `$O(1)$`。
+
+坑：只维护 `max_here` 会在 `[-2, 3, -4]` 这类输入上漏掉答案 `24`（两个负数相乘变正）；遇到 `0` 时 `max_here`/`min_here` 会自然被重置为从当前元素重新开始，不需要额外特判。
 
 ## Example：Best Time to Buy and Sell Stock with Cooldown
 
@@ -535,6 +853,92 @@ hold --sell--> sold --cooldown one day--> rest --buy--> hold
 
 所以两个写法本质相同，只是记录方式不同。面试里如果题目有“持有 / 刚卖 / 空仓可买”这种过程限制，三状态状态机会更不容易写错。
 
+## 区间 DP：子串与区间问题
+
+状态是一个闭区间 `[i, j]`（子串、气球区间），转移依赖更短的子区间，所以必须按区间长度递增来填表，而不是按行或按列扫。
+
+## Longest Palindromic Substring
+
+用区间布尔 DP：`$dp[i][j]$` 表示 `$s[i..j]$` 是否回文。
+
+$$dp[i][j] = (s[i]=s[j]) \land (j-i<2 \lor dp[i+1][j-1])$$
+
+按长度递增填表，同时记录最长回文区间的起点与长度。中心扩展法也能做这题，这里强调的是区间 DP 这种形态。
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        n = len(s)
+        dp = [[False] * n for _ in range(n)]
+        start = length = 0
+        for i in range(n - 1, -1, -1):
+            for j in range(i, n):
+                if s[i] == s[j] and (j - i < 2 or dp[i + 1][j - 1]):
+                    dp[i][j] = True
+                    if j - i + 1 > length:
+                        start, length = i, j - i + 1
+        return s[start:start + length]
+```
+
+（这里从右往左、从上往下填，效果上等价于按长度递增；也可以显式写成外层按 `length` 递增。）
+
+复杂度：Time `$O(n^2)$`，Space `$O(n^2)$`。
+
+坑：转移依赖 `$dp[i+1][j-1]$`，必须保证更短的区间已经算完；单字符自身也是回文，要计入初始的最长长度。
+
+## Palindromic Substrings
+
+用同一张布尔表，只是把答案从"记录最长的一个"换成"统计所有 `$dp[i][j]=True$` 的个数"。
+
+```python
+class Solution:
+    def countSubstrings(self, s: str) -> int:
+        n = len(s)
+        dp = [[False] * n for _ in range(n)]
+        ans = 0
+        for i in range(n - 1, -1, -1):
+            for j in range(i, n):
+                if s[i] == s[j] and (j - i < 2 or dp[i + 1][j - 1]):
+                    dp[i][j] = True
+                    ans += 1
+        return ans
+```
+
+复杂度：Time `$O(n^2)$`，Space `$O(n^2)$`。
+
+坑：不要只统计中心扩展法找到的"最长"回文；每一个满足条件的 `(i, j)` 都要算一次，包括所有长度为 1 的单字符。
+
+## Burst Balloons
+
+在数组两端各补一个虚拟气球 `1`。定义开区间：`$dp[i][j]$` = 戳破 `$i$` 与 `$j$` 之间所有气球能得到的最大硬币数。
+
+关键技巧：枚举区间内最后戳破的气球 `$k$`，而不是最先戳破的。最后戳 `$k$` 时，它左右两边的气球都已经戳完，`$k$` 此刻的邻居正好是虚拟边界 `$a[i]$` 与 `$a[j]$`：
+
+$$dp[i][j] = \max_{i<k<j}\bigl(dp[i][k] + a[i]\cdot a[k]\cdot a[j] + dp[k][j]\bigr)$$
+
+按 `$j-i$` 递增顺序填表。答案是 `$dp[0][n+1]$`（`$n$` 为原数组长度，补了两个虚拟边界后共 `$n+2$` 个位置）。
+
+```python
+class Solution:
+    def maxCoins(self, nums: list[int]) -> int:
+        a = [1] + nums + [1]
+        n = len(a)
+        dp = [[0] * n for _ in range(n)]
+        for length in range(2, n):
+            for i in range(0, n - length):
+                j = i + length
+                for k in range(i + 1, j):
+                    dp[i][j] = max(
+                        dp[i][j],
+                        dp[i][k] + a[i] * a[k] * a[j] + dp[k][j],
+                    )
+        return dp[0][n - 1]
+```
+
+复杂度：Time `$O(n^3)$`，Space `$O(n^2)$`。
+
+坑：如果去想"先戳哪个气球"，子问题的边界会依赖"还有哪些气球没戳"，转移写不清楚；换成"这个区间里最后戳哪个"之后，左右两段子区间互不影响，才能独立递归。
+
 ## 背包问题：0/1 Knapsack vs Complete Knapsack
 
 背包 DP 的核心问题是：
@@ -552,6 +956,35 @@ hold --sell--> sold --cooldown one day--> rest --buy--> hold
 ```
 
 这两个问题的代码经常只差一行循环方向，但语义完全不同。
+
+## 0/1 背包例题：Partition Equal Subset Sum
+
+在讲 Target Sum 之前，先看一道更直接的 0/1 背包可行性问题：给定数组，能否把它分成两个子集，使两个子集的和相等。
+
+如果总和是奇数，直接无解。否则目标是从数组里选出若干个数（每个数最多选一次），凑出 `$target = sum / 2$`：
+
+$$dp[j] = dp[j] \lor dp[j - x]$$
+
+`$dp[j]$` 表示"能否凑出和 `$j$`"，这是一个布尔版本的 0/1 背包。
+
+```python
+class Solution:
+    def canPartition(self, nums: list[int]) -> bool:
+        total = sum(nums)
+        if total % 2:
+            return False
+        target = total // 2
+        dp = [False] * (target + 1)
+        dp[0] = True
+        for x in nums:
+            for j in range(target, x - 1, -1):
+                dp[j] = dp[j] or dp[j - x]
+        return dp[target]
+```
+
+复杂度：Time `$O(n\cdot target)$`，Space `$O(target)$`。
+
+坑：和下面的 Target Sum 一样，容量循环必须倒序，否则同一个数 `x` 会在同一轮里被用多次，退化成完全背包。
 
 ## 0/1 背包例题：Target Sum
 
@@ -789,6 +1222,25 @@ class Solution:
 
 这里 `s` 正序，因为一枚 `coin` 可以被反复使用。
 
+## 完全背包例题：Coin Change II
+
+Coin Change 求的是最少硬币数，Coin Change II 换成完全背包的计数版本：`$dp[a]$` = 凑出金额 `$a$` 的组合数（不是排列数）。
+
+```python
+class Solution:
+    def change(self, amount: int, coins: list[int]) -> int:
+        dp = [0] * (amount + 1)
+        dp[0] = 1
+        for c in coins:                 # 硬币在外层 → 组合
+            for a in range(c, amount + 1):
+                dp[a] += dp[a - c]
+        return dp[amount]
+```
+
+复杂度：Time `$O(amount\cdot|coins|)$`，Space `$O(amount)$`。
+
+坑：如果把硬币放在内层、金额放在外层，会把 `(1, 2)` 和 `(2, 1)` 当成两种不同方案，算成排列数而不是组合数，这正是前面"计数问题：组合数和排列数的循环顺序不同"一节讲的那个坑，这里是它的具体例子。`dp[0]=1` 表示"凑出 0"只有"什么都不选"这一种方式。
+
 ## 0/1 背包和完全背包怎么选
 
 先问物品能不能重复用：
@@ -870,12 +1322,12 @@ return dp[W]
 方案数版本还有一个坑：外层循环放物品还是放容量，决定了你数的是组合还是排列。
 
 ```python
-# 组合数：{1,2} 和 {2,1} 算一种 —— 物品在外层
+# 组合数：{1,2} 和 {2,1} 算一种  -  物品在外层
 for coin in coins:
     for s in range(coin, amount + 1):
         dp[s] += dp[s - coin]
 
-# 排列数：{1,2} 和 {2,1} 算两种 —— 容量在外层
+# 排列数：{1,2} 和 {2,1} 算两种  -  容量在外层
 for s in range(1, amount + 1):
     for coin in coins:
         if coin <= s:
@@ -891,6 +1343,156 @@ for s in range(1, amount + 1):
 - 计数题的循环顺序反了：组合数写成排列数，样例能过、大样例数值偏大。
 - 忘记跳过 `weight > c` 的格子，或者倒序的下界写成 `-1`，导致 `dp[c - weight]` 用到负下标。
 - 二维转一维之后还想回溯具体选了哪些物品：一维数组已经把中间层覆盖掉了，要输出方案就得保留二维表。
+
+## 双序列 DP：两个字符串一起推进
+
+状态变成两个下标 `$(i, j)$`，分别是两个字符串的前缀长度。转移通常来自三个方向：`$dp[i-1][j-1]$`（两个指针一起走一步）、`$dp[i-1][j]$`（只走第一个串）、`$dp[i][j-1]$`（只走第二个串）。
+
+## Longest Common Subsequence
+
+`$dp[i][j]$` = `text1[:i]` 与 `text2[:j]` 的最长公共子序列长度。
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1]+1 & \text{text1}[i-1]=\text{text2}[j-1]\\ \max(dp[i-1][j],dp[i][j-1]) & \text{otherwise}\end{cases}$$
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        m, n = len(text1), len(text2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if text1[i - 1] == text2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[m][n]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(mn)$`（可以滚动压到 `$O(\min(m,n))$`）。
+
+坑：两个字符相等时必须走对角线 `+1`，不要写成 `max(上, 左) + 1`，那样会把同一个字符重复计入。
+
+## Edit Distance
+
+`$dp[i][j]$` = 把 `word1[:i]` 变成 `word2[:j]` 所需的最少操作数。
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1] & \text{word1}[i-1]=\text{word2}[j-1]\\ 1+\min(dp[i-1][j],\ dp[i][j-1],\ dp[i-1][j-1]) & \text{otherwise}\end{cases}$$
+
+三个候选分别对应删除、插入、替换。
+
+```python
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        m, n = len(word1), len(word2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if word1[i - 1] == word2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        return dp[m][n]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(mn)$`。
+
+坑：base case 是把前缀删空或从空串插入成前缀所需的代价，也就是 `$i$` 和 `$j$`；两个字符相等时直接抄对角线，不要再 `+1`。
+
+## Interleaving String
+
+`$dp[i][j]$` = `s1[:i]` 和 `s2[:j]` 能否交错组成 `s3[:i+j]`。
+
+$$dp[i][j] = \bigl(dp[i-1][j]\land s1[i-1]=s3[i+j-1]\bigr) \lor \bigl(dp[i][j-1]\land s2[j-1]=s3[i+j-1]\bigr)$$
+
+先检查 `$\text{len}(s1)+\text{len}(s2)=\text{len}(s3)$`，长度不对直接返回 `False`。
+
+```python
+class Solution:
+    def isInterleave(self, s1: str, s2: str, s3: str) -> bool:
+        m, n = len(s1), len(s2)
+        if m + n != len(s3):
+            return False
+        dp = [[False] * (n + 1) for _ in range(m + 1)]
+        dp[0][0] = True
+        for i in range(1, m + 1):
+            dp[i][0] = dp[i - 1][0] and s1[i - 1] == s3[i - 1]
+        for j in range(1, n + 1):
+            dp[0][j] = dp[0][j - 1] and s2[j - 1] == s3[j - 1]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                dp[i][j] = (
+                    (dp[i - 1][j] and s1[i - 1] == s3[i + j - 1])
+                    or (dp[i][j - 1] and s2[j - 1] == s3[i + j - 1])
+                )
+        return dp[m][n]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(mn)$`。
+
+坑：忘记先检查长度；`s3` 的下标是 `$i+j-1$`，不是 `$i+j$`（0-indexed 的偏移很容易错一位）。
+
+## Distinct Subsequences
+
+`$dp[i][j]$` = `s[:i]` 中有多少个子序列等于 `t[:j]`。
+
+$$dp[i][j]=\begin{cases}dp[i-1][j-1]+dp[i-1][j] & s[i-1]=t[j-1]\\ dp[i-1][j] & \text{otherwise}\end{cases}$$
+
+Base：`$dp[i][0]=1$`（空 `t` 总能被匹配一次，即"什么都不取"），`$dp[0][j]=0$`（`$j>0$` 时非空 `t` 不可能被空 `s` 匹配）。
+
+```python
+class Solution:
+    def numDistinct(self, s: str, t: str) -> int:
+        m, n = len(s), len(t)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = 1
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if s[i - 1] == t[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + dp[i - 1][j]
+                else:
+                    dp[i][j] = dp[i - 1][j]
+        return dp[m][n]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(mn)$`。
+
+坑：字符相等时是"用这个字符去匹配 t 的末位"和"跳过 s 的这个字符"两条路径相加，漏掉 `dp[i-1][j]` 会少算方案。
+
+## Regular Expression Matching
+
+`$dp[i][j]$` = `s[:i]` 是否被 `p[:j]` 匹配。
+
+- 普通字符或 `.`：`$dp[i][j]=dp[i-1][j-1]$`，且要求当前字符匹配。
+- `$p[j-1]='*'$`：`$x*$` 匹配零次时看 `$dp[i][j-2]$`（整段 `x*` 丢掉）；匹配当前字符时，如果 `$x$` 能匹配 `$s[i-1]$`，还要或上 `$dp[i-1][j]$`（消耗一个 `s` 字符，pattern 停在 `x*` 上继续复用）。
+
+```python
+class Solution:
+    def isMatch(self, s: str, p: str) -> bool:
+        m, n = len(s), len(p)
+        dp = [[False] * (n + 1) for _ in range(m + 1)]
+        dp[0][0] = True
+        for j in range(1, n + 1):
+            if p[j - 1] == '*':
+                dp[0][j] = dp[0][j - 2]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if p[j - 1] == '*':
+                    dp[i][j] = dp[i][j - 2]
+                    if p[j - 2] == '.' or p[j - 2] == s[i - 1]:
+                        dp[i][j] = dp[i][j] or dp[i - 1][j]
+                elif p[j - 1] == '.' or p[j - 1] == s[i - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+        return dp[m][n]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(mn)$`。
+
+坑：`*` 管的是前一个字符，写转移时要用 `$j-2$` / `$p[j-2]$`，不是 `$j-1$`；空 pattern 对 `a*`、`a*b*` 这类可以匹配空串的情况，要先把第 0 行填对。
 
 ## Kadane's Algorithm：最大子数组和
 
@@ -1629,6 +2231,62 @@ class Solution:
 
 > 这题能从 DP 变成 greedy，是因为“所有能到终点的位置”可以被“最左边的能到终点的位置”完整代表。
 
+## 网格 DP：坐标 (r, c) 上的两种情况
+
+## Unique Paths
+
+机器人只能向右或向下走，从左上角走到右下角有多少条不同路径。`$dp[i][j]=dp[i-1][j]+dp[i][j-1]$`，第一行和第一列都只有一条走法，全部初始化为 1。
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [1] * n
+        for _ in range(1, m):
+            for j in range(1, n):
+                dp[j] += dp[j - 1]
+        return dp[-1]
+```
+
+复杂度：Time `$O(mn)$`，Space `$O(n)$`（滚动成一维数组）。
+
+坑：`$m=1$` 或 `$n=1$` 时答案应该是 1，上面的滚动数组写法已经自动覆盖了这个情况，不需要额外特判。
+
+## Longest Increasing Path in a Matrix
+
+这题看起来是网格 DP，但不能像 Unique Paths 那样按行列扫一遍：矩阵里的数值任意分布，不存在一个方向能保证"算某个格子时，它依赖的格子都已经算完"。
+
+正确做法是对每个格子做记忆化 DFS：`$dfs(r,c)$` = 从这个格子出发的最长严格递增路径长度，只往严格更大的邻居走：
+
+$$dfs(r,c)=1+\max_{\text{邻格严格更大}} dfs(nr,nc)$$
+
+（如果没有合法邻居，长度为 1。）用 memo 缓存结果。
+
+```python
+class Solution:
+    def longestIncreasingPath(self, matrix: list[list[int]]) -> int:
+        if not matrix:
+            return 0
+        m, n = len(matrix), len(matrix[0])
+        memo = {}
+        def dfs(r, c):
+            if (r, c) in memo:
+                return memo[(r, c)]
+            best = 1
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and matrix[nr][nc] > matrix[r][c]:
+                    best = max(best, 1 + dfs(nr, nc))
+            memo[(r, c)] = best
+            return best
+        return max(dfs(i, j) for i in range(m) for j in range(n))
+```
+
+复杂度：Time `$O(mn)$`（每个格子只会被真正计算一次），Space `$O(mn)$`（memo 加递归栈）。
+
+这为什么仍然算 DP：严格递增的边构成一个有向无环图（DAG），子问题 `$dfs(r,c)$` 会被多条路径重复访问，用 memo 缓存就是标准的"最优子结构 + 重叠子问题"。区别只是这里没有写显式的双重 for 循环填表，而是用记忆化 DFS 沿着 DAG 的拓扑顺序隐式地算。
+
+坑：写成 `>=` 而不是 `>` 会在有相等值时出现环，递归无法终止；忘记 memo 会导致同一个格子被重复展开，退化成指数级。
+
 ## 常见坑
 
 - 没有先定义 `dp[i]` 的含义就开始写代码。
@@ -1646,6 +2304,15 @@ class Solution:
 - Jump Game 把 `nums[i]` 当成唯一目的地；它其实是最大跳跃长度，可以跳到区间 `[i + 1, i + nums[i]]` 里的任意位置。
 - Jump Game 直接说“每次跳最远”但不给证明；面试里要解释为什么状态集合可以被 `goal` 或 `reach` 这个边界代表。
 - Jump Game 从右往左 greedy 时忘记条件是 `i + nums[i] >= goal`，不是 `nums[i] >= goal`。
+
+- 答案取 `dp[n]` 还是 `max(dp)` 搞混，尤其是 LIS、Maximum Product Subarray、Min Cost Climbing Stairs 这类"答案不等于最后一格"的题。
+- 0/1 背包一维优化写成正序，导致同一个物品在一轮里被重复使用，变成完全背包。
+- Coin Change II 外层放金额、内层放硬币，把组合数写成了排列数。
+- 区间 DP 不按长度递增填表，读到还没算出来的 `dp[i+1][j-1]`。
+- Burst Balloons 想着"先戳哪个气球"，而不是"这个区间里最后戳哪个"，导致子问题边界说不清楚。
+- Regex Matching 的 `*` 忘记对应"前一个字符"，或者空串对 `a*` 这类 pattern 的 base case 没处理。
+- House Robber II 忘了单独处理 `n=1` 的情况。
+- Longest Increasing Path in a Matrix 用普通的双重循环按行列填表，而不是记忆化 DFS。
 
 ## 复杂度
 
@@ -1689,6 +2356,195 @@ Jump Game：
 - 递归：时间指数级，空间 `O(n)`
 - Top-down / bottom-up DP：时间 `O(n^2)`，空间 `O(n)`
 - Greedy：时间 `O(n)`，空间 `O(1)`
+
+Climbing Stairs / Min Cost Climbing Stairs / House Robber / House Robber II：
+
+- 时间：`O(n)`
+- 空间：`O(1)`（滚动变量）
+
+Word Break：
+
+- 时间：`O(n^2 · L)`，`L` 为子串比较成本
+- 空间：`O(n)`
+
+Longest Increasing Subsequence（本文的 O(n²) DP 版本）：
+
+- 时间：`O(n^2)`
+- 空间：`O(n)`
+
+Maximum Product Subarray：
+
+- 时间：`O(n)`
+- 空间：`O(1)`
+
+Longest Palindromic Substring / Palindromic Substrings：
+
+- 时间：`O(n^2)`
+- 空间：`O(n^2)`
+
+Burst Balloons：
+
+- 时间：`O(n^3)`
+- 空间：`O(n^2)`
+
+Partition Equal Subset Sum：
+
+- 时间：`O(n · sum/2)`
+- 空间：`O(sum/2)`
+
+Coin Change II：
+
+- 时间：`O(amount · |coins|)`
+- 空间：`O(amount)`
+
+Longest Common Subsequence / Edit Distance / Interleaving String / Distinct Subsequences / Regular Expression Matching：
+
+- 时间：`O(mn)`
+- 空间：`O(mn)`（LCS 和 Edit Distance 都可以滚动压缩到 `O(min(m,n))`）
+
+Unique Paths：
+
+- 时间：`O(mn)`
+- 空间：`O(n)`（滚动数组）
+
+Longest Increasing Path in a Matrix：
+
+- 时间：`O(mn)`
+- 空间：`O(mn)`（memo + 递归栈）
+
+## 快速自测
+
+```quiz
+title: 快速选择题 1
+question: House Robber II 相对 House Robber，最关键的额外处理是？
+answer: B
+A. 改成二维 dp[i][j]
+B. 环拆成两段线性 Robber，取 max
+C. 必须用区间 DP
+D. 改成完全背包
+explanation: 首尾相邻，不能同时抢；对 nums[0..n-2] 与 nums[1..n-1] 各跑一次线性 Robber 再取 max。
+```
+
+```quiz
+title: 快速选择题 2
+question: Coin Change（最少枚数）与 Coin Change II（组合数）在一维 DP 上，最重要的差别是？
+answer: C
+A. 一个用倒序一个用正序（都是完全背包时）
+B. 一个必须二维一个必须一维
+C. 目标函数不同（min vs 累加计数），且 II 要用"物品在外"保证组合语义
+D. 二者转移完全相同只是返回值不同
+explanation: 二者都是完全背包形状；II 需要组合而非排列，故硬币循环在外；转移分别是 min 与加法计数。
+```
+
+```quiz
+title: 快速选择题 3
+question: Burst Balloons 区间转移里，k 表示什么？
+answer: A
+A. 开区间 (i,j) 里最后戳破的气球
+B. 开区间里最先戳破的气球
+C. 区间长度
+D. 虚拟边界 1 的下标
+explanation: 最后戳 k 时左右已空，收益拆成 a[i]*a[k]*a[j] 加两段子区间 DP。
+```
+
+```quiz
+title: 快速选择题 4
+question: Target Sum 化成子集和时，子集目标和 P 等于？
+answer: B
+A. (sum - target) / 2
+B. (sum + target) / 2
+C. sum - target
+D. target
+explanation: P+N=sum，P-N=target，故 P=(sum+target)/2；需整除且 |target|<=sum。
+```
+
+```quiz
+title: 快速选择题 5
+question: Longest Increasing Path in a Matrix 为什么不能像 Unique Paths 那样按行扫 dp？
+answer: D
+A. 因为只能右和下走
+B. 因为必须 O(1) 空间
+C. 因为不是 DP
+D. 更大邻居方向任意，没有单一合法填表顺序；用记忆化 DFS 走 DAG
+explanation: 严格上升边构成 DAG；memo 化的 DFS 才是正确的 DP 形态。
+```
+
+```quiz
+title: 快速选择题 6
+question: Edit Distance 中 word1[i-1]==word2[j-1] 时，正确转移是？
+answer: A
+A. dp[i][j] = dp[i-1][j-1]
+B. dp[i][j] = dp[i-1][j-1] + 1
+C. dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+D. dp[i][j] = dp[i][j-1] + 1
+explanation: 字符已相等，无需操作，直接继承对角；不相等才在 insert/delete/replace 中取 min 加一。
+```
+
+```quiz
+title: 快速选择题 7
+question: Maximum Product Subarray 为什么要同时维护 min_here？
+answer: C
+A. 为了处理 0
+B. 为了 O(1) 空间
+C. 负号会把最小乘积翻成最大，只维护 max 会丢解
+D. 题目要求返回最小乘积
+explanation: 例如 [-2,3,-4]；负负得正依赖此前的最小（最负）乘积。
+```
+
+```quiz
+title: 快速选择题 8
+question: Distinct Subsequences 在 s[i-1]==t[j-1] 时，转移应为？
+answer: B
+A. 只加 dp[i-1][j-1]
+B. dp[i-1][j-1] + dp[i-1][j]（用或不用当前字符）
+C. dp[i][j-1] + dp[i-1][j]
+D. max(dp[i-1][j-1], dp[i-1][j])
+explanation: 用当前字符匹配 t 的末位，或跳过 s 的当前字符，两路方案数相加。
+```
+
+```quiz
+title: 快速选择题 9
+question: Regex Matching 中 p[j-1]=='*' 时，"匹配零次"对应？
+answer: A
+A. dp[i][j-2]
+B. dp[i-1][j]
+C. dp[i-1][j-1]
+D. dp[i][j-1]
+explanation: x* 整段丢掉，看 p[:j-2] 是否已匹配 s[:i]；多次匹配才或上 dp[i-1][j]。
+```
+
+```quiz
+title: 快速选择题 10
+question: 0/1 背包一维优化时容量循环必须倒序，原因是？
+answer: C
+A. 更快
+B. 为了组合数变排列数
+C. 避免同一个物品在本轮被重复使用
+D. 倒序才能处理完全背包
+explanation: 倒序保证 dp[j-x] 仍是"未选当前物品"的旧值；正序会变成完全背包。
+```
+
+```quiz
+title: 快速选择题 11
+question: Stock with Cooldown 的 sold 状态含义最准确的是？
+answer: B
+A. 任意空仓
+B. 今天刚卖出，明天处于冷却
+C. 手持股票
+D. 累计卖出次数
+explanation: sold 专门标记"今日卖出"，次日只能进入 free，不能直接 buy。
+```
+
+```quiz
+title: 快速选择题 12
+question: House Robber II 中，为什么不能直接套用 House Robber 的线性 DP？
+answer: B
+A. 数据范围不同，需要换算法
+B. 首尾房屋相邻，形成环，必须拆成两段线性子问题分别求解再取较大值
+C. 环形数组必须用区间 DP
+D. 环形数组下 dp 转移方程本身要变
+explanation: 环带来的唯一变化是"不能同时抢第一家和最后一家"，拆成 [0..n-2] 与 [1..n-1] 两段线性 Robber 就绕开了这个限制，单段内部的转移方程完全不变。
+```
 
 ## 面试回答模板
 

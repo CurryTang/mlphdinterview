@@ -1705,7 +1705,7 @@ const leetcodeNoteDefinitions = [
     'Core Skills 10 · Dynamic Programming',
     'CoreSkills10 Decode Ways Dynamic Programming.md',
     'CoreSkills10 Decode Ways Dynamic Programming.en.md',
-    { directory: 'Leetcode', titleEn: 'Core Skills 10 · Dynamic Programming', category: 'Dynamic Programming', difficulty: 'Medium' },
+    { directory: 'Leetcode', titleEn: 'Core Skills 10 · Dynamic Programming', category: 'Dynamic Programming', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'Core Skills 11 · Rejection Sampling / Rand10',
@@ -1778,12 +1778,6 @@ const leetcodeNoteDefinitions = [
     'CoreSkills22 Backtracking.md',
     'CoreSkills22 Backtracking.en.md',
     { directory: 'Leetcode', titleEn: 'Core Skills 22 · Backtracking', category: 'Backtracking', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'CoreSkills 23 · 动态规划',
-    'CoreSkills23 Dynamic Programming Patterns.md',
-    'CoreSkills23 Dynamic Programming Patterns.en.md',
-    { directory: 'Leetcode', titleEn: 'CoreSkills 23 · Dynamic Programming Patterns', category: 'Dynamic Programming', difficulty: 'Hard' },
   ),
 ];
 
@@ -18873,6 +18867,7 @@ const legacyRoutes = {
   'CoreSkills10 Insertion Sort.md': 'CoreSkills09 Insertion Sort.md',
   'CoreSkills21 Decode Ways Dynamic Programming.md': 'CoreSkills10 Decode Ways Dynamic Programming.md',
   'CoreSkills22 Rejection Sampling Rand10.md': 'CoreSkills11 Rejection Sampling Rand10.md',
+  'CoreSkills23 Dynamic Programming Patterns.md': 'CoreSkills10 Decode Ways Dynamic Programming.md',
   'CoreSkills23 Greedy Algorithms.md': 'CoreSkills12 Greedy Algorithms.md',
   'CoreSkills24 Interval Problems.md': 'CoreSkills13 Interval Problems.md',
   'CoreSkills25 Math Binary Exponentiation.md': 'CoreSkills14 Math Binary Exponentiation.md',
