@@ -1926,12 +1926,13 @@ const quantNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
-    'Quant 11 · 鞅、停时与最优停时定理：一维随机游走的应用',
+    'Quant 11 · 鞅、停时与随机游走：Wald 等式、鞅构造与最优时停',
     'Quant11 Martingales Stopping Times Random Walks.md',
-    null,
+    'Quant11 Martingales Stopping Times Random Walks.en.md',
     {
       directory: 'quant',
-      category: 'Martingales & Betting',
+      titleEn: 'Quant 11 · Martingales, Stopping Times & Random Walks: Wald\'s Identity, Martingale Construction & Optimal Stopping',
+      category: 'Martingales & Random Walks',
       difficulty: 'Hard',
     },
   ),
@@ -18404,10 +18405,449 @@ function CombinationSumVisual() {
   );
 }
 
+function MartingaleRandomWalkVisual() {
+  const { t } = useUiCopy();
+  const [activeTab, setActiveTab] = useState('random-walk');
+
+  // Tab 1: Random Walk & Wald Martingales state
+  const [upperA, setUpperA] = useState(5);
+  const [lowerB, setLowerB] = useState(5);
+  const [probP, setProbP] = useState(0.5);
+  const [simPath, setSimPath] = useState(null);
+
+  // Computations for 1D Random Walk
+  const q = 1 - probP;
+  let probA = 0;
+  let expectedTime = 0;
+
+  if (Math.abs(probP - 0.5) < 1e-6) {
+    probA = lowerB / (upperA + lowerB);
+    expectedTime = upperA * lowerB;
+  } else {
+    const qOverP = q / probP;
+    probA = (Math.pow(qOverP, lowerB) - 1) / (Math.pow(qOverP, upperA + lowerB) - 1);
+    expectedTime = (upperA * probA - lowerB * (1 - probA)) / (probP - q);
+  }
+
+  const handleSimulate = () => {
+    let current = 0;
+    const path = [0];
+    let steps = 0;
+    const maxSteps = 1500;
+    while (current < upperA && current > -lowerB && steps < maxSteps) {
+      const step = Math.random() < probP ? 1 : -1;
+      current += step;
+      path.push(current);
+      steps++;
+    }
+    setSimPath({
+      path,
+      outcome: current >= upperA ? 'hit_a' : current <= -lowerB ? 'hit_b' : 'max_steps',
+      steps,
+    });
+  };
+
+  // Tab 2: Secretary Problem state
+  const [totalN, setTotalN] = useState(30);
+  const [cutoffK, setCutoffK] = useState(11);
+
+  const secretaryData = useMemo(() => {
+    const arr = [];
+    let bestK = 1;
+    let maxP = 0;
+    for (let k = 1; k <= totalN; k++) {
+      let sumH = 0;
+      for (let j = k; j <= totalN; j++) {
+        sumH += 1 / (j - 1 || 1);
+      }
+      const pSuccess = k === 1 ? 1 / totalN : ((k - 1) / totalN) * sumH;
+      if (pSuccess > maxP) {
+        maxP = pSuccess;
+        bestK = k;
+      }
+      arr.push({ k, p: pSuccess });
+    }
+    return { arr, bestK, maxP };
+  }, [totalN]);
+
+  const currentCutoffProb = secretaryData.arr.find((item) => item.k === cutoffK)?.p ?? 0;
+
+  // Tab 3: Pattern Waiting Times & Li's Martingale
+  const [patternA, setPatternA] = useState('HTTH');
+  const [patternB, setPatternB] = useState('HTHT');
+
+  const computePatternInfo = (pattern) => {
+    const p = pattern.toUpperCase().replace(/[^HT]/g, '');
+    const m = p.length || 1;
+    const overlaps = [];
+    let expectedT = 0;
+    for (let len = 1; len <= m; len++) {
+      const prefix = p.slice(0, len);
+      const suffix = p.slice(m - len);
+      const isMatch = prefix === suffix;
+      const val = isMatch ? Math.pow(2, len) : 0;
+      expectedT += val;
+      overlaps.push({ len, prefix, suffix, isMatch, val });
+    }
+    return { pattern: p, m, overlaps, expectedT };
+  };
+
+  const computeCrossOverlap = (p1, p2) => {
+    const minLen = Math.min(p1.length, p2.length);
+    let sum = 0;
+    for (let len = 1; len <= minLen; len++) {
+      const prefix1 = p1.slice(0, len);
+      const suffix2 = p2.slice(p2.length - len);
+      if (prefix1 === suffix2) {
+        sum += Math.pow(2, len);
+      }
+    }
+    return sum;
+  };
+
+  const infoA = useMemo(() => computePatternInfo(patternA), [patternA]);
+  const infoB = useMemo(() => computePatternInfo(patternB), [patternB]);
+
+  const penneyAoverB = useMemo(() => {
+    const aa = computeCrossOverlap(infoA.pattern, infoA.pattern);
+    const bb = computeCrossOverlap(infoB.pattern, infoB.pattern);
+    const ab = computeCrossOverlap(infoA.pattern, infoB.pattern);
+    const ba = computeCrossOverlap(infoB.pattern, infoA.pattern);
+    const num = bb - ba;
+    const den = aa - ab + (bb - ba);
+    return den !== 0 ? Math.max(0, Math.min(1, num / den)) : 0.5;
+  }, [infoA.pattern, infoB.pattern]);
+
+  return (
+    <section aria-label={t('鞅论、Wald 等式与最优时停交互演示', 'Martingale, Wald equations, and optimal stopping visual lab')} className="mrw-vis">
+      <header className="mrw-header">
+        <div>
+          <p className="eyebrow">{t('鞅论与最优时停交互实验室', 'Martingale & Optimal Stopping Interactive Lab')}</p>
+          <h2>{t('Wald 等式、1D 随机游走与最优决策', 'Wald\'s Identities, 1D Random Walks & Optimal Stopping')}</h2>
+          <p>{t(
+            '切换不同模块，实时验证随机游走吸收概率、期望停止时间、秘书问题 37% 法则与 Li\'s 赌场鞅模式计算。',
+            'Switch tabs to interactively verify random walk hitting probabilities, expected exit times, the 37% rule, and pattern waiting times.',
+          )}</p>
+        </div>
+        <div className="mrw-tabs" role="tablist">
+          <button
+            aria-selected={activeTab === 'random-walk'}
+            className={activeTab === 'random-walk' ? 'active' : ''}
+            onClick={() => setActiveTab('random-walk')}
+            role="tab"
+            type="button"
+          >
+            {t('1D 随机游走与鞅', '1D Random Walk')}
+          </button>
+          <button
+            aria-selected={activeTab === 'secretary'}
+            className={activeTab === 'secretary' ? 'active' : ''}
+            onClick={() => setActiveTab('secretary')}
+            role="tab"
+            type="button"
+          >
+            {t('秘书问题 37% 法则', 'Secretary Problem (37%)')}
+          </button>
+          <button
+            aria-selected={activeTab === 'pattern'}
+            className={activeTab === 'pattern' ? 'active' : ''}
+            onClick={() => setActiveTab('pattern')}
+            role="tab"
+            type="button"
+          >
+            {t('模式等待与赌场鞅', 'Pattern Waiting & Li\'s Martingale')}
+          </button>
+        </div>
+      </header>
+
+      {activeTab === 'random-walk' && (
+        <div className="mrw-body">
+          <div className="mrw-controls-grid">
+            <label>
+              <span>{t('上吸收边界 +a', 'Upper Barrier +a')}: <strong>+{upperA}</strong></span>
+              <input
+                max="20"
+                min="1"
+                onChange={(e) => setUpperA(Number(e.target.value))}
+                type="range"
+                value={upperA}
+              />
+            </label>
+            <label>
+              <span>{t('下吸收边界 -b', 'Lower Barrier -b')}: <strong>-{lowerB}</strong></span>
+              <input
+                max="20"
+                min="1"
+                onChange={(e) => setLowerB(Number(e.target.value))}
+                type="range"
+                value={lowerB}
+              />
+            </label>
+            <label>
+              <span>{t('步长向上概率 p', 'Upward Probability p')}: <strong>{probP.toFixed(2)}</strong> (q = {q.toFixed(2)})</span>
+              <input
+                max="0.9"
+                min="0.1"
+                step="0.05"
+                onChange={(e) => setProbP(Number(e.target.value))}
+                type="range"
+                value={probP}
+              />
+            </label>
+          </div>
+
+          <div className="mrw-metrics-cards">
+            <div className="mrw-card">
+              <span>{t('胜率 P(到达 +a)', 'Win Probability P(Hit +a)')}</span>
+              <strong className="accent-green">{(probA * 100).toFixed(2)}%</strong>
+              <small>{probP === 0.5 ? t(`对称公式: ${lowerB} / (${upperA}+${lowerB}) = b/(a+b)`, `Symmetric: ${lowerB}/(${upperA}+${lowerB}) = b/(a+b)`) : t(`指数鞅公式: ((q/p)^b - 1) / ((q/p)^(a+b) - 1)`, `Exp Martingale: ((q/p)^b - 1) / ((q/p)^(a+b) - 1)`)}</small>
+            </div>
+            <div className="mrw-card">
+              <span>{t('败率 P(到达 -b)', 'Loss Probability P(Hit -b)')}</span>
+              <strong className="accent-red">{((1 - probA) * 100).toFixed(2)}%</strong>
+              <small>{probP === 0.5 ? t(`对称公式: ${upperA} / (${upperA}+${lowerB}) = a/(a+b)`, `Symmetric: ${upperA}/(${upperA}+${lowerB}) = a/(a+b)`) : t(`余概率: 1 - P(Hit +a)`, `Complement: 1 - P(Hit +a)`)}</small>
+            </div>
+            <div className="mrw-card">
+              <span>{t('期望停止时间 E[T]', 'Expected Exit Time E[T]')}</span>
+              <strong className="accent-blue">{expectedTime.toFixed(2)} {t('步', 'steps')}</strong>
+              <small>{probP === 0.5 ? t(`二阶 Wald / 方差鞅: ${upperA} × ${lowerB} = ab`, `Wald 2nd / Var Martingale: ${upperA} × ${lowerB} = ab`) : t(`一阶 Wald / 漂移鞅: (a·Pa - b·Pb) / (p-q)`, `Wald 1st / Drift Martingale: (a·Pa - b·Pb)/(p-q)`)}</small>
+            </div>
+          </div>
+
+          <div className="mrw-sim-section">
+            <div className="mrw-sim-header">
+              <button className="primary-btn" onClick={handleSimulate} type="button">
+                🎲 {t('单次蒙特卡洛模拟游走', 'Simulate Single Random Walk')}
+              </button>
+              {simPath && (
+                <span className="mrw-sim-status">
+                  {simPath.outcome === 'hit_a' ? (
+                    <strong className="pos">🎯 {t(`成功命中 +${upperA} (耗时 ${simPath.steps} 步)`, `Reached +${upperA} in ${simPath.steps} steps`)}</strong>
+                  ) : (
+                    <strong className="neg">💥 {t(`触碰下界 -${lowerB} (耗时 ${simPath.steps} 步)`, `Hit lower -${lowerB} in ${simPath.steps} steps`)}</strong>
+                  )}
+                </span>
+              )}
+            </div>
+
+            {simPath && (
+              <div className="mrw-path-vis">
+                <div className="mrw-axis-label top">+{upperA} ({t('上界 a', 'Upper a')})</div>
+                <div className="mrw-canvas-wrap">
+                  <svg className="mrw-svg" preserveAspectRatio="none" viewBox={`0 0 ${Math.max(simPath.path.length - 1, 1)} ${upperA + lowerB}`}>
+                    <line
+                      className="mrw-zero-line"
+                      x1="0"
+                      x2={simPath.path.length - 1}
+                      y1={upperA}
+                      y2={upperA}
+                    />
+                    <polyline
+                      className="mrw-path-line"
+                      points={simPath.path.map((val, idx) => `${idx},${upperA - val}`).join(' ')}
+                    />
+                  </svg>
+                </div>
+                <div className="mrw-axis-label bottom">-{lowerB} ({t('下界 -b', 'Lower -b')})</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'secretary' && (
+        <div className="mrw-body">
+          <div className="mrw-controls-grid">
+            <label>
+              <span>{t('候选人总人数 n', 'Total Candidates n')}: <strong>{totalN}</strong></span>
+              <input
+                max="50"
+                min="5"
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setTotalN(val);
+                  setCutoffK(Math.min(cutoffK, val));
+                }}
+                type="range"
+                value={totalN}
+              />
+            </label>
+            <label>
+              <span>{t('当前设定样本观察区 k', 'Rejection Threshold k')}: <strong>{cutoffK}</strong> ({((cutoffK / totalN) * 100).toFixed(1)}%)</span>
+              <input
+                max={totalN}
+                min="1"
+                onChange={(e) => setCutoffK(Number(e.target.value))}
+                type="range"
+                value={cutoffK}
+              />
+            </label>
+          </div>
+
+          <div className="mrw-metrics-cards">
+            <div className="mrw-card">
+              <span>{t('当前设定命中率 P(k)', 'Current Hit Rate P(k)')}</span>
+              <strong className={cutoffK === secretaryData.bestK ? 'accent-green' : 'accent-blue'}>
+                {(currentCutoffProb * 100).toFixed(2)}%
+              </strong>
+              <small>{t(`前 ${cutoffK - 1} 人仅观察，从第 ${cutoffK} 人开始选优`, `Observe first ${cutoffK - 1}, select first better from ${cutoffK}`)}</small>
+            </div>
+            <div className="mrw-card">
+              <span>{t('离散最优阈值 k*', 'Discrete Optimal Cutoff k*')}</span>
+              <strong className="accent-green">k* = {secretaryData.bestK}</strong>
+              <small>{t(`离散最高概率: ${(secretaryData.maxP * 100).toFixed(2)}%`, `Discrete Peak: ${(secretaryData.maxP * 100).toFixed(2)}%`)}</small>
+            </div>
+            <div className="mrw-card">
+              <span>{t('连续渐近极限 (n -> ∞)', 'Asymptotic Limit (n -> ∞)')}</span>
+              <strong className="accent-purple">1/e ≈ 36.79%</strong>
+              <small>{t('最优拒绝比例 x* = 1/e ≈ 36.8%', 'Optimal rejection fraction x* = 1/e ≈ 36.8%')}</small>
+            </div>
+          </div>
+
+          <div className="mrw-sec-chart">
+            <div className="mrw-sec-bars">
+              {secretaryData.arr.map(({ k, p }) => {
+                const isSelected = k === cutoffK;
+                const isBest = k === secretaryData.bestK;
+                const heightPct = Math.max(4, (p / 0.45) * 100);
+                return (
+                  <button
+                    aria-label={`k=${k}, P=${(p * 100).toFixed(2)}%`}
+                    className={`mrw-bar-col ${isSelected ? 'selected' : ''} ${isBest ? 'best' : ''}`}
+                    key={k}
+                    onClick={() => setCutoffK(k)}
+                    type="button"
+                  >
+                    <div className="mrw-bar-fill" style={{ height: `${heightPct}%` }} />
+                    <span className="mrw-bar-lbl">{k % 5 === 0 || k === 1 || isBest ? k : ''}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mrw-chart-hint">
+              <span>{t('柱状图展示各个候选拒绝阈值 k 对应的全局最优命中概率 P(k)，点击柱子可直接切换阈值。', 'Bar chart shows success probability P(k) across thresholds k. Click any bar to select.')}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'pattern' && (
+        <div className="mrw-body">
+          <div className="mrw-pattern-selector">
+            <span className="mrw-lbl">{t('选择预设或自定义模式 A / B:', 'Select preset or custom pattern A / B:')}</span>
+            <div className="mrw-preset-btns">
+              <button
+                className={patternA === 'HTTH' && patternB === 'HTHT' ? 'active' : ''}
+                onClick={() => { setPatternA('HTTH'); setPatternB('HTHT'); }}
+                type="button"
+              >
+                HTTH vs HTHT (18 vs 20)
+              </button>
+              <button
+                className={patternA === 'HHHH' && patternB === 'THHH' ? 'active' : ''}
+                onClick={() => { setPatternA('HHHH'); setPatternB('THHH'); }}
+                type="button"
+              >
+                HHHH vs THHH (30 vs 16)
+              </button>
+              <button
+                className={patternA === 'HHTT' && patternB === 'HTHH' ? 'active' : ''}
+                onClick={() => { setPatternA('HHTT'); setPatternB('HTHH'); }}
+                type="button"
+              >
+                HHTT vs HTHH (16 vs 18)
+              </button>
+            </div>
+          </div>
+
+          <div className="mrw-pat-grid">
+            <div className="mrw-pat-card">
+              <div className="mrw-pat-title">
+                <h3>{t('模式 A: ', 'Pattern A: ')} <code>{infoA.pattern}</code></h3>
+                <span className="mrw-exp-tag">E[T_A] = {infoA.expectedT} {t('次', 'tosses')}</span>
+              </div>
+              <table className="mrw-table">
+                <thead>
+                  <tr>
+                    <th>{t('前缀长度 k', 'Length k')}</th>
+                    <th>{t('前缀 Prefix', 'Prefix')}</th>
+                    <th>{t('后缀 Suffix', 'Suffix')}</th>
+                    <th>{t('重合判定', 'Match?')}</th>
+                    <th>{t('奖金 2^k', 'Payout')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {infoA.overlaps.map((row) => (
+                    <tr className={row.isMatch ? 'match-row' : ''} key={row.len}>
+                      <td>{row.len}</td>
+                      <td><code>{row.prefix}</code></td>
+                      <td><code>{row.suffix}</code></td>
+                      <td>{row.isMatch ? '✅ MATCH' : '❌ NO'}</td>
+                      <td>{row.isMatch ? `+$${row.val}` : '$0'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mrw-math-sum">
+                (A * A)_2 = {infoA.overlaps.filter((r) => r.isMatch).map((r) => `2^${r.len}`).join(' + ')} = <strong>{infoA.expectedT}</strong>
+              </p>
+            </div>
+
+            <div className="mrw-pat-card">
+              <div className="mrw-pat-title">
+                <h3>{t('模式 B: ', 'Pattern B: ')} <code>{infoB.pattern}</code></h3>
+                <span className="mrw-exp-tag">E[T_B] = {infoB.expectedT} {t('次', 'tosses')}</span>
+              </div>
+              <table className="mrw-table">
+                <thead>
+                  <tr>
+                    <th>{t('前缀长度 k', 'Length k')}</th>
+                    <th>{t('前缀 Prefix', 'Prefix')}</th>
+                    <th>{t('后缀 Suffix', 'Suffix')}</th>
+                    <th>{t('重合判定', 'Match?')}</th>
+                    <th>{t('奖金 2^k', 'Payout')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {infoB.overlaps.map((row) => (
+                    <tr className={row.isMatch ? 'match-row' : ''} key={row.len}>
+                      <td>{row.len}</td>
+                      <td><code>{row.prefix}</code></td>
+                      <td><code>{row.suffix}</code></td>
+                      <td>{row.isMatch ? '✅ MATCH' : '❌ NO'}</td>
+                      <td>{row.isMatch ? `+$${row.val}` : '$0'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mrw-math-sum">
+                (B * B)_2 = {infoB.overlaps.filter((r) => r.isMatch).map((r) => `2^${r.len}`).join(' + ')} = <strong>{infoB.expectedT}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="mrw-penney-box">
+            <h4>{t('Penney\'s Game 竞速胜率 (谁先出现谁获胜)', 'Penney\'s Game Race (First to appear wins)')}</h4>
+            <div className="mrw-penney-bar">
+              <div className="mrw-penney-a" style={{ width: `${penneyAoverB * 100}%` }}>
+                {infoA.pattern}: {(penneyAoverB * 100).toFixed(1)}%
+              </div>
+              <div className="mrw-penney-b" style={{ width: `${(1 - penneyAoverB) * 100}%` }}>
+                {infoB.pattern}: {((1 - penneyAoverB) * 100).toFixed(1)}%
+              </div>
+            </div>
+            <small>{t('注：由 Conway 算法与 Li\'s 赌场鞅推导，模式间的非传递博弈使得后手总能构造胜率 > 50% 的模式。', 'Note: Derived from Conway\'s algorithm & Li\'s martingale, Penney\'s game is non-transitive—Player 2 can always counter with > 50% odds.')}</small>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|random-walk-ruin-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -18621,8 +19061,8 @@ function MarkdownPre({ children, ...props }) {
     return <SharedPtrCycleVisual />;
   }
 
-  if (match?.[1] === 'random-walk-ruin-demo') {
-    return <RandomWalkRuinVisual />;
+  if (match?.[1] === 'martingale-rw-demo' || match?.[1] === 'random-walk-ruin-demo') {
+    return <MartingaleRandomWalkVisual />;
   }
 
   if (match) {

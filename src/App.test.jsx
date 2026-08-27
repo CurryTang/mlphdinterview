@@ -958,4 +958,37 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(screen.getByRole('button', { name: /Effective Modern C\+\+ 7 · C\+\+17 & C\+\+20 Core Modern Features/i })).toBeInTheDocument();
   });
+
+  it('opens Quant 11 for Martingales, Wald Equations, and Optimal Stopping and renders interactive visualizer', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant11')
+          ? '# Quant 11 · 鞅、停时与随机游走\n\n```martingale-rw-demo\n```\n\nWald 一阶与二阶等式。'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 11 · 鞅、停时与随机游走/i }));
+
+    expect(await screen.findByRole('heading', { name: /Quant 11 · 鞅、停时与随机游走/i })).toBeInTheDocument();
+    expect(screen.getByText('Wald 等式、1D 随机游走与最优决策')).toBeInTheDocument();
+    expect(screen.getByText('胜率 P(到达 +a)')).toBeInTheDocument();
+    expect(screen.getByText('期望停止时间 E[T]')).toBeInTheDocument();
+
+    // Switch to Secretary Problem tab
+    fireEvent.click(screen.getByRole('tab', { name: /秘书问题 37% 法则/i }));
+    expect(screen.getByText(/候选人总人数 n/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\/e ≈ 36\.79%/)).toBeInTheDocument();
+
+    // Switch to Pattern Waiting & Li's Martingale tab
+    fireEvent.click(screen.getByRole('tab', { name: /模式等待与赌场鞅/i }));
+    expect(screen.getByText(/HTTH vs HTHT/)).toBeInTheDocument();
+    expect(screen.getByText(/E\[T_A\] = 18/)).toBeInTheDocument();
+    expect(screen.getByText(/E\[T_B\] = 20/)).toBeInTheDocument();
+  });
 });
