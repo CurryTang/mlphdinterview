@@ -1931,8 +1931,19 @@ const quantNoteDefinitions = [
     'Quant11 Martingales Stopping Times Random Walks.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 11 · Martingales, Stopping Times & Random Walks: Wald\'s Identity, Martingale Construction & Optimal Stopping',
+      titleEn: "Quant 11 · Martingales, Stopping Times & Random Walks: Wald's Identity, Martingale Construction & Optimal Stopping",
       category: 'Martingales & Random Walks',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用',
+    'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md',
+    'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 12 · Brownian Motion, Itô Calculus, Stopping Times & Option Trading',
+      category: 'Stochastic Calculus & Trading',
       difficulty: 'Hard',
     },
   ),
@@ -7263,6 +7274,489 @@ function RandomWalkRuinVisual() {
         '这是单次随机实现，会因为随机性而波动；上面推导出的 P(先到 b) 和 E[T] 是对所有可能路径取平均之后的理论值，不是某一次具体路径的结果。',
         'This is a single random realization and will vary from run to run; the P(hit b first) and E[T] derived above are theoretical averages over all possible paths, not the result of any one specific path.',
       )}</p>
+    </section>
+  );
+}
+
+function bmNormalRandom() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+function bmNormalCDF(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  let p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  if (x > 0) p = 1 - p;
+  return p;
+}
+
+function bmBSCall(S, K, T, r, sigma) {
+  if (T <= 1e-6) return { price: Math.max(0, S - K), delta: S > K ? 1 : 0, gamma: 0 };
+  const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+  const d2 = d1 - sigma * Math.sqrt(T);
+  const delta = bmNormalCDF(d1);
+  const gamma = (Math.exp(-0.5 * d1 * d1) / Math.sqrt(2 * Math.PI)) / (S * sigma * Math.sqrt(T));
+  const price = S * delta - K * Math.exp(-r * T) * bmNormalCDF(d2);
+  return { price, delta, gamma };
+}
+
+function BrownianMotionVisual() {
+  const { t } = useUiCopy();
+  const [steps, setSteps] = useState(500);
+  const [seed, setSeed] = useState(1);
+
+  const { path, qv, tv, maxVal, minVal } = useMemo(() => {
+    const T = 1.0;
+    const dt = T / steps;
+    const sqrtDt = Math.sqrt(dt);
+    const pts = [{ t: 0, w: 0, qv: 0 }];
+    let curW = 0;
+    let curQv = 0;
+    let curTv = 0;
+    let maxW = 0;
+    let minW = 0;
+
+    for (let i = 1; i <= steps; i++) {
+      const dw = bmNormalRandom() * sqrtDt;
+      curW += dw;
+      curQv += dw * dw;
+      curTv += Math.abs(dw);
+      if (curW > maxW) maxW = curW;
+      if (curW < minW) minW = curW;
+      pts.push({ t: i * dt, w: curW, qv: curQv });
+    }
+
+    return { path: pts, qv: curQv, tv: curTv, maxVal: Math.max(maxW, 1.2), minVal: Math.min(minW, -1.2) };
+  }, [steps, seed]);
+
+  const width = 580;
+  const height = 280;
+  const marginX = 45;
+  const marginY = 25;
+  const plotW = width - marginX * 2;
+  const plotH = height - marginY * 2;
+
+  const xForT = (time) => marginX + time * plotW;
+  const yForW = (val) => marginY + ((maxVal - val) / (maxVal - minVal)) * plotH;
+  const yForZero = yForW(0);
+
+  const pointsW = path.map((p) => `${xForT(p.t).toFixed(1)},${yForW(p.w).toFixed(1)}`).join(' ');
+  const pointsQv = path.map((p) => `${xForT(p.t).toFixed(1)},${(marginY + plotH - (p.qv / 1.8) * plotH).toFixed(1)}`).join(' ');
+
+  return (
+    <section className="bm-demo-container" aria-label={t('布朗运动轨道与二次变差演示', 'Brownian Motion Path & Quadratic Variation Demo')}>
+      <header className="bm-demo-header">
+        <div>
+          <p className="eyebrow">{t('样本轨道与几何性质', 'Sample Path & Geometric Properties')}</p>
+          <h2>{t('布朗运动轨道：处处不可微与二次变差收敛', 'Brownian Motion: Nowhere Differentiable & Quadratic Variation')}</h2>
+        </div>
+        <div className="bm-demo-controls">
+          <label>
+            {t('分段步数 N = ', 'Steps N = ')}<strong>{steps}</strong>
+            <input type="range" min="100" max="2000" step="100" value={steps} onChange={(e) => setSteps(Number(e.target.value))} />
+          </label>
+          <button type="button" onClick={() => setSeed((s) => s + 1)}>{t('重新生成路径', 'New Path')}</button>
+        </div>
+      </header>
+
+      <svg className="bm-demo-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+        <line x1={marginX} y1={yForZero} x2={width - marginX} y2={yForZero} className="bm-axis-zero" />
+        <polyline points={pointsW} className="bm-path-wt" />
+        <polyline points={pointsQv} className="bm-path-qv" />
+        <text x={marginX + 6} y={marginY + 14} className="bm-legend-w">W_t (Path)</text>
+        <text x={marginX + 6} y={height - marginY - 6} className="bm-legend-qv">[W]_t ≈ t (QV)</text>
+      </svg>
+
+      <div className="bm-metrics-grid">
+        <div className="bm-metric-badge">
+          <span>{t('二次变差 [W]_T（理论值 = 1.000）', 'Quadratic Variation [W]_T (Theory = 1.000)')}</span>
+          <strong style={{ color: '#a855f7' }}>{qv.toFixed(4)}</strong>
+        </div>
+        <div className="bm-metric-badge">
+          <span>{t('一阶全变差 Σ|ΔW|（当 N→∞ 时发散）', 'Total Variation Σ|ΔW| (Diverges as N→∞)')}</span>
+          <strong style={{ color: '#f43f5e' }}>{tv.toFixed(2)}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TwoDRandomWalkVisual() {
+  const { t } = useUiCopy();
+  const [steps, setSteps] = useState(2500);
+  const [seed, setSeed] = useState(1);
+
+  const { path, maxRadius, returnsToOrigin } = useMemo(() => {
+    const dt = 1.0 / 100;
+    const sqrtDt = Math.sqrt(dt);
+    const pts = [{ x: 0, y: 0 }];
+    let curX = 0;
+    let curY = 0;
+    let maxR = 0;
+    let returns = 0;
+
+    for (let i = 1; i <= steps; i++) {
+      curX += bmNormalRandom() * sqrtDt;
+      curY += bmNormalRandom() * sqrtDt;
+      pts.push({ x: curX, y: curY });
+      const r = Math.sqrt(curX * curX + curY * curY);
+      if (r > maxR) maxR = r;
+      if (r < 1.5 && i > 30) returns++;
+    }
+
+    return { path: pts, maxRadius: Math.max(maxR, 4), returnsToOrigin: returns };
+  }, [steps, seed]);
+
+  const size = 340;
+  const center = size / 2;
+  const scale = (size * 0.42) / maxRadius;
+
+  const points = path.map((p) => `${(center + p.x * scale).toFixed(1)},${(center - p.y * scale).toFixed(1)}`).join(' ');
+  const endPoint = path[path.length - 1];
+
+  return (
+    <section className="bm-demo-container" aria-label={t('2D 随机游走与布朗运动极限演示', '2D Random Walk & Brownian Limit Demo')}>
+      <header className="bm-demo-header">
+        <div>
+          <p className="eyebrow">{t('高维拓扑与 Donsker 不变原理', 'High-D Topology & Donsker Limit')}</p>
+          <h2>{t('二维布朗运动：平面常返性与原点邻域缠绕', '2D Brownian Motion: Planar Recurrence & Neighborhood Winding')}</h2>
+        </div>
+        <div className="bm-demo-controls">
+          <label>
+            {t('步数 K = ', 'Steps K = ')}<strong>{steps}</strong>
+            <input type="range" min="500" max="6000" step="500" value={steps} onChange={(e) => setSteps(Number(e.target.value))} />
+          </label>
+          <button type="button" onClick={() => setSeed((s) => s + 1)}>{t('重新模拟游走', 'Resimulate Walk')}</button>
+        </div>
+      </header>
+
+      <div className="bm-2d-layout">
+        <svg className="bm-2d-svg" viewBox={`0 0 ${size} ${size}`} role="img">
+          <circle cx={center} cy={center} r={1.5 * scale} className="bm-2d-eps-disk" />
+          <line x1={0} y1={center} x2={size} y2={center} className="bm-axis-zero" />
+          <line x1={center} y1={0} x2={center} y2={size} className="bm-axis-zero" />
+          <polyline points={points} className="bm-2d-path" />
+          <circle cx={center} cy={center} r="4" fill="#22c55e" />
+          <circle cx={center + endPoint.x * scale} cy={center - endPoint.y * scale} r="4" fill="#f43f5e" />
+        </svg>
+
+        <div className="bm-2d-stats">
+          <div className="bm-metric-badge">
+            <span>{t('原点邻域 B_ε(0) 访问次数', 'Visits to Neighborhood B_ε(0)')}</span>
+            <strong style={{ color: '#22c55e' }}>{returnsToOrigin}</strong>
+          </div>
+          <div className="bm-metric-badge">
+            <span>{t('最大游走半径 max ||B_t||', 'Max Radial Distance')}</span>
+            <strong style={{ color: '#38bdf8' }}>{maxRadius.toFixed(2)}</strong>
+          </div>
+          <p className="bm-demo-tip">
+            {t('Pólya 定理：1D/2D 游走概率 1 常返；3D 游走瞬变（回原点概率 ≈ 34%）。2D 连续布朗运动单点瞬变（不撞单点），但邻域常返（任意小圆盘必进无限次）。',
+               'Pólya Theorem: 1D & 2D walks are recurrent (P=1); 3D walk is transient (P≈34%). 2D continuous Brownian motion is point-transient but neighborhood-recurrent.')}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ItoGeometryVisual() {
+  const { t } = useUiCopy();
+  const [partitions, setPartitions] = useState(15);
+  const [seed, setSeed] = useState(1);
+
+  const { path, itoSum, stratSum, exactIto, finalW } = useMemo(() => {
+    const T = 1.0;
+    const dt = T / partitions;
+    const sqrtDt = Math.sqrt(dt);
+    const pts = [{ t: 0, w: 0 }];
+    let curW = 0;
+    let iSum = 0;
+    let sSum = 0;
+
+    for (let i = 1; i <= partitions; i++) {
+      const dw = bmNormalRandom() * sqrtDt;
+      const prevW = curW;
+      curW += dw;
+      pts.push({ t: i * dt, w: curW });
+      iSum += prevW * dw; // Left point
+      sSum += 0.5 * (prevW + curW) * dw; // Midpoint
+    }
+
+    const exact = 0.5 * curW * curW - 0.5 * T;
+    return { path: pts, itoSum: iSum, stratSum: sSum, exactIto: exact, finalW: curW };
+  }, [partitions, seed]);
+
+  const width = 580;
+  const height = 260;
+  const marginX = 45;
+  const marginY = 25;
+  const plotW = width - marginX * 2;
+  const plotH = height - marginY * 2;
+
+  const minW = Math.min(...path.map((p) => p.w), -1.2);
+  const maxW = Math.max(...path.map((p) => p.w), 1.2);
+
+  const xForT = (time) => marginX + time * plotW;
+  const yForW = (val) => marginY + ((maxW - val) / (maxW - minW)) * plotH;
+  const yZero = yForW(0);
+
+  const pointsW = path.map((p) => `${xForT(p.t).toFixed(1)},${yForW(p.w).toFixed(1)}`).join(' ');
+
+  return (
+    <section className="bm-demo-container" aria-label={t('伊藤几何与斯特拉托诺维奇积分对比演示', 'Itô Geometry vs. Stratonovich Integral Demo')}>
+      <header className="bm-demo-header">
+        <div>
+          <p className="eyebrow">{t('积分逼近与几何差异', 'Integration Scheme & Geometry')}</p>
+          <h2>{t('伊藤积分（左端点/鞅） vs 斯特拉托诺维奇积分（中点/普通微积分）', 'Itô Integral (Left Endpoint) vs. Stratonovich (Midpoint)')}</h2>
+        </div>
+        <div className="bm-demo-controls">
+          <label>
+            {t('分割数 N = ', 'Partitions N = ')}<strong>{partitions}</strong>
+            <input type="range" min="5" max="50" step="5" value={partitions} onChange={(e) => setPartitions(Number(e.target.value))} />
+          </label>
+          <button type="button" onClick={() => setSeed((s) => s + 1)}>{t('重新模拟', 'Resimulate')}</button>
+        </div>
+      </header>
+
+      <svg className="bm-demo-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+        <line x1={marginX} y1={yZero} x2={width - marginX} y2={yZero} className="bm-axis-zero" />
+        {path.slice(0, -1).map((p, i) => {
+          const next = path[i + 1];
+          const x0 = xForT(p.t);
+          const x1 = xForT(next.t);
+          const yLeft = yForW(p.w);
+          return (
+            <rect
+              key={i}
+              x={x0}
+              y={Math.min(yLeft, yZero)}
+              width={x1 - x0}
+              height={Math.abs(yLeft - yZero)}
+              className="bm-ito-rect"
+            />
+          );
+        })}
+        <polyline points={pointsW} className="bm-path-wt" />
+      </svg>
+
+      <div className="bm-metrics-grid">
+        <div className="bm-metric-badge">
+          <span>{t('伊藤黎曼和 Σ W_{t_i} ΔW_i（逼近 1/2 W_T^2 - 1/2 T）', 'Itô Sum Σ W_ti ΔW_i')}</span>
+          <strong style={{ color: '#38bdf8' }}>{itoSum.toFixed(4)} (理论 {exactIto.toFixed(4)})</strong>
+        </div>
+        <div className="bm-metric-badge">
+          <span>{t('斯特拉托诺维奇中点和 Σ W̄_i ΔW_i（逼近 1/2 W_T^2）', 'Stratonovich Sum Σ W_mid ΔW_i')}</span>
+          <strong style={{ color: '#a855f7' }}>{stratSum.toFixed(4)} (理论 {(0.5 * finalW * finalW).toFixed(4)})</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReflectionPrincipleVisual() {
+  const { t } = useUiCopy();
+  const [barrier, setBarrier] = useState(1.5);
+  const [seed, setSeed] = useState(1);
+
+  const { path, reflectedPath, hitTime, theoreticalProb } = useMemo(() => {
+    const T = 2.0;
+    const steps = 400;
+    const dt = T / steps;
+    const sqrtDt = Math.sqrt(dt);
+    const orig = [{ t: 0, w: 0 }];
+    const refl = [{ t: 0, w: 0 }];
+    let curW = 0;
+    let hitT = -1;
+
+    for (let i = 1; i <= steps; i++) {
+      const dw = bmNormalRandom() * sqrtDt;
+      curW += dw;
+      const time = i * dt;
+      orig.push({ t: time, w: curW });
+
+      if (hitT === -1 && curW >= barrier) {
+        hitT = time;
+      }
+    }
+
+    for (let i = 0; i <= steps; i++) {
+      const p = orig[i];
+      if (hitT !== -1 && p.t >= hitT) {
+        refl.push({ t: p.t, w: 2 * barrier - p.w });
+      } else {
+        refl.push(p);
+      }
+    }
+
+    const prob = 2 * (1 - bmNormalCDF(barrier / Math.sqrt(T)));
+    return { path: orig, reflectedPath: refl, hitTime: hitT, theoreticalProb: prob };
+  }, [barrier, seed]);
+
+  const width = 580;
+  const height = 260;
+  const marginX = 45;
+  const marginY = 25;
+  const plotW = width - marginX * 2;
+  const plotH = height - marginY * 2;
+
+  const maxVal = Math.max(barrier * 1.4, ...path.map((p) => p.w), ...reflectedPath.map((p) => p.w), 2.2);
+  const minVal = Math.min(-1.5, ...path.map((p) => p.w), ...reflectedPath.map((p) => p.w));
+
+  const xForT = (time) => marginX + (time / 2.0) * plotW;
+  const yForW = (val) => marginY + ((maxVal - val) / (maxVal - minVal)) * plotH;
+
+  const pointsOrig = path.map((p) => `${xForT(p.t).toFixed(1)},${yForW(p.w).toFixed(1)}`).join(' ');
+  const pointsRefl = reflectedPath.map((p) => `${xForT(p.t).toFixed(1)},${yForW(p.w).toFixed(1)}`).join(' ');
+  const yBarrier = yForW(barrier);
+  const yZero = yForW(0);
+
+  return (
+    <section className="bm-demo-container" aria-label={t('停时与反射原理演示', 'Stopping Time & Reflection Principle Demo')}>
+      <header className="bm-demo-header">
+        <div>
+          <p className="eyebrow">{t('强马尔可夫性与极值分布', 'Strong Markov & Extremum Distribution')}</p>
+          <h2>{t('反射原理：首达水平 a 之后的空间镜像对称', 'Reflection Principle: Mirror Symmetry After Hitting Barrier a')}</h2>
+        </div>
+        <div className="bm-demo-controls">
+          <label>
+            {t('边界水平 a = ', 'Barrier a = ')}<strong>{barrier.toFixed(2)}</strong>
+            <input type="range" min="0.5" max="2.5" step="0.25" value={barrier} onChange={(e) => setBarrier(Number(e.target.value))} />
+          </label>
+          <button type="button" onClick={() => setSeed((s) => s + 1)}>{t('重新模拟路径', 'New Sample Path')}</button>
+        </div>
+      </header>
+
+      <svg className="bm-demo-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+        <line x1={marginX} y1={yZero} x2={width - marginX} y2={yZero} className="bm-axis-zero" />
+        <line x1={marginX} y1={yBarrier} x2={width - marginX} y2={yBarrier} className="bm-barrier-line" />
+        <text x={width - marginX - 90} y={yBarrier - 6} className="bm-barrier-text">Barrier a = {barrier.toFixed(2)}</text>
+        <polyline points={pointsOrig} className="bm-path-wt" />
+        {hitTime !== -1 && <polyline points={pointsRefl} className="bm-path-refl" />}
+      </svg>
+
+      <div className="bm-metrics-grid">
+        <div className="bm-metric-badge">
+          <span>{t('首达停时 τ_a', 'First Hitting Time τ_a')}</span>
+          <strong style={{ color: hitTime !== -1 ? '#f59e0b' : '#94a3b8' }}>
+            {hitTime !== -1 ? `${hitTime.toFixed(3)}s` : t('未触碰', 'Not Reached')}
+          </strong>
+        </div>
+        <div className="bm-metric-badge">
+          <span>{t('理论触碰概率 P(M_T >= a) = 2(1 - Φ(a/√T))', 'Theoretical Hit Probability')}</span>
+          <strong style={{ color: '#38bdf8' }}>{(theoreticalProb * 100).toFixed(2)}%</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DeltaHedgingVisual() {
+  const { t } = useUiCopy();
+  const [volImplied, setVolImplied] = useState(0.20);
+  const [volRealized, setVolRealized] = useState(0.35);
+  const [seed, setSeed] = useState(1);
+
+  const { pathS, pathPnl, finalPnL, theoGammaPnL } = useMemo(() => {
+    const T = 1.0;
+    const steps = 100;
+    const dt = T / steps;
+    const sqrtDt = Math.sqrt(dt);
+    const r = 0.03;
+    const S0 = 100;
+    const K = 100;
+
+    const sArr = [S0];
+    const pnlArr = [0];
+    let curS = S0;
+    const initOpt = bmBSCall(S0, K, T, r, volImplied);
+    let cash = initOpt.price - initOpt.delta * S0;
+    let curDelta = initOpt.delta;
+    let theoPnL = 0;
+
+    for (let i = 1; i <= steps; i++) {
+      const time = i * dt;
+      const remT = Math.max(0, T - time);
+      const dw = bmNormalRandom() * sqrtDt;
+      const prevS = curS;
+      curS = curS * Math.exp((r - 0.5 * volRealized * volRealized) * dt + volRealized * dw);
+      sArr.push(curS);
+
+      const opt = bmBSCall(curS, K, remT, r, volImplied);
+      theoPnL += 0.5 * prevS * prevS * opt.gamma * (volRealized * volRealized - volImplied * volImplied) * dt;
+
+      cash = cash * Math.exp(r * dt) - (opt.delta - curDelta) * curS;
+      curDelta = opt.delta;
+      const pnl = opt.price - curDelta * curS + cash;
+      pnlArr.push(pnl);
+    }
+
+    return { pathS: sArr, pathPnl: pnlArr, finalPnL: pnlArr[steps], theoGammaPnL: theoPnL };
+  }, [volImplied, volRealized, seed]);
+
+  const width = 580;
+  const height = 260;
+  const marginX = 45;
+  const marginY = 25;
+  const plotW = width - marginX * 2;
+  const plotH = height - marginY * 2;
+
+  const minS = Math.min(...pathS, 80);
+  const maxS = Math.max(...pathS, 120);
+  const maxAbsPnl = Math.max(...pathPnl.map(Math.abs), 3);
+
+  const xForI = (i) => marginX + (i / 100) * plotW;
+  const yForS = (val) => marginY + ((maxS - val) / (maxS - minS)) * (plotH * 0.55);
+  const yForPnl = (val) => marginY + plotH * 0.8 - (val / (maxAbsPnl * 1.5)) * (plotH * 0.22);
+  const yPnlZero = yForPnl(0);
+
+  const pointsS = pathS.map((s, i) => `${xForI(i).toFixed(1)},${yForS(s).toFixed(1)}`).join(' ');
+  const pointsPnl = pathPnl.map((p, i) => `${xForI(i).toFixed(1)},${yForPnl(p).toFixed(1)}`).join(' ');
+
+  return (
+    <section className="bm-demo-container" aria-label={t('期权 Delta 对冲与 Gamma 损益演示', 'Option Delta Hedging & Gamma PnL Demo')}>
+      <header className="bm-demo-header">
+        <div>
+          <p className="eyebrow">{t('做市对冲与波动率套利', 'Market Making & Volatility Arbitrage')}</p>
+          <h2>{t('动态 Delta 对冲损益：dΠ = 1/2 S² Γ (σ_R² - σ_I²) dt', 'Dynamic Delta Hedging PnL')}</h2>
+        </div>
+        <div className="bm-demo-controls">
+          <label>
+            {t('隐含波动率 σ_I = ', 'Implied Vol σ_I = ')}<strong>{(volImplied * 100).toFixed(0)}%</strong>
+            <input type="range" min="0.10" max="0.50" step="0.05" value={volImplied} onChange={(e) => setVolImplied(Number(e.target.value))} />
+          </label>
+          <label>
+            {t('已实现波动率 σ_R = ', 'Realized Vol σ_R = ')}<strong>{(volRealized * 100).toFixed(0)}%</strong>
+            <input type="range" min="0.10" max="0.60" step="0.05" value={volRealized} onChange={(e) => setVolRealized(Number(e.target.value))} />
+          </label>
+          <button type="button" onClick={() => setSeed((s) => s + 1)}>{t('模拟市场路径', 'Simulate Market')}</button>
+        </div>
+      </header>
+
+      <svg className="bm-demo-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+        <polyline points={pointsS} className="bm-path-wt" />
+        <line x1={marginX} y1={yPnlZero} x2={width - marginX} y2={yPnlZero} className="bm-axis-zero" />
+        <polyline points={pointsPnl} className={finalPnL >= 0 ? 'bm-path-pnl-pos' : 'bm-path-pnl-neg'} />
+        <text x={marginX + 6} y={marginY + 14} className="bm-legend-w">Stock Price S_t</text>
+        <text x={marginX + 6} y={height - marginY - 6} className="bm-legend-qv">Hedging PnL (Long Gamma)</text>
+      </svg>
+
+      <div className="bm-metrics-grid">
+        <div className="bm-metric-badge">
+          <span>{t('累计对冲 PnL（Long Gamma）', 'Cumulative Hedging PnL')}</span>
+          <strong style={{ color: finalPnL >= 0 ? '#22c55e' : '#f43f5e' }}>
+            {finalPnL >= 0 ? '+$' : '-$'}{Math.abs(finalPnL).toFixed(2)}
+          </strong>
+        </div>
+        <div className="bm-metric-badge">
+          <span>{t('理论 Gamma 收益 ∫ 1/2 S² Γ (σ_R² - σ_I²) dt', 'Theoretical Gamma Alpha')}</span>
+          <strong style={{ color: theoGammaPnL >= 0 ? '#22c55e' : '#f43f5e' }}>
+            {theoGammaPnL >= 0 ? '+$' : '-$'}{Math.abs(theoGammaPnL).toFixed(2)}
+          </strong>
+        </div>
+      </div>
     </section>
   );
 }
@@ -18847,7 +19341,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -19063,6 +19557,26 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'martingale-rw-demo' || match?.[1] === 'random-walk-ruin-demo') {
     return <MartingaleRandomWalkVisual />;
+  }
+
+  if (match?.[1] === 'brownian-motion-demo') {
+    return <BrownianMotionVisual />;
+  }
+
+  if (match?.[1] === 'two-d-walk-demo') {
+    return <TwoDRandomWalkVisual />;
+  }
+
+  if (match?.[1] === 'ito-geometry-demo') {
+    return <ItoGeometryVisual />;
+  }
+
+  if (match?.[1] === 'reflection-principle-demo') {
+    return <ReflectionPrincipleVisual />;
+  }
+
+  if (match?.[1] === 'delta-hedging-demo') {
+    return <DeltaHedgingVisual />;
   }
 
   if (match) {

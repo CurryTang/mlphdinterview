@@ -16666,6 +16666,241 @@ button.overview-support-card.active {
   line-height: 1.5;
 }
 
+/* ── Stochastic Calculus & Brownian Motion Interactive Demos ── */
+.bm-demo-container {
+  margin: 1.35rem auto;
+  max-width: min(100%, 820px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 14px;
+  background: #0d1527;
+  color: #f1f5f9;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  padding: 1.25rem;
+}
+
+.bm-demo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bm-demo-header .eyebrow {
+  margin: 0;
+  color: #38bdf8;
+  font: 700 0.68rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bm-demo-header h2 {
+  margin: 0.2rem 0 0;
+  color: #f8fafc;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.bm-demo-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bm-demo-controls label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bm-demo-controls label strong {
+  color: #38bdf8;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.bm-demo-controls input[type="range"] {
+  width: 90px;
+}
+
+.bm-demo-controls button {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  cursor: pointer;
+  font: 700 0.75rem "IBM Plex Mono", monospace;
+  padding: 0.4rem 0.8rem;
+  transition: all 0.2s;
+}
+
+.bm-demo-controls button:hover {
+  background: rgba(56, 189, 248, 0.3);
+}
+
+.bm-demo-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #070c18;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+}
+
+.bm-axis-zero {
+  stroke: #334155;
+  stroke-width: 1.5;
+}
+
+.bm-barrier-line {
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+.bm-barrier-text {
+  fill: #f59e0b;
+  font: 700 11px sans-serif;
+}
+
+.bm-path-wt {
+  fill: none;
+  stroke: #38bdf8;
+  stroke-width: 1.8;
+}
+
+.bm-path-qv {
+  fill: none;
+  stroke: #a855f7;
+  stroke-width: 1.8;
+}
+
+.bm-path-refl {
+  fill: none;
+  stroke: #f43f5e;
+  stroke-width: 1.8;
+  stroke-dasharray: 4 3;
+}
+
+.bm-path-pnl-pos {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 2.2;
+}
+
+.bm-path-pnl-neg {
+  fill: none;
+  stroke: #f43f5e;
+  stroke-width: 2.2;
+}
+
+.bm-ito-rect {
+  fill: rgba(56, 189, 248, 0.15);
+  stroke: rgba(56, 189, 248, 0.6);
+  stroke-width: 1;
+}
+
+.bm-legend-w {
+  fill: #38bdf8;
+  font: 700 11px sans-serif;
+}
+
+.bm-legend-qv {
+  fill: #a855f7;
+  font: 700 11px sans-serif;
+}
+
+.bm-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .bm-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bm-metric-badge {
+  background: #111c33;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bm-metric-badge span {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bm-metric-badge strong {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.05rem;
+}
+
+.bm-2d-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+@media (max-width: 700px) {
+  .bm-2d-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bm-2d-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  background: #070c18;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+}
+
+.bm-2d-path {
+  fill: none;
+  stroke: rgba(168, 85, 247, 0.8);
+  stroke-width: 1.4;
+}
+
+.bm-2d-eps-disk {
+  fill: rgba(56, 189, 248, 0.08);
+  stroke: #38bdf8;
+  stroke-dasharray: 4 4;
+  stroke-width: 1.2;
+}
+
+.bm-2d-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bm-demo-tip {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-left: 3px solid #38bdf8;
+  border-radius: 4px;
+}
+
 /* ── Greedy: eight-problem pattern atlas & interactive visualizers ── */
 .gp-atlas {
   --gp-accent: #0f766e;

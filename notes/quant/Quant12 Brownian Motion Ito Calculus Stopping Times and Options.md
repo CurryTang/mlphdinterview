@@ -1,0 +1,811 @@
+# Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用
+
+这一讲将量化金融中最核心的连续时间随机分析体系系统化拆解：从一维与二维随机游走的极限（布朗运动与 Donsker 不变原理），到样本轨道几何特异性（无界全变差与有限二次变差），再到伊藤引理、伊藤几何与斯特拉托诺维奇积分的本质差异，进而探讨连续时间停时、指数鞅与反射原理，最终落地到几何布朗运动、Black-Scholes-Merton PDE、Delta 对冲中的 Gamma PnL 与波动率套利机制。
+
+```text
+看到这类连续时间与衍生品问题该想什么：
+1. 样本轨道几何：布朗运动 W_t 处处连续但处处不可微，全变差为无穷大，二次变差 [W]_t = t。因此经典 Riemann-Stieltjes 积分失效，必须使用二阶 Taylor 展开展开到 (dW_t)^2 = dt 阶。
+2. 2D 随机游走与布朗运动：由 Donsker 定理弱收敛而来。离散 2D 游走是常返的（Pólya 定理），连续 2D 布朗运动是单点瞬变（不撞具体单点）但邻域常返的（任意小开球必进无穷次），且具有复解析保角变换不变性（Lévy 定理）。
+3. 伊藤积分 vs. 斯特拉托诺维奇积分：伊藤积分采用左端点求和（非预期/适应过程），保持鞅性质与 E[I_t]=0，符合金融无套利与因果律；Stratonovich 采用中点，保经典链式法则但带有未来漂移修正项 (1/2) dt。
+4. 停时与反射原理：对首次撞击水平 a 的停时 \tau_a，利用强马尔可夫性与空间对称性，\tau_a 之后的路径翻折给出 P(M_t >= a) = 2 P(W_t >= a)，首达时间服从 Lévy 分布。
+5. 期权对冲与波动率签名：Delta 对冲消除一阶方向风险 dW_t，剩余瞬时损益为 d\Pi = (1/2) S^2 \Gamma (\sigma_{realized}^2 - \sigma_{implied}^2) dt - r \Pi dt，做多 Gamma 本质上是做多已实现波动率超越隐含波动率的差额。
+```
+
+---
+
+## 模块一：布朗运动基础与几何性质（Basics & Geometry of Brownian Motion）
+
+### 1. 定义与公理化刻画
+
+标准一维布朗运动（Brownian Motion，又称维纳过程 Wiener Process）$\{W_t\}_{t \ge 0}$ 是定义在概率空间 $(\Omega, \mathcal{F}, \mathbb{P})$ 上的连续时间随机过程，满足以下四条公理：
+
+$$
+\begin{aligned}
+\text{(i) 起点确定：} &\ W_0 = 0 \text{ 几乎必然成立} \\
+\text{(ii) 独立增量：} &\ \forall 0 \le t_0 < t_1 < \dots < t_n,\ \text{增量 } W_{t_1}-W_{t_0}, \dots, W_{t_n}-W_{t_{n-1}} \text{ 相互独立} \\
+\text{(iii) 平稳高斯增量：} &\ \forall 0 \le s < t,\ W_t - W_s \sim \mathcal{N}(0, t - s) \\
+\text{(iv) 轨道连续性：} &\ t \mapsto W_t(\omega) \text{ 对几乎所有样本点 } \omega \text{ 连续（a.s. continuous paths）}
+\end{aligned}
+$$
+
+由上述公理可立即推出协方差结构：对于任意 $s, t \ge 0$（不妨设 $s \le t$）：
+
+$$
+\operatorname{Cov}(W_s, W_t) = \mathbb{E}[W_s W_t] = \mathbb{E}[W_s (W_s + (W_t - W_s))] = \mathbb{E}[W_s^2] + \mathbb{E}[W_s]\mathbb{E}[W_t - W_s] = s = \min(s, t)
+$$
+
+### 2. 样本轨道的几何特异性：处处不可微与二次变差
+
+经典微积分建立在函数具有**有限全变差（Bounded Total Variation）**的基础之上。对于时间区间 $[0, T]$ 上的分割 $\Pi_n: 0 = t_0 < t_1 < \dots < t_n = T$，其最大网格步长 $|\Pi_n| = \max_i |t_i - t_{i-1}| \to 0$：
+
+#### （1）一阶全变差（First-Order Total Variation）发散到无穷大
+
+$$
+\operatorname{TV}_T(W) = \lim_{|\Pi_n| \to 0} \sum_{i=1}^n |W_{t_i} - W_{t_{i-1}}| = \infty \quad \text{几乎必然成立}
+$$
+
+**直觉与证明要点**：设 $\Delta W_i = W_{t_i} - W_{t_{i-1}} \sim \sqrt{\Delta t_i} Z_i$（$Z_i \sim \mathcal{N}(0, 1)$）。则 $\mathbb{E}[|\Delta W_i|] = \sqrt{\Delta t_i} \mathbb{E}[|Z_i|] = \sqrt{\frac{2}{\pi}} \sqrt{\Delta t_i}$。若取等间距 $\Delta t = T/n$，求和期望为：
+
+$$
+\mathbb{E}\left[ \sum_{i=1}^n |\Delta W_i| \right] = n \cdot \sqrt{\frac{2}{\pi}} \sqrt{\frac{T}{n}} = \sqrt{\frac{2}{\pi}} \sqrt{T} \sqrt{n} \xrightarrow{n \to \infty} \infty
+$$
+
+#### （2）二次变差（Quadratic Variation）严格收敛到常数 $T$
+
+$$
+[W]_T = \lim_{|\Pi_n| \to 0} \sum_{i=1}^n (W_{t_i} - W_{t_{i-1}})^2 = T \quad \text{在 } L^2 \text{ 与概率意义下成立}
+$$
+
+**证明**：设 $Q_n = \sum_{i=1}^n (\Delta W_i)^2$。由于 $\Delta W_i^2 = \Delta t_i Z_i^2$，其期望为 $\mathbb{E}[Q_n] = \sum \Delta t_i \mathbb{E}[Z_i^2] = \sum \Delta t_i = T$。
+方差为：
+
+$$
+\operatorname{Var}(Q_n) = \sum_{i=1}^n \operatorname{Var}((\Delta W_i)^2) = \sum_{i=1}^n (\Delta t_i)^2 \operatorname{Var}(Z_i^2) = 2 \sum_{i=1}^n (\Delta t_i)^2 \le 2 |\Pi_n| \sum_{i=1}^n \Delta t_i = 2 |\Pi_n| T \xrightarrow{|\Pi_n| \to 0} 0
+$$
+
+方差趋于 0 意味着 $Q_n \xrightarrow{L^2} T$。微元记号表示为：
+
+$$
+(dW_t)^2 = dt
+$$
+
+> **核心量化启示**：正因为 $(dW_t)^2 = dt$ 具有一阶时间量纲 $O(dt)$，在对包含随机项的函数进行 Taylor 展开时，二阶项 $(\Delta W)^2$ **无法像普通微积分那样被忽略**，这正是伊藤微积分中二阶导数修正项（伊藤漂移）的数学根源。
+
+```brownian-motion-demo
+```
+
+### 3. 布朗运动的三大对称不变性
+
+1. **尺度变换不变性（Brownian Scaling）**：$\forall c > 0$，过程 $X_t = \frac{1}{\sqrt{c}} W_{ct}$ 依然是标准布朗运动。
+2. **时间反转不变性（Time Inversion）**：过程 $Y_t = t W_{1/t}$（规定 $Y_0 = 0$）依然是标准布朗运动。
+3. **空间镜像对称性（Reflection Symmetry）**：过程 $Z_t = -W_t$ 依然是标准布朗运动。
+
+### 4. 转移密度与偏微分方程（热传导与 Kolmogorov 方程）
+
+从 $x$ 出发在时刻 $t$ 到达 $y$ 的转移概率密度为：
+
+$$
+p(t, x, y) = \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(y-x)^2}{2t} \right)
+$$
+
+直接求偏导可得热传导方程（Heat Equation / Kolmogorov 倒向与前向方程）：
+
+$$
+\frac{\partial p}{\partial t} = \frac{1}{2} \frac{\partial^2 p}{\partial x^2} \quad (\text{倒向形式}) \qquad \frac{\partial p}{\partial t} = \frac{1}{2} \frac{\partial^2 p}{\partial y^2} \quad (\text{前向 Fokker-Planck 形式})
+$$
+
+---
+
+## 模块二：二维随机游走与布朗运动（2D Random Walk & 2D Brownian Motion）
+
+### 1. Donsker 不变原理（泛函中心极限定理）
+
+设 $\xi_1, \xi_2, \dots$ 为二维平面格点 $\mathbb{Z}^2$ 上的独立同分布随机步长，向上下左右四个方向各以概率 $1/4$ 移动：$\mathbb{E}[\xi_i] = (0, 0)$，$\operatorname{Cov}(\xi_i) = \frac{1}{2} I_2$。
+构造离散折线过程 $S_k = \sum_{i=1}^k \xi_i$。引入空间-时间缩放：
+
+$$
+B_N(t) = \frac{1}{\sqrt{N}} S_{\lfloor Nt \rfloor}
+$$
+
+**Donsker 不变原理**断言：当 $N \to \infty$ 时，随机折线 $B_N(\cdot)$ 在连续函数空间 $C([0, T], \mathbb{R}^2)$ 上弱收敛（依分布收敛）至标准二维布朗运动：
+
+$$
+B_N(t) \implies \left( \frac{1}{\sqrt{2}} B_t^{(1)}, \frac{1}{\sqrt{2}} B_t^{(2)} \right)
+$$
+
+其中 $B^{(1)}$ 与 $B^{(2)}$ 为两个独立的一维标准布朗运动。
+
+```two-d-walk-demo
+```
+
+### 2. 常返与瞬变：Pólya 定理与二维布朗运动的精细拓扑
+
+1921 年波利亚（Pólya）证明了经典随机游走的常返性结论（俗称"醉鬼总能找到回家的路，而醉鸟会迷失在空中"）：
+
+| 空间维度 $d$ | 离散网格游走（$\mathbb{Z}^d$） | 连续布朗运动（$\mathbb{R}^d$） | 性质与概率 |
+| :--- | :--- | :--- | :--- |
+| **$d = 1$** | **常返（Recurrent）** | **常返** | 以概率 1 回到原点 0，期望返回时间 $\mathbb{E}[\tau] = \infty$（零常返） |
+| **$d = 2$** | **常返（Recurrent）** | **邻域常返，单点瞬变** | 离散：$P(\text{回原点}) = 1$；连续：$P(\exists t > 0, B_t = 0) = 0$，但对任意 $\epsilon > 0$，$P(B_t \in B_\epsilon(x) \text{ i.o.}) = 1$ |
+| **$d \ge 3$** | **瞬变（Transient）** | **瞬变** | 离散 $d=3$：$P(\text{回原点}) \approx 0.340537$；连续：$\lim_{t\to\infty} \|B_t\| = \infty$ a.s. |
+
+> **关键拓扑洞察（为什么 2D 连续布朗运动不撞单点？）**：
+> 在 $\mathbb{R}^2$ 中，单点集 $\{x\}$ 的对数对偶容量（Logarithmic Capacity）为 0，二维布朗运动的样本轨道维度为豪斯多夫维数 $d_H = 2$。空间维度恰好等于轨道维度时，点被撞到的概率为 0。但平面上的任何开圆盘 $B_\epsilon(x)$ 具有正容量，布朗运动会在无限时间里密集缠绕并无限次穿过该圆盘。
+
+### 3. 保角变换不变性（Conformal Invariance & Lévy's Theorem）
+
+Paul Lévy 发现二维布朗运动具有非常独特的几何对称性：**在复平面的解析映射下保持布朗运动性质不变**。
+
+**Lévy 保角不变性定理**：设 $Z_t = B_t^{(1)} + i B_t^{(2)}$ 为复平面上的标准布朗运动，$f: U \to V$ 为非退化全纯函数（解析函数，满足 Cauchy-Riemann 方程 $f'(z) \ne 0$）。则变换后的复过程 $W_t = f(Z_t)$ 满足：
+
+$$
+W_t = \widetilde{Z}_{\tau_t}
+$$
+
+其中 $\widetilde{Z}$ 是另一个标准复布朗运动，而 $\tau_t = \int_0^t |f'(Z_s)|^2 ds$ 是一次确定性的局部时间伸缩（Clock Change）。
+**应用**：利用保角映射将复杂的几何边界（如圆盘、上半平面、多边形）映射为简单区域，可以直接将偏微分方程的狄利克雷边界问题（Dirichlet Problem）转化为简单几何区域上的布朗运动首达退出时间问题。
+
+---
+
+## 模块三：伊藤微积分与伊藤几何（Itô Calculus & Itô Geometry）
+
+### 1. 二阶 Taylor 展开与伊藤引理推导
+
+设 $X_t$ 为伊藤扩散过程：$dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$，函数 $f(t, x) \in C^{1,2}$。
+考虑微元 $\Delta f = f(t+\Delta t, X_t + \Delta X_t) - f(t, X_t)$ 的 Taylor 展开：
+
+$$
+\Delta f = \frac{\partial f}{\partial t}\Delta t + \frac{\partial f}{\partial x}\Delta X_t + \frac{1}{2}\frac{\partial^2 f}{\partial x^2}(\Delta X_t)^2 + \frac{\partial^2 f}{\partial t\partial x}\Delta t \Delta X_t + \frac{1}{2}\frac{\partial^2 f}{\partial t^2}(\Delta t)^2 + \mathcal{O}((\Delta t)^{3/2})
+$$
+
+将 $\Delta X_t = \mu \Delta t + \sigma \Delta W_t$ 代入 $(\Delta X_t)^2$：
+
+$$
+(\Delta X_t)^2 = \mu^2 (\Delta t)^2 + 2\mu\sigma \Delta t \Delta W_t + \sigma^2 (\Delta W_t)^2
+$$
+
+由于 $(\Delta t)^2 \to 0$，$\Delta t \Delta W_t \sim (\Delta t)^{3/2} \to 0$，而 $(\Delta W_t)^2 \to \Delta t$，取极限得 **伊藤乘法规则表**：
+
+| $\times$ | $dt$ | $dW_t$ |
+| :---: | :---: | :---: |
+| **$dt$** | $0$ | $0$ |
+| **$dW_t$** | $0$ | **$dt$** |
+
+由此导出著名的 **伊藤引理（Itô's Lemma）**：
+
+$$
+df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t
+$$
+
+### 2. 多维伊藤引理
+
+若有 $d$ 维相关布朗运动 $dW_t^i dW_t^j = \rho_{ij} dt$，状态变量向量 $dX_t^i = \mu_i dt + \sum_k \sigma_{ik} dW_t^k$：
+
+$$
+df(t, X_t) = \left( \frac{\partial f}{\partial t} + \sum_{i} \mu_i \frac{\partial f}{\partial x_i} + \frac{1}{2} \sum_{i,j} \left( \sum_{k,l} \sigma_{ik}\sigma_{jl}\rho_{kl} \right) \frac{\partial^2 f}{\partial x_i \partial x_j} \right) dt + \sum_i \frac{\partial f}{\partial x_i} \sum_k \sigma_{ik} dW_t^k
+$$
+
+### 3. 伊藤几何 vs. 斯特拉托诺维奇（Stratonovich）积分
+
+对于分割 $0=t_0 < t_1 < \dots < t_n = T$，考虑黎曼求和逼近积分 $\int_0^T X_t dW_t$：
+
+$$
+S_n^{(\alpha)} = \sum_{i=0}^{n-1} X_{(1-\alpha)t_i + \alpha t_{i+1}} (W_{t_{i+1}} - W_{t_i}) \quad (0 \le \alpha \le 1)
+$$
+
+```ito-geometry-demo
+```
+
+1. **伊藤积分（$\alpha = 0$，左端点）**：
+   - 记为 $\int_0^T X_t dW_t$。
+   - **核心特征**：非预期（Non-anticipating），被积函数仅依赖于历史信息 $\mathcal{F}_{t_i}$，与未来增量 $W_{t_{i+1}} - W_{t_i}$ 独立。
+   - **数学优越性**：是局部鞅，$\mathbb{E}\left[ \int_0^T X_t dW_t \right] = 0$。符合金融物理世界的因果律（不能拿着未来的价格进行当下的仓位决策）。
+2. **斯特拉托诺维奇积分（$\alpha = 1/2$，中点）**：
+   - 记为 $\int_0^T X_t \circ dW_t$。
+   - **核心特征**：满足经典微积分链式法则 $d(f(W_t)) = f'(W_t) \circ dW_t$（无二阶导数修正项）。常用于微分几何、流形上的随机分析及物理对称系统建模。
+   - **转换公式**：
+
+$$
+\int_0^T X_t \circ dW_t = \int_0^T X_t dW_t + \frac{1}{2} [X, W]_T
+$$
+
+例如，对于 $X_t = W_t$：
+
+$$
+\int_0^T W_t \circ dW_t = \frac{1}{2} W_T^2 \qquad \text{对比} \qquad \int_0^T W_t dW_t = \frac{1}{2} W_T^2 - \frac{1}{2} T
+$$
+
+---
+
+## 模块四：伊藤积分的严格构造与性质（The Itô Integral）
+
+### 1. 积分构造与伊藤等距（Itô Isometry）
+
+对于适应平方可积过程 $H_t \in \mathcal{L}^2_{\mathcal{F}}([0, T])$（满足 $\mathbb{E}\left[\int_0^T H_t^2 dt\right] < \infty$），伊藤积分 $I_T(H) = \int_0^T H_t dW_t$ 满足两大核心性质：
+
+#### （1）鞅性与零均值
+
+$$
+\mathbb{E}\left[ \int_0^T H_t dW_t \;\middle|\; \mathcal{F}_s \right] = \int_0^s H_t dW_t \quad (s \le T) \implies \mathbb{E}\left[ \int_0^T H_t dW_t \right] = 0
+$$
+
+#### （2）伊藤等距（Itô Isometry）
+
+$$
+\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \mathbb{E}\left[ \int_0^T H_t^2 dt \right]
+$$
+
+**等距性质证明（分步推导）**：
+对于初等阶梯过程 $H_t = \sum_{i=0}^{n-1} H_i \mathbf{1}_{[t_i, t_{i+1})}(t)$，其中 $H_i \in \mathcal{F}_{t_i}$：
+
+$$
+\mathbb{E}\left[ \left( \sum_{i=0}^{n-1} H_i \Delta W_i \right)^2 \right] = \sum_{i=0}^{n-1} \mathbb{E}[H_i^2 (\Delta W_i)^2] + 2 \sum_{i < j} \mathbb{E}[H_i H_j \Delta W_i \Delta W_j]
+$$
+
+- 交叉项：当 $i < j$ 时，$\Delta W_j$ 独立于 $\mathcal{F}_{t_j}$，而 $H_i, H_j, \Delta W_i \in \mathcal{F}_{t_j}$，由条件期望塔法则：
+
+$$
+\mathbb{E}[H_i H_j \Delta W_i \Delta W_j] = \mathbb{E}[H_i H_j \Delta W_i \cdot \mathbb{E}[\Delta W_j \mid \mathcal{F}_{t_j}]] = \mathbb{E}[H_i H_j \Delta W_i \cdot 0] = 0
+$$
+
+- 平方项：$\mathbb{E}[H_i^2 (\Delta W_i)^2] = \mathbb{E}[H_i^2 \mathbb{E}[(\Delta W_i)^2 \mid \mathcal{F}_{t_i}]] = \mathbb{E}[H_i^2 \Delta t_i]$。
+求和即得 $\sum \mathbb{E}[H_i^2] \Delta t_i = \mathbb{E}\left[ \int_0^T H_t^2 dt \right]$。通过极限稠密性可推广到全体 $\mathcal{L}^2$ 过程。
+
+---
+
+## 模块五：布朗运动的停时与极值理论（Stopping Times & Extreme Values）
+
+### 1. 指数鞅与 Wald 恒等式
+
+对于任意实常数 $\theta \in \mathbb{R}$，定义 **Doléans-Dade 指数鞅**：
+
+$$
+M_t^\theta = \exp\left( \theta W_t - \frac{1}{2} \theta^2 t \right)
+$$
+
+应用伊藤引理：$dM_t^\theta = \theta M_t^\theta dW_t$，由于无 $dt$ 漂移项且满足 Novikov 条件，故 $M_t^\theta$ 是一个真正的鞅。
+
+**最优停时定理（OST）应用**：设 $\tau$ 为满足 OST 条件的停时，则：
+
+$$
+\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2} \theta^2 \tau \right) \right] = \mathbb{E}[M_0^\theta] = 1 \quad (\text{Wald 鞅恒等式})
+$$
+
+### 2. 首达时间（First Hitting Time）与双吸收边界
+
+考虑常数边界 $a > 0, b > 0$，定义停时 $\tau = \inf\{t \ge 0 : W_t = a \text{ 或 } W_t = -b\}$：
+1. **到达边界的概率**：对鞅 $W_t$ 用 OST 得 $\mathbb{E}[W_\tau] = 0 \implies a P(W_\tau = a) - b (1 - P(W_\tau = a)) = 0$，解得：
+
+$$
+P(\text{先到达 } a) = \frac{b}{a + b}
+$$
+
+2. **期望退出时间**：对鞅 $W_t^2 - t$ 用 OST 得 $\mathbb{E}[W_\tau^2 - \tau] = 0 \implies \mathbb{E}[\tau] = \mathbb{E}[W_\tau^2]$：
+
+$$
+\mathbb{E}[\tau] = a^2 \cdot \frac{b}{a+b} + (-b)^2 \cdot \frac{a}{a+b} = \frac{a^2 b + a b^2}{a+b} = a b
+$$
+
+### 3. 反射原理（The Reflection Principle）与运行极值分布
+
+设 $M_t = \max_{0 \le s \le t} W_s$ 为时间 $t$ 内的运行最大值（Running Maximum），$a > 0$ 为给定阈值，$\tau_a = \inf\{s \ge 0 : W_s = a\}$ 为首次触达时间。
+
+```reflection-principle-demo
+```
+
+**几何反射论证（Geometric Reflection Argument）**：
+事件 $\{M_t \ge a\}$ 等价于 $\{\tau_a \le t\}$。
+在时刻 $\tau_a$，轨道到达水平 $a$。根据布朗运动的**强马尔可夫性（Strong Markov Property）**，残余过程 $\widetilde{W}_s = W_{\tau_a + s} - a$（$s \ge 0$）是一条独立的标准布朗运动。
+由空间镜像对称性，在时刻 $t$，该残余路径位于水平 $a$ 之上或之下的概率严格对称相等：
+
+$$
+\mathbb{P}(W_t \ge a \mid \tau_a \le t) = \mathbb{P}(W_t \le a \mid \tau_a \le t) = \frac{1}{2}
+$$
+
+由此得到著名的 **反射原理公式**：
+
+$$
+\mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \right) \right)
+$$
+
+对 $t$ 求导，得到首次到达水平 $a$ 的时间密度函数（**Lévy 分布**）：
+
+$$
+f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
+$$
+
+---
+
+## 模块六：Black-Scholes 模型、解析推导与期权量化交易（Black-Scholes Model & Trading Applications）
+
+### 6.1 标的资产动力学：几何布朗运动（Geometric Brownian Motion）
+
+在 Black-Scholes 框架下，标的资产（股票、指数、商品）的价格过程 $\{S_t\}_{t \ge 0}$ 服从几何布朗运动（GBM）随机微分方程：
+
+$$
+\frac{dS_t}{S_t} = \mu dt + \sigma dW_t \iff dS_t = \mu S_t dt + \sigma S_t dW_t
+$$
+
+其中 $\mu \in \mathbb{R}$ 为资产的预期收益率（漂移项），$\sigma > 0$ 为资产波动率（扩散项），$W_t$ 为标准布朗运动。
+
+**求解对数正态解析解**：
+对复合函数 $f(S) = \ln S$ 应用伊藤引理（一阶导 $f' = 1/S$，二阶导 $f'' = -1/S^2$）：
+
+$$
+d(\ln S_t) = \frac{1}{S_t} dS_t + \frac{1}{2} \left( -\frac{1}{S_t^2} \right) (dS_t)^2 = \left( \mu dt + \sigma dW_t \right) - \frac{1}{2 S_t^2} \left( \sigma^2 S_t^2 dt \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t
+$$
+
+两边在时间区间 $[0, t]$ 上直接积分：
+
+$$
+\ln\left( \frac{S_t}{S_0} \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \implies \boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}
+$$
+
+由此可见，$\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$ 服从正态分布，因而 $S_t$ 服从**对数正态分布（Log-Normal Distribution）**。利用对数正态分布的矩母函数可得：
+
+$$
+\mathbb{E}[S_t] = S_0 e^{\mu t}, \qquad \operatorname{Var}(S_t) = S_0^2 e^{2\mu t} \left( e^{\sigma^2 t} - 1 \right)
+$$
+
+---
+
+### 6.2 Black-Scholes-Merton 模型的基石假设
+
+1. **标的动力学**：资产价格服从恒定漂移 $\mu$ 和恒定波动率 $\sigma$ 的几何布朗运动；
+2. **无摩擦市场**：无交易税费、无买卖价差（Bid-Ask Spread = 0），支持任意小数份额交易；
+3. **允许完全做空**：允许不受限制地以无风险利率借入资金与融券做空资产；
+4. **恒定无风险利率**：资金借入与贷出利率恒为常数 $r > 0$；
+5. **无套利机会（No Arbitrage）**：市场上不存在免费午餐，任何复制组合价格必须等于目标衍生品价格；
+6. **欧式衍生品**：期权仅在到期日 $T$ 行权，标的资产在存续期内不支付离散红利（可拓展至连续股息率 $q$）。
+
+---
+
+### 6.3 Black-Scholes 偏微分方程（BSM PDE）的双向推导
+
+设欧式衍生品在时刻 $t$、标的价格为 $S$ 时的理论价格为 $V(t, S)$，到期日为 $T$，到期支付函数为 $\Phi(S_T)$（如看涨期权为 $\max(S_T - K, 0)$）。
+
+#### 推导方法一：无套利 Delta 动态对冲复制法（Black-Scholes-Merton 原始推导）
+
+构造投资组合 $\Pi_t$：**做多 1 单位期权 $V(t, S_t)$，同时做空 $\Delta_t$ 单位标的资产 $S_t$**：
+
+$$
+\Pi_t = V(t, S_t) - \Delta_t S_t
+$$
+
+在极短时间微元 $dt$ 内，投资组合的价值增量为：
+
+$$
+d\Pi_t = dV(t, S_t) - \Delta_t dS_t
+$$
+
+根据伊藤引理，将衍生品价值 $V(t, S_t)$ 展开至 $dt$ 阶：
+
+$$
+dV = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \right) dt + \sigma S \frac{\partial V}{\partial S} dW_t
+$$
+
+将 $dV$ 与 $dS_t = \mu S dt + \sigma S dW_t$ 代入 $d\Pi_t$ 并整理同类项：
+
+$$
+d\Pi_t = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta_t \mu S \right) dt + \sigma S \left( \frac{\partial V}{\partial S} - \Delta_t \right) dW_t
+$$
+
+为了使投资组合彻底摆脱随机波动 $dW_t$ 的干扰（即消除所有市场方向性风险），令随机项系数为 0，选择 **Delta 对冲仓位**：
+
+$$
+\Delta_t = \frac{\partial V}{\partial S}
+$$
+
+代入后，$dW_t$ 项完全消失，$d\Pi_t$ 变成确定性微分方程：
+
+$$
+d\Pi_t = \left( \frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \right) dt
+$$
+
+根据无套利定理，一个完全无风险的资产组合，其瞬时收益率必须严格等于无风险利率 $r$，即 $d\Pi_t = r \Pi_t dt = r (V - \Delta_t S) dt$。联立两式：
+
+$$
+\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} = r \left( V - S \frac{\partial V}{\partial S} \right)
+$$
+
+移项整理即得著名的 **Black-Scholes-Merton 偏微分方程**：
+
+$$
+\boxed{\frac{\partial V}{\partial t} + r S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} = r V}
+$$
+
+> **关键见解**：BSM PDE 中**完全不包含标的资产的主观真实收益率 $\mu$**！期权的价格仅取决于波动率 $\sigma$、无风险利率 $r$、当前股价 $S$、行权价 $K$ 与剩余时间 $T-t$，与投资者对未来市场涨跌的乐观或悲观预期完全无关。
+
+---
+
+#### 推导方法二：风险中性测度与 Feynman-Kac 鞅定价法
+
+根据 Girsanov 测度变换定理，定义市场风险溢价 $\theta = \frac{\mu - r}{\sigma}$。存在等价鞅测度 $\mathbb{Q}$（风险中性测度），在此测度下漂移项由 $\mu$ 转变为无风险利率 $r$：
+
+$$
+dS_t = r S_t dt + \sigma S_t d\widetilde{W}_t \quad (\widetilde{W}_t \text{ 为 } \mathbb{Q} \text{ 下标准布朗运动})
+$$
+
+折现资产价格 $e^{-rt}S_t$ 是 $\mathbb{Q}$ 下的鞅。无套利衍生品定价理论断言：衍生品的公允价值等于其在风险中性测度下未来支付的**折现条件期望**：
+
+$$
+V(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q} \left[ \Phi(S_T) \;\middle|\; \mathcal{F}_t \right]
+$$
+
+根据 **Feynman-Kac 定理**，上述条件期望正是 BSM 偏微分方程满足终端条件 $V(T, S) = \Phi(S)$ 时的唯一柯西解。
+
+---
+
+### 6.4 欧式看涨与看跌期权闭式解的严格解析积分推导
+
+考虑欧式看涨期权（European Call），到期支付为 $\Phi(S_T) = \max(S_T - K, 0)$。记剩余存续时间 $\tau = T - t$。
+在风险中性测度 $\mathbb{Q}$ 下，$S_T$ 可精确写为：
+
+$$
+S_T = S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \right)\tau + \sigma\sqrt{\tau} Z \right), \quad Z \sim \mathcal{N}(0, 1)
+$$
+
+期权价格为：
+
+$$
+C(S_t, t) = e^{-r\tau} \mathbb{E}^\mathbb{Q} \left[ \max(S_T - K, 0) \right] = e^{-r\tau} \int_{-\infty}^\infty \max\left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K, 0 \right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz
+$$
+
+#### 步骤 1：确定实值行权分界点（Integration Lower Bound）
+期权在到期时产生正收益（$S_T > K$）当且仅当：
+
+$$
+S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \right)\tau + \sigma\sqrt{\tau} z \right) > K \iff \sigma\sqrt{\tau} z > \ln\left( \frac{K}{S_t} \right) - \left( r - \frac{1}{2}\sigma^2 \right)\tau
+$$
+
+两边除以 $\sigma\sqrt{\tau}$ 并利用 $\ln(K/S_t) = -\ln(S_t/K)$：
+
+$$
+z > -\frac{\ln(S_t/K) + (r - \frac{1}{2}\sigma^2)\tau}{\sigma\sqrt{\tau}} \triangleq -d_2
+$$
+
+其中定义：
+
+$$
+\boxed{d_2 = \frac{\ln(S_t/K) + (r - \frac{1}{2}\sigma^2)\tau}{\sigma\sqrt{\tau}}}
+$$
+
+#### 步骤 2：拆解积分项为资产项 $I_1$ 与现金项 $I_2$
+
+$$
+C(S_t, t) = e^{-r\tau} \int_{-d_2}^\infty \left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K \right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz = I_1 - I_2
+$$
+
+#### 步骤 3：求解现金项 $I_2$
+
+$$
+I_2 = e^{-r\tau} K \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz = K e^{-r\tau} P(Z \ge -d_2) = K e^{-r\tau} P(Z \le d_2) = K e^{-r\tau} \Phi(d_2)
+$$
+
+其中 $\Phi(x) = \int_{-\infty}^x \frac{1}{\sqrt{2\pi}} e^{-u^2/2} du$ 是标准正态分布的累积分布函数（CDF）。
+
+#### 步骤 4：求解资产项 $I_1$（核心配方法）
+
+$$
+I_1 = e^{-r\tau} S_t e^{r\tau - \frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} e^{\sigma\sqrt{\tau} z - \frac{z^2}{2}} dz = S_t e^{-\frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{z^2 - 2\sigma\sqrt{\tau}z}{2} \right) dz
+$$
+
+对指数中的二次多项式进行**完全平方配方**：
+
+$$
+z^2 - 2\sigma\sqrt{\tau}z = (z - \sigma\sqrt{\tau})^2 - \sigma^2\tau
+$$
+
+代入指数：
+
+$$
+\exp\left( -\frac{(z - \sigma\sqrt{\tau})^2 - \sigma^2\tau}{2} \right) = \exp\left( \frac{1}{2}\sigma^2\tau \right) \cdot \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \right)
+$$
+
+注意项外系数 $e^{-\frac{1}{2}\sigma^2\tau}$ 与配方产生的 $e^{\frac{1}{2}\sigma^2\tau}$ **精确抵消为 1**！
+
+$$
+I_1 = S_t \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \right) dz
+$$
+
+做变量代换：令 $u = z - \sigma\sqrt{\tau}$，则 $dz = du$。积分下限变为 $-d_2 - \sigma\sqrt{\tau} \triangleq -d_1$：
+
+$$
+d_1 = d_2 + \sigma\sqrt{\tau} = \frac{\ln(S_t/K) + (r + \frac{1}{2}\sigma^2)\tau}{\sigma\sqrt{\tau}}
+$$
+
+代入积分：
+
+$$
+I_1 = S_t \int_{-d_1}^\infty \frac{1}{\sqrt{2\pi}} e^{-u^2/2} du = S_t P(U \ge -d_1) = S_t \Phi(d_1)
+$$
+
+#### 步骤 5：最终经典定价公式
+
+将 $I_1$ 与 $I_2$ 组合，得到欧式看涨期权（Call）的 **Black-Scholes 闭式解**：
+
+$$
+\boxed{C(S, t) = S \Phi(d_1) - K e^{-r(T-t)} \Phi(d_2)}
+$$
+
+根据看跌-看涨平价（Put-Call Parity）$P = C - S + K e^{-r\tau}$，利用 $1 - \Phi(x) = \Phi(-x)$：
+
+$$
+\boxed{P(S, t) = K e^{-r(T-t)} \Phi(-d_2) - S \Phi(-d_1)}
+$$
+
+其中：
+
+$$
+\boxed{d_1 = \frac{\ln(S/K) + (r + \frac{1}{2}\sigma^2)(T-t)}{\sigma\sqrt{T-t}}, \qquad d_2 = d_1 - \sigma\sqrt{T-t} = \frac{\ln(S/K) + (r - \frac{1}{2}\sigma^2)(T-t)}{\sigma\sqrt{T-t}}}
+$$
+
+---
+
+### 6.5 $d_1$ 与 $d_2$ 的概率与金融物理学意义
+
+在量化交易面试中，面试官最喜欢追问："请用直觉解释 $d_1$ 与 $d_2$ 以及 $\Phi(d_1)$ 和 $\Phi(d_2)$ 的物理本质是什么？"
+
+```mermaid
+flowchart TD
+  Formula["C = S·Φ(d_1) - K·e^(-rτ)·Φ(d_2)"]
+  Term1["S·Φ(d_1)<br/>持有标的资产的折现期望现值<br/>(对冲持仓市值 = Δ·S)"]
+  Term2["K·e^(-rτ)·Φ(d_2)<br/>行权所需现金支出的折现期望储备<br/>(折现行权价 × 行权概率)"]
+  D2["Φ(d_2) = Q(S_T ≥ K)<br/>风险中性行权概率<br/>(Finish In-The-Money)"]
+  D1["Φ(d_1) = Delta<br/>复制期权所需的资产份数<br/>(股票测度 Q^S 下的行权概率)"]
+
+  Formula --> Term1
+  Formula --> Term2
+  Term2 --> D2
+  Term1 --> D1
+```
+
+1. **$\Phi(d_2) = \mathbb{Q}(S_T \ge K)$ —— 风险中性测度下的行权概率**：
+   $\Phi(d_2)$ 是在风险中性世界中，标的资产价格在到期日 $T$ 落在行权价 $K$ 之上（期权处于实值 ITM 状态）的**精确概率**。因此，$K e^{-r\tau} \Phi(d_2)$ 代表期权空头在时刻 $t$ 为了在到期日履行交割义务所需准备的**纯现金折现储备**。
+2. **$\Phi(d_1) = \Delta = \frac{\partial C}{\partial S}$ —— 复制期权所需的现货对冲头寸（Delta）**：
+   $\Phi(d_1)$ 正是 Black-Scholes 复制组合中必须持有的股票股数。同时在测度变换视角下，若以标的股票自身作为计价资产（Numeraire）定义股票测度 $\mathbb{Q}^S$（Share Measure），$\Phi(d_1) = \mathbb{Q}^S(S_T \ge K)$ 正是股票测度下的行权概率。
+3. **关键恒等式（The Core Derivative Identity）**：
+
+$$
+\boxed{S \phi(d_1) = K e^{-r\tau} \phi(d_2)}
+$$
+
+**证明**：
+$$
+\frac{\phi(d_1)}{\phi(d_2)} = \frac{e^{-d_1^2/2}}{e^{-d_2^2/2}} = \exp\left( -\frac{d_1^2 - d_2^2}{2} \right) = \exp\left( -\frac{(d_1 - d_2)(d_1 + d_2)}{2} \right)
+$$
+由于 $d_1 - d_2 = \sigma\sqrt{\tau}$，且 $d_1 + d_2 = \frac{2\ln(S/K) + 2r\tau}{\sigma\sqrt{\tau}}$：
+$$
+\frac{d_1^2 - d_2^2}{2} = \frac{\sigma\sqrt{\tau}}{2} \cdot \frac{2\ln(S/K) + 2r\tau}{\sigma\sqrt{\tau}} = \ln\left( \frac{S}{K} \right) + r\tau
+$$
+代入指数：
+$$
+\exp\left( -\left(\ln\left(\frac{S}{K}\right) + r\tau\right) \right) = \frac{K}{S} e^{-r\tau} \implies S \phi(d_1) = K e^{-r\tau} \phi(d_2)
+$$
+这个恒等式是求导所有期权希腊字母（Greeks）时交叉项自动相消的数学核心！
+
+---
+
+### 6.6 看跌-看涨平价（Put-Call Parity）
+
+对于相同标的、相同到期日 $T$ 和相同行权价 $K$ 的欧式期权：
+
+$$
+\boxed{C_t - P_t = S_t - K e^{-r(T-t)}}
+$$
+
+**双向验证**：
+1. **组合复制证明**：在到期日 $T$，组合 $C_T - P_T = \max(S_T - K, 0) - \max(K - S_T, 0) = S_T - K$。该支付与"持有 1 股股票并借入现金 $K$"在 $T$ 时刻的价值完全等价。由无套利定价原理，两组合在时刻 $t$ 的价值必须处处相等：$C_t - P_t = S_t - K e^{-r\tau}$。
+2. **BSM 公式代数验证**：
+$$
+C - P = \left( S\Phi(d_1) - Ke^{-r\tau}\Phi(d_2) \right) - \left( Ke^{-r\tau}\Phi(-d_2) - S\Phi(-d_1) \right)
+$$
+$$
+= S(\Phi(d_1) + \Phi(-d_1)) - Ke^{-r\tau}(\Phi(d_2) + \Phi(-d_2)) = S(1) - Ke^{-r\tau}(1) = S - Ke^{-r\tau}
+$$
+
+---
+
+### 6.7 BSM 希腊字母（The Greeks）完整解析速查
+
+| 希腊字母 | 经济含义 | 看涨期权 Call 公式 | 看跌期权 Put 公式 | 符号与性质 |
+| :--- | :--- | :--- | :--- | :--- |
+| **Delta ($\Delta$)** | 标的价格敏感度 $\frac{\partial V}{\partial S}$ | $\Phi(d_1)$ | $\Phi(d_1) - 1 = -\Phi(-d_1)$ | Call $\in (0, 1)$，Put $\in (-1, 0)$ |
+| **Gamma ($\Gamma$)** | 曲线凸性 $\frac{\partial^2 V}{\partial S^2}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | Call 与 Put 恒正且严格相等 ($\Gamma > 0$) |
+| **Vega ($\mathcal{V}$)** | 波动率敏感度 $\frac{\partial V}{\partial \sigma}$ | $S \sqrt{\tau} \phi(d_1)$ | $S \sqrt{\tau} \phi(d_1)$ | Call 与 Put 恒正且严格相等 ($\mathcal{V} > 0$) |
+| **Theta ($\Theta$)** | 时间价值衰减 $\frac{\partial V}{\partial t}$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} - r K e^{-r\tau}\Phi(d_2)$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} + r K e^{-r\tau}\Phi(-d_2)$ | 多头期权通常 $\Theta < 0$（时间流逝损耗价值） |
+| **Rho ($\rho$)** | 利率敏感度 $\frac{\partial V}{\partial r}$ | $K \tau e^{-r\tau} \Phi(d_2)$ | $-K \tau e^{-r\tau} \Phi(-d_2)$ | Call $\rho > 0$，Put $\rho < 0$ |
+
+**Gamma-Theta 平衡关系**：
+将希腊字母代回 BSM PDE，即得期权做市商的盈亏守恒定律：
+
+$$
+\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}
+$$
+
+---
+
+### 6.8 动态 Delta 对冲损益（Gamma PnL）与波动率套利
+
+在实际交易中，期权按**隐含波动率（Implied Volatility $\sigma_I$）**定价，而标的资产按**真实已实现波动率（Realized Volatility $\sigma_R$）**波动：
+
+$$
+dS_t = \mu S_t dt + \sigma_R S_t dW_t
+$$
+
+做市商以理论模型 Delta 进行连续对冲，其对冲投资组合的真实微元损益为：
+
+$$
+d\Pi_t = dV_t - \Delta_t dS_t - r(V_t - \Delta_t S_t) dt
+$$
+
+将 $dV_t$ 按真实路径展开（包含 $\sigma_R^2$），同时利用定价方程中的 $\Theta + r S \Delta + \frac{1}{2}\sigma_I^2 S^2 \Gamma = r V$，相消后得到极其优雅的 **波动率套利主方程**：
+
+$$
+\boxed{d\Pi_t = \frac{1}{2} S_t^2 \Gamma_t \left( \sigma_R^2 - \sigma_I^2 \right) dt}
+$$
+
+```delta-hedging-demo
+```
+
+> **量化做市与波动率交易核心要诀**：
+> 1. **多 Gamma（Long Gamma, $\Gamma > 0$）**：若实际波动率高于买入时的隐含波动率（$\sigma_R > \sigma_I$），动态再平衡带来的低买高卖收益将大于时间价值衰减（Theta Decay），组合获得正 alpha。
+> 2. **空 Gamma（Short Gamma, $\Gamma < 0$）**：做空期权收取权利金，在平稳低波动市场（$\sigma_R < \sigma_I$）中赚取时间价值，但面临极端跳跃与波动率暴增的肥尾巨亏风险。
+
+---
+
+## 模块七：深度量化面试与实战例题（Deep Example Problems & Rigorous Solutions）
+
+### 例题 1：伊藤等距与高阶随机积分的方差
+
+**题目**：计算随机积分 $I_T = \int_0^T W_t^2 dW_t$ 的期望 $\mathbb{E}[I_T]$ 与方差 $\operatorname{Var}(I_T)$，并求出 $I_T$ 关于终点 $W_T$ 与时间积分的显式代数表达式。
+
+**解答**：
+1. **期望**：由于被积过程 $H_t = W_t^2$ 是适应且均方可积过程（$\mathbb{E}[W_t^4] = 3t^2 < \infty$），伊藤积分是纯鞅，故：
+
+$$
+\mathbb{E}[I_T] = \mathbb{E}\left[ \int_0^T W_t^2 dW_t \right] = 0
+$$
+
+2. **方差**：应用伊藤等距定理（Itô Isometry）：
+
+$$
+\operatorname{Var}(I_T) = \mathbb{E}[I_T^2] = \mathbb{E}\left[ \int_0^T (W_t^2)^2 dt \right] = \int_0^T \mathbb{E}[W_t^4] dt
+$$
+
+由于 $W_t \sim \mathcal{N}(0, t)$，其 4 阶矩为 $\mathbb{E}[W_t^4] = 3 (\operatorname{Var}(W_t))^2 = 3t^2$。代入积分：
+
+$$
+\operatorname{Var}(I_T) = \int_0^T 3t^2 dt = \left[ t^3 \right]_0^T = T^3
+$$
+
+3. **显式代数表达式**：对函数 $f(w) = w^3$ 应用伊藤引理：
+
+$$
+d(W_t^3) = 3 W_t^2 dW_t + \frac{1}{2} (6 W_t) (dW_t)^2 = 3 W_t^2 dW_t + 3 W_t dt
+$$
+
+两边在 $[0, T]$ 上积分：
+
+$$
+W_T^3 - 0 = 3 \int_0^T W_t^2 dW_t + 3 \int_0^T W_t dt \implies \int_0^T W_t^2 dW_t = \frac{1}{3} W_T^3 - \int_0^T W_t dt
+$$
+
+---
+
+### 例题 2：带漂移布朗运动的双边界首达时间与 Laplace 变换
+
+**题目**：设资产对数收益率服从带漂移的布朗运动 $X_t = \mu t + \sigma W_t$（$\mu > 0, \sigma > 0$），$X_0 = 0$。设止盈线为 $b > 0$，止损线为 $-a < 0$。定义首次触碰双边界的停时 $\tau = \inf\{t \ge 0 : X_t \notin (-a, b)\}$。
+（1）求最终止盈（触碰 $b$）的概率 $P(X_\tau = b)$；
+（2）求平均退出时间 $\mathbb{E}[\tau]$。
+
+**解答**：
+构造指数鞅族 $M_t^\theta = \exp(\theta X_t - \psi(\theta) t)$。代入 $X_t$：
+
+$$
+M_t^\theta = \exp\left( \theta(\mu t + \sigma W_t) - \psi(\theta) t \right) = \exp\left( \theta \sigma W_t + (\theta \mu - \psi(\theta)) t \right)
+$$
+
+根据指数鞅性质，需令 $t$ 的系数等于 $\frac{1}{2}(\theta \sigma)^2$，即：
+
+$$
+\psi(\theta) = \theta \mu + \frac{1}{2} \theta^2 \sigma^2
+$$
+
+令 $\psi(\theta) = 0$，解得非零根 $\theta^* = -\frac{2\mu}{\sigma^2}$。此时 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ 是标准鞅。
+
+**求解（1）止盈概率 $p_b = P(X_\tau = b)$**：
+对鞅 $M_t$ 应用最优停时定理（由于边界有界 $[-a, b]$，停止过程有界，OST 严格成立）：
+
+$$
+\mathbb{E}[M_\tau] = M_0 = 1 \implies p_b \exp\left( -\frac{2\mu}{\sigma^2} b \right) + (1 - p_b) \exp\left( \frac{2\mu}{\sigma^2} a \right) = 1
+$$
+
+令 $\gamma = \frac{2\mu}{\sigma^2}$，解得：
+
+$$
+p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}} = \frac{1 - e^{-\gamma a}}{1 - e^{-\gamma (a+b)}} \cdot e^{\gamma b}
+$$
+
+**求解（2）期望退出时间 $\mathbb{E}[\tau]$**：
+考虑鞅 $N_t = X_t - \mu t$。应用 OST 得：
+
+$$
+\mathbb{E}[X_\tau - \mu \tau] = 0 \implies \mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu}
+$$
+
+其中 $\mathbb{E}[X_\tau] = b \cdot p_b + (-a) \cdot (1 - p_b) = (a+b) p_b - a$。代入即可获得 $\mathbb{E}[\tau]$ 的精确解析值。
+
+---
+
+### 例题 3：联合极值分布与障碍触碰数字期权（Barrier Touch Digital）
+
+**题目**：在风险中性测度 $\mathbb{Q}$ 下，$S_t = S_0 \exp((r - \frac{1}{2}\sigma^2)t + \sigma W_t)$。定义高位障碍 $H > S_0$，若在存续期 $[0, T]$ 内股价曾触碰过 $H$，则期权在到期日支付固定金额 $\$1$（即 Up-and-In Digital Cash-at-Hit）。试利用反射原理与测度变换导出该衍生品的精确无套利价格。
+
+**解答**：
+触碰事件可表示为 $\tau_H \le T$，其中 $\tau_H = \inf\{t \ge 0 : S_t \ge H\}$。
+令对数过程 $Y_t = \frac{1}{\sigma} \ln(S_t / S_0) = \alpha t + W_t$，其中漂移率 $\alpha = \frac{r - \frac{1}{2}\sigma^2}{\sigma}$。
+触碰条件等价于 $\max_{0 \le t \le T} Y_t \ge h$，其中 $h = \frac{1}{\sigma}\ln(H/S_0) > 0$。
+
+根据带漂移布朗运动极值的 Girsanov 公式（利用 Cameron-Martin-Girsanov 测度变换消除漂移 $\alpha$）：
+
+$$
+\mathbb{Q}(\tau_H \le T) = \Phi\left( \frac{-h + \alpha T}{\sqrt{T}} \right) + \exp(2\alpha h) \Phi\left( \frac{-h - \alpha T}{\sqrt{T}} \right)
+$$
+
+将 $h = \frac{\ln(H/S_0)}{\sigma}$ 与 $2\alpha h = \frac{2(r - \frac{1}{2}\sigma^2)}{\sigma^2} \ln(H/S_0) = \ln\left( (H/S_0)^{\frac{2r}{\sigma^2} - 1} \right)$ 代回：
+
+$$
+\mathbb{Q}(\tau_H \le T) = \Phi\left( \frac{\ln(S_0/H) + (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right) + \left( \frac{H}{S_0} \right)^{\frac{2r}{\sigma^2} - 1} \Phi\left( \frac{\ln(S_0/H) - (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right)
+$$
+
+折现到时刻 0 即得期权价值：
+
+$$
+V_0 = e^{-rT} \mathbb{Q}(\tau_H \le T)
+$$
+
+---
+
+### 例题 4：离散再平衡 Delta 对冲滑点与 Gamma 损益方差
+
+**题目**：期权做市商卖出 1 张 ATM Call，并以固定时间间隔 $\Delta t$ 进行离散 Delta 对冲。假设无风险利率 $r = 0$，真实波动率等于隐含波动率 $\sigma_R = \sigma_I = \sigma$。试证明单步对冲误差 $\epsilon_k = \Pi_{t_{k+1}} - \Pi_{t_k}$ 的期望为 0，并计算其方差 $\operatorname{Var}(\epsilon_k)$ 与 $\Delta t$ 的阶数关系。
+
+**解答**：
+在小时间步 $\Delta t$ 内，做市商持有 $-\Delta_{t_k} S_{t_k}$ 现货与空头期权 $-V$。由 Taylor 展开到 $(\Delta S)^2$ 阶：
+
+$$
+\Delta V \approx \Theta \Delta t + \Delta_{t_k} \Delta S + \frac{1}{2} \Gamma (\Delta S)^2
+$$
+
+由于 Black-Scholes PDE 在 $r=0$ 下为 $\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = 0 \implies \Theta = -\frac{1}{2}\sigma^2 S^2 \Gamma$：
+
+$$
+\Delta V \approx -\frac{1}{2}\sigma^2 S^2 \Gamma \Delta t + \Delta_{t_k} \Delta S + \frac{1}{2} \Gamma (\Delta S)^2
+$$
+
+组合微元损益 $\epsilon_k = -\Delta V + \Delta_{t_k} \Delta S$ 为：
+
+$$
+\epsilon_k \approx -\frac{1}{2} \Gamma \left[ (\Delta S)^2 - \sigma^2 S^2 \Delta t \right]
+$$
+
+由于 $\Delta S \approx \sigma S \Delta W = \sigma S \sqrt{\Delta t} Z$（$Z \sim \mathcal{N}(0, 1)$）：
+
+$$
+\epsilon_k \approx -\frac{1}{2} S^2 \Gamma \sigma^2 \Delta t \left( Z^2 - 1 \right)
+$$
+
+1. **期望**：$\mathbb{E}[\epsilon_k] \propto \mathbb{E}[Z^2 - 1] = 1 - 1 = 0$（离散对冲依然是一阶无偏的）。
+2. **方差**：
+
+$$
+\operatorname{Var}(\epsilon_k) = \frac{1}{4} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 \operatorname{Var}(Z^2 - 1) = \frac{1}{4} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 \cdot 2 = \frac{1}{2} S^4 \Gamma^2 \sigma^4 (\Delta t)^2
+$$
+
+若全周期 $T$ 内共有 $N = T/\Delta t$ 次调仓，总对冲误差的累积方差为：
+
+$$
+\operatorname{Var}\left( \sum_{k=0}^{N-1} \epsilon_k \right) \approx N \cdot \operatorname{Var}(\epsilon_k) = \frac{T}{\Delta t} \cdot \frac{1}{2} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 = \frac{1}{2} T S^4 \Gamma^2 \sigma^4 \Delta t
+$$
+
+> **量化工程结论**：离散对冲的跟踪误差标准差与 $\sqrt{\Delta t}$ 成正比。调仓频率提高 4 倍（如从日频转为 2 小时频），对冲风险方差减半，但交易摩擦成本（Bid-Ask Spread 与手续费）线性增加 4 倍。高频期权做市的最优调仓频率本质是**Gamma 跟踪误差方差与换手摩擦成本的拉格朗日最优化**。

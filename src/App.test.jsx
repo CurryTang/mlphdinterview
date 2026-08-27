@@ -929,7 +929,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
-    expect(screen.getByText('本板块共 35 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 36 篇笔记')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
 
     expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
@@ -990,5 +990,29 @@ describe('App', () => {
     expect(screen.getByText(/HTTH vs HTHT/)).toBeInTheDocument();
     expect(screen.getByText(/E\[T_A\] = 18/)).toBeInTheDocument();
     expect(screen.getByText(/E\[T_B\] = 20/)).toBeInTheDocument();
+  });
+
+  it('opens Quant 12 Brownian motion and stochastic calculus note and renders interactive components', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant12')
+          ? '# Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用\n\n```brownian-motion-demo\n```\n\n```two-d-walk-demo\n```\n\n```ito-geometry-demo\n```\n\n```reflection-principle-demo\n```\n\n```delta-hedging-demo\n```'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 12 · 布朗运动/i }));
+
+    expect(await screen.findByRole('heading', { name: /Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('布朗运动轨道与二次变差演示')).toBeInTheDocument();
+    expect(screen.getByLabelText('2D 随机游走与布朗运动极限演示')).toBeInTheDocument();
+    expect(screen.getByLabelText('伊藤几何与斯特拉托诺维奇积分对比演示')).toBeInTheDocument();
+    expect(screen.getByLabelText('停时与反射原理演示')).toBeInTheDocument();
+    expect(screen.getByLabelText('期权 Delta 对冲与 Gamma 损益演示')).toBeInTheDocument();
   });
 });

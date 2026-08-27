@@ -2,7 +2,7 @@
 
 In the core mathematical and probability interviews at top quantitative hedge funds and proprietary trading firms (Jane Street, Optiver, Citadel, SIG, Jump Trading, Two Sigma), **Martingales and the Optional Stopping Theorem (OST)** are among the most powerful dimensional-reduction mathematical weapons.
 
-This tutorial completes the foundational theory behind the martingale tools introduced in Quant 10: rigorous definitions of martingales and stopping times, the three sufficient conditions of OST and classic counterexamples, the Wald equation family, the four master martingale construction templates, the complete analytical solution for one-dimensional random walks (Gambler's Ruin), and optimal stopping theory applied to classic quantitative interview problems (the Secretary Problem 37% rule, sequential die rolling games, American options early exercise boundaries, and pattern waiting times with Li's casino bankroll martingale).
+This tutorial completes the foundational theory behind the martingale tools introduced in Quant 10: rigorous definitions of martingales and stopping times, the three sufficient conditions of OST and classic counterexamples, the Wald equation family, the four master martingale construction templates, the complete analytical solution for one-dimensional random walks (Gambler's Ruin), and optimal stopping theory applied to classic quantitative interview problems (the Secretary Problem 37% rule, sequential die rolling games, American options early exercise boundaries, pattern waiting times with Li's casino bankroll martingale, and sampling without replacement with Doob decomposition).
 
 ```text
 5-Step Mental Framework for Martingales & Optimal Stopping:
@@ -14,7 +14,7 @@ This tutorial completes the foundational theory behind the martingale tools intr
    - For symmetric zero-drift expected exit time E[T] -> Construct quadratic variance martingale M_n = S_n^2 - n or apply Wald's second identity;
    - For drifted walk expected exit time E[T] -> Construct linear drift-cancelling martingale M_n = S_n - nμ or apply Wald's first identity;
    - For pattern occurrence waiting time E[T_Pattern] -> Construct Li's casino net profit martingale.
-5. Optimal Stopping via Backward Induction: For multi-stage decision problems, construct the Snell Envelope and compute the optimal thresholds via backward dynamic induction.
+5. Optimal Stopping & 1-Step Look-Ahead: Decompose reward process Y_n = N_n + A_n into martingale N_n and predictable drift A_n; if the 1-step increment Δ_n has the monotonic absorbing property (Chow-Robbins), the 1-step look-ahead rule stopping at first Δ_n <= 0 achieves the global optimum!
 ```
 
 ---
@@ -206,6 +206,92 @@ Stopping time: $T = \min\{n \ge 0 : S_n = a \text{ or } S_n = -b\}$.
 
 ---
 
+### 5. Sampling Without Replacement Optimal Stopping & Doob Decomposition
+
+> **Problem Statement (Akuna / SIG / Citadel Quant Interview)**:
+> 
+> A shuffled deck contains **10 cards** (**9 blue** and **1 red**).
+> Rules:
+> - You draw cards one by one **without replacement**;
+> - If you draw a blue card, your score increases by $+1$. You may choose to **stop immediately and take your score**, or **continue drawing**;
+> - If you draw the red card, the game terminates immediately, and your final payout is **$-(n-1)$** (you forfeit all previously accumulated $n-1$ points);
+> - **What is the optimal stopping policy? What is the maximum expected payout?**
+
+#### 1. Notations & Process Definition
+- Let $T \in \{1, 2, \dots, 10\}$ be the step where the red card appears ($P(T = k) = 1/10$ for each $k$);
+- Let $I_n = \mathbf{1}_{\{T > n\}}$ indicate that all first $n$ cards were blue;
+- If stopped at step $n$ with $I_n = 1$, payout is $+n$;
+- If the red card is drawn at step $t \le n$, payout is $-(t-1)$.
+
+#### 2. Base Martingale Construction
+Define the proportion process:
+
+$$
+M_n = \frac{I_n}{10 - n} \quad (0 \le n \le 9)
+$$
+
+**Martingale Verification**:
+Conditioned on $I_n = 1$, there remain $10-n$ cards ($1$ red, $9-n$ blue):
+
+$$
+\mathbb E[I_{n+1} \mid \mathcal F_n] = I_n \cdot \frac{9-n}{10-n}
+$$
+
+Dividing both sides by $10-(n+1) = 9-n$:
+
+$$
+\mathbb E\left[ \frac{I_{n+1}}{10-(n+1)} \;\middle|\; \mathcal F_n \right] = \frac{I_n}{10-n} = M_n
+$$
+
+Hence $M_n$ is a strict discrete-time martingale.
+
+#### 3. Payoff Process & Doob Decomposition
+Let $Y_n$ be the payoff if stopping at step $n$. Conditioned on $I_n = 1$, the 1-step expected reward increment is:
+
+$$
+\Delta_n = \mathbb E[Y_{n+1} - Y_n \mid \mathcal F_n] = \frac{9-n}{10-n}(n+1) + \frac{1}{10-n}(-n) - n = \frac{9 - 3n}{10 - n} I_n
+$$
+
+The explicit Doob decomposition of $Y_n$ is:
+
+$$
+Y_n = N_n + A_n, \quad \text{where } A_n = \sum_{k=0}^{n-1} \frac{9 - 3k}{10 - k} I_k
+$$
+
+#### 4. 1-Step Look-Ahead (1-SLA) & Optimal Stopping Rule
+Analyzing the sign of $\Delta_n = \frac{9-3n}{10-n}$:
+- $n = 0$: $\Delta_0 = 9/10 > 0$ (Submartingale, continue);
+- $n = 1$: $\Delta_1 = 6/9 = 2/3 > 0$ (Submartingale, continue);
+- $n = 2$: $\Delta_2 = 3/8 > 0$ (Submartingale, continue);
+- $n = 3$: $\Delta_3 = 0/7 = 0$ (Indifference point);
+- $n \ge 4$: $9 - 3n < 0 \implies \Delta_n < 0$ (Supermartingale, stop!).
+
+Because $9-3n$ is strictly decreasing in $n$, the stopping region is absorbing (Chow-Robbins Theorem).
+
+> **Optimal Policy**: **Stop immediately upon reaching 3 points (drawing 3 blue cards)**.
+
+#### 5. Expected Payout Calculation
+Under the policy of stopping at $n=3$:
+- **All 3 blue cards** ($P = 7/10$): Payout is $+3$;
+- **Red card on step 1** ($P = 1/10$): Payout is $-(1-1) = 0$;
+- **Red card on step 2** ($P = 1/10$): Payout is $-(2-1) = -1$;
+- **Red card on step 3** ($P = 1/10$): Payout is $-(3-1) = -2$.
+
+$$
+\mathbb E[\text{Payoff}] = \frac{7}{10} \times 3 + \frac{1}{10}(0 - 1 - 2) = \frac{21 - 3}{10} = \mathbf{1.8} \text{ points}
+$$
+
+#### 6. Generalization: Deck with $B$ Blue Cards and $1$ Red Card
+For $B$ blue cards and $1$ red card (total $B+1$ cards):
+
+$$
+\Delta_n = \frac{B - 3n}{B + 1 - n} I_n \implies \boxed{n^* = \left\lfloor \frac{B}{3} \right\rfloor}
+$$
+
+- **Rule of Thumb**: Under the full forfeiture penalty, always stop after drawing **one-third** of the total blue cards!
+
+---
+
 ## Module 8: Interview Quick-Reference Matrix
 
 | Scenario | Recommended Martingale | Analytic Formula / Theorem | Verification Points & Traps |
@@ -330,4 +416,241 @@ B. OST holds in both cases
 C. OST holds for one-sided hitting times but fails with barriers
 D. Barriers restrict the process to a bounded interval and ensure E[T] < ∞, satisfying OST conditions
 explanation: Finite dual absorbing barriers ensure both a bounded state space and finite expected stopping time E[T] = ab < ∞, fully satisfying OST conditions.
+=======
+## Module 1: Martingales
+
+### 1. Definition
+
+Let $\{\mathcal F_n\}$ be a filtration ($\mathcal F_n \subseteq \mathcal F_{n+1}$, representing the information available up to step $n$). A discrete-time stochastic process $\{X_n\}$ is a martingale with respect to $\{\mathcal F_n\}$ if:
+
+$$
+\text{(i) } X_n \text{ is } \mathcal F_n\text{-measurable} \qquad \text{(ii) } \mathbb E[|X_n|] < \infty \qquad \text{(iii) } \mathbb E[X_{n+1} \mid \mathcal F_n] = X_n
+$$
+
+By the tower property $\mathbb E[\mathbb E[\cdot \mid \mathcal F_{n+1}] \mid \mathcal F_n] = \mathbb E[\cdot \mid \mathcal F_n]$, condition (iii) extends to any step $m > n$: $\mathbb E[X_m \mid \mathcal F_n] = X_n$, and unconditionally $\mathbb E[X_n] = \mathbb E[X_0]$ for all $n$.
+
+**Example 1**: Let $S_n = \sum_{i=1}^n X_i$ ($S_0 = 0$) be a simple symmetric random walk with $P(X_i = 1) = P(X_i = -1) = 1/2$. Prove that $M_n = S_n^2 - n$ is a martingale with respect to $\mathcal F_n = \sigma(X_1, \dots, X_n)$.
+
+**Proof**:
+$$
+\mathbb E[M_{n+1} \mid \mathcal F_n] = \mathbb E[(S_n + X_{n+1})^2 - (n+1) \mid \mathcal F_n] = S_n^2 + 2S_n \mathbb E[X_{n+1}] + \mathbb E[X_{n+1}^2] - n - 1
+$$
+Since $\mathbb E[X_{n+1}] = 0$ and $X_{n+1}^2 \equiv 1$:
+$$
+= S_n^2 + 0 + 1 - n - 1 = S_n^2 - n = M_n
+$$
+Thus, $S_n^2 - n$ is a martingale.
+
+---
+
+## Module 2: Stopping Times
+
+### 2. Definition
+
+A random variable $T \in \{0, 1, 2, \dots\} \cup \{\infty\}$ is a stopping time with respect to $\{\mathcal F_n\}$ if $\{T \le n\} \in \mathcal F_n$ for every $n$. Intuitively, the decision to stop at step $n$ depends only on information up to step $n$.
+
+**Example 2**:
+- $T_1 = \min\{n : S_n = 5\}$ is a valid stopping time.
+- $T_2 = T_1 - 1$ (the step immediately before reaching 5) is **not** a stopping time, as checking $\{T_2 = n\}$ requires knowledge of $S_{n+1}$, which is future information at step $n$.
+
+---
+
+## Module 3: The Optional Stopping Theorem (OST)
+
+### 3. Theorem & Three Sufficient Conditions
+
+If $\{X_n\}$ is a martingale and $T$ is a stopping time, then $\mathbb E[X_T] = \mathbb E[X_0]$ holds if **any** of the following conditions is met:
+
+$$
+\begin{aligned}
+\text{Condition A:} &\ T \text{ is bounded (there exists } N < \infty \text{ such that } T \le N \text{ a.s.)} \\
+\text{Condition B:} &\ T < \infty \text{ a.s., and the stopped process } \{X_{n \wedge T}\} \text{ is uniformly bounded} \\
+\text{Condition C:} &\ \mathbb E[T] < \infty, \text{ and martingale increments are bounded: } |X_{n+1} - X_n| \le c
+\end{aligned}
+$$
+
+**Example 3 (Classical Counterexample)**:
+For symmetric random walk $S_n$ with $S_0 = 0$, let $T = \min\{n : S_n = 1\}$. $T < \infty$ a.s. due to recurrence. But applying $\mathbb E[S_T] = \mathbb E[S_0]$ would give $1 = 0$.
+**Reason**: $T$ is unbounded, $S_{n \wedge T}$ is unbounded below, and $\mathbb E[T] = \infty$. None of the three conditions hold!
+
+---
+
+## Module 4: Gambler's Ruin for 1D Random Walk
+
+### 4.1 Symmetric Random Walk ($p = 1/2$)
+
+For $T = \min\{n : S_n = -a \text{ or } S_n = b\}$ ($a, b > 0$):
+1. **Absorption Probability**: Applying OST to $S_n$:
+$$
+\mathbb E[S_T] = 0 \implies -a(1 - p_b) + b p_b = 0 \implies \boxed{p_b = \frac{a}{a+b}}
+$$
+2. **Expected Absorption Time**: Applying OST to $S_n^2 - n$:
+$$
+\mathbb E[S_T^2 - T] = 0 \implies \mathbb E[T] = \mathbb E[S_T^2] = a^2 \frac{b}{a+b} + b^2 \frac{a}{a+b} = \boxed{ab}
+$$
+
+### 4.2 Asymmetric Random Walk ($p \ne q$, Exponential Martingale)
+
+When $p \ne q$, $S_n$ has non-zero drift. Define the exponential martingale $M_n = r^{S_n}$ with $r = q/p$:
+$$
+\mathbb E[r^{X_{n+1}}] = p r + q r^{-1} = p \frac{q}{p} + q \frac{p}{q} = 1
+$$
+Applying OST to $M_n$:
+$$
+\mathbb E[M_T] = 1 \implies r^{-a}(1 - p_b) + r^b p_b = 1 \implies \boxed{p_b = \frac{r^a - 1}{r^{a+b} - 1}, \quad r = \frac{q}{p}}
+$$
+
+---
+
+## Module 5: Optimal Stopping, 1-Step Look-Ahead & Doob Decomposition
+
+### 5.1 Theoretical Foundations: Doob Decomposition & 1-SLA
+
+#### 1. Doob Decomposition Theorem
+Any adapted, integrable discrete-time stochastic process $\{Y_n\}_{n \ge 0}$ can be **uniquely decomposed** into a martingale $\{N_n\}$ and a predictable process $\{A_n\}$:
+
+$$
+Y_n = N_n + A_n
+$$
+
+where:
+- $N_0 = Y_0, \quad A_0 = 0$;
+- $\{N_n\}$ is a martingale ($\mathbb E[N_{n+1} \mid \mathcal F_n] = N_n$);
+- $\{A_n\}$ is a **predictable process** ($A_{n+1}$ is $\mathcal F_n$-measurable), constructed explicitly as:
+
+$$
+A_n = \sum_{k=0}^{n-1} \mathbb E[Y_{k+1} - Y_k \mid \mathcal F_k]
+$$
+
+- $A_n$ captures the cumulative predictable drift: if $A_n$ is non-decreasing, $Y_n$ is a submartingale (expected reward grows); if $A_n$ is non-increasing, $Y_n$ is a supermartingale (expected reward declines).
+
+#### 2. The 1-Step Look-Ahead (1-SLA) Monotone Stopping Rule
+Let $\Delta_n = \mathbb E[Y_{n+1} - Y_n \mid \mathcal F_n]$ be the 1-step conditional expected reward increment. Define the stopping region:
+
+$$
+B = \{n : \Delta_n \le 0\}
+$$
+
+**Chow-Robbins Monotone Stopping Theorem**:
+If the stopping region $B$ is **closed/absorbing** (i.e., once $\Delta_n \le 0$, then $\Delta_{n+k} \le 0$ for all future steps $k \ge 0$), then:
+> **The global optimal stopping time is given by the 1-Step Look-Ahead rule**:
+> 
+> $$
+> \tau^* = \inf\{n \ge 0 : \Delta_n \le 0\}
+> $$
+> 
+> No backward induction / dynamic programming is necessary; local non-profitability guarantees global termination optimality!
+
+---
+
+### 5.2 Classic Quant Interview Problem: Sampling Without Replacement (10 Cards: 9 Blue, 1 Red)
+
+> **Problem Statement (Akuna / SIG / Citadel Quant Interview)**:
+> 
+> A shuffled deck contains **10 cards** (**9 blue** and **1 red**).
+> Rules:
+> - You draw cards one by one **without replacement**;
+> - If you draw a blue card, your score increases by $+1$. You may choose to **stop immediately and take your score**, or **continue drawing**;
+> - If you draw the red card, the game terminates immediately, and your final payout is **$-(n-1)$** (you forfeit all previously accumulated $n-1$ points);
+> - **What is the optimal stopping policy? What is the maximum expected payout?**
+
+---
+
+### 5.3 Step-by-Step Derivation: Martingale Construction & Doob Decomposition
+
+#### 1. Notations & Process Definition
+- Let $T \in \{1, 2, \dots, 10\}$ be the step where the red card appears ($P(T = k) = 1/10$ for each $k$);
+- Let $I_n = \mathbf{1}_{\{T > n\}}$ indicate that all first $n$ cards were blue;
+- If stopped at step $n$ with $I_n = 1$, payoff is $+n$;
+- If the red card is drawn at step $t \le n$, payoff is $-(t-1)$.
+
+#### 2. Base Martingale Construction
+Define the proportion process:
+
+$$
+M_n = \frac{I_n}{10 - n} \quad (0 \le n \le 9)
+$$
+
+**Martingale Verification**:
+Conditioned on $I_n = 1$, there remain $10-n$ cards ($1$ red, $9-n$ blue):
+
+$$
+\mathbb E[I_{n+1} \mid \mathcal F_n] = I_n \cdot \frac{9-n}{10-n}
+$$
+
+Dividing both sides by $10-(n+1) = 9-n$:
+
+$$
+\mathbb E\left[ \frac{I_{n+1}}{10-(n+1)} \;\middle|\; \mathcal F_n \right] = \frac{I_n}{10-n} = M_n
+$$
+
+Hence $M_n$ is a strict discrete-time martingale.
+
+#### 3. Payoff Process & Doob Decomposition
+Let $Y_n$ be the payoff if stopping at step $n$. Conditioned on $I_n = 1$, the 1-step expected reward increment is:
+
+$$
+\Delta_n = \mathbb E[Y_{n+1} - Y_n \mid \mathcal F_n] = \frac{9-n}{10-n}(n+1) + \frac{1}{10-n}(-n) - n
+$$
+
+Simplifying the numerator:
+$$
+(9-n)(n+1) - n - n(10-n) = 9 - 3n
+$$
+
+Thus:
+
+$$
+\Delta_n = \mathbb E[Y_{n+1} - Y_n \mid \mathcal F_n] = \frac{9 - 3n}{10 - n} I_n
+$$
+
+The explicit Doob decomposition of $Y_n$ is:
+
+$$
+Y_n = N_n + A_n, \quad \text{where } A_n = \sum_{k=0}^{n-1} \frac{9 - 3k}{10 - k} I_k
+$$
+
+#### 4. Optimal Stopping Rule
+Analyzing the sign of $\Delta_n = \frac{9-3n}{10-n}$:
+- $n = 0$: $\Delta_0 = 9/10 > 0$ (Submartingale, continue);
+- $n = 1$: $\Delta_1 = 6/9 = 2/3 > 0$ (Submartingale, continue);
+- $n = 2$: $\Delta_2 = 3/8 > 0$ (Submartingale, continue);
+- $n = 3$: $\Delta_3 = 0/7 = 0$ (Indifference point);
+- $n \ge 4$: $9 - 3n < 0 \implies \Delta_n < 0$ (Supermartingale, stop!).
+
+Because $9-3n$ is strictly decreasing in $n$, the stopping region is absorbing.
+
+> **Optimal Policy**: **Stop immediately upon reaching 3 points (drawing 3 blue cards)**. (Stopping at $n=3$ or $n=4$ yields identical expectation; $n^*=3$ minimizes variance).
+
+#### 5. Expected Payout Calculation
+Under the policy of stopping at $n=3$:
+- **All 3 blue cards** ($P = \frac{9}{10} \times \frac{8}{9} \times \frac{7}{8} = \frac{7}{10}$): Payout is $+3$;
+- **Red card on step 1** ($P = 1/10$): Payout is $-(1-1) = 0$;
+- **Red card on step 2** ($P = 1/10$): Payout is $-(2-1) = -1$;
+- **Red card on step 3** ($P = 1/10$): Payout is $-(3-1) = -2$.
+
+$$
+\mathbb E[\text{Payoff}] = \frac{7}{10} \times 3 + \frac{1}{10}(0 - 1 - 2) = \frac{21 - 3}{10} = \mathbf{1.8} \text{ points}
+$$
+
+---
+
+### 5.4 Generalization: Deck with $B$ Blue Cards and $1$ Red Card
+
+For $B$ blue cards and $1$ red card (total $B+1$ cards):
+
+$$
+\Delta_n = \frac{B - 3n}{B + 1 - n} I_n \implies \boxed{n^* = \left\lfloor \frac{B}{3} \right\rfloor}
+$$
+
+- For $B=9$: $n^* = 9/3 = 3$;
+- For $B=99$: $n^* = 99/3 = 33$;
+- **Rule of Thumb**: Under the full forfeiture penalty, always stop after drawing **one-third** of the total blue cards!
+
+---
+
+## Interactive Visualization: Random Walk & Absorbing Barriers
+
+```random-walk-ruin-demo
+>>>>>>> 805464e (feat(quant): add Quant 11 Doob decomposition & Quant 12 Brownian motion with Black-Scholes and interactive demos)
 ```

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brownian Motion, Itô Calculus & Quant Trading Interactive Visualizer</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #182234;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #38bdf8, #a855f7, #f43f5e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      border-color: var(--accent-blue);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+      color: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+    }
+
+    /* Tab Panes */
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Layout Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+    }
+
+    @media (max-width: 960px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .canvas-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 480px;
+      border-radius: 6px;
+      background: #090d16;
+    }
+
+    .control-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-group label span.val {
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-weight: bold;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--border-color);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #334155;
+      border-color: var(--accent-blue);
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border: none;
+    }
+
+    .action-btn.primary:hover {
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+    }
+
+    /* Metric Badges */
+    .metric-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: bold;
+    }
+
+    .formula-box {
+      background: rgba(56, 189, 248, 0.07);
+      border-left: 3px solid var(--accent-blue);
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #bae6fd;
+    }
+
+    .explanation-box {
+      margin-top: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px 22px;
+    }
+
+    .explanation-box h3 {
+      font-size: 1.1rem;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+    }
+
+    .explanation-box p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Brownian Motion & Quantitative Finance Lab</h1>
+    <p>Interactive Exploration of Stochastic Calculus, Geometry, Stopping Times & Option Hedging</p>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab(0)">1. Quadratic Variation & Roughness</button>
+    <button class="tab-btn" onclick="switchTab(1)">2. 2D Random Walk & Donsker Limit</button>
+    <button class="tab-btn" onclick="switchTab(2)">3. Itô vs Stratonovich Geometry</button>
+    <button class="tab-btn" onclick="switchTab(3)">4. Reflection Principle & Stopping Times</button>
+    <button class="tab-btn" onclick="switchTab(4)">5. Black-Scholes Delta Hedging & Gamma PnL</button>
+  </div>
+
+  <!-- TAB 1: Quadratic Variation -->
+  <div class="tab-pane active" id="tab-0">
+    <div class="grid-2">
+      <div class="canvas-container">
+        <canvas id="canvas-qv"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div>Brownian Path $W_t$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#a855f7;"></div>Quadratic Sum $\sum (\Delta W)^2$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#f43f5e;"></div>Total Variation $\sum |\Delta W|$</div>
+        </div>
+      </div>
+      <div class="control-panel">
+        <h3 style="font-size: 1.1rem; color: var(--accent-blue);">Simulation Controls</h3>
+        <div class="control-group">
+          <label>Time Horizon $T$: <span class="val" id="val-t">1.0</span></label>
+          <input type="range" id="param-t" min="0.5" max="5.0" step="0.5" value="1.0">
+        </div>
+        <div class="control-group">
+          <label>Number of Steps $N$: <span class="val" id="val-n">2000</span></label>
+          <input type="range" id="param-n" min="100" max="10000" step="100" value="2000">
+        </div>
+        <div class="btn-group">
+          <button class="action-btn primary" onclick="runSimQV()">Regenerate Path</button>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Quadratic Variation $[W]_T$ (Theory = T)</div>
+          <div class="metric-val" id="metric-qv" style="color: #a855f7;">0.000</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">First-Order Total Variation $\sum |\Delta W|$</div>
+          <div class="metric-val" id="metric-tv" style="color: #f43f5e;">0.000</div>
+        </div>
+
+        <div class="formula-box">
+          $(dW_t)^2 = dt$<br>
+          $\lim_{N\to\infty} \sum_{i=1}^N (W_{t_i} - W_{t_{i-1}})^2 \xrightarrow{L^2} T$<br>
+          $\lim_{N\to\infty} \sum_{i=1}^N |W_{t_i} - W_{t_{i-1}}| = \infty$
+        </div>
+      </div>
+    </div>
+    <div class="explanation-box">
+      <h3>Key Intuition: Why Ordinary Calculus Fails for Brownian Motion</h3>
+      <p>A standard smooth function $f(t)$ has bounded first-order variation and zero quadratic variation ($dt^2 = 0$).</p>
+      <p>Brownian motion sample paths are <strong>nowhere differentiable</strong> and have <strong>infinite total variation</strong>, meaning the curve is infinitely jagged at all zoom levels. However, its quadratic variation converges strictly to $T$. This fundamental fact forces us to retain the second-order Taylor term $\frac{1}{2} f''(W_t) (dW_t)^2 = \frac{1}{2} f''(W_t) dt$ in stochastic calculus.</p>
+    </div>
+  </div>
+
+  <!-- TAB 2: 2D Walk & Donsker Limit -->
+  <div class="tab-pane" id="tab-1">
+    <div class="grid-2">
+      <div class="canvas-container">
+        <canvas id="canvas-2d"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#22c55e;"></div>Start (0,0)</div>
+          <div class="legend-item"><div class="legend-color" style="background:#f43f5e;"></div>Current Position</div>
+          <div class="legend-item"><div class="legend-color" style="background:rgba(56, 189, 248, 0.4); border: 1px dashed #38bdf8;"></div>$\epsilon$-Neighborhood $B_\epsilon(0)$</div>
+        </div>
+      </div>
+      <div class="control-panel">
+        <h3 style="font-size: 1.1rem; color: var(--accent-blue);">2D Walk Parameters</h3>
+        <div class="control-group">
+          <label>Total Steps $K$: <span class="val" id="val-steps2d">5000</span></label>
+          <input type="range" id="param-steps2d" min="500" max="25000" step="500" value="5000">
+        </div>
+        <div class="control-group">
+          <label>Neighborhood Radius $\epsilon$: <span class="val" id="val-eps2d">1.5</span></label>
+          <input type="range" id="param-eps2d" min="0.5" max="5.0" step="0.5" value="1.5">
+        </div>
+        <div class="btn-group">
+          <button class="action-btn primary" onclick="runSim2D()">New 2D Simulation</button>
+          <button class="action-btn" id="btn-anim2d" onclick="toggleAnim2D()">Animate</button>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Returns to $\epsilon$-Neighborhood</div>
+          <div class="metric-val" id="metric-returns2d" style="color: #22c55e;">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Max Radial Distance $\max \|B_t\|$</div>
+          <div class="metric-val" id="metric-dist2d" style="color: #38bdf8;">0.00</div>
+        </div>
+
+        <div class="formula-box">
+          <strong>Donsker Invariance Principle:</strong><br>
+          $\frac{1}{\sqrt{N}} S_{\lfloor Nt \rfloor} \implies (B_t^{(1)}, B_t^{(2)})$<br><br>
+          <strong>Pólya's Theorem:</strong><br>
+          1D/2D: Recurrent ($P(\text{return}) = 1$)<br>
+          3D: Transient ($P(\text{return}) \approx 0.3405$)
+        </div>
+      </div>
+    </div>
+    <div class="explanation-box">
+      <h3>2D Brownian Motion: Neighborhood Recurrence vs. Point Transience</h3>
+      <p>In discrete $\mathbb{Z}^2$, the simple symmetric random walk hits the exact point $(0,0)$ infinitely many times with probability 1 (null recurrence). In continuous 2D Brownian motion, the set $\{0\}$ has zero capacity, so $P(B_t = (0,0) \text{ for some } t > 0) = 0$ (point transience).</p>
+      <p>However, 2D Brownian motion will enter any open disk $B_\epsilon(x)$ of arbitrarily small radius $\epsilon > 0$ for unbounded times as $t \to \infty$ (neighborhood recurrence). Furthermore, by Lévy's conformal invariance theorem, any analytic function $f(z)$ transforms a 2D Brownian motion into another 2D Brownian motion with a time change!</p>
+    </div>
+  </div>
+
+  <!-- TAB 3: Itô vs Stratonovich -->
+  <div class="tab-pane" id="tab-2">
+    <div class="grid-2">
+      <div class="canvas-container">
+        <canvas id="canvas-ito"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div>Sample Path $W_t$</div>
+          <div class="legend-item"><div class="legend-color" style="background:rgba(56, 189, 248, 0.3); border:1px solid #38bdf8;"></div>Itô Sum (Left-Point)</div>
+          <div class="legend-item"><div class="legend-color" style="background:rgba(168, 85, 247, 0.3); border:1px solid #a855f7;"></div>Stratonovich (Midpoint)</div>
+        </div>
+      </div>
+      <div class="control-panel">
+        <h3 style="font-size: 1.1rem; color: var(--accent-blue);">Integration Scheme</h3>
+        <div class="control-group">
+          <label>Partition Size $N$: <span class="val" id="val-iton">20</span></label>
+          <input type="range" id="param-iton" min="5" max="100" step="5" value="20">
+        </div>
+        <div class="btn-group">
+          <button class="action-btn primary" onclick="runSimIto()">Generate Path</button>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Theoretical $\frac{1}{2} W_T^2 - \frac{1}{2} T$ (Itô)</div>
+          <div class="metric-val" id="metric-ito-exact" style="color: #38bdf8;">0.000</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Itô Riemann Sum $\sum W_{t_i} \Delta W_i$</div>
+          <div class="metric-val" id="metric-ito-sum" style="color: #38bdf8;">0.000</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Stratonovich Sum $\sum \bar{W}_i \Delta W_i \to \frac{1}{2} W_T^2$</div>
+          <div class="metric-val" id="metric-strat-sum" style="color: #a855f7;">0.000</div>
+        </div>
+
+        <div class="formula-box">
+          $\int_0^T W_t dW_t = \frac{1}{2}W_T^2 - \frac{1}{2}T$<br>
+          $\int_0^T W_t \circ dW_t = \frac{1}{2}W_T^2$<br>
+          $\text{Itô Correction} = -\frac{1}{2}[W,W]_T = -\frac{1}{2}T$
+        </div>
+      </div>
+    </div>
+    <div class="explanation-box">
+      <h3>Why Quant Finance Uses Itô Calculus Instead of Stratonovich</h3>
+      <p><strong>Itô Integral:</strong> Evaluates at the left endpoint $t_i$. It is non-anticipating (adapted), meaning trading decisions at $t_i$ cannot peek into the future increment $\Delta W_i = W_{t_{i+1}} - W_{t_i}$. Therefore, Itô integrals are <strong>martingales</strong> with zero expected gain from pure noise ($\mathbb{E}[\int H dW] = 0$).</p>
+      <p><strong>Stratonovich Integral:</strong> Evaluates at the midpoint $(t_i + t_{i+1})/2$. It obeys standard Newton-Leibniz chain rules, but it 'anticipates' future information, so its expectation is non-zero ($\mathbb{E} \ne 0$). In financial markets, no trader can trade at the midpoint of an uncompleted future tick!</p>
+    </div>
+  </div>
+
+  <!-- TAB 4: Stopping Times & Reflection Principle -->
+  <div class="tab-pane" id="tab-3">
+    <div class="grid-2">
+      <div class="canvas-container">
+        <canvas id="canvas-reflect"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div>Original Path $W_t$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#f43f5e; border-top: 2px dashed #f43f5e;"></div>Reflected Path $W_t^*$ after $\tau_a$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div>Barrier Level $a$</div>
+        </div>
+      </div>
+      <div class="control-panel">
+        <h3 style="font-size: 1.1rem; color: var(--accent-blue);">Barrier & Stopping Time</h3>
+        <div class="control-group">
+          <label>Barrier Level $a$: <span class="val" id="val-barrier">1.5</span></label>
+          <input type="range" id="param-barrier" min="0.5" max="3.0" step="0.25" value="1.5">
+        </div>
+        <div class="control-group">
+          <label>Time $T$: <span class="val" id="val-reflect-t">2.0</span></label>
+          <input type="range" id="param-reflect-t" min="1.0" max="5.0" step="0.5" value="2.0">
+        </div>
+        <div class="btn-group">
+          <button class="action-btn primary" onclick="runSimReflect()">Sample Path</button>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">First Hitting Time $\tau_a$</div>
+          <div class="metric-val" id="metric-tau" style="color: #f59e0b;">Not Hit</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Theoretical $P(M_T \ge a) = 2(1 - \Phi(a/\sqrt{T}))$</div>
+          <div class="metric-val" id="metric-prob-hit" style="color: #38bdf8;">0.000</div>
+        </div>
+
+        <div class="formula-box">
+          <strong>Reflection Principle:</strong><br>
+          $\mathbb{P}(M_T \ge a) = 2 \mathbb{P}(W_T \ge a)$<br><br>
+          <strong>Hitting Time Density (Lévy distribution):</strong><br>
+          $f_{\tau_a}(t) = \frac{a}{\sqrt{2\pi t^3}} e^{-\frac{a^2}{2t}}$
+        </div>
+      </div>
+    </div>
+    <div class="explanation-box">
+      <h3>The Geometry of the Reflection Principle</h3>
+      <p>For any path that reaches barrier $a$ before time $T$ (so $\tau_a \le T$), by the strong Markov property the future increments $W_t - W_{\tau_a}$ for $t \ge \tau_a$ are a new independent Brownian motion starting at $a$.</p>
+      <p>By spatial symmetry, the path is equally likely to end up above $a$ as below $a$ at terminal time $T$. Reflecting the trajectory across $y = a$ after $\tau_a$ maps every path ending below $a$ (that hit $a$) to a path ending above $a$. Hence, the probability of reaching $a$ is exactly <strong>twice</strong> the probability of finishing above $a$!</p>
+    </div>
+  </div>
+
+  <!-- TAB 5: Option Hedging & Gamma PnL -->
+  <div class="tab-pane" id="tab-4">
+    <div class="grid-2">
+      <div class="canvas-container">
+        <canvas id="canvas-bs"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div>Stock Price $S_t$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#22c55e;"></div>Delta Hedged PnL $\Pi_t$</div>
+          <div class="legend-item"><div class="legend-color" style="background:#a855f7;"></div>Delta $\Delta_t$</div>
+        </div>
+      </div>
+      <div class="control-panel">
+        <h3 style="font-size: 1.1rem; color: var(--accent-blue);">Market & Hedging Settings</h3>
+        <div class="control-group">
+          <label>Implied Vol $\sigma_{\text{implied}}$: <span class="val" id="val-iv">20%</span></label>
+          <input type="range" id="param-iv" min="0.10" max="0.60" step="0.02" value="0.20">
+        </div>
+        <div class="control-group">
+          <label>Realized Vol $\sigma_{\text{realized}}$: <span class="val" id="val-rv">35%</span></label>
+          <input type="range" id="param-rv" min="0.05" max="0.70" step="0.05" value="0.35">
+        </div>
+        <div class="control-group">
+          <label>Rebalance Frequency: <span class="val" id="val-rebal">Daily (252)</span></label>
+          <input type="range" id="param-rebal" min="20" max="252" step="10" value="252">
+        </div>
+        <div class="btn-group">
+          <button class="action-btn primary" onclick="runSimBS()">Simulate Market Path</button>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Cumulative Hedging PnL (Long Gamma)</div>
+          <div class="metric-val" id="metric-pnl" style="color: #22c55e;">$0.00</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Theoretical Gamma PnL $\approx \frac{1}{2} \int S^2 \Gamma (\sigma_R^2 - \sigma_I^2) dt$</div>
+          <div class="metric-val" id="metric-theo-pnl" style="color: #38bdf8;">$0.00</div>
+        </div>
+
+        <div class="formula-box">
+          $d\Pi_t = (r\Pi_t)dt + \frac{1}{2}S_t^2 \Gamma_t (\sigma_R^2 - \sigma_I^2)dt$<br>
+          Long Gamma ($\Gamma > 0$) earns positive PnL whenever realized volatility exceeds implied volatility!
+        </div>
+      </div>
+    </div>
+    <div class="explanation-box">
+      <h3>Options Market Making & The Volatility Signature</h3>
+      <p>When an options trader buys a call/put and dynamically Delta-hedges ($-\Delta_t$ shares of stock), they eliminate directional risk ($dW_t$ term disappears via Itô's lemma). The residual daily PnL is pure <strong>Gamma vs. Theta</strong>:</p>
+      <p>Every day, the option decays in value due to $\Theta dt < 0$. But as the stock fluctuates, discrete rebalancing buys low and sells high, capturing $\frac{1}{2} S^2 \Gamma (\Delta S)^2 \approx \frac{1}{2} S^2 \Gamma \sigma_R^2 dt$. If realized volatility $\sigma_R > \sigma_I$, the Gamma profit outweighs Theta decay, generating consistent alpha.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Math helper functions
+  function normalRandom() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  function stdNormalCDF(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+    let p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    if (x > 0) p = 1 - p;
+    return p;
+  }
+
+  function blackScholesCall(S, K, T, r, sigma) {
+    if (T <= 1e-6) return { price: Math.max(0, S - K), delta: S > K ? 1 : 0, gamma: 0 };
+    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+    const d2 = d1 - sigma * Math.sqrt(T);
+    const delta = stdNormalCDF(d1);
+    const gamma = (Math.exp(-0.5 * d1 * d1) / Math.sqrt(2 * Math.PI)) / (S * sigma * Math.sqrt(T));
+    const price = S * delta - K * Math.exp(-r * T) * stdNormalCDF(d2);
+    return { price, delta, gamma };
+  }
+
+  function switchTab(index) {
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.tab-pane').forEach((pane, i) => {
+      pane.classList.toggle('active', i === index);
+    });
+    // Trigger resize / redraw
+    if (index === 0) runSimQV();
+    if (index === 1) runSim2D();
+    if (index === 2) runSimIto();
+    if (index === 3) runSimReflect();
+    if (index === 4) runSimBS();
+  }
+
+  // --- TAB 1: Quadratic Variation ---
+  function runSimQV() {
+    const canvas = document.getElementById('canvas-qv');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 480 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 480;
+
+    const T = parseFloat(document.getElementById('param-t').value);
+    const N = parseInt(document.getElementById('param-n').value);
+    document.getElementById('val-t').textContent = T.toFixed(1);
+    document.getElementById('val-n').textContent = N;
+
+    const dt = T / N;
+    const sqrtDt = Math.sqrt(dt);
+    const times = [0];
+    const Wt = [0];
+    const qvArr = [0];
+    const tvArr = [0];
+
+    let currentW = 0;
+    let sumQV = 0;
+    let sumTV = 0;
+
+    for (let i = 1; i <= N; i++) {
+      const dW = normalRandom() * sqrtDt;
+      currentW += dW;
+      sumQV += dW * dW;
+      sumTV += Math.abs(dW);
+      times.push(i * dt);
+      Wt.push(currentW);
+      qvArr.push(sumQV);
+      tvArr.push(sumTV);
+    }
+
+    document.getElementById('metric-qv').textContent = sumQV.toFixed(4);
+    document.getElementById('metric-tv').textContent = sumTV.toFixed(2);
+
+    // Render paths
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw Grid
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    for (let x = 50; x < W; x += 60) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 30; y < H; y += 50) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Min & max for scaling W
+    const minW = Math.min(...Wt, -2);
+    const maxW = Math.max(...Wt, 2);
+    const padY = 40;
+    const padX = 50;
+
+    const mapX = (t) => padX + (t / T) * (W - padX - 20);
+    const mapYW = (w) => H/2 - (w / (Math.max(Math.abs(minW), Math.abs(maxW)) * 1.3)) * (H/2 - padY);
+
+    // Axis 0
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padX, H/2);
+    ctx.lineTo(W - 20, H/2);
+    ctx.stroke();
+
+    // Draw W_t path
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapYW(Wt[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Draw Quadratic Variation path (scaled to bottom half)
+    const mapYQV = (qv) => H - 20 - (qv / (T * 1.8)) * (H/3);
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapYQV(qvArr[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Theoretical line for QV = t
+    ctx.strokeStyle = '#64748b';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(mapX(0), mapYQV(0));
+    ctx.lineTo(mapX(T), mapYQV(T));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('0', padX - 15, H/2 + 4);
+    ctx.fillText('t=0', padX, H - 6);
+    ctx.fillText(`t=${T}`, W - 40, H - 6);
+    ctx.fillStyle = '#a855f7';
+    ctx.fillText(`[W]_t curve ≈ t (QV = ${sumQV.toFixed(3)})`, padX + 10, mapYQV(sumQV) - 8);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`W_t path (final: ${currentW.toFixed(2)})`, padX + 10, mapYW(currentW) - 8);
+  }
+
+  // --- TAB 2: 2D Walk & Donsker Limit ---
+  let anim2dId = null;
+  let is2DRunning = false;
+
+  function runSim2D() {
+    if (anim2dId) cancelAnimationFrame(anim2dId);
+    is2DRunning = false;
+    const btnAnim = document.getElementById('btn-anim2d');
+    if (btnAnim) btnAnim.textContent = 'Animate';
+
+    const canvas = document.getElementById('canvas-2d');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 480 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 480;
+
+    const totalSteps = parseInt(document.getElementById('param-steps2d').value);
+    const eps = parseFloat(document.getElementById('param-eps2d').value);
+    document.getElementById('val-steps2d').textContent = totalSteps;
+    document.getElementById('val-eps2d').textContent = eps.toFixed(1);
+
+    const pathX = [0];
+    const pathY = [0];
+    let curX = 0, curY = 0;
+    let returns = 0;
+    let maxDist = 0;
+
+    const dt = 1.0 / 100;
+    const sqrtDt = Math.sqrt(dt);
+
+    for (let i = 1; i <= totalSteps; i++) {
+      curX += normalRandom() * sqrtDt;
+      curY += normalRandom() * sqrtDt;
+      pathX.push(curX);
+      pathY.push(curY);
+
+      const r = Math.sqrt(curX * curX + curY * curY);
+      if (r > maxDist) maxDist = r;
+      if (r <= eps && i > 20) returns++;
+    }
+
+    document.getElementById('metric-returns2d').textContent = returns;
+    document.getElementById('metric-dist2d').textContent = maxDist.toFixed(2);
+
+    // Render 2D space
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2;
+    const cy = H / 2;
+    const scale = Math.min(W, H) / (Math.max(maxDist, eps * 2) * 2.4);
+
+    // Axes
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+    ctx.stroke();
+
+    // Epsilon neighborhood
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, eps * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Path
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i <= totalSteps; i++) {
+      const px = cx + pathX[i] * scale;
+      const py = cy - pathY[i] * scale;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Start point
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // End point
+    const endPx = cx + pathX[totalSteps] * scale;
+    const endPy = cy - pathY[totalSteps] * scale;
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.arc(endPx, endPy, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`Neighborhood B_${eps}(0)`, cx + eps * scale + 6, cy - 6);
+  }
+
+  function toggleAnim2D() {
+    if (is2DRunning) {
+      cancelAnimationFrame(anim2dId);
+      is2DRunning = false;
+      document.getElementById('btn-anim2d').textContent = 'Animate';
+    } else {
+      is2DRunning = true;
+      document.getElementById('btn-anim2d').textContent = 'Pause';
+      runSim2D();
+    }
+  }
+
+  // --- TAB 3: Itô vs Stratonovich ---
+  function runSimIto() {
+    const canvas = document.getElementById('canvas-ito');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 480 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 480;
+
+    const N = parseInt(document.getElementById('param-iton').value);
+    document.getElementById('val-iton').textContent = N;
+    const T = 1.0;
+    const dt = T / N;
+    const sqrtDt = Math.sqrt(dt);
+
+    const times = [0];
+    const Wt = [0];
+    let curW = 0;
+    for (let i = 1; i <= N; i++) {
+      curW += normalRandom() * sqrtDt;
+      times.push(i * dt);
+      Wt.push(curW);
+    }
+
+    let itoSum = 0;
+    let stratSum = 0;
+    for (let i = 0; i < N; i++) {
+      const dW = Wt[i + 1] - Wt[i];
+      itoSum += Wt[i] * dW; // Left point
+      stratSum += 0.5 * (Wt[i] + Wt[i + 1]) * dW; // Midpoint
+    }
+
+    const exactIto = 0.5 * curW * curW - 0.5 * T;
+
+    document.getElementById('metric-ito-exact').textContent = exactIto.toFixed(4);
+    document.getElementById('metric-ito-sum').textContent = itoSum.toFixed(4);
+    document.getElementById('metric-strat-sum').textContent = stratSum.toFixed(4);
+
+    // Draw comparison visual
+    ctx.clearRect(0, 0, W, H);
+    const padX = 50, padY = 40;
+    const minW = Math.min(...Wt, -1.5);
+    const maxW = Math.max(...Wt, 1.5);
+    const mapX = (t) => padX + (t / T) * (W - padX - 30);
+    const mapY = (w) => H/2 - (w / (Math.max(Math.abs(minW), Math.abs(maxW)) * 1.4)) * (H/2 - padY);
+
+    // Grid
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padX, H/2); ctx.lineTo(W - 20, H/2);
+    ctx.stroke();
+
+    // Draw Itô rectangles (Left endpoint staircases)
+    for (let i = 0; i < N; i++) {
+      const x0 = mapX(times[i]);
+      const x1 = mapX(times[i + 1]);
+      const yLeft = mapY(Wt[i]);
+      const yZero = mapY(0);
+
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.fillRect(x0, Math.min(yLeft, yZero), x1 - x0, Math.abs(yLeft - yZero));
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+      ctx.strokeRect(x0, Math.min(yLeft, yZero), x1 - x0, Math.abs(yLeft - yZero));
+    }
+
+    // Path
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapY(Wt[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Node points
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapY(Wt[i]);
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- TAB 4: Stopping Times & Reflection Principle ---
+  function runSimReflect() {
+    const canvas = document.getElementById('canvas-reflect');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 480 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 480;
+
+    const a = parseFloat(document.getElementById('param-barrier').value);
+    const T = parseFloat(document.getElementById('param-reflect-t').value);
+    document.getElementById('val-barrier').textContent = a.toFixed(2);
+    document.getElementById('val-reflect-t').textContent = T.toFixed(1);
+
+    const N = 1000;
+    const dt = T / N;
+    const sqrtDt = Math.sqrt(dt);
+
+    const times = [0];
+    const origW = [0];
+    const reflW = [0];
+
+    let curW = 0;
+    let hitIndex = -1;
+
+    for (let i = 1; i <= N; i++) {
+      curW += normalRandom() * sqrtDt;
+      times.push(i * dt);
+      origW.push(curW);
+
+      if (hitIndex === -1 && curW >= a) {
+        hitIndex = i;
+      }
+    }
+
+    // Build reflected path
+    for (let i = 0; i <= N; i++) {
+      if (hitIndex !== -1 && i >= hitIndex) {
+        reflW.push(2 * a - origW[i]);
+      } else {
+        reflW.push(origW[i]);
+      }
+    }
+
+    const hitTime = hitIndex !== -1 ? (hitIndex * dt).toFixed(3) : 'Never reached';
+    document.getElementById('metric-tau').textContent = hitTime;
+
+    const probTheory = 2 * (1 - stdNormalCDF(a / Math.sqrt(T)));
+    document.getElementById('metric-prob-hit').textContent = (probTheory * 100).toFixed(2) + '%';
+
+    // Render
+    ctx.clearRect(0, 0, W, H);
+    const padX = 50, padY = 40;
+    const maxVal = Math.max(a * 1.5, ...origW, ...reflW, 2.5);
+    const minVal = Math.min(-1.5, ...origW, ...reflW);
+
+    const mapX = (t) => padX + (t / T) * (W - padX - 30);
+    const mapY = (w) => H/2 - (w / (Math.max(Math.abs(minVal), Math.abs(maxVal)) * 1.2)) * (H/2 - padY);
+
+    // Barrier line
+    const barrierY = mapY(a);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(padX, barrierY);
+    ctx.lineTo(W - 20, barrierY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Zero axis
+    ctx.strokeStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(padX, mapY(0));
+    ctx.lineTo(W - 20, mapY(0));
+    ctx.stroke();
+
+    // Original path
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapY(origW[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Reflected path
+    if (hitIndex !== -1) {
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      for (let i = hitIndex; i <= N; i++) {
+        const px = mapX(times[i]);
+        const py = mapY(reflW[i]);
+        if (i === hitIndex) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Hit point
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(mapX(hitIndex * dt), mapY(a), 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`Barrier Level a = ${a.toFixed(2)}`, W - 140, barrierY - 8);
+  }
+
+  // --- TAB 5: Option Hedging & Gamma PnL ---
+  function runSimBS() {
+    const canvas = document.getElementById('canvas-bs');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 480 * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 480;
+
+    const sigmaImp = parseFloat(document.getElementById('param-iv').value);
+    const sigmaReal = parseFloat(document.getElementById('param-rv').value);
+    const N = parseInt(document.getElementById('param-rebal').value);
+
+    document.getElementById('val-iv').textContent = (sigmaImp * 100).toFixed(0) + '%';
+    document.getElementById('val-rv').textContent = (sigmaReal * 100).toFixed(0) + '%';
+    document.getElementById('val-rebal').textContent = `${N} Steps/Yr`;
+
+    const T = 1.0;
+    const r = 0.03;
+    const S0 = 100;
+    const K = 100;
+    const dt = T / N;
+    const sqrtDt = Math.sqrt(dt);
+
+    const times = [0];
+    const prices = [S0];
+    const deltas = [];
+    const pnlArr = [0];
+
+    let currentS = S0;
+    let initialOpt = blackScholesCall(S0, K, T, r, sigmaImp);
+    let cash = initialOpt.price - initialOpt.delta * S0;
+    let currentDelta = initialOpt.delta;
+    deltas.push(currentDelta);
+
+    let theoGammaPnL = 0;
+
+    for (let i = 1; i <= N; i++) {
+      const t = i * dt;
+      const remT = Math.max(0, T - t);
+      const dW = normalRandom() * sqrtDt;
+      // Realized GBM dynamics
+      currentS = currentS * Math.exp((r - 0.5 * sigmaReal * sigmaReal) * dt + sigmaReal * dW);
+      prices.push(currentS);
+      times.push(t);
+
+      // Value portfolio
+      const opt = blackScholesCall(currentS, K, remT, r, sigmaImp);
+      const dS = currentS - prices[i - 1];
+
+      // Track Gamma PnL component
+      theoGammaPnL += 0.5 * prices[i - 1] * prices[i - 1] * opt.gamma * (sigmaReal * sigmaReal - sigmaImp * sigmaImp) * dt;
+
+      // Dynamic Delta hedge step
+      cash = cash * Math.exp(r * dt) - (opt.delta - currentDelta) * currentS;
+      currentDelta = opt.delta;
+      deltas.push(currentDelta);
+
+      const portfolioVal = opt.price - currentDelta * currentS + cash;
+      pnlArr.push(portfolioVal);
+    }
+
+    const finalPnL = pnlArr[N];
+    document.getElementById('metric-pnl').textContent = (finalPnL >= 0 ? '+$' : '-$') + Math.abs(finalPnL).toFixed(2);
+    document.getElementById('metric-pnl').style.color = finalPnL >= 0 ? '#22c55e' : '#f43f5e';
+    document.getElementById('metric-theo-pnl').textContent = (theoGammaPnL >= 0 ? '+$' : '-$') + Math.abs(theoGammaPnL).toFixed(2);
+
+    // Render
+    ctx.clearRect(0, 0, W, H);
+    const padX = 50, padY = 40;
+    const minS = Math.min(...prices, 80);
+    const maxS = Math.max(...prices, 120);
+
+    const mapX = (t) => padX + (t / T) * (W - padX - 30);
+    const mapYS = (s) => H/2 - ((s - S0) / (Math.max(S0 - minS, maxS - S0) * 1.5)) * (H/2 - padY);
+
+    // Stock price path
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapYS(prices[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // PnL curve on lower axis
+    const maxAbsPnL = Math.max(...pnlArr.map(Math.abs), 5);
+    const mapYPnL = (pnl) => (H * 0.8) - (pnl / (maxAbsPnL * 1.5)) * (H * 0.18);
+
+    ctx.strokeStyle = finalPnL >= 0 ? '#22c55e' : '#f43f5e';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const px = mapX(times[i]);
+      const py = mapYPnL(pnlArr[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // PnL zero line
+    ctx.strokeStyle = '#475569';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(padX, mapYPnL(0));
+    ctx.lineTo(W - 20, mapYPnL(0));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`Underlying S_t (Final: $${currentS.toFixed(2)})`, padX + 10, mapYS(currentS) - 8);
+    ctx.fillStyle = finalPnL >= 0 ? '#22c55e' : '#f43f5e';
+    ctx.fillText(`Delta Hedged PnL (Final: $${finalPnL.toFixed(2)})`, padX + 10, mapYPnL(finalPnL) - 8);
+  }
+
+  // Initial draw
+  window.addEventListener('load', () => {
+    runSimQV();
+  });
+  window.addEventListener('resize', () => {
+    runSimQV();
+  });
+
+  // Attach sliders
+  document.getElementById('param-t').addEventListener('input', runSimQV);
+  document.getElementById('param-n').addEventListener('input', runSimQV);
+  document.getElementById('param-steps2d').addEventListener('input', runSim2D);
+  document.getElementById('param-eps2d').addEventListener('input', runSim2D);
+  document.getElementById('param-iton').addEventListener('input', runSimIto);
+  document.getElementById('param-barrier').addEventListener('input', runSimReflect);
+  document.getElementById('param-reflect-t').addEventListener('input', runSimReflect);
+  document.getElementById('param-iv').addEventListener('input', runSimBS);
+  document.getElementById('param-rv').addEventListener('input', runSimBS);
+  document.getElementById('param-rebal').addEventListener('input', runSimBS);
+</script>
+
+</body>
+</html>
