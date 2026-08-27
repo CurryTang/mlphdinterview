@@ -1,318 +1,333 @@
 # Quant 11 · Martingales, Stopping Times & Random Walks: Wald's Identity, Martingale Construction & Optimal Stopping
 
-In core quantitative research and trading interviews at top hedge funds (Jane Street, Optiver, Citadel, SIG, Jump Trading, Two Sigma), **Martingales and Doob's Optional Stopping Theorem (OST)** are the ultimate weapons for dimensional reduction.
+In the core mathematical and probability interviews at top quantitative hedge funds and proprietary trading firms (Jane Street, Optiver, Citadel, SIG, Jump Trading, Two Sigma), **Martingales and the Optional Stopping Theorem (OST)** are among the most powerful dimensional-reduction mathematical weapons.
 
-When faced with multi-stage random walks, absorbing boundaries, expected waiting times, pattern occurrences, or sequential optimal decision problems, traditional Markov transition matrices and difference equations quickly become algebraically intractable. **The superpower of Martingale Theory lies in constructing a driftless stochastic process that collapses the expected payoff of a complex dynamic evolution directly onto its initial boundary condition ($\mathbb{E}[M_T] = \mathbb{E}[M_0]$).**
-
-This chapter thoroughly deconstructs Wald's identities, the 4 master martingale templates, complete solutions to 1D random walks, and optimal stopping theory applied to high-frequency interview classics (Secretary Problem, Sequential Die Rolling, American Options, and Li's Casino Martingale).
+This tutorial completes the foundational theory behind the martingale tools introduced in Quant 10: rigorous definitions of martingales and stopping times, the three sufficient conditions of OST and classic counterexamples, the Wald equation family, the four master martingale construction templates, the complete analytical solution for one-dimensional random walks (Gambler's Ruin), and optimal stopping theory applied to classic quantitative interview problems (the Secretary Problem 37% rule, sequential die rolling games, American options early exercise boundaries, and pattern waiting times with Li's casino bankroll martingale).
 
 ```text
-4-Step Executive Framework for Random Walks & Optimal Stopping:
-1. Identify the Stopping Time & Filtration: Clearly define T (e.g. hitting boundaries, matching a sequence). Verify almost sure finiteness P(T < ∞) = 1 and OST admissibility conditions.
-2. Select and Construct the Martingale:
-   - For hitting probabilities P(Hit A) -> Construct Exponential Martingale M_n = (q/p)^{S_n} or Harmonic Martingale f(X_n);
-   - For expected exit times of symmetric walks -> Construct Quadratic Variance Martingale M_n = S_n^2 - n;
-   - For expected exit times of biased walks -> Construct Linear Drift Martingale M_n = S_n - nμ;
-   - For string pattern waiting times -> Construct Li's Casino Bankroll Martingale.
-3. Apply Optional Stopping Theorem (OST): Equate E[M_T] = E[M_0] to solve for target variables algebraically.
-4. Backward Induction for Optimal Stopping: If making sequential stopping decisions, build the Snell Envelope and use dynamic programming to locate optimal exercise boundaries.
+5-Step Mental Framework for Martingales & Optimal Stopping:
+1. Verify Martingale Property: Check if the one-step conditional expectation E[X_{n+1} | F_n] equals X_n (the fair game property).
+2. Verify Valid Stopping Time: Ensure the decision to stop at step n depends solely on information available up to step n (no peeking into the future).
+3. Validate OST Conditions: Before applying E[X_T] = E[X_0], verify at least one of the three sufficient conditions holds (bounded T, bounded stopped process, or E[T] < ∞ with bounded increments) to avoid the E[T] = ∞ trap.
+4. Select & Construct Target Martingale:
+   - For hitting probability P(Hit a) -> Construct exponential martingale M_n = (q/p)^{S_n} or harmonic martingale f(X_n);
+   - For symmetric zero-drift expected exit time E[T] -> Construct quadratic variance martingale M_n = S_n^2 - n or apply Wald's second identity;
+   - For drifted walk expected exit time E[T] -> Construct linear drift-cancelling martingale M_n = S_n - nμ or apply Wald's first identity;
+   - For pattern occurrence waiting time E[T_Pattern] -> Construct Li's casino net profit martingale.
+5. Optimal Stopping via Backward Induction: For multi-stage decision problems, construct the Snell Envelope and compute the optimal thresholds via backward dynamic induction.
 ```
 
 ---
 
-## Module 1: Deep Dive into Wald's Identities
-
-Wald's identities are foundational results stemming from martingale theory applied to i.i.d. sums stopped at random times, serving as the computational backbone for random walks, branching processes, and renewal theory.
+## Interactive Lab: Martingales, Random Walks & Optimal Stopping
 
 ```martingale-rw-demo
 ```
 
+---
+
+## Module 1: Mathematical Foundations of Martingales
+
+### 1. The Three Strict Conditions
+
+Let $\{\mathcal{F}_n\}$ be a filtration ($\mathcal{F}_n \subseteq \mathcal{F}_{n+1}$, representing the historical information known up to time $n$). A stochastic process $\{X_n\}$ is a **martingale** with respect to $\{\mathcal{F}_n\}$ if it satisfies:
+
+$$
+\text{(i) } X_n \text{ is } \mathcal{F}_n\text{-measurable} \qquad \text{(ii) } \mathbb{E}[|X_n|] < \infty \qquad \text{(iii) } \mathbb{E}[X_{n+1} \mid \mathcal{F}_n] = X_n
+$$
+
+- **Condition (i)**: The value of $X_n$ is completely determined by information up to time $n$.
+- **Condition (ii)**: Standard integrability ensuring the conditional expectation is well-defined.
+- **Condition (iii) (Core)**: Given all information up to step $n$, the best prediction of the next step $X_{n+1}$ is the current state $X_n$. This mathematically defines a **fair game**.
+
+### 2. Tower Property and Fixed-Time Conservation
+
+By applying the **tower property** $\mathbb{E}[\mathbb{E}[\cdot \mid \mathcal{F}_{n+1}] \mid \mathcal{F}_n] = \mathbb{E}[\cdot \mid \mathcal{F}_n]$ iteratively:
+
+$$\mathbb{E}[X_m \mid \mathcal{F}_n] = X_n \quad (\forall m > n)$$
+
+Taking the unconditional expectation yields:
+
+$$\mathbb{E}[X_n] = \mathbb{E}[X_0] \quad (\forall n \ge 0)$$
+
+---
+
+### Example 1: Quadratic Variance Martingale Proof
+
+Let $S_n = \sum_{i=1}^n X_i$ ($S_0=0$) be a simple symmetric random walk where $X_i \in \{-1, +1\}$ with probability $1/2$. Prove that $M_n = S_n^2 - n$ is a martingale with respect to $\mathcal{F}_n = \sigma(X_1, \dots, X_n)$.
+
+**Proof**:
+$M_n$ is $\mathcal{F}_n$-measurable and integrable. We verify condition (iii):
+
+$$\mathbb{E}[M_{n+1} \mid \mathcal{F}_n] = \mathbb{E}[(S_n + X_{n+1})^2 - (n+1) \mid \mathcal{F}_n] = \mathbb{E}[S_n^2 + 2S_n X_{n+1} + X_{n+1}^2 - n - 1 \mid \mathcal{F}_n]$$
+
+Since $S_n \in \mathcal{F}_n$, $X_{n+1}$ is independent of $\mathcal{F}_n$ with $\mathbb{E}[X_{n+1}]=0$, and $X_{n+1}^2 \equiv 1$:
+
+$$= S_n^2 + 2S_n \cdot \mathbb{E}[X_{n+1}] + \mathbb{E}[X_{n+1}^2] - n - 1 = S_n^2 + 0 + 1 - n - 1 = S_n^2 - n = M_n$$
+
+Q.E.D.
+
+---
+
+## Module 2: Stopping Times and Information Flow
+
+### 1. Formal Definition
+
+A random variable $T \in \{0, 1, 2, \dots\} \cup \{\infty\}$ is a **stopping time** with respect to $\{\mathcal{F}_n\}$ if for every $n \ge 0$:
+
+$$\{T \le n\} \in \mathcal{F}_n$$
+
+Intuition: **The decision to stop at step $n$ must depend solely on information realized up to time $n$, without peeking into future outcomes**.
+
+- **Valid Stopping Time**: The first hitting time $T = \min\{n : S_n = 5\}$.
+- **Invalid Non-Stopping Time**: The last return to zero, which requires knowing all future steps.
+
+---
+
+### Example 2: Stopping Time Validity
+
+- (a) $T_1 = \min\{n : S_n = 5\}$ is a valid stopping time since $\{T_1 \le n\} = \bigcup_{k=1}^n \{S_k = 5\} \in \mathcal{F}_n$.
+- (b) $T_2 = T_1 - 1$ (the step before hitting 5) is **not** a stopping time, because knowing whether $T_2 = n$ requires inspecting $S_{n+1}$.
+
+---
+
+## Module 3: Optional Stopping Theorem (OST) & 3 Sufficient Conditions
+
+### 1. Theorem Statement
+
+If $\{X_n\}$ is a martingale and $T$ is a stopping time satisfying **any one of the following three conditions**, then:
+
+$$\mathbb{E}[X_T] = \mathbb{E}[X_0]$$
+
+```text
+Doob's Optional Stopping Theorem (OST) Sufficient Conditions:
+Condition (A) Bounded Stopping Time: P(T <= K) = 1 for some deterministic constant K < ∞;
+Condition (B) Bounded Stopped Process: |X_{T ∧ n}| <= M for all n and some constant M < ∞;
+Condition (C) Finite Expected Time & Bounded Increments: E[T] < ∞ and |X_{n+1} - X_n| <= c a.s.
+```
+
+---
+
+### Example 3: Classic Counterexample (Unbounded Random Walk)
+
+Let $S_n$ be a standard symmetric random walk from $0$, and define $T = \min\{n : S_n = 1\}$.
+Upon stopping, $S_T \equiv 1$, so $\mathbb{E}[S_T] = 1$.
+However, $\mathbb{E}[S_0] = 0$. Applying $\mathbb{E}[S_T] = \mathbb{E}[S_0]$ blindly yields $1 = 0$!
+
+**Why OST Fails**:
+1. $T$ is not bounded (Condition A fails).
+2. $S_{T \wedge n}$ can drift arbitrarily far to the negative side (Condition B fails).
+3. Even though $\mathbb{P}(T < \infty) = 1$ due to recurrence, **the expected time is infinite** $\mathbb{E}[T] = \infty$ (Condition C fails).
+
+---
+
+## Module 4: The Wald Equation Family
+
 ### 1. Wald's First Identity
 
-#### Theorem Statement
-Let $X_1, X_2, \dots$ be independent and identically distributed (i.i.d.) random variables with finite first absolute moment $\mathbb{E}[|X_1|] < \infty$ and mean $\mu = \mathbb{E}[X_1]$. Let $T$ be a stopping time with respect to the filtration $\mathcal{F}_n = \sigma(X_1, \dots, X_n)$ with finite expected stopping time $\mathbb{E}[T] < \infty$. Then the randomly stopped sum $S_T = \sum_{i=1}^T X_i$ satisfies:
+Let $X_1, X_2, \dots$ be i.i.d. with mean $\mu = \mathbb{E}[X_1]$. If $T$ is a stopping time with $\mathbb{E}[T] < \infty$, then:
 
 $$\mathbb{E}[S_T] = \mathbb{E}[T] \cdot \mathbb{E}[X_1]$$
 
-#### Rigorous Mathematical Proof
-Expand the stopped sum $S_T$ using indicator functions:
+**Proof**:
+Expand $S_T = \sum_{n=1}^\infty X_n \mathbf{1}_{\{T \ge n\}}$. Since $\{T \ge n\} \in \mathcal{F}_{n-1}$, $X_n$ is independent of $\mathbf{1}_{\{T \ge n\}}$. By Fubini-Tonelli:
 
-$$S_T = \sum_{n=1}^\infty X_n \mathbf{1}_{\{T \ge n\}}$$
-
-Notice that the event $\{T \ge n\} = \{T \le n - 1\}^c \in \mathcal{F}_{n-1}$. By the definition of stopping times, whether stopping occurs before step $n$ depends purely on the history up to $n-1$. Hence, **$X_n$ is completely independent of $\mathbf{1}_{\{T \ge n\}}$**!
-
-Applying the Fubini-Tonelli theorem to interchange expectation and infinite summation:
-
-$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}\left[X_n \mathbf{1}_{\{T \ge n\}}\right] = \sum_{n=1}^\infty \mathbb{E}[X_n] \cdot \mathbb{E}\left[\mathbf{1}_{\{T \ge n\}}\right] = \mathbb{E}[X_1] \sum_{n=1}^\infty \mathbb{P}(T \ge n)$$
-
-Using the tail probability formula for discrete non-negative random variables $\mathbb{E}[T] = \sum_{n=1}^\infty \mathbb{P}(T \ge n)$:
-
-$$\mathbb{E}[S_T] = \mathbb{E}[X_1] \cdot \mathbb{E}[T]$$
-
-$\blacksquare$
-
-> [!WARNING]
-> **Fatal Interview Pitfall: Why is $\mathbb{E}[T] < \infty$ strictly necessary?**
-> 
-> Consider a standard 1D symmetric random walk ($X_i = \pm 1$ with probability $1/2$), starting at $S_0 = 0$. Define $T = \min\{n : S_n = 1\}$ as the first hitting time of $+1$.
-> Clearly $S_T \equiv 1$, so $\mathbb{E}[S_T] = 1$.
-> However, $\mathbb{E}[X_1] = 0$. If one naively applied Wald's first identity:
-> $$1 = \mathbb{E}[S_T] = \mathbb{E}[T] \cdot \mathbb{E}[X_1] = \mathbb{E}[T] \cdot 0 = 0 \quad (\text{Contradiction!})$$
-> **Root Cause**: Although recurrence ensures $\mathbb{P}(T < \infty) = 1$, the **expected hitting time is infinite** $\mathbb{E}[T] = \infty$. Here $\infty \cdot 0$ is an indeterminate form, violating Wald's integrability hypothesis.
+$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}[X_n] \mathbb{P}(T \ge n) = \mathbb{E}[X_1] \mathbb{E}[T]$$
 
 ---
 
 ### 2. Wald's Second Identity
 
-#### Theorem Statement
-Under the same i.i.d. assumptions, if $\mathbb{E}[X_1^2] < \infty$ and $\mathbb{E}[T] < \infty$, let $\mu = \mathbb{E}[X_1]$ and $\sigma^2 = \text{Var}(X_1) = \mathbb{E}[X_1^2] - \mu^2$. Then:
+If $\mathbb{E}[X_1^2] < \infty$ and $\mathbb{E}[T] < \infty$, let $\sigma^2 = \text{Var}(X_1)$:
 
 $$\mathbb{E}\left[(S_T - T\mu)^2\right] = \sigma^2 \mathbb{E}[T]$$
 
-In particular, for zero-drift symmetric walks ($\mu = 0$):
-
-$$\mathbb{E}[S_T^2] = \sigma^2 \mathbb{E}[T]$$
-
-#### Proof via Martingale Representation
-Define the discrete-time process $M_n = (S_n - n\mu)^2 - n\sigma^2$. We check that $M_n$ is a martingale:
-
-$$\mathbb{E}[M_{n+1} \mid \mathcal{F}_n] = \mathbb{E}[(S_n + X_{n+1} - (n+1)\mu)^2 \mid \mathcal{F}_n] - (n+1)\sigma^2$$
-$$= (S_n - n\mu)^2 + 2(S_n - n\mu)\underbrace{\mathbb{E}[X_{n+1} - \mu]}_{0} + \underbrace{\mathbb{E}[(X_{n+1} - \mu)^2]}_{\sigma^2} - (n+1)\sigma^2 = M_n$$
-
-By Doob's Optional Stopping Theorem, under $\mathbb{E}[T] < \infty$ and bounded increments:
-
-$$\mathbb{E}[M_T] = \mathbb{E}[M_0] = 0 \implies \mathbb{E}\left[(S_T - T\mu)^2\right] = \sigma^2 \mathbb{E}[T]$$
+For zero-drift walks ($\mu = 0$): $\mathbb{E}[S_T^2] = \sigma^2 \mathbb{E}[T]$.
 
 ---
 
 ### 3. Wald's Exponential Identity
 
-Let the moment-generating function $M(\theta) = \mathbb{E}[e^{\theta X_1}]$ exist on an open interval around 0. Define the exponential process:
-
-$$M_n(\theta) = \frac{e^{\theta S_n}}{(M(\theta))^n}$$
-
-Because the increments are i.i.d., $M_n(\theta)$ is a non-negative martingale with mean 1. Under OST admissibility:
+Let $M(\theta) = \mathbb{E}[e^{\theta X_1}]$. The geometric process $M_n(\theta) = \frac{e^{\theta S_n}}{(M(\theta))^n}$ is a martingale. By OST:
 
 $$\mathbb{E}\left[\frac{e^{\theta S_T}}{(M(\theta))^T}\right] = 1$$
 
 ---
 
-## Module 2: The Art of Martingale Construction & 4 Master Templates
+## Module 5: Martingale Construction & 4 Master Templates
 
-In quantitative interviews, the key question is: **How do we construct the exact right martingale tailored to the problem?**
+| Martingale Template | Mathematical Form $M_n$ | Applicable Problem Type | Resulting Algebraic Identity |
+| :--- | :--- | :--- | :--- |
+| **1. Linear Drift Cancellation** | $S_n - n\mu$ | Expected exit time for drifted random walks $\mathbb{E}[T]$ | $\mathbb{E}[T] = \frac{\mathbb{E}[S_T]}{\mu}$ |
+| **2. Quadratic Variance Correction** | $(S_n - n\mu)^2 - n\sigma^2$ | Expected exit time for zero-drift walks $\mathbb{E}[T]$ | $\mathbb{E}[T] = \frac{\mathbb{E}[S_T^2]}{\sigma^2}$ |
+| **3. Exponential Geometric** | $\left(\frac{q}{p}\right)^{S_n}$ or $\frac{e^{\theta S_n}}{(M(\theta))^n}$ | Hitting probability $\mathbb{P}(\text{Hit } a)$ for asymmetric walks | $\mathbb{P}_a \left(\frac{q}{p}\right)^a + (1 - \mathbb{P}_a)\left(\frac{q}{p}\right)^{-b} = 1$ |
+| **4. Harmonic Function** | $f(X_n)$, with $(P - I)f = 0$ | Hitting probabilities for general Markov chains | $\mathbb{E}[f(X_T)] = f(X_0)$ |
 
-```html
-<table>
-  <thead>
-    <tr>
-      <th style="width: 22%;">Template Name</th>
-      <th style="width: 28%;">Mathematical Form $M_n$</th>
-      <th style="width: 25%;">Target Application</th>
-      <th style="width: 25%;">Core Resulting Equation</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><strong>1. Linear Drift Correction</strong></td>
-      <td>$S_n - n\mu$</td>
-      <td>Expected stopping time $\mathbb{E}[T]$ for biased walks</td>
-      <td>$\mathbb{E}[T] = \frac{\mathbb{E}[S_T]}{\mu}$</td>
-    </tr>
-    <tr>
-      <td><strong>2. Quadratic Variance Correction</strong></td>
-      <td>$(S_n - n\mu)^2 - n\sigma^2$</td>
-      <td>Expected stopping time $\mathbb{E}[T]$ for zero-drift walks</td>
-      <td>$\mathbb{E}[T] = \frac{\mathbb{E}[S_T^2]}{\sigma^2}$</td>
-    </tr>
-    <tr>
-      <td><strong>3. Geometric Exponential MGF</strong></td>
-      <td>$\left(\frac{q}{p}\right)^{S_n}$ or $\frac{e^{\theta S_n}}{(M(\theta))^n}$</td>
-      <td>Two-sided exit probabilities $\mathbb{P}(\text{Hit } a)$ for asymmetric walks</td>
-      <td>$\mathbb{P}_a \left(\frac{q}{p}\right)^a + (1 - \mathbb{P}_a)\left(\frac{q}{p}\right)^{-b} = 1$</td>
-    </tr>
-    <tr>
-      <td><strong>4. Harmonic Eigenfunction</strong></td>
-      <td>$f(X_n)$, where $(P - I)f = 0$</td>
-      <td>General finite-state Markov chain absorption</td>
-      <td>$\mathbb{E}[f(X_T)] = f(X_0)$</td>
-    </tr>
-  </tbody>
-</table>
+---
+
+## Module 6: One-Dimensional Random Walks (Gambler's Ruin)
+
+Let $S_0 = 0$. Upward probability is $p$, downward is $q = 1 - p$.
+Stopping time: $T = \min\{n \ge 0 : S_n = a \text{ or } S_n = -b\}$.
+
+### 1. Symmetric Walk ($p = 1/2$)
+
+- **Hitting Probability**: $M_n = S_n \implies \mathbb{P}_a = \frac{b}{a + b}, \quad \mathbb{P}_{-b} = \frac{a}{a + b}$.
+- **Expected Exit Time**: $M_n = S_n^2 - n \implies \mathbb{E}[T] = a \cdot b$.
+
+### 2. Asymmetric Walk ($p \ne 1/2$)
+
+- **Hitting Probability**: $M_n = (q/p)^{S_n} \implies \mathbb{P}_a = \frac{(q/p)^b - 1}{(q/p)^{a+b} - 1}$.
+- **Expected Exit Time**: $M_n = S_n - n(p - q) \implies \mathbb{E}[T] = \frac{a \mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$.
+
+---
+
+## Module 7: Optimal Stopping Theory & 4 Classic Interview Problems
+
+### 1. Secretary Problem ($37\%$ Rule)
+
+- Discrete Probability: $\mathbb{P}(\text{Success} \mid k) = \frac{k-1}{n} \sum_{j=k}^n \frac{1}{j-1}$.
+- Continuous Limit: $f(x) = -x \ln x \implies x^* = 1/e \approx 36.8\%$, achieving a $36.8\%$ peak success probability.
+
+### 2. Sequential Die Rolling Game
+
+- Backward induction values: $v_1 = 3.5 \to v_2 = 4.25 \to v_3 \approx 4.67 \to v_4 \approx 4.94$.
+
+### 3. American Options Early Exercise
+
+- **American Call (No Dividends)**: $C(S_t, t) > S_t - K$ by Jensen's inequality and discounted asset martingale property; never exercise early.
+- **American Put**: Bounded by interest earnings on strike $K$ vs time value, producing boundary $S^*(t)$.
+
+### 4. Coin Pattern Waiting Times & Li's Martingale
+
+- Casino net profit martingale gives: $\mathbb{E}[T_A] = (A * A)_2 = \sum_{k=1}^m 2^k \cdot \mathbf{1}_{\{\text{Prefix}(A, k) = \text{Suffix}(A, k)\}}$.
+- $\mathbb{E}[T_{\text{HTTH}}] = 16 + 2 = 18$.
+- $\mathbb{E}[T_{\text{HTHT}}] = 16 + 4 = 20$.
+
+---
+
+## Module 8: Interview Quick-Reference Matrix
+
+| Scenario | Recommended Martingale | Analytic Formula / Theorem | Verification Points & Traps |
+| :--- | :--- | :--- | :--- |
+| **Symmetric Walk Ruin Probability** | $M_n = S_n$ | $\mathbb{P}_a = \frac{b}{a + b}$ | Bounded trajectory guarantees OST holds |
+| **Symmetric Walk Expected Time** | $M_n = S_n^2 - n$ | $\mathbb{E}[T] = a \cdot b$ | 2nd Wald identity with $\mu = 0, \sigma^2 = 1$ |
+| **Asymmetric Walk Ruin Probability** | $M_n = (q/p)^{S_n}$ | $\mathbb{P}_a = \frac{(q/p)^b - 1}{(q/p)^{a+b} - 1}$ | Derived from $p(q/p) + q(p/q) = 1$ |
+| **Asymmetric Walk Expected Time** | $M_n = S_n - n(p - q)$ | $\mathbb{E}[T] = \frac{a\mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$ | Non-zero denominator $p - q \ne 0$ |
+| **One-Sided Hitting Time** | Wald Exponential Martingale | $\mathbb{E}[s^{T_a}] = \left(\frac{1 - \sqrt{1 - 4pqs^2}}{2ps}\right)^a$ | $\mathbb{P}(T < \infty) = 1$ but $\mathbb{E}[T] = \infty$ |
+| **Pattern Waiting Times** | Casino bankroll net profit | $\mathbb{E}[T_A] = (A * A)_2 = \sum 2^k \mathbf{1}_{\{\text{Prefix=Suffix}\}}$ | Penney's game non-transitivity |
+| **Optimal Stopping Decisions** | Snell Envelope | $U_n = \max(Z_n, \mathbb{E}[U_{n+1} \mid \mathcal{F}_n])$ | Backward dynamic programming induction |
+
+---
+
+## Module 9: Quick Practice Quizzes
+
+```quiz
+title: Quick Quiz 1
+question: For a stochastic process X_n to be a martingale, which of the following is the defining core condition?
+answer: C
+A. The variance of X_n is constant over time
+B. X_n is strictly monotonic
+C. E[X_{n+1} | F_n] = X_n (fair game property)
+D. The marginal distribution of X_n is invariant over time
+explanation: The defining property of a martingale is the conditional expectation condition: given the current information, the best prediction of the next step is the current value itself.
 ```
 
-### 1. Template 1: Linear Drift Correction
-When $S_n$ has constant non-zero drift $\mathbb{E}[S_{n+1} - S_n \mid \mathcal{F}_n] = \mu \ne 0$:
-$$M_n = S_n - n\mu \implies \mathbb{E}[T] = \frac{\mathbb{E}[S_T]}{\mu}$$
+```quiz
+title: Quick Quiz 2
+question: Regarding the formal definition of a stopping time T, which statement is true?
+answer: B
+A. A stopping time can depend on future outcomes as long as it is finite
+B. The event {T <= n} must be measurable with respect to F_n (no peeking into the future)
+C. A stopping time must be a deterministic constant
+D. The last return to zero in a random walk is a valid stopping time
+explanation: A stopping time requires that the decision to stop at step n is made solely on information up to step n. The last return to zero requires looking infinitely into the future.
+```
 
-### 2. Template 2: Quadratic Variance Correction
-When the process has zero drift ($\mu = 0$):
-$$M_n = S_n^2 - n\sigma^2 \implies \mathbb{E}[T] = \frac{\mathbb{E}[S_T^2]}{\sigma^2}$$
+```quiz
+title: Quick Quiz 3
+question: For a simple symmetric random walk S_n, why does applying E[S_T] = E[S_0] fail for the stopping time T = min{n : S_n = 1}?
+answer: D
+A. T is not a valid stopping time
+B. S_n is not a martingale
+C. T is bounded
+D. T is almost surely finite, but E[T] = ∞ and the stopped process is unbounded
+explanation: Recurrence ensures P(T < ∞) = 1, but the expected stopping time is infinite and the path can drift arbitrarily far to the negative side, violating all three OST conditions.
+```
 
-### 3. Template 3: Geometric / Exponential Martingale
-For discrete asymmetric steps ($\mathbb{P}(X_i = +1) = p, \mathbb{P}(X_i = -1) = q = 1 - p \ne p$):
-$$\mathbb{E}[\lambda^{X_1}] = 1 \implies \lambda = \frac{q}{p} \implies M_n = \left(\frac{q}{p}\right)^{S_n}$$
+```quiz
+title: Quick Quiz 4
+question: Under Doob's Optional Stopping Theorem, Condition (C) requires:
+answer: A
+A. E[T] < ∞ and bounded conditional increments |X_{n+1} - X_n| <= c
+B. T must be a deterministic constant
+C. The entire martingale must be bounded for all time
+D. The stopping time must be zero almost surely
+explanation: Condition C allows unbounded trajectories provided the expected stopping time is finite and individual step increments have a uniform upper bound.
+```
 
-### 4. Template 4: Harmonic Functions for Markov Chains
-For transition matrix $P$, any vector $f$ satisfying $(Pf)(x) = f(x)$ turns $f(X_n)$ into a martingale, solving boundary hitting probabilities directly via boundary conditions $f(\text{Goal}) = 1, f(\text{Fail}) = 0$.
+```quiz
+title: Quick Quiz 5
+question: In a symmetric random walk starting at 0 with absorbing barriers at -a and b, the probability of hitting b before -a is:
+answer: B
+A. 1/2
+B. a / (a + b)
+C. b / (a + b)
+D. ab / (a + b)
+explanation: Applying OST on S_n gives -a(1 - P_b) + b P_b = 0, which yields P_b = a / (a + b).
+```
 
----
+```quiz
+title: Quick Quiz 6
+question: In a symmetric random walk starting at 0 with absorbing barriers at -a and b, the expected exit time E[T] is:
+answer: C
+A. a + b
+B. (a + b)^2
+C. a · b
+D. Undetermined without variance bounds
+explanation: Applying OST to the variance martingale M_n = S_n^2 - n yields E[T] = E[S_T^2] = a^2(b/(a+b)) + b^2(a/(a+b)) = a · b.
+```
 
-## Module 3: Complete Solutions to 1D Random Walks
+```quiz
+title: Quick Quiz 7
+question: Why can't we directly apply OST to S_n in an asymmetric random walk (p ≠ q)?
+answer: B
+A. Stopping times do not exist for asymmetric walks
+B. S_n has a systematic drift E[X_{n+1} | F_n] = p - q ≠ 0, so it is not a martingale
+C. Asymmetric walks never hit boundaries
+D. E[T] is always infinite
+explanation: When p ≠ q, S_n has non-zero drift and is not a martingale. One must use the exponential martingale (q/p)^{S_n} instead.
+```
 
-Consider a particle starting at $S_0 = 0$, moving $+1$ with probability $p$ and $-1$ with probability $q = 1 - p$.
-Define the two-sided exit stopping time:
-$$T = \min\{n \ge 0 : S_n = a \text{ or } S_n = -b\} \quad (a, b \in \mathbb{N}^+)$$
+```quiz
+title: Quick Quiz 8
+question: In the exponential martingale M_n = r^{S_n}, how is r = q/p uniquely determined?
+answer: A
+A. As the non-trivial root of E[r^{X_1}] = p·r + q/r = 1
+B. As an arbitrary constant > 1
+C. It must be p/q rather than q/p
+D. It is determined by the boundary values a and b
+explanation: Setting E[r^{X_1}] = 1 yields pr^2 - r + q = 0 => (r - 1)(pr - q) = 0, giving the non-trivial solution r = q/p.
+```
 
-### 1. Simple Symmetric Random Walk ($p = 1/2$)
+```quiz
+title: Quick Quiz 9
+question: Which statement correctly describes the recurrence/transience of 1D random walks?
+answer: C
+A. Both symmetric and asymmetric walks are recurrent
+B. Both symmetric and asymmetric walks are transient
+C. Symmetric random walks are recurrent (with E[T] = ∞), while asymmetric walks are transient
+D. Recurrence depends only on the barrier locations
+explanation: Symmetric 1D random walks return to any level with probability 1 (recurrent), but expected return time is infinite. Asymmetric walks drift to ±∞ almost surely (transient).
+```
 
-#### (1) Hitting Probability $\mathbb{P}(S_T = a)$
-Construct martingale $M_n = S_n$. Applying OST:
-$$\mathbb{E}[S_T] = \mathbb{E}[S_0] = 0 \implies a \mathbb{P}_a + (-b)(1 - \mathbb{P}_a) = 0 \implies \mathbb{P}_a = \frac{b}{a + b}, \quad \mathbb{P}_{-b} = \frac{a}{a + b}$$
-
-#### (2) Expected Duration $\mathbb{E}[T]$
-Construct quadratic martingale $M_n = S_n^2 - n$. Applying OST:
-$$\mathbb{E}[S_T^2 - T] = 0 \implies \mathbb{E}[T] = \mathbb{E}[S_T^2] = a^2 \left(\frac{b}{a+b}\right) + b^2 \left(\frac{a}{a+b}\right) = a \cdot b$$
-
-> [!NOTE]
-> **Symmetric Walk Mental Shortcut**:
-> - Win probability $\mathbb{P}(+a) = \frac{b}{a+b}$ (inversely proportional to distance);
-> - Expected steps $\mathbb{E}[T] = a \cdot b$ (the product of distances to both barriers! E.g. starting at 0 between $[-5, +5]$ takes $5 \times 5 = 25$ steps).
-
----
-
-### 2. Asymmetric Random Walk ($p \ne 1/2$)
-
-#### (1) Hitting Probability $\mathbb{P}(S_T = a)$
-Construct exponential martingale $M_n = \left(\frac{q}{p}\right)^{S_n}$. Applying OST:
-$$\mathbb{E}\left[\left(\frac{q}{p}\right)^{S_T}\right] = 1 \implies \mathbb{P}_a \left(\frac{q}{p}\right)^a + (1 - \mathbb{P}_a)\left(\frac{q}{p}\right)^{-b} = 1$$
-$$\mathbb{P}_a = \frac{1 - (q/p)^{-b}}{(q/p)^a - (q/p)^{-b}} = \frac{(q/p)^b - 1}{(q/p)^{a+b} - 1}$$
-
-#### (2) Expected Duration $\mathbb{E}[T]$
-Single step drift $\mu = p - q \ne 0$. Construct drift martingale $M_n = S_n - n(p - q)$.
-$$\mathbb{E}[T] = \frac{\mathbb{E}[S_T]}{p - q} = \frac{a \mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$$
-
----
-
-## Module 4: Optimal Stopping Theory & 4 High-Frequency Interview Classics
-
-### Mathematical Architecture of Optimal Stopping
-- **Goal**: Find stopping rule $T^*$ maximizing expected payoff:
-  $$V_0 = \sup_{T \in \mathcal{T}} \mathbb{E}[Z_T]$$
-- **Snell Envelope**: Backward induction sequence:
-  $$U_N = Z_N, \quad U_n = \max\left(Z_n, \mathbb{E}[U_{n+1} \mid \mathcal{F}_n]\right)$$
-- **Optimal Rule**: Stop at the first time current value equals continuation value:
-  $$T^* = \min\{n \ge 0 : Z_n = U_n\}$$
-
----
-
-### Classic 1: The Secretary Problem ($37\%$ Rule)
-
-> **Interview Prompt (Citadel / SIG / Jane Street)**:
-> $n$ candidates arrive sequentially in random order. After each interview, you must immediately hire or reject irrevocably.
-> You only observe the relative ranking among candidates seen so far.
-> **Goal**: Maximize the probability of hiring the single best candidate.
-
-#### Exact Probability Derivation
-The optimal strategy rejects the first $k-1$ candidates as a baseline (recording best $M_{k-1}$), then hires the very first candidate who beats $M_{k-1}$.
-$$\mathbb{P}(\text{Success} \mid k) = \sum_{j=k}^n \frac{1}{n} \cdot \frac{k-1}{j-1} = \frac{k-1}{n} \sum_{j=k}^n \frac{1}{j-1}$$
-
-#### Continuous Asymptotic Limit ($n \to \infty$)
-Let $x = k/n$. The Riemann sum converges to:
-$$f(x) = x \int_x^1 \frac{1}{t} dt = -x \ln x$$
-Setting $f'(x) = -\ln x - 1 = 0 \implies x^* = \frac{1}{e} \approx 36.8\%$.
-The maximum success probability is also $1/e \approx 36.8\%$.
-
----
-
-### Classic 2: Sequential Die Rolling Game
-
-> **Interview Prompt (Optiver / Jane Street)**:
-> You can roll a fair 6-sided die up to $N$ times. At each roll, you can stop and take $\$X$, or discard and roll again. Find fair values $v_k$ and stopping rules.
-
-#### Backward Induction
-1. **1 roll remaining**: $v_1 = \mathbb{E}[X] = 3.5$.
-2. **2 rolls remaining**: $v_2 = \mathbb{E}[\max(X, 3.5)] = \frac{3 \times 3.5 + 4 + 5 + 6}{6} = 4.25$ (Stop on $\ge 4$).
-3. **3 rolls remaining**: $v_3 = \mathbb{E}[\max(X, 4.25)] = \frac{4 \times 4.25 + 5 + 6}{6} = 4.667$ (Stop on $\ge 5$).
-4. **4 rolls remaining**: $v_4 = \mathbb{E}[\max(X, 4.667)] = \frac{4 \times 4.667 + 5 + 6}{6} = 4.944$ (Stop on $\ge 5$).
-
----
-
-### Classic 3: American Options as Optimal Stopping
-
-- **Non-dividend American Call**:
-  $$C_{\text{Amer}}(S_t, t) = \sup_{\tau} \mathbb{E}^\mathbb{Q}[e^{-r(\tau - t)}(S_\tau - K)^+] \ge S_t - K e^{-r(\tau - t)} > S_t - K$$
-  Early exercise forfeits positive time value; holding or selling in market is always strictly superior.
-- **American Put**:
-  When $S_t \to 0$, exercising immediately frees up $\$K$ cash earning positive interest $rK > 0$, establishing an optimal early exercise boundary $S^*(t)$.
-
----
-
-### Classic 4: Pattern Occurrence & Li's Casino Martingale
-
-> **Interview Prompt (Jane Street / Optiver)**:
-> Find the expected tosses until `HTTH` vs `HTHT` appears.
-
-#### Li's Casino Bankroll Argument
-At each toss $n$, a new gambler enters with \$1 and sequentially bets on the pattern characters with 2x payoff. Total casino net profit $M_n$ is a martingale with $M_0 = 0$.
-At stopping time $T$, total input is $\$T$, and surviving gamblers are those whose entry time matches prefix-suffix overlaps!
-$$\mathbb{E}[T_A] = \sum_{k=1}^m 2^k \cdot \mathbf{1}_{\{\text{Prefix}(A, k) = \text{Suffix}(A, k)\}} = (A * A)_2$$
-
-- **For $A = \text{HTTH}$**: Overlaps at $k=1$ (`H`=`H`) and $k=4$ (`HTTH`=`HTTH`) $\implies \mathbb{E}[T] = 2^4 + 2^1 = 18$.
-- **For $B = \text{HTHT}$**: Overlaps at $k=2$ (`HT`=`HT`) and $k=4$ (`HTHT`=`HTHT`) $\implies \mathbb{E}[T] = 2^4 + 2^2 = 20$.
-
-`HTHT` takes longer because self-overlapping patterns cluster together, stretching out the dry waiting intervals between clusters.
-
----
-
-## Module 5: Interview Fast-Recall Matrix
-
-```html
-<table>
-  <thead>
-    <tr>
-      <th style="width: 25%;">Problem Type</th>
-      <th style="width: 25%;">Recommended Martingale</th>
-      <th style="width: 25%;">Analytical Formula</th>
-      <th style="width: 25%;">Validation & Pitfalls</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><strong>Symmetric Ruin Probability</strong></td>
-      <td>$M_n = S_n$</td>
-      <td>$\mathbb{P}_a = \frac{b}{a + b}$</td>
-      <td>Bounded boundary satisfies OST</td>
-    </tr>
-    <tr>
-      <td><strong>Symmetric Exit Time</strong></td>
-      <td>$M_n = S_n^2 - n$</td>
-      <td>$\mathbb{E}[T] = a \cdot b$</td>
-      <td>Wald 2nd identity with $\mu = 0, \sigma^2 = 1$</td>
-    </tr>
-    <tr>
-      <td><strong>Asymmetric Ruin Probability</strong></td>
-      <td>$M_n = (q/p)^{S_n}$</td>
-      <td>$\mathbb{P}_a = \frac{(q/p)^b - 1}{(q/p)^{a+b} - 1}$</td>
-      <td>Check $p(q/p) + q(p/q) = 1$</td>
-    </tr>
-    <tr>
-      <td><strong>Asymmetric Exit Time</strong></td>
-      <td>$M_n = S_n - n(p - q)$</td>
-      <td>$\mathbb{E}[T] = \frac{a\mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$</td>
-      <td>Denominator $p - q \ne 0$</td>
-    </tr>
-    <tr>
-      <td><strong>Pattern Waiting Time</strong></td>
-      <td>Casino Net Bankroll Martingale</td>
-      <td>$\mathbb{E}[T_A] = \sum 2^k \mathbf{1}_{\{\text{Prefix=Suffix}\}}$</td>
-      <td>Penney's game non-transitivity</td>
-    </tr>
-    <tr>
-      <td><strong>Optimal Stopping</strong></td>
-      <td>Snell Envelope</td>
-      <td>$U_n = \max(Z_n, \mathbb{E}[U_{n+1} \mid \mathcal{F}_n])$</td>
-      <td>Backward induction for threshold boundaries</td>
-    </tr>
-  </tbody>
-</table>
+```quiz
+title: Quick Quiz 10
+question: Why does OST hold for bounded Gambler's Ruin but fail for one-sided hitting time T = min{n : S_n = 1}?
+answer: D
+A. OST fails in both cases
+B. OST holds in both cases
+C. OST holds for one-sided hitting times but fails with barriers
+D. Barriers restrict the process to a bounded interval and ensure E[T] < ∞, satisfying OST conditions
+explanation: Finite dual absorbing barriers ensure both a bounded state space and finite expected stopping time E[T] = ab < ∞, fully satisfying OST conditions.
 ```
