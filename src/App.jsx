@@ -1948,6 +1948,17 @@ const quantNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'Quant 13 · 博弈论与策略性决策：纳什均衡、逆向归纳与华尔街量化经典',
+    'Quant13 Game Theory and Strategic Decision Making.md',
+    'Quant13 Game Theory and Strategic Decision Making.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 13 · Game Theory & Strategic Decision Making: Nash Equilibrium, Backward Induction & Wall Street Classics',
+      category: 'Game Theory & Strategy',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     'C++ 面经 1 · 面向对象基础与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
@@ -7761,7 +7772,329 @@ function DeltaHedgingVisual() {
   );
 }
 
+function GameTheoryVisual() {
+  const { t } = useUiCopy();
+  const [activeTab, setActiveTab] = useState('pirates');
+
+  // Pirates State
+  const [numPirates, setNumPirates] = useState(5);
+  const [coins, setCoins] = useState(100);
+
+  // Truel State
+  const [pA, setPA] = useState(0.3333);
+  const [pB, setPB] = useState(0.6667);
+  const [pC, setPC] = useState(1.0);
+  const [aStrategy, setAStrategy] = useState('pass');
+
+  // Auctions State
+  const [valuation, setValuation] = useState(80);
+  const [numBidders, setNumBidders] = useState(2);
+
+  // Computed Pirates Backward Induction
+  const pirateTable = useMemo(() => {
+    let curAlloc = [coins];
+    const history = [{ k: 1, alloc: [coins], votes: [0], isSurvived: true }];
+
+    for (let k = 2; k <= numPirates; k++) {
+      const prev = history[k - 2].alloc;
+      const neededBribes = Math.ceil(k / 2) - 1;
+      const candidates = [];
+      for (let i = 0; i < k - 1; i++) {
+        candidates.push({ idx: i + 1, prevPayout: prev[i], cost: prev[i] + 1 });
+      }
+      candidates.sort((a, b) => a.cost - b.cost || a.idx - b.idx);
+      const chosen = new Set(candidates.slice(0, neededBribes).map(c => c.idx));
+
+      const newAlloc = new Array(k).fill(0);
+      let totalSpent = 0;
+      const votes = [0];
+      for (let i = 0; i < k - 1; i++) {
+        const pId = i + 1;
+        if (chosen.has(pId)) {
+          newAlloc[pId] = prev[i] + 1;
+          totalSpent += newAlloc[pId];
+          votes.push(pId);
+        } else {
+          newAlloc[pId] = 0;
+        }
+      }
+      newAlloc[0] = Math.max(0, coins - totalSpent);
+      history.push({ k, alloc: newAlloc, votes, isSurvived: totalSpent <= coins });
+    }
+    return history;
+  }, [numPirates, coins]);
+
+  // Truel Win Rates
+  const truelWinRates = useMemo(() => {
+    const denomAB = 1 - (1 - pA) * (1 - pB);
+    const pAB = denomAB > 0 ? pA / denomAB : 0.5;
+    const pBA = 1 - pAB;
+
+    const denomAC = 1 - (1 - pA) * (1 - pC);
+    const pAC = denomAC > 0 ? pA / denomAC : 0.5;
+
+    let winA = 0, winB = 0, winC = 0;
+
+    if (aStrategy === 'pass') {
+      winA = pB * pAB + (1 - pB) * pC * pAC;
+      winB = pB * (1 - pAB);
+      winC = (1 - pB) * pC * (1 - pAC);
+    } else if (aStrategy === 'shootC') {
+      const aKillsC_winA = (1 - pB) * pAB;
+      const aKillsC_winB = pB + (1 - pB) * pBA;
+
+      const aMissC_winA = pB * pAB + (1 - pB) * pC * pAC;
+      const aMissC_winB = pB * (1 - pAB);
+      const aMissC_winC = (1 - pB) * pC * (1 - pAC);
+
+      winA = pA * aKillsC_winA + (1 - pA) * aMissC_winA;
+      winB = pA * aKillsC_winB + (1 - pA) * aMissC_winB;
+      winC = (1 - pA) * aMissC_winC;
+    } else {
+      const aKillsB_winA = 0;
+      const aKillsB_winC = 1;
+
+      const aMissB_winA = pB * pAB + (1 - pB) * pC * pAC;
+      const aMissB_winB = pB * (1 - pAB);
+      const aMissB_winC = (1 - pB) * pC * (1 - pAC);
+
+      winA = pA * aKillsB_winA + (1 - pA) * aMissB_winA;
+      winB = (1 - pA) * aMissB_winB;
+      winC = pA * aKillsB_winC + (1 - pA) * aMissB_winC;
+    }
+
+    return { winA, winB, winC };
+  }, [pA, pB, pC, aStrategy]);
+
+  // Auction Bidding Values
+  const auctionData = useMemo(() => {
+    const v = valuation;
+    const n = numBidders;
+    const bidFPA = ((n - 1) / n) * v;
+    const bidSPA = v;
+    const bidAllPay = ((n - 1) / n) * Math.pow(v / 100, n) * 100;
+    const revSeller = ((n - 1) / (n + 1)) * 100;
+    const winnersCurseExp = (v / 100) * (1.5 * (v / 2) - v);
+
+    return { bidFPA, bidSPA, bidAllPay, revSeller, winnersCurseExp };
+  }, [valuation, numBidders]);
+
+  return (
+    <section className="bm-card" aria-label={t('博弈论与策略性决策演示', 'Game Theory & Strategic Decision Making Demo')}>
+      <div className="bm-card-header">
+        <div>
+          <h3 className="bm-card-title">{t('量化博弈论与经典策略交互模拟器', 'Quant Game Theory & Strategic Decision Simulator')}</h3>
+          <p className="bm-card-subtitle">
+            {t('动态逆向归纳 (SPE) · 纳什均衡 (NE) · 贝叶斯拍卖与胜者诅咒', 'Dynamic Backward Induction · Nash Equilibrium · Auctions & Winner\'s Curse')}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <button
+            type="button"
+            className={`bm-btn ${activeTab === 'pirates' ? 'bm-btn-primary' : ''}`}
+            onClick={() => setActiveTab('pirates')}
+          >
+            {t('海盗分金', 'Pirates Gold')}
+          </button>
+          <button
+            type="button"
+            className={`bm-btn ${activeTab === 'truel' ? 'bm-btn-primary' : ''}`}
+            onClick={() => setActiveTab('truel')}
+          >
+            {t('三方决斗', 'The Truel')}
+          </button>
+          <button
+            type="button"
+            className={`bm-btn ${activeTab === 'auctions' ? 'bm-btn-primary' : ''}`}
+            onClick={() => setActiveTab('auctions')}
+          >
+            {t('拍卖与胜者诅咒', 'Auctions')}
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'pirates' && (
+        <div className="bm-controls-row">
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`海盗人数 N = ${numPirates}`, `Pirates N = ${numPirates}`)}</label>
+            <input
+              type="range"
+              min="2"
+              max="10"
+              step="1"
+              value={numPirates}
+              onChange={(e) => setNumPirates(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`金币总数 M = ${coins}`, `Gold Coins M = ${coins}`)}</label>
+            <input
+              type="range"
+              min="10"
+              max="300"
+              step="10"
+              value={coins}
+              onChange={(e) => setCoins(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'truel' && (
+        <div className="bm-controls-row">
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`枪手 A 命中率 p_A: ${(pA * 100).toFixed(1)}%`, `Gunfighter A Accuracy: ${(pA * 100).toFixed(1)}%`)}</label>
+            <input
+              type="range"
+              min="0.1"
+              max="0.9"
+              step="0.05"
+              value={pA}
+              onChange={(e) => setPA(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`枪手 B 命中率 p_B: ${(pB * 100).toFixed(1)}%`, `Gunfighter B Accuracy: ${(pB * 100).toFixed(1)}%`)}</label>
+            <input
+              type="range"
+              min="0.3"
+              max="0.95"
+              step="0.05"
+              value={pB}
+              onChange={(e) => setPB(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+          <div className="bm-control-group">
+            <label className="bm-label">{t('枪手 A 第一枪策略', 'Player A Strategy')}</label>
+            <select
+              value={aStrategy}
+              onChange={(e) => setAStrategy(e.target.value)}
+              className="bm-slider"
+              style={{ background: '#1e293b', color: '#f8fafc', padding: '0.3rem', borderRadius: '4px' }}
+            >
+              <option value="pass">{t('故意朝天放枪 (Pass)', 'Shoot into air (Pass)')}</option>
+              <option value="shootC">{t('射击神枪手 C (Shoot C)', 'Shoot Gunfighter C')}</option>
+              <option value="shootB">{t('射击枪手 B (Shoot B)', 'Shoot Gunfighter B')}</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'auctions' && (
+        <div className="bm-controls-row">
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`真实估值 v = $${valuation}`, `True Valuation v = $${valuation}`)}</label>
+            <input
+              type="range"
+              min="10"
+              max="100"
+              step="5"
+              value={valuation}
+              onChange={(e) => setValuation(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+          <div className="bm-control-group">
+            <label className="bm-label">{t(`竞拍人数 n = ${numBidders}`, `Bidders n = ${numBidders}`)}</label>
+            <input
+              type="range"
+              min="2"
+              max="10"
+              step="1"
+              value={numBidders}
+              onChange={(e) => setNumBidders(Number(e.target.value))}
+              className="bm-slider"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Visual Renderings */}
+      {activeTab === 'pirates' && (
+        <div style={{ background: '#0f172a', borderRadius: '8px', padding: '1rem', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: '0.5rem' }}>
+            {t(`子博弈逆向归纳 (N = ${numPirates} 人最优分配方案)`, `Subgame Backward Induction (N = ${numPirates} Pirates)`)}
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: '#cbd5e1' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #475569', textAlign: 'left' }}>
+                  <th style={{ padding: '0.4rem' }}>{t('子博弈规模', 'Subgame')}</th>
+                  <th style={{ padding: '0.4rem' }}>{t('金币分配 (提议者 → 最弱者)', 'Allocation (Proposer → Weakest)')}</th>
+                  <th style={{ padding: '0.4rem' }}>{t('投赞成票的编号', 'Supporting Voters')}</th>
+                  <th style={{ padding: '0.4rem' }}>{t('提议者所得', 'Proposer Share')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pirateTable.map((step) => (
+                  <tr key={step.k} style={{ borderBottom: '1px solid #1e293b' }}>
+                    <td style={{ padding: '0.4rem', fontWeight: 600, color: step.k === numPirates ? '#f59e0b' : '#94a3b8' }}>
+                      {step.k} {t('人局', 'Pirates')}
+                    </td>
+                    <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>
+                      ({step.alloc.join(', ')})
+                    </td>
+                    <td style={{ padding: '0.4rem', color: '#22c55e' }}>
+                      {step.votes.map(v => `P${numPirates - step.k + 1 + v}`).join(', ')} ({step.votes.length}/{step.k} {t('票通过', 'votes')})
+                    </td>
+                    <td style={{ padding: '0.4rem', fontWeight: 700, color: '#38bdf8' }}>
+                      {step.alloc[0]} {t('枚', 'coins')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'truel' && (
+        <div className="bm-metrics-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="bm-metric-badge" style={{ borderLeft: '4px solid #38bdf8' }}>
+            <span>{t('枪手 A 最终胜率', 'Gunfighter A Win Rate')}</span>
+            <strong style={{ color: '#38bdf8', fontSize: '1.2rem' }}>{(truelWinRates.winA * 100).toFixed(2)}%</strong>
+          </div>
+          <div className="bm-metric-badge" style={{ borderLeft: '4px solid #a855f7' }}>
+            <span>{t('枪手 B 最终胜率', 'Gunfighter B Win Rate')}</span>
+            <strong style={{ color: '#a855f7', fontSize: '1.2rem' }}>{(truelWinRates.winB * 100).toFixed(2)}%</strong>
+          </div>
+          <div className="bm-metric-badge" style={{ borderLeft: '4px solid #f43f5e' }}>
+            <span>{t('枪手 C (神枪手) 胜率', 'Gunfighter C Win Rate')}</span>
+            <strong style={{ color: '#f43f5e', fontSize: '1.2rem' }}>{(truelWinRates.winC * 100).toFixed(2)}%</strong>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'auctions' && (
+        <div className="bm-metrics-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div className="bm-metric-badge">
+            <span>{t('一阶密封出价 FPA b*(v)', 'First-Price Bid')}</span>
+            <strong style={{ color: '#38bdf8' }}>${auctionData.bidFPA.toFixed(2)}</strong>
+          </div>
+          <div className="bm-metric-badge">
+            <span>{t('二阶密封出价 SPA b*(v)', 'Second-Price Bid')}</span>
+            <strong style={{ color: '#22c55e' }}>${auctionData.bidSPA.toFixed(2)}</strong>
+          </div>
+          <div className="bm-metric-badge">
+            <span>{t('全支付拍卖出价 All-Pay', 'All-Pay Bid')}</span>
+            <strong style={{ color: '#a855f7' }}>${auctionData.bidAllPay.toFixed(2)}</strong>
+          </div>
+          <div className="bm-metric-badge">
+            <span>{t('胜者诅咒收购期望利润', 'Winner\'s Curse Profit')}</span>
+            <strong style={{ color: '#f43f5e' }}>-${Math.abs(auctionData.winnersCurseExp).toFixed(2)}</strong>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 const RECORD_EXAMPLE_SPEEDS = [7, 4, 6, 2, 5, 1, 3];
+
 
 const RECORD_EXAMPLE_STATES = (() => {
   let prefixMinimum = Infinity;
@@ -19341,7 +19674,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -19577,6 +19910,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'delta-hedging-demo') {
     return <DeltaHedgingVisual />;
+  }
+
+  if (match?.[1] === 'game-theory-interactive-demo') {
+    return <GameTheoryVisual />;
   }
 
   if (match) {

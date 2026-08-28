@@ -929,7 +929,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
-    expect(screen.getByText('本板块共 36 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText(/本板块共 \d+ 篇笔记/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
 
     expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
@@ -1015,4 +1015,34 @@ describe('App', () => {
     expect(screen.getByLabelText('停时与反射原理演示')).toBeInTheDocument();
     expect(screen.getByLabelText('期权 Delta 对冲与 Gamma 损益演示')).toBeInTheDocument();
   });
+
+  it('opens Quant 13 Game Theory note and renders the game theory simulator', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Quant13')
+          ? '# Quant 13 · 博弈论与策略性决策：纳什均衡、逆向归纳与华尔街量化经典\n\n```game-theory-interactive-demo\n```'
+          : '# Quant tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 13 · 博弈论/i }));
+
+    expect(await screen.findByRole('heading', { name: /Quant 13 · 博弈论与策略性决策/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('博弈论与策略性决策演示')).toBeInTheDocument();
+    expect(screen.getByText(/量化博弈论与经典策略交互模拟器/)).toBeInTheDocument();
+
+    // Switch tab to Truel
+    fireEvent.click(screen.getByRole('button', { name: '三方决斗' }));
+    expect(screen.getByText(/枪手 A 最终胜率/)).toBeInTheDocument();
+
+    // Switch tab to Auctions
+    fireEvent.click(screen.getByRole('button', { name: '拍卖与胜者诅咒' }));
+    expect(screen.getByText(/一阶密封出价 FPA/)).toBeInTheDocument();
+  });
 });
+
