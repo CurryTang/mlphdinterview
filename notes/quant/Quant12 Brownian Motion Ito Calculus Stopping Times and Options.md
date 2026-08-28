@@ -148,107 +148,213 @@ $$
 
 ## 模块三：伊藤微积分与伊藤几何（Itô Calculus & Itô Geometry）
 
-### 1. 二阶 Taylor 展开与伊藤引理推导
+### 1. 历史演进与思想脉络：从花粉微粒到现代华尔街
 
-设 $X_t$ 为伊藤扩散过程：$dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$，函数 $f(t, x) \in C^{1,2}$。
-考虑微元 $\Delta f = f(t+\Delta t, X_t + \Delta X_t) - f(t, X_t)$ 的 Taylor 展开：
+随机微积分的诞生不是数学家的凭空构想，而是一场跨越一个半世纪、由物理学、天文学、金融学与现代测度论共同交织驱动的深刻革命：
 
-$$
-\Delta f = \frac{\partial f}{\partial t}\Delta t + \frac{\partial f}{\partial x}\Delta X_t + \frac{1}{2}\frac{\partial^2 f}{\partial x^2}(\Delta X_t)^2 + \frac{\partial^2 f}{\partial t\partial x}\Delta t \Delta X_t + \frac{1}{2}\frac{\partial^2 f}{\partial t^2}(\Delta t)^2 + \mathcal{O}((\Delta t)^{3/2})
-$$
+```mermaid
+timeline
+    title 随机微积分与布朗运动历史发展脉络
+    1827 : 罗伯特·布朗 (Robert Brown)
+         : 显微镜下观测花粉微粒的不规则悬浮热运动
+    1900 : 路易·巴舍利耶 (Louis Bachelier)
+         : 《投机理论》首次用正态分布和算术布朗运动建模股票与期权价格
+    1905 : 阿尔伯特·爱因斯坦 (Albert Einstein)
+         : 建立扩散偏微分方程，证明均方位移正比于时间并测定阿伏伽德罗常数
+    1923 : 诺伯特·维纳 (Norbert Wiener)
+         : 建立函数空间上的严格维纳测度，证明样本轨道处处连续但处处不可微
+    1944-1951 : 伊藤清 (Kiyosi Itô)
+         : 创立基于鞅论与L²等距同构的随机积分与伊藤引理，奠定SDE理论
+    1973 : 布莱克、斯科尔斯与默顿 (Black-Scholes-Merton)
+         : 提出几何布朗运动模型与无套利对冲，推导出期权定价解析公式
+```
 
-将 $\Delta X_t = \mu \Delta t + \sigma \Delta W_t$ 代入 $(\Delta X_t)^2$：
+1. **1827 年（Robert Brown）**：苏格兰植物学家布朗在水滴中观察悬浮花粉颗粒时，发现了永不停歇的杂乱无章折线运动。
+2. **1900 年（Louis Bachelier）**：在巴黎大学提交的博士论文《投机理论》（*Théorie de la Spéculation*）中，巴舍利耶**先于爱因斯坦 5 年**从“公平赌博”假设出发，推导出了资产价格变化的转移密度函数（高斯核）和期权定价公式，开创了数理金融学先河。但他采用的算术布朗运动会导致股票价格为负，且当时尚未建立现代严格测度论。
+3. **1905 年（Albert Einstein）与 1906 年（Marian Smoluchowski）**：爱因斯坦独立从微观液体分子撞击机制推导出宏观扩散方程 $\frac{\partial \rho}{\partial t} = D \nabla^2 \rho$，得出核心物理定律：**粒子的均方位移正比于时间** $\mathbb{E}[(\Delta x)^2] = 2Dt$，并由此通过实验测定了阿伏伽德罗常数。
+4. **1923 年（Norbert Wiener）**：维纳通过严密的测度论和泛函分析，在连续路径空间 $C[0, \infty)$ 上构造了第一个数学上严格的布朗运动概率测度（维纳测度），并证明了其样本轨道最惊人的病态特征：**几乎所有样本轨道处处连续，但处处不可微（Continuous Everywhere, Nowhere Differentiable）**！
+5. **1944–1951 年（伊藤清 Kiyosi Itô）**：由于维纳轨道的不可微性与一阶变差无穷大，经典牛顿-莱布尼茨微积分在随机样本轨道上全面失效。日本数学家伊藤清引入基于鞅论的非预期积分定义，创立了**随机微分方程（SDE）**与**伊藤引理（Itô's Formula）**，彻底打通了概率论、偏微分方程与微分几何的宏伟大厦。
+6. **1973 年（Black-Scholes-Merton）**：萨缪尔森（Samuelson）、布莱克（Black）、斯科尔斯（Scholes）与默顿（Merton）将算术布朗运动升级为**几何布朗运动（GBM）**，应用伊藤引理消除股票价格的随机扰动项，构造出完全无风险的 Delta 对冲组合，推导出了荣获诺贝尔经济学奖的 Black-Scholes 期权定价模型。
 
-$$
-(\Delta X_t)^2 = \mu^2 (\Delta t)^2 + 2\mu\sigma \Delta t \Delta W_t + \sigma^2 (\Delta W_t)^2
-$$
+---
 
-由于 $(\Delta t)^2 \to 0$，$\Delta t \Delta W_t \sim (\Delta t)^{3/2} \to 0$，而 $(\Delta W_t)^2 \to \Delta t$，取极限得 **伊藤乘法规则表**：
+### 2. 核心动机：为什么经典微积分会彻底失效？
+
+#### （1）一阶变差发散与 Riemann-Stieltjes 积分的崩溃
+在经典实分析中，若想沿某条路径 $g(t)$ 定义 Stieltjes 积分 $\int_0^T f(t) dg(t)$，必要前提是 $g(t)$ 具有**有界一阶变差（Bounded Total Variation, $V_T(g) < \infty$）**：
+
+$$V_T(g) = \sup_{\Pi} \sum_{i=1}^n |g(t_i) - g(t_{i-1})| < \infty$$
+
+然而，对于布朗运动 $W_t$，在任意微小区间 $[0, T]$ 内，其一阶变差几乎必然发散到无穷大：
+
+$$\lim_{|\Pi| \to 0} \sum_{i=1}^n |W_{t_i} - W_{t_{i-1}}| = \infty \quad \text{a.s.}$$
+
+这意味着**无法在逐条样本路径（Pathwise）上把 $dW_t$ 当作普通微分来进行积分**！若强行用黎曼和计算，选在区间左端点、中点或右端点会得到完全不同且不收敛的荒谬结果。
+
+#### （2）二次变差收敛与时间量纲塌缩
+虽然一阶变差爆炸，但布朗运动的**二次变差（Quadratic Variation）**却惊人地收敛到了一个确定性的常数时间 $T$：
+
+$$[W]_T = \lim_{|\Pi| \to 0} \sum_{i=1}^n (W_{t_i} - W_{t_{i-1}})^2 = T \quad \text{在 } L^2 \text{ 与概率意义下成立}$$
+
+在微元尺度下，这意味着：
+$$\Delta W \sim O(\sqrt{\Delta t}) \implies (\Delta W)^2 \sim O(\Delta t)$$
+
+#### （3）Taylor 展开中二阶项的“升阶复活”
+在牛顿-莱布尼茨普通微积分中，对于光滑函数 $x(t)$，$\Delta x \sim O(\Delta t)$，其二阶微分项 $(\Delta x)^2 \sim O((\Delta t)^2)$ 是高级无穷小，可以被直接舍弃：
+$$\Delta f = f'(x) \Delta x + \frac{1}{2} f''(x) (\Delta x)^2 + \dots \implies df = f'(x) dx$$
+
+然而在随机微积分中，当 $X_t$ 包含布朗驱动项 $\sigma dW_t$ 时：
+$$(\Delta X_t)^2 = (\mu \Delta t + \sigma \Delta W_t)^2 = \sigma^2 (\Delta W_t)^2 + O((\Delta t)^{3/2}) \approx \sigma^2 \Delta t$$
+**二阶项 $(\Delta X_t)^2$ 的阶数直接被拉升至一阶时间量纲 $O(\Delta t)$！**
+因此，在 Taylor 展开中，二阶导数项 $\frac{1}{2} f''(X_t) \sigma^2 dt$ **绝不能被忽略，它作为确定性漂移项永久性地留在了主导微元方程中**！
+
+---
+
+### 3. 伊藤引理（Itô's Lemma）与代数乘法规则
+
+设 $X_t$ 为标准伊藤扩散过程（Itô Drift-Diffusion Process）：
+
+$$dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$$
+
+对任意二次连续可微函数 $f(t, x) \in C^{1,2}([0, \infty) \times \mathbb{R})$，进行二阶 Taylor 展开：
+
+$$df = \frac{\partial f}{\partial t} dt + \frac{\partial f}{\partial x} dX_t + \frac{1}{2} \frac{\partial^2 f}{\partial x^2} (dX_t)^2$$
+
+根据二次变差与正交性极限，确立 **伊藤代数乘法基本规则表**：
 
 | $\times$ | $dt$ | $dW_t$ |
 | :---: | :---: | :---: |
-| **$dt$** | $0$ | $0$ |
-| **$dW_t$** | $0$ | **$dt$** |
+| **$dt$** | $0$（$dt \cdot dt \sim O(dt^2)$） | $0$（$dt \cdot dW_t \sim O(dt^{3/2})$） |
+| **$dW_t$** | $0$ | **$dt$**（$(dW_t)^2 \to dt$ a.s.） |
 
-由此导出著名的 **伊藤引理（Itô's Lemma）**：
+将 $(dX_t)^2 = (\mu dt + \sigma dW_t)^2 = \sigma^2 dt$ 代入展开式，得到著名的 **一维伊藤引理（Itô's Lemma）**：
 
-$$
-df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t
-$$
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
 
-### 2. 多维伊藤引理
+#### 多维伊藤引理（Multidimensional Itô's Lemma）
+若有 $d$ 个状态变量 $X_t = (X_t^1, \dots, X_t^d)^T$，由 $m$ 个相关布朗运动 $dW_t^i dW_t^j = \rho_{ij} dt$ 驱动，$dX_t^i = \mu_i dt + \sum_{k=1}^m \sigma_{ik} dW_t^k$：
 
-若有 $d$ 维相关布朗运动 $dW_t^i dW_t^j = \rho_{ij} dt$，状态变量向量 $dX_t^i = \mu_i dt + \sum_k \sigma_{ik} dW_t^k$：
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \sum_{i=1}^d \mu_i \frac{\partial f}{\partial x_i} + \frac{1}{2} \sum_{i=1}^d \sum_{j=1}^d \left( \sum_{k,l} \sigma_{ik}\sigma_{jl}\rho_{kl} \right) \frac{\partial^2 f}{\partial x_i \partial x_j} \right) dt + \sum_{i=1}^d \frac{\partial f}{\partial x_i} \sum_{k=1}^m \sigma_{ik} dW_t^k}$$
 
-$$
-df(t, X_t) = \left( \frac{\partial f}{\partial t} + \sum_{i} \mu_i \frac{\partial f}{\partial x_i} + \frac{1}{2} \sum_{i,j} \left( \sum_{k,l} \sigma_{ik}\sigma_{jl}\rho_{kl} \right) \frac{\partial^2 f}{\partial x_i \partial x_j} \right) dt + \sum_i \frac{\partial f}{\partial x_i} \sum_k \sigma_{ik} dW_t^k
-$$
+---
 
-### 3. 伊藤几何 vs. 斯特拉托诺维奇（Stratonovich）积分
+### 4. 伊藤几何（Itô Geometry）：曲率、内禀漂移与 Jensen 不等式动力学
 
-对于分割 $0=t_0 < t_1 < \dots < t_n = T$，考虑黎曼求和逼近积分 $\int_0^T X_t dW_t$：
+#### （1）几何直观：为什么被称为“伊藤几何”？
+在微分几何中，曲面上的测地线偏离平行线是由**空间曲率**引起的。在随机微积分中，布朗运动的高频振荡使得非线性函数在时间轴上产生了一个**内禀几何漂移（Itô-Laplacian Curvature Drift）**：
 
-$$
-S_n^{(\alpha)} = \sum_{i=0}^{n-1} X_{(1-\alpha)t_i + \alpha t_{i+1}} (W_{t_{i+1}} - W_{t_i}) \quad (0 \le \alpha \le 1)
-$$
+$$\mathbb{E}[f(x + \Delta W) - f(x)] \approx f'(x)\underbrace{\mathbb{E}[\Delta W]}_{=0} + \frac{1}{2} f''(x)\underbrace{\mathbb{E}[(\Delta W)^2]}_{=\Delta t} = \frac{1}{2} f''(x) \Delta t$$
+
+- **凸函数（Convex, $f''(x) > 0$）**：对称的随机波动 $\pm \Delta W$ 在上凸曲线上的平均高度必然高于中心点。伊藤几何项 $\frac{1}{2} f''(x) dt > 0$ 将过程**向上推升**（这正是期权 Gamma 多头能够不断捕获波动率收益的数学本质！）；
+- **凹函数（Concave, $f''(x) < 0$）**：波动率会产生向下的几何拖拽损耗（Geometric Drag），例如复合收益率均值扣减 $\mu - \frac{1}{2}\sigma^2$。
+
+#### （2）伊藤积分 vs 斯特拉托诺维奇（Stratonovich）积分：两大几何体系的哲学对立
+
+对于分割 $0=t_0 < t_1 < \dots < t_n = T$，考虑黎曼和取样点参数化（$\alpha \in [0, 1]$）：
+
+$$S_n^{(\alpha)} = \sum_{i=0}^{n-1} X_{(1-\alpha)t_i + \alpha t_{i+1}} (W_{t_{i+1}} - W_{t_i})$$
 
 ```ito-geometry-demo
 ```
 
-1. **伊藤积分（$\alpha = 0$，左端点）**：
-   - 记为 $\int_0^T X_t dW_t$。
-   - **核心特征**：非预期（Non-anticipating），被积函数仅依赖于历史信息 $\mathcal{F}_{t_i}$，与未来增量 $W_{t_{i+1}} - W_{t_i}$ 独立。
-   - **数学优越性**：是局部鞅，$\mathbb{E}\left[ \int_0^T X_t dW_t \right] = 0$。符合金融物理世界的因果律（不能拿着未来的价格进行当下的仓位决策）。
-2. **斯特拉托诺维奇积分（$\alpha = 1/2$，中点）**：
-   - 记为 $\int_0^T X_t \circ dW_t$。
-   - **核心特征**：满足经典微积分链式法则 $d(f(W_t)) = f'(W_t) \circ dW_t$（无二阶导数修正项）。常用于微分几何、流形上的随机分析及物理对称系统建模。
-   - **转换公式**：
+| 积分体系 | 取样点参数 $\alpha$ | 链式法则形式 | 期望值性质 | 适用领域与核心哲学 |
+| :--- | :--- | :--- | :--- | :--- |
+| **伊藤积分（Itô）** | $\alpha = 0$（左端点，区间起始时刻） | $d(f(W)) = f' dW + \frac{1}{2} f'' dt$（二阶导数修正） | **是鞅**：$\mathbb{E}\left[\int X dW\right] = 0$ | **金融工程、量化交易与对冲**：因果律严格成立（不可预知未来，基于历史信息建仓） |
+| **斯特拉托诺维奇积分（Stratonovich）** | $\alpha = 1/2$（区间中点，梯形平均） | $d(f(W)) = f'(W) \circ dW$（满足牛顿微积分链式法则） | **不是鞅**：$\mathbb{E}\left[\int W \circ dW\right] = \frac{T}{2} \ne 0$ | **物理学、微分流形与机器人动力学**：保持黎曼度量对称性与李代数旋转不变性 |
 
-$$
-\int_0^T X_t \circ dW_t = \int_0^T X_t dW_t + \frac{1}{2} [X, W]_T
-$$
-
-例如，对于 $X_t = W_t$：
-
-$$
-\int_0^T W_t \circ dW_t = \frac{1}{2} W_T^2 \qquad \text{对比} \qquad \int_0^T W_t dW_t = \frac{1}{2} W_T^2 - \frac{1}{2} T
-$$
+- **转换公式（Conversion Formula）**：
+  $$\int_0^T X_t \circ dW_t = \int_0^T X_t dW_t + \frac{1}{2} [X, W]_T$$
+- **Wong-Zakai 物理收敛定理**：若用物理上真实存在的平滑彩色噪声 $\xi_\epsilon(t)$（相关时间为 $\epsilon$）逼近理想白噪声 $\dot{W}_t$，其常微分方程的解在 $\epsilon \to 0$ 时**收敛于斯特拉托诺维奇 SDE，而非伊藤 SDE**！在工程物理应用中若要转为伊藤描述，必须手动添加 $-\frac{1}{2}\sigma \sigma' dt$ 的几何修正项。
 
 ---
 
-## 模块四：伊藤积分的严格构造与性质（The Itô Integral）
+## 模块四：伊藤积分的严格测度论构造与核心性质（Rigorous Construction & Itô Isometry）
 
-### 1. 积分构造与伊藤等距（Itô Isometry）
+### 1. 严格四步构造法（From Simple Processes to Hilbert Space $L^2$ Extension）
 
-对于适应平方可积过程 $H_t \in \mathcal{L}^2_{\mathcal{F}}([0, T])$（满足 $\mathbb{E}\left[\int_0^T H_t^2 dt\right] < \infty$），伊藤积分 $I_T(H) = \int_0^T H_t dW_t$ 满足两大核心性质：
+设概率空间 $(\Omega, \mathcal{F}, \mathbb{P})$ 具备满足常规条件的流（Filtration）$(\mathcal{F}_t)_{t \ge 0}$。
 
-#### （1）鞅性与零均值
+#### 第 1 步：初等适应过程（Elementary / Simple Processes）的积分定义
+定义空间 $\mathcal{H}_0$ 中的初等阶梯过程 $H_t(\omega)$ 为形如：
 
-$$
-\mathbb{E}\left[ \int_0^T H_t dW_t \;\middle|\; \mathcal{F}_s \right] = \int_0^s H_t dW_t \quad (s \le T) \implies \mathbb{E}\left[ \int_0^T H_t dW_t \right] = 0
-$$
+$$H_t(\omega) = \sum_{i=0}^{n-1} \xi_i(\omega) \mathbf{1}_{[t_i, t_{i+1})}(t)$$
 
-#### （2）伊藤等距（Itô Isometry）
+其中分割为 $0 = t_0 < t_1 < \dots < t_n = T$，系数 $\xi_i$ 为 $\mathcal{F}_{t_i}$-可测且平方可积随机变量（$\mathbb{E}[\xi_i^2] < \infty$）。
+定义初等过程的伊藤积分为简单的离散增量加权和：
 
-$$
-\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \mathbb{E}\left[ \int_0^T H_t^2 dt \right]
-$$
+$$I(H) = \int_0^T H_t dW_t \triangleq \sum_{i=0}^{n-1} \xi_i (W_{t_{i+1}} - W_{t_i})$$
 
-**等距性质证明（分步推导）**：
-对于初等阶梯过程 $H_t = \sum_{i=0}^{n-1} H_i \mathbf{1}_{[t_i, t_{i+1})}(t)$，其中 $H_i \in \mathcal{F}_{t_i}$：
+#### 第 2 步：伊藤等距定理（Itô Isometry）的严格代数证明
+计算积分平方的数学期望：
 
-$$
-\mathbb{E}\left[ \left( \sum_{i=0}^{n-1} H_i \Delta W_i \right)^2 \right] = \sum_{i=0}^{n-1} \mathbb{E}[H_i^2 (\Delta W_i)^2] + 2 \sum_{i < j} \mathbb{E}[H_i H_j \Delta W_i \Delta W_j]
-$$
+$$\mathbb{E}\left[ (I(H))^2 \right] = \mathbb{E}\left[ \left( \sum_{i=0}^{n-1} \xi_i \Delta W_i \right)^2 \right] = \sum_{i=0}^{n-1} \mathbb{E}[\xi_i^2 (\Delta W_i)^2] + 2 \sum_{i < j} \mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j]$$
 
-- 交叉项：当 $i < j$ 时，$\Delta W_j$ 独立于 $\mathcal{F}_{t_j}$，而 $H_i, H_j, \Delta W_i \in \mathcal{F}_{t_j}$，由条件期望塔法则：
+- **交叉项（$i < j$）完全消失**：因为 $t_i < t_{i+1} \le t_j$，在时刻 $t_j$ 处，随机变量 $\xi_i, \xi_j, \Delta W_i$ 均属于已知信息 $\mathcal{F}_{t_j}$。应用条件期望塔法则（Tower Property）：
 
-$$
-\mathbb{E}[H_i H_j \Delta W_i \Delta W_j] = \mathbb{E}[H_i H_j \Delta W_i \cdot \mathbb{E}[\Delta W_j \mid \mathcal{F}_{t_j}]] = \mathbb{E}[H_i H_j \Delta W_i \cdot 0] = 0
-$$
+$$\mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j] = \mathbb{E}\left[ \mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j \mid \mathcal{F}_{t_j}] \right] = \mathbb{E}\left[ \xi_i \xi_j \Delta W_i \cdot \underbrace{\mathbb{E}[\Delta W_j \mid \mathcal{F}_{t_j}]}_{=0} \right] = 0$$
 
-- 平方项：$\mathbb{E}[H_i^2 (\Delta W_i)^2] = \mathbb{E}[H_i^2 \mathbb{E}[(\Delta W_i)^2 \mid \mathcal{F}_{t_i}]] = \mathbb{E}[H_i^2 \Delta t_i]$。
-求和即得 $\sum \mathbb{E}[H_i^2] \Delta t_i = \mathbb{E}\left[ \int_0^T H_t^2 dt \right]$。通过极限稠密性可推广到全体 $\mathcal{L}^2$ 过程。
+- **平方项**：由于增量 $\Delta W_i = W_{t_{i+1}} - W_{t_i}$ 独立于 $\mathcal{F}_{t_i}$ 且 $\mathbb{E}[(\Delta W_i)^2 \mid \mathcal{F}_{t_i}] = \Delta t_i$：
+
+$$\mathbb{E}[\xi_i^2 (\Delta W_i)^2] = \mathbb{E}\left[ \xi_i^2 \mathbb{E}[(\Delta W_i)^2 \mid \mathcal{F}_{t_i}] \right] = \mathbb{E}[\xi_i^2 \Delta t_i]$$
+
+求和即得著名的 **伊藤等距恒等式（Itô Isometry）**：
+
+$$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \mathbb{E}\left[ \int_0^T H_t^2 dt \right] = \|H\|_{\mathcal{L}^2([0, T] \times \Omega)}^2}$$
+
+#### 第 3 步：完备化等距同构延拓（Continuous $L^2$ Extension）
+由于初等过程空间 $\mathcal{H}_0$ 在 Hilbert 空间 $\mathcal{L}^2_{\mathcal{F}}([0, T] \times \Omega)$（满足 $\mathbb{E}\left[\int_0^T H_t^2 dt\right] < \infty$ 的适应过程）中稠密（Dense）。
+对于任意 $X \in \mathcal{L}^2_{\mathcal{F}}$，存在初等过程序列 $H^{(n)} \to X$。
+由伊藤等距性，$I(H^{(n)})$ 在 $L^2(\Omega)$ 中构成 Cauchy 列。由空间完备性，定义唯一的极限：
+
+$$\int_0^T X_t dW_t \triangleq \lim_{n \to \infty} I(H^{(n)}) \quad (\text{在 } L^2(\mathbb{P}) \text{ 范数下收敛})$$
+
+#### 第 4 步：连续轨道与鞅性质
+伊藤证明了积分过程 $M_t = \int_0^t X_s dW_s$ 存在几乎必然连续的样本轨道修正，且是一个标准的**连续平方可积鞅（Continuous Square-Integrable Martingale）**：
+1. $\mathbb{E}[M_t \mid \mathcal{F}_s] = M_s \quad (0 \le s \le t)$；
+2. $\mathbb{E}[M_t] = 0$；
+3. 二次变差过程满足 $[M]_t = \int_0^t X_s^2 ds$。
+
+---
+
+### 2. 经典计算法则与高级推论
+
+#### （1）随机分部积分（Stochastic Integration by Parts）
+若 $X_t$ 与 $Y_t$ 均为连续半鞅（Semimartingales）：
+
+$$\boxed{d(X_t Y_t) = X_t dY_t + Y_t dX_t + d[X, Y]_t}$$
+
+积分形式：$X_T Y_T - X_0 Y_0 = \int_0^T X_t dY_t + \int_0^T Y_t dX_t + [X, Y]_T$。
+
+#### （2）Doléans-Dade 随机指数与 GBM 闭式解
+求解几何布朗运动随机微分方程：
+
+$$dS_t = \mu S_t dt + \sigma S_t dW_t \quad (S_0 > 0)$$
+
+两边除以 $S_t$ 并令 $f(S) = \ln S$。由伊藤引理：
+
+$$d(\ln S_t) = \frac{1}{S_t} dS_t - \frac{1}{2 S_t^2} (dS_t)^2 = (\mu dt + \sigma dW_t) - \frac{1}{2}\sigma^2 dt = \left(\mu - \frac{1}{2}\sigma^2\right) dt + \sigma dW_t$$
+
+两边积分即得**严格几何布朗运动解析解**：
+
+$$\boxed{S_t = S_0 \exp\left( \left(\mu - \frac{1}{2}\sigma^2\right) t + \sigma W_t \right)}$$
+
+> **量化深层辨析**：为什么 $\ln(S_t/S_0)$ 的漂移率是 $\mu - \frac{1}{2}\sigma^2$，但原价格期望值却依然是 $\mathbb{E}[S_t] = S_0 e^{\mu t}$？
+> 因为利用对数正态分布矩母函数性质：
+> $$\mathbb{E}\left[ e^{\sigma W_t} \right] = \exp\left(\frac{1}{2}\sigma^2 t\right)$$
+> 正好与几何凹性损耗 $-\frac{1}{2}\sigma^2 t$ 精确抵消，从而保持了原价格过程的期望漂移率为 $\mu$！
+
+#### （3）田中公式（Tanaka's Formula）与布朗局部时（Local Time）
+当函数在某些点不可微时（例如绝对值函数 $f(x) = |x|$ 在 $x=0$ 处不可微），经典伊藤引理无法直接应用。
+**田中公式**将伊藤引理推广到了广义二阶导数：
+
+$$\boxed{|W_t| = \int_0^t \operatorname{sgn}(W_s) dW_s + L_t^0}$$
+
+其中 $L_t^0$ 称为**布朗运动在 0 处的局部时（Local Time at Zero）**，它严格度量了布朗运动轨道在零点悬停与穿越的微观时间密度：
+
+$$L_t^0 = \lim_{\epsilon \to 0^+} \frac{1}{2\epsilon} \int_0^t \mathbf{1}_{\{|W_s| \le \epsilon\}} ds$$
+
+---
+
 
 ---
 

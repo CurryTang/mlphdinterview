@@ -138,75 +138,195 @@ where $\widetilde{Z}$ is another standard complex Brownian motion and $\tau_t = 
 
 ### 1. Second-Order Taylor Expansion & Itô's Lemma
 
-For an Itô diffusion $dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$ and $f(t, x) \in C^{1,2}$:
+## Module 3: Itô Calculus & Itô Geometry
 
-$$
-\Delta f = \frac{\partial f}{\partial t}\Delta t + \frac{\partial f}{\partial x}\Delta X_t + \frac{1}{2}\frac{\partial^2 f}{\partial x^2}(\Delta X_t)^2 + \mathcal{O}((\Delta t)^{3/2})
-$$
+### 1. Historical Evolution & Timeline: From Pollen Grains to Modern Quantitative Finance
 
-Using the multiplication rules:
+Stochastic calculus was not invented in a mathematical vacuum; it was the product of a 150-year confluence of botany, physics, measure theory, and financial economics:
+
+```mermaid
+timeline
+    title Historical Timeline of Brownian Motion & Stochastic Calculus
+    1827 : Robert Brown
+         : Microscopic observation of chaotic pollen grain thermal motion
+    1900 : Louis Bachelier
+         : "Théorie de la Spéculation" models asset prices via arithmetic Brownian motion
+    1905 : Albert Einstein
+         : Diffusion PDE linking microscopic collisions to macroscopic variance E[x²] = 2Dt
+    1923 : Norbert Wiener
+         : Rigorous Wiener measure on path space; proves paths are continuous but nowhere differentiable
+    1944-1951 : Kiyosi Itô
+         : L²-isometry stochastic integral & Itô's Lemma, establishing modern SDE theory
+    1973 : Black-Scholes-Merton
+         : Geometric Brownian Motion & delta hedging lead to the Black-Scholes option pricing formula
+```
+
+1. **1827 (Robert Brown)**: Scottish botanist Robert Brown observed erratic continuous jittering of microscopic pollen particles suspended in water.
+2. **1900 (Louis Bachelier)**: In his PhD thesis *Théorie de la Spéculation*, Bachelier **predated Einstein by 5 years** in using Brownian motion and Gaussian transition kernels to model Paris stock exchange option contracts. However, arithmetic Brownian motion allowed negative prices and lacked rigorous modern measure theory.
+3. **1905 (Albert Einstein) & 1906 (Marian Smoluchowski)**: Einstein derived the diffusion equation $\frac{\partial \rho}{\partial t} = D \nabla^2 \rho$ from microscopic molecular collisions, proving that **mean squared displacement is linear in time** ($\mathbb{E}[(\Delta x)^2] = 2Dt$), which enabled the experimental measurement of Avogadro's number.
+4. **1923 (Norbert Wiener)**: Wiener constructed the first mathematically rigorous probability measure on the continuous function space $C[0, \infty)$ (the Wiener measure) and proved its definitive pathological property: **almost all Brownian sample paths are continuous everywhere, but nowhere differentiable**.
+5. **1944–1951 (Kiyosi Itô)**: Because Wiener sample paths have infinite first-order variation, standard Newton-Leibniz calculus completely broke down. Japanese mathematician Kiyosi Itô constructed non-anticipating stochastic integrals via martingale theory, creating **Stochastic Differential Equations (SDEs)** and **Itô's Lemma**.
+6. **1973 (Black, Scholes & Merton)**: Samuelson, Black, Scholes, and Merton replaced arithmetic Brownian motion with Geometric Brownian Motion (GBM), applied Itô's Lemma to remove randomness via a self-financing Delta hedge, and derived the Nobel Prize-winning Black-Scholes formula.
+
+---
+
+### 2. Core Motivation: Why Classical Calculus Breaks Down
+
+#### (1) Total Variation Explosion & Collapse of Riemann-Stieltjes Integrals
+In classical real analysis, defining a Stieltjes integral $\int_0^T f(t) dg(t)$ requires the integrator $g(t)$ to have **bounded total variation**:
+
+$$V_T(g) = \sup_{\Pi} \sum_{i=1}^n |g(t_i) - g(t_{i-1})| < \infty$$
+
+For Brownian motion $W_t$, the total variation explodes almost surely on any interval $[0, T]$:
+
+$$\lim_{|\Pi| \to 0} \sum_{i=1}^n |W_{t_i} - W_{t_{i-1}}| = \infty \quad \text{a.s.}$$
+
+Hence, **one CANNOT define $\int f(t) dW_t$ pathwise as a standard Lebesgue-Stieltjes integral**.
+
+#### (2) Quadratic Variation & Time Dimension Collapse
+While first-order variation diverges, the **quadratic variation** converges almost surely to deterministic time $T$:
+
+$$[W]_T = \lim_{|\Pi| \to 0} \sum_{i=1}^n (W_{t_i} - W_{t_{i-1}})^2 = T \quad \text{in } L^2 \text{ and almost surely}$$
+
+On an infinitesimal scale:
+$$\Delta W \sim O(\sqrt{\Delta t}) \implies (\Delta W)^2 \sim O(\Delta t)$$
+
+#### (3) Resurrection of Second-Order Terms in Taylor Expansions
+In classical calculus for smooth curves, $\Delta x \sim O(\Delta t)$ so $(\Delta x)^2 \sim O((\Delta t)^2)$ is higher-order and vanishes.
+In stochastic calculus, when $X_t$ is driven by $\sigma dW_t$:
+$$(\Delta X_t)^2 = (\mu \Delta t + \sigma \Delta W_t)^2 = \sigma^2 (\Delta W_t)^2 + O((\Delta t)^{3/2}) \approx \sigma^2 \Delta t$$
+**The second-order term $(\Delta X_t)^2$ is promoted to FIRST ORDER in time $O(\Delta t)$!**
+Therefore, the curvature term $\frac{1}{2} f''(X_t) \sigma^2 dt$ **can never be discarded—it remains as a permanent deterministic drift in the differential equation!**
+
+---
+
+### 3. Itô's Lemma & Algebraic Multiplication Rules
+
+For an Itô drift-diffusion process:
+
+$$dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$$
+
+Taylor expanding $f(t, x) \in C^{1,2}([0, \infty) \times \mathbb{R})$ to second order:
+
+$$df = \frac{\partial f}{\partial t} dt + \frac{\partial f}{\partial x} dX_t + \frac{1}{2} \frac{\partial^2 f}{\partial x^2} (dX_t)^2$$
+
+Using the **Itô Multiplication Table**:
 
 | $\times$ | $dt$ | $dW_t$ |
 | :---: | :---: | :---: |
-| **$dt$** | $0$ | $0$ |
-| **$dW_t$** | $0$ | **$dt$** |
+| **$dt$** | $0$ ($dt \cdot dt \sim O(dt^2)$) | $0$ ($dt \cdot dW_t \sim O(dt^{3/2})$) |
+| **$dW_t$** | $0$ | **$dt$** ($(dW_t)^2 \to dt$ a.s.) |
 
-we obtain **Itô's Lemma**:
+Substituting $(dX_t)^2 = \sigma^2 dt$ yields **Itô's Lemma**:
 
-$$
-df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t
-$$
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
 
-### 2. Multi-Dimensional Itô's Lemma
+#### Multi-Dimensional Itô's Lemma
+For $d$ state variables $X_t = (X_t^1, \dots, X_t^d)^T$ driven by $m$ correlated Brownian motions $dW_t^i dW_t^j = \rho_{ij} dt$ with $dX_t^i = \mu_i dt + \sum_{k=1}^m \sigma_{ik} dW_t^k$:
 
-For correlated Brownian motions $dW_t^i dW_t^j = \rho_{ij} dt$ and $dX_t^i = \mu_i dt + \sum_k \sigma_{ik} dW_t^k$:
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \sum_{i=1}^d \mu_i \frac{\partial f}{\partial x_i} + \frac{1}{2} \sum_{i=1}^d \sum_{j=1}^d \left( \sum_{k,l} \sigma_{ik}\sigma_{jl}\rho_{kl} \right) \frac{\partial^2 f}{\partial x_i \partial x_j} \right) dt + \sum_{i=1}^d \frac{\partial f}{\partial x_i} \sum_{k=1}^m \sigma_{ik} dW_t^k}$$
 
-$$
-df(t, X_t) = \left( \frac{\partial f}{\partial t} + \sum_{i} \mu_i \frac{\partial f}{\partial x_i} + \frac{1}{2} \sum_{i,j} \left( \sum_{k,l} \sigma_{ik}\sigma_{jl}\rho_{kl} \right) \frac{\partial^2 f}{\partial x_i \partial x_j} \right) dt + \sum_i \frac{\partial f}{\partial x_i} \sum_k \sigma_{ik} dW_t^k
-$$
+---
 
-### 3. Itô Geometry vs. Stratonovich Integral
+### 4. Itô Geometry: Curvature, Intrinsic Drift & Dynamic Jensen's Inequality
 
-For a partition $0 = t_0 < t_1 < \dots < t_n = T$:
+#### (1) Geometric Intuition: Why "Itô Geometry"?
+In Riemannian geometry, parallel transport along a curve shifts due to space curvature. In stochastic calculus, high-frequency Brownian fluctuations create an **intrinsic geometric curvature drift (Itô-Laplacian Drift)**:
 
-$$
-S_n^{(\alpha)} = \sum_{i=0}^{n-1} X_{(1-\alpha)t_i + \alpha t_{i+1}} (W_{t_{i+1}} - W_{t_i})
-$$
+$$\mathbb{E}[f(x + \Delta W) - f(x)] \approx f'(x)\underbrace{\mathbb{E}[\Delta W]}_{=0} + \frac{1}{2} f''(x)\underbrace{\mathbb{E}[(\Delta W)^2]}_{=\Delta t} = \frac{1}{2} f''(x) \Delta t$$
+
+- **Convex Functions ($f''(x) > 0$)**: Symmetric random noise $\pm \Delta W$ on a convex curve creates a higher expected height than the center. The Itô term $\frac{1}{2} f''(x) dt > 0$ **pushes the process upward** (the mathematical origin of long Gamma option gains from volatility!).
+- **Concave Functions ($f''(x) < 0$)**: Volatility creates a downward geometric drag, e.g. compounding drag $-\frac{1}{2}\sigma^2$.
+
+#### (2) Itô vs. Stratonovich Integrals: Two Competing Geometries
+
+For partition $0 = t_0 < t_1 < \dots < t_n = T$ with evaluation point $\alpha \in [0, 1]$:
+
+$$S_n^{(\alpha)} = \sum_{i=0}^{n-1} X_{(1-\alpha)t_i + \alpha t_{i+1}} (W_{t_{i+1}} - W_{t_i})$$
 
 ```ito-geometry-demo
 ```
 
-1. **Itô Integral ($\alpha = 0$, Left Endpoint)**:
-   - Evaluated at $t_i$. Non-anticipating (adapted to $\mathcal{F}_{t_i}$).
-   - **Martingale property**: $\mathbb{E}[\int_0^T X_t dW_t] = 0$. Reflects financial causality (no trader can execute trades using future ticks).
-2. **Stratonovich Integral ($\alpha = 1/2$, Midpoint)**:
-   - Evaluated at $(t_i + t_{i+1})/2$. Satisfies standard calculus chain rule $d(f(W)) = f'(W) \circ dW$.
-   - **Conversion Formula**:
+| Calculus System | Evaluation Point $\alpha$ | Chain Rule Form | Martingale Property | Primary Domain & Philosophy |
+| :--- | :--- | :--- | :--- | :--- |
+| **Itô Integral** | $\alpha = 0$ (Left endpoint) | $d(f(W)) = f' dW + \frac{1}{2} f'' dt$ (Second derivative correction) | **Is a Martingale**: $\mathbb{E}\left[\int X dW\right] = 0$ | **Quantitative Finance & Trading**: Causality holds strictly (no peeking into the future). |
+| **Stratonovich Integral** | $\alpha = 1/2$ (Midpoint average) | $d(f(W)) = f'(W) \circ dW$ (Standard chain rule) | **Not a Martingale**: $\mathbb{E}\left[\int W \circ dW\right] = \frac{T}{2} \ne 0$ | **Physics & Differential Manifolds**: Preserves Riemannian metric & Lie group symmetries. |
 
-$$
-\int_0^T X_t \circ dW_t = \int_0^T X_t dW_t + \frac{1}{2} [X, W]_T
-$$
-
-For $X_t = W_t$:
-
-$$
-\int_0^T W_t \circ dW_t = \frac{1}{2} W_T^2 \qquad \text{vs.} \qquad \int_0^T W_t dW_t = \frac{1}{2} W_T^2 - \frac{1}{2} T
-$$
+- **Conversion Formula**:
+  $$\int_0^T X_t \circ dW_t = \int_0^T X_t dW_t + \frac{1}{2} [X, W]_T$$
+- **Wong-Zakai Theorem**: Approximating white noise by physical smooth colored noise $\xi_\epsilon(t) \to \dot{W}_t$ causes the solution of smooth ODEs to **converge to the Stratonovich SDE**, not Itô! Converting to Itô requires adding the drift correction $-\frac{1}{2}\sigma \sigma' dt$.
 
 ---
 
-## Module 4: The Itô Integral & Itô Isometry
+## Module 4: Rigorous Construction & Properties of the Itô Integral
 
-For adapted processes $H_t \in \mathcal{L}^2_{\mathcal{F}}([0, T])$ with $\mathbb{E}[\int_0^T H_t^2 dt] < \infty$:
+### 1. 4-Step Construction (From Simple Processes to Hilbert Space $L^2$ Extension)
 
-1. **Martingale Property**: $\mathbb{E}[\int_0^T H_t dW_t \mid \mathcal{F}_s] = \int_0^s H_t dW_t \implies \mathbb{E}[\int_0^T H_t dW_t] = 0$.
-2. **Itô Isometry**:
+Let $(\Omega, \mathcal{F}, (\mathcal{F}_t)_{t \ge 0}, \mathbb{P})$ be a filtered probability space satisfying the usual conditions.
 
-$$
-\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \mathbb{E}\left[ \int_0^T H_t^2 dt \right]
-$$
+#### Step 1: Integral for Elementary / Simple Processes
+Let elementary process $H_t(\omega) \in \mathcal{H}_0$ be given by:
 
-Cross terms vanish by the tower property because future increments $\Delta W_j$ are independent of past filtration $\mathcal{F}_{t_j}$.
+$$H_t(\omega) = \sum_{i=0}^{n-1} \xi_i(\omega) \mathbf{1}_{[t_i, t_{i+1})}(t)$$
+
+where $\xi_i$ is $\mathcal{F}_{t_i}$-measurable with $\mathbb{E}[\xi_i^2] < \infty$. The Itô integral is defined as the discrete sum:
+
+$$I(H) = \int_0^T H_t dW_t \triangleq \sum_{i=0}^{n-1} \xi_i (W_{t_{i+1}} - W_{t_i})$$
+
+#### Step 2: Proof of Itô Isometry
+Expanding the squared expectation:
+
+$$\mathbb{E}\left[ (I(H))^2 \right] = \sum_{i=0}^{n-1} \mathbb{E}[\xi_i^2 (\Delta W_i)^2] + 2 \sum_{i < j} \mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j]$$
+
+- **Cross terms vanish ($i < j$)**: Since $t_i < t_{i+1} \le t_j$, variables $\xi_i, \xi_j, \Delta W_i \in \mathcal{F}_{t_j}$. By the tower property:
+
+$$\mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j] = \mathbb{E}\left[ \mathbb{E}[\xi_i \xi_j \Delta W_i \Delta W_j \mid \mathcal{F}_{t_j}] \right] = \mathbb{E}\left[ \xi_i \xi_j \Delta W_i \cdot \underbrace{\mathbb{E}[\Delta W_j \mid \mathcal{F}_{t_j}]}_{=0} \right] = 0$$
+
+- **Squared terms**: Since $\Delta W_i$ is independent of $\mathcal{F}_{t_i}$ and $\mathbb{E}[(\Delta W_i)^2 \mid \mathcal{F}_{t_i}] = \Delta t_i$:
+
+$$\mathbb{E}[\xi_i^2 (\Delta W_i)^2] = \mathbb{E}[\xi_i^2 \Delta t_i]$$
+
+Yielding the **Itô Isometry Identity**:
+
+$$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \mathbb{E}\left[ \int_0^T H_t^2 dt \right] = \|H\|_{\mathcal{L}^2([0, T] \times \Omega)}^2}$$
+
+#### Step 3: Continuous Extension to $\mathcal{L}^2_{\mathcal{F}}$
+Because simple processes $\mathcal{H}_0$ are dense in $\mathcal{L}^2_{\mathcal{F}}([0, T] \times \Omega)$, any $X \in \mathcal{L}^2_{\mathcal{F}}$ is the limit of simple processes $H^{(n)} \to X$.
+By Itô Isometry, $I(H^{(n)})$ forms a Cauchy sequence in $L^2(\Omega)$, uniquely defining:
+
+$$\int_0^T X_t dW_t \triangleq \lim_{n \to \infty} I(H^{(n)}) \quad (\text{in } L^2(\mathbb{P}))$$
+
+#### Step 4: Continuous Sample Paths & Martingale Property
+The integral process $M_t = \int_0^t X_s dW_s$ is a **continuous square-integrable martingale**:
+1. $\mathbb{E}[M_t \mid \mathcal{F}_s] = M_s \quad (s \le t)$;
+2. $\mathbb{E}[M_t] = 0$;
+3. Quadratic variation $[M]_t = \int_0^t X_s^2 ds$.
+
+---
+
+### 2. Core Calculational Tools & Advanced Corollaries
+
+#### (1) Stochastic Integration by Parts
+For continuous semimartingales $X_t$ and $Y_t$:
+
+$$\boxed{d(X_t Y_t) = X_t dY_t + Y_t dX_t + d[X, Y]_t}$$
+
+#### (2) Geometric Brownian Motion Exact SDE Solution
+For $dS_t = \mu S_t dt + \sigma S_t dW_t$ ($S_0 > 0$), applying Itô's Lemma to $f(S) = \ln S$:
+
+$$d(\ln S_t) = \frac{1}{S_t} dS_t - \frac{1}{2 S_t^2} (dS_t)^2 = \left(\mu - \frac{1}{2}\sigma^2\right) dt + \sigma dW_t$$
+
+Integrating yields the **exact closed-form solution**:
+
+$$\boxed{S_t = S_0 \exp\left( \left(\mu - \frac{1}{2}\sigma^2\right) t + \sigma W_t \right)}$$
+
+#### (3) Tanaka's Formula & Brownian Local Time
+For non-differentiable convex functions like $f(x) = |x|$, **Tanaka's Formula** generalizes Itô's Lemma:
+
+$$\boxed{|W_t| = \int_0^t \operatorname{sgn}(W_s) dW_s + L_t^0}$$
+
+where $L_t^0 = \lim_{\epsilon \to 0^+} \frac{1}{2\epsilon} \int_0^t \mathbf{1}_{\{|W_s| \le \epsilon\}} ds$ is the **Brownian Local Time at 0**, quantifying the microscopic measure of time Brownian motion spends hovering at zero.
+
 
 ---
 
