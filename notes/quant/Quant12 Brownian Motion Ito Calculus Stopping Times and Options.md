@@ -152,31 +152,15 @@ $$
 
 随机微积分不是数学家的纯抽象符号游戏，而是一场由物理世界的不规则运动驱动、最终重塑全球量化金融交易的革命：
 
-```mermaid
-graph TD
-    T1["<b>1827 · 罗伯特·布朗 (Robert Brown)</b><br/>显微镜下观测花粉微粒在水中的不规则悬浮热运动（物理现象发现）"]
-    T2["<b>1900 · 路易·巴舍利耶 (Louis Bachelier)</b><br/>《投机理论》首次用正态分布与算术布朗运动建模股票与期权价格（早于爱因斯坦 5 年）"]
-    T3["<b>1905 · 阿尔伯特·爱因斯坦 (Albert Einstein)</b><br/>建立扩散偏微分方程，证明均方位移正比于时间 E[x²] = 2Dt（物理本质确立）"]
-    T4["<b>1923 · 诺伯特·维纳 (Norbert Wiener)</b><br/>建立函数空间上的严格维纳测度，证明样本轨道处处连续但处处不可微"]
-    T5["<b>1944–1951 · 伊藤清 (Kiyosi Itô)</b><br/>创立基于鞅论与 L² 等距同构的随机微积分与伊藤引理，奠定现代 SDE 理论"]
-    T6["<b>1973 · Black-Scholes-Merton</b><br/>引入几何布朗运动与无套利动态 Delta 对冲，推导出诺奖期权定价公式"]
+| 年份 | 关键人物 | 里程碑贡献 / 核心论文 | 对现代量化与随机分析的核心意义 |
+| :---: | :--- | :--- | :--- |
+| **1827** | **罗伯特·布朗**<br/>(Robert Brown) | 显微镜下观测水中悬浮花粉微粒的不规则连续抖动 | 首次从物理实验中发现微观无规则布朗运动现象 |
+| **1900** | **路易·巴舍利耶**<br/>(Louis Bachelier) | 博士论文《投机理论》（*Théorie de la Spéculation*）首次用正态分布与算术布朗运动建模股票与期权 | **早于爱因斯坦 5 年**建立金融资产价格扩散模型，开创数理金融学先河 |
+| **1905** | **阿尔伯特·爱因斯坦**<br/>(Albert Einstein) | 从微观分子热碰撞导出扩散偏微分方程，证明均方位移 $\mathbb{E}[(\Delta x)^2] = 2Dt$ | 确立扩散物理机制，并首次通过布朗运动实验测定了阿伏伽德罗常数 |
+| **1923** | **诺伯特·维纳**<br/>(Norbert Wiener) | 在函数空间 $C[0, \infty)$ 建立严格测度论，构造标准维纳过程（Wiener Process） | 严格证明布朗运动轨道**处处连续但处处不可微**，确立现代数学基础 |
+| **1944–1951** | **伊藤清**<br/>(Kiyosi Itô) | 创立基于鞅论与 $L^2$ 等距同构的非预期随机积分，提出著名的**伊藤引理（Itô's Lemma）** | 解决经典微积分在不可微轨道上失效的难题，奠定随机微分方程（SDE）体系 |
+| **1973** | **Black-Scholes-Merton** | 引入几何布朗运动（GBM），利用伊藤引理构建无风险 Delta 动态复制组合 | 彻底消除期权非线性风险，推导出获诺贝尔经济学奖的期权定价公式与对冲理论 |
 
-    T1 --> T2 --> T3 --> T4 --> T5 --> T6
-
-    style T1 fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#e2e8f0
-    style T2 fill:#0f172a,stroke:#fbbf24,stroke-width:2px,color:#e2e8f0
-    style T3 fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#e2e8f0
-    style T4 fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#e2e8f0
-    style T5 fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
-    style T6 fill:#0f172a,stroke:#f472b6,stroke-width:2px,color:#e2e8f0
-```
-
-1. **1827 年（Robert Brown）**：植物学家布朗观察悬浮花粉颗粒无休止的杂乱折线运动；
-2. **1900 年（Louis Bachelier）**：博士论文《投机理论》（*Théorie de la Spéculation*）**早于爱因斯坦 5 年**以“公平赌博”假设导出资产价格高斯核，开创数理金融学；
-3. **1905 年（Albert Einstein）与 1906 年（Marian Smoluchowski）**：从微观分子撞击导出宏观扩散方程 $\frac{\partial \rho}{\partial t} = D \nabla^2 \rho$，得出均方位移定律 $\mathbb{E}[(\Delta x)^2] = 2Dt$，并测定阿伏伽德罗常数；
-4. **1923 年（Norbert Wiener）**：在连续路径空间 $C[0, \infty)$ 建立严格维纳测度，证明布朗运动轨道**处处连续但处处不可微（Continuous Everywhere, Nowhere Differentiable）**；
-5. **1944–1951 年（伊藤清 Kiyosi Itô）**：破解经典微积分在随机样本轨道上的崩溃困境，以鞅论为基础创立随机微积分与伊藤引理，奠定现代随机微分方程（SDE）体系；
-6. **1973 年（Black-Scholes-Merton）**：采用几何布朗运动（GBM）配合伊藤引理消除股票随机性，构建无风险 Delta 对冲，推导期权定价偏微分方程。
 
 ---
 

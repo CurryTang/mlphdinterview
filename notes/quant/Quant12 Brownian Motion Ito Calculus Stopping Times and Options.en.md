@@ -140,31 +140,15 @@ where $\widetilde{Z}$ is another standard complex Brownian motion and $\tau_t = 
 
 Stochastic calculus is not an abstract game of pure symbols; it is a profound revolution born out of physical particle diffusion and forged into the modern language of global quantitative trading:
 
-```mermaid
-graph TD
-    T1["<b>1827 · Robert Brown</b><br/>Microscopic observation of chaotic pollen grain thermal motion in water"]
-    T2["<b>1900 · Louis Bachelier</b><br/>'Théorie de la Spéculation' models stock/option prices via Brownian motion (5 years before Einstein)"]
-    T3["<b>1905 · Albert Einstein</b><br/>Derives diffusion PDE, proving mean squared displacement is linear in time E[x²] = 2Dt"]
-    T4["<b>1923 · Norbert Wiener</b><br/>Constructs rigorous Wiener measure; proves paths are continuous everywhere but nowhere differentiable"]
-    T5["<b>1944–1951 · Kiyosi Itô</b><br/>Constructs L²-isometry stochastic integral & Itô's Lemma, establishing modern SDE theory"]
-    T6["<b>1973 · Black-Scholes-Merton</b><br/>Geometric Brownian Motion & dynamic delta hedging produce the Nobel Prize option pricing formula"]
+| Year | Key Pioneer | Milestone Contribution & Publication | Significance to Quantitative Finance & Stochastic Analysis |
+| :---: | :--- | :--- | :--- |
+| **1827** | **Robert Brown** | Microscopic observation of continuous chaotic jittering of pollen grains in water | First physical discovery of macroscopic continuous stochastic motion |
+| **1900** | **Louis Bachelier** | PhD thesis *Théorie de la Spéculation* models Paris stock exchange options via Brownian motion | **Predated Einstein by 5 years** in modeling asset price diffusion; father of mathematical finance |
+| **1905** | **Albert Einstein** | Derives macroscopic diffusion PDE from molecular collisions: $\mathbb{E}[(\Delta x)^2] = 2Dt$ | Proved physics of diffusion and enabled experimental measurement of Avogadro's number |
+| **1923** | **Norbert Wiener** | Establishes rigorous Wiener measure on path space $C[0, \infty)$ | Rigorously proved that Brownian sample paths are **continuous everywhere, nowhere differentiable** |
+| **1944–1951** | **Kiyosi Itô** | Constructs non-anticipating stochastic integral via $L^2$ isometry & derives **Itô's Lemma** | Solved the breakdown of classical calculus on rough paths, creating modern SDE theory |
+| **1973** | **Black-Scholes-Merton** | Replaces arithmetic BM with GBM; uses Itô's Lemma to build self-financing Delta hedges | Eliminated market risk to derive the Nobel Prize-winning option pricing & dynamic hedging formula |
 
-    T1 --> T2 --> T3 --> T4 --> T5 --> T6
-
-    style T1 fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#e2e8f0
-    style T2 fill:#0f172a,stroke:#fbbf24,stroke-width:2px,color:#e2e8f0
-    style T3 fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#e2e8f0
-    style T4 fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#e2e8f0
-    style T5 fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
-    style T6 fill:#0f172a,stroke:#f472b6,stroke-width:2px,color:#e2e8f0
-```
-
-1. **1827 (Robert Brown)**: Scottish botanist observed erratic continuous jittering of microscopic pollen particles suspended in water.
-2. **1900 (Louis Bachelier)**: In his PhD thesis *Théorie de la Spéculation*, Bachelier **predated Einstein by 5 years** in using Brownian motion and Gaussian transition kernels to model Paris stock exchange option contracts.
-3. **1905 (Albert Einstein) & 1906 (Marian Smoluchowski)**: Einstein derived the diffusion equation $\frac{\partial \rho}{\partial t} = D \nabla^2 \rho$ from microscopic molecular collisions, proving that **mean squared displacement is linear in time** ($\mathbb{E}[(\Delta x)^2] = 2Dt$), which enabled the experimental measurement of Avogadro's number.
-4. **1923 (Norbert Wiener)**: Wiener constructed the first mathematically rigorous probability measure on continuous path space (the Wiener measure) and proved that **almost all Brownian sample paths are continuous everywhere, but nowhere differentiable**.
-5. **1944–1951 (Kiyosi Itô)**: Because Wiener sample paths have infinite first-order variation, standard Newton-Leibniz calculus completely broke down. Kiyosi Itô constructed non-anticipating stochastic integrals via martingale theory, creating **Stochastic Differential Equations (SDEs)** and **Itô's Lemma**.
-6. **1973 (Black, Scholes & Merton)**: Replaced arithmetic Brownian motion with Geometric Brownian Motion (GBM), applied Itô's Lemma to remove randomness via a self-financing Delta hedge, and derived the Nobel Prize-winning Black-Scholes formula.
 
 ---
 
