@@ -408,25 +408,68 @@ Ideal mathematical "white noise" (correlation time $\tau = 0$) does not exist in
 
 ---
 
-## Module 4: 3 Killer Real-World Applications of Itô Calculus in Quantitative Finance
+## Module 4: Classic Applications & Analytical Tools of Itô Calculus
 
-### 1. Application 1: Solving Geometric Brownian Motion (GBM) in 10 Seconds
-
-Given stock price SDE: $dS_t = \mu S_t dt + \sigma S_t dW_t$.
-* Apply Itô to $f(S) = \ln S$ with $f'(S) = 1/S, f''(S) = -1/S^2$:
-  $$d(\ln S_t) = \frac{1}{S_t} dS_t + \frac{1}{2}\left(-\frac{1}{S_t^2}\right)(dS_t)^2 = (\mu dt + \sigma dW_t) - \frac{1}{2}\sigma^2 dt = \left(\mu - \frac{1}{2}\sigma^2\right) dt + \sigma dW_t$$
-* Integrating both sides directly yields the **closed-form solution**:
-  $$\boxed{S_t = S_0 \exp\left( \left(\mu - \frac{1}{2}\sigma^2\right) t + \sigma W_t \right)}$$
+Having established the foundational theory of Itô stochastic calculus and Itô's Lemma, this module examines three quintessential applications in financial mathematics and quantitative modeling. These applications demonstrate how the second-order curvature term $\frac{1}{2}\sigma^2 f''(x) dt$ governs asset dynamics, option risk harvesting, and variance calculations.
 
 ---
 
-### 2. Application 2: Option Long Gamma as an Automated "Buy Low, Sell High" Cash Machine
+### 1. Application 1: Closed-Form Solution of Geometric Brownian Motion (GBM) via Log-Transform
 
-Why does a long option position (Long Gamma $\Gamma = \frac{\partial^2 V}{\partial S^2} > 0$) automatically extract cash from market volatility?
+#### (1) Financial Motivation: Why Arithmetic Brownian Motion Fails
+In 1900, Louis Bachelier modeled stock prices with Arithmetic Brownian Motion (ABM): $dS_t = \mu dt + \sigma dW_t$. However, ABM suffers from two major economic flaws:
+1. **Negative Asset Prices**: Normal distributions have unbounded support $(-\infty, +\infty)$, which violates the limited liability of equities;
+2. **Constant Absolute Dollar Volatility**: ABM assumes dollar fluctuations are identical whether a stock is trading at $\$10$ or $\$1000$. In reality, investors think in terms of **percentage returns**.
+
+In 1965, Nobel laureate Paul Samuelson introduced **Geometric Brownian Motion (GBM)**, modeling relative instantaneous returns as normally distributed:
+
+$$\frac{dS_t}{S_t} = \mu dt + \sigma dW_t \iff dS_t = \mu S_t dt + \sigma S_t dW_t \quad (S_0 > 0)$$
+
+where $\mu$ is the expected drift return and $\sigma > 0$ is percentage volatility.
+
+#### (2) Deriving the Analytical Closed-Form Solution via Itô's Lemma
+Because state variable $S_t$ appears inside the diffusion term, standard Riemann integration is impossible. We apply the **logarithmic transformation**:
+* Consider smooth non-linear map $f(S) = \ln S$;
+* Derivatives: $f'(S) = \frac{1}{S}$, $f''(S) = -\frac{1}{S^2}$;
+* Apply Itô's Lemma to $f(S_t) = \ln S_t$:
+  $$d(\ln S_t) = f'(S_t) dS_t + \frac{1}{2} f''(S_t) (dS_t)^2 = \frac{1}{S_t} (\mu S_t dt + \sigma S_t dW_t) + \frac{1}{2} \left( -\frac{1}{S_t^2} \right) (\sigma^2 S_t^2 dt)$$
+* Simplify to obtain a linear drift-diffusion equation for log-prices:
+  $$d(\ln S_t) = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t$$
+* Integrate directly across $[0, t]$:
+  $$\ln\left(\frac{S_t}{S_0}\right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t$$
+* Exponentiate both sides to reach the **exact analytical solution**:
+  $$\boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}$$
+
+#### (3) Statistical Moments & Interpretation of Volatility Drag
+* **Log-Normal Distribution**: $\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$;
+* **Expected Price**: Using the moment generating function $\mathbb{E}[e^{\sigma W_t}] = e^{\frac{1}{2}\sigma^2 t}$:
+  $$\mathbb{E}[S_t] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} \mathbb{E}[e^{\sigma W_t}] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} e^{\frac{1}{2}\sigma^2 t} = S_0 e^{\mu t}$$
+* **Trading Insight**: While the ensemble arithmetic expectation grows at rate $\mu$, almost every individual trajectory compound growth rate is penalized by the deterministic downward **Volatility Drag $-\frac{1}{2}\sigma^2$**.
+
+---
+
+### 2. Application 2: Option Long Gamma & Delta Hedging Cash Flow (Gamma Scalping)
+
+#### (1) Financial Background & Market Maker Dynamics
+In modern options trading, market makers and proprietary desks construct **Delta-Neutral Portfolios** to neutralize first-order directional price risk.
+
+A market maker holding a long derivative position $V(t, S_t)$ hedges directional exposure by shorting $\Delta_t = \frac{\partial V}{\partial S}$ shares of the underlying stock:
+
+$$\Pi_t = V(t, S_t) - \Delta_t S_t$$
+
+#### (2) Second-Order PnL Decomposition
+In an infinitesimal interval $dt$, portfolio change is $d\Pi_t = dV(t, S_t) - \Delta_t dS_t$.
+Expanding $V(t, S_t)$ via Itô's Lemma:
+
+$$dV = \frac{\partial V}{\partial t} dt + \frac{\partial V}{\partial S} dS_t + \frac{1}{2} \frac{\partial^2 V}{\partial S^2} (dS_t)^2 = \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt$$
+
+Substituting into portfolio PnL:
+
+$$d\Pi_t = \left( \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt \right) - \Delta dS_t = \underbrace{\Theta dt}_{\text{Time Decay Loss (Theta)}} + \underbrace{\frac{1}{2} \Gamma \sigma^2 S_t^2 dt}_{\text{Second-Order Volatility Cash Inflow (Gamma)}}$$
 
 ```mermaid
 graph LR
-    A["Stock Price Fluctuation (Random Walk)"] --> B["Stock Rallies ↑"]
+    A["Underlying Stock Fluctuation (Random Walk)"] --> B["Stock Rallies ↑"]
     A --> C["Stock Dips ↓"]
     B --> D["Delta Increases → Hedging Algorithm MUST [Sell Stock High]"]
     C --> E["Delta Decreases → Hedging Algorithm MUST [Buy Stock Low]"]
@@ -434,30 +477,58 @@ graph LR
     E --> F
 ```
 
-* **Delta-Neutral Portfolio**: $\Pi = V(S) - \Delta S$;
-* **Instantaneous PnL**:
-  $$d\Pi = \underbrace{\left(\frac{\partial V}{\partial t}\right)}_{\Theta dt \text{ (Theta Decay)}} dt + \underbrace{\left(\frac{\partial V}{\partial S} - \Delta\right)}_{=0 \text{ (Delta Neutral)}} dS + \underbrace{\frac{1}{2} \frac{\partial^2 V}{\partial S^2} (dS)^2}_{\frac{1}{2}\Gamma S^2 \sigma^2 dt \text{ (Gamma Cash Inflow)}}$$
-* **Intuition**:
-  As the stock oscillates, the delta hedger is mechanically forced to **Sell high on upticks and Buy low on downticks**! The cash harvested from this oscillation equals $\frac{1}{2}\Gamma S^2 \sigma^2 dt$!
+#### (3) The Trader's Intuition: Volatility Harvesting (Gamma Scalping)
+* **Long Gamma Position ($\Gamma > 0$)**:
+  - When the stock surges, Delta rises, forcing the algorithm to sell stock at high prices to rebalance to neutral;
+  - When the stock drops, Delta falls, forcing the algorithm to buy stock at low prices to rebalance;
+* **Conclusion**: Market volatility mechanically forces the dynamic delta hedger to **Buy Low and Sell High**!
+* The continuous cash harvested from this rebalancing is exactly equal to $\frac{1}{2}\Gamma S^2 \sigma^2 dt$, which compensates for daily Theta time decay.
 
 ---
 
-### 3. Application 3: Itô Isometry — Rapid Variance Calculation
+### 3. Application 3: Itô Isometry & Stochastic Integral Variance Calculations
 
-To find the variance of any stochastic trading payout without nasty double integrals, use **Itô Isometry**:
+#### (1) Mathematical Background & Motivation
+In portfolio mean-variance optimization and stochastic control, we frequently need to compute the variance of stochastic integrals $I_T = \int_0^T H_t dW_t$.
+Using naive real analysis expansion $\mathbb{E}[(\int H dW)^2]$ involves tedious double integrals over random martingale differentials. Itô's isometry maps the $L^2$ norm on stochastic sample space directly to the deterministic $L^2$ time norm.
 
-$$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \right) = \mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
+#### (2) Theorem Statement & Key Identity
 
-> **Interview One-Liner Intuition**:
-> The variance of a stochastic integral equals the **ordinary integral of the expected squared integrand**. Simply swap $(dW_t)^2$ with regular $dt$!
+> **Itô Isometry Theorem**:
+> For any square-integrable adapted process $H_t$ with $\mathbb{E}\left[\int_0^T H_t^2 dt\right] < \infty$:
+> 
+> $$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
+> 
+> Since $\mathbb{E}\left[\int_0^T H_t dW_t\right] = 0$, the variance is given directly by:
+> 
+> $$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \right) = \int_0^T \mathbb{E}[H_t^2] dt}$$
 
-
+#### (3) Concrete Quantitative Examples
+* **Example 1: Variance of $\int_0^T t dW_t$**
+  - Integrand is deterministic $H_t = t$;
+  - By Itô Isometry:
+    $$\operatorname{Var}\left( \int_0^T t dW_t \right) = \int_0^T t^2 dt = \frac{1}{3} T^3$$
+* **Example 2: Variance in Vasicek Short-Rate Model $\int_0^T e^{\kappa t} dW_t$**
+  - Integrand is $H_t = e^{\kappa t}$;
+  - By Itô Isometry:
+    $$\operatorname{Var}\left( \int_0^T e^{\kappa t} dW_t \right) = \int_0^T e^{2\kappa t} dt = \frac{e^{2\kappa T} - 1}{2\kappa}$$
 
 ---
 
-## Module 5: Stopping Times & Extreme Values
+## Module 5: Stopping Times, First Hitting Times & Extreme Values
 
-### 1. Exponential Martingales & Wald's Identity
+### 1. Financial Motivation & Context for Stopping Times
+
+In quantitative finance, decision timing is rarely fixed at a constant date $T$. Many financial contracts and risk events are **triggered dynamically by stochastic market paths**:
+1. **American Options**: The holder may exercise at any stopping time $\tau \le T$; pricing American options is an **Optimal Stopping Problem**;
+2. **Barrier Options**: Knock-in / knock-out events occur at the **First Hitting Time** of a barrier level $a$;
+3. **Credit Risk & Liquidation**: In the Merton structural model, corporate default is triggered the first time firm asset value drops below debt face value.
+
+All of these reduce mathematically to: **Brownian motion hitting times across absorbing boundaries and running extrema**.
+
+---
+
+### 2. Exponential Martingales & Wald's Identity
 
 For any $\theta \in \mathbb{R}$, the Doléans-Dade exponential martingale:
 
@@ -468,33 +539,48 @@ $$
 satisfies $dM_t^\theta = \theta M_t^\theta dW_t$. Under the Optional Stopping Theorem (OST):
 
 $$
-\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2}\theta^2 \tau \right) \right] = 1
+\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2}\theta^2 \tau \right) \right] = 1 \quad (\text{Wald's Martingale Identity})
 $$
 
-### 2. Two-Sided Absorbing Boundaries
+---
+
+### 3. Two-Sided Absorbing Boundaries (Continuous Gambler's Ruin)
 
 For $\tau = \inf\{t \ge 0 : W_t \notin (-b, a)\}$ ($a, b > 0$):
-- **Hitting Probability**: $\mathbb{E}[W_\tau] = 0 \implies P(\text{hit } a \text{ first}) = \frac{b}{a+b}$.
-- **Expected Exit Time**: $\mathbb{E}[W_\tau^2 - \tau] = 0 \implies \mathbb{E}[\tau] = ab$.
+1. **Hitting Probability**: Applying OST to martingale $W_t$:
+   $$\mathbb{E}[W_\tau] = 0 \implies a P(W_\tau = a) - b (1 - P(W_\tau = a)) = 0 \implies \boxed{P(\text{hit } a \text{ first}) = \frac{b}{a+b}}$$
+2. **Expected Exit Time**: Applying OST to martingale $W_t^2 - t$:
+   $$\mathbb{E}[W_\tau^2 - \tau] = 0 \implies \boxed{\mathbb{E}[\tau] = \mathbb{E}[W_\tau^2] = a^2 \frac{b}{a+b} + b^2 \frac{a}{a+b} = ab}$$
 
-### 3. The Reflection Principle & Running Maximum Distribution
+---
 
-Let $M_t = \max_{0 \le s \le t} W_s$ and $\tau_a = \inf\{s \ge 0 : W_s = a\}$.
+### 4. The Reflection Principle & Running Maximum Distribution
+
+Let $M_t = \max_{0 \le s \le t} W_s$ and $\tau_a = \inf\{s \ge 0 : W_s = a\}$ for $a > 0$.
 
 ```reflection-principle-demo
 ```
 
-By the strong Markov property and spatial reflection across barrier $a$ after $\tau_a$:
+**Geometric Reflection Argument**:
+The event $\{M_t \ge a\}$ is identical to $\{\tau_a \le t\}$.
+At hitting time $\tau_a$, the path reaches $a$. By the **Strong Markov Property**, the residual path $\widetilde{W}_s = W_{\tau_a + s} - a$ ($s \ge 0$) is an independent Brownian motion. By spatial mirror symmetry across level $a$:
+
+$$
+\mathbb{P}(W_t \ge a \mid \tau_a \le t) = \mathbb{P}(W_t \le a \mid \tau_a \le t) = \frac{1}{2}
+$$
+
+Yielding the **Reflection Principle Formula**:
 
 $$
 \mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \right) \right)
 $$
 
-The first passage time density is the **Lévy Distribution**:
+Differentiating with respect to $t$ gives the **Lévy Distribution** density for hitting time $\tau_a$:
 
 $$
 f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
 $$
+
 
 ---
 
