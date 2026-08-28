@@ -493,74 +493,196 @@ $$
 
 ---
 
-## Module 7: Deep Quant Interview Problems & Step-by-Step Solutions
+### Module 7: Deep Quant Interview Problems, Generalizations & Scaffolded Practice (Core & Bridge Problems)
 
-### Problem 1: Itô Isometry & Higher-Order Stochastic Integral
-
-**Problem**: Evaluate the expectation $\mathbb{E}[I_T]$ and variance $\operatorname{Var}(I_T)$ for $I_T = \int_0^T W_t^2 dW_t$, and express $I_T$ explicitly in terms of $W_T$ and $\int_0^T W_t dt$.
-
-**Solution**:
-1. **Expectation**: $\mathbb{E}[I_T] = 0$ as Itô integrals of $\mathcal{L}^2$ processes are martingales.
-2. **Variance**: By Itô Isometry and $\mathbb{E}[W_t^4] = 3t^2$:
-
-$$
-\operatorname{Var}(I_T) = \mathbb{E}\left[ \int_0^T W_t^4 dt \right] = \int_0^T 3t^2 dt = T^3
-$$
-
-3. **Algebraic Formula**: Applying Itô's Lemma to $f(w) = w^3$:
-
-$$
-d(W_t^3) = 3 W_t^2 dW_t + 3 W_t dt \implies \int_0^T W_t^2 dW_t = \frac{1}{3} W_T^3 - \int_0^T W_t dt
-$$
+### Part 1: The 3 Core Interview Problems & Parametric Generalizations
 
 ---
 
-### Problem 2: Drifted Brownian Motion Two-Sided Hitting Times
+#### Problem 1: Correlation of Brownian Time & Stochastic Integrals
 
-**Problem**: Let $X_t = \mu t + \sigma W_t$ ($X_0 = 0, \mu > 0$). Let $\tau = \inf\{t \ge 0 : X_t \notin (-a, b)\}$. Find the probability $P(X_\tau = b)$ and the expected exit time $\mathbb{E}[\tau]$.
+> **Problem Statement (SIG / Akuna / Citadel Core Interview Question)**:
+> 
+> Let $W_t$ be a standard one-dimensional Brownian motion ($W_0 = 0$). Over the time horizon $[0, T]$, define two random variables:
+> 
+> $$
+> X = \int_0^T W_t dt, \qquad Y = \int_0^T t dW_t
+> $$
+> 
+> Find the correlation coefficient $\operatorname{Corr}(X, Y)$.
 
-**Solution**:
-The exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ is a true martingale. Let $\gamma = \frac{2\mu}{\sigma^2}$. By OST:
+**Step-by-Step Derivation & Solution**:
+
+**Step 1: Stochastic Integration by Parts**
+Applying Itô's Lemma to $f(t, W_t) = t W_t$:
 
 $$
-\mathbb{E}[M_\tau] = 1 \implies p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}
+d(t W_t) = t dW_t + W_t dt + (dt)(dW_t) = t dW_t + W_t dt
 $$
 
-For expected time, applying OST to $X_t - \mu t$:
+Integrating over $[0, T]$:
 
 $$
-\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \frac{b p_b - a(1 - p_b)}{\mu}
+T W_T - 0 = \int_0^T t dW_t + \int_0^T W_t dt \implies T W_T = X + Y \implies X = T W_T - Y
 $$
+
+Alternatively, using $W_t = \int_0^t dW_s$ and changing the order of integration (stochastic Fubini):
+
+$$
+X = \int_0^T \left( \int_0^t dW_s \right) dt = \int_0^T \left( \int_s^T dt \right) dW_s = \int_0^T (T - t) dW_t
+$$
+
+Both $X$ and $Y$ are Itô integrals of deterministic functions with respect to standard Brownian motion, so $(X, Y)$ is jointly Gaussian with zero mean: $\mathbb{E}[X] = \mathbb{E}[Y] = 0$.
+
+**Step 2: Variances and Covariance via Itô Isometry**
+1. **Variance of $X$**:
+   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right)^2 \right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \right]_0^T = \frac{T^3}{3}$$
+2. **Variance of $Y$**:
+   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \right)^2 \right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \right]_0^T = \frac{T^3}{3}$$
+3. **Covariance of $X$ and $Y$**:
+   $$\operatorname{Cov}(X, Y) = \mathbb{E}[X Y] = \int_0^T (T - t) t dt = \int_0^T (T t - t^2) dt = \frac{T^3}{2} - \frac{T^3}{3} = \frac{T^3}{6}$$
+
+**Step 3: Correlation Coefficient**
+
+$$
+\operatorname{Corr}(X, Y) = \frac{\operatorname{Cov}(X, Y)}{\sqrt{\operatorname{Var}(X) \operatorname{Var}(Y)}} = \frac{\frac{T^3}{6}}{\sqrt{\frac{T^3}{3} \cdot \frac{T^3}{3}}} = \frac{\frac{T^3}{6}}{\frac{T^3}{3}} = \boxed{\frac{1}{2}}
+$$
+
+**Consistency Check**:
+$\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(W_T) = T^3 = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left(\frac{T^3}{6}\right) = T^3$. Exact match!
 
 ---
 
-### Problem 3: Barrier Touch Digital Option Pricing
+#### Problem 2: 2D Brownian Motion Boundary Hitting Distribution (Generalized to Starting Point $(x_0, y_0)$)
 
-**Problem**: Under risk-neutral measure $\mathbb{Q}$, derive the closed-form price of an Up-and-In Cash-at-Hit Digital option paying $\$1$ if $S_t$ touches $H > S_0$ before $T$.
+> **Problem Statement (Jane Street / Two Sigma Capstone Interview Question)**:
+> 
+> A standard 2D Brownian motion $(X_t, Y_t)$ starts at an arbitrary point $(x_0, y_0)$ in the right half-plane ($x_0 > 0, y_0 \in \mathbb{R}$).
+> It stops upon first hitting the $y$-axis, with stopping time $\tau = \inf\{t > 0 : X_t = 0\}$.
+> 1. Find the probability that the stopping point $(0, Y_\tau)$ lies on the **positive $y$-axis ($Y_\tau > 0$)**: $\mathbb{P}(Y_\tau > 0)$;
+> 2. Derive the full probability density function $f_{Y_\tau}(u)$ of the stopping ordinate $Y_\tau$;
+> 3. Verify the special case where the starting position is $(1, 1)$.
 
-**Solution**:
-Let $Y_t = \frac{\ln(S_t/S_0)}{\sigma} = \alpha t + W_t$ with $\alpha = \frac{r - \frac{1}{2}\sigma^2}{\sigma}$, and barrier $h = \frac{\ln(H/S_0)}{\sigma}$. By Girsanov's change of measure:
+**Step-by-Step Derivation & Dual Perspectives**:
 
-$$
-\mathbb{Q}(\tau_H \le T) = \Phi\left( \frac{\ln(S_0/H) + (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right) + \left( \frac{H}{S_0} \right)^{\frac{2r}{\sigma^2} - 1} \Phi\left( \frac{\ln(S_0/H) - (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right)
-$$
+**Perspective 1: Independent Component Convolution & Lévy-Cauchy Mixture**
+1. **Distribution of First Hitting Time $\tau$**:
+   Since $X_t$ and $Y_t$ are independent, $\tau$ is the first hitting time of $0$ for the 1D horizontal Brownian motion $X_t$ starting at $x_0 > 0$. By the reflection principle, $\tau$ follows the **Lévy distribution**:
+   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) \quad (t > 0)$$
+2. **Conditional Distribution of $Y_\tau \mid (\tau = t)$**:
+   $Y_\tau \mid (\tau = t) \sim \mathcal{N}(y_0, t)$.
+3. **Marginal Density of $Y_\tau$**:
+   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \right) dt$$
+   Substituting $v = \frac{x_0^2 + (u - y_0)^2}{2t}$ gives:
+   $$f_{Y_\tau}(u) = \boxed{\frac{1}{\pi} \frac{x_0}{x_0^2 + (u - y_0)^2}}$$
+   This is the **Cauchy distribution** $\text{Cauchy}(y_0, x_0)$ with location $y_0$ and scale $x_0$!
+4. **Probability of Hitting the Positive $y$-Axis**:
+   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \right) \right]_0^\infty = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
 
-The discounted price is $V_0 = e^{-rT} \mathbb{Q}(\tau_H \le T)$.
+**Perspective 2: Harmonic Measure & Conformal Angle Invariance**
+- Let $u(x, y) = \mathbb{P}_{(x, y)}(Y_\tau > 0)$. By the strong Markov property of Brownian motion, $u(x, y)$ is **harmonic** ($\Delta u = 0$) in the right half-plane $\mathbb{H} = \{x > 0\}$.
+- Boundary conditions along $x = 0$: $u(0, y) = 1$ for $y > 0$, and $u(0, y) = 0$ for $y < 0$.
+- In polar coordinates, the angle $\theta = \arctan(y/x) \in (-\pi/2, \pi/2)$ is harmonic ($\text{Im}(\ln z) = \theta$).
+- Matching boundary limits directly yields:
+  $$u(x_0, y_0) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
+
+**Special Case Verification**:
+- **Starting at $(1, 1)$**:
+  $$\mathbb{P}(Y_\tau > 0) = \frac{1}{2} + \frac{1}{\pi}\arctan(1) = \frac{1}{2} + \frac{1}{4} = \boxed{\frac{3}{4} = 75\%}$$
+- **Starting on the $x$-axis ($y_0 = 0$)**: $\mathbb{P} = 1/2 = 50\%$ (by vertical reflection symmetry).
+- **Asymptotics**: As $y_0 \to +\infty$, $\mathbb{P} \to 1$; as $y_0 \to -\infty$, $\mathbb{P} \to 0$.
 
 ---
 
-### Problem 4: Discrete Hedging Slippage & Gamma Variance
+#### Problem 3: Brownian Bridge General Conditional Distribution & Regression (Generalized to $W_T = x$)
 
-**Problem**: For a delta-hedged option rebalanced at intervals $\Delta t$ in a market where $\sigma_R = \sigma_I = \sigma$ and $r = 0$, prove that the single-step error $\epsilon_k$ has zero mean and compute the variance of total hedging slippage over $[0, T]$.
+> **Problem Statement (Citadel / Optiver / Jump Trading Core Interview Question)**:
+> 
+> Let $W_t$ be a standard Brownian motion with $W_0 = 0$. Given the terminal condition $W_T = x$ ($T > 0, x \in \mathbb{R}$), for any intermediate time $t \in (0, T)$:
+> 1. Find the conditional expectation $\mathbb{E}[W_t \mid W_T = x]$;
+> 2. Find the conditional variance $\operatorname{Var}(W_t \mid W_T = x)$ and write the full conditional distribution;
+> 3. Define the Brownian Bridge process $B_t = W_t - \frac{t}{T} W_T$, prove that $B_t$ is independent of $W_T$, and compute its covariance function $\operatorname{Cov}(B_s, B_t)$;
+> 4. Verify the special case $W_0 = 0, W_2 = 1$ to find $\mathbb{E}[W_{1/2} \mid W_2 = 1]$ and $\operatorname{Var}(W_{1/2} \mid W_2 = 1)$.
 
+**Step-by-Step Derivation & Solution**:
+
+**Step 1: Bivariate Gaussian Conditioning Formula**
+The vector $(W_t, W_T)^T$ is jointly Gaussian:
+
+$$
+\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \right)
+$$
+
+1. **Conditional Expectation**:
+   $$\mathbb{E}[W_t \mid W_T = x] = \mathbb{E}[W_t] + \frac{\operatorname{Cov}(W_t, W_T)}{\operatorname{Var}(W_T)} (x - \mathbb{E}[W_T]) = 0 + \frac{t}{T}(x - 0) = \boxed{\frac{t}{T} x}$$
+2. **Conditional Variance**:
+   $$\operatorname{Var}(W_t \mid W_T = x) = \operatorname{Var}(W_t) - \frac{(\operatorname{Cov}(W_t, W_T))^2}{\operatorname{Var}(W_T)} = t - \frac{t^2}{T} = \boxed{\frac{t(T - t)}{T}}$$
+3. **Full Conditional Distribution**:
+   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \right)}$$
+
+**Step 2: Orthogonal Increments Representation**
+Let $X = W_t \sim \mathcal{N}(0, t)$ and $Y = W_T - W_t \sim \mathcal{N}(0, T - t)$ be independent increments.
+Let $Z = W_T = X + Y$. Linear regression of $X$ on $Z$ yields $X = \beta Z + \epsilon$ where:
+
+$$
+\beta = \frac{\operatorname{Cov}(X, Z)}{\operatorname{Var}(Z)} = \frac{t}{T}, \qquad \epsilon = X - \frac{t}{T} Z = \frac{T - t}{T} X - \frac{t}{T} Y
+$$
+
+$\operatorname{Cov}(\epsilon, Z) = \frac{T - t}{T} t - \frac{t}{T}(T - t) = 0$. In joint Gaussian distributions, zero covariance implies statistical independence. Thus $\epsilon$ is independent of $W_T$ with $\operatorname{Var}(\epsilon) = \frac{t(T - t)}{T}$.
+
+**Step 3: Brownian Bridge Covariance Function ($0 \le s \le t \le T$)**
+For $B_t = W_t - \frac{t}{T} W_T$:
+
+$$
+\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T) = s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T} = \boxed{s \left( 1 - \frac{t}{T} \right)}
+$$
+
+**Step 4: Special Case ($T=2, t=1/2, x=1$)**
+- $\mathbb{E}[W_{1/2} \mid W_2 = 1] = \frac{1/2}{2} \times 1 = \boxed{\frac{1}{4}}$
+- $\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{(1/2)(3/2)}{2} = \boxed{\frac{3}{8}}$
+
+---
+
+### Part 2: Scaffolded Practice Problems for Deep Intuition
+
+---
+
+#### Practice 1: Cross-Covariances of Stochastic Integrals
+**Problem**: Find $\operatorname{Cov}(W_T, X)$ and $\operatorname{Cov}(W_T, Y)$ for $X = \int_0^T W_t dt$ and $Y = \int_0^T t dW_t$.
 **Solution**:
-Taylor expansion yields $\epsilon_k \approx -\frac{1}{2} S^2 \Gamma \sigma^2 \Delta t (Z^2 - 1)$ where $Z \sim \mathcal{N}(0, 1)$.
-1. $\mathbb{E}[\epsilon_k] = 0$.
-2. $\operatorname{Var}(\epsilon_k) = \frac{1}{2} S^4 \Gamma^2 \sigma^4 (\Delta t)^2$.
-Over $N = T/\Delta t$ independent steps, the total tracking variance is:
+- $\operatorname{Cov}(W_T, X) = \int_0^T (T - t) dt = \frac{T^2}{2}$.
+- $\operatorname{Cov}(W_T, Y) = \int_0^T t dt = \frac{T^2}{2}$.
+- Sum: $\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$.
 
-$$
-\operatorname{Var}\left( \sum_{k=0}^{N-1} \epsilon_k \right) \approx \frac{1}{2} T S^4 \Gamma^2 \sigma^4 \Delta t
-$$
+---
 
-The standard deviation of hedging error scales with $\sqrt{\Delta t}$, establishing the fundamental tradeoff between gamma hedging variance and transaction costs in quantitative market making.
+#### Practice 2: Conformal Wedge Exit Probabilities
+**Problem**: For 2D Brownian motion in a wedge $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ starting at $(r_0, \theta_0)$, find the probability of hitting the upper ray ($\theta = \alpha$) before the lower ray ($\theta = 0$).
+**Solution**:
+By scale invariance and harmonicity of $\theta$, $u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$, independent of the initial radius $r_0$.
+
+---
+
+#### Practice 3: Three-Point Brownian Conditioning
+**Problem**: For $0 < s < t < u < T$, given $W_s = a$ and $W_u = b$, find $\mathbb{E}[W_t \mid W_s = a, W_u = b]$.
+**Solution**:
+By the Markov property, over $[s, u]$ the trajectory is a bridge connecting $a$ and $b$:
+$$\mathbb{E}[W_t \mid W_s = a, W_u = b] = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
+
+---
+
+#### Practice 4: Maximum of a Brownian Bridge (Kolmogorov-Smirnov Statistic)
+**Problem**: For standard Brownian bridge $B_t$ on $[0, 1]$ ($B_0 = B_1 = 0$), find $\mathbb{P}(\max_{0 \le t \le 1} B_t \ge y)$ for $y > 0$.
+**Solution**:
+By the reflection principle conditioned on $W_1 = 0$, reflected paths end at $2y$:
+$$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \frac{\phi(2y)}{\phi(0)} = \boxed{e^{-2y^2}} \quad (y > 0)$$
+
+---
+
+#### Practice 5: Two-Sided Exit for Drifted Brownian Motion
+**Problem**: $X_t = \mu t + \sigma W_t$ with barriers $-a < 0 < b$. Find hitting probability $p_b$ and expected exit time $\mathbb{E}[\tau]$.
+**Solution**:
+Using exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ with $\gamma = \frac{2\mu}{\sigma^2}$:
+$$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}, \qquad \mathbb{E}[\tau] = \boxed{\frac{b p_b - a(1 - p_b)}{\mu}}$$
+
+---

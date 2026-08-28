@@ -653,159 +653,239 @@ $$
 
 ---
 
-## 模块七：深度量化面试与实战例题（Deep Example Problems & Rigorous Solutions）
+## 模块七：深度量化面试真题、参数推广与阶梯进阶题库（Deep Problems & Scaffolded Tutorials）
 
-### 例题 1：伊藤等距与高阶随机积分的方差
-
-**题目**：计算随机积分 $I_T = \int_0^T W_t^2 dW_t$ 的期望 $\mathbb{E}[I_T]$ 与方差 $\operatorname{Var}(I_T)$，并求出 $I_T$ 关于终点 $W_T$ 与时间积分的显式代数表达式。
-
-**解答**：
-1. **期望**：由于被积过程 $H_t = W_t^2$ 是适应且均方可积过程（$\mathbb{E}[W_t^4] = 3t^2 < \infty$），伊藤积分是纯鞅，故：
-
-$$
-\mathbb{E}[I_T] = \mathbb{E}\left[ \int_0^T W_t^2 dW_t \right] = 0
-$$
-
-2. **方差**：应用伊藤等距定理（Itô Isometry）：
-
-$$
-\operatorname{Var}(I_T) = \mathbb{E}[I_T^2] = \mathbb{E}\left[ \int_0^T (W_t^2)^2 dt \right] = \int_0^T \mathbb{E}[W_t^4] dt
-$$
-
-由于 $W_t \sim \mathcal{N}(0, t)$，其 4 阶矩为 $\mathbb{E}[W_t^4] = 3 (\operatorname{Var}(W_t))^2 = 3t^2$。代入积分：
-
-$$
-\operatorname{Var}(I_T) = \int_0^T 3t^2 dt = \left[ t^3 \right]_0^T = T^3
-$$
-
-3. **显式代数表达式**：对函数 $f(w) = w^3$ 应用伊藤引理：
-
-$$
-d(W_t^3) = 3 W_t^2 dW_t + \frac{1}{2} (6 W_t) (dW_t)^2 = 3 W_t^2 dW_t + 3 W_t dt
-$$
-
-两边在 $[0, T]$ 上积分：
-
-$$
-W_T^3 - 0 = 3 \int_0^T W_t^2 dW_t + 3 \int_0^T W_t dt \implies \int_0^T W_t^2 dW_t = \frac{1}{3} W_T^3 - \int_0^T W_t dt
-$$
+### 第一部分：三大高频核心真题与参数化推广（The 3 Core Quant Problems & Generalizations）
 
 ---
 
-### 例题 2：带漂移布朗运动的双边界首达时间与 Laplace 变换
+#### 真题 1：时间积分与随机积分的相关系数（Correlation of Brownian Time & Stochastic Integrals）
 
-**题目**：设资产对数收益率服从带漂移的布朗运动 $X_t = \mu t + \sigma W_t$（$\mu > 0, \sigma > 0$），$X_0 = 0$。设止盈线为 $b > 0$，止损线为 $-a < 0$。定义首次触碰双边界的停时 $\tau = \inf\{t \ge 0 : X_t \notin (-a, b)\}$。
-（1）求最终止盈（触碰 $b$）的概率 $P(X_\tau = b)$；
-（2）求平均退出时间 $\mathbb{E}[\tau]$。
+> **原题描述（SIG / Akuna / Citadel 高频笔试题）**：
+> 
+> 设 $W_t$ 为标准一维布朗运动（$W_0 = 0$），在时间区间 $[0, T]$ 上定义两个随机变量：
+> 
+> $$
+> X = \int_0^T W_t dt, \qquad Y = \int_0^T t dW_t
+> $$
+> 
+> 试求 $X$ 与 $Y$ 的相关系数 $\operatorname{Corr}(X, Y)$。
 
-**解答**：
-构造指数鞅族 $M_t^\theta = \exp(\theta X_t - \psi(\theta) t)$。代入 $X_t$：
+**严格推导与求解**：
 
-$$
-M_t^\theta = \exp\left( \theta(\mu t + \sigma W_t) - \psi(\theta) t \right) = \exp\left( \theta \sigma W_t + (\theta \mu - \psi(\theta)) t \right)
-$$
-
-根据指数鞅性质，需令 $t$ 的系数等于 $\frac{1}{2}(\theta \sigma)^2$，即：
-
-$$
-\psi(\theta) = \theta \mu + \frac{1}{2} \theta^2 \sigma^2
-$$
-
-令 $\psi(\theta) = 0$，解得非零根 $\theta^* = -\frac{2\mu}{\sigma^2}$。此时 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ 是标准鞅。
-
-**求解（1）止盈概率 $p_b = P(X_\tau = b)$**：
-对鞅 $M_t$ 应用最优停时定理（由于边界有界 $[-a, b]$，停止过程有界，OST 严格成立）：
+**步骤 1：随机分部积分（Integration by Parts）**
+对复合过程 $f(t, W_t) = t W_t$ 应用伊藤引理：
 
 $$
-\mathbb{E}[M_\tau] = M_0 = 1 \implies p_b \exp\left( -\frac{2\mu}{\sigma^2} b \right) + (1 - p_b) \exp\left( \frac{2\mu}{\sigma^2} a \right) = 1
+d(t W_t) = t dW_t + W_t dt + (dt)(dW_t) = t dW_t + W_t dt
 $$
 
-令 $\gamma = \frac{2\mu}{\sigma^2}$，解得：
+在区间 $[0, T]$ 上积分：
 
 $$
-p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}} = \frac{1 - e^{-\gamma a}}{1 - e^{-\gamma (a+b)}} \cdot e^{\gamma b}
+T W_T - 0 = \int_0^T t dW_t + \int_0^T W_t dt \implies T W_T = X + Y \implies X = T W_T - Y
 $$
 
-**求解（2）期望退出时间 $\mathbb{E}[\tau]$**：
-考虑鞅 $N_t = X_t - \mu t$。应用 OST 得：
+也可以利用 $W_t = \int_0^t dW_s$ 将 $X$ 转化为纯伊藤积分（Fubini 交换积分次序）：
 
 $$
-\mathbb{E}[X_\tau - \mu \tau] = 0 \implies \mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu}
+X = \int_0^T \left( \int_0^t dW_s \right) dt = \int_0^T \left( \int_s^T dt \right) dW_s = \int_0^T (T - t) dW_t
 $$
 
-其中 $\mathbb{E}[X_\tau] = b \cdot p_b + (-a) \cdot (1 - p_b) = (a+b) p_b - a$。代入即可获得 $\mathbb{E}[\tau]$ 的精确解析值。
+由此可见，$X$ 与 $Y$ 都是确定性函数关于标准布朗运动的伊藤积分，因此 $X$ 与 $Y$ 联合服从**二元正态分布**，且期望均为 0：$\mathbb{E}[X] = \mathbb{E}[Y] = 0$。
+
+**步骤 2：计算方差与协方差（应用伊藤等距）**
+1. **$X$ 的方差**：
+   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right)^2 \right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \right]_0^T = \frac{T^3}{3}$$
+2. **$Y$ 的方差**：
+   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \right)^2 \right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \right]_0^T = \frac{T^3}{3}$$
+3. **$X$ 与 $Y$ 的协方差**：
+   利用极化恒等式或直接伊藤等距：
+   $$\operatorname{Cov}(X, Y) = \mathbb{E}[X Y] = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right) \left( \int_0^T t dW_t \right) \right] = \int_0^T (T - t) t dt = \int_0^T (T t - t^2) dt = \frac{T^3}{2} - \frac{T^3}{3} = \frac{T^3}{6}$$
+
+**步骤 3：计算相关系数**
+
+$$
+\operatorname{Corr}(X, Y) = \frac{\operatorname{Cov}(X, Y)}{\sqrt{\operatorname{Var}(X) \operatorname{Var}(Y)}} = \frac{\frac{T^3}{6}}{\sqrt{\frac{T^3}{3} \cdot \frac{T^3}{3}}} = \frac{\frac{T^3}{6}}{\frac{T^3}{3}} = \boxed{\frac{1}{2}}
+$$
+
+**几何直觉验算**：
+因为 $X + Y = T W_T$，其总方差为 $\operatorname{Var}(T W_T) = T^2 \operatorname{Var}(W_T) = T^3$。
+展开求和方差：$\operatorname{Var}(X + Y) = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left(\frac{T^3}{6}\right) = T^3$。各分量完全自洽！
 
 ---
 
-### 例题 3：联合极值分布与障碍触碰数字期权（Barrier Touch Digital）
+#### 真题 2：二维布朗运动首达边界分布——推广至任意起点 $(x_0, y_0)$（2D Brownian Motion Hitting Distribution）
 
-**题目**：在风险中性测度 $\mathbb{Q}$ 下，$S_t = S_0 \exp((r - \frac{1}{2}\sigma^2)t + \sigma W_t)$。定义高位障碍 $H > S_0$，若在存续期 $[0, T]$ 内股价曾触碰过 $H$，则期权在到期日支付固定金额 $\$1$（即 Up-and-In Digital Cash-at-Hit）。试利用反射原理与测度变换导出该衍生品的精确无套利价格。
+> **原题描述（Jane Street / Two Sigma 压轴题）**：
+> 
+> 在二维平面上，标准二维布朗运动 $(X_t, Y_t)$ 从右半平面的任意点 $(x_0, y_0)$ 出发（其中 $x_0 > 0, y_0 \in \mathbb{R}$）。
+> 当过程**首次触碰纵轴（$y$ 轴）**时停止，停时定义为 $\tau = \inf\{t > 0 : X_t = 0\}$。
+> 1. 求停止位置 $(0, Y_\tau)$ 落在 **$y$ 轴正半轴（$Y_\tau > 0$）** 的概率 $\mathbb{P}(Y_\tau > 0)$；
+> 2. 求停止点纵坐标 $Y_\tau$ 的完整概率密度函数 $f_{Y_\tau}(u)$；
+> 3. 特殊情形验证：求起点为 $(1, 1)$ 时的具体数值。
 
-**解答**：
-触碰事件可表示为 $\tau_H \le T$，其中 $\tau_H = \inf\{t \ge 0 : S_t \ge H\}$。
-令对数过程 $Y_t = \frac{1}{\sigma} \ln(S_t / S_0) = \alpha t + W_t$，其中漂移率 $\alpha = \frac{r - \frac{1}{2}\sigma^2}{\sigma}$。
-触碰条件等价于 $\max_{0 \le t \le T} Y_t \ge h$，其中 $h = \frac{1}{\sigma}\ln(H/S_0) > 0$。
+**严格推导与双重视角求解**：
 
-根据带漂移布朗运动极值的 Girsanov 公式（利用 Cameron-Martin-Girsanov 测度变换消除漂移 $\alpha$）：
+**视角一：独立分量卷积与尺度混合（Lévy-Cauchy Mixture）**
+1. **首达时间 $\tau$ 的分布**：
+   由于 $X_t$ 与 $Y_t$ 独立，$\tau$ 完全由水平一维布朗运动 $X_t$（从 $x_0$ 走到 0）决定。由反射原理，$\tau$ 服从 **Lévy 分布**：
+   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) \quad (t > 0)$$
+2. **给定 $\tau=t$ 时垂直分量 $Y_\tau$ 的条件分布**：
+   由于 $Y_t$ 与 $X_t$ 独立，$Y_\tau \mid (\tau = t) \sim \mathcal{N}(y_0, t)$。
+3. **计算 $Y_\tau$ 的边缘密度函数**（对 $t$ 全概率积分）：
+   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \right) dt$$
+   令 $v = \frac{x_0^2 + (u - y_0)^2}{2t}$，则 $dt = -\frac{x_0^2 + (u - y_0)^2}{2 v^2} dv$：
+   $$f_{Y_\tau}(u) = \frac{x_0}{2\pi} \cdot \frac{2}{x_0^2 + (u - y_0)^2} \int_0^\infty e^{-v} dv = \boxed{\frac{1}{\pi} \frac{x_0}{x_0^2 + (u - y_0)^2}}$$
+   这正是位置参数为 $y_0$、尺度参数为 $x_0$ 的 **柯西分布（Cauchy Distribution）** $\text{Cauchy}(y_0, x_0)$！
+4. **计算落在正半轴的概率**：
+   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \right) \right]_0^\infty = \frac{1}{\pi} \left( \frac{\pi}{2} - \arctan\left( -\frac{y_0}{x_0} \right) \right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
 
-$$
-\mathbb{Q}(\tau_H \le T) = \Phi\left( \frac{-h + \alpha T}{\sqrt{T}} \right) + \exp(2\alpha h) \Phi\left( \frac{-h - \alpha T}{\sqrt{T}} \right)
-$$
+**视角二：调和函数与共形几何（Harmonic Measure & Polar Angle）**
+- 设 $u(x, y) = \mathbb{P}_{(x, y)}(Y_\tau > 0)$。由布朗运动强马氏性，函数 $u(x, y)$ 在右半平面 $\mathbb{H} = \{x > 0\}$ 内是**调和函数**（$\Delta u = \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} = 0$）。
+- 边界条件（$x = 0$）：$u(0, y) = 1$（当 $y > 0$）；$u(0, y) = 0$（当 $y < 0$）。
+- 观察原点极坐标角 $\theta = \arctan(y/x) \in (-\pi/2, \pi/2)$。由于复对数函数的虚部 $\text{Im}(\ln z) = \theta$ 天然是调和函数，构造线性变换：
+  $$u(x, y) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \right) = \frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y}{x} \right)$$
+  代入边界验证：当 $x \to 0^+$ 且 $y > 0$ 时 $\theta \to \pi/2 \implies u = 1$；当 $y < 0$ 时 $\theta \to -\pi/2 \implies u = 0$。唯一性定理保证这就是解析解！
 
-将 $h = \frac{\ln(H/S_0)}{\sigma}$ 与 $2\alpha h = \frac{2(r - \frac{1}{2}\sigma^2)}{\sigma^2} \ln(H/S_0) = \ln\left( (H/S_0)^{\frac{2r}{\sigma^2} - 1} \right)$ 代回：
-
-$$
-\mathbb{Q}(\tau_H \le T) = \Phi\left( \frac{\ln(S_0/H) + (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right) + \left( \frac{H}{S_0} \right)^{\frac{2r}{\sigma^2} - 1} \Phi\left( \frac{\ln(S_0/H) - (r - \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}} \right)
-$$
-
-折现到时刻 0 即得期权价值：
-
-$$
-V_0 = e^{-rT} \mathbb{Q}(\tau_H \le T)
-$$
+**特殊情形代入**：
+- **起点为 $(1, 1)$**（原图特例）：
+  $$\mathbb{P}(Y_\tau > 0) = \frac{1}{2} + \frac{1}{\pi} \arctan\left(\frac{1}{1}\right) = \frac{1}{2} + \frac{1}{\pi} \cdot \frac{\pi}{4} = \frac{1}{2} + \frac{1}{4} = \boxed{\frac{3}{4} = 75\%}$$
+- **起点在 $x$ 轴上（$y_0 = 0$）**：$\mathbb{P} = \frac{1}{2} + 0 = 50\%$（对称性成立）。
+- **$y_0 \to +\infty$**：$\mathbb{P} \to 1$；$y_0 \to -\infty$：$\mathbb{P} \to 0$。
 
 ---
 
-### 例题 4：离散再平衡 Delta 对冲滑点与 Gamma 损益方差
+#### 真题 3：布朗桥的通用条件分布与高斯回归——推广至终点 $W_T = x$（Brownian Bridge & Gaussian Regression）
 
-**题目**：期权做市商卖出 1 张 ATM Call，并以固定时间间隔 $\Delta t$ 进行离散 Delta 对冲。假设无风险利率 $r = 0$，真实波动率等于隐含波动率 $\sigma_R = \sigma_I = \sigma$。试证明单步对冲误差 $\epsilon_k = \Pi_{t_{k+1}} - \Pi_{t_k}$ 的期望为 0，并计算其方差 $\operatorname{Var}(\epsilon_k)$ 与 $\Delta t$ 的阶数关系。
+> **原题描述（Citadel / Optiver / Jump Trading 高频面试题）**：
+> 
+> 设 $W_t$ 为标准布朗运动（$W_0 = 0$）。已知在终点时刻 $T$ 的状态为 $W_T = x$（$T > 0, x \in \mathbb{R}$）。
+> 对于任意给定的中间时刻 $t \in (0, T)$：
+> 1. 求条件期望 $\mathbb{E}[W_t \mid W_T = x]$；
+> 2. 求条件方差 $\operatorname{Var}(W_t \mid W_T = x)$，并写出 $W_t \mid (W_T = x)$ 的完整条件分布；
+> 3. 定义无约束布朗桥过程 $B_t = W_t - \frac{t}{T} W_T$，证明 $B_t$ 与终点变量 $W_T$ 严格独立，并求其协方差函数 $\operatorname{Cov}(B_s, B_t)$；
+> 4. 特殊数值验证：求 $W_0 = 0, W_2 = 1$ 条件下中间点 $W_{1/2}$ 的条件期望与方差。
 
+**严格推导与求解**：
+
+**步骤 1：二元正态分布条件均值与方差公式（Gaussian Conditioning）**
+向量 $(W_t, W_T)^T$ 服从二元正态分布：
+
+$$
+\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} \operatorname{Var}(W_t) & \operatorname{Cov}(W_t, W_T) \\ \operatorname{Cov}(W_t, W_T) & \operatorname{Var}(W_T) \end{pmatrix} \right) = \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \right)
+$$
+
+应用标准高斯线性回归公式：
+1. **条件期望**：
+   $$\mathbb{E}[W_t \mid W_T = x] = \mathbb{E}[W_t] + \frac{\operatorname{Cov}(W_t, W_T)}{\operatorname{Var}(W_T)} (x - \mathbb{E}[W_T]) = 0 + \frac{t}{T}(x - 0) = \boxed{\frac{t}{T} x}$$
+2. **条件方差**：
+   $$\operatorname{Var}(W_t \mid W_T = x) = \operatorname{Var}(W_t) - \frac{(\operatorname{Cov}(W_t, W_T))^2}{\operatorname{Var}(W_T)} = t - \frac{t^2}{T} = \boxed{\frac{t(T - t)}{T}}$$
+3. **完整条件分布**：
+   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \right)}$$
+
+**步骤 2：独立增量正交分解证明法（Orthogonal Increment Projection）**
+令 $X = W_t \sim \mathcal{N}(0, t)$，$Y = W_T - W_t \sim \mathcal{N}(0, T - t)$。由布朗运动性质，$X$ 与 $Y$ 相互独立。
+记 $Z = W_T = X + Y$。我们将 $X$ 对 $Z$ 作正交分解：$X = \beta Z + \epsilon$，其中：
+
+$$
+\beta = \frac{\operatorname{Cov}(X, Z)}{\operatorname{Var}(Z)} = \frac{\operatorname{Cov}(X, X + Y)}{\operatorname{Var}(X + Y)} = \frac{t}{t + (T - t)} = \frac{t}{T}
+$$
+
+余项（误差项）为：
+
+$$
+\epsilon = X - \frac{t}{T} Z = X - \frac{t}{T}(X + Y) = \frac{T - t}{T} X - \frac{t}{T} Y
+$$
+
+验证协方差：
+
+$$
+\operatorname{Cov}(\epsilon, Z) = \operatorname{Cov}\left( \frac{T - t}{T} X - \frac{t}{T} Y, X + Y \right) = \frac{T - t}{T} \operatorname{Var}(X) - \frac{t}{T} \operatorname{Var}(Y) = \frac{T - t}{T} t - \frac{t}{T} (T - t) = 0
+$$
+
+因为多元正态分布中“协方差为 0 等价于严格独立”，故 $\epsilon$ 独立于 $Z = W_T$。其均值为 0，方差为：
+
+$$
+\operatorname{Var}(\epsilon) = \left( \frac{T - t}{T} \right)^2 t + \left( \frac{t}{T} \right)^2 (T - t) = \frac{t(T - t)}{T^2} \left( (T - t) + t \right) = \frac{t(T - t)}{T}
+$$
+
+因此 $\mathbb{E}[X \mid Z = x] = \mathbb{E}\left[ \frac{t}{T} Z + \epsilon \;\middle|\; Z = x \right] = \frac{t}{T} x + \mathbb{E}[\epsilon] = \frac{t}{T} x$。
+
+**步骤 3：布朗桥过程 $B_t$ 的协方差结构（$0 \le s \le t \le T$）**
+定义标准布朗桥 $B_t = W_t - \frac{t}{T} W_T$（满足 $B_0 = 0, B_T = 0$）：
+
+$$
+\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}\left( W_s - \frac{s}{T}W_T, W_t - \frac{t}{T}W_T \right) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T)
+$$
+
+代入 $\operatorname{Cov}(W_s, W_t) = s, \operatorname{Cov}(W_s, W_T) = s, \operatorname{Cov}(W_T, W_t) = t, \operatorname{Var}(W_T) = T$：
+
+$$
+= s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T^2} T = \boxed{s \left( 1 - \frac{t}{T} \right)}
+$$
+
+**步骤 4：特殊数值验证（原图特例：$T=2, t=1/2, x=1$）**
+代入公式：
+- 条件期望：$\mathbb{E}[W_{1/2} \mid W_2 = 1] = \frac{1/2}{2} \times 1 = \boxed{\frac{1}{4}}$
+- 条件方差：$\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{\frac{1}{2} \cdot \left(2 - \frac{1}{2}\right)}{2} = \frac{\frac{1}{2} \cdot \frac{3}{2}}{2} = \boxed{\frac{3}{8}}$
+
+---
+
+### 第二部分：梯级过渡题库（Scaffolded Bridge Problems for Deep Intuition）
+
+为了帮助彻底吃透上述核心方法，以下 5 道阶梯过渡题由浅入深，覆盖从**随机积分代数运算**、**二维复共形角分布**到**布朗桥极值统计**的全套核心思维：
+
+---
+
+#### 过渡题 1：随机积分互协方差与总方差守恒
+**题目**：计算 $W_T$ 与 $X = \int_0^T W_t dt$ 的协方差 $\operatorname{Cov}(W_T, X)$，以及 $W_T$ 与 $Y = \int_0^T t dW_t$ 的协方差 $\operatorname{Cov}(W_T, Y)$。
 **解答**：
-在小时间步 $\Delta t$ 内，做市商持有 $-\Delta_{t_k} S_{t_k}$ 现货与空头期权 $-V$。由 Taylor 展开到 $(\Delta S)^2$ 阶：
+- 写出 $W_T = \int_0^T 1 dW_t$。
+- $\operatorname{Cov}(W_T, X) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T (T - t) dW_t \right) = \int_0^T (T - t) dt = \frac{T^2}{2}$。
+- $\operatorname{Cov}(W_T, Y) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T t dW_t \right) = \int_0^T t dt = \frac{T^2}{2}$。
+- 两者相加：$\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$，完美自洽！
 
-$$
-\Delta V \approx \Theta \Delta t + \Delta_{t_k} \Delta S + \frac{1}{2} \Gamma (\Delta S)^2
-$$
+---
 
-由于 Black-Scholes PDE 在 $r=0$ 下为 $\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = 0 \implies \Theta = -\frac{1}{2}\sigma^2 S^2 \Gamma$：
+#### 过渡题 2：二维布朗运动扇形区域退出概率与共形角映射
+**题目**：二维布朗运动从扇形区域 $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ 内部的极坐标点 $(r_0, \theta_0)$（其中 $0 < \theta_0 < \alpha$）出发，求过程首次触碰上射线（$\theta = \alpha$）而非下射线（$\theta = 0$）的概率。
+**解答**：
+- 设目标概率函数为 $u(r, \theta)$。因为 $u$ 在区域内满足 Laplace 方程 $\Delta u = 0$，且边界条件为 $u(r, \alpha) = 1, u(r, 0) = 0$。
+- 显然极坐标角 $\theta$ 是调和函数，线性插值解为：
+  $$u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$$
+- **洞察**：二维布朗运动的角位移在共形映射下保持尺度无关性（Scale Invariance），退出概率完全由初始角度占总张角的比例决定，与初始半径 $r_0$ 完全无关！
 
-$$
-\Delta V \approx -\frac{1}{2}\sigma^2 S^2 \Gamma \Delta t + \Delta_{t_k} \Delta S + \frac{1}{2} \Gamma (\Delta S)^2
-$$
+---
 
-组合微元损益 $\epsilon_k = -\Delta V + \Delta_{t_k} \Delta S$ 为：
+#### 过渡题 3：三点条件期望与马尔可夫性
+**题目**：设 $0 < s < t < u < T$。已知 $W_s = a$ 且 $W_u = b$，求中间时刻 $W_t$ 的条件期望 $\mathbb{E}[W_t \mid W_s = a, W_u = b]$。
+**解答**：
+- 由布朗运动的马尔可夫性，给定 $W_s$ 和 $W_u$ 后，区间 $[s, u]$ 内部的轨迹与外部（包括 $W_0, W_T$）条件独立。
+- 在子区间 $[s, u]$ 上，过程可看作起点为 $a$、终点为 $b$ 的局部布朗桥：
+  $$\mathbb{E}[W_t \mid W_s = a, W_u = b] = a + \frac{t - s}{u - s}(b - a) = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
+- 这是两端点确定值根据时间距离的**精确线性插值**！
 
-$$
-\epsilon_k \approx -\frac{1}{2} \Gamma \left[ (\Delta S)^2 - \sigma^2 S^2 \Delta t \right]
-$$
+---
 
-由于 $\Delta S \approx \sigma S \Delta W = \sigma S \sqrt{\Delta t} Z$（$Z \sim \mathcal{N}(0, 1)$）：
+#### 过渡题 4：布朗桥的全局最大值分布（Kolmogorov-Smirnov 统计量）
+**题目**：设 $B_t$ 为 $[0, 1]$ 上的标准布朗桥（$B_0 = 0, B_1 = 0$）。求其最大值 $M = \max_{0 \le t \le 1} B_t$ 超过给定正阈值 $y > 0$ 的精确概率 $\mathbb{P}(M \ge y)$。
+**解答**：
+- 利用终点约束下的反射原理：
+  $$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \lim_{\epsilon \to 0} \mathbb{P}\left( \max_{0 \le t \le 1} W_t \ge y \;\middle|\; W_1 \in (-\epsilon, \epsilon) \right)$$
+- 轨迹跨过水平线 $y$ 后沿 $y$ 作镜像翻转，终点 $W_1 = 0$ 被对称映射到 $2y - 0 = 2y$。
+- 比对正态密度之比：
+  $$\mathbb{P}(M \ge y) = \frac{\phi(2y)}{\phi(0)} = \frac{\frac{1}{\sqrt{2\pi}} e^{-\frac{(2y)^2}{2}}}{\frac{1}{\sqrt{2\pi}} e^0} = \boxed{e^{-2y^2}} \quad (y > 0)$$
+- 这正是统计学著名的 **Kolmogorov-Smirnov 单边极限检验分布** 的数学起源！
 
-$$
-\epsilon_k \approx -\frac{1}{2} S^2 \Gamma \sigma^2 \Delta t \left( Z^2 - 1 \right)
-$$
+---
 
-1. **期望**：$\mathbb{E}[\epsilon_k] \propto \mathbb{E}[Z^2 - 1] = 1 - 1 = 0$（离散对冲依然是一阶无偏的）。
-2. **方差**：
+#### 过渡题 5：带漂移布朗运动双边界退出（止盈与止损）
+**题目**：$X_t = \mu t + \sigma W_t$（$\mu > 0$），$X_0 = 0$，退出边界为 $-a < 0 < b$。求止盈概率 $p_b$ 及平均退出时间 $\mathbb{E}[\tau]$。
+**解答**：
+- 构造指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$，令 $\gamma = \frac{2\mu}{\sigma^2}$。由 OST 得：
+  $$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}$$
+- 对去漂移鞅 $X_t - \mu t$ 用 OST 得：
+  $$\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \boxed{\frac{b \cdot p_b - a(1 - p_b)}{\mu}}$$
 
-$$
-\operatorname{Var}(\epsilon_k) = \frac{1}{4} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 \operatorname{Var}(Z^2 - 1) = \frac{1}{4} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 \cdot 2 = \frac{1}{2} S^4 \Gamma^2 \sigma^4 (\Delta t)^2
-$$
-
-若全周期 $T$ 内共有 $N = T/\Delta t$ 次调仓，总对冲误差的累积方差为：
-
-$$
-\operatorname{Var}\left( \sum_{k=0}^{N-1} \epsilon_k \right) \approx N \cdot \operatorname{Var}(\epsilon_k) = \frac{T}{\Delta t} \cdot \frac{1}{2} S^4 \Gamma^2 \sigma^4 (\Delta t)^2 = \frac{1}{2} T S^4 \Gamma^2 \sigma^4 \Delta t
-$$
-
-> **量化工程结论**：离散对冲的跟踪误差标准差与 $\sqrt{\Delta t}$ 成正比。调仓频率提高 4 倍（如从日频转为 2 小时频），对冲风险方差减半，但交易摩擦成本（Bid-Ask Spread 与手续费）线性增加 4 倍。高频期权做市的最优调仓频率本质是**Gamma 跟踪误差方差与换手摩擦成本的拉格朗日最优化**。
+---
