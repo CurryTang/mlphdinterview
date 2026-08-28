@@ -534,20 +534,66 @@ $$\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \int_0^
 
 ---
 
-## 模块五：布朗运动的停时、首达时间与极值理论（Stopping Times & Extreme Values）
+## 模块五：金融衍生品架构、停时理论与极值分析（Derivatives Landscape, Stopping Times & Extreme Values）
 
-### 1. 停时理论的金融背景与核心动机
+### 1. 前置通识：金融衍生品家族全景架构（期货/远期 vs. 期权）
 
-在衍生品交易与量化风控中，大量现实问题的决策时机都不是固定的确定性时刻 $T$，而是**由市场随机路径本身触发的随机时刻**：
-1. **美式期权（American Options）**：期权持有者可以在到期前的任意时刻提前行权，求解美式期权公允价格本质上是求解一个**最优停时问题（Optimal Stopping Problem）**；
-2. **障碍期权（Barrier Options）**：标的资产价格在存续期内一旦触碰预设的障碍价位（Knock-out / Knock-in），期权合约立即生效或失效，其定价核心取决于**首次触达时间（First Hitting Time）**的概率分布；
-3. **信用违约与强平风控（Credit Default & Liquidation Risk）**：在 Merton 结构化信用模型中，当公司资产价值首次跌破债务本金面值时触发破产违约；在杠杆交易中，保证金净值首次触及平仓线触发强制平仓。
+在深入停时与随机分析之前，必须首先建立现代金融衍生品（Financial Derivatives）的完整认知地图。
 
-这些金融风控与定价场景在数学上统一归结为：**布朗运动跨越吸收边界的停时分析与运行极值分布**。
+```mermaid
+graph TD
+    A["金融衍生品体系 (Financial Derivatives)"] --> B["线性衍生品 (Linear Contracts)<br/><b>【远期 Forwards / 期货 Futures】</b><br/>双向强制履约义务 (Obligation)<br/>收益为直线：Payoff = S_T - K"]
+    A --> C["非线性衍生品 (Non-Linear Contracts)<br/><b>【期权 Options】</b><br/>权利与义务不对称 (Right vs. Obligation)<br/>收益为折线：Payoff = max(S_T - K, 0)"]
+    
+    C --> D["按行权时间机制划分 (Exercise Style)"]
+    D --> E["欧式期权 (European Options)<br/>仅在到期日 T 行权<br/><b>【固定端点条件期望定价】</b>"]
+    D --> F["美式期权 (American Options)<br/>到期前任意时刻 τ ≤ T 提前行权<br/><b>【最优停时与自由边界问题】</b>"]
+    D --> G["路径依赖奇异期权 (Path-Dependent Exotics)<br/>障碍期权 Barrier / 亚式期权 Asian<br/><b>【首达时间与运行极值分布】</b>"]
+```
+
+#### （1）线性合约：远期（Forwards）与期货（Futures）
+* **核心特征**：交易双方在未来某一确定时刻 $T$，以预先约定的价格 $K$（交割价）强制买入或卖出标的资产；
+* **权利与义务**：**双方均承担绝对履约义务（Obligation）**，没有任何一方可以单方面毁约；
+* **到期损益（Payoff）**：
+  - **多头（Long Future）**：$\text{Payoff} = S_T - K$（完全线性直线）；
+  - **空头（Short Future）**：$\text{Payoff} = K - S_T$；
+* **初始成本**：在无套利均衡下，初始远期合约价值为 0，无需支付初始权利金。
+
+#### （2）非线性合约：期权（Options）
+* **核心特征**：期权买方支付一笔初始**权利金（Premium）**，获得在未来以约定价格 $K$ 买入或卖出标的资产的**权利（Right），但没有任何履约义务**；期权卖方收取权利金，承担被动履约的**无限义务（Obligation）**；
+* **收益结构的不对称性（Asymmetry & Convexity）**：
+  - **看涨期权（Call Option）**：买方在 $S_T > K$ 时行权，在 $S_T \le K$ 时放弃行权，到期损益为 $\max(S_T - K, 0)$；
+  - **看跌期权（Put Option）**：买方在 $S_T < K$ 时行权，在 $S_T \ge K$ 时放弃行权，到期损益为 $\max(K - S_T, 0)$。
 
 ---
 
-### 2. 指数鞅与 Wald 恒等式
+### 2. 行权机制分类：欧式、美式与停时理论的天然映射
+
+#### （1）欧式期权（European Options）
+* **定义**：买方**只能在到期日 $T$ 当天**行权；
+* **数学定价形式**：固定时间端点的折现期望：$V_{\text{Eur}}(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q}[\Phi(S_T) \mid \mathcal{F}_t]$。
+
+#### （2）美式期权（American Options）与最优停时问题
+* **定义**：买方可以在到期前**任意连续时刻 $\tau \in [t, T]$** 随时发起提前行权（Early Exercise）；
+* **数学定价形式**：由于买方会选择对自己期望收益最大的最优行权时机，因此美式期权定价本质是一个**最优停时问题（Optimal Stopping Problem）**：
+  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \right]$$
+* **量化面试经典命题：不分红股票的美式看涨期权为什么绝不应提前行权？**
+  - **严格证明**：欧式看涨期权价值满足下界不等式：
+    $$C_{\text{Eur}}(t, S_t) \ge S_t - K e^{-r(T-t)} > S_t - K \quad (\text{当 } r > 0 \text{ 且 } T > t)$$
+  - 若持有者在时刻 $t$ 提前行权，只能拿到即时内在价值 $S_t - K$；
+  - 若持有者直接在二级市场将期权卖出，可以拿到市场公允价值 $C(t, S_t) > S_t - K$；
+  - **结论**：提前行权白白浪费了期权的**时间价值**与**延后支付行权价 $K$ 的利息收益**！因此不分红的美式 Call 价值严格等于欧式 Call（$C_{\text{Am}} = C_{\text{Eur}}$）；
+  - **反例（美式 Put）**：美式看跌期权在标的股价极度暴跌（深度实值 Deep ITM）时，**提前行权是最优的**！因为提前行权可以立即拿到大笔现金 $K$ 存入银行赚取无风险利息，利息收益超过了剩余微弱的时间价值。存在一条随时间变动的**最优提前行权边界 $S^*(t)$**。
+
+#### （3）路径依赖奇异期权（Path-Dependent Exotics）与布朗运动极值
+* **障碍期权（Barrier Options）**：标的资产价格在存续期内一旦触碰预设的障碍价格水平 $B$，期权合约立即生效（Knock-in 敲入）或立刻作废（Knock-out 敲出）。定价核心取决于**首次触达时间 $\tau_B = \inf\{t \ge 0 : S_t = B\}$** 的概率分布；
+* **回望期权（Lookback Options）**：到期收益取决于存续期内的最高价 $M_T = \max_{0 \le t \le T} S_t$ 或最低价，定价核心取决于**布朗运动运行极值分布与反射原理**。
+
+---
+
+### 3. 指数鞅与 Wald 恒等式
+
+在研究布朗运动穿透边界的停时问题时，指数鞅是最强有力的解析计算工具。
 
 对于任意实常数 $\theta \in \mathbb{R}$，定义 **Doléans-Dade 指数鞅**：
 
@@ -565,9 +611,9 @@ $$
 
 ---
 
-### 3. 首达时间（First Hitting Time）与双吸收边界
+### 4. 首达时间（First Hitting Time）与双吸收边界（连续赌徒破产问题）
 
-考虑常数边界 $a > 0, b > 0$，定义停时 $\tau = \inf\{t \ge 0 : W_t = a \text{ 或 } W_t = -b\}$（即连续时间赌徒破产问题）：
+考虑常数边界 $a > 0, b > 0$，定义停时 $\tau = \inf\{t \ge 0 : W_t = a \text{ 或 } W_t = -b\}$：
 1. **到达边界的概率**：对鞅 $W_t$ 用 OST 得 $\mathbb{E}[W_\tau] = 0 \implies a P(W_\tau = a) - b (1 - P(W_\tau = a)) = 0$，解得：
 
 $$
@@ -582,7 +628,7 @@ $$
 
 ---
 
-### 4. 反射原理（The Reflection Principle）与运行极值分布
+### 5. 反射原理（The Reflection Principle）与运行极值分布
 
 设 $M_t = \max_{0 \le s \le t} W_s$ 为时间 $t$ 内的运行最大值（Running Maximum），$a > 0$ 为给定阈值，$\tau_a = \inf\{s \ge 0 : W_s = a\}$ 为首次触达时间。
 
@@ -610,12 +656,38 @@ $$
 f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
 $$
 
+---
+
+## 模块六：Black-Scholes 模型、希腊字母深度解析与期权量化交易
+
+### 6.1 期权基础术语、价态（Moneyness）与价值拆解
+
+在进入数学偏微分方程之前，首先明确期权交易的核心要素：
+
+#### （1）五大基础定价输入变量
+1. **标的资产现价（Spot Price, $S$）**：当前股票或期货的市场最新成交价；
+2. **行权价（Strike Price, $K$）**：期权合约约定的未来交割价格；
+3. **到期剩余时间（Time to Maturity, $\tau = T - t$）**：距离合约到期交割的年化时间跨度；
+4. **无风险利率（Risk-Free Rate, $r$）**：市场上无风险资金借贷的年化连续复利利率；
+5. **波动率（Volatility, $\sigma$）**：标的资产未来年化相对收益率的标准差。
+
+#### （2）期权价值的解构：内在价值 vs. 时间价值
+任何期权的市场公允价格 $V$，都可以唯一拆分为两部分：
+
+$$\boxed{\text{期权总价值 } V = \text{内在价值 (Intrinsic Value)} + \text{时间价值 (Time Value / Extrinsic Value)}}$$
+
+* **内在价值（Intrinsic Value）**：若**立即行权**所能获得的确定性利润。看涨期权为 $\max(S - K, 0)$，看跌期权为 $\max(K - S, 0)$；
+* **时间价值（Time Value）**：期权价格超出内在价值的溢价部分。它代表标的资产在剩余期限内**继续剧烈波动、从而进入更深实值状态的概率与时间可能性**。随着到期日临近，时间价值单调衰减归零。
+
+#### （3）三大价态（Moneyness）
+* **实值（In-The-Money, ITM）**：内在价值 $>0$。看涨期权 $S > K$；看跌期权 $S < K$；
+* **平值（At-The-Money, ATM）**：$S \approx K$。内在价值接近 0，**时间价值最高，非线性曲率（Gamma）与波动率敏感度（Vega）最大**，是期权做市商流动性最集中的战场；
+* **虚值（Out-Of-The-Money, OTM）**：内在价值 $=0$。看涨期权 $S < K$；看跌期权 $S > K$。期权总价值完全由时间价值构成，若到期未突破行权价将彻底归零。
 
 ---
 
-## 模块六：Black-Scholes 模型、解析推导与期权量化交易（Black-Scholes Model & Trading Applications）
+### 6.2 标的资产动力学：几何布朗运动（Geometric Brownian Motion）
 
-### 6.1 标的资产动力学：几何布朗运动（Geometric Brownian Motion）
 
 在 Black-Scholes 框架下，标的资产（股票、指数、商品）的价格过程 $\{S_t\}_{t \ge 0}$ 服从几何布朗运动（GBM）随机微分方程：
 
@@ -903,22 +975,52 @@ $$
 
 ---
 
-### 6.7 BSM 希腊字母（The Greeks）完整解析速查
+### 6.7 BSM 希腊字母（The Greeks）完整解析与做市商多维风险解构
 
-| 希腊字母 | 经济含义 | 看涨期权 Call 公式 | 看跌期权 Put 公式 | 符号与性质 |
+#### （1）为什么量化交易员必须定义“希腊字母”？
+期权价格是一个关于五维输入变量的高度非线性复合函数：$V = V(S, t, \sigma, r, K)$。
+做市商的投资组合中往往同时包含成千上万个不同行权价、不同到期日的期权合约。交易员在多维非线性曲面上无法直观把控整体风险，因此必须借助**多元泰勒展开**，将总风险在各个维度上一阶和二阶偏导拆解，这些偏导数在华尔街被统称为 **希腊字母（The Greeks）**：
+
+$$dV \approx \underbrace{\frac{\partial V}{\partial S}}_{\Delta} dS + \underbrace{\frac{1}{2} \frac{\partial^2 V}{\partial S^2}}_{\Gamma} (dS)^2 + \underbrace{\frac{\partial V}{\partial t}}_{\Theta} dt + \underbrace{\frac{\partial V}{\partial \sigma}}_{\text{Vega}} d\sigma + \underbrace{\frac{\partial V}{\partial r}}_{\rho} dr$$
+
+```mermaid
+graph TD
+    V["期权价格非线性曲面 V(S, t, σ, r, K)"] --> D["Delta (Δ = ∂V/∂S)<br/><b>标的一阶方向性风险</b><br/>对冲比率 · 现货头寸敞口"]
+    V --> G["Gamma (Γ = ∂²V/∂S²)<br/><b>二阶非线性曲率风险</b><br/>Delta变动速度 · 高抛低吸套利源泉"]
+    V --> T["Theta (Θ = ∂V/∂t)<br/><b>时间价值衰减速度</b><br/>每天流逝的期权租金"]
+    V --> VE["Vega (𝒱 = ∂V/∂σ)<br/><b>隐含波动率变动风险</b><br/>市场恐慌指数敏感度"]
+    V --> R["Rho (ρ = ∂V/∂r)<br/><b>无风险利率变动风险</b><br/>央行加息/降息敏感度"]
+```
+
+---
+
+#### （2）希腊字母公式速查全景表
+
+| 希腊字母 | 核心经济与交易含义 | 看涨期权 Call 公式 | 看跌期权 Put 公式 | 符号与交易员经验法则 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Delta ($\Delta$)** | 标的价格敏感度 $\frac{\partial V}{\partial S}$ | $\Phi(d_1)$ | $\Phi(d_1) - 1 = -\Phi(-d_1)$ | Call $\in (0, 1)$，Put $\in (-1, 0)$ |
-| **Gamma ($\Gamma$)** | 曲线凸性 $\frac{\partial^2 V}{\partial S^2}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | Call 与 Put 恒正且严格相等 ($\Gamma > 0$) |
-| **Vega ($\mathcal{V}$)** | 波动率敏感度 $\frac{\partial V}{\partial \sigma}$ | $S \sqrt{\tau} \phi(d_1)$ | $S \sqrt{\tau} \phi(d_1)$ | Call 与 Put 恒正且严格相等 ($\mathcal{V} > 0$) |
-| **Theta ($\Theta$)** | 时间价值衰减 $\frac{\partial V}{\partial t}$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} - r K e^{-r\tau}\Phi(d_2)$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} + r K e^{-r\tau}\Phi(-d_2)$ | 多头期权通常 $\Theta < 0$（时间流逝损耗价值） |
-| **Rho ($\rho$)** | 利率敏感度 $\frac{\partial V}{\partial r}$ | $K \tau e^{-r\tau} \Phi(d_2)$ | $-K \tau e^{-r\tau} \Phi(-d_2)$ | Call $\rho > 0$，Put $\rho < 0$ |
+| **Delta ($\Delta$)** | 标的价格敏感度 $\frac{\partial V}{\partial S}$ | $\Phi(d_1)$ | $\Phi(d_1) - 1 = -\Phi(-d_1)$ | Call $\in (0, 1)$，Put $\in (-1, 0)$；平值 ATM $\approx 0.5$ |
+| **Gamma ($\Gamma$)** | 曲线凸性 $\frac{\partial^2 V}{\partial S^2}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | Call 与 Put 恒正且严格相等 ($\Gamma > 0$)；平值 ATM 最高 |
+| **Vega ($\mathcal{V}$)** | 隐含波动率敏感度 $\frac{\partial V}{\partial \sigma}$ | $S \sqrt{\tau} \phi(d_1)$ | $S \sqrt{\tau} \phi(d_1)$ | Call 与 Put 恒正且严格相等 ($\mathcal{V} > 0$)；临近到期衰减 |
+| **Theta ($\Theta$)** | 时间价值日衰减 $\frac{\partial V}{\partial t}$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} - r K e^{-r\tau}\Phi(d_2)$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} + r K e^{-r\tau}\Phi(-d_2)$ | 多头期权通常 $\Theta < 0$（买方每天流血，卖方每天收租） |
+| **Rho ($\rho$)** | 无风险利率敏感度 $\frac{\partial V}{\partial r}$ | $K \tau e^{-r\tau} \Phi(d_2)$ | $-K \tau e^{-r\tau} \Phi(-d_2)$ | Call $\rho > 0$，Put $\rho < 0$ |
 
-**Gamma-Theta 平衡关系**：
-将希腊字母代回 BSM PDE，即得期权做市商的盈亏守恒定律：
+---
 
-$$
-\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}
-$$
+#### （3）做市商终极盈亏守恒律：Theta-Gamma 永恒博弈
+
+将所有希腊字母代回 BSM 偏微分方程，即可得到期权做市商在无套利世界中的**终极盈亏平衡定律**：
+
+$$\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}$$
+
+* **物理与交易实战直觉**：
+  金融市场不存在单向无风险暴利：
+  1. **做多 Gamma（Long Gamma, $\Gamma > 0$）**：
+     - 你拥有了随着股价震荡而自动“高抛低吸”的印钞机（$+\frac{1}{2}\Gamma S^2 \sigma^2 dt > 0$）；
+     - 但作为代价，你必须每天向市场支付时间价值的流逝租金（$\Theta < 0$）；
+  2. **做空 Gamma（Short Gamma, $\Gamma < 0$）**：
+     - 你作为保险公司，每天稳定收取买家流逝的时间价值租金（$\Theta > 0$ 产生正现金流）；
+     - 但作为代价，一旦市场发生黑天鹅暴涨或暴跌，负 Gamma 会让你的 Delta 亏损以二阶加速度爆炸，瞬间被拖垮爆仓！
+
 
 ---
 

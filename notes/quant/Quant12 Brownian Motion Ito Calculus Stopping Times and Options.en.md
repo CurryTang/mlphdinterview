@@ -515,20 +515,65 @@ Using naive real analysis expansion $\mathbb{E}[(\int H dW)^2]$ involves tedious
 
 ---
 
-## Module 5: Stopping Times, First Hitting Times & Extreme Values
+## Module 5: Derivatives Landscape, Stopping Times & Extreme Values
 
-### 1. Financial Motivation & Context for Stopping Times
+### 1. Foundations: The Financial Derivatives Landscape (Forwards/Futures vs. Options)
 
-In quantitative finance, decision timing is rarely fixed at a constant date $T$. Many financial contracts and risk events are **triggered dynamically by stochastic market paths**:
-1. **American Options**: The holder may exercise at any stopping time $\tau \le T$; pricing American options is an **Optimal Stopping Problem**;
-2. **Barrier Options**: Knock-in / knock-out events occur at the **First Hitting Time** of a barrier level $a$;
-3. **Credit Risk & Liquidation**: In the Merton structural model, corporate default is triggered the first time firm asset value drops below debt face value.
+Before diving into stochastic stopping times and extreme value theory, we must establish the structural architecture of modern financial derivatives:
 
-All of these reduce mathematically to: **Brownian motion hitting times across absorbing boundaries and running extrema**.
+```mermaid
+graph TD
+    A["Financial Derivatives Architecture"] --> B["Linear Derivatives<br/><b>【Forwards & Futures】</b><br/>Two-sided mandatory obligation<br/>Linear Payoff: S_T - K"]
+    A --> C["Non-Linear Derivatives<br/><b>【Options】</b><br/>Asymmetric Right vs. Obligation<br/>Convex Payoff: max(S_T - K, 0)"]
+    
+    C --> D["Classification by Exercise Mechanism"]
+    D --> E["European Options<br/>Exercisable ONLY on maturity T<br/><b>【Fixed-Endpoint Conditional Expectation】</b>"]
+    D --> F["American Options<br/>Exercisable at ANY stopping time τ ≤ T<br/><b>【Optimal Stopping & Free Boundary Problem】</b>"]
+    D --> G["Path-Dependent Exotic Options<br/>Barrier Options / Asian Options<br/><b>【First Hitting Times & Running Extrema】</b>"]
+```
+
+#### (1) Linear Contracts: Forwards & Futures
+* **Core Mechanism**: Both parties enter a binding agreement to buy or sell the underlying asset at a predetermined delivery price $K$ on maturity date $T$;
+* **Symmetric Obligation**: **Both parties are legally obligated to execute (Obligation)**; neither party can unilaterally walk away;
+* **Terminal Payoff**:
+  - **Long Position**: $\text{Payoff} = S_T - K$ (a straight line);
+  - **Short Position**: $\text{Payoff} = K - S_T$;
+* **Initial Premium**: Under no-arbitrage equilibrium, entering a forward contract costs $\$0$ upfront.
+
+#### (2) Non-Linear Contracts: Options
+* **Core Mechanism**: The buyer pays an upfront **Premium** for the **Right (but NOT obligation)** to buy or sell the underlying asset at strike $K$; the seller collects the premium and assumes the **passive obligation** to fulfill the trade if exercised;
+* **Asymmetric Convex Payoffs**:
+  - **Call Option (Right to Buy)**: Payoff is $\max(S_T - K, 0)$;
+  - **Put Option (Right to Sell)**: Payoff is $\max(K - S_T, 0)$.
 
 ---
 
-### 2. Exponential Martingales & Wald's Identity
+### 2. Exercise Styles: European, American & the Natural Mapping to Stopping Times
+
+#### (1) European Options
+* **Definition**: Can **ONLY be exercised on maturity date $T$**;
+* **Pricing Formula**: Expressed as a terminal conditional expectation under risk-neutral measure $\mathbb{Q}$:
+  $$V_{\text{Eur}}(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q}[\Phi(S_T) \mid \mathcal{F}_t]$$
+
+#### (2) American Options & the Optimal Stopping Problem
+* **Definition**: Can be exercised at **any continuous stopping time $\tau \in [t, T]$** prior to maturity;
+* **Mathematical Pricing Formulation**: Because the rational option holder chooses an exercise stopping time that maximizes expected payoff, American option valuation is an **Optimal Stopping Problem**:
+  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \right]$$
+* **Classic Quant Interview Question: Why is it NEVER optimal to early exercise an American Call on a non-dividend-paying stock?**
+  - **Rigorous Proof**: The European call price satisfies the lower bound inequality:
+    $$C_{\text{Eur}}(t, S_t) \ge S_t - K e^{-r(T-t)} > S_t - K \quad (\text{when } r > 0 \text{ and } T > t)$$
+  - If the holder early exercises at $t$, they receive only the intrinsic value $S_t - K$;
+  - If the holder sells the option in the secondary market, they receive the fair value $C(t, S_t) > S_t - K$;
+  - **Conclusion**: Early exercise throws away both **Time Value** and the **interest earned by delaying payment of strike $K$**. Thus, $C_{\text{Am}}(t, S) = C_{\text{Eur}}(t, S)$!
+  - **Counter-example (American Put)**: For an American Put on a crashing stock (Deep ITM, $S \to 0$), **early exercise IS optimal**! Exercising early allows the holder to collect cash $K$ immediately and earn risk-free bank interest, which outweighs the negligible remaining time value. There exists a time-dependent **Optimal Early Exercise Boundary $S^*(t)$**.
+
+#### (3) Path-Dependent Exotic Options & Brownian Extremes
+* **Barrier Options**: Knock-in or knock-out events are triggered when the asset price breaches barrier level $B$, governed by the **First Hitting Time $\tau_B = \inf\{t \ge 0 : S_t = B\}$**;
+* **Lookback Options**: Payoffs depend on the historical extreme $\max_{0 \le t \le T} S_t$ or $\min S_t$, governed by the **Reflection Principle and Running Maximum distributions**.
+
+---
+
+### 3. Exponential Martingales & Wald's Identity
 
 For any $\theta \in \mathbb{R}$, the Doléans-Dade exponential martingale:
 
@@ -544,7 +589,7 @@ $$
 
 ---
 
-### 3. Two-Sided Absorbing Boundaries (Continuous Gambler's Ruin)
+### 4. Two-Sided Absorbing Boundaries (Continuous Gambler's Ruin)
 
 For $\tau = \inf\{t \ge 0 : W_t \notin (-b, a)\}$ ($a, b > 0$):
 1. **Hitting Probability**: Applying OST to martingale $W_t$:
@@ -554,7 +599,7 @@ For $\tau = \inf\{t \ge 0 : W_t \notin (-b, a)\}$ ($a, b > 0$):
 
 ---
 
-### 4. The Reflection Principle & Running Maximum Distribution
+### 5. The Reflection Principle & Running Maximum Distribution
 
 Let $M_t = \max_{0 \le s \le t} W_s$ and $\tau_a = \inf\{s \ge 0 : W_s = a\}$ for $a > 0$.
 
@@ -581,12 +626,38 @@ $$
 f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
 $$
 
+---
+
+## Module 6: Black-Scholes-Merton Model, Greeks & Quant Trading Applications
+
+### 6.1 Option Terminology, Moneyness & Value Decomposition
+
+Before deriving partial differential equations, we define the foundational mechanics of option contracts:
+
+#### (1) The 5 Core Pricing Inputs
+1. **Spot Price ($S$)**: Current market price of the underlying asset;
+2. **Strike Price ($K$)**: Agreed contract execution price at delivery;
+3. **Time to Maturity ($\tau = T - t$)**: Annualized time remaining until contract expiration;
+4. **Risk-Free Interest Rate ($r$)**: Continuous annualized riskless borrowing/lending rate;
+5. **Volatility ($\sigma$)**: Annualized standard deviation of percentage returns.
+
+#### (2) Option Value Decomposition: Intrinsic Value vs. Time Value
+Any option market price $V$ decomposes uniquely into:
+
+$$\boxed{\text{Total Option Value } V = \text{Intrinsic Value} + \text{Time Value (Extrinsic Value)}}$$
+
+* **Intrinsic Value**: The immediate payoff if exercised right now: $\max(S - K, 0)$ for Call, $\max(K - S, 0)$ for Put;
+* **Time Value**: The market premium paid for the probability that future volatility will move the option deeper in-the-money. Time value decays monotonically to zero as $t \to T$.
+
+#### (3) The 3 States of Moneyness
+* **In-The-Money (ITM)**: Intrinsic value $> 0$. Call: $S > K$; Put: $S < K$;
+* **At-The-Money (ATM)**: $S \approx K$. Intrinsic value $\approx 0$. **Time value, Gamma (curvature), and Vega (volatility sensitivity) are all maximized at ATM**;
+* **Out-Of-The-Money (OTM)**: Intrinsic value $= 0$. Call: $S < K$; Put: $S > K$. The contract is 100% pure time value and expires worthless if $S$ fails to cross $K$.
 
 ---
 
-## Module 6: Black-Scholes-Merton Model, Analytical Derivations & Quant Trading
+### 6.2 Underlying Asset Dynamics: Geometric Brownian Motion (GBM)
 
-### 6.1 Underlying Asset Dynamics: Geometric Brownian Motion (GBM)
 
 In the Black-Scholes framework, the underlying price process $\{S_t\}_{t \ge 0}$ follows a Geometric Brownian Motion (GBM) stochastic differential equation:
 
@@ -790,21 +861,52 @@ $$
 
 ---
 
-### 6.7 Complete Summary of Black-Scholes Greeks
+### 6.7 Black-Scholes Greeks: Multi-Dimensional Risk Decomposition for Market Makers
 
-| Greek | Financial Meaning | Call Formula | Put Formula | Key Properties |
+#### (1) Why do Quantitative Traders Define "The Greeks"?
+An option price is a highly non-linear multivariate surface: $V = V(S, t, \sigma, r, K)$.
+A trading desk manages portfolios of thousands of option contracts across strikes and maturities. Traders cannot intuitively visualize five-dimensional surfaces; they use **Multivariate Taylor Expansions** to decompose aggregate portfolio risk into first- and second-order directional sensitivities known across Wall Street as **The Greeks**:
+
+$$dV \approx \underbrace{\frac{\partial V}{\partial S}}_{\Delta} dS + \underbrace{\frac{1}{2} \frac{\partial^2 V}{\partial S^2}}_{\Gamma} (dS)^2 + \underbrace{\frac{\partial V}{\partial t}}_{\Theta} dt + \underbrace{\frac{\partial V}{\partial \sigma}}_{\text{Vega}} d\sigma + \underbrace{\frac{\partial V}{\partial r}}_{\rho} dr$$
+
+```mermaid
+graph TD
+    V["Option Price Non-Linear Surface V(S, t, σ, r, K)"] --> D["Delta (Δ = ∂V/∂S)<br/><b>First-Order Directional Risk</b><br/>Hedge ratio · Underlying share exposure"]
+    V --> G["Gamma (Γ = ∂²V/∂S²)<br/><b>Second-Order Curvature Risk</b><br/>Rate of change of Delta · Volatility harvesting source"]
+    V --> T["Theta (Θ = ∂V/∂t)<br/><b>Time Value Decay Rate</b><br/>Daily rent paid/collected for optionality"]
+    V --> VE["Vega (𝒱 = ∂V/∂σ)<br/><b>Implied Volatility Sensitivity</b><br/>VIX / market panic index exposure"]
+    V --> R["Rho (ρ = ∂V/∂r)<br/><b>Interest Rate Sensitivity</b><br/>Central bank rate hike/cut exposure"]
+```
+
+---
+
+#### (2) Comprehensive Greeks Master Formula Table
+
+| Greek | Core Financial & Trading Meaning | Call Formula | Put Formula | Key Properties & Trader Rules of Thumb |
 | :--- | :--- | :--- | :--- | :--- |
-| **Delta ($\Delta$)** | Price Sensitivity $\frac{\partial V}{\partial S}$ | $\Phi(d_1)$ | $\Phi(d_1) - 1 = -\Phi(-d_1)$ | Call $\in (0, 1)$, Put $\in (-1, 0)$ |
-| **Gamma ($\Gamma$)** | Convexity $\frac{\partial^2 V}{\partial S^2}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | Strictly positive and identical ($\Gamma > 0$) |
-| **Vega ($\mathcal{V}$)** | Volatility Sensitivity $\frac{\partial V}{\partial \sigma}$ | $S \sqrt{\tau} \phi(d_1)$ | $S \sqrt{\tau} \phi(d_1)$ | Strictly positive and identical ($\mathcal{V} > 0$) |
-| **Theta ($\Theta$)** | Time Decay $\frac{\partial V}{\partial t}$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} - r K e^{-r\tau}\Phi(d_2)$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} + r K e^{-r\tau}\Phi(-d_2)$ | Negative for long positions (decay) |
+| **Delta ($\Delta$)** | Price Sensitivity $\frac{\partial V}{\partial S}$ | $\Phi(d_1)$ | $\Phi(d_1) - 1 = -\Phi(-d_1)$ | Call $\in (0, 1)$, Put $\in (-1, 0)$; ATM $\approx 0.5$ |
+| **Gamma ($\Gamma$)** | Convexity / Curvature $\frac{\partial^2 V}{\partial S^2}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | $\frac{\phi(d_1)}{S \sigma \sqrt{\tau}}$ | Strictly positive and identical ($\Gamma > 0$); peaks at ATM |
+| **Vega ($\mathcal{V}$)** | Volatility Sensitivity $\frac{\partial V}{\partial \sigma}$ | $S \sqrt{\tau} \phi(d_1)$ | $S \sqrt{\tau} \phi(d_1)$ | Strictly positive and identical ($\mathcal{V} > 0$); decays near expiry |
+| **Theta ($\Theta$)** | Daily Time Decay $\frac{\partial V}{\partial t}$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} - r K e^{-r\tau}\Phi(d_2)$ | $-\frac{S\phi(d_1)\sigma}{2\sqrt{\tau}} + r K e^{-r\tau}\Phi(-d_2)$ | Negative for long positions (buyers bleed cash daily, sellers collect rent) |
 | **Rho ($\rho$)** | Interest Rate Sensitivity $\frac{\partial V}{\partial r}$ | $K \tau e^{-r\tau} \Phi(d_2)$ | $-K \tau e^{-r\tau} \Phi(-d_2)$ | Call $\rho > 0$, Put $\rho < 0$ |
 
-**Gamma-Theta Trade-off Relation**:
+---
 
-$$
-\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}
-$$
+#### (3) The Market Maker's Conservation Law: The Eternal Theta-Gamma Trade-off
+
+Substituting all Greeks back into the Black-Scholes PDE yields the fundamental **Theta-Gamma Equilibrium Law**:
+
+$$\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}$$
+
+* **Physical & Trading Intuition**:
+  There is no free lunch in options trading:
+  1. **Long Gamma ($\Gamma > 0$)**:
+     - You gain an automated cash machine that harvests buy-low-sell-high profits as the stock oscillates ($+\frac{1}{2}\Gamma S^2 \sigma^2 dt > 0$);
+     - In exchange, you must pay continuous rent to the market in the form of daily time value decay ($\Theta < 0$);
+  2. **Short Gamma ($\Gamma < 0$)**:
+     - You act as an insurance company, steadily collecting time value rent every day ($\Theta > 0$ generates positive carry);
+     - In exchange, you sit on a negative convexity time bomb: if a black swan event occurs, negative Gamma accelerates your losses exponentially.
+
 
 ---
 
