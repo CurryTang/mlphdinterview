@@ -1055,7 +1055,67 @@ $$
 
 ## 模块七：深度量化面试真题、参数推广与阶梯进阶题库（Deep Problems & Scaffolded Tutorials）
 
-### 第一部分：三大高频核心真题与参数化推广（The 3 Core Quant Problems & Generalizations）
+### 第一部分：梯级过渡题库（Scaffolded Bridge Problems for Deep Intuition）
+
+为了由浅入深、循序渐进地建立起扎实的随机微积分直觉，本节精选 5 道阶梯过渡题，覆盖从**随机积分代数运算**、**二维复共形角分布**、**局部布朗桥插值**到**布朗桥极值统计与带漂移退出**的全套核心思维：
+
+---
+
+#### 过渡题 1：随机积分互协方差与总方差守恒
+**题目**：计算 $W_T$ 与 $X = \int_0^T W_t dt$ 的协方差 $\operatorname{Cov}(W_T, X)$，以及 $W_T$ 与 $Y = \int_0^T t dW_t$ 的协方差 $\operatorname{Cov}(W_T, Y)$。
+**解答**：
+- 写出 $W_T = \int_0^T 1 dW_t$。
+- $\operatorname{Cov}(W_T, X) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T (T - t) dW_t \right) = \int_0^T (T - t) dt = \frac{T^2}{2}$。
+- $\operatorname{Cov}(W_T, Y) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T t dW_t \right) = \int_0^T t dt = \frac{T^2}{2}$。
+- 两者相加：$\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$，完美自洽！
+
+---
+
+#### 过渡题 2：二维布朗运动扇形区域退出概率与共形角映射
+**题目**：二维布朗运动从扇形区域 $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ 内部的极坐标点 $(r_0, \theta_0)$（其中 $0 < \theta_0 < \alpha$）出发，求过程首次触碰上射线（$\theta = \alpha$）而非下射线（$\theta = 0$）的概率。
+**解答**：
+- 设目标概率函数为 $u(r, \theta)$。因为 $u$ 在区域内满足 Laplace 方程 $\Delta u = 0$，且边界条件为 $u(r, \alpha) = 1, u(r, 0) = 0$。
+- 显然极坐标角 $\theta$ 是调和函数，线性插值解为：
+  $$u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$$
+- **洞察**：二维布朗运动的角位移在共形映射下保持尺度无关性（Scale Invariance），退出概率完全由初始角度占总张角的比例决定，与初始半径 $r_0$ 完全无关！
+
+---
+
+#### 过渡题 3：三点条件期望与马尔可夫性
+**题目**：设 $0 < s < t < u < T$。已知 $W_s = a$ 且 $W_u = b$，求中间时刻 $W_t$ 的条件期望 $\mathbb{E}[W_t \mid W_s = a, W_u = b]$。
+**解答**：
+- 由布朗运动的马尔可夫性，给定 $W_s$ 和 $W_u$ 后，区间 $[s, u]$ 内部的轨迹与外部（包括 $W_0, W_T$）条件独立。
+- 在子区间 $[s, u]$ 上，过程可看作起点为 $a$、终点为 $b$ 的局部布朗桥：
+  $$\mathbb{E}[W_t \mid W_s = a, W_u = b] = a + \frac{t - s}{u - s}(b - a) = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
+- 这是两端点确定值根据时间距离的**精确线性插值**！
+
+---
+
+#### 过渡题 4：布朗桥的全局最大值分布（Kolmogorov-Smirnov 统计量）
+**题目**：设 $B_t$ 为 $[0, 1]$ 上的标准布朗桥（$B_0 = 0, B_1 = 0$）。求其最大值 $M = \max_{0 \le t \le 1} B_t$ 超过给定正阈值 $y > 0$ 的精确概率 $\mathbb{P}(M \ge y)$。
+**解答**：
+- 利用终点约束下的反射原理：
+  $$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \lim_{\epsilon \to 0} \mathbb{P}\left( \max_{0 \le t \le 1} W_t \ge y \;\middle|\; W_1 \in (-\epsilon, \epsilon) \right)$$
+- 轨迹跨过水平线 $y$ 后沿 $y$ 作镜像翻转，终点 $W_1 = 0$ 被对称映射到 $2y - 0 = 2y$。
+- 比对正态密度之比：
+  $$\mathbb{P}(M \ge y) = \frac{\phi(2y)}{\phi(0)} = \frac{\frac{1}{\sqrt{2\pi}} e^{-\frac{(2y)^2}{2}}}{\frac{1}{\sqrt{2\pi}} e^0} = \boxed{e^{-2y^2}} \quad (y > 0)$$
+- 这正是统计学著名的 **Kolmogorov-Smirnov 单边极限检验分布** 的数学起源！
+
+---
+
+#### 过渡题 5：带漂移布朗运动双边界退出（止盈与止损）
+**题目**：$X_t = \mu t + \sigma W_t$（$\mu > 0$），$X_0 = 0$，退出边界为 $-a < 0 < b$。求止盈概率 $p_b$ 及平均退出时间 $\mathbb{E}[\tau]$。
+**解答**：
+- 构造指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$，令 $\gamma = \frac{2\mu}{\sigma^2}$。由 OST 得：
+  $$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}$$
+- 对去漂移鞅 $X_t - \mu t$ 用 OST 得：
+  $$\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \boxed{\frac{b \cdot p_b - a(1 - p_b)}{\mu}}$$
+
+---
+
+### 第二部分：三大高频核心真题与参数化推广（The 3 Core Quant Problems & Generalizations）
+
+在掌握上述基础过渡技巧后，本节直面顶级量化对冲基金（Jane Street / Citadel / Two Sigma / Optiver）的三大高难度核心真题。
 
 ---
 
@@ -1230,62 +1290,5 @@ $$
 - 条件期望：$\mathbb{E}[W_{1/2} \mid W_2 = 1] = \frac{1/2}{2} \times 1 = \boxed{\frac{1}{4}}$
 - 条件方差：$\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{\frac{1}{2} \cdot \left(2 - \frac{1}{2}\right)}{2} = \frac{\frac{1}{2} \cdot \frac{3}{2}}{2} = \boxed{\frac{3}{8}}$
 
----
-
-### 第二部分：梯级过渡题库（Scaffolded Bridge Problems for Deep Intuition）
-
-为了帮助彻底吃透上述核心方法，以下 5 道阶梯过渡题由浅入深，覆盖从**随机积分代数运算**、**二维复共形角分布**到**布朗桥极值统计**的全套核心思维：
-
----
-
-#### 过渡题 1：随机积分互协方差与总方差守恒
-**题目**：计算 $W_T$ 与 $X = \int_0^T W_t dt$ 的协方差 $\operatorname{Cov}(W_T, X)$，以及 $W_T$ 与 $Y = \int_0^T t dW_t$ 的协方差 $\operatorname{Cov}(W_T, Y)$。
-**解答**：
-- 写出 $W_T = \int_0^T 1 dW_t$。
-- $\operatorname{Cov}(W_T, X) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T (T - t) dW_t \right) = \int_0^T (T - t) dt = \frac{T^2}{2}$。
-- $\operatorname{Cov}(W_T, Y) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T t dW_t \right) = \int_0^T t dt = \frac{T^2}{2}$。
-- 两者相加：$\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$，完美自洽！
-
----
-
-#### 过渡题 2：二维布朗运动扇形区域退出概率与共形角映射
-**题目**：二维布朗运动从扇形区域 $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ 内部的极坐标点 $(r_0, \theta_0)$（其中 $0 < \theta_0 < \alpha$）出发，求过程首次触碰上射线（$\theta = \alpha$）而非下射线（$\theta = 0$）的概率。
-**解答**：
-- 设目标概率函数为 $u(r, \theta)$。因为 $u$ 在区域内满足 Laplace 方程 $\Delta u = 0$，且边界条件为 $u(r, \alpha) = 1, u(r, 0) = 0$。
-- 显然极坐标角 $\theta$ 是调和函数，线性插值解为：
-  $$u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$$
-- **洞察**：二维布朗运动的角位移在共形映射下保持尺度无关性（Scale Invariance），退出概率完全由初始角度占总张角的比例决定，与初始半径 $r_0$ 完全无关！
-
----
-
-#### 过渡题 3：三点条件期望与马尔可夫性
-**题目**：设 $0 < s < t < u < T$。已知 $W_s = a$ 且 $W_u = b$，求中间时刻 $W_t$ 的条件期望 $\mathbb{E}[W_t \mid W_s = a, W_u = b]$。
-**解答**：
-- 由布朗运动的马尔可夫性，给定 $W_s$ 和 $W_u$ 后，区间 $[s, u]$ 内部的轨迹与外部（包括 $W_0, W_T$）条件独立。
-- 在子区间 $[s, u]$ 上，过程可看作起点为 $a$、终点为 $b$ 的局部布朗桥：
-  $$\mathbb{E}[W_t \mid W_s = a, W_u = b] = a + \frac{t - s}{u - s}(b - a) = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
-- 这是两端点确定值根据时间距离的**精确线性插值**！
-
----
-
-#### 过渡题 4：布朗桥的全局最大值分布（Kolmogorov-Smirnov 统计量）
-**题目**：设 $B_t$ 为 $[0, 1]$ 上的标准布朗桥（$B_0 = 0, B_1 = 0$）。求其最大值 $M = \max_{0 \le t \le 1} B_t$ 超过给定正阈值 $y > 0$ 的精确概率 $\mathbb{P}(M \ge y)$。
-**解答**：
-- 利用终点约束下的反射原理：
-  $$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \lim_{\epsilon \to 0} \mathbb{P}\left( \max_{0 \le t \le 1} W_t \ge y \;\middle|\; W_1 \in (-\epsilon, \epsilon) \right)$$
-- 轨迹跨过水平线 $y$ 后沿 $y$ 作镜像翻转，终点 $W_1 = 0$ 被对称映射到 $2y - 0 = 2y$。
-- 比对正态密度之比：
-  $$\mathbb{P}(M \ge y) = \frac{\phi(2y)}{\phi(0)} = \frac{\frac{1}{\sqrt{2\pi}} e^{-\frac{(2y)^2}{2}}}{\frac{1}{\sqrt{2\pi}} e^0} = \boxed{e^{-2y^2}} \quad (y > 0)$$
-- 这正是统计学著名的 **Kolmogorov-Smirnov 单边极限检验分布** 的数学起源！
-
----
-
-#### 过渡题 5：带漂移布朗运动双边界退出（止盈与止损）
-**题目**：$X_t = \mu t + \sigma W_t$（$\mu > 0$），$X_0 = 0$，退出边界为 $-a < 0 < b$。求止盈概率 $p_b$ 及平均退出时间 $\mathbb{E}[\tau]$。
-**解答**：
-- 构造指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$，令 $\gamma = \frac{2\mu}{\sigma^2}$。由 OST 得：
-  $$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}$$
-- 对去漂移鞅 $X_t - \mu t$ 用 OST 得：
-  $$\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \boxed{\frac{b \cdot p_b - a(1 - p_b)}{\mu}}$$
 
 ---

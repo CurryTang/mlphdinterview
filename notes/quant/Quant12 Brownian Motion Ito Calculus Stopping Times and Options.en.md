@@ -926,9 +926,57 @@ $$
 
 ---
 
-### Module 7: Deep Quant Interview Problems, Generalizations & Scaffolded Practice (Core & Bridge Problems)
+#### Module 7: Deep Quant Interview Problems, Generalizations & Scaffolded Practice (Core & Bridge Problems)
 
-### Part 1: The 3 Core Interview Problems & Parametric Generalizations
+### Part 1: Scaffolded Practice Problems for Deep Intuition
+
+To build rigorous intuition step-by-step before tackling hard interview questions, these 5 scaffolded practice problems cover **stochastic integration algebra**, **2D conformal angles**, **local bridge interpolation**, and **extreme value statistics**:
+
+---
+
+#### Practice 1: Cross-Covariances of Stochastic Integrals
+**Problem**: Find $\operatorname{Cov}(W_T, X)$ and $\operatorname{Cov}(W_T, Y)$ for $X = \int_0^T W_t dt$ and $Y = \int_0^T t dW_t$.
+**Solution**:
+- $\operatorname{Cov}(W_T, X) = \int_0^T (T - t) dt = \frac{T^2}{2}$.
+- $\operatorname{Cov}(W_T, Y) = \int_0^T t dt = \frac{T^2}{2}$.
+- Sum: $\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$.
+
+---
+
+#### Practice 2: Conformal Wedge Exit Probabilities
+**Problem**: For 2D Brownian motion in a wedge $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ starting at $(r_0, \theta_0)$, find the probability of hitting the upper ray ($\theta = \alpha$) before the lower ray ($\theta = 0$).
+**Solution**:
+By scale invariance and harmonicity of $\theta$, $u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$, independent of the initial radius $r_0$.
+
+---
+
+#### Practice 3: Three-Point Brownian Conditioning
+**Problem**: For $0 < s < t < u < T$, given $W_s = a$ and $W_u = b$, find $\mathbb{E}[W_t \mid W_s = a, W_u = b]$.
+**Solution**:
+By the Markov property, over $[s, u]$ the trajectory is a bridge connecting $a$ and $b$:
+$$\mathbb{E}[W_t \mid W_s = a, W_u = b] = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
+
+---
+
+#### Practice 4: Maximum of a Brownian Bridge (Kolmogorov-Smirnov Statistic)
+**Problem**: For standard Brownian bridge $B_t$ on $[0, 1]$ ($B_0 = B_1 = 0$), find $\mathbb{P}(\max_{0 \le t \le 1} B_t \ge y)$ for $y > 0$.
+**Solution**:
+By the reflection principle conditioned on $W_1 = 0$, reflected paths end at $2y$:
+$$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \frac{\phi(2y)}{\phi(0)} = \boxed{e^{-2y^2}} \quad (y > 0)$$
+
+---
+
+#### Practice 5: Two-Sided Exit for Drifted Brownian Motion
+**Problem**: $X_t = \mu t + \sigma W_t$ with barriers $-a < 0 < b$. Find hitting probability $p_b$ and expected exit time $\mathbb{E}[\tau]$.
+**Solution**:
+Using exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ with $\gamma = \frac{2\mu}{\sigma^2}$:
+$$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}, \qquad \mathbb{E}[\tau] = \boxed{\frac{b p_b - a(1 - p_b)}{\mu}}$$
+
+---
+
+### Part 2: The 3 Core Interview Problems & Parametric Generalizations
+
+Having mastered the foundational bridges, we tackle three famous capstone quantitative interview problems from premier trading firms (Jane Street / Citadel / Two Sigma / Optiver).
 
 ---
 
@@ -1034,7 +1082,7 @@ $\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(
 > Let $W_t$ be a standard Brownian motion with $W_0 = 0$. Given the terminal condition $W_T = x$ ($T > 0, x \in \mathbb{R}$), for any intermediate time $t \in (0, T)$:
 > 1. Find the conditional expectation $\mathbb{E}[W_t \mid W_T = x]$;
 > 2. Find the conditional variance $\operatorname{Var}(W_t \mid W_T = x)$ and write the full conditional distribution;
-> 3. Define the Brownian Bridge process $B_t = W_t - \frac{t}{T} W_T$, prove that $B_t$ is independent of $W_T$, and compute its covariance function $\operatorname{Cov}(B_s, B_t)$;
+> 3. Define the Brownian Bridge process $B_t = W_t - \frac{t}{T} W_T$, prove that $B_t$ is independent of $W_T$, and compute its covariance function $\operatorname{Cov}(B_s, B_t)$；
 > 4. Verify the special case $W_0 = 0, W_2 = 1$ to find $\mathbb{E}[W_{1/2} \mid W_2 = 1]$ and $\operatorname{Var}(W_{1/2} \mid W_2 = 1)$.
 
 **Step-by-Step Derivation & Solution**:
@@ -1073,49 +1121,3 @@ $$
 **Step 4: Special Case ($T=2, t=1/2, x=1$)**
 - $\mathbb{E}[W_{1/2} \mid W_2 = 1] = \frac{1/2}{2} \times 1 = \boxed{\frac{1}{4}}$
 - $\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{(1/2)(3/2)}{2} = \boxed{\frac{3}{8}}$
-
----
-
-### Part 2: Scaffolded Practice Problems for Deep Intuition
-
----
-
-#### Practice 1: Cross-Covariances of Stochastic Integrals
-**Problem**: Find $\operatorname{Cov}(W_T, X)$ and $\operatorname{Cov}(W_T, Y)$ for $X = \int_0^T W_t dt$ and $Y = \int_0^T t dW_t$.
-**Solution**:
-- $\operatorname{Cov}(W_T, X) = \int_0^T (T - t) dt = \frac{T^2}{2}$.
-- $\operatorname{Cov}(W_T, Y) = \int_0^T t dt = \frac{T^2}{2}$.
-- Sum: $\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$.
-
----
-
-#### Practice 2: Conformal Wedge Exit Probabilities
-**Problem**: For 2D Brownian motion in a wedge $D = \{r e^{i\theta} : r > 0, 0 < \theta < \alpha\}$ starting at $(r_0, \theta_0)$, find the probability of hitting the upper ray ($\theta = \alpha$) before the lower ray ($\theta = 0$).
-**Solution**:
-By scale invariance and harmonicity of $\theta$, $u(r_0, \theta_0) = \boxed{\frac{\theta_0}{\alpha}}$, independent of the initial radius $r_0$.
-
----
-
-#### Practice 3: Three-Point Brownian Conditioning
-**Problem**: For $0 < s < t < u < T$, given $W_s = a$ and $W_u = b$, find $\mathbb{E}[W_t \mid W_s = a, W_u = b]$.
-**Solution**:
-By the Markov property, over $[s, u]$ the trajectory is a bridge connecting $a$ and $b$:
-$$\mathbb{E}[W_t \mid W_s = a, W_u = b] = \boxed{\frac{u - t}{u - s} a + \frac{t - s}{u - s} b}$$
-
----
-
-#### Practice 4: Maximum of a Brownian Bridge (Kolmogorov-Smirnov Statistic)
-**Problem**: For standard Brownian bridge $B_t$ on $[0, 1]$ ($B_0 = B_1 = 0$), find $\mathbb{P}(\max_{0 \le t \le 1} B_t \ge y)$ for $y > 0$.
-**Solution**:
-By the reflection principle conditioned on $W_1 = 0$, reflected paths end at $2y$:
-$$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \frac{\phi(2y)}{\phi(0)} = \boxed{e^{-2y^2}} \quad (y > 0)$$
-
----
-
-#### Practice 5: Two-Sided Exit for Drifted Brownian Motion
-**Problem**: $X_t = \mu t + \sigma W_t$ with barriers $-a < 0 < b$. Find hitting probability $p_b$ and expected exit time $\mathbb{E}[\tau]$.
-**Solution**:
-Using exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ with $\gamma = \frac{2\mu}{\sigma^2}$:
-$$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}, \qquad \mathbb{E}[\tau] = \boxed{\frac{b p_b - a(1 - p_b)}{\mu}}$$
-
----
