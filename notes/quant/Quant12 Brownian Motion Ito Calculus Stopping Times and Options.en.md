@@ -141,20 +141,22 @@ where $\widetilde{Z}$ is another standard complex Brownian motion and $\tau_t = 
 Stochastic calculus is not an abstract game of pure symbols; it is a profound revolution born out of physical particle diffusion and forged into the modern language of global quantitative trading:
 
 ```mermaid
-timeline
-    title Historical Timeline of Brownian Motion & Stochastic Calculus
-    1827 : Robert Brown
-         : Microscopic observation of chaotic pollen grain thermal motion
-    1900 : Louis Bachelier
-         : "Théorie de la Spéculation" models asset prices via arithmetic Brownian motion
-    1905 : Albert Einstein
-         : Diffusion PDE linking microscopic collisions to macroscopic variance E[x²] = 2Dt
-    1923 : Norbert Wiener
-         : Rigorous Wiener measure on path space; proves paths are continuous but nowhere differentiable
-    1944-1951 : Kiyosi Itô
-         : L²-isometry stochastic integral & Itô's Lemma, establishing modern SDE theory
-    1973 : Black-Scholes-Merton
-         : Geometric Brownian Motion & delta hedging lead to the Black-Scholes option pricing formula
+graph TD
+    T1["<b>1827 · Robert Brown</b><br/>Microscopic observation of chaotic pollen grain thermal motion in water"]
+    T2["<b>1900 · Louis Bachelier</b><br/>'Théorie de la Spéculation' models stock/option prices via Brownian motion (5 years before Einstein)"]
+    T3["<b>1905 · Albert Einstein</b><br/>Derives diffusion PDE, proving mean squared displacement is linear in time E[x²] = 2Dt"]
+    T4["<b>1923 · Norbert Wiener</b><br/>Constructs rigorous Wiener measure; proves paths are continuous everywhere but nowhere differentiable"]
+    T5["<b>1944–1951 · Kiyosi Itô</b><br/>Constructs L²-isometry stochastic integral & Itô's Lemma, establishing modern SDE theory"]
+    T6["<b>1973 · Black-Scholes-Merton</b><br/>Geometric Brownian Motion & dynamic delta hedging produce the Nobel Prize option pricing formula"]
+
+    T1 --> T2 --> T3 --> T4 --> T5 --> T6
+
+    style T1 fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#e2e8f0
+    style T2 fill:#0f172a,stroke:#fbbf24,stroke-width:2px,color:#e2e8f0
+    style T3 fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#e2e8f0
+    style T4 fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#e2e8f0
+    style T5 fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
+    style T6 fill:#0f172a,stroke:#f472b6,stroke-width:2px,color:#e2e8f0
 ```
 
 1. **1827 (Robert Brown)**: Scottish botanist observed erratic continuous jittering of microscopic pollen particles suspended in water.

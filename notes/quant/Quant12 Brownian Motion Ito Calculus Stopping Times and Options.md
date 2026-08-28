@@ -153,20 +153,22 @@ $$
 随机微积分不是数学家的纯抽象符号游戏，而是一场由物理世界的不规则运动驱动、最终重塑全球量化金融交易的革命：
 
 ```mermaid
-timeline
-    title 随机微积分与布朗运动历史发展脉络
-    1827 : 罗伯特·布朗 (Robert Brown)
-         : 显微镜下观测花粉微粒的不规则悬浮热运动
-    1900 : 路易·巴舍利耶 (Louis Bachelier)
-         : 《投机理论》首次用正态分布和算术布朗运动建模股票与期权价格
-    1905 : 阿尔伯特·爱因斯坦 (Albert Einstein)
-         : 建立扩散偏微分方程，证明均方位移正比于时间并测定阿伏伽德罗常数
-    1923 : 诺伯特·维纳 (Norbert Wiener)
-         : 建立函数空间上的严格维纳测度，证明样本轨道处处连续但处处不可微
-    1944-1951 : 伊藤清 (Kiyosi Itô)
-         : 创立基于鞅论与L²等距同构的随机积分与伊藤引理，奠定SDE理论
-    1973 : 布莱克、斯科尔斯与默顿 (Black-Scholes-Merton)
-         : 提出几何布朗运动模型与无套利对冲，推导出期权定价解析公式
+graph TD
+    T1["<b>1827 · 罗伯特·布朗 (Robert Brown)</b><br/>显微镜下观测花粉微粒在水中的不规则悬浮热运动（物理现象发现）"]
+    T2["<b>1900 · 路易·巴舍利耶 (Louis Bachelier)</b><br/>《投机理论》首次用正态分布与算术布朗运动建模股票与期权价格（早于爱因斯坦 5 年）"]
+    T3["<b>1905 · 阿尔伯特·爱因斯坦 (Albert Einstein)</b><br/>建立扩散偏微分方程，证明均方位移正比于时间 E[x²] = 2Dt（物理本质确立）"]
+    T4["<b>1923 · 诺伯特·维纳 (Norbert Wiener)</b><br/>建立函数空间上的严格维纳测度，证明样本轨道处处连续但处处不可微"]
+    T5["<b>1944–1951 · 伊藤清 (Kiyosi Itô)</b><br/>创立基于鞅论与 L² 等距同构的随机微积分与伊藤引理，奠定现代 SDE 理论"]
+    T6["<b>1973 · Black-Scholes-Merton</b><br/>引入几何布朗运动与无套利动态 Delta 对冲，推导出诺奖期权定价公式"]
+
+    T1 --> T2 --> T3 --> T4 --> T5 --> T6
+
+    style T1 fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#e2e8f0
+    style T2 fill:#0f172a,stroke:#fbbf24,stroke-width:2px,color:#e2e8f0
+    style T3 fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#e2e8f0
+    style T4 fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#e2e8f0
+    style T5 fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
+    style T6 fill:#0f172a,stroke:#f472b6,stroke-width:2px,color:#e2e8f0
 ```
 
 1. **1827 年（Robert Brown）**：植物学家布朗观察悬浮花粉颗粒无休止的杂乱折线运动；
