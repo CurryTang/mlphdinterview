@@ -238,11 +238,151 @@ $$\mathbb{E}\left[\frac{e^{\theta S_T}}{(M(\theta))^T}\right] = 1$$
 
 ---
 
-## 模块六：四大决策与最优时停真题——通用未知数建模与深度解析
+## 模块六：九大量化面试真题与实战博弈全景精解（9 High-Frequency Quant Problems & Rigorous Derivations）
 
 ---
 
-### 真题 1：无放回抽卡惩罚模型与 Doob 分解（Sampling Without Replacement & 1-SLA）
+### 真题 1：带固定重掷成本的最优停止与 Wald 鞅（Search Cost / Cost to Reroll via Wald Martingale）
+
+> **通用题目建模（Optiver / Jane Street / IMC 量化笔试压轴题）**：
+> 
+> 设 $X_1, X_2, \dots$ 为独立同分布的随机变量，取值于离散集合 $\{1, 2, \dots, K\}$（服从离散均匀分布，$\mathbb{P}(X_k = x) = \frac{1}{K}$，或任意已知分布 $p_x$）。
+> 规则如下：
+> - 每次掷出点数 $X_k$，你可以选择**接受当前点数并终止游戏**，或者**支付固定重掷费 $c > 0$ 重新掷一次**；
+> - 若在第 $N$ 次掷骰子后决定停止，前 $N-1$ 次每次支付了 $c$ 元重掷费，最终净收益为：
+> 
+> $$
+> \text{Payoff} = X_N - c(N - 1)
+> $$
+> 
+> - 试用鞅论与 Wald 等式求解：**最优停止阈值 $n^*$ 的一般判定方程是什么？期望净收益是多少？**
+
+#### 1. 属于什么类型的鞅？
+本题属于 **超额收益随机和的 Wald 鞅（Excess Return Wald Martingale）与边际成本无差异条件**。
+
+#### 2. 记号与超额收益 Wald 鞅构造
+由于各次投掷独立同分布，最优策略必然是**固定阈值策略**：设定一个阈值 $n$，当且仅当 $X_k > n$ 时停止。
+停时定义为：
+
+$$
+N = \inf\{ k \ge 1 : X_k > n \}
+$$
+
+考虑每次掷骰子相较于保留阈值 $n$ 的“超额收益（Excess Return）”：
+
+$$
+Z_k = \max(X_k - n, 0)
+$$
+
+$Z_k$ 是独立同分布的非负随机变量，记其单步期望值为 $\mu_n = \mathbb{E}[Z_k] = \mathbb{E}[\max(X - n, 0)]$。
+构造标准的 **Wald 鞅**：
+
+$$
+M_m = \sum_{k=1}^m (Z_k - \mu_n)
+$$
+
+#### 3. 应用可选停止定理（OST）
+因为停止概率 $p = \mathbb{P}(X > n) > 0$，停时 $N$ 服从几何分布，$\mathbb{E}[N] = 1/p < \infty$，且增量 $|Z_k - \mu_n|$ 有界，完全满足 OST 条件 (C)：
+
+$$
+\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k \right] = \mu_n \mathbb{E}[N]
+$$
+
+根据停时 $N$ 的定义：
+- 对于前 $N-1$ 步（$k < N$），都有 $X_k \le n$，因此 $Z_k = 0$；
+- 只有在第 $N$ 步，才会出现 $X_N > n$，此时 $Z_N = X_N - n$。
+
+因此整个随机和级数**直接塌缩为单项**：
+
+$$
+\sum_{k=1}^N Z_k = Z_N = X_N - n
+$$
+
+代入 OST 结论立即得到关键期望等式：
+
+$$
+\mathbb{E}[X_N - n] = \mu_n \mathbb{E}[N] \implies \mathbb{E}[X_N] = n + \mu_n \mathbb{E}[N]
+$$
+
+#### 4. 确定通用最优阈值 $n^*$
+将 $\mathbb{E}[X_N]$ 代入净收益的期望表达式：
+
+$$
+\mathbb{E}[\text{Payoff}] = \mathbb{E}[X_N - c(N - 1)] = \mathbb{E}[X_N] - c\mathbb{E}[N] + c = n + c + (\mu_n - c)\mathbb{E}[N]
+$$
+
+- 由于 $\mathbb{E}[N] > 0$，要使期望净收益最大化：
+  - 若 $\mu_n > c$：继续重掷带来的超额期望收益大于成本 $c$，应当提高保留阈值 $n$ 继续重掷；
+  - 若 $\mu_n < c$：每多重掷一步期望净亏损，随着 $\mathbb{E}[N]$ 变大会严重拉低总收益；
+  - 因此最优阈值 $n^*$ 落在**边际超额收益恰好覆盖边际重掷成本的无差异均衡点**：
+
+$$
+\boxed{\mu_{n^*} = \mathbb{E}[\max(X - n^*, 0)] \approx c}
+$$
+
+此时最大化期望净收益直接简化为常数：
+
+$$
+\boxed{\mathbb{E}[\text{Payoff}^*] = n^* + c}
+$$
+
+#### 5. $K$ 面均匀骰子与成本 $c$ 的通用解析解
+对于取值在 $\{1, 2, \dots, K\}$ 的均匀离散分布：
+
+$$
+\mu_n = \mathbb{E}[\max(X - n, 0)] = \frac{1}{K} \sum_{x=n+1}^K (x - n) = \frac{1}{K} \sum_{j=1}^{K-n} j = \frac{(K - n)(K - n + 1)}{2K}
+$$
+
+令 $\mu_n \approx c$，解出连续近似阈值：
+
+$$
+(K - n)^2 + (K - n) \approx 2Kc \implies K - n^* \approx \frac{-1 + \sqrt{1 + 8Kc}}{2} \implies \boxed{n^* \approx K + \frac{1}{2} - \sqrt{2Kc + \frac{1}{4}}}
+$$
+
+**特例代入验证（$K=6$ 面标准骰子，重掷费 $c=1$ 元）**：
+- 计算各整数阈值的 $\mu_n$：
+  - $n = 3$：$\mu_3 = \frac{(6-3)(6-3+1)}{12} = \frac{3 \times 4}{12} = 1 = c$（边际收益与成本精确相等！）；
+  - $n = 4$：$\mu_4 = \frac{2 \times 3}{12} = 0.5 < 1$（成本高于收益，不可取）。
+- **最优决策**：选择 $n^* = 3$（即掷出点数 $\ge 4$ 停下，否则重掷）；
+- **最大期望收益**：$\mathbb{E}[\text{Payoff}] = n^* + c = 3 + 1 = \mathbf{4}$ 元！
+
+---
+
+### 真题 2：字符串模式等待时间与李氏赌场鞅（Pattern Waiting Times & Li's Martingale）
+
+> **经典面试题（Jane Street / Optiver 压轴真题）**：
+> 
+> 投掷均匀硬币（正面 $H$，反面 $T$），求目标序列 **$HHT$** 首次出现的期望投掷次数 $\mathbb{E}[T_{HHT}]$。并解释为什么它与 $HTH$ 以及 $HHH$ 的等待时间不同。
+
+#### 1. 属于什么类型的鞅？
+本题属于 **赌场赌资累积净利润鞅（Li's Casino Bankroll Martingale）与自重叠特征多项式（Autocorrelation Polynomial）**。
+
+#### 2. 赌场赌资累积净利润鞅模型
+- 假设在每一个时间步 $n=1, 2, \dots$，都有一位新赌徒进场，投入 $\$1$ 本金；
+- 第 $n$ 位赌徒押注第 $n$ 步掷出 $H$：若猜错，本金输光立刻离场；若猜中，连本带利获得 $\$2$，并把全部 $\$2$ 押在第 $n+1$ 步掷出 $H$；
+- 若第 $n+1$ 步再次猜中，资金翻倍至 $\$4$，并将全部 $\$4$ 押在第 $n+2$ 步掷出 $T$；若猜中拿到 $\$8$ 离场（因为模式 $HHT$ 已经完整出现，游戏终止）。
+- 赌场的累积净利润 $M_n = (\text{所有进场赌徒的总投入}) - (\text{赌场支付给所有赌徒的总奖金})$ 是期望为 0 的**公平鞅**。
+
+#### 3. 应用 OST 求解期望时间
+当模式 $HHT$ 在停时 $T$ 首次出现时，共有 $T$ 位赌徒进场投入了 $\$T$。此时检查留在场上的活跃赌徒：
+1. **在时刻 $T-2$ 进场的赌徒**：依次押中了 $H, H, T$，成功完成整个模式，赢得 $\$2^3 = \$8$；
+2. **在时刻 $T-1$ 进场的赌徒**：其押注的前两位是 $H, H$，而实际出现的是模式的后两位 $H, T$（第 2 位不匹配），已输光出局，奖金为 $\$0$；
+3. **在时刻 $T$ 进场的赌徒**：其押注的第 1 位是 $H$，而实际出现的是模式的最后一位 $T$，输光出局，奖金为 $\$0$。
+
+由 OST $\mathbb{E}[M_T] = \mathbb{E}[M_0] = 0$：
+
+$$
+\mathbb{E}[T - 8 - 0 - 0] = 0 \implies \boxed{\mathbb{E}[T_{HHT}] = 8}
+$$
+
+#### 4. 常见模式对比与自重叠多项式
+- **$HHT$**（无非平凡自重叠）：$\mathbb{E}[T_{HHT}] = 2^3 = 8$
+- **$HTH$**（存在长度为 1 的自重叠 `H`）：$\mathbb{E}[T_{HTH}] = 2^3 + 2^1 = 10$
+- **$HHH$**（存在长度为 1, 2 的自重叠 `H`, `HH`）：$\mathbb{E}[T_{HHH}] = 2^3 + 2^2 + 2^1 = 14$
+
+---
+
+### 真题 3：无放回抽卡惩罚模型与 Doob 分解（Sampling Without Replacement & 1-SLA）
 
 > **通用题目建模（Akuna / SIG / Citadel 量化面试真题）**：
 > 
@@ -354,207 +494,39 @@ $$
 
 ---
 
-### 真题 2：带固定重掷成本的最优停止与 Wald 鞅（Search Cost / Cost to Reroll via Wald Martingale）
+### 真题 4：带漂移布朗运动双边界吸收概率与期望时间（Drifted BM Two-Sided Exit & Scale Function）
 
-> **通用题目建模（Optiver / Jane Street / IMC 量化笔试压轴题）**：
+> **通用题目建模（Citadel / Two Sigma / Morgan Stanley Strats 面试）**：
 > 
-> 设 $X_1, X_2, \dots$ 为独立同分布的随机变量，取值于离散集合 $\{1, 2, \dots, K\}$（服从离散均匀分布，$\mathbb{P}(X_k = x) = \frac{1}{K}$，或任意已知分布 $p_x$）。
-> 规则如下：
-> - 每次掷出点数 $X_k$，你可以选择**接受当前点数并终止游戏**，或者**支付固定重掷费 $c > 0$ 重新掷一次**；
-> - 若在第 $N$ 次掷骰子后决定停止，前 $N-1$ 次每次支付了 $c$ 元重掷费，最终净收益为：
-> 
-> $$
-> \text{Payoff} = X_N - c(N - 1)
-> $$
-> 
-> - 试用鞅论与 Wald 等式求解：**最优停止阈值 $n^*$ 的一般判定方程是什么？期望净收益是多少？**
+> 设资产对数收益率遵循漂移布朗运动 $X_t = \mu t + \sigma W_t$（其中 $X_0 = 0, \mu > 0, \sigma > 0$）。设定止损线 $-a < 0$ 和止盈线 $b > 0$。定义双边吸收停时 $\tau = \inf\{t \ge 0 : X_t = -a \text{ 或 } X_t = b\}$。
+> 试用鞅方法求解：触碰止盈线 $b$ 的概率 $p_b = \mathbb{P}(X_\tau = b)$ 以及平均退出时间 $\mathbb{E}[\tau]$。
 
 #### 1. 属于什么类型的鞅？
-本题属于 **超额收益随机和的 Wald 鞅（Excess Return Wald Martingale）与边际成本无差异条件**。
+本题属于 **连续状态扩散过程中的指数几何鞅（Exponential MGF Martingale）与线性漂移消除鞅（Linear Drift Martingale）**。
 
-#### 2. 记号与超额收益 Wald 鞅构造
-由于各次投掷独立同分布，最优策略必然是**固定阈值策略**：设定一个阈值 $n$，当且仅当 $X_k > n$ 时停止。
-停时定义为：
-
-$$
-N = \inf\{ k \ge 1 : X_k > n \}
-$$
-
-考虑每次掷骰子相较于保留阈值 $n$ 的“超额收益（Excess Return）”：
+#### 2. 指数鞅求解触碰概率
+构造指数鞅 $M_t = \exp(-\gamma X_t)$，代入 $X_t$ 并令 $t$ 的系数为 0：
 
 $$
-Z_k = \max(X_k - n, 0)
+\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t \right) = 1 \implies -\gamma \mu + \frac{1}{2}\gamma^2 \sigma^2 = 0 \implies \gamma = \frac{2\mu}{\sigma^2}
 $$
 
-$Z_k$ 是独立同分布的非负随机变量，记其单步期望值为 $\mu_n = \mathbb{E}[Z_k] = \mathbb{E}[\max(X - n, 0)]$。
-构造标准的 **Wald 鞅**：
+由于过程在 $[-a, b]$ 内有界，由 OST $\mathbb{E}[M_\tau] = M_0 = 1$：
 
 $$
-M_m = \sum_{k=1}^m (Z_k - \mu_n)
+p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left(\gamma = \frac{2\mu}{\sigma^2}\right)
 $$
 
-#### 3. 应用可选停止定理（OST）
-因为停止概率 $p = \mathbb{P}(X > n) > 0$，停时 $N$ 服从几何分布，$\mathbb{E}[N] = 1/p < \infty$，且增量 $|Z_k - \mu_n|$ 有界，完全满足 OST 条件 (C)：
+#### 3. 线性鞅求解期望退出时间
+构造线性漂移消除鞅 $N_t = X_t - \mu t$。由 OST $\mathbb{E}[N_\tau] = 0$：
 
 $$
-\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k \right] = \mu_n \mathbb{E}[N]
+\mathbb{E}[X_\tau] - \mu \mathbb{E}[\tau] = 0 \implies \boxed{\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \frac{b \cdot p_b - a(1 - p_b)}{\mu}}
 $$
-
-根据停时 $N$ 的定义：
-- 对于前 $N-1$ 步（$k < N$），都有 $X_k \le n$，因此 $Z_k = 0$；
-- 只有在第 $N$ 步，才会出现 $X_N > n$，此时 $Z_N = X_N - n$。
-
-因此整个随机和级数**直接塌缩为单项**：
-
-$$
-\sum_{k=1}^N Z_k = Z_N = X_N - n
-$$
-
-代入 OST 结论立即得到关键期望等式：
-
-$$
-\mathbb{E}[X_N - n] = \mu_n \mathbb{E}[N] \implies \mathbb{E}[X_N] = n + \mu_n \mathbb{E}[N]
-$$
-
-#### 4. 确定通用最优阈值 $n^*$
-将 $\mathbb{E}[X_N]$ 代入净收益的期望表达式：
-
-$$
-\mathbb{E}[\text{Payoff}] = \mathbb{E}[X_N - c(N - 1)] = \mathbb{E}[X_N] - c\mathbb{E}[N] + c = n + c + (\mu_n - c)\mathbb{E}[N]
-$$
-
-- 由于 $\mathbb{E}[N] > 0$，要使期望净收益最大化：
-  - 若 $\mu_n > c$：继续重掷带来的超额期望收益大于成本 $c$，应当提高保留阈值 $n$ 继续重掷；
-  - 若 $\mu_n < c$：每多重掷一步期望净亏损，随着 $\mathbb{E}[N]$ 变大会严重拉低总收益；
-  - 因此最优阈值 $n^*$ 落在**边际超额收益恰好覆盖边际重掷成本的无差异均衡点**：
-
-$$
-\boxed{\mu_{n^*} = \mathbb{E}[\max(X - n^*, 0)] \approx c}
-$$
-
-此时最大化期望净收益直接简化为常数：
-
-$$
-\boxed{\mathbb{E}[\text{Payoff}^*] = n^* + c}
-$$
-
-#### 5. $K$ 面均匀骰子与成本 $c$ 的通用解析解
-对于取值在 $\{1, 2, \dots, K\}$ 的均匀离散分布：
-
-$$
-\mu_n = \mathbb{E}[\max(X - n, 0)] = \frac{1}{K} \sum_{x=n+1}^K (x - n) = \frac{1}{K} \sum_{j=1}^{K-n} j = \frac{(K - n)(K - n + 1)}{2K}
-$$
-
-令 $\mu_n \approx c$，解出连续近似阈值：
-
-$$
-(K - n)^2 + (K - n) \approx 2Kc \implies K - n^* \approx \frac{-1 + \sqrt{1 + 8Kc}}{2} \implies \boxed{n^* \approx K + \frac{1}{2} - \sqrt{2Kc + \frac{1}{4}}}
-$$
-
-**特例代入验证（$K=6$ 面标准骰子，重掷费 $c=1$ 元）**：
-- 计算各整数阈值的 $\mu_n$：
-  - $n = 3$：$\mu_3 = \frac{(6-3)(6-3+1)}{12} = \frac{3 \times 4}{12} = 1 = c$（边际收益与成本精确相等！）；
-  - $n = 4$：$\mu_4 = \frac{2 \times 3}{12} = 0.5 < 1$（成本高于收益，不可取）。
-- **最优决策**：选择 $n^* = 3$（即掷出点数 $\ge 4$ 停下，否则重掷）；
-- **最大期望收益**：$\mathbb{E}[\text{Payoff}] = n^* + c = 3 + 1 = \mathbf{4}$ 元！
 
 ---
 
-### 真题 3：带完全平方数清零风险的停掷决策与吸收下鞅（Square Hazard & Absorbing Submartingale）
-
-> **通用题目建模（Citadel / Jump Trading 量化面试真题）**：
-> 
-> 玩家在数轴上累加投掷点数，当前累计和为 $S_0$。每次投掷的点数增量为 $D_k \in \{1, 2, \dots, K\}$（均值为 $\mu_D = \mathbb{E}[D_k] > 0$），累计和序列为 $S_n = S_0 + \sum_{k=1}^n D_k$。
-> 规则如下：
-> - 数轴上分布着一系列“危险陷阱点” $\mathcal{H} = \{H_1, H_2, \dots\}$（例如完全平方数序列 $1^2, 2^2, 3^2, \dots$）；
-> - 记当前所处位置 $S_0$ 与下一个危险点 $H$ 的距离为 $d = H - S_0$（假设 $1 \le d \le K$）；
-> - 若某一投掷后**累计和恰好等于危险点（$S_n = H$）**，游戏强制结束，之前的所有累计得分**瞬间清零且永久吸收为 0**；若越过危险点（$S_n > H$），则脱离当前危险；
-> - 问：**玩家在当前 $S_0$ 应该选择“立即停下带走 $S_0$”，还是“继续投掷”？如何用下鞅与 OST 建立严格的期望下界证明？**
-
-#### 1. 属于什么类型的鞅？
-本题属于 **带吸收态的截断下鞅（Absorbing Submartingale with Safe-Zone Drift）与两步停止策略下界构造**。
-
-#### 2. 过程定义与安全区下鞅性
-定义危险停时（首次踩中危险点 $H$ 的时刻）：
-
-$$
-T = \inf\{n \ge 1 : S_n = H\}
-$$
-
-定义收益过程（若踩中 $H$ 则直接清零并永久吸收为 0）：
-
-$$
-Y_n = S_n \cdot \mathbf{1}_{\{T > n\}}
-$$
-
-考察越过危险点 $H$ 之后的“安全区间”：设下一个危险点为 $H_{\text{next}}$。
-当 $S_n \in [H + 1, H_{\text{next}} - K]$ 时，由于单步最大步长为 $K$，距离下一个危险点至少为 $H_{\text{next}} - (H_{\text{next}} - K) = K$，因此下一掷**踩中下一个危险点的概率严格为 0**：
-
-$$
-\mathbb{P}(S_{n+1} \in \mathcal{H} \mid S_n \in [H+1, H_{\text{next}} - K]) = 0
-$$
-
-在该安全区间内，单步条件期望增量严格等于平均步长：
-
-$$
-\mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n] = \mathbb{E}[D_{n+1}] = \mu_D > 0
-$$
-
-这证明在安全区域内，$Y_n$ 是一个**严格递增的下鞅（Submartingale）**！
-
-#### 3. 构建两步停止策略 $\tau$ 并应用下鞅 OST
-为了证明“继续投掷优于立即停下”，我们构造一个具体的**两步停止策略 $\tau$**：
-1. **第 1 步（$n=1$）**：必须投掷第 1 次；
-2. **第 2 步（$n=2$）**：若第 1 步未踩中 $H$（即 $D_1 \ne d$），此时 $S_1 \in [H+1, S_0+K]$ 已经安全越过了危险点 $H$，且处于严格下鞅安全区内，因此**至少再投掷第 2 次**，随后立刻停止锁定利润。
-
-停时 $\tau$ 的定义：
-- 若 $D_1 = d$（踩中 $H$），$\tau = 1$，收益 $Y_1 = 0$；
-- 若 $D_1 \ne d$（越过 $H$），$\tau = 2$。
-
-**计算该策略的期望收益 $\mathbb{E}[Y_\tau]$**：
-
-$$
-\mathbb{E}[Y_\tau] = \mathbb{P}(D_1 = d) \cdot 0 + \mathbb{P}(D_1 \ne d) \cdot \mathbb{E}[Y_2 \mid D_1 \ne d]
-$$
-
-在 $D_1 \ne d$ 的条件下，$S_1$ 落在安全区，其条件期望为：
-
-$$
-\mathbb{E}[S_1 \mid D_1 \ne d] = S_0 + \mathbb{E}[D_1 \mid D_1 \ne d] = S_0 + \frac{\sum_{k \ne d} k}{K - 1}
-$$
-
-第二步在安全区继续投掷一次，由下鞅性：
-
-$$
-\mathbb{E}[Y_2 \mid D_1 \ne d] = \mathbb{E}[S_1 \mid D_1 \ne d] + \mathbb{E}[D_2] = S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D
-$$
-
-代入总期望得到通用下界公式：
-
-$$
-\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D \right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D}
-$$
-
-#### 4. 特例数值验证（$S_0 = 35$，$K = 6$ 面骰子，危险点 $H = 36 = 6^2$）
-- 距离危险点 $d = 36 - 35 = 1$（踩中 36 的点数为 $D_1 = 1$）；
-- 下一个完全平方数为 $49 = 7^2$。越过 36 后的最大位置为 $35 + 6 = 41$，距离 49 至少 $49 - 41 = 8 > 6$，完全处于安全区；
-- $\mu_D = 3.5$，$\mathbb{P}(D_1 \ne 1) = 5/6$；
-- 条件期望 $\mathbb{E}[S_1 \mid D_1 \ge 2] = 35 + \frac{2+3+4+5+6}{5} = 35 + 4 = 39$；
-- 第二步期望 $\mathbb{E}[Y_2 \mid D_1 \ge 2] = 39 + 3.5 = 42.5$；
-- 策略期望收益：
-
-$$
-\mathbb{E}[Y_\tau] = \frac{1}{6} \times 0 + \frac{5}{6} \times 42.5 = \frac{212.5}{6} \approx \mathbf{35.4167}
-$$
-
-- **严格结论**：
-  - 若**立即停下**，收益为确定性的 $35$；
-  - 若**继续投掷**，仅采用极其简单的两步策略就能获得期望收益 $35.42 > 35$；
-  - 因此最优停止值必然满足 $\sup_\tau \mathbb{E}[Y_\tau] \ge 35.42 > 35$，**玩家必须选择继续投掷（Continue Rolling）**！
-
----
-
-### 真题 4：双瓶放球取球博弈与对称随机游走鞅（2-Urn Ball Placement & Symmetric Random Walk Martingale）
+### 真题 5：双瓶放球取球博弈与对称随机游走鞅（2-Urn Ball Placement & Symmetric Random Walk Martingale）
 
 > **通用题目建模（Jane Street / Two Sigma 压轴博弈题）**：
 > 
@@ -664,72 +636,192 @@ $$
 
 ---
 
-## 模块七：五大高阶高频鞅场景与实战详解（5 Advanced Martingale Archetypes）
+### 真题 6：无放回翻牌经典——第一张红牌与最后一张红牌（Card Drawing Without Replacement Symmetry）
+
+> **通用题目建模（Jane Street / SIG 高频面试题）**：
+> 
+> 一副洗匀的牌共有 **$R$ 张红牌** 与 **$B$ 张黑牌**（总牌数 $R + B$ 张），一张一张依次翻开。
+> 1. 求翻出**第一张红牌**时，已经翻开的总牌数期望 $\mathbb{E}[T_1]$；
+> 2. 求翻出**最后一张红牌**时，牌堆中**剩余黑牌数**的期望 $\mathbb{E}[\text{Remaining Black}]$。
+
+#### 1. 属于什么类型的鞅？
+本题属于 **示性变量置换对称性（Exchangeability & Indicator Symmetry）与区间等期望划分原理**。
+
+#### 2. 示性变量对称性与等期望划分（Indicator Symmetry）
+$R$ 张红牌在随机洗牌中将所有 $B$ 张黑牌分割成 $R + 1$ 个“间隔区（Bins）”：
+- $I_0$：第 1 张红牌之前的黑牌数；
+- $I_1$：第 1 张与第 2 张红牌之间的黑牌数；
+- $\dots$
+- $I_R$：最后一张红牌之后的黑牌数（即剩余黑牌数）。
+
+由全排列的完全置换对称性，所有 $R + 1$ 个间隔中的黑牌数是**同分布且等期望的**：
+
+$$
+\mathbb{E}[I_0] = \mathbb{E}[I_1] = \dots = \mathbb{E}[I_R]
+$$
+
+由于所有间隔中的黑牌总和恒为 $B$：
+
+$$
+\sum_{k=0}^R \mathbb{E}[I_k] = (R + 1) \mathbb{E}[I_0] = B \implies \boxed{ \mathbb{E}[I_k] = \frac{B}{R + 1} }
+$$
+
+#### 3. 求解问题（1）与（2）
+1. **翻出第一张红牌时的总翻开牌数**：
+   包含第一张红牌之前的全部黑牌（数量为 $I_0$）以及那张红牌本身（$+1$）：
+   $$\mathbb{E}[T_1] = \mathbb{E}[I_0] + 1 = \frac{B}{R + 1} + 1 = \boxed{\frac{B + R + 1}{R + 1}}$$
+2. **翻出最后一张红牌时的剩余黑牌数**：
+   恰好对应最后一个间隔 $I_R$：
+   $$\mathbb{E}[\text{Remaining Black}] = \mathbb{E}[I_R] = \boxed{\frac{B}{R + 1}}$$
+
+**特例代入（标准扑克牌 $R=26$ 红，$B=26$ 黑）**：
+- 翻到第 1 张红牌的平均步数：$\mathbb{E}[T_1] = \frac{26 + 26 + 1}{26 + 1} = \frac{53}{27} \approx \mathbf{1.963}$ 张；
+- 翻到最后一张红牌时剩余黑牌数：$\mathbb{E}[\text{Remaining Black}] = \frac{26}{27} \approx \mathbf{0.963}$ 张！
 
 ---
 
-### 场景 1：字符串模式等待时间与李氏赌场鞅（Li's Martingale & Pattern Waiting Times）
+### 真题 7：带完全平方数清零风险的停掷决策与吸收下鞅（Square Hazard & Absorbing Submartingale）
 
-> **经典面试题**：投掷均匀硬币（正面 $H$，反面 $T$），求目标序列 **$HHT$** 首次出现的期望投掷次数 $\mathbb{E}[T_{HHT}]$。
+> **通用题目建模（Citadel / Jump Trading 量化面试真题）**：
+> 
+> 玩家在数轴上累加投掷点数，当前累计和为 $S_0$。每次投掷的点数增量为 $D_k \in \{1, 2, \dots, K\}$（均值为 $\mu_D = \mathbb{E}[D_k] > 0$），累计和序列为 $S_n = S_0 + \sum_{k=1}^n D_k$。
+> 规则如下：
+> - 数轴上分布着一系列“危险陷阱点” $\mathcal{H} = \{H_1, H_2, \dots\}$（例如完全平方数序列 $1^2, 2^2, 3^2, \dots$）；
+> - 记当前所处位置 $S_0$ 与下一个危险点 $H$ 的距离为 $d = H - S_0$（假设 $1 \le d \le K$）；
+> - 若某一投掷后**累计和恰好等于危险点（$S_n = H$）**，游戏强制结束，之前的所有累计得分**瞬间清零且永久吸收为 0**；若越过危险点（$S_n > H$），则脱离当前危险；
+> - 问：**玩家在当前 $S_0$ 应该选择“立即停下带走 $S_0$”，还是“继续投掷”？如何用下鞅与 OST 建立严格的期望下界证明？**
 
-#### 1. 赌场赌资累积净利润鞅模型
-- 假设在每一个时间步 $n=1, 2, \dots$，都有一位新赌徒进场，投入 $\$1$ 本金；
-- 第 $n$ 位赌徒押注第 $n$ 步掷出 $H$：若猜错，本金输光立刻离场；若猜中，连本带利获得 $\$2$，并把全部 $\$2$ 押在第 $n+1$ 步掷出 $H$；
-- 若第 $n+1$ 步再次猜中，资金翻倍至 $\$4$，并将全部 $\$4$ 押在第 $n+2$ 步掷出 $T$；若猜中拿到 $\$8$ 离场（因为模式 $HHT$ 已经完整出现，游戏终止）。
-- 赌场的累积净利润 $M_n = (\text{所有进场赌徒的总投入}) - (\text{赌场支付给所有赌徒的总奖金})$ 是期望为 0 的**公平鞅**。
+#### 1. 属于什么类型的鞅？
+本题属于 **带吸收态的截断下鞅（Absorbing Submartingale with Safe-Zone Drift）与两步停止策略下界构造**。
 
-#### 2. 应用 OST 求解期望时间
-当模式 $HHT$ 在停时 $T$ 首次出现时，共有 $T$ 位赌徒进场投入了 $\$T$。此时检查留在场上的活跃赌徒：
-1. **在时刻 $T-2$ 进场的赌徒**：依次押中了 $H, H, T$，成功完成整个模式，赢得 $\$2^3 = \$8$；
-2. **在时刻 $T-1$ 进场的赌徒**：其押注的前两位是 $H, H$，而实际出现的是模式的后两位 $H, T$（第 2 位不匹配），已输光出局，奖金为 $\$0$；
-3. **在时刻 $T$ 进场的赌徒**：其押注的第 1 位是 $H$，而实际出现的是模式的最后一位 $T$，输光出局，奖金为 $\$0$。
-
-由 OST $\mathbb{E}[M_T] = \mathbb{E}[M_0] = 0$：
+#### 2. 过程定义与安全区下鞅性
+定义危险停时（首次踩中危险点 $H$ 的时刻）：
 
 $$
-\mathbb{E}[T - 8 - 0 - 0] = 0 \implies \boxed{\mathbb{E}[T_{HHT}] = 8}
+T = \inf\{n \ge 1 : S_n = H\}
 $$
 
-#### 3. 常见模式对比与自重叠多项式
-- **$HHT$**（无非平凡自重叠）：$\mathbb{E}[T_{HHT}] = 2^3 = 8$
-- **$HTH$**（存在长度为 1 的自重叠 `H`）：$\mathbb{E}[T_{HTH}] = 2^3 + 2^1 = 10$
-- **$HHH$**（存在长度为 1, 2 的自重叠 `H`, `HH`）：$\mathbb{E}[T_{HHH}] = 2^3 + 2^2 + 2^1 = 14$
+定义收益过程（若踩中 $H$ 则直接清零并永久吸收为 0）：
+
+$$
+Y_n = S_n \cdot \mathbf{1}_{\{T > n\}}
+$$
+
+考察越过危险点 $H$ 之后的“安全区间”：设下一个危险点为 $H_{\text{next}}$。
+当 $S_n \in [H + 1, H_{\text{next}} - K]$ 时，由于单步最大步长为 $K$，距离下一个危险点至少为 $H_{\text{next}} - (H_{\text{next}} - K) = K$，因此下一掷**踩中下一个危险点的概率严格为 0**：
+
+$$
+\mathbb{P}(S_{n+1} \in \mathcal{H} \mid S_n \in [H+1, H_{\text{next}} - K]) = 0
+$$
+
+在该安全区间内，单步条件期望增量严格等于平均步长：
+
+$$
+\mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n] = \mathbb{E}[D_{n+1}] = \mu_D > 0
+$$
+
+这证明在安全区域内，$Y_n$ 是一个**严格递增的下鞅（Submartingale）**！
+
+#### 3. 构建两步停止策略 $\tau$ 并应用下鞅 OST
+为了证明“继续投掷优于立即停下”，我们构造一个具体的**两步停止策略 $\tau$**：
+1. **第 1 步（$n=1$）**：必须投掷第 1 次；
+2. **第 2 步（$n=2$）**：若第 1 步未踩中 $H$（即 $D_1 \ne d$），此时 $S_1 \in [H+1, S_0+K]$ 已经安全越过了危险点 $H$，且处于严格下鞅安全区内，因此**至少再投掷第 2 次**，随后立刻停止锁定利润。
+
+停时 $\tau$ 的定义：
+- 若 $D_1 = d$（踩中 $H$），$\tau = 1$，收益 $Y_1 = 0$；
+- 若 $D_1 \ne d$（越过 $H$），$\tau = 2$。
+
+**计算该策略的期望收益 $\mathbb{E}[Y_\tau]$**：
+
+$$
+\mathbb{E}[Y_\tau] = \mathbb{P}(D_1 = d) \cdot 0 + \mathbb{P}(D_1 \ne d) \cdot \mathbb{E}[Y_2 \mid D_1 \ne d]
+$$
+
+在 $D_1 \ne d$ 的条件下，$S_1$ 落在安全区，其条件期望为：
+
+$$
+\mathbb{E}[S_1 \mid D_1 \ne d] = S_0 + \mathbb{E}[D_1 \mid D_1 \ne d] = S_0 + \frac{\sum_{k \ne d} k}{K - 1}
+$$
+
+第二步在安全区继续投掷一次，由下鞅性：
+
+$$
+\mathbb{E}[Y_2 \mid D_1 \ne d] = \mathbb{E}[S_1 \mid D_1 \ne d] + \mathbb{E}[D_2] = S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D
+$$
+
+代入总期望得到通用下界公式：
+
+$$
+\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D \right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D}
+$$
+
+#### 4. 特例数值验证（$S_0 = 35$，$K = 6$ 面骰子，危险点 $H = 36 = 6^2$）
+- 距离危险点 $d = 36 - 35 = 1$（踩中 36 的点数为 $D_1 = 1$）；
+- 下一个完全平方数为 $49 = 7^2$。越过 36 后的最大位置为 $35 + 6 = 41$，距离 49 至少 $49 - 41 = 8 > 6$，完全处于安全区；
+- $\mu_D = 3.5$，$\mathbb{P}(D_1 \ne 1) = 5/6$；
+- 条件期望 $\mathbb{E}[S_1 \mid D_1 \ge 2] = 35 + \frac{2+3+4+5+6}{5} = 35 + 4 = 39$；
+- 第二步期望 $\mathbb{E}[Y_2 \mid D_1 \ge 2] = 39 + 3.5 = 42.5$；
+- 策略期望收益：
+
+$$
+\mathbb{E}[Y_\tau] = \frac{1}{6} \times 0 + \frac{5}{6} \times 42.5 = \frac{212.5}{6} \approx \mathbf{35.4167}
+$$
+
+- **严格结论**：
+  - 若**立即停下**，收益为确定性的 $35$；
+  - 若**继续投掷**，仅采用极其简单的两步策略就能获得期望收益 $35.42 > 35$；
+  - 因此最优停止值必然满足 $\sup_\tau \mathbb{E}[Y_\tau] \ge 35.42 > 35$，**玩家必须选择继续投掷（Continue Rolling）**！
 
 ---
 
-### 场景 2：带漂移布朗运动双边界吸收概率与期望时间（Drifted BM Two-Sided Exit）
+### 真题 8：波利亚罐模型与鞅极限定理（Pólya's Urn & Proportion Martingales）
 
-> **经典面试题**：设资产对数收益率遵循漂移布朗运动 $X_t = \mu t + \sigma W_t$（其中 $X_0 = 0, \mu > 0, \sigma > 0$）。设定止损线 $-a < 0$ 和止盈线 $b > 0$。定义停时 $\tau = \inf\{t \ge 0 : X_t = -a \text{ 或 } X_t = b\}$。
-> 求触碰止盈线 $b$ 的概率 $p_b = \mathbb{P}(X_\tau = b)$ 以及平均退出时间 $\mathbb{E}[\tau]$。
+> **通用题目建模（Jane Street / SIG 经典概率面试题）**：
+> 
+> 罐中初始有 $R$ 个红球与 $B$ 个黑球。每次随机抽出一球，观察颜色后将该球放回，并**额外放入 $c$ 个同色球**。
+> 设第 $n$ 步罐中红球比例为 $M_n$。证明 $M_n$ 是鞅，并求 $M_n$ 当 $n \to \infty$ 时的极限分布。
 
-#### 1. 指数鞅求解触碰概率
-构造指数鞅 $M_t = \exp(-\gamma X_t)$，令其漂移为 0：
+#### 1. 属于什么类型的鞅？
+本题属于 **有界比例鞅（Bounded Proportion Martingale）与 Doob 鞅收敛定理（Martingale Convergence Theorem）**。
 
-$$
-\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t \right) = 1 \implies \gamma = \frac{2\mu}{\sigma^2}
-$$
-
-由 OST $\mathbb{E}[M_\tau] = M_0 = 1$：
-
-$$
-p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left(\gamma = \frac{2\mu}{\sigma^2}\right)
-$$
-
-#### 2. 线性鞅求解期望退出时间
-构造线性漂移消除鞅 $N_t = X_t - \mu t$。由 OST $\mathbb{E}[N_\tau] = 0$：
+#### 2. 严格鞅性验证
+设第 $n$ 步红球数为 $R_n$，总球数为 $T_n = R + B + n c$。红球比例为 $M_n = \frac{R_n}{T_n}$。
+在第 $n+1$ 步，抽中红球的条件概率为 $M_n$（此时红球变为 $R_n + c$），抽中黑球概率为 $1 - M_n$（红球数保持 $R_n$）：
 
 $$
-\mathbb{E}[X_\tau] - \mu \mathbb{E}[\tau] = 0 \implies \boxed{\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \frac{b \cdot p_b - a(1 - p_b)}{\mu}}
+\mathbb{E}[M_{n+1} \mid \mathcal{F}_n] = M_n \cdot \frac{R_n + c}{T_n + c} + (1 - M_n) \cdot \frac{R_n}{T_n + c} = \frac{M_n(R_n + c) + R_n - M_n R_n}{T_n + c} = \frac{M_n c + R_n}{T_n + c}
 $$
+
+将 $R_n = M_n T_n$ 代入分子：
+
+$$
+= \frac{M_n c + M_n T_n}{T_n + c} = \frac{M_n (T_n + c)}{T_n + c} = M_n
+$$
+
+因此红球比例 $M_n$ 是一个取值在 $[0, 1]$ 之间的**严格有界鞅**！
+
+#### 3. 极限分布
+由 Doob 有界鞅收敛定理，$M_n \to M_\infty$ 几乎必然收敛。利用矩母匹配或经典 Beta-Binomial 极限可得：
+
+$$
+\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)}
+$$
+
+特别地，当初始 $R=1, B=1, c=1$ 时，极限比例服从 $(0, 1)$ 上的**标准连续均匀分布 $\text{Uniform}(0, 1)$**！
 
 ---
 
-### 场景 3：分支过程与群体灭绝概率（Galton-Watson Branching Process）
+### 真题 9：分支过程与群体灭绝概率（Galton-Watson Branching Process & Extinction Probability）
 
-> **经典面试题**：设单个粒子独立繁殖，后代数量 $K$ 的概率母函数为 $G(s) = \mathbb{E}[s^K]$，平均后代数 $m = \mathbb{E}[K] = G'(1)$。第 $n$ 代种群总数为 $Z_n$（$Z_0 = 1$）。
-> 证明灭绝概率 $\pi = \mathbb{P}(\lim_{n \to \infty} Z_n = 0)$ 是方程 $G(s) = s$ 在 $[0, 1]$ 上的最小非负解。
+> **通用题目建模（Citadel / Two Sigma 统计物理与随机过程真题）**：
+> 
+> 设单个粒子独立繁殖，后代数量 $K$ 的概率母函数为 $G(s) = \mathbb{E}[s^K]$，平均后代数 $m = \mathbb{E}[K] = G'(1)$。第 $n$ 代种群总数为 $Z_n$（$Z_0 = 1$）。
+> 试用鞅论证明灭绝概率 $\pi = \mathbb{P}(\lim_{n \to \infty} Z_n = 0)$ 是方程 $G(s) = s$ 在 $[0, 1]$ 上的最小非负解。
 
-#### 1. 规模归一化鞅与母函数鞅
+#### 1. 属于什么类型的鞅？
+本题属于 **种群规模归一化鞅（Normalized Branching Martingale）与概率母函数有界鞅（Probability Generating Function Martingale）**。
+
+#### 2. 规模归一化鞅与母函数鞅
 1. **规模归一化鞅**：$M_n = \frac{Z_n}{m^n}$ 是非负鞅（$\mathbb{E}[Z_{n+1} \mid Z_n] = m Z_n$），由鞅收敛定理知 $M_n \to M_\infty$ 几乎必然收敛。
 2. **母函数鞅**：设 $s \in [0, 1]$ 是不动点方程 $G(s) = s$ 的任意解。构造过程 $Y_n = s^{Z_n}$：
 
@@ -739,7 +831,7 @@ $$
 
 因此 $Y_n = s^{Z_n}$ 是一个**严格有界鞅**（$0 \le Y_n \le 1$）！
 
-#### 2. 应用有界鞅收敛定理
+#### 3. 应用有界鞅收敛定理
 对有界鞅 $Y_n$ 应用支配收敛：
 
 $$
@@ -758,74 +850,3 @@ $$
 \boxed{\pi = G(\pi)}
 $$
 
----
-
-### 场景 4：波利亚罐模型与鞅极限定理（Pólya's Urn & Proportion Martingales）
-
-> **经典面试题**：罐中初始有 $R$ 个红球与 $B$ 个黑球。每次随机抽出一球，观察颜色后将该球放回，并**额外放入 $c$ 个同色球**。
-> 设第 $n$ 步罐中红球比例为 $M_n$。证明 $M_n$ 是鞅，并求 $M_n$ 当 $n \to \infty$ 时的极限分布。
-
-#### 1. 严格鞅性验证
-设第 $n$ 步红球数为 $R_n$，总球数为 $T_n = R + B + n c$。红球比例为 $M_n = \frac{R_n}{T_n}$。
-在第 $n+1$ 步，抽中红球的条件概率为 $M_n$（此时红球变为 $R_n + c$），抽中黑球概率为 $1 - M_n$（红球数保持 $R_n$）：
-
-$$
-\mathbb{E}[M_{n+1} \mid \mathcal{F}_n] = M_n \cdot \frac{R_n + c}{T_n + c} + (1 - M_n) \cdot \frac{R_n}{T_n + c} = \frac{M_n(R_n + c) + R_n - M_n R_n}{T_n + c} = \frac{M_n c + R_n}{T_n + c}
-$$
-
-将 $R_n = M_n T_n$ 代入分子：
-
-$$
-= \frac{M_n c + M_n T_n}{T_n + c} = \frac{M_n (T_n + c)}{T_n + c} = M_n
-$$
-
-因此红球比例 $M_n$ 是一个取值在 $[0, 1]$ 之间的**严格有界鞅**！
-
-#### 2. 极限分布
-由 Doob 有界鞅收敛定理，$M_n \to M_\infty$ 几乎必然收敛。利用矩母匹配或经典 Beta-Binomial 极限可得：
-
-$$
-\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)}
-$$
-
-特别地，当初始 $R=1, B=1, c=1$ 时，极限比例服从 $(0, 1)$ 上的**标准连续均匀分布 $\text{Uniform}(0, 1)$**！
-
----
-
-### 场景 5：无放回翻牌经典——第一张红牌与最后一张红牌（Card Drawing Without Replacement Symmetry）
-
-> **经典面试题（Jane Street / SIG 高频）**：
-> 一副洗匀的牌共有 **$R$ 张红牌** 与 **$B$ 张黑牌**（总牌数 $R + B$ 张），一张一张依次翻开。
-> 1. 求翻出**第一张红牌**时，已经翻开的总牌数期望 $\mathbb{E}[T_1]$；
-> 2. 求翻出**最后一张红牌**时，牌堆中**剩余黑牌数**的期望 $\mathbb{E}[\text{Remaining Black}]$。
-
-#### 1. 示性变量对称性与等期望划分（Indicator Symmetry）
-$R$ 张红牌在随机洗牌中将所有 $B$ 张黑牌分割成 $R + 1$ 个“间隔区（Bins）”：
-- $I_0$：第 1 张红牌之前的黑牌数；
-- $I_1$：第 1 张与第 2 张红牌之间的黑牌数；
-- $\dots$
-- $I_R$：最后一张红牌之后的黑牌数（即剩余黑牌数）。
-
-由全排列的完全置换对称性，所有 $R + 1$ 个间隔中的黑牌数是**同分布且等期望的**：
-
-$$
-\mathbb{E}[I_0] = \mathbb{E}[I_1] = \dots = \mathbb{E}[I_R]
-$$
-
-由于所有间隔中的黑牌总和恒为 $B$：
-
-$$
-\sum_{k=0}^R \mathbb{E}[I_k] = (R + 1) \mathbb{E}[I_0] = B \implies \boxed{\mathbb{E}[I_k] = \frac{B}{R + 1}}
-$$
-
-#### 2. 求解问题（1）与（2）
-1. **翻出第一张红牌时的总翻开牌数**：
-   包含第一张红牌之前的全部黑牌（数量为 $I_0$）以及那张红牌本身（$+1$）：
-   $$\mathbb{E}[T_1] = \mathbb{E}[I_0] + 1 = \frac{B}{R + 1} + 1 = \boxed{\frac{B + R + 1}{R + 1}}$$
-2. **翻出最后一张红牌时的剩余黑牌数**：
-   恰好对应最后一个间隔 $I_R$：
-   $$\mathbb{E}[\text{Remaining Black}] = \mathbb{E}[I_R] = \boxed{\frac{B}{R + 1}}$$
-
-**特例代入（标准扑克牌 $R=26$ 红，$B=26$ 黑）**：
-- 翻到第 1 张红牌的平均步数：$\mathbb{E}[T_1] = \frac{26 + 26 + 1}{26 + 1} = \frac{53}{27} \approx 1.963$ 张；
-- 翻到最后一张红牌时剩余黑牌数：$\mathbb{E}[\text{Remaining Black}] = \frac{26}{27} \approx 0.963$ 张！
