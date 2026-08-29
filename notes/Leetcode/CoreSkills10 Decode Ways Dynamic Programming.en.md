@@ -890,6 +890,32 @@ Pitfall: the transition depends on `$dp[i+1][j-1]$`, so shorter intervals must a
 
 Use the same boolean table; only change the answer from "record the longest one" to "count every `$dp[i][j]=True$`".
 
+```palindrome-dp-demo
+```
+
+### 2D DP Matrix Filling & Southwest Dependency Principles
+
+1. **State Definition**:
+   - `$dp[i][j]$` is a boolean indicating whether substring `$s[i..j]$` is a palindrome.
+   - Because only `$i \le j$` substrings are valid, only the **main diagonal and upper triangle** of the 2D matrix are evaluated (lower triangle `$i > j$` is invalid).
+
+2. **The 3-Step State Transition**:
+   - **Step 1: Boundary Match Check**
+     If `$s[i] \neq s[j]$`, the substring cannot be a palindrome ➔ `$dp[i][j] = False$`;
+   - **Step 2: Base Cases (Length $\le 2$)**
+     If `$s[i] == s[j]$`:
+     - If `$j - i = 0$` (Length 1, main diagonal `$i = j$`): Single characters are always palindromes ➔ `$dp[i][i] = True$`;
+     - If `$j - i = 1$` (Length 2, e.g. `"aa"`): Identical adjacent pair ➔ `$dp[i][i+1] = True$`;
+   - **Step 3: Peeling the Onion (Length $\ge 3$)**
+     If `$s[i] == s[j]$` and `$j - i \ge 2$`:
+     The inner substring after stripping the two endpoints is `$s[i+1..j-1]$`. Query the matrix cell located **one row down ($i+1$) and one column left ($j-1$)** — the **southwest diagonal neighbor**:
+     $$dp[i][j] = dp[i+1][j-1]$$
+
+3. **Loop Ordering Principle**:
+   Because computing cell `(i, j)` depends on its southwest neighbor `(i+1, j-1)`, shorter intervals must be computed before longer ones. We can iterate either:
+   - Outer: `$i$` from `$n-1$` down to `0` (bottom-up); Inner: `$j$` from `$i$` up to `$n-1$` (left-to-right).
+   - Or outer: length `$L = 1..n$`; Inner: start `$i = 0..n-L$`.
+
 ```python
 class Solution:
     def countSubstrings(self, s: str) -> int:

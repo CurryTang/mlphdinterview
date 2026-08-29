@@ -1044,5 +1044,41 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '拍卖与胜者诅咒' }));
     expect(screen.getByText(/一阶密封出价 FPA/)).toBeInTheDocument();
   });
+
+  it('renders the Palindromic Substrings 2D DP matrix visual walkthrough and steps through states', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills10')
+          ? '# Dynamic Programming\n\n```palindrome-dp-demo\n```'
+          : '# Default note',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 10 ·/i }));
+
+    const pdp = await screen.findByRole('region', { name: '回文子串 2D DP 状态转移演示' });
+    expect(within(pdp).getByText(/Palindromic Substrings：二维 DP 状态表填表与西南角依赖可视化/i)).toBeInTheDocument();
+
+    // Verify presence of preset buttons and table
+    expect(within(pdp).getByRole('button', { name: /s = "ababa"/i })).toBeInTheDocument();
+    expect(within(pdp).getByRole('button', { name: /s = "babad"/i })).toBeInTheDocument();
+
+    // Step forward via slider
+    const slider = within(pdp).getByRole('slider', { name: '选择回文子串 DP 演示步骤' });
+    fireEvent.change(slider, { target: { value: '1' } });
+
+    // Verify step index increment and state change
+    expect(within(pdp).getByText(/单个字符自身必为回文/i)).toBeInTheDocument();
+
+    // Switch preset to "babad"
+    fireEvent.click(within(pdp).getByRole('button', { name: /s = "babad"/i }));
+    expect(within(pdp).getByText(/初始化 2D DP 表/i)).toBeInTheDocument();
+  });
 });
+
 

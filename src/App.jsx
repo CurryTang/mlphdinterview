@@ -17633,6 +17633,495 @@ function PartitionLabelsVisual() {
   );
 }
 
+const PALINDROME_PRESETS = [
+  { id: 'ababa', str: 'ababa', label: 's = "ababa" (奇数嵌套回文)', labelEn: 's = "ababa" (Odd Nested Palindromes)' },
+  { id: 'babad', str: 'babad', label: 's = "babad" (LeetCode 5 经典)', labelEn: 's = "babad" (LC 5 Classic)' },
+  { id: 'cbbd', str: 'cbbd', label: 's = "cbbd" (偶数中心 "bb")', labelEn: 's = "cbbd" (Even Center "bb")' },
+  { id: 'aaa', str: 'aaa', label: 's = "aaa" (全相同重复字符)', labelEn: 's = "aaa" (All Identical Chars)' },
+];
+
+function generatePalindromeDPSteps(s, orderMode = 'length') {
+  const n = s.length;
+  const evalOrder = [];
+  if (orderMode === 'length') {
+    for (let len = 1; len <= n; len++) {
+      for (let i = 0; i <= n - len; i++) {
+        const j = i + len - 1;
+        evalOrder.push({ i, j, len });
+      }
+    }
+  } else {
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = i; j < n; j++) {
+        evalOrder.push({ i, j, len: j - i + 1 });
+      }
+    }
+  }
+
+  const steps = [];
+  let currentMatrix = Array.from({ length: n }, () => Array(n).fill(null));
+  let count = 0;
+  let longest = { start: 0, end: 0, str: s[0] || '', len: s.length > 0 ? 1 : 0 };
+  const discovered = [];
+
+  steps.push({
+    stepIndex: 0,
+    i: null,
+    j: null,
+    len: null,
+    subStr: '',
+    matrix: currentMatrix.map((row) => [...row]),
+    count: 0,
+    longest: { ...longest },
+    isPalindrome: null,
+    matchChars: null,
+    depCell: null,
+    discovered: [],
+    desc: '初始化 2D DP 表：dp[i][j] 表示子串 s[i..j] 是否回文。对角线下半区 (i > j) 无效。',
+    descEn: 'Initialize 2D DP table: dp[i][j] indicates whether substring s[i..j] is a palindrome. Lower triangle (i > j) is invalid.',
+  });
+
+  for (let idx = 0; idx < evalOrder.length; idx++) {
+    const { i, j, len } = evalOrder[idx];
+    const subStr = s.slice(i, j + 1);
+    const matchChars = s[i] === s[j];
+    let isPal = false;
+    let depCell = null;
+    let desc = '';
+    let descEn = '';
+
+    if (!matchChars) {
+      isPal = false;
+      if (len <= 2) {
+        desc = `子串 s[${i}..${j}] = "${subStr}"：两端字符不匹配 (s[${i}]='${s[i]}' ≠ s[${j}]='${s[j]}') ➔ dp[${i}][${j}] = False。`;
+        descEn = `Substring s[${i}..${j}] = "${subStr}": Boundary mismatch (s[${i}]='${s[i]}' ≠ s[${j}]='${s[j]}') ➔ dp[${i}][${j}] = False.`;
+      } else {
+        depCell = { i: i + 1, j: j - 1, val: currentMatrix[i + 1][j - 1] };
+        desc = `子串 s[${i}..${j}] = "${subStr}"：两端字符不匹配 (s[${i}]='${s[i]}' ≠ s[${j}]='${s[j]}')，无需再查内部 ➔ dp[${i}][${j}] = False。`;
+        descEn = `Substring s[${i}..${j}] = "${subStr}": Boundary mismatch (s[${i}]='${s[i]}' ≠ s[${j}]='${s[j]}'), skip inner check ➔ dp[${i}][${j}] = False.`;
+      }
+    } else {
+      if (len === 1) {
+        isPal = true;
+        desc = `子串 s[${i}..${j}] = "${subStr}" (长度 1，Base Case)：单个字符自身必为回文 ➔ dp[${i}][${j}] = True (找到第 ${count + 1} 个回文串！)。`;
+        descEn = `Substring s[${i}..${j}] = "${subStr}" (Length 1, Base Case): Single character is inherently a palindrome ➔ dp[${i}][${j}] = True (Found palindrome #${count + 1}!).`;
+      } else if (len === 2) {
+        isPal = true;
+        desc = `子串 s[${i}..${j}] = "${subStr}" (长度 2)：两端字符相同 (s[${i}] == s[${j}] == '${s[i]}') ➔ dp[${i}][${j}] = True (找到第 ${count + 1} 个回文串！)。`;
+        descEn = `Substring s[${i}..${j}] = "${subStr}" (Length 2): Matching adjacent pair (s[${i}] == s[${j}] == '${s[i]}') ➔ dp[${i}][${j}] = True (Found palindrome #${count + 1}!).`;
+      } else {
+        const innerVal = currentMatrix[i + 1][j - 1];
+        depCell = { i: i + 1, j: j - 1, val: innerVal };
+        if (innerVal) {
+          isPal = true;
+          desc = `子串 s[${i}..${j}] = "${subStr}" (长度 ${len})：两端相同 ('${s[i]}') 且内部子串 s[${i + 1}..${j - 1}]="${s.slice(i + 1, j)}" 为回文 (dp[${i + 1}][${j - 1}]=True) ➔ dp[${i}][${j}] = True (找到第 ${count + 1} 个回文串！)。`;
+          descEn = `Substring s[${i}..${j}] = "${subStr}" (Length ${len}): Endpoints match ('${s[i]}') AND inner substring s[${i + 1}..${j - 1}]="${s.slice(i + 1, j)}" is palindrome (dp[${i + 1}][${j - 1}]=True) ➔ dp[${i}][${j}] = True (Found palindrome #${count + 1}!).`;
+        } else {
+          isPal = false;
+          desc = `子串 s[${i}..${j}] = "${subStr}" (长度 ${len})：两端虽匹配 ('${s[i]}')，但内部子串 s[${i + 1}..${j - 1}]="${s.slice(i + 1, j)}" 不是回文 (dp[${i + 1}][${j - 1}]=False) ➔ dp[${i}][${j}] = False。`;
+          descEn = `Substring s[${i}..${j}] = "${subStr}" (Length ${len}): Endpoints match ('${s[i]}'), but inner substring s[${i + 1}..${j - 1}]="${s.slice(i + 1, j)}" is NOT palindrome (dp[${i + 1}][${j - 1}]=False) ➔ dp[${i}][${j}] = False.`;
+        }
+      }
+    }
+
+    currentMatrix = currentMatrix.map((row, r) =>
+      row.map((cell, c) => (r === i && c === j ? isPal : cell))
+    );
+
+    if (isPal) {
+      count++;
+      discovered.push({ i, j, str: subStr, len });
+      if (len > longest.len) {
+        longest = { start: i, end: j, str: subStr, len };
+      }
+    }
+
+    steps.push({
+      stepIndex: idx + 1,
+      i,
+      j,
+      len,
+      subStr,
+      matrix: currentMatrix.map((row) => [...row]),
+      count,
+      longest: { ...longest },
+      isPalindrome: isPal,
+      matchChars,
+      depCell,
+      discovered: [...discovered],
+      desc,
+      descEn,
+    });
+  }
+
+  return steps;
+}
+
+function PalindromeDPVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [selectedPreset, setSelectedPreset] = useState('ababa');
+  const [orderMode, setOrderMode] = useState('length');
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(700);
+
+  const activePreset = PALINDROME_PRESETS.find((p) => p.id === selectedPreset) ?? PALINDROME_PRESETS[0];
+  const str = activePreset.str;
+
+  const steps = useMemo(() => generatePalindromeDPSteps(str, orderMode), [str, orderMode]);
+  const currentStep = steps[stepIndex] ?? steps[0];
+
+  useEffect(() => {
+    setStepIndex(0);
+    setIsPlaying(false);
+  }, [selectedPreset, orderMode]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (stepIndex >= steps.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setStepIndex((prev) => Math.min(steps.length - 1, prev + 1));
+    }, speed);
+    return () => clearTimeout(timer);
+  }, [isPlaying, stepIndex, steps.length, speed]);
+
+  const handleCellClick = (r, c) => {
+    if (r > c) return;
+    const targetIdx = steps.findIndex((st) => st.i === r && st.j === c);
+    if (targetIdx !== -1) {
+      setIsPlaying(false);
+      setStepIndex(targetIdx);
+    }
+  };
+
+  return (
+    <section aria-label={t('回文子串 2D DP 状态转移演示', 'Palindromic Substrings 2D DP Matrix Walkthrough')} className="pdp-vis">
+      <header className="pdp-header">
+        <div>
+          <p className="eyebrow">{t('区间 DP 状态转移 · 2D 矩阵演化', 'Interval DP State Transition · 2D Matrix Evolution')}</p>
+          <h2>{t('Palindromic Substrings：二维 DP 状态表填表与西南角依赖可视化', 'Palindromic Substrings: 2D DP Table Filling & Southwest Dependency Demo')}</h2>
+          <p>{t(
+            '状态定义：dp[i][j] 表示子串 s[i..j] 是否回文。状态转移依赖其“内层核心”子串 dp[i+1][j-1]（位于矩阵的左下方/西南角 ↙）。',
+            'State: dp[i][j] = whether s[i..j] is a palindrome. Transition relies on inner core dp[i+1][j-1] (southwest neighbor ↙).',
+          )}</p>
+        </div>
+      </header>
+
+      {/* Preset & Order Selector */}
+      <div className="pdp-toolbar">
+        <div className="pdp-presets">
+          <span className="pdp-label">{t('测试用例', 'Presets')}:</span>
+          {PALINDROME_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`pdp-chip ${preset.id === selectedPreset ? 'active' : ''}`}
+              onClick={() => setSelectedPreset(preset.id)}
+            >
+              {isEnglish ? preset.labelEn : preset.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="pdp-order-toggle">
+          <span className="pdp-label">{t('填表顺序', 'Fill Order')}:</span>
+          <button
+            type="button"
+            className={`pdp-chip ${orderMode === 'length' ? 'active' : ''}`}
+            onClick={() => setOrderMode('length')}
+          >
+            {t('按区间长度递增 (L=1..n)', 'By Interval Length (L=1..n)')}
+          </button>
+          <button
+            type="button"
+            className={`pdp-chip ${orderMode === 'bottom_up' ? 'active' : ''}`}
+            onClick={() => setOrderMode('bottom_up')}
+          >
+            {t('从底向上双循环 (i=n-1..0)', 'Bottom-Up Double Loop (i=n-1..0)')}
+          </button>
+        </div>
+      </div>
+
+      {/* Scoreboard Stats */}
+      <div className="pdp-scoreboard">
+        <div className="pdp-stat-card">
+          <span className="pdp-stat-title">{t('当前评估子串', 'Current Substring')}</span>
+          <strong className="pdp-stat-val mono">
+            {currentStep.subStr ? `s[${currentStep.i}..${currentStep.j}] = "${currentStep.subStr}"` : t('初始状态', 'Initial')}
+          </strong>
+          <small>{currentStep.len ? `${t('长度', 'Length')} ${currentStep.len}` : '—'}</small>
+        </div>
+
+        <div className="pdp-stat-card">
+          <span className="pdp-stat-title">{t('两端字符匹配', 'Boundary Match')}</span>
+          <strong className={`pdp-stat-val ${currentStep.matchChars === null ? '' : currentStep.matchChars ? 'pos' : 'neg'}`}>
+            {currentStep.matchChars === null
+              ? '—'
+              : currentStep.matchChars
+                ? `✓ s[${currentStep.i}] == s[${currentStep.j}] ('${str[currentStep.i]}')`
+                : `✗ s[${currentStep.i}] ('${str[currentStep.i]}') ≠ s[${currentStep.j}] ('${str[currentStep.j]}')`}
+          </strong>
+          <small>{currentStep.len <= 2 ? t('长度 ≤ 2 直接定论', 'Length ≤ 2 Conclusive') : t('需进一步检查内层', 'Requires Inner Check')}</small>
+        </div>
+
+        <div className="pdp-stat-card">
+          <span className="pdp-stat-title">{t('内层子串状态 dp[i+1][j-1]', 'Inner Substring dp[i+1][j-1]')}</span>
+          <strong className={`pdp-stat-val ${!currentStep.depCell ? '' : currentStep.depCell.val ? 'pos' : 'neg'}`}>
+            {!currentStep.depCell
+              ? '— (Base Case)'
+              : currentStep.depCell.val
+                ? `✓ dp[${currentStep.depCell.i}][${currentStep.depCell.j}] = True`
+                : `✗ dp[${currentStep.depCell.i}][${currentStep.depCell.j}] = False`}
+          </strong>
+          <small>{currentStep.depCell ? `"${str.slice(currentStep.depCell.i, currentStep.depCell.j + 1)}"` : t('无内层依赖', 'No Inner Dependency')}</small>
+        </div>
+
+        <div className="pdp-stat-card highlight">
+          <span className="pdp-stat-title">{t('回文子串总数 (ans)', 'Total Palindromes (ans)')}</span>
+          <strong className="pdp-stat-val count-tag">{currentStep.count}</strong>
+          <small>{t('当前累计找到的所有回文', 'All Palindromes Found')}</small>
+        </div>
+
+        <div className="pdp-stat-card longest">
+          <span className="pdp-stat-title">{t('最长回文子串 (LC 5)', 'Longest Palindrome (LC 5)')}</span>
+          <strong className="pdp-stat-val longest-tag">"{currentStep.longest.str}"</strong>
+          <small>{t('长度', 'Len')} {currentStep.longest.len} (s[{currentStep.longest.start}..{currentStep.longest.end}])</small>
+        </div>
+      </div>
+
+      {/* String Ribbon Visualization */}
+      <div className="pdp-ribbon-container">
+        <div className="pdp-ribbon-label">
+          <span>{t('字符串字符与当前评估区间 [i..j]:', 'String Chars & Active Interval [i..j]:')}</span>
+        </div>
+        <div className="pdp-ribbon">
+          {str.split('').map((char, idx) => {
+            const isLeft = currentStep.i === idx;
+            const isRight = currentStep.j === idx;
+            const isInside = currentStep.i !== null && currentStep.j !== null && idx >= currentStep.i && idx <= currentStep.j;
+            const isInnerCore = currentStep.i !== null && currentStep.j !== null && idx > currentStep.i && idx < currentStep.j;
+
+            return (
+              <div
+                key={idx}
+                className={`pdp-char-box ${isInside ? 'in-range' : ''} ${isLeft ? 'left-ptr' : ''} ${isRight ? 'right-ptr' : ''} ${isInnerCore ? 'inner-core' : ''}`}
+              >
+                <span className="pdp-char-idx">{idx}</span>
+                <strong className="pdp-char-val">{char}</strong>
+                {isLeft && isRight && <span className="pdp-badge left-right">i=j</span>}
+                {isLeft && !isRight && <span className="pdp-badge left">i (L)</span>}
+                {!isLeft && isRight && <span className="pdp-badge right">j (R)</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Visualization: 2D Matrix Grid */}
+      <div className="pdp-main-grid-layout">
+        <div className="pdp-matrix-card">
+          <div className="pdp-matrix-header">
+            <h3>{t('2D DP 状态转移矩阵 (dp[i][j])', '2D DP State Transition Matrix (dp[i][j])')}</h3>
+            <span className="pdp-matrix-legend">
+              <span className="legend-item"><span className="cell-t-badge">T</span> {t('回文 (True)', 'Palindrome (True)')}</span>
+              <span className="legend-item"><span className="cell-f-badge">F</span> {t('非回文 (False)', 'Non-Palindrome (False)')}</span>
+              <span className="legend-item"><span className="cell-dep-badge">↙</span> {t('内层依赖 (i+1, j-1)', 'Dependency (i+1, j-1)')}</span>
+              <span className="legend-item"><span className="cell-cur-badge">◉</span> {t('当前计算', 'Current Target')}</span>
+            </span>
+          </div>
+
+          <div className="pdp-table-wrapper">
+            <table className="pdp-table" role="grid">
+              <thead>
+                <tr>
+                  <th className="corner-th">i \ j</th>
+                  {str.split('').map((ch, j) => (
+                    <th key={j} className={`col-th ${currentStep.j === j ? 'col-active' : ''}`}>
+                      <span className="header-idx">j={j}</span>
+                      <strong className="header-ch">'{ch}'</strong>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {str.split('').map((rowCh, i) => (
+                  <tr key={i}>
+                    <th className={`row-th ${currentStep.i === i ? 'row-active' : ''}`}>
+                      <span className="header-idx">i={i}</span>
+                      <strong className="header-ch">'{rowCh}'</strong>
+                    </th>
+                    {str.split('').map((colCh, j) => {
+                      const isLowerTriangle = i > j;
+                      const isDiagonal = i === j;
+                      const isCurrent = currentStep.i === i && currentStep.j === j;
+                      const isDep = currentStep.depCell && currentStep.depCell.i === i && currentStep.depCell.j === j;
+                      const cellVal = currentStep.matrix[i]?.[j];
+
+                      let cellStatusClass = 'uncalculated';
+                      if (isLowerTriangle) cellStatusClass = 'invalid-triangle';
+                      else if (cellVal === true) cellStatusClass = 'is-true';
+                      else if (cellVal === false) cellStatusClass = 'is-false';
+
+                      return (
+                        <td
+                          key={j}
+                          onClick={() => handleCellClick(i, j)}
+                          className={`pdp-cell ${cellStatusClass} ${isDiagonal ? 'diagonal' : ''} ${isCurrent ? 'active-target' : ''} ${isDep ? 'active-dep' : ''}`}
+                          title={isLowerTriangle ? 'i > j (Invalid)' : `dp[${i}][${j}]: s[${i}..${j}]="${str.slice(i, j + 1)}"`}
+                        >
+                          {isLowerTriangle ? (
+                            <span className="cell-muted">×</span>
+                          ) : (
+                            <div className="cell-content">
+                              {cellVal === true && <span className="badge-t">T</span>}
+                              {cellVal === false && <span className="badge-f">F</span>}
+                              {cellVal === null && <span className="badge-dot">·</span>}
+                              {isCurrent && <span className="target-pulse" />}
+                              {isDep && <span className="dep-arrow">↙</span>}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="pdp-tip">{t('💡 提示：可直接点击上方表格中任意有效格子，跳转至该子问题的评估步骤！', '💡 Tip: Click any valid cell in the matrix to jump directly to its evaluation step!')}</p>
+        </div>
+
+        {/* Transition Logic & Discovered Palindromes Panel */}
+        <div className="pdp-side-panel">
+          <div className="pdp-formula-card">
+            <h4>{t('区间 DP 状态转移方程', 'Interval DP Transition Rule')}</h4>
+            <div className="pdp-formula-code">
+              <code>dp[i][j] = (s[i] == s[j]) && (j - i &lt; 2 || dp[i+1][j-1])</code>
+            </div>
+            <ul className="pdp-rule-list">
+              <li className={currentStep.len === 1 ? 'rule-active' : ''}>
+                <strong>1. 长度 = 1 (i == j):</strong> {t('单字符必回文 (Base Case)', 'Single char is always palindrome (Base Case)')}
+              </li>
+              <li className={currentStep.len === 2 ? 'rule-active' : ''}>
+                <strong>2. 长度 = 2 (j == i + 1):</strong> {t('仅需两端匹配 (s[i] == s[j])', 'Only check endpoints match (s[i] == s[j])')}
+              </li>
+              <li className={currentStep.len >= 3 ? 'rule-active' : ''}>
+                <strong>3. 长度 ≥ 3:</strong> {t('两端匹配 且 西南角 dp[i+1][j-1] == True', 'Endpoints match AND southwest neighbor dp[i+1][j-1] == True')}
+              </li>
+            </ul>
+          </div>
+
+          <div className="pdp-discovered-card">
+            <div className="pdp-discovered-header">
+              <h4>{t('已找到的回文子串清单', 'Discovered Palindromes')}</h4>
+              <span className="pdp-badge count-badge">{currentStep.discovered.length}</span>
+            </div>
+            <div className="pdp-discovered-list">
+              {currentStep.discovered.length === 0 ? (
+                <em>{t('暂无回文串', 'None yet')}</em>
+              ) : (
+                currentStep.discovered.map((item, idx) => (
+                  <span
+                    key={idx}
+                    className={`pdp-palindrome-chip ${item.len === currentStep.longest.len && item.str === currentStep.longest.str ? 'longest-chip' : ''}`}
+                    onClick={() => handleCellClick(item.i, item.j)}
+                  >
+                    <strong>"{item.str}"</strong>
+                    <small>s[{item.i}..{item.j}] (len {item.len})</small>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Playback Controls & Slider */}
+      <div className="pdp-controls-card">
+        <div className="pdp-playback-buttons">
+          <button
+            type="button"
+            className="pdp-btn secondary"
+            disabled={stepIndex === 0}
+            onClick={() => { setIsPlaying(false); setStepIndex(0); }}
+            title={t('跳至开始', 'First Step')}
+          >
+            ⏮
+          </button>
+          <button
+            type="button"
+            className="pdp-btn secondary"
+            disabled={stepIndex === 0}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.max(0, prev - 1)); }}
+          >
+            {t('◀ 上一步', '◀ Prev')}
+          </button>
+          <button
+            type="button"
+            className={`pdp-btn play-btn ${isPlaying ? 'playing' : ''}`}
+            onClick={() => {
+              if (stepIndex >= steps.length - 1) setStepIndex(0);
+              setIsPlaying(!isPlaying);
+            }}
+          >
+            {isPlaying ? t('⏸ 暂停', '⏸ Pause') : t('▶ 自动演示', '▶ Auto Play')}
+          </button>
+          <button
+            type="button"
+            className="pdp-btn secondary"
+            disabled={stepIndex >= steps.length - 1}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.min(steps.length - 1, prev + 1)); }}
+          >
+            {t('下一步 ▶', 'Next ▶')}
+          </button>
+          <button
+            type="button"
+            className="pdp-btn secondary"
+            disabled={stepIndex >= steps.length - 1}
+            onClick={() => { setIsPlaying(false); setStepIndex(steps.length - 1); }}
+            title={t('跳至结束', 'Last Step')}
+          >
+            ⏭
+          </button>
+          <button
+            type="button"
+            className="pdp-btn ghost"
+            onClick={() => { setIsPlaying(false); setStepIndex(0); }}
+          >
+            {t('↺ 重置', '↺ Reset')}
+          </button>
+        </div>
+
+        <div className="pdp-slider-row">
+          <label className="pdp-slider-label">
+            <span>{t('当前步骤', 'Step')}: <strong>{stepIndex} / {steps.length - 1}</strong></span>
+            <input
+              type="range"
+              min="0"
+              max={steps.length - 1}
+              value={stepIndex}
+              onChange={(e) => { setIsPlaying(false); setStepIndex(Number(e.target.value)); }}
+              aria-label={t('选择回文子串 DP 演示步骤', 'Select Palindrome DP Step')}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Step Explanation Card */}
+      <div className="pdp-desc-card">
+        <div className="pdp-desc-title">
+          <span className="pdp-step-badge">{t('步骤', 'Step')} {stepIndex}</span>
+          <strong>{currentStep.subStr ? `评估子串 s[${currentStep.i}..${currentStep.j}] = "${currentStep.subStr}"` : t('初始化', 'Initialization')}</strong>
+        </div>
+        <p className="pdp-desc-text">{isEnglish ? currentStep.descEn : currentStep.desc}</p>
+      </div>
+    </section>
+  );
+}
+
 function BacktrackingPatternAtlas() {
   const { isEnglish, t } = useUiCopy();
   const [activePattern, setActivePattern] = useState('subsets');
@@ -19674,7 +20163,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -19774,6 +20263,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'trie-wildcard-demo') {
     return <TrieWildcardVisual />;
+  }
+
+  if (match?.[1] === 'palindrome-dp-demo') {
+    return <PalindromeDPVisual />;
   }
 
   if (match?.[1] === 'greedy-patterns') {
