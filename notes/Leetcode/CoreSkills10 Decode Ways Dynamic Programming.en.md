@@ -225,6 +225,8 @@ class Solution:
 
 ### 4. String Prefix Partition: Word Break
 
+#### Approach 1: Standard Set Hash Slice DP (Baseline)
+
 - **State**: $dp[i]$ = Boolean flag indicating if prefix $s[:i]$ can be segmented into dictionary words.
 - **Transition**: Enumerate the split point $j \in [0, i)$ for the last word:
 
@@ -236,7 +238,7 @@ class Solution:
         words = set(wordDict)
         n = len(s)
         dp = [False] * (n + 1)
-        dp[0] = True  # Empty prefix is trivially segmentable
+        dp[0] = True  # Base case: empty prefix is trivially segmentable
         
         for i in range(1, n + 1):
             for j in range(i):
@@ -246,7 +248,75 @@ class Solution:
         return dp[n]
 ```
 
-- **Complexity**: Time $O(n^2 \cdot L)$ ($L$ is substring slice cost, optimizable via Trie), Space $O(n)$.
+- **Complexity**: Time $O(n^2 \cdot L)$ ($L$ is substring slice length), Space $O(n + \sum \text{len}(\text{words}))$.
+- **Performance Bottleneck**:
+  1. **Substring slicing overhead**: Each inner iteration generates a new substring `s[j:i]`, causing heap allocation and string copy ($O(i - j)$);
+  2. **No prefix pruning**: Even if `s[j:j+2]` is not a prefix of any dictionary word, standard DP blindly continues enumerating all $j \dots i$.
+
+---
+
+#### Approach 2: Prefix Tree (Trie) + DP Optimization (Forward Matching & Instant Pruning)
+
+In production text tokenization or large dictionary workloads, **indexing `wordDict` into a Trie coupled with forward-driven DP matching** achieves superior theoretical and benchmark performance:
+
+- **Key Optimization Mechanisms**:
+  1. **Trie Construction**: Insert all words from `wordDict` into a Trie, tracking `max_len`;
+  2. **Forward Matching Driver**: Whenever $dp[i] == \text{True}$, start traversing the Trie forward matching characters $s[j]$ for $j \ge i$;
+  3. **Instant Branch Pruning**: As soon as a character $s[j]$ is missing in the current Trie node's children, **break immediately** (no word in the dictionary can match any longer substring starting at $i$);
+  4. **Zero Slicing Overhead**: Pure character pointer advancement with zero substring memory allocations.
+
+```python
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_word = False
+
+
+class Solution:
+    def wordBreak(self, s: str, wordDict: list[str]) -> bool:
+        # 1. Build Prefix Tree (Trie)
+        root = TrieNode()
+        max_len = 0
+        for word in wordDict:
+            node = root
+            for ch in word:
+                if ch not in node.children:
+                    node.children[ch] = TrieNode()
+                node = node.children[ch]
+            node.is_word = True
+            max_len = max(max_len, len(word))
+
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True  # Base case: empty prefix is valid
+
+        # 2. Forward Trie Traversal with Instant Branch Pruning
+        for i in range(n):
+            if not dp[i]:
+                continue  # Previous prefix is invalid, skip
+            
+            node = root
+            # Traverse Trie forward matching characters starting from index i
+            for j in range(i, min(n, i + max_len)):
+                ch = s[j]
+                if ch not in node.children:
+                    break  # Key Pruning: Trie branch miss, terminate inner loop immediately!
+                node = node.children[ch]
+                if node.is_word:
+                    dp[j + 1] = True
+
+        return dp[n]
+```
+
+- **Comparative Architectural Matrix**:
+
+| Dimension | Approach 1: Standard Set DP | Approach 2: Trie Forward DP |
+|---|---|---|
+| **String Slice Overhead** | Creates new `s[j:i]` objects ($O(L)$ allocation/copy) | **Zero allocation** (direct char traversal) |
+| **Prefix Pruning** | None (blindly tests all $j \in [0, i)$) | **Instant pruning** on Trie branch mismatch |
+| **Worst-case Time** | $O(n^2 \cdot L)$ | $O(n \cdot \min(n, L_{\max}) + \sum \text{len})$ |
+| **Space Complexity** | $O(n + \sum \text{len})$ | $O(n + \Sigma \cdot \text{Nodes})$ |
+| **Production Target** | Small dictionaries, short text | Large corpora, NLP tokenization, high-throughput |
 
 ---
 
@@ -871,7 +941,7 @@ class Solution:
 | **1D Linear** | Climbing Stairs | $O(n)$ | $O(n) \to O(1)$ | Fibonacci structure, 2 rolling variables |
 | **1D Linear** | Min Cost Climbing Stairs | $O(n)$ | $O(n) \to O(1)$ | Top floor has no cost, take $\min(dp[n-1], dp[n-2])$ |
 | **1D Linear** | House Robber I / II | $O(n)$ | $O(n) \to O(1)$ | Pick vs skip; II splits into 2 linear subsegments |
-| **1D Linear** | Word Break | $O(n^2 \cdot L)$ | $O(n)$ | Set lookup, enumerate last split point |
+| **1D Linear** | Word Break | $O(n^2 \cdot L) \xrightarrow{\text{Trie}} O(n \cdot L_{\max})$ | $O(n)$ | Set lookup / Forward Trie traversal with instant pruning |
 | **1D Linear** | LIS | $O(n^2)$ | $O(n)$ | Global predecessor sweep; answer is $\max(dp)$ |
 | **1D Linear** | Maximum Product Subarray | $O(n)$ | $O(n) \to O(1)$ | Track `max_here` and `min_here` simultaneously |
 | **Two Sequences** | LCS | $O(mn)$ | $O(mn) \to O(\min(m, n))$ | Match $\to$ diagonal $+1$; else $\max(\text{top}, \text{left})$ |

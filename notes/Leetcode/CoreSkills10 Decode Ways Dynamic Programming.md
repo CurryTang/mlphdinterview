@@ -225,6 +225,8 @@ class Solution:
 
 ### 4. 字符串前缀切分：Word Break（单词拆分）
 
+#### 方案一：标准 Set 哈希切片 DP（基础解法）
+
 - **状态定义**：$dp[i]$ 表示前缀子串 $s[:i]$ 是否能够被字典中的单词空格拆分。
 - **状态转移**：枚举最后一个单词的分割点 $j \in [0, i)$：
 
@@ -236,7 +238,7 @@ class Solution:
         words = set(wordDict)
         n = len(s)
         dp = [False] * (n + 1)
-        dp[0] = True  # 空串天然可被拆分
+        dp[0] = True  # Base case: 空串天然可被拆分
         
         for i in range(1, n + 1):
             for j in range(i):
@@ -246,7 +248,75 @@ class Solution:
         return dp[n]
 ```
 
-- **复杂度**：时间 $O(n^2 \cdot L)$（$L$ 为子串切片长度，可结合 Trie 优化），空间 $O(n)$。
+- **复杂度**：时间 $O(n^2 \cdot L)$（$L$ 为子串切片长度），空间 $O(n + \sum \text{len}(\text{words}))$。
+- **性能瓶颈**：
+  1. **字符串切片开销**：每次循环计算 `s[j:i]` 都需要在堆上拷贝字符分配新字符串对象（$O(i - j)$ 开销）；
+  2. **无法做前缀级即时剪枝**：即使 `s[j:j+2]` 在字典中没有任何单词以此为前缀，传统 DP 仍会盲目向后枚举尝试 `s[j:i]`。
+
+---
+
+#### 方案二：前缀树 (Trie) + DP 极致优化（前向匹配与即时剪枝）
+
+在工业级文本分词或大规模字典场景下，**将字典构建为前缀树（Trie）并结合 DP 前向匹配**是理论与实测性能最优解：
+
+- **核心优化逻辑**：
+  1. **字典树构建**：将 `wordDict` 插入一棵 Trie 树中，同时记录单词最大长度 `max_len`；
+  2. **前向驱动推进**：当且仅当 $dp[i] == \text{True}$ 时，以位置 $i$ 为起点，在 Trie 树上**顺向推进**扫描字符 $s[j]$；
+  3. **分支即时剪枝（Pruning）**：一旦当前字符在 Trie 中没有对应的子节点，**立刻 `break` 截断内层循环**（字典中没有任何单词包含此前缀，后续更长子串绝不可能匹配！）；
+  4. **零切片开销**：完全基于单个字符指针下移，不产生任何子字符串对象切片分配。
+
+```python
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_word = False
+
+
+class Solution:
+    def wordBreak(self, s: str, wordDict: list[str]) -> bool:
+        # 1. 构建前缀树 (Trie)
+        root = TrieNode()
+        max_len = 0
+        for word in wordDict:
+            node = root
+            for ch in word:
+                if ch not in node.children:
+                    node.children[ch] = TrieNode()
+                node = node.children[ch]
+            node.is_word = True
+            max_len = max(max_len, len(word))
+
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True  # Base case: 空前缀有效
+
+        # 2. 前向 Trie 遍历与即时剪枝 DP
+        for i in range(n):
+            if not dp[i]:
+                continue  # 前驱前缀不可拆分，跳过
+            
+            node = root
+            # 从 i 出发顺向在 Trie 树上匹配字符 s[j]
+            for j in range(i, min(n, i + max_len)):
+                ch = s[j]
+                if ch not in node.children:
+                    break  # 核心剪枝：Trie 树失配，立即终结后续更长子串尝试！
+                node = node.children[ch]
+                if node.is_word:
+                    dp[j + 1] = True
+
+        return dp[n]
+```
+
+- **复杂度与架构对比**：
+
+| 架构对比维度 | 方案一：标准 Set + 切片 DP | 方案二：Trie 前向匹配 + DP 优化 |
+|---|---|---|
+| **字符串切片开销** | 每次枚举产生 `s[j:i]` 新对象 ($O(L)$ 内存分配与拷贝) | **零切片开销**（仅指针字符级遍历） |
+| **前缀匹配剪枝** | 无法剪枝（盲目枚举全部 $j \in [0, i)$） | **即时剪枝**（分支失配立即 `break`） |
+| **最坏时间复杂度** | $O(n^2 \cdot L)$ | $O(n \cdot \min(n, L_{\max}) + \sum \text{len})$ |
+| **空间复杂度** | $O(n + \sum \text{len})$ | $O(n + \Sigma \cdot \text{Nodes})$ |
+| **工程适用场景** | 字典较小、短文本 | 大规模词典、NLP 文本分词、高吞吐场景 |
 
 ---
 
@@ -886,7 +956,7 @@ class Solution:
 | **1D 线性** | Climbing Stairs | $O(n)$ | $O(n) \to O(1)$ | 斐波那契结构，双变量滚动 |
 | **1D 线性** | Min Cost Climbing Stairs | $O(n)$ | $O(n) \to O(1)$ | 顶楼无 cost，取 $\min(dp[n-1], dp[n-2])$ |
 | **1D 线性** | House Robber I / II | $O(n)$ | $O(n) \to O(1)$ | 选或不选；II 拆分为两段线性子区间 |
-| **1D 线性** | Word Break | $O(n^2 \cdot L)$ | $O(n)$ | 字典转 Set，枚举最后分割点 |
+| **1D 线性** | Word Break | $O(n^2 \cdot L) \xrightarrow{\text{Trie}} O(n \cdot L_{\max})$ | $O(n)$ | 字典转 Set / Trie 前缀树前向即时剪枝 |
 | **1D 线性** | LIS (最长递增子序列) | $O(n^2)$ | $O(n)$ | 全局扫描前驱；答案为 $\max(dp)$ |
 | **1D 线性** | Maximum Product Subarray | $O(n)$ | $O(n) \to O(1)$ | 同步维护 `max_here` 与 `min_here` |
 | **双序列** | LCS (最长公共子序列) | $O(mn)$ | $O(mn) \to O(\min(m, n))$ | 相等走对角 $+1$，不等走 $\max(\text{上}, \text{左})$ |
