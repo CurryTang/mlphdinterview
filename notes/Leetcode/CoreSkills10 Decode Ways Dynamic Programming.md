@@ -278,10 +278,11 @@ class Solution:
 
 - **本质难点**：负数乘以负数会翻转为正数，因此局部的极小值（最负的数）在遇到下一个负数时会一跃成为全局极大值！
 - **双状态追踪**：必须同时维护以 $i$ 结尾的 `max_here` 与 `min_here`：
-  $$\begin{aligned}
-  \text{max\_here}' &= \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x) \\
-  \text{min\_here}' &= \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)
-  \end{aligned}$$
+
+$$\begin{aligned}
+\text{max\_here}' &= \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x) \\
+\text{min\_here}' &= \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)
+\end{aligned}$$
 
 ```python
 class Solution:
