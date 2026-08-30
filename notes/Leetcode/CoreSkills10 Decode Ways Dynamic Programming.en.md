@@ -227,7 +227,8 @@ class Solution:
 
 - **State**: $dp[i]$ = Boolean flag indicating if prefix $s[:i]$ can be segmented into dictionary words.
 - **Transition**: Enumerate the split point $j \in [0, i)$ for the last word:
-  $$dp[i] = \bigvee_{j=0}^{i-1} \bigl(dp[j] \land (s[j:i] \in \text{wordDict})\bigr)$$
+
+$$dp[i] = \bigvee_{j=0}^{i-1} \bigl(dp[j] \land (s[j:i] \in \text{wordDict})\bigr)$$
 
 ```python
 class Solution:
@@ -253,7 +254,8 @@ class Solution:
 
 - **State**: $dp[i]$ = Length of longest strictly increasing subsequence **ending strictly at $nums[i]$**.
 - **Transition**: Scan all smaller predecessors $j < i$:
-  $$dp[i] = 1 + \max_{j < i, nums[j] < nums[i]} dp[j]$$
+
+$$dp[i] = 1 + \max_{j < i, nums[j] < nums[i]} dp[j]$$
 - **Global Answer**: $\max_{0 \le i < n} dp[i]$ (not necessarily at the last cell).
 
 ```python
@@ -279,10 +281,9 @@ class Solution:
 - **Core Challenge**: Multiplying negative numbers flips signs; a local minimum (most negative) flips into a global maximum upon meeting another negative number!
 - **Dual Extremum Tracking**: Maintain both `max_here` and `min_here` ending at index $i$:
 
-$$\begin{aligned}
-\text{max\_here}' &= \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x) \\
-\text{min\_here}' &= \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)
-\end{aligned}$$
+$$\text{max\_here}' = \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)$$
+
+$$\text{min\_here}' = \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)$$
 
 ```python
 class Solution:
@@ -317,7 +318,8 @@ Two-sequence DP handles alignment, edit operations, interleaving, and subsequenc
 
 - **State**: $dp[i][j]$ = Length of LCS between `text1[:i]` and `text2[:j]`.
 - **Transition**:
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] + 1 & \text{text1}[i-1] == \text{text2}[j-1] \\ \max(dp[i-1][j], dp[i][j-1]) & \text{text1}[i-1] \neq \text{text2}[j-1] \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] + 1 & \text{text1}[i-1] == \text{text2}[j-1] \\ \max(dp[i-1][j], dp[i][j-1]) & \text{text1}[i-1] \neq \text{text2}[j-1] \end{cases}$$
 
 ```python
 class Solution:
@@ -342,7 +344,8 @@ class Solution:
 
 - **State**: $dp[i][j]$ = Minimum operations (insert, delete, replace) to convert `word1[:i]` to `word2[:j]`.
 - **Transition**:
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] & \text{word1}[i-1] == \text{word2}[j-1] \\ 1 + \min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) & \text{otherwise} \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] & \text{word1}[i-1] == \text{word2}[j-1] \\ 1 + \min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) & \text{otherwise} \end{cases}$$
 
 ```python
 class Solution:
@@ -371,7 +374,8 @@ class Solution:
 
 - **State**: $dp[i][j]$ = Whether `s1[:i]` and `s2[:j]` interleave to form `s3[:i+j]`.
 - **Transition**:
-  $$dp[i][j] = (dp[i-1][j] \land s1[i-1] == s3[i+j-1]) \lor (dp[i][j-1] \land s2[j-1] == s3[i+j-1])$$
+
+$$dp[i][j] = (dp[i-1][j] \land s1[i-1] == s3[i+j-1]) \lor (dp[i][j-1] \land s2[j-1] == s3[i+j-1])$$
 
 ```python
 class Solution:
@@ -404,7 +408,8 @@ class Solution:
 
 - **State**: $dp[i][j]$ = Number of subsequences of `s[:i]` that equal `t[:j]`.
 - **Transition**:
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] + dp[i-1][j] & s[i-1] == t[j-1] \\ dp[i-1][j] & s[i-1] \neq t[j-1] \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] + dp[i-1][j] & s[i-1] == t[j-1] \\ dp[i-1][j] & s[i-1] \neq t[j-1] \end{cases}$$
 
 ```python
 class Solution:
@@ -595,7 +600,8 @@ class Solution:
 ### 2. 0/1 Knapsack: Target Sum (Algebraic Reduction & Counting)
 
 - **Algebraic Derivation**:
-  $$P - N = target,\quad P + N = total \implies 2P = target + total \implies P = \frac{target + total}{2}$$
+
+$$P - N = target,\quad P + N = total \implies 2P = target + total \implies P = \frac{target + total}{2}$$
 - **Reduction**: Count subset combinations summing to $bag = (target + total) // 2$.
 - **Transition**: $dp[s] += dp[s - num]$ (backward).
 

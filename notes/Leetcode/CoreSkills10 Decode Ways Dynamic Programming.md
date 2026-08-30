@@ -227,7 +227,8 @@ class Solution:
 
 - **状态定义**：$dp[i]$ 表示前缀子串 $s[:i]$ 是否能够被字典中的单词空格拆分。
 - **状态转移**：枚举最后一个单词的分割点 $j \in [0, i)$：
-  $$dp[i] = \bigvee_{j=0}^{i-1} \bigl(dp[j] \land (s[j:i] \in \text{wordDict})\bigr)$$
+
+$$dp[i] = \bigvee_{j=0}^{i-1} \bigl(dp[j] \land (s[j:i] \in \text{wordDict})\bigr)$$
 
 ```python
 class Solution:
@@ -253,7 +254,8 @@ class Solution:
 
 - **状态定义**：$dp[i]$ 表示**必须以 $nums[i]$ 结尾**的最长严格递增子序列长度。
 - **状态转移**：扫描所有在 $i$ 之前且数值更小的前驱 $j < i$：
-  $$dp[i] = 1 + \max_{j < i, nums[j] < nums[i]} dp[j]$$
+
+$$dp[i] = 1 + \max_{j < i, nums[j] < nums[i]} dp[j]$$
 - **全局答案**：$\max_{0 \le i < n} dp[i]$（注意答案不一定在最后一格）。
 
 ```python
@@ -279,10 +281,9 @@ class Solution:
 - **本质难点**：负数乘以负数会翻转为正数，因此局部的极小值（最负的数）在遇到下一个负数时会一跃成为全局极大值！
 - **双状态追踪**：必须同时维护以 $i$ 结尾的 `max_here` 与 `min_here`：
 
-$$\begin{aligned}
-\text{max\_here}' &= \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x) \\
-\text{min\_here}' &= \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)
-\end{aligned}$$
+$$\text{max\_here}' = \max(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)$$
+
+$$\text{min\_here}' = \min(x, \text{max\_here} \cdot x, \text{min\_here} \cdot x)$$
 
 ```python
 class Solution:
@@ -317,7 +318,8 @@ class Solution:
 
 - **状态定义**：$dp[i][j]$ 表示 `text1[:i]` 与 `text2[:j]` 的最长公共子序列长度。
 - **状态转移**：
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] + 1 & \text{text1}[i-1] == \text{text2}[j-1] \\ \max(dp[i-1][j], dp[i][j-1]) & \text{text1}[i-1] \neq \text{text2}[j-1] \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] + 1 & \text{text1}[i-1] == \text{text2}[j-1] \\ \max(dp[i-1][j], dp[i][j-1]) & \text{text1}[i-1] \neq \text{text2}[j-1] \end{cases}$$
 
 ```python
 class Solution:
@@ -342,7 +344,8 @@ class Solution:
 
 - **状态定义**：$dp[i][j]$ 表示将 `word1[:i]` 转换为 `word2[:j]` 所需的最少操作步数（插入、删除、替换）。
 - **状态转移**：
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] & \text{word1}[i-1] == \text{word2}[j-1] \\ 1 + \min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) & \text{otherwise} \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] & \text{word1}[i-1] == \text{word2}[j-1] \\ 1 + \min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) & \text{otherwise} \end{cases}$$
   - $dp[i-1][j] + 1$：删除 `word1[i-1]`；
   - $dp[i][j-1] + 1$：插入 `word2[j-1]`；
   - $dp[i-1][j-1] + 1$：将 `word1[i-1]` 替换为 `word2[j-1]`。
@@ -366,7 +369,7 @@ class Solution:
         return dp[m][n]
 ```
 
-- **复杂度**：时间 $O(mn)$，空间 $O(mn)$。
+- **复杂度**：时间 $O(mn)$，空间 $O(mn)$.
 
 ---
 
@@ -374,7 +377,8 @@ class Solution:
 
 - **状态定义**：$dp[i][j]$ 表示 `s1[:i]` 与 `s2[:j]` 能否交错组成 `s3[:i+j]`。
 - **状态转移**：当前字符 `s3[i+j-1]` 可以来自 `s1[i-1]`（从上方来）或 `s2[j-1]`（从左方来）：
-  $$dp[i][j] = (dp[i-1][j] \land s1[i-1] == s3[i+j-1]) \lor (dp[i][j-1] \land s2[j-1] == s3[i+j-1])$$
+
+$$dp[i][j] = (dp[i-1][j] \land s1[i-1] == s3[i+j-1]) \lor (dp[i][j-1] \land s2[j-1] == s3[i+j-1])$$
 
 ```python
 class Solution:
@@ -407,7 +411,8 @@ class Solution:
 
 - **状态定义**：$dp[i][j]$ 表示 `s[:i]` 中有多少个子序列与 `t[:j]` 完全相同。
 - **状态转移**：
-  $$dp[i][j] = \begin{cases} dp[i-1][j-1] + dp[i-1][j] & s[i-1] == t[j-1] \\ dp[i-1][j] & s[i-1] \neq t[j-1] \end{cases}$$
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] + dp[i-1][j] & s[i-1] == t[j-1] \\ dp[i-1][j] & s[i-1] \neq t[j-1] \end{cases}$$
   - $dp[i-1][j-1]$：选择用当前字符 `s[i-1]` 匹配 `t[j-1]`；
   - $dp[i-1][j]$：舍弃/跳过当前字符 `s[i-1]`。
 
@@ -577,7 +582,8 @@ class Solution:
 
 - **问题转化**：判断能否从数组中选出若干数（每个数最多选 1 次），使其和恰好为 $target = \text{sum} / 2$。
 - **状态与转移**：$dp[j]$ 表示能否凑出容量 $j$：
-  $$dp[j] = dp[j] \lor dp[j - x]$$
+
+$$dp[j] = dp[j] \lor dp[j - x]$$
 
 ```python
 class Solution:
@@ -603,7 +609,8 @@ class Solution:
 ### 2. 0/1 背包例题二：Target Sum（目标和 · 代数转化与计数）
 
 - **代数推导**：设正数子集为 $P$，负数绝对值子集为 $N$：
-  $$P - N = target,\quad P + N = total \implies 2P = target + total \implies P = \frac{target + total}{2}$$
+
+$$P - N = target,\quad P + N = total \implies 2P = target + total \implies P = \frac{target + total}{2}$$
 - **问题等价于**：从 `nums` 中选择子集使其和恰好为 $bag = (target + total) // 2$ 的方案数！
 - **二维到一维压缩**：$dp[s] = dp[s] + dp[s - num]$（倒序遍历）。
 
@@ -801,7 +808,8 @@ class Solution:
 ### 1. Kadane's Algorithm（最大子数组和 · 负资产切除）
 
 - **DP 视角**：定义 $dp[i]$ 为**必须以 $nums[i]$ 结尾**的最大连续子数组和：
-  $$dp[i] = \max(nums[i], dp[i-1] + nums[i])$$
+
+$$dp[i] = \max(nums[i], dp[i-1] + nums[i])$$
 - **贪心压缩本质**：若 $curSum < 0$，带入未来任何元素只会产生负向拖累，因此立即将 $curSum$ 归零重置！
 
 ```python
