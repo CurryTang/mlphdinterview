@@ -628,24 +628,43 @@ class Solution:
 
 ### 3. Complete Knapsack: Coin Change (Min Coins)
 
-- **Semantic**: Unlimited coins, find minimum coin count to make `amount`.
-- **Transition**: $dp[s] = \min(dp[s], dp[s - coin] + 1)$ (**forward traversal**).
+- **Semantic**: Each coin denomination is available in infinite supply. Find the **minimum total number of coins** to make up total `amount`.
+- **State**: $dp[a]$ = Minimum number of coins needed to make amount $a$.
+- **Transition**: For each coin $coin$:
+
+$$dp[a] = \min(dp[a], dp[a - coin] + 1) \quad (a \ge coin)$$
+
+- **Why Complete Knapsack MUST Traverse Forward**:
+  - In a 1D rolling array, forward traversal ($a: coin \to amount$) ensures that when we compute $dp[a]$, $dp[a - coin]$ has **already been updated within the current round**. This inherently allows the same coin to be reused multiple times (e.g. using three 1-dollar coins to make 3 dollars);
+  - In 0/1 knapsack (at most 1 per item), backward traversal is mandatory to force referencing the un-updated state from the previous item.
+
+#### Complete Knapsack 1D DP State Evolution & Path Replay Visualizer
+
+```coin-change-demo
+```
+
+#### Code Implementation
 
 ```python
 class Solution:
     def coinChange(self, coins: list[int], amount: int) -> int:
-        inf = amount + 1
+        inf = amount + 1  # Sentinel upper bound (at most amount 1-dollar coins; amount+1 represents unreachable)
         dp = [inf] * (amount + 1)
-        dp[0] = 0
+        dp[0] = 0  # Base case: 0 coins needed for amount 0
         
         for coin in coins:
-            for s in range(coin, amount + 1):  # Forward
+            for s in range(coin, amount + 1):  # Forward traversal ➔ allows unlimited reuse
                 dp[s] = min(dp[s], dp[s - coin] + 1)
                 
         return -1 if dp[amount] == inf else dp[amount]
 ```
 
 - **Complexity**: Time $O(n \cdot amount)$, Space $O(amount)$.
+- **Interview Pitfall**: Why doesn't greedy work?
+  - E.g. `coins = [1, 3, 4], amount = 6`:
+    - **Greedy** grabs the largest denomination first: $4 + 1 + 1 \implies 3$ coins;
+    - **DP optimal** finds global coordination: $3 + 3 \implies 2$ coins!
+  - Greedy only holds if denominations form a canonical coin system (like US/Euro coins); arbitrary denominations require DP.
 
 ---
 

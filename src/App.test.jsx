@@ -1079,6 +1079,46 @@ describe('App', () => {
     fireEvent.click(within(pdp).getByRole('button', { name: /s = "babad"/i }));
     expect(within(pdp).getByText(/初始化 2D DP 表/i)).toBeInTheDocument();
   });
+
+  it('renders the Coin Change Complete Knapsack visual walkthrough and steps through states', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills10')
+          ? '# Dynamic Programming\n\n```coin-change-demo\n```'
+          : '# Default note',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 10 ·/i }));
+
+    const ccv = await screen.findByRole('region', { name: '零钱兑换 DP 状态转移演示' });
+    expect(within(ccv).getByText(/Coin Change：零钱兑换最少枚数状态转移与回溯可视化/i)).toBeInTheDocument();
+
+    // Verify presence of preset chips
+    expect(within(ccv).getByRole('button', { name: /coins = \[1, 2, 5\]/i })).toBeInTheDocument();
+    expect(within(ccv).getByRole('button', { name: /coins = \[1, 3, 4\]/i })).toBeInTheDocument();
+
+    // Step forward via slider
+    const slider = within(ccv).getByRole('slider', { name: '选择零钱兑换 DP 演示步骤' });
+    fireEvent.change(slider, { target: { value: '1' } });
+
+    // Verify step description update
+    expect(within(ccv).getByText(/发现更优解/i)).toBeInTheDocument();
+
+    // Switch view mode to 2D Grid
+    fireEvent.click(within(ccv).getByRole('button', { name: /二维完全背包决策表格/i }));
+    expect(within(ccv).getByText(/二维完全背包决策表格 dp\[coin_idx\]\[amount\]/i)).toBeInTheDocument();
+
+    // Switch preset to greedy trap [1, 3, 4]
+    fireEvent.click(within(ccv).getByRole('button', { name: /coins = \[1, 3, 4\]/i }));
+    expect(within(ccv).getByText(/初始化状态/i)).toBeInTheDocument();
+  });
 });
+
 
 

@@ -637,24 +637,43 @@ class Solution:
 
 ### 3. 完全背包例题一：Coin Change（零钱兑换 · 最少枚数）
 
-- **语义**：硬币无限复选，求凑齐 `amount` 的最少硬币数。
-- **状态转移**：$dp[s] = \min(dp[s], dp[s - coin] + 1)$（**正序遍历**，允许在同一轮累加当前硬币）。
+- **语义**：每种面值的硬币有无限枚可用，求凑齐总金额 `amount` 所需的**最少硬币总数**。
+- **状态定义**：$dp[a]$ 表示凑出金额 $a$ 所需的最少硬币枚数。
+- **状态转移**：枚举当前硬币 $coin$：
+
+$$dp[a] = \min(dp[a], dp[a - coin] + 1) \quad (a \ge coin)$$
+
+- **为什么完全背包必须正序遍历？**
+  - 在一维滚动数组中，正序遍历使得当我们计算 $dp[a]$ 时，$dp[a - coin]$ 已经在**本轮循环中更新过了**，从而天然包含了“当前硬币已被复选多次”的状态（例如可以用三个 1 元凑出 3 元）；
+  - 若为 0/1 背包（每种硬币至多选 1 枚），则必须倒序遍历以强制读取上一轮未选该硬币的旧状态。
+
+#### 完全背包一维 DP 状态演化与找零路径回溯可视化
+
+```coin-change-demo
+```
+
+#### 代码实现
 
 ```python
 class Solution:
     def coinChange(self, coins: list[int], amount: int) -> int:
-        inf = amount + 1  # 哨兵上限
+        inf = amount + 1  # 哨兵上限 (最多需要 amount 枚 1 元，amount+1 即代表不可达)
         dp = [inf] * (amount + 1)
-        dp[0] = 0
+        dp[0] = 0  # Base case: 凑出金额 0 需 0 枚硬币
         
         for coin in coins:
-            for s in range(coin, amount + 1):  # 正序
+            for s in range(coin, amount + 1):  # 正序遍历 ➔ 允许无限复选
                 dp[s] = min(dp[s], dp[s - coin] + 1)
                 
         return -1 if dp[amount] == inf else dp[amount]
 ```
 
 - **复杂度**：时间 $O(n \cdot amount)$，空间 $O(amount)$。
+- **面试避坑点**：为什么不能用贪心？
+  - 例如 `coins = [1, 3, 4], amount = 6`：
+    - **贪心策略**优先拿最大面值：$4 + 1 + 1 \implies 3$ 枚；
+    - **DP 最优解**全局统筹：$3 + 3 \implies 2$ 枚！
+  - 只有在硬币面值呈特定倍数体系（如美元/人民币标准面额）时贪心才成立；通用面额必须使用 DP。
 
 ---
 

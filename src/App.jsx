@@ -18122,6 +18122,500 @@ function PalindromeDPVisual() {
   );
 }
 
+const COIN_CHANGE_PRESETS = [
+  { id: 'lc322', coins: [1, 2, 5], amount: 11, label: 'coins = [1, 2, 5], amount = 11 (LC 322 经典三枚)', labelEn: 'coins = [1, 2, 5], amount = 11 (LC 322 Classic 3 Coins)' },
+  { id: 'greedy_trap', coins: [1, 3, 4], amount: 6, label: 'coins = [1, 3, 4], amount = 6 (贪心陷阱：DP 优于贪心)', labelEn: 'coins = [1, 3, 4], amount = 6 (Greedy Trap: DP Beats Greedy)' },
+  { id: 'multiples', coins: [2, 5, 10], amount: 15, label: 'coins = [2, 5, 10], amount = 15 (多币种组合 10 + 5)', labelEn: 'coins = [2, 5, 10], amount = 15 (Multi-coin 10 + 5)' },
+  { id: 'unreachable', coins: [2], amount: 3, label: 'coins = [2], amount = 3 (无解情况：返回 -1)', labelEn: 'coins = [2], amount = 3 (Unreachable: Returns -1)' },
+];
+
+function generateCoinChangeSteps(coins, amount) {
+  const sortedCoins = [...coins].filter((x) => x > 0).sort((a, b) => a - b);
+  const inf = amount + 1;
+  const numCoins = sortedCoins.length;
+
+  let dp1D = Array(amount + 1).fill(inf);
+  dp1D[0] = 0;
+
+  let dp2D = Array.from({ length: numCoins }, () => Array(amount + 1).fill(inf));
+  for (let cIdx = 0; cIdx < numCoins; cIdx++) {
+    dp2D[cIdx][0] = 0;
+  }
+
+  let parentCoin = Array(amount + 1).fill(null);
+  const steps = [];
+
+  steps.push({
+    stepIndex: 0,
+    coin: null,
+    coinIdx: null,
+    amountIndex: null,
+    lookbackAmount: null,
+    lookbackVal: null,
+    oldVal: null,
+    candidateVal: null,
+    newVal: null,
+    isUpdated: false,
+    dp1D: [...dp1D],
+    dp2D: dp2D.map((row) => [...row]),
+    parentCoin: [...parentCoin],
+    desc: `初始化状态：dp[0] = 0（凑成 0 元需要 0 枚硬币），其余金额 dp[1..${amount}] 均初始化为 ∞ (${inf})，表示尚未凑出。`,
+    descEn: `Initialize state: dp[0] = 0 (0 coins to make amount 0), all other amounts dp[1..${amount}] initialized to ∞ (${inf}) representing unreachable.`,
+  });
+
+  let currentStepIdx = 1;
+
+  for (let cIdx = 0; cIdx < numCoins; cIdx++) {
+    const c = sortedCoins[cIdx];
+
+    for (let a = 0; a <= amount; a++) {
+      if (a === 0) {
+        dp2D[cIdx][0] = 0;
+      } else if (cIdx > 0 && dp2D[cIdx - 1][a] !== inf) {
+        dp2D[cIdx][a] = dp2D[cIdx - 1][a];
+      }
+    }
+
+    for (let a = c; a <= amount; a++) {
+      const oldVal = dp1D[a];
+      const lookbackVal = dp1D[a - c];
+      const candidateVal = lookbackVal !== inf ? lookbackVal + 1 : inf;
+      const isUpdated = candidateVal < oldVal;
+
+      if (isUpdated) {
+        dp1D[a] = candidateVal;
+        parentCoin[a] = c;
+      }
+
+      if (candidateVal < dp2D[cIdx][a]) {
+        dp2D[cIdx][a] = candidateVal;
+      }
+
+      let desc = '';
+      let descEn = '';
+
+      if (lookbackVal === inf) {
+        desc = `面值 coin = ${c}，当前金额 a = ${a}：回看 dp[${a} - ${c}] = dp[${a - c}] 为 ∞（无法凑出），故不能由硬币 ${c} 转移，dp[${a}] 保持 ${oldVal === inf ? '∞' : oldVal}。`;
+        descEn = `Coin = ${c}, Amount a = ${a}: Lookback dp[${a} - ${c}] = dp[${a - c}] is ∞ (unreachable), cannot transition from coin ${c}, dp[${a}] stays ${oldVal === inf ? '∞' : oldVal}.`;
+      } else if (isUpdated) {
+        desc = `面值 coin = ${c}，当前金额 a = ${a}：发现更优解！min(原值 ${oldVal === inf ? '∞' : oldVal}, dp[${a - c}] + 1 = ${lookbackVal} + 1 = ${candidateVal}) ➔ dp[${a}] 刷新为 ${candidateVal} 枚！`;
+        descEn = `Coin = ${c}, Amount a = ${a}: Found better solution! min(old ${oldVal === inf ? '∞' : oldVal}, dp[${a - c}] + 1 = ${lookbackVal} + 1 = ${candidateVal}) ➔ dp[${a}] updated to ${candidateVal} coins!`;
+      } else {
+        desc = `面值 coin = ${c}，当前金额 a = ${a}：尝试 dp[${a - c}] + 1 = ${candidateVal} 枚，但不优于现有方案 dp[${a}] = ${oldVal} 枚 ➔ dp[${a}] 保持 ${oldVal}。`;
+        descEn = `Coin = ${c}, Amount a = ${a}: Candidate dp[${a - c}] + 1 = ${candidateVal} coins is NOT better than current dp[${a}] = ${oldVal} coins ➔ dp[${a}] stays ${oldVal}.`;
+      }
+
+      steps.push({
+        stepIndex: currentStepIdx++,
+        coin: c,
+        coinIdx: cIdx,
+        amountIndex: a,
+        lookbackAmount: a - c,
+        lookbackVal,
+        oldVal,
+        candidateVal,
+        newVal: dp1D[a],
+        isUpdated,
+        dp1D: [...dp1D],
+        dp2D: dp2D.map((row) => [...row]),
+        parentCoin: [...parentCoin],
+        desc,
+        descEn,
+      });
+    }
+  }
+
+  const finalAns = dp1D[amount] === inf ? -1 : dp1D[amount];
+  const path = [];
+  if (finalAns !== -1) {
+    let curr = amount;
+    while (curr > 0 && parentCoin[curr] !== null) {
+      const c = parentCoin[curr];
+      path.push(c);
+      curr -= c;
+    }
+  }
+
+  steps.push({
+    stepIndex: currentStepIdx,
+    coin: null,
+    coinIdx: null,
+    amountIndex: amount,
+    lookbackAmount: null,
+    lookbackVal: null,
+    oldVal: null,
+    candidateVal: null,
+    newVal: dp1D[amount],
+    isUpdated: false,
+    dp1D: [...dp1D],
+    dp2D: dp2D.map((row) => [...row]),
+    parentCoin: [...parentCoin],
+    path,
+    isFinal: true,
+    finalAns,
+    desc: finalAns === -1
+      ? `计算完成！目标金额 dp[${amount}] 仍为 ∞，说明给定面值组合无法凑出该金额，最终返回 -1。`
+      : `计算完成！最少需要 ${finalAns} 枚硬币凑成金额 ${amount}。最优硬币组合：[${path.join(', ')}]（${path.join(' + ')} = ${amount}）。`,
+    descEn: finalAns === -1
+      ? `Done! Target amount dp[${amount}] remains ∞, meaning it is impossible to make this amount. Returns -1.`
+      : `Done! Minimum of ${finalAns} coins needed to make amount ${amount}. Optimal coins: [${path.join(', ')}] (${path.join(' + ')} = ${amount}).`,
+  });
+
+  return steps;
+}
+
+function CoinChangeVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [selectedPreset, setSelectedPreset] = useState('lc322');
+  const [viewMode, setViewMode] = useState('1d'); // '1d' | '2d'
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(600);
+
+  const activePreset = COIN_CHANGE_PRESETS.find((p) => p.id === selectedPreset) ?? COIN_CHANGE_PRESETS[0];
+  const coins = activePreset.coins;
+  const amount = activePreset.amount;
+
+  const steps = useMemo(() => generateCoinChangeSteps(coins, amount), [coins, amount]);
+  const currentStep = steps[stepIndex] ?? steps[0];
+  const inf = amount + 1;
+
+  useEffect(() => {
+    setStepIndex(0);
+    setIsPlaying(false);
+  }, [selectedPreset]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (stepIndex >= steps.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setStepIndex((prev) => Math.min(steps.length - 1, prev + 1));
+    }, speed);
+    return () => clearTimeout(timer);
+  }, [isPlaying, stepIndex, steps.length, speed]);
+
+  const handleCellClick = (targetAmount) => {
+    // Jump to the step where targetAmount was evaluated for the current or last coin
+    const targetIdx = steps.findIndex((st) => st.amountIndex === targetAmount && st.coin === currentStep.coin);
+    if (targetIdx !== -1) {
+      setIsPlaying(false);
+      setStepIndex(targetIdx);
+    }
+  };
+
+  return (
+    <section aria-label={t('零钱兑换 DP 状态转移演示', 'Coin Change DP Matrix Walkthrough')} className="ccv-vis">
+      <header className="ccv-header">
+        <div>
+          <p className="eyebrow">{t('完全背包状态转移 · 一维正序推进', 'Complete Knapsack State Transition · 1D Forward Traversal')}</p>
+          <h2>{t('Coin Change：零钱兑换最少枚数状态转移与回溯可视化', 'Coin Change: Minimum Coins DP State Transition & Path Walkthrough')}</h2>
+          <p>{t(
+            '状态定义：dp[a] 表示凑齐金额 a 所需的最少硬币枚数。转移方程：dp[a] = min(dp[a], dp[a - c] + 1)。正序遍历使得同一面值硬币允许被无限复选。',
+            'State: dp[a] = min coins to make amount a. Recurrence: dp[a] = min(dp[a], dp[a - c] + 1). Forward loop enables unlimited coin reuse.',
+          )}</p>
+        </div>
+      </header>
+
+      {/* Toolbar: Presets & View Modes */}
+      <div className="ccv-toolbar">
+        <div className="ccv-presets-row">
+          <span className="ccv-label">{t('测试用例', 'Presets')}:</span>
+          {COIN_CHANGE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`ccv-chip ${preset.id === selectedPreset ? 'active' : ''}`}
+              onClick={() => setSelectedPreset(preset.id)}
+            >
+              {isEnglish ? preset.labelEn : preset.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="ccv-modes-row">
+          <span className="ccv-label">{t('视图切换', 'View Mode')}:</span>
+          <button
+            type="button"
+            className={`ccv-chip ${viewMode === '1d' ? 'active' : ''}`}
+            onClick={() => setViewMode('1d')}
+          >
+            {t('一维滚动数组视图 (1D DP · 推荐)', '1D Rolling Array View (1D DP)')}
+          </button>
+          <button
+            type="button"
+            className={`ccv-chip ${viewMode === '2d' ? 'active' : ''}`}
+            onClick={() => setViewMode('2d')}
+          >
+            {t('二维完全背包决策表格 (2D Grid)', '2D Knapsack Decision Grid')}
+          </button>
+        </div>
+      </div>
+
+      {/* Scoreboard Cards */}
+      <div className="ccv-scoreboard">
+        <div className={`ccv-stat-card ${currentStep.coin ? 'active-coin' : ''}`}>
+          <span className="ccv-stat-title">{t('当前处理面值 (coin)', 'Current Coin (c)')}</span>
+          <div className="ccv-stat-val">
+            {currentStep.coin ? (
+              <span className="ccv-coin-badge current-active">{currentStep.coin}</span>
+            ) : (
+              <span style={{ fontSize: '0.95rem', color: '#64748b' }}>{currentStep.isFinal ? t('全部完成', 'Completed') : t('尚未开始', 'Ready')}</span>
+            )}
+          </div>
+        </div>
+
+        <div className={`ccv-stat-card ${currentStep.amountIndex !== null ? 'target-amount' : ''}`}>
+          <span className="ccv-stat-title">{t('目标金额 (Amount a)', 'Target Amount (a)')}</span>
+          <div className="ccv-stat-val">
+            {currentStep.amountIndex !== null ? `${currentStep.amountIndex} / ${amount}` : `0 / ${amount}`}
+          </div>
+        </div>
+
+        <div className="ccv-stat-card">
+          <span className="ccv-stat-title">{t('可用硬币面值集合', 'Coin Denominations')}</span>
+          <div className="ccv-coin-badge-list">
+            {coins.map((c) => (
+              <span key={c} className={`ccv-coin-badge ${c === currentStep.coin ? 'current-active' : ''}`}>
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="ccv-stat-card optimal-ans">
+          <span className="ccv-stat-title">{t('目标 dp[amount] 当前值', 'dp[amount] State')}</span>
+          <div className="ccv-stat-val">
+            {currentStep.dp1D[amount] === inf ? (
+              <span style={{ color: '#94a3b8' }}>∞ ({t('未达', 'Unset')})</span>
+            ) : (
+              <span style={{ color: '#059669' }}>{currentStep.dp1D[amount]} {t('枚', 'coins')}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 1D Array or 2D Matrix View */}
+      {viewMode === '1d' ? (
+        <div className="ccv-section-card">
+          <div className="ccv-section-header">
+            <h3>
+              <span>📊</span>
+              {t('一维 DP 数组状态 dp[0..amount] 实时演化', '1D DP Array State dp[0..amount] Evolution')}
+            </h3>
+            <div className="ccv-legend">
+              <div className="ccv-legend-item">
+                <div className="ccv-legend-color target" />
+                <span>{t('当前计算位置 a', 'Current Target a')}</span>
+              </div>
+              <div className="ccv-legend-item">
+                <div className="ccv-legend-color lookback" />
+                <span>{t('回看位置 a - c', 'Lookback a - c')}</span>
+              </div>
+              <div className="ccv-legend-item">
+                <div className="ccv-legend-color updated" />
+                <span>{t('本次成功刷新', 'Updated')}</span>
+              </div>
+              <div className="ccv-legend-item">
+                <div className="ccv-legend-color unreachable" />
+                <span>{t('初始 ∞ (无法凑出)', 'Unreachable ∞')}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="ccv-array-scroll">
+            <div className="ccv-array-track">
+              {currentStep.dp1D.map((val, aIdx) => {
+                const isTarget = currentStep.amountIndex === aIdx;
+                const isLookback = currentStep.lookbackAmount === aIdx;
+                const isUpdatedFlash = currentStep.isUpdated && isTarget;
+                const isGoal = aIdx === amount;
+
+                return (
+                  <div key={aIdx} className="ccv-array-cell-box">
+                    <button
+                      type="button"
+                      className={`ccv-array-cell ${isTarget ? 'is-target' : ''} ${isLookback ? 'is-lookback' : ''} ${isUpdatedFlash ? 'is-updated-flash' : ''} ${isGoal ? 'is-goal' : ''}`}
+                      onClick={() => handleCellClick(aIdx)}
+                      title={`dp[${aIdx}] = ${val === inf ? '∞' : val}`}
+                    >
+                      {val === inf ? (
+                        <span className="ccv-cell-inf">∞</span>
+                      ) : (
+                        <span className="ccv-cell-val">{val}</span>
+                      )}
+                    </button>
+                    <span className="ccv-cell-amount">a={aIdx}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Real-time Transition Calculation Card */}
+          {currentStep.amountIndex !== null && currentStep.coin !== null && (
+            <div className="ccv-calc-card">
+              <div className="ccv-calc-row">
+                <strong>{t('转移计算', 'Transition Calc')}:</strong>
+                <span className="ccv-formula-badge">
+                  dp[{currentStep.amountIndex}] = min(dp[{currentStep.amountIndex}], dp[{currentStep.amountIndex} - {currentStep.coin}] + 1)
+                </span>
+              </div>
+              <div className="ccv-calc-row">
+                <span>{t('现有值', 'Current')}: <code>{currentStep.oldVal === inf ? '∞' : currentStep.oldVal}</code></span>
+                <span>vs</span>
+                <span>{t('候选值', 'Candidate')} (dp[{currentStep.lookbackAmount}] + 1): <code>{currentStep.lookbackVal === inf ? '∞ + 1 = ∞' : `${currentStep.lookbackVal} + 1 = ${currentStep.candidateVal}`}</code></span>
+                <span>➔</span>
+                <span className={`ccv-compare-pill ${currentStep.isUpdated ? 'success' : currentStep.candidateVal === inf ? 'unreachable' : 'neutral'}`}>
+                  {currentStep.isUpdated ? t('✔ 刷新更少枚数!', '✔ Updated to fewer coins!') : currentStep.candidateVal === inf ? t('✖ 无法凑出 (保持)', '✖ Unreachable (Kept)') : t('— 维持原有更优解', '— Kept existing better')}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="ccv-section-card">
+          <div className="ccv-section-header">
+            <h3>
+              <span>📋</span>
+              {t('二维完全背包决策表格 dp[coin_idx][amount]', '2D Knapsack Decision Table')}
+            </h3>
+          </div>
+          <div className="ccv-2d-wrapper">
+            <table className="ccv-2d-table">
+              <thead>
+                <tr>
+                  <th>{t('硬币面值', 'Coins')}</th>
+                  {Array.from({ length: amount + 1 }).map((_, a) => (
+                    <th key={a}>a={a}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {coins.map((c, rIdx) => (
+                  <tr key={c}>
+                    <th>
+                      <span className="ccv-coin-badge" style={{ width: 22, height: 22, fontSize: '0.7rem' }}>{c}</span>
+                    </th>
+                    {Array.from({ length: amount + 1 }).map((_, a) => {
+                      const val = currentStep.dp2D[rIdx]?.[a] ?? inf;
+                      const isTarget = currentStep.coinIdx === rIdx && currentStep.amountIndex === a;
+                      const isLookback = currentStep.coinIdx === rIdx && currentStep.lookbackAmount === a;
+
+                      return (
+                        <td
+                          key={a}
+                          className={`${isTarget ? 'ccv-2d-target' : ''} ${isLookback ? 'ccv-2d-lookback' : ''}`}
+                        >
+                          {val === inf ? '∞' : val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Optimal Combination Path Reconstructed */}
+      {currentStep.path && currentStep.path.length > 0 && (
+        <div className="ccv-path-container">
+          <span className="ccv-path-label">🎯 {t('最优找零硬币组合', 'Optimal Coin Combination')}:</span>
+          <div className="ccv-coin-chain">
+            {currentStep.path.map((c, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <span style={{ fontWeight: 800, color: '#059669' }}>+</span>}
+                <span className="ccv-coin-badge" style={{ width: 28, height: 28, fontSize: '0.82rem' }}>{c}</span>
+              </React.Fragment>
+            ))}
+            <span style={{ fontWeight: 800, color: '#059669', marginLeft: '0.25rem' }}>= {amount}</span>
+            <span style={{ fontSize: '0.8rem', color: '#065f46', marginLeft: '0.5rem' }}>
+              ({currentStep.path.length} {t('枚硬币', 'coins')})
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Playback Controls */}
+      <div className="ccv-controls-card">
+        <div className="ccv-btn-row">
+          <button
+            type="button"
+            className="ccv-btn"
+            disabled={stepIndex === 0}
+            onClick={() => { setIsPlaying(false); setStepIndex(0); }}
+          >
+            ⏮ {t('重置', 'Reset')}
+          </button>
+          <button
+            type="button"
+            className="ccv-btn"
+            disabled={stepIndex === 0}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.max(0, prev - 1)); }}
+          >
+            ◀ {t('上一步', 'Prev')}
+          </button>
+          <button
+            type="button"
+            className="ccv-btn primary"
+            disabled={stepIndex >= steps.length - 1}
+            onClick={() => setIsPlaying((prev) => !prev)}
+          >
+            {isPlaying ? `⏸ ${t('暂停', 'Pause')}` : `▶ ${t('播放', 'Play')}`}
+          </button>
+          <button
+            type="button"
+            className="ccv-btn"
+            disabled={stepIndex >= steps.length - 1}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.min(steps.length - 1, prev + 1)); }}
+          >
+            {t('下一步', 'Next')} ▶
+          </button>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>{t('速度', 'Speed')}:</span>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value))}
+              style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+            >
+              <option value={1000}>{t('慢速 (1.0s)', 'Slow (1.0s)')}</option>
+              <option value={600}>{t('正常 (0.6s)', 'Normal (0.6s)')}</option>
+              <option value={250}>{t('快速 (0.25s)', 'Fast (0.25s)')}</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="ccv-slider-box">
+          <span>{t('当前步骤', 'Step')}: <strong>{stepIndex} / {steps.length - 1}</strong></span>
+          <input
+            type="range"
+            min="0"
+            max={steps.length - 1}
+            value={stepIndex}
+            onChange={(e) => { setIsPlaying(false); setStepIndex(Number(e.target.value)); }}
+            aria-label={t('选择零钱兑换 DP 演示步骤', 'Select Coin Change DP Step')}
+          />
+        </div>
+      </div>
+
+      {/* Step Explanation Card */}
+      <div className="ccv-desc-card">
+        <div className="ccv-desc-title">
+          <span className="ccv-step-badge">{t('步骤', 'Step')} {stepIndex}</span>
+          <strong>{currentStep.coin !== null ? `面值 coin = ${currentStep.coin} ➔ 推进金额 a = ${currentStep.amountIndex}` : currentStep.isFinal ? t('最终求解结果', 'Final Result') : t('初始化', 'Initialization')}</strong>
+        </div>
+        <p className="ccv-desc-text">{isEnglish ? currentStep.descEn : currentStep.desc}</p>
+      </div>
+    </section>
+  );
+}
+
+
 function BacktrackingPatternAtlas() {
   const { isEnglish, t } = useUiCopy();
   const [activePattern, setActivePattern] = useState('subsets');
@@ -20163,7 +20657,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -20267,6 +20761,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'palindrome-dp-demo') {
     return <PalindromeDPVisual />;
+  }
+
+  if (match?.[1] === 'coin-change-demo') {
+    return <CoinChangeVisual />;
   }
 
   if (match?.[1] === 'greedy-patterns') {
