@@ -836,7 +836,7 @@ class Solution:
 
 ---
 
-## Module 9: Interview Pitfalls, Complexity Matrix & Quizzes
+## Module 9: Interview Pitfalls, Complexity Matrix & Communication Template
 
 ### 1. Complexity & Space Optimization Summary
 
@@ -880,143 +880,7 @@ class Solution:
 
 ---
 
-### 3. Quick Quizzes (12 Classic Questions)
-
-```quiz
-title: Quick quiz 1
-question: In House Robber II compared to House Robber I, what is the most critical modification?
-answer: B
-A. Change to 2D DP dp[i][j]
-B. Split the circular street into two linear subproblems and take the max
-C. Must use interval DP
-D. Change to complete knapsack
-explanation: The first and last houses are adjacent; solve linear robbery on nums[0..n-2] and nums[1..n-1] separately, then take the maximum.
-```
-
-```quiz
-title: Quick quiz 2
-question: For 1D space-optimized DP, what is the key difference between Coin Change (min coins) and Coin Change II (combinations)?
-answer: C
-A. One uses backward loop and the other uses forward loop
-B. One must be 2D and the other 1D
-C. Different objective functions (min vs additive counting), and II requires coins in the outer loop to enforce combination semantics
-D. Both transitions are identical except for return value
-explanation: Both are complete knapsack shapes; II counts combinations so coins must be the outer loop; transitions are min vs addition.
-```
-
-```quiz
-title: Quick quiz 3
-question: In Burst Balloons interval transition, what does k represent?
-answer: A
-A. The last balloon to burst in open interval (i, j)
-B. The first balloon to burst in the open interval
-C. The interval length
-D. The index of the virtual boundary 1
-explanation: When k bursts last, balloons between i and k, and between k and j are already cleared, isolating the remaining cost to a[i]*a[k]*a[j] + subproblem DPs.
-```
-
-```quiz
-title: Quick quiz 4
-question: When reducing Target Sum to subset sum, what is the target subset sum P?
-answer: B
-A. (sum - target) / 2
-B. (sum + target) / 2
-C. sum - target
-D. target
-explanation: P + N = sum and P - N = target yield P = (sum + target) / 2; requires (sum + target) to be non-negative and even.
-```
-
-```quiz
-title: Quick quiz 5
-question: Why can Longest Increasing Path in a Matrix not be solved by a simple row-by-row nested loop like Unique Paths?
-answer: D
-A. Because you can only move right and down
-B. Because space must be O(1)
-C. Because it is not a DP problem
-D. Increasing neighbors can point in any direction with no fixed sweep order; Memoized DFS on the implicit DAG is required
-explanation: Strictly increasing edges form a DAG; memoized DFS computes topological DP correctly.
-```
-
-```quiz
-title: Quick quiz 6
-question: In Edit Distance when word1[i-1] == word2[j-1], what is the correct transition?
-answer: A
-A. dp[i][j] = dp[i-1][j-1]
-B. dp[i][j] = dp[i-1][j-1] + 1
-C. dp[i][j] = max(dp[i-1][j], dp[i][j-1])
-D. dp[i][j] = dp[i][j-1] + 1
-explanation: Characters match, requiring 0 edits; inherit diagonal directly. Mismatches take 1 + min(insert, delete, replace).
-```
-
-```quiz
-title: Quick quiz 7
-question: Why must Maximum Product Subarray maintain min_here alongside max_here?
-answer: C
-A. To handle zeros
-B. To achieve O(1) space
-C. A negative number flips a minimum product into a maximum; tracking only max_here loses optimal solutions
-D. The problem asks for minimum product
-explanation: In inputs like [-2, 3, -4], negative times negative flips the minimum (-6) to maximum (+24).
-```
-
-```quiz
-title: Quick quiz 8
-question: In Distinct Subsequences when s[i-1] == t[j-1], what is the transition?
-answer: B
-A. Only dp[i-1][j-1]
-B. dp[i-1][j-1] + dp[i-1][j] (choose to match or skip current char)
-C. dp[i][j-1] + dp[i-1][j]
-D. max(dp[i-1][j-1], dp[i-1][j])
-explanation: Sum the ways from matching s[i-1] with t[j-1] and skipping s[i-1].
-```
-
-```quiz
-title: Quick quiz 9
-question: In Regular Expression Matching when p[j-1] == '*', what represents matching 0 times?
-answer: A
-A. dp[i][j-2]
-B. dp[i-1][j]
-C. dp[i-1][j-1]
-D. dp[i][j-1]
-explanation: Discard the entire x* pattern token and check if p[:j-2] matches s[:i].
-```
-
-```quiz
-title: Quick quiz 10
-question: Why must the capacity loop run backward in 1D space-optimized 0/1 Knapsack?
-answer: C
-A. It is faster
-B. To turn combinations into permutations
-C. To prevent the same item from being reused multiple times in the same round
-D. Backward traversal is required for complete knapsack
-explanation: Backward loop ensures dp[j-x] references the state from before considering the current item.
-```
-
-```quiz
-title: Quick quiz 11
-question: In Stock with Cooldown, what is the precise meaning of the sold state?
-answer: B
-A. Any empty holding state
-B. Stock was sold today, mandating cooldown tomorrow
-C. Currently holding stock
-D. Cumulative sell count
-explanation: sold specifically marks "sold today"; the next day can only enter rest, not buy directly.
-```
-
-```quiz
-title: Quick quiz 12
-question: In House Robber II, why can you not directly reuse House Robber I's linear DP?
-answer: B
-A. Different data ranges require a different algorithm
-B. First and last houses are adjacent and form a ring, so you must split into two linear subproblems and take the larger answer
-C. A circular array must use interval DP
-D. The dp transition equation itself must change on a circular array
-explanation: The only change from the ring is "cannot rob first and last together"; splitting into [0..n-2] and [1..n-1] linear Robber bypasses that constraint, and the transition inside each segment is unchanged.
-```
-
----
-
-### 4. Structured Interview Communication Template
+### 3. Structured Interview Communication Template
 
 When presenting your solution in a whiteboard interview, follow these 6 structured steps:
 
@@ -1026,3 +890,4 @@ When presenting your solution in a whiteboard interview, follow these 6 structur
 4. **Iteration Order**: "Because the current state depends on earlier states, we iterate in forward/backward/length-increasing order."
 5. **Implementation & Dry Run**: "Let's implement the 2D/1D DP and dry-run with a small example."
 6. **Complexity & Space Optimization**: "The time complexity is $O(\dots)$ and space is $O(\dots)$. Observing that dependencies only reach the previous row/two variables, we can compress space to $O(1)$ / $O(m)$."
+

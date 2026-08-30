@@ -849,7 +849,7 @@ class Solution:
 
 ---
 
-## 模块九：面试避坑指南、复杂度总表与自测题库
+## 模块九：面试避坑指南、复杂度总表与白板表达模板
 
 ### 1. 全问题时空复杂度与空间优化速查表
 
@@ -893,143 +893,7 @@ class Solution:
 
 ---
 
-### 3. 快速自测题库（12 道经典选择题）
-
-```quiz
-title: 快速选择题 1
-question: House Robber II 相对 House Robber，最关键的额外处理是？
-answer: B
-A. 改成二维 dp[i][j]
-B. 环拆成两段线性 Robber，取 max
-C. 必须用区间 DP
-D. 改成完全背包
-explanation: 首尾相邻，不能同时抢；对 nums[0..n-2] 与 nums[1..n-1] 各跑一次线性 Robber 再取 max。
-```
-
-```quiz
-title: 快速选择题 2
-question: Coin Change（最少枚数）与 Coin Change II（组合数）在一维 DP 上，最重要的差别是？
-answer: C
-A. 一个用倒序一个用正序（都是完全背包时）
-B. 一个必须二维一个必须一维
-C. 目标函数不同（min vs 累加计数），且 II 要用"物品在外"保证组合语义
-D. 二者转移完全相同只是返回值不同
-explanation: 二者都是完全背包形状；II 需要组合而非排列，故硬币循环在外；转移分别是 min 与加法计数。
-```
-
-```quiz
-title: 快速选择题 3
-question: Burst Balloons 区间转移里，k 表示什么？
-answer: A
-A. 开区间 (i,j) 里最后戳破的气球
-B. 开区间里最先戳破的气球
-C. 区间长度
-D. 虚拟边界 1 的下标
-explanation: 最后戳 k 时左右已空，收益拆成 a[i]*a[k]*a[j] 加两段子区间 DP。
-```
-
-```quiz
-title: 快速选择题 4
-question: Target Sum 化成子集和时，子集目标和 P 等于？
-answer: B
-A. (sum - target) / 2
-B. (sum + target) / 2
-C. sum - target
-D. target
-explanation: P+N=sum，P-N=target，故 P=(sum+target)/2；需整除且 |target|<=sum。
-```
-
-```quiz
-title: 快速选择题 5
-question: Longest Increasing Path in a Matrix 为什么不能像 Unique Paths 那样按行扫 dp？
-answer: D
-A. 因为只能右和下走
-B. 因为必须 O(1) 空间
-C. 因为不是 DP
-D. 更大邻居方向任意，没有单一合法填表顺序；用记忆化 DFS 走 DAG
-explanation: 严格上升边构成 DAG；memo 化的 DFS 才是正确的 DP 形态。
-```
-
-```quiz
-title: 快速选择题 6
-question: Edit Distance 中 word1[i-1]==word2[j-1] 时，正确转移是？
-answer: A
-A. dp[i][j] = dp[i-1][j-1]
-B. dp[i][j] = dp[i-1][j-1] + 1
-C. dp[i][j] = max(dp[i-1][j], dp[i][j-1])
-D. dp[i][j] = dp[i][j-1] + 1
-explanation: 字符已相等，无需操作，直接继承对角；不相等才在 insert/delete/replace 中取 min 加一。
-```
-
-```quiz
-title: 快速选择题 7
-question: Maximum Product Subarray 为什么要同时维护 min_here？
-answer: C
-A. 为了处理 0
-B. 为了 O(1) 空间
-C. 负号会把最小乘积翻成最大，只维护 max 会丢解
-D. 题目要求返回最小乘积
-explanation: 例如 [-2,3,-4]；负负得正依赖此前的最小（最负）乘积。
-```
-
-```quiz
-title: 快速选择题 8
-question: Distinct Subsequences 在 s[i-1]==t[j-1] 时，转移应为？
-answer: B
-A. 只加 dp[i-1][j-1]
-B. dp[i-1][j-1] + dp[i-1][j]（用或不用当前字符）
-C. dp[i][j-1] + dp[i-1][j]
-D. max(dp[i-1][j-1], dp[i-1][j])
-explanation: 用当前字符匹配 t 的末位，或跳过 s 的当前字符，两路方案数相加。
-```
-
-```quiz
-title: 快速选择题 9
-question: Regex Matching 中 p[j-1]=='*' 时，"匹配零次"对应？
-answer: A
-A. dp[i][j-2]
-B. dp[i-1][j]
-C. dp[i-1][j-1]
-D. dp[i][j-1]
-explanation: x* 整段丢掉，看 p[:j-2] 是否已匹配 s[:i]；多次匹配才或上 dp[i-1][j]。
-```
-
-```quiz
-title: 快速选择题 10
-question: 0/1 背包一维优化时容量循环必须倒序，原因是？
-answer: C
-A. 更快
-B. 为了组合数变排列数
-C. 避免同一个物品在本轮被重复使用
-D. 倒序才能处理完全背包
-explanation: 倒序保证 dp[j-x] 仍是"未选当前物品"的旧值；正序会变成完全背包。
-```
-
-```quiz
-title: 快速选择题 11
-question: Stock with Cooldown 的 sold 状态含义最准确的是？
-answer: B
-A. 任意空仓
-B. 今天刚卖出，明天处于冷却
-C. 手持股票
-D. 累计卖出次数
-explanation: sold 专门标记"今日卖出"，次日只能进入 rest，不能直接 buy。
-```
-
-```quiz
-title: 快速选择题 12
-question: House Robber II 中，为什么不能直接套用 House Robber 的线性 DP？
-answer: B
-A. 数据范围不同，需要换算法
-B. 首尾房屋相邻，形成环，必须拆成两段线性子问题分别求解再取较大值
-C. 环形数组必须用区间 DP
-D. 环形数组下 dp 转移方程本身要变
-explanation: 环带来的唯一变化是"不能同时抢第一家和最后一家"，拆成 [0..n-2] 与 [1..n-1] 两段线性 Robber 就绕开了这个限制，单段内部的转移方程完全不变。
-```
-
----
-
-### 4. 面试结构化表达模板
+### 3. 面试结构化表达模板
 
 在面对任何 DP 面试题时，请严格按照以下 6 步推进沟通：
 
@@ -1039,3 +903,4 @@ explanation: 环带来的唯一变化是"不能同时抢第一家和最后一家
 4. **计算顺序（Order）**：“由于当前状态依赖于旧状态的位置，我们需要以正序/倒序/按长度递增填表。”
 5. **编码实现与干跑用例（Dry Run）**：“我们先写出清晰的二维/一维完整表代码，并用一个小样例干跑验证。”
 6. **时空复杂度与空间压缩（Optimization）**：“当前时空复杂度为 $O(\dots)$；观察到依赖半径仅为上一行/前两个变量，我们可进一步将空间压缩至 $O(1)$ / $O(m)$。”
+
