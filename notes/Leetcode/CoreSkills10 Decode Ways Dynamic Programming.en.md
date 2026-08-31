@@ -702,6 +702,122 @@ Real interview problems rarely say "this is knapsack" directly—they hide behin
 
 ---
 
+#### Step 4: Universal Knapsack Blueprint & Code Templates
+
+Every knapsack problem reduces to a single unified framework tuned by **3 control knobs**:
+
+```text
+Universal Knapsack 3-Knob System:
+┌───────────────────────┬────────────────────────────────────────────────────────────────────────┐
+│ Control Knob          │ Branch Choices & Engineering Meaning                                   │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 1. Loop Hierarchy     │ Items Outer, Capacity Inner ➔ Combinations / Extremum / Feasibility   │
+│                       │ Capacity Outer, Items Inner ➔ Permutations (e.g. Combination Sum IV)   │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 2. Capacity Direction │ Backward range(W, w-1, -1) ➔ 0/1 Knapsack (Prevent item multi-use)     │
+│                       │ Forward  range(w, W+1)     ➔ Complete Knapsack (Allow item reuse)      │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 3. Target Operator    │ Extremum    ➔ dp[j] = min/max(...)                                     │
+│                       │ Counting    ➔ dp[j] += dp[j - w]                                       │
+│                       │ Feasible    ➔ dp[j] = dp[j] or dp[j - w]                               │
+└───────────────────────┴────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 1. Master Parameterized Knapsack Function
+
+```python
+def universal_knapsack(
+    items: list[tuple[int, int]],  # [(weight, value), ...]
+    capacity: int,
+    problem_type: str = "01_max",
+    # Types: "01_max" | "01_min" | "01_feas" | "01_count" | "complete_min" | "complete_combo" | "complete_perm"
+) -> int | bool:
+    """
+    Universal Knapsack Master Framework
+    """
+    # 1. Base case setup
+    if problem_type in ("01_max", "complete_max"):
+        dp = [0] * (capacity + 1)
+    elif problem_type == "01_feas":
+        dp = [True] + [False] * capacity
+    elif problem_type in ("01_count", "complete_combo", "complete_perm"):
+        dp = [1] + [0] * capacity
+    elif problem_type in ("01_min", "complete_min"):
+        INF = capacity + 1
+        dp = [0] + [INF] * capacity
+
+    # 2. State transition execution
+    if problem_type == "complete_perm":
+        # Permutations: Capacity in outer loop, Items in inner loop
+        for j in range(1, capacity + 1):
+            for weight, val in items:
+                if j >= weight:
+                    dp[j] += dp[j - weight]
+    else:
+        # Standard: Items in outer loop, Capacity in inner loop
+        for weight, val in items:
+            step_range = (
+                range(capacity, weight - 1, -1)
+                if problem_type.startswith("01")
+                else range(weight, capacity + 1)
+            )
+            for j in step_range:
+                if problem_type in ("01_max", "complete_max"):
+                    dp[j] = max(dp[j], dp[j - weight] + val)
+                elif problem_type in ("01_min", "complete_min"):
+                    dp[j] = min(dp[j], dp[j - weight] + 1)
+                elif problem_type in ("01_count", "complete_combo"):
+                    dp[j] += dp[j - weight]
+                elif problem_type == "01_feas":
+                    dp[j] = dp[j] or dp[j - weight]
+
+    return dp[capacity]
+```
+
+##### 2. Top-5 High-Frequency Interview Quick-Snippets
+
+```python
+# 1. 0/1 Knapsack · Feasibility (Partition Equal Subset Sum)
+dp = [True] + [False] * target
+for x in nums:
+    for j in range(target, x - 1, -1):  # Backward
+        dp[j] = dp[j] or dp[j - x]
+
+# 2. 0/1 Knapsack · Counting Ways (Target Sum)
+dp = [1] + [0] * bag
+for x in nums:
+    for j in range(bag, x - 1, -1):     # Backward
+        dp[j] += dp[j - x]
+
+# 3. Complete Knapsack · Minimum Count (Coin Change)
+dp = [0] + [amount + 1] * amount
+for c in coins:
+    for j in range(c, amount + 1):      # Forward
+        dp[j] = min(dp[j], dp[j - c] + 1)
+
+# 4. Complete Knapsack · Combinations (Coin Change II)
+dp = [1] + [0] * amount
+for c in coins:                         # Items Outer
+    for j in range(c, amount + 1):      # Forward Inner
+        dp[j] += dp[j - c]
+
+# 5. Complete Knapsack · Permutations (Combination Sum IV)
+dp = [1] + [0] * target
+for j in range(1, target + 1):          # Capacity Outer
+    for x in nums:                      # Items Inner
+        if j >= x:
+            dp[j] += dp[j - x]
+```
+
+##### 3. Whiteboard 3-Second Mental Mnemonics
+
+> 💡 **3-Second Interview Mnemonics**:
+> - **"0/1 loops backward to prevent multi-use; Complete loops forward for compounding reuse."**
+> - **"Items outer produces Combinations; Capacity outer produces Permutations."**
+> - **"Feasibility uses OR; Counting uses ADD with base $dp[0]=1$."**
+
+---
+
 ### 2. 0/1 Knapsack: Partition Equal Subset Sum (Feasibility)
 
 - **Reduction**: Determine if a subset can be chosen (each element at most once) summing to $target = \text{total} / 2$.

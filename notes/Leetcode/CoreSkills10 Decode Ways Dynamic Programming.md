@@ -704,6 +704,123 @@ class Solution:
 
 ---
 
+#### 第四步：万能解题模板与统一代码骨架（Universal Knapsack Blueprint）
+
+所有背包问题都可以抽象为由 **3 个核心开关（Knobs）** 调控的统一参数化代码骨架：
+
+```text
+背包万能 3 旋钮体系：
+┌───────────────────────┬────────────────────────────────────────────────────────────────────────┐
+│ 控制开关              │ 选项分支与工程含义                                                     │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 1. 循环层次 (Hierarchy)│ 物品在外、容量在内 ➔ 组合数 / 最值 / 可行性                            │
+│                       │ 容量在外、物品在内 ➔ 排列数 (Permutations，如 Combination Sum IV)       │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 2. 容量方向 (Direction)│ 倒序 range(W, w-1, -1) ➔ 0/1 背包 (防同一物品复选)                     │
+│                       │ 正序 range(w, W+1)     ➔ 完全背包 (允许同一物品无限复选)               │
+├───────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 3. 转移算子 (Operator) │ 最值优化 ➔ dp[j] = min/max(...)                                        │
+│                       │ 方案计数 ➔ dp[j] += dp[j - w]                                          │
+│                       │ 可行性   ➔ dp[j] = dp[j] or dp[j - w]                                  │
+└───────────────────────┴────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 1. 万能统一参数化函数（Universal Knapsack Function）
+
+```python
+def universal_knapsack(
+    items: list[tuple[int, int]],  # [(weight, value), ...]
+    capacity: int,
+    problem_type: str = "01_max",
+    # 可选类型: "01_max" | "01_min" | "01_feas" | "01_count" | "complete_min" | "complete_combo" | "complete_perm"
+) -> int | bool:
+    """
+    万能背包统领框架 (Universal Knapsack Master Framework)
+    """
+    # 1. 初始化基石
+    if problem_type in ("01_max", "complete_max"):
+        dp = [0] * (capacity + 1)
+    elif problem_type == "01_feas":
+        dp = [True] + [False] * capacity
+    elif problem_type in ("01_count", "complete_combo", "complete_perm"):
+        dp = [1] + [0] * capacity
+    elif problem_type in ("01_min", "complete_min"):
+        INF = capacity + 1
+        dp = [0] + [INF] * capacity
+
+    # 2. 状态转移执行
+    if problem_type == "complete_perm":
+        # 排列数特殊结构：容量在外层，物品在内层
+        for j in range(1, capacity + 1):
+            for weight, val in items:
+                if j >= weight:
+                    dp[j] += dp[j - weight]
+    else:
+        # 标准结构：物品在外层，容量在内层
+        for weight, val in items:
+            # 0/1 背包倒序 vs 完全背包正序
+            step_range = (
+                range(capacity, weight - 1, -1)
+                if problem_type.startswith("01")
+                else range(weight, capacity + 1)
+            )
+            for j in step_range:
+                if problem_type in ("01_max", "complete_max"):
+                    dp[j] = max(dp[j], dp[j - weight] + val)
+                elif problem_type in ("01_min", "complete_min"):
+                    dp[j] = min(dp[j], dp[j - weight] + 1)
+                elif problem_type in ("01_count", "complete_combo"):
+                    dp[j] += dp[j - weight]
+                elif problem_type == "01_feas":
+                    dp[j] = dp[j] or dp[j - weight]
+
+    return dp[capacity]
+```
+
+##### 2. 面试高频五大场景 10 行秒杀速写卡（Quick Snippets）
+
+```python
+# 1. 0/1 背包 · 可行性判定 (Partition Equal Subset Sum)
+dp = [True] + [False] * target
+for x in nums:
+    for j in range(target, x - 1, -1):  # 倒序
+        dp[j] = dp[j] or dp[j - x]
+
+# 2. 0/1 背包 · 方案计数 (Target Sum)
+dp = [1] + [0] * bag
+for x in nums:
+    for j in range(bag, x - 1, -1):     # 倒序
+        dp[j] += dp[j - x]
+
+# 3. 完全背包 · 最小物品数 (Coin Change)
+dp = [0] + [amount + 1] * amount
+for c in coins:
+    for j in range(c, amount + 1):      # 正序
+        dp[j] = min(dp[j], dp[j - c] + 1)
+
+# 4. 完全背包 · 组合数计数 (Coin Change II)
+dp = [1] + [0] * amount
+for c in coins:                         # 物品在外
+    for j in range(c, amount + 1):      # 正序在内
+        dp[j] += dp[j - c]
+
+# 5. 完全背包 · 排列数计数 (Combination Sum IV)
+dp = [1] + [0] * target
+for j in range(1, target + 1):          # 容量在外
+    for x in nums:                      # 物品在内
+        if j >= x:
+            dp[j] += dp[j - x]
+```
+
+##### 3. 面试 3 秒速记口诀（Mental Mnemonics）
+
+> 💡 **背包三秒速记口诀**：
+> - **“零一倒序防复选，完全正序连环算。”**
+> - **“物品在外组合现，容量在外排列见。”**
+> - **“可行用或最值限，计数用加初始一点（$dp[0]=1$）。”**
+
+---
+
 ### 2. 0/1 背包例题一：Partition Equal Subset Sum（分割等和子集 · 可行性）
 
 - **问题转化**：判断能否从数组中选出若干数（每个数最多选 1 次），使其和恰好为 $target = \text{sum} / 2$。
