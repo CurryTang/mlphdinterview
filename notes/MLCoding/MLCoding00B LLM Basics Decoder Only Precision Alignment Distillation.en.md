@@ -64,6 +64,82 @@ $$P(X) = \prod_{i=1}^S P(x_i \mid x_1, x_2, \dots, x_{i-1})$$
 
 ---
 
+### 5. Text Representation & Embeddings: Why Were Encoders Dominant, and How Did Modern Research Solve Decoder Embedding Bottlenecks?
+
+Beyond autoregressive text generation, **Dense Text Embeddings** serve as the backbone for Retrieval-Augmented Generation (RAG), semantic vector search, clustering, and recommendation systems.
+
+```text
+Evolution of Text Embeddings:
+The Classical Era (2018-2022)             Bottlenecks (Why Vanilla Decoders Failed at Embedding)
+┌────────────────────────────────┐        ┌────────────────────────────────────────────────────────┐
+│ Encoder-Only (BERT / RoBERTa)  │        │ • Unidirectional Blindspots: Tokens cannot see future  │
+│ Encoder-Decoder (T5 / Contriever)│ ───> │ • Anisotropy Crisis: Vectors collapse into narrow cone │
+│ Mechanism: Bidirectional + CLS │        │ • High compute cost & pre-training objective mismatch  │
+└────────────────────────────────┘        └────────────────────────────────────────────────────────┘
+                                                              │
+                                                              ▼ Modern Research Breakthroughs (2023-2026)
+                                          ┌────────────────────────────────────────────────────────┐
+                                          │ Modern Decoder-Only Embeddings (E5-Mistral, NV-Embed)  │
+                                          │ 1. Unmasking: Remove causal mask for bidirectional SFT │
+                                          │ 2. Task-Instructed Contrastive InfoNCE + Hard Negatives│
+                                          │ 3. Latent Attention Pooling (Perceiver Cross-Attn)     │
+                                          │ 4. Unified Representation & Generation (GritLM)        │
+                                          │ 5. Matryoshka Representation Learning (MRL)            │
+                                          └────────────────────────────────────────────────────────┘
+```
+
+#### Why Did Dense Retrieval Historically Prefer Encoders & Encoder-Decoders?
+
+1. **Global Context Compression via Bidirectional Attention**:
+   - BERT, RoBERTa, and T5 utilize a fully bidirectional attention matrix ($M_{ij} = 0$). Every token interacts with both preceding and following tokens across all layers without restriction.
+   - The prepended `[CLS]` token acts as a natural information bottleneck, condensing sentence-wide semantics into a high-quality global representation.
+   - In contrast, vanilla Decoder-Only models suffer from **unidirectional blindspots**:
+     - Under **Last-Token Pooling**, earlier tokens cannot incorporate information from late-occurring semantic shifts or qualifiers (e.g., in *"The ambiance was fantastic but the food was terrible"*, early tokens cannot see the crucial negative turn);
+     - Under **Mean Pooling**, because of the lower-triangular causal mask, token $1$ has a receptive field of $1$ while token $S$ has a receptive field of $S$, causing an extreme imbalance in feature abstraction depths.
+2. **The Anisotropy Problem (The "Cone Effect")**:
+   - Next-token prediction autoregressive loss forces decoder representations to be dominated by word frequency biases and dominant singular dimensions.
+   - Uncalibrated decoder hidden states cluster in an extremely narrow cone in vector space: **the cosine similarity between almost any two arbitrary, unrelated sentences is often $>0.95$**, destroying discriminative capability.
+3. **Serving Efficiency & QPS Economics**:
+   - Production vector retrieval requires thousands of queries per second (QPS) with sub-10ms latency. Lightweight models (BERT-base 110M, BGE-large 330M) easily deliver high throughput on a single GPU, whereas early 7B/13B decoders were computationally prohibitive.
+
+---
+
+#### How Modern Research Solved Decoder-Only Embedding Deficiencies
+
+Modern foundation models (7B–70B) possess vast world knowledge, multilingual proficiency, and complex reasoning traces far superior to 300M-scale encoders. Recent breakthroughs have enabled Decoder-Only models to dominate global benchmarks like MTEB:
+
+##### 1. Unmasking Causal Attention: Bidirectional Fine-Tuning
+- **Pioneering Work**: `E5-Mistral-7B`, `SFR-Embedding`, `BGE-en-ICL`
+- **Mechanism**: During embedding fine-tuning, **the causal lower-triangular mask is completely replaced with a fully bidirectional attention matrix**.
+- **Outcome**: The decoder retains its pre-trained parametric knowledge while gaining true BERT-like bidirectional contextual reasoning, completely eliminating unidirectional receptive field blindspots.
+
+##### 2. Instruction-Aware Contrastive Learning & Task Prompts
+- **Pioneering Work**: `Instructor`, `E5-Mistral`, `Qwen2-Embed`
+- **Mechanism**: Prepends task-specific instruction prompts to the query:
+  ```text
+  Instruct: Given a financial question, retrieve relevant SEC filing passages.
+  Query: What were the Q3 capital expenditures?
+  ```
+- **Resolving Anisotropy**: Multi-stage contrastive training (InfoNCE with in-batch negatives and mined hard negatives) pulls positive pairs together and pushes negatives apart, restoring **isotropic uniformity** on the unit hypersphere.
+
+##### 3. Architectural Pooling Innovation: Latent Attention Pooling
+- **Pioneering Work**: `NV-Embed-v1/v2` (ranked #1 on MTEB)
+- **Mechanism**: Replaces naive mean/last-token pooling with a **Latent Attention Pooling layer** (inspired by the Perceiver Resampler):
+  - A set of learnable latent query vectors $\mathbf{Q}_{\text{latent}}$ attends over the entire sequence of decoder token states via cross-attention;
+  - Dynamically extracts multi-scale semantic salience into a compact, expressive embedding vector.
+
+##### 4. Unified Representation & Generation: GritLM
+- **Pioneering Work**: `GritLM-7B / 8B` (Generative Representational Instruction-Tuning)
+- **Mechanism**: Trains a single model to act as both a **dense embedding retriever** and a **generative autoregressive LLM**.
+- **Implementation**: Uses a dual-mask schedule during training (bidirectional for embedding tasks, causal for generation tasks). A single deployed model can perform both retrieval and answer generation in RAG pipelines, cutting serving VRAM in half.
+
+##### 5. Matryoshka Representation Learning (MRL)
+- **Pioneering Work**: `OpenAI text-embedding-3`, `Nomic-Embed`, `BGE-M3`
+- **Mechanism**: Optimizes InfoNCE loss simultaneously across nested vector sub-dimensions $d \in \{64, 128, 256, 512, 1024, 4096\}$.
+- **Production Value**: Allows embeddings to be truncated without retraining—enabling ultra-fast coarse retrieval at 64 dimensions, followed by fine re-ranking at 4096 dimensions to minimize vector database index size.
+
+---
+
 ## Module 2: Precision Formats & Mixed-Precision Training
 
 ### 1. Floating-Point Bit Layouts (FP32 vs. FP16 vs. BF16)
