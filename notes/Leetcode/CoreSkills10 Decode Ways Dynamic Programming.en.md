@@ -632,16 +632,77 @@ Knapsack problems handle constrained optimization and counting. The defining dif
 ```text
 Knapsack Traversal Direction:
 ┌─────────────────┬───────────────────┬───────────────────────────────────────┐
-│ Knapsack Type   │ Item Usage Limit  │ Inner Capacity Loop Direction         │
-├─────────────────┼───────────────────┼───────────────────────────────────────┤
-│ 0/1 Knapsack    │ At most 1 per item│ Backward (Capacity ➔ Weight) [Prevent]│
-│ Complete        │ Unlimited per item│ Forward (Weight ➔ Capacity) [Allow]   │
-└─────────────────┴───────────────────┴───────────────────────────────────────┘
+## Module 5: Skeleton 4 · Knapsack Family (0/1, Complete & Counting)
+
+The knapsack family represents discrete choice optimization under resource budget constraints. Whether solving for maximum value, minimum items, feasibility, or combinations/permutations, all variations map into a rigorous, unified mathematical framework.
+
+---
+
+### 1. General Knapsack Problem-Solving Strategy Guide
+
+When facing any knapsack variation in whiteboard interviews, follow the **4-Step Identification Framework** and **Algebraic Reduction Patterns**:
+
+#### Step 1: The 4-Step Identification Framework
+
+```text
+Knapsack 4-Step Decision Flow:
+┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
+│ 1. Identify Capacity  │ ➔   │ 2. Item Reusability   │ ➔   │ 3. Target Operator    │ ➔   │ 4. Loop Hierarchy     │
+│ Budget W & Cost weight│     │ 0/1 vs Complete       │     │ Min/Max vs Feasible   │     │ Combinations vs Perms │
+└───────────────────────┘     └───────────────────────┘     └───────────────────────┘     └───────────────────────┘
+```
+
+1. **Identify Resource Constraint & Item Cost (Capacity & Cost)**:
+   - What represents capacity $W$? (Sum limit, amount, string character limits, budget);
+   - What is an "item"? Each item consumes cost $weight_i$ and yields benefit $value_i$.
+2. **Determine Item Reusability (0/1 vs Complete vs Bounded)**:
+   - **At most 1 use per item** $\implies$ **0/1 Knapsack**: 1D capacity loop **MUST be backward** ($W \to weight_i$) to prevent multi-selection within the same round;
+   - **Unlimited reuse per item** $\implies$ **Complete Knapsack**: 1D capacity loop **MUST be forward** ($weight_i \to W$) to deliberately leverage current-round updates;
+   - **Bounded count $k_i$ per item** $\implies$ **Multiple Knapsack**: Convert to 0/1 Knapsack via binary decomposition ($1, 2, 4, \dots, k_i - 2^p + 1$).
+3. **Determine Target Metric & Operator**:
+   - **Optimization**: Use $\max$ (max value) or $\min$ (Coin Change minimum count);
+   - **Feasibility (Boolean)**: Use $\lor$ (Partition Equal Subset Sum);
+   - **Counting Ways**: Use $+$ (Target Sum, Coin Change II).
+4. **Determine Loop Nesting Hierarchy (Outer vs Inner)**:
+   - **Items in Outer, Capacity in Inner** $\implies$ **Combinations**: `[1, 2]` equals `[2, 1]` (each item processed once in fixed order, e.g. Coin Change II);
+   - **Capacity in Outer, Items in Inner** $\implies$ **Permutations**: `[1, 2]` differs from `[2, 1]` (any item can be chosen as the terminal addition at capacity $j$, e.g. Combination Sum IV).
+
+---
+
+#### Step 2: High-Frequency Algebraic Reduction Patterns
+
+Real interview problems rarely say "this is knapsack" directly—they hide behind algebraic equivalence reductions:
+
+```text
+4 Canonical Algebraic Reductions:
+1. Equal Subset Sum Partition (Partition Sum):
+   Check if a subset sums to total / 2 ➔ 0/1 Knapsack Feasibility (target = total / 2)
+
+2. Sign Partition & Summing (Target Sum):
+   P - N = target and P + N = total ➔ P = (target + total) / 2 ➔ 0/1 Knapsack Subset Counting
+
+3. Minimal Partition Difference (Last Stone Weight II):
+   Find max subset sum <= floor(total / 2) ➔ Min difference is total - 2 * dp[floor(total / 2)]
+
+4. Multi-dimensional Cost Knapsack (Ones and Zeroes):
+   Bounded by <= M zeros AND <= N ones ➔ 2D state dp[j][k] with double backward loops
 ```
 
 ---
 
-### 1. 0/1 Knapsack: Partition Equal Subset Sum (Feasibility)
+#### Step 3: Initialization & Sentinel Matrix
+
+| Objective | Exact Fullness Required | `dp[0]` Base | Rest `dp[1..W]` | Core Rationale |
+|---|---|---|---|---|
+| **Max Value ($\max$)** | No ($\le W$) | `0` | `0` | Empty knapsack is valid with 0 value |
+| **Max Value ($\max$)** | Yes ($= W$ exact) | `0` | `-inf` | Only capacity 0 is reachable initially |
+| **Min Count ($\min$)** | Yes ($= W$ exact) | `0` | `+inf` (or `amount + 1`) | $dp[0]=0$ (0 coins for 0 sum), others $\infty$ |
+| **Count Ways ($+$)** | Yes ($= W$ exact) | `1` | `0` | $dp[0]=1$ (choosing empty set is the 1 valid way) |
+| **Feasibility ($\lor$)** | Yes ($= W$ exact) | `True` | `False` | Only sum 0 is reachable at start |
+
+---
+
+### 2. 0/1 Knapsack: Partition Equal Subset Sum (Feasibility)
 
 - **Reduction**: Determine if a subset can be chosen (each element at most once) summing to $target = \text{total} / 2$.
 - **Transition**: $dp[j] = dp[j] \lor dp[j - x]$ (traversed backward).
@@ -667,7 +728,7 @@ class Solution:
 
 ---
 
-### 2. 0/1 Knapsack: Target Sum (Algebraic Reduction & Counting)
+### 3. 0/1 Knapsack: Target Sum (Algebraic Reduction & Counting)
 
 - **Algebraic Derivation**:
 
@@ -696,7 +757,7 @@ class Solution:
 
 ---
 
-### 3. Complete Knapsack: Coin Change (Min Coins)
+### 4. Complete Knapsack: Coin Change (Min Coins)
 
 - **Semantic**: Each coin denomination is available in infinite supply. Find the **minimum total number of coins** to make up total `amount`.
 - **State**: $dp[a]$ = Minimum number of coins needed to make amount $a$.
@@ -738,7 +799,7 @@ class Solution:
 
 ---
 
-### 4. Complete Knapsack: Coin Change II (Combinations vs Permutations)
+### 5. Complete Knapsack: Coin Change II (Combinations vs Permutations)
 
 - **Combinations vs Permutations Loop Order**:
   - **Combinations (`{1, 2}` same as `{2, 1}`)**: **Items in outer loop, Capacity in inner loop**. Each coin type is processed once in fixed order.
@@ -761,15 +822,43 @@ class Solution:
 
 ---
 
-### 5. Knapsack Initialization Cheat Sheet
+### 6. Multi-dimensional Cost 0/1 Knapsack: Ones and Zeroes
 
-| Objective | `dp[0]` Base | Rest `dp[1..W]` | Transition Operator |
-|---|---|---|---|
-| Max Value (Capacity $\le W$) | `0` | `0` | $\max(dp[j], dp[j-w] + v)$ |
-| Max Value (Capacity $= W$ exact) | `0` | `-inf` | $\max(dp[j], dp[j-w] + v)$ |
-| Min Items (Capacity $= W$ exact) | `0` | `+inf` (or `amount + 1`) | $\min(dp[j], dp[j-c] + 1)$ |
-| Count Ways | `1` | `0` | $dp[j] += dp[j-w]$ |
-| Feasibility | `True` | `False` | $dp[j] = dp[j] \lor dp[j-w]$ |
+- **Problem Characteristic**: Each string costs $zeros$ zeros and $ones$ ones. Choose the maximum number of strings under budget $\le m$ zeros and $\le n$ ones.
+- **Formulation**: 2D capacity state $dp[j][k]$, nested double backward loop!
+
+```python
+class Solution:
+    def findMaxForm(self, strs: list[str], m: int, n: int) -> int:
+        # dp[j][k] = max subset size with at most j zeros and k ones
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        
+        for s in strs:
+            zeros = s.count('0')
+            ones = len(s) - zeros
+            
+            # 0/1 Knapsack: Both dimensions must traverse backward!
+            for j in range(m, zeros - 1, -1):
+                for k in range(n, ones - 1, -1):
+                    dp[j][k] = max(dp[j][k], dp[j - zeros][k - ones] + 1)
+                    
+        return dp[m][n]
+```
+
+- **Complexity**: Time $O(L \cdot m \cdot n)$ ($L$ is array length), Space $O(m \cdot n)$.
+
+---
+
+### 7. Knapsack Master Decision Matrix
+
+| Knapsack Pattern | Canonical Problem | Loop Nesting | Traversal Direction | Core Recurrence |
+|---|---|---|---|---|
+| **0/1 Feasibility** | Partition Equal Subset Sum | Items Outer, Capacity Inner | Capacity **Backward** ($W \to w$) | $dp[j] = dp[j] \lor dp[j - w]$ |
+| **0/1 Counting** | Target Sum | Items Outer, Capacity Inner | Capacity **Backward** ($W \to w$) | $dp[j] += dp[j - w]$ |
+| **0/1 Multi-dim** | Ones and Zeroes | Items Outer, Capacity Inner | Multi-dim **Backward** | $dp[j][k] = \max(dp[j][k], dp[j-z][k-o] + 1)$ |
+| **Complete Min Count** | Coin Change (Min Coins) | Items Outer, Capacity Inner | Capacity **Forward** ($w \to W$) | $dp[j] = \min(dp[j], dp[j - c] + 1)$ |
+| **Complete Combinations**| Coin Change II | **Items Outer, Capacity Inner** | Capacity **Forward** ($w \to W$) | $dp[j] += dp[j - c]$ |
+| **Complete Permutations**| Combination Sum IV | **Capacity Outer, Items Inner** | Capacity **Forward** ($1 \to W$) | $dp[j] += dp[j - num]$ |
 
 ---
 
