@@ -2245,6 +2245,17 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'ML Coding 00B · LLM 基础：Decoder-Only 为何胜出、混合精度训练、对齐评测与知识蒸馏',
+    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.md',
+    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 00B · LLM Basics: Why Decoder-Only Won, Mixed-Precision Training, Alignment, Distillation & Evaluation',
+      category: 'LLM Basics',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
     'ML Coding · 从零实现 LLM',
     'MLCoding01 Unicode Pretokenization.md',
     'MLCoding01 Unicode Pretokenization.en.md',
@@ -2252,6 +2263,17 @@ const mlCodingNoteDefinitions = [
       directory: 'MLCoding',
       titleEn: 'ML Coding · From-Scratch LLM Implementation',
       category: 'From Scratch',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 01B · Transformer 架构变体：MHA/MQA/GQA 算子张量维度、FLOPs 分解与 KV Cache 硬件优化',
+    'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
+    'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 01B · Transformer Architecture Variants: MHA/MQA/GQA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations',
+      category: 'Transformer & Attention',
       difficulty: 'Hard',
     },
   ),

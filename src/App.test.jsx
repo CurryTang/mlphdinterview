@@ -1182,6 +1182,25 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数/i })).toBeInTheDocument();
   });
+
+  it('routes directly to ML Coding 00B and ML Coding 01B via URL hash and renders them properly', async () => {
+    // 1. Test MLCoding00B
+    window.location.hash = '#MLCoding00B%20LLM%20Basics%20Decoder%20Only%20Precision%20Alignment%20Distillation.md';
+    const { unmount } = render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM 基础：Decoder-Only 为何胜出/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM Basics: Why Decoder-Only Won/i })).toBeInTheDocument();
+
+    unmount();
+
+    // 2. Test MLCoding01B
+    window.location.hash = '#MLCoding01B%20Transformer%20Architecture%20Variants%20Attention%20FLOPs%20KV%20Cache.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /ML Coding 01B · Transformer 架构变体：MHA\/MQA\/GQA/i })).toBeInTheDocument();
+  });
 });
 
 
