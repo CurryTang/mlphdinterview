@@ -1201,6 +1201,36 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /ML Coding 01B · Transformer 架构变体：MHA\/MQA\/GQA/i })).toBeInTheDocument();
   });
+
+  it('renders the Anisotropy Cone visual and switches modes', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('MLCoding00B')
+          ? '# LLM Basics\n\n```anisotropy-cone-demo\n```'
+          : '# Default note',
+      };
+    });
+
+    window.location.hash = '#MLCoding00B%20LLM%20Basics%20Decoder%20Only%20Precision%20Alignment%20Distillation.md';
+    render(<App />);
+
+    const visual = await screen.findByRole('region', { name: /各向异性圆锥效应交互实验室/i });
+    expect(visual).toBeInTheDocument();
+    expect(within(visual).getByText(/各向异性圆锥效应 vs 各向同性超球面交互实验室/i)).toBeInTheDocument();
+
+    // Verify initial Anisotropic mode
+    expect(within(visual).getByText(/圆锥坍塌态/i)).toBeInTheDocument();
+
+    // Switch to Isotropic mode
+    fireEvent.click(within(visual).getByRole('button', { name: /2\. 对比学习后/i }));
+    expect(within(visual).getByText(/均匀各向同性/i)).toBeInTheDocument();
+
+    // Switch to Centering baseline mode
+    fireEvent.click(within(visual).getByRole('button', { name: /3\. 去均值白化基线/i }));
+    expect(within(visual).getByText(/去中心化过渡态/i)).toBeInTheDocument();
+  });
 });
 
 

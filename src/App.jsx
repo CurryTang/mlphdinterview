@@ -19281,6 +19281,540 @@ function PartitionSubsetSumVisual() {
   );
 }
 
+const ANISOTROPY_SENTENCES = [
+  {
+    id: 0,
+    categoryZh: '人工智能 / 大模型',
+    categoryEn: 'AI & LLM',
+    textZh: '大语言模型在多跳推理与上下文学习中展现出涌现能力',
+    textEn: 'Large language models demonstrate emergent capabilities in multi-hop reasoning',
+    color: '#3b82f6',
+    baseAngle: 35,
+    aniDelta: -6,
+    centAngle: 25,
+  },
+  {
+    id: 1,
+    categoryZh: '基础设施 / 算力',
+    categoryEn: 'Infra & Compute',
+    textZh: 'GPU 集群跨节点通信与显存带宽成为大模型训练核心瓶颈',
+    textEn: 'GPU cluster inter-node communication and VRAM bandwidth bottleneck LLM training',
+    color: '#06b6d4',
+    baseAngle: 55,
+    aniDelta: -2,
+    centAngle: 45,
+  },
+  {
+    id: 2,
+    categoryZh: '美食料理 / 烘焙',
+    categoryEn: 'Food & Cooking',
+    textZh: '手工揉面与低温长时间发酵是制作松脆法式可颂的关键',
+    textEn: 'Hand kneading and cold fermentation are critical for flaky French croissants',
+    color: '#10b981',
+    baseAngle: 165,
+    aniDelta: 4,
+    centAngle: 140,
+  },
+  {
+    id: 3,
+    categoryZh: '宏观经济 / 金融',
+    categoryEn: 'Macro Finance',
+    textZh: '美联储宣布将基准借贷利率区间上调二十五个基点',
+    textEn: 'The Federal Reserve announced a 25 basis point hike in benchmark interest rates',
+    color: '#f59e0b',
+    baseAngle: 275,
+    aniDelta: 8,
+    centAngle: 260,
+  },
+];
+
+function AnisotropyConeVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [mode, setMode] = useState('anisotropic'); // 'anisotropic' | 'isotropic' | 'centering'
+  const [aperture, setAperture] = useState(15); // degrees
+  const [meanStrength, setMeanStrength] = useState(0.92); // 0.1 to 1.5
+  const [hoveredVector, setHoveredVector] = useState(null);
+
+  // Compute angles for each sentence based on mode
+  const coneCenterAngle = 45; // degrees
+
+  const vectorCoords = useMemo(() => {
+    return ANISOTROPY_SENTENCES.map((item) => {
+      let angleDeg = 0;
+      let radius = 1.0;
+
+      if (mode === 'anisotropic') {
+        const scaledDelta = (item.aniDelta / 10) * (aperture / 2);
+        angleDeg = (coneCenterAngle + scaledDelta + 360) % 360;
+        radius = 0.95;
+      } else if (mode === 'isotropic') {
+        angleDeg = item.baseAngle;
+        radius = 0.98;
+      } else {
+        // Centering
+        angleDeg = item.centAngle;
+        radius = 0.9;
+      }
+
+      const rad = (angleDeg * Math.PI) / 180;
+      const x = radius * Math.cos(rad);
+      const y = radius * Math.sin(rad);
+
+      return {
+        ...item,
+        angleDeg,
+        rad,
+        x,
+        y,
+        radius,
+      };
+    });
+  }, [mode, aperture]);
+
+  // Compute pairwise cosine similarities
+  const similarityMatrix = useMemo(() => {
+    const matrix = [];
+    for (let i = 0; i < vectorCoords.length; i++) {
+      const row = [];
+      for (let j = 0; j < vectorCoords.length; j++) {
+        if (i === j) {
+          row.push(1.0);
+        } else {
+          const v1 = vectorCoords[i];
+          const v2 = vectorCoords[j];
+          let sim = 0;
+          if (mode === 'anisotropic') {
+            // Theoretical simulation: (||mu||^2 + delta) / (||mu||^2 + 1)
+            const angleDiffRad = Math.abs(v1.rad - v2.rad);
+            const baseCos = Math.cos(angleDiffRad);
+            sim = (meanStrength * meanStrength + (1 - meanStrength * meanStrength) * baseCos);
+            sim = Math.min(0.999, Math.max(0.7, sim));
+          } else if (mode === 'isotropic') {
+            const angleDiffRad = Math.abs(v1.rad - v2.rad);
+            sim = Math.cos(angleDiffRad);
+          } else {
+            // Centering
+            const angleDiffRad = Math.abs(v1.rad - v2.rad);
+            sim = Math.cos(angleDiffRad) * 0.7 + 0.25;
+          }
+          row.push(Number(sim.toFixed(3)));
+        }
+      }
+      matrix.push(row);
+    }
+    return matrix;
+  }, [vectorCoords, mode, meanStrength]);
+
+  // Average inter-sentence similarity (off-diagonal)
+  const avgSimilarity = useMemo(() => {
+    let sum = 0;
+    let count = 0;
+    for (let i = 0; i < similarityMatrix.length; i++) {
+      for (let j = 0; j < similarityMatrix[i].length; j++) {
+        if (i !== j) {
+          sum += similarityMatrix[i][j];
+          count++;
+        }
+      }
+    }
+    return (sum / count).toFixed(3);
+  }, [similarityMatrix]);
+
+  // Singular value spectrum based on mode
+  const spectrum = useMemo(() => {
+    if (mode === 'anisotropic') {
+      const lambda1 = Math.min(95, 75 + meanStrength * 18);
+      const rem = 100 - lambda1;
+      return [
+        { label: 'λ₁', val: lambda1.toFixed(1), pct: lambda1 },
+        { label: 'λ₂', val: (rem * 0.6).toFixed(1), pct: rem * 0.6 },
+        { label: 'λ₃', val: (rem * 0.28).toFixed(1), pct: rem * 0.28 },
+        { label: 'λ₄', val: (rem * 0.12).toFixed(1), pct: rem * 0.12 },
+      ];
+    } else if (mode === 'isotropic') {
+      return [
+        { label: 'λ₁', val: '27.4', pct: 27.4 },
+        { label: 'λ₂', val: '25.8', pct: 25.8 },
+        { label: 'λ₃', val: '24.1', pct: 24.1 },
+        { label: 'λ₄', val: '22.7', pct: 22.7 },
+      ];
+    } else {
+      return [
+        { label: 'λ₁', val: '52.0', pct: 52.0 },
+        { label: 'λ₂', val: '24.0', pct: 24.0 },
+        { label: 'λ₃', val: '15.0', pct: 15.0 },
+        { label: 'λ₄', val: '9.0', pct: 9.0 },
+      ];
+    }
+  }, [mode, meanStrength]);
+
+  // SVG parameters
+  const svgSize = 340;
+  const center = svgSize / 2;
+  const plotRadius = 130;
+
+  // Arc path generator for cone aperture
+  const coneArcPath = useMemo(() => {
+    if (mode !== 'anisotropic') return '';
+    const startAngleRad = ((coneCenterAngle - aperture / 2) * Math.PI) / 180;
+    const endAngleRad = ((coneCenterAngle + aperture / 2) * Math.PI) / 180;
+
+    const x1 = center + (plotRadius + 15) * Math.cos(startAngleRad);
+    const y1 = center - (plotRadius + 15) * Math.sin(startAngleRad);
+    const x2 = center + (plotRadius + 15) * Math.cos(endAngleRad);
+    const y2 = center - (plotRadius + 15) * Math.sin(endAngleRad);
+
+    const largeArc = aperture > 180 ? 1 : 0;
+    return `M ${center} ${center} L ${x1} ${y1} A ${plotRadius + 15} ${plotRadius + 15} 0 ${largeArc} 0 ${x2} ${y2} Z`;
+  }, [mode, aperture, center, plotRadius, coneCenterAngle]);
+
+  return (
+    <section className="acv-container" aria-label="各向异性圆锥效应交互实验室">
+      {/* Header */}
+      <div className="acv-header">
+        <div className="acv-header-copy">
+          <p className="eyebrow">{t('Representation Geometry Lab', 'Representation Geometry Lab')}</p>
+          <h3>{t('各向异性圆锥效应 vs 各向同性超球面交互实验室', 'Representation Anisotropy & The Cone Effect Lab')}</h3>
+          <p className="acv-subtitle">
+            {t(
+              '直观探索自回归 LLM 为何会出现表示退化（Cone Collapse），以及对比学习（InfoNCE / E5）如何打破圆锥、将语义向量均匀拉伸到整个超球面上。',
+              'Explore why autoregressive LLMs suffer from representation degeneration (Cone Collapse) and how contrastive learning (InfoNCE / E5) breaks the cone to restore isotropic uniformity on the hypersphere.'
+            )}
+          </p>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="acv-mode-selector" role="group" aria-label={t('表征空间模式选择', 'Representation Space Mode')}>
+          <button
+            type="button"
+            className={`acv-mode-btn ${mode === 'anisotropic' ? 'active alert-mode' : ''}`}
+            onClick={() => setMode('anisotropic')}
+          >
+            <span className="acv-mode-dot red-dot"></span>
+            <strong>{t('1. 原生自回归 (各向异性圆锥)', '1. Vanilla Autoregressive (Anisotropic Cone)')}</strong>
+          </button>
+          <button
+            type="button"
+            className={`acv-mode-btn ${mode === 'isotropic' ? 'active green-mode' : ''}`}
+            onClick={() => setMode('isotropic')}
+          >
+            <span className="acv-mode-dot green-dot"></span>
+            <strong>{t('2. 对比学习后 (各向同性超球面)', '2. Post-Contrastive (Isotropic Sphere)')}</strong>
+          </button>
+          <button
+            type="button"
+            className={`acv-mode-btn ${mode === 'centering' ? 'active amber-mode' : ''}`}
+            onClick={() => setMode('centering')}
+          >
+            <span className="acv-mode-dot amber-dot"></span>
+            <strong>{t('3. 去均值白化基线 (Centering / h - μ)', '3. Centering Baseline (h - μ)')}</strong>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Interactive Grid */}
+      <div className="acv-grid">
+        {/* Left: 2D Polar Projection Canvas */}
+        <div className="acv-panel acv-polar-panel">
+          <div className="acv-panel-header">
+            <h4>{t('嵌入空间极坐标投影 (2D Polar Hypersphere Projection)', '2D Polar Hypersphere Projection')}</h4>
+            <span className="acv-badge">
+              {mode === 'anisotropic'
+                ? t('圆锥坍塌态 (Cone Collapsed)', 'Cone Collapsed')
+                : mode === 'isotropic'
+                ? t('均匀各向同性 (Isotropic Uniform)', 'Isotropic Uniform')
+                : t('去中心化过渡态 (Centered)', 'Centered')}
+            </span>
+          </div>
+
+          <div className="acv-svg-wrap">
+            <svg viewBox={`0 0 ${svgSize} ${svgSize}`} className="acv-svg">
+              <defs>
+                <radialGradient id="coneGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
+                </radialGradient>
+                <marker
+                  id="arrow-mu"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+                </marker>
+                <marker
+                  id="arrow-vec"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" />
+                </marker>
+              </defs>
+
+              {/* Background Reference Circles */}
+              <circle cx={center} cy={center} r={plotRadius} className="acv-ring-main" />
+              <circle cx={center} cy={center} r={plotRadius * 0.66} className="acv-ring-sub" />
+              <circle cx={center} cy={center} r={plotRadius * 0.33} className="acv-ring-sub" />
+
+              {/* Coordinate Crosshairs */}
+              <line x1={center - plotRadius - 15} y1={center} x2={center + plotRadius + 15} y2={center} className="acv-axis" />
+              <line x1={center} y1={center - plotRadius - 15} x2={center} y2={center + plotRadius + 15} className="acv-axis" />
+
+              {/* Anisotropic Cone Shaded Wedge */}
+              {mode === 'anisotropic' && (
+                <path d={coneArcPath} fill="url(#coneGlow)" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="3 3" />
+              )}
+
+              {/* Mean Drift Vector mu */}
+              {mode === 'anisotropic' && (
+                <g className="acv-mu-group">
+                  <line
+                    x1={center}
+                    y1={center}
+                    x2={center + (plotRadius * 1.05) * Math.cos((coneCenterAngle * Math.PI) / 180)}
+                    y2={center - (plotRadius * 1.05) * Math.sin((coneCenterAngle * Math.PI) / 180)}
+                    stroke="#ef4444"
+                    strokeWidth="3"
+                    markerEnd="url(#arrow-mu)"
+                  />
+                  <text
+                    x={center + (plotRadius * 1.18) * Math.cos((coneCenterAngle * Math.PI) / 180)}
+                    y={center - (plotRadius * 1.18) * Math.sin((coneCenterAngle * Math.PI) / 180)}
+                    fill="#ef4444"
+                    fontWeight="bold"
+                    fontSize="13"
+                    textAnchor="middle"
+                  >
+                    μ (Mean Drift)
+                  </text>
+                </g>
+              )}
+
+              {/* Vector Lines and Dots */}
+              {vectorCoords.map((vec, idx) => {
+                const isHovered = hoveredVector === idx;
+                const px = center + vec.x * plotRadius;
+                const py = center - vec.y * plotRadius;
+
+                return (
+                  <g
+                    key={vec.id}
+                    className={`acv-vector-item ${isHovered ? 'hovered' : ''}`}
+                    onMouseEnter={() => setHoveredVector(idx)}
+                    onMouseLeave={() => setHoveredVector(null)}
+                  >
+                    {/* Vector Ray */}
+                    <line
+                      x1={center}
+                      y1={center}
+                      x2={px}
+                      y2={py}
+                      stroke={vec.color}
+                      strokeWidth={isHovered ? 3.5 : 2}
+                      strokeOpacity={hoveredVector !== null && !isHovered ? 0.35 : 0.9}
+                    />
+
+                    {/* Vector Point Dot */}
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={isHovered ? 7 : 5}
+                      fill={vec.color}
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
+                    />
+
+                    {/* Vector Label */}
+                    <text
+                      x={px + (vec.x >= 0 ? 10 : -10)}
+                      y={py + (vec.y >= 0 ? -8 : 14)}
+                      fill={vec.color}
+                      fontWeight="bold"
+                      fontSize="11"
+                      textAnchor={vec.x >= 0 ? 'start' : 'end'}
+                    >
+                      h_{idx + 1}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Origin Center Point */}
+              <circle cx={center} cy={center} r="3.5" fill="#64748b" />
+            </svg>
+          </div>
+
+          {/* Sliders for Anisotropic mode */}
+          {mode === 'anisotropic' && (
+            <div className="acv-sliders">
+              <div className="acv-slider-row">
+                <div className="acv-slider-label">
+                  <span>{t('圆锥半顶角 θ (Aperture Angle)', 'Cone Aperture Angle θ')}:</span>
+                  <strong>{aperture}°</strong>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="60"
+                  value={aperture}
+                  onChange={(e) => setAperture(Number(e.target.value))}
+                  className="acv-slider"
+                  aria-label={t('调节圆锥半顶角', 'Adjust Cone Aperture')}
+                />
+              </div>
+
+              <div className="acv-slider-row">
+                <div className="acv-slider-label">
+                  <span>{t('共性漂移向量强度 ||μ|| (Dominant Mean Norm)', 'Dominant Mean Norm ||μ||')}:</span>
+                  <strong>{meanStrength.toFixed(2)}</strong>
+                </div>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="1.5"
+                  step="0.05"
+                  value={meanStrength}
+                  onChange={(e) => setMeanStrength(Number(e.target.value))}
+                  className="acv-slider"
+                  aria-label={t('调节漂移向量强度', 'Adjust Dominant Mean Norm')}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Metrics, Cosine Matrix & Spectral Decay */}
+        <div className="acv-panel acv-metrics-panel">
+          {/* Similarity Summary Banner */}
+          <div className={`acv-summary-banner ${mode === 'anisotropic' ? 'alert' : mode === 'isotropic' ? 'success' : 'neutral'}`}>
+            <div className="acv-summary-stat">
+              <span className="acv-stat-lbl">{t('非对角平均余弦相似度 E[cos(hi, hj)]', 'Mean Off-Diagonal Cosine E[cos(hi, hj)]')}</span>
+              <strong className="acv-stat-val">{avgSimilarity}</strong>
+            </div>
+            <div className="acv-summary-desc">
+              {mode === 'anisotropic' ? (
+                <p>{t('💥 各向异性危机：所有文本向量被压缩在狭窄圆锥内，余弦相似度全部高达 0.95+，完全丧失语义区分能力！', '💥 Anisotropy Crisis: All embeddings are crushed into a narrow cone; cosine similarity collapses to >0.95 across unrelated texts!')}</p>
+              ) : mode === 'isotropic' ? (
+                <p>{t('✨ 各向同性恢复：向量在超球面上均匀分布，同主题（AI/Infra）保持高相关性，跨主题（美食/金融）正交分离！', '✨ Isotropic Uniformity: Embeddings spread across the hypersphere; related topics stay close while unrelated topics decouple!')}</p>
+              ) : (
+                <p>{t('⚖️ 去均值基线：减去平均向量 μ 可以在一定程度上拉开夹角，但缺乏对比学习的目标引导，特征仍存在局部团缩。', '⚖️ Centering Baseline: Subtracting μ expands angles partially, but lacks contrastive guidance, leaving residual clustering.')}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Pairwise Cosine Similarity Heatmap Matrix */}
+          <div className="acv-matrix-card">
+            <div className="acv-matrix-header">
+              <h5>{t('样本对余弦相似度矩阵 Heatmap (Pairwise Cosine Matrix)', 'Pairwise Cosine Similarity Heatmap')}</h5>
+              <span className="acv-matrix-legend">
+                <span className="legend-box high-sim"></span> &gt; 0.8
+                <span className="legend-box mid-sim"></span> 0.2 ~ 0.8
+                <span className="legend-box low-sim"></span> &lt; 0.2
+              </span>
+            </div>
+
+            <div className="acv-table-wrap">
+              <table className="acv-sim-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    {ANISOTROPY_SENTENCES.map((s, idx) => (
+                      <th key={s.id} className={hoveredVector === idx ? 'highlight-th' : ''}>
+                        h_{idx + 1}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {similarityMatrix.map((row, i) => (
+                    <tr key={i} className={hoveredVector === i ? 'highlight-tr' : ''}>
+                      <th className="row-th">h_{i + 1}</th>
+                      {row.map((val, j) => {
+                        const isDiag = i === j;
+                        let cellClass = 'sim-cell';
+                        if (isDiag) cellClass += ' diag-cell';
+                        else if (val >= 0.85) cellClass += ' cell-alert';
+                        else if (val >= 0.4) cellClass += ' cell-mid';
+                        else cellClass += ' cell-low';
+
+                        return (
+                          <td
+                            key={j}
+                            className={cellClass}
+                            onMouseEnter={() => setHoveredVector(j)}
+                            onMouseLeave={() => setHoveredVector(null)}
+                          >
+                            {val.toFixed(2)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Singular Value Spectrum */}
+          <div className="acv-spectrum-card">
+            <div className="acv-spectrum-header">
+              <h5>{t('奇异值方差占比谱 (Singular Value Spectrum Decay)', 'Singular Value Spectrum Decay')}</h5>
+              <span className="acv-hint">
+                {mode === 'anisotropic' ? t('极端衰减 (低有效秩)', 'Extreme Decay (Low Rank)') : t('平坦均匀 (高有效秩)', 'Flat Spectrum (High Rank)')}
+              </span>
+            </div>
+            <div className="acv-bars-wrap">
+              {spectrum.map((item, idx) => (
+                <div key={idx} className="acv-bar-col">
+                  <div className="acv-bar-track">
+                    <div
+                      className={`acv-bar-fill ${idx === 0 && mode === 'anisotropic' ? 'bar-alert' : 'bar-normal'}`}
+                      style={{ height: `${item.pct}%` }}
+                    >
+                      <span className="acv-bar-val">{item.val}%</span>
+                    </div>
+                  </div>
+                  <span className="acv-bar-lbl">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sentence Legend List */}
+      <div className="acv-sentences-legend">
+        <h5>{t('测试句子与向量映射：', 'Test Sentences & Vector Mappings:')}</h5>
+        <div className="acv-sentences-grid">
+          {ANISOTROPY_SENTENCES.map((s, idx) => (
+            <div
+              key={s.id}
+              className={`acv-sent-card ${hoveredVector === idx ? 'hovered' : ''}`}
+              style={{ borderLeftColor: s.color }}
+              onMouseEnter={() => setHoveredVector(idx)}
+              onMouseLeave={() => setHoveredVector(null)}
+            >
+              <div className="acv-sent-meta">
+                <span className="acv-tag" style={{ backgroundColor: `${s.color}22`, color: s.color }}>
+                  h_{idx + 1} · {isEnglish ? s.categoryEn : s.categoryZh}
+                </span>
+              </div>
+              <p className="acv-sent-text">{isEnglish ? s.textEn : s.textZh}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 function BacktrackingPatternAtlas() {
   const { isEnglish, t } = useUiCopy();
@@ -21323,7 +21857,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -21435,6 +21969,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'subset-sum-demo') {
     return <PartitionSubsetSumVisual />;
+  }
+
+  if (match?.[1] === 'anisotropy-cone-demo') {
+    return <AnisotropyConeVisual />;
   }
 
   if (match?.[1] === 'greedy-patterns') {

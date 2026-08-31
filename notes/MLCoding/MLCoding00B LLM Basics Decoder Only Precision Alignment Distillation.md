@@ -94,9 +94,65 @@ Embedding 演进路线与表征范式突破：
    - 相比之下，未经改造的 Decoder-Only 存在**“单向因果盲区”**：
      - 若采用 **Last Token Pooling**（取最后一个 Token 的状态），排在最前面的 Token 无法感知句尾的核心修饰与语义转折（例如句子：“这家餐厅装潢极佳但是菜品非常难吃”，前部 Token 无法感知后面的否定转折）；
      - 若采用 **Mean Pooling**，由于因果下三角掩码限制，第 1 个 Token 的感受野大小为 1，第 $S$ 个 Token 的感受野大小为 $S$，导致求均值时各位置的语义权重与特征抽象层次极不均衡。
-2. **各向异性危机与表征退化（Anisotropy & The Cone Effect）**：
-   - 自回归 Next-Token Prediction 预训练目标迫使 Decoder 最后一层的隐藏状态受词频主导，少数高频词特征在特定隐藏维度上产生巨大数值漂移；
-   - 这导致未微调的 Decoder-Only 隐藏向量聚集在一个极其狭窄的高维圆锥空间（Narrow Cone）内，**任意两个完全无关的句子，其余弦相似度都高达 0.95 以上**，失去了空间区分度。
+2. **各向异性危机与表征退化（Anisotropy & The Cone Effect）的数学推导**：
+
+#### (1) 各向同性 vs 各向异性的数学形式化定义
+
+设文本嵌入向量为 $\mathbf{h} \in \mathbb{R}^d$（已做 $L_2$ 归一化，即 $\|\mathbf{h}\| = 1$）。
+- **理想的各向同性（Isotropy）**：表征向量在整个高维单位超球面 $\mathcal{S}^{d-1}$ 上各个方向**均匀分布（Uniform Distribution）**。
+  其协方差矩阵满足各向同性条件：
+
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
+
+  此时协方差矩阵的所有特征值相等（$\lambda_1 = \lambda_2 = \dots = \lambda_d = \frac{1}{d}$），空间有效秩（Effective Rank）达到最大。两个任意语义无关的独立随机向量 $\mathbf{h}_i, \mathbf{h}_j$ 的余弦相似度期望为 0：
+
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
+
+- **表征退化与各向异性（Anisotropy / Cone Effect）**：
+  在未经对比微调的自回归 Decoder-Only 模型中，协方差矩阵出现**极端的谱衰减（Extreme Spectral Decay）**：
+  $$\lambda_1 \gg \lambda_2 \gg \dots \gg \lambda_d$$
+  所有文本表征向量 $\mathbf{h}_i$ 共享一个巨大的公共均值偏置向量 $\mathbf{\mu} = \mathbb{E}[\mathbf{h}]$：
+
+$$\mathbf{h}_i = \mathbf{\mu} + \tilde{\mathbf{h}}_i, \quad \text{其中 } \|\mathbf{\mu}\| \gg \|\tilde{\mathbf{h}}_i\|$$
+
+#### (2) 余弦相似度坍塌推导（Cosine Similarity Collapse Proof）
+
+任意计算两个**语义完全不相关**的文本向量 $\mathbf{h}_i$ 与 $\mathbf{h}_j$ 的余弦相似度：
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) = \frac{\mathbf{h}_i^T \mathbf{h}_j}{\|\mathbf{h}_i\| \|\mathbf{h}_j\|} = \frac{(\mathbf{\mu} + \tilde{\mathbf{h}}_i)^T (\mathbf{\mu} + \tilde{\mathbf{h}}_j)}{\|\mathbf{\mu} + \tilde{\mathbf{h}}_i\| \|\mathbf{\mu} + \tilde{\mathbf{h}}_j\|}$$
+
+展开分子分母：
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) = \frac{\|\mathbf{\mu}\|^2 + \mathbf{\mu}^T (\tilde{\mathbf{h}}_i + \tilde{\mathbf{h}}_j) + \tilde{\mathbf{h}}_i^T \tilde{\mathbf{h}}_j}{\sqrt{\|\mathbf{\mu}\|^2 + 2\mathbf{\mu}^T\tilde{\mathbf{h}}_i + \|\tilde{\mathbf{h}}_i\|^2} \sqrt{\|\mathbf{\mu}\|^2 + 2\mathbf{\mu}^T\tilde{\mathbf{h}}_j + \|\tilde{\mathbf{h}}_j\|^2}}$$
+
+当偏置主成分 $\|\mathbf{\mu}\|$ 远大于残差项 $\|\tilde{\mathbf{h}}\|$ 时，一阶交叉项 $\mathbf{\mu}^T\tilde{\mathbf{h}} \to 0$，上式精确渐进收敛为：
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\mu}\|^2 + \sigma^2} \approx 1.0$$
+
+> **结论**：高维向量空间坍缩为一个**狭窄圆锥（Narrow Cone）**。任意两个不相关句子的夹角仅在 $5^\circ \sim 15^\circ$ 之间，余弦相似度全部聚集在 $0.95 \sim 0.99$，语义分辨率彻底丧失！
+
+#### (3) 为什么自回归预训练必然引发圆锥效应？（Gao et al. 理论根因）
+
+1. **齐夫词频定律（Zipf's Law）与 Softmax 梯度拉偏**：
+   预测下一个词的 Softmax 概率为 $P(w \mid \mathbf{h}) = \frac{\exp(\mathbf{w}_w^T \mathbf{h})}{\sum_v \exp(\mathbf{w}_v^T \mathbf{h})}$。高频词（标点、虚词）在语料中出现数十亿次，其反向梯度持续将所有隐层状态 $\mathbf{h}$ 沿同一方向拉拽；
+2. **输出词嵌入凸包不含原点（Convex Hull Excludes Origin）**：
+   如 Gao et al. (2019) 证明，词向量矩阵的最优解凸包偏离原点，迫使隐层状态必须落入同一半正定半空间中；
+3. **深层残差累加（Residual Accumulation）**：
+   $\mathbf{h}^{(l+1)} = \mathbf{h}^{(l)} + \text{Attn}(\mathbf{h}^{(l)})$ 层层累积共性低频分量，导致深层特征秩坍塌（Rank Collapse）。
+
+#### (4) 对比学习（InfoNCE）破除圆锥的理论证明（Wang & Isola, 2020）
+
+对比学习损失（InfoNCE）通过最大化互信息将圆锥拉伸为超球面：
+
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
+
+Wang & Isola (ICML 2020) 严格证明，当负样本数 $N \to \infty$ 时，$\mathcal{L}_{\text{InfoNCE}}$ 渐进等价分解为两大正交力量：
+
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (对齐性: 拉近正样本)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (均匀性: 强行将表征均匀铺满超球面，消除圆锥)}}$$
+
+```anisotropy-cone-demo
+```
+
 3. **推理开销与高并发检索性价比**：
    - 向量数据库检索（如 Milvus, Pinecone）要求数千 QPS 与毫秒级延迟。BERT-base（110M）或 BGE-large（330M）在单卡即可提供极高吞吐；而早期 7B/13B 的 Decoder 推理成本高昂，且表征效果反而不如 110M 的双向模型。
 

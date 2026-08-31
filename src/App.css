@@ -20082,6 +20082,492 @@ button.overview-support-card.active {
   line-height: 1.55;
 }
 
+/* ==========================================================================
+   Anisotropy & The Cone Effect Interactive Visualizer (.acv-*)
+   ========================================================================== */
+
+.acv-container {
+  margin: 1.8rem 0;
+  padding: 1.4rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+}
+
+.acv-header {
+  margin-bottom: 1.2rem;
+}
+
+.acv-header-copy h3 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.acv-subtitle {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.acv-mode-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.acv-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.acv-mode-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.acv-mode-btn.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+
+.acv-mode-btn.active.alert-mode {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.acv-mode-btn.active.green-mode {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.acv-mode-btn.active.amber-mode {
+  background: #d97706;
+  border-color: #d97706;
+  color: #ffffff;
+}
+
+.acv-mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.acv-mode-dot.red-dot { background: #ef4444; }
+.acv-mode-dot.green-dot { background: #10b981; }
+.acv-mode-dot.amber-dot { background: #f59e0b; }
+
+.acv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+@media (max-width: 960px) {
+  .acv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.acv-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.acv-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.acv-panel-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.acv-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.acv-svg-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.acv-svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+.acv-ring-main {
+  fill: none;
+  stroke: #cbd5e1;
+  stroke-width: 1.5;
+}
+
+.acv-ring-sub {
+  fill: none;
+  stroke: #e2e8f0;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.acv-axis {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.acv-vector-item {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.acv-vector-item:hover,
+.acv-vector-item.hovered circle {
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+
+.acv-sliders {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.acv-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.acv-slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.acv-slider {
+  width: 100%;
+  accent-color: #ef4444;
+  cursor: pointer;
+}
+
+.acv-summary-banner {
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.acv-summary-banner.alert {
+  background: #fef2f2;
+  border-left-color: #ef4444;
+}
+
+.acv-summary-banner.success {
+  background: #f0fdf4;
+  border-left-color: #10b981;
+}
+
+.acv-summary-banner.neutral {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+}
+
+.acv-summary-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.acv-stat-lbl {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.acv-stat-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.acv-summary-desc p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.acv-matrix-card {
+  margin-bottom: 1rem;
+}
+
+.acv-matrix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.acv-matrix-header h5 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.acv-matrix-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.legend-box {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-box.high-sim { background: #fee2e2; border: 1px solid #ef4444; }
+.legend-box.mid-sim { background: #fef3c7; border: 1px solid #f59e0b; }
+.legend-box.low-sim { background: #eff6ff; border: 1px solid #3b82f6; }
+
+.acv-table-wrap {
+  overflow-x: auto;
+}
+
+.acv-sim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.acv-sim-table th,
+.acv-sim-table td {
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  border: 1px solid #f1f5f9;
+}
+
+.acv-sim-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+}
+
+.acv-sim-table .row-th {
+  background: #f8fafc;
+  font-weight: 700;
+  text-align: right;
+}
+
+.acv-sim-table .diag-cell {
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.acv-sim-table .cell-alert {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 750;
+}
+
+.acv-sim-table .cell-mid {
+  background: #fef3c7;
+  color: #b45309;
+  font-weight: 650;
+}
+
+.acv-sim-table .cell-low {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 650;
+}
+
+.acv-sim-table .highlight-th,
+.acv-sim-table .highlight-tr th {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.acv-spectrum-card {
+  margin-top: 0.6rem;
+}
+
+.acv-spectrum-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.acv-spectrum-header h5 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.acv-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.acv-bars-wrap {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-end;
+  height: 80px;
+  padding: 0.4rem 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.acv-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.acv-bar-track {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.acv-bar-fill {
+  width: 70%;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.acv-bar-fill.bar-alert {
+  background: #ef4444;
+}
+
+.acv-bar-fill.bar-normal {
+  background: #3b82f6;
+}
+
+.acv-bar-val {
+  position: absolute;
+  top: -16px;
+  font-size: 0.68rem;
+  font-weight: 750;
+  color: #334155;
+}
+
+.acv-bar-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.acv-sentences-legend {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.acv-sentences-legend h5 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.acv-sentences-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem;
+}
+
+.acv-sent-card {
+  padding: 0.6rem 0.8rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left-width: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.acv-sent-card:hover,
+.acv-sent-card.hovered {
+  border-color: #94a3b8;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.acv-sent-meta {
+  margin-bottom: 0.25rem;
+}
+
+.acv-tag {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.acv-sent-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.4;
+}
+
 
 
 

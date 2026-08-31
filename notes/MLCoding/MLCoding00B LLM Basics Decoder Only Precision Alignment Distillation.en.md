@@ -96,9 +96,65 @@ The Classical Era (2018-2022)             Bottlenecks (Why Vanilla Decoders Fail
    - In contrast, vanilla Decoder-Only models suffer from **unidirectional blindspots**:
      - Under **Last-Token Pooling**, earlier tokens cannot incorporate information from late-occurring semantic shifts or qualifiers (e.g., in *"The ambiance was fantastic but the food was terrible"*, early tokens cannot see the crucial negative turn);
      - Under **Mean Pooling**, because of the lower-triangular causal mask, token $1$ has a receptive field of $1$ while token $S$ has a receptive field of $S$, causing an extreme imbalance in feature abstraction depths.
-2. **The Anisotropy Problem (The "Cone Effect")**:
-   - Next-token prediction autoregressive loss forces decoder representations to be dominated by word frequency biases and dominant singular dimensions.
-   - Uncalibrated decoder hidden states cluster in an extremely narrow cone in vector space: **the cosine similarity between almost any two arbitrary, unrelated sentences is often $>0.95$**, destroying discriminative capability.
+2. **The Anisotropy Crisis & The Cone Effect: Mathematical Derivation**:
+
+#### (1) Formal Definitions of Isotropy vs. Anisotropy
+
+Let text representation vectors be $\mathbf{h} \in \mathbb{R}^d$ ($L_2$-normalized such that $\|\mathbf{h}\| = 1$).
+- **Ideal Isotropy**: Representation vectors are **uniformly distributed** in all directions across the unit hypersphere $\mathcal{S}^{d-1}$.
+  The covariance matrix satisfies the isotropic identity:
+
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
+
+  All eigenvalues of the covariance matrix are identical ($\lambda_1 = \dots = \lambda_d = \frac{1}{d}$), achieving maximal effective rank. The expected cosine similarity between two independent, semantically unrelated vectors $\mathbf{h}_i, \mathbf{h}_j$ is zero:
+
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
+
+- **Representation Degeneration & Anisotropy (The Cone Effect)**:
+  In uncalibrated autoregressive decoders, the representation covariance matrix exhibits **severe spectral decay**:
+  $$\lambda_1 \gg \lambda_2 \gg \dots \gg \lambda_d$$
+  All token representations share a dominant common mean bias vector $\mathbf{\mu} = \mathbb{E}[\mathbf{h}]$:
+
+$$\mathbf{h}_i = \mathbf{\mu} + \tilde{\mathbf{h}}_i, \quad \text{where } \|\mathbf{\mu}\| \gg \|\tilde{\mathbf{h}}_i\|$$
+
+#### (2) Proof of Cosine Similarity Collapse
+
+Computing the cosine similarity between two **semantically unrelated** sentences $\mathbf{h}_i$ and $\mathbf{h}_j$:
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) = \frac{\mathbf{h}_i^T \mathbf{h}_j}{\|\mathbf{h}_i\| \|\mathbf{h}_j\|} = \frac{(\mathbf{\mu} + \tilde{\mathbf{h}}_i)^T (\mathbf{\mu} + \tilde{\mathbf{h}}_j)}{\|\mathbf{\mu} + \tilde{\mathbf{h}}_i\| \|\mathbf{\mu} + \tilde{\mathbf{h}}_j\|}$$
+
+Expanding the numerator and denominator:
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) = \frac{\|\mathbf{\mu}\|^2 + \mathbf{\mu}^T (\tilde{\mathbf{h}}_i + \tilde{\mathbf{h}}_j) + \tilde{\mathbf{h}}_i^T \tilde{\mathbf{h}}_j}{\sqrt{\|\mathbf{\mu}\|^2 + 2\mathbf{\mu}^T\tilde{\mathbf{h}}_i + \|\tilde{\mathbf{h}}_i\|^2} \sqrt{\|\mathbf{\mu}\|^2 + 2\mathbf{\mu}^T\tilde{\mathbf{h}}_j + \|\tilde{\mathbf{h}}_j\|^2}}$$
+
+When the dominant bias norm $\|\mathbf{\mu}\|$ vastly exceeds the residual variation $\|\tilde{\mathbf{h}}\|$, the cross-terms asymptotically vanish:
+
+$$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\mu}\|^2 + \sigma^2} \approx 1.0$$
+
+> **Theorem**: The high-dimensional embedding space collapses into a **narrow cone**. Unrelated sentences subtend angles of only $5^\circ \sim 15^\circ$, crushing cosine similarities into $0.95 \sim 0.99$ and completely wiping out semantic discriminative capacity!
+
+#### (3) Why Does Autoregressive Pre-training Cause the Cone Effect? (Gao et al., 2019)
+
+1. **Zipf's Law & Softmax Gradient Pull**:
+   Next-token cross-entropy forces hidden states $\mathbf{h}$ to predict word probabilities $P(w \mid \mathbf{h}) \propto \exp(\mathbf{w}_w^T \mathbf{h})$. High-frequency tokens (punctuation, stopwords) appear billions of times, continuously pulling all representations along a shared directional vector;
+2. **Convex Hull Excludes Origin**:
+   As proven by Gao et al. (2019), the convex hull of word embeddings fails to enclose the origin $\mathbf{0}$, forcing hidden representations into a positive semi-definite cone;
+3. **Deep Residual Accumulation**:
+   Residual streams $\mathbf{h}^{(l+1)} = \mathbf{h}^{(l)} + \text{Attn}(\mathbf{h}^{(l)})$ compound low-frequency components layer by layer, causing deep rank collapse.
+
+#### (4) Theoretical Proof: Breaking the Cone via Contrastive InfoNCE (Wang & Isola, 2020)
+
+Contrastive InfoNCE loss expands the collapsed cone onto the entire hypersphere:
+
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
+
+Wang & Isola (ICML 2020) proved that as $N \to \infty$, minimizing $\mathcal{L}_{\text{InfoNCE}}$ asymptotically decomposes into two orthogonal geometric imperatives:
+
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (Alignment: Pulls true positives together)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (Uniformity: Maximizes entropy across the hypersphere, eliminating the cone)}}$$
+
+```anisotropy-cone-demo
+```
+
 3. **Serving Efficiency & QPS Economics**:
    - Production vector retrieval requires thousands of queries per second (QPS) with sub-10ms latency. Lightweight models (BERT-base 110M, BGE-large 330M) easily deliver high throughput on a single GPU, whereas early 7B/13B decoders were computationally prohibitive.
 
