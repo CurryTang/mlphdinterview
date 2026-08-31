@@ -1175,6 +1175,13 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions/i })).toBeInTheDocument();
   });
+
+  it('routes directly to ML Coding 00 via URL hash', async () => {
+    window.location.hash = '#MLCoding00%20ML%20Basics%20Data%20Preprocessing%20Loss%20Functions.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数/i })).toBeInTheDocument();
+  });
 });
 
 

@@ -21820,7 +21820,9 @@ function parseHashRoute(rawHash) {
 
   const [rawNoteId, ...headingParts] = hashValue.split('::');
   const headingId = headingParts.join('::') || null;
-  const resolvedNoteId = legacyRoutes[rawNoteId] ?? rawNoteId;
+  const resolvedNoteId = legacyRoutes[rawNoteId]
+    ?? noteIdByAlias.get(normalizePathToken(rawNoteId))
+    ?? rawNoteId;
   const noteMatch = tutorials.find((tutorial) => tutorial.id === resolvedNoteId);
   if (noteMatch) {
     return {
