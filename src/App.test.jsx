@@ -1160,6 +1160,21 @@ describe('App', () => {
     fireEvent.click(within(pssv).getByRole('button', { name: /nums = \[1, 2, 3, 5\]/i }));
     expect(within(pssv).getByText(/总和 total = 11 为奇数/i)).toBeInTheDocument();
   });
+
+  it('opens the ML Coding section and displays ML Coding 00 note', async () => {
+    render(<App />);
+
+    const nav = screen.getByRole('navigation', { name: '主导航' });
+    fireEvent.click(within(nav).getByRole('button', { name: /ML Coding/i }));
+    expect(screen.getByRole('button', { name: /ML Coding 00 ·/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /ML Coding 00 ·/i }));
+    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数/i })).toBeInTheDocument();
+
+    // Switch to English and verify translation
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions/i })).toBeInTheDocument();
+  });
 });
 
 

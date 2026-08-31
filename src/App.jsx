@@ -2234,6 +2234,17 @@ const quantNotes = quantNoteDefinitions.map((definition) => ({
 
 const mlCodingNoteDefinitions = [
   createTutorialDefinition(
+    'ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数',
+    'MLCoding00 ML Basics Data Preprocessing Loss Functions.md',
+    'MLCoding00 ML Basics Data Preprocessing Loss Functions.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions',
+      category: 'ML Basics',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
     'ML Coding · 从零实现 LLM',
     'MLCoding01 Unicode Pretokenization.md',
     'MLCoding01 Unicode Pretokenization.en.md',
