@@ -206,19 +206,21 @@ FP16 Dynamic Loss Scaling Execution Loop:
 
 ---
 
-### 4. The FP32 Master Weights Mechanism
+### 4. Classical Master Weights & Modern Low-Precision Paradigms (FP8 / NVFP4 / Stochastic Rounding)
 
-Regardless of whether FP16 or BF16 is utilized, **optimizer states (Adam momentum $m$, variance $v$) and master model weights must remain in FP32**.
+#### (1) Classical Automatic Mixed Precision (AMP) Rationale
+
+In conventional 16-bit mixed-precision training (e.g., PyTorch AMP, Megatron-LM, DeepSpeed ZeRO), forward and backward matrix multiplications execute in BF16/FP16, while **the optimizer workspace maintains an FP32 copy of the Master Model Weights alongside FP32 Adam momentum ($m$) and variance ($v$) states**.
 
 ```text
-Mixed-Precision Memory Flow:
+Classical Mixed-Precision Parameter Flow:
 ┌────────────────────────────────────────────────────────┐
-│ GPU Tensor Cores (Fast Low-Precision Math)             │
+│ GPU Tensor Cores (Fast Low-Precision GEMM Operations)  │
 │ • Forward Activations: BF16 / FP16                     │
-│ • Model Weights:       BF16 / FP16                     │
+│ • Compute Weights:     BF16 / FP16                     │
 │ • Backward Gradients:  BF16 / FP16                     │
 └───────────────────────────┬────────────────────────────┘
-                            │ (Cast gradients to FP32)
+                            │ (Accumulate gradients -> cast to FP32)
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │ Optimizer Workspace (High-Precision Accumulation)      │
@@ -226,12 +228,57 @@ Mixed-Precision Memory Flow:
 │ • Adam Momentum m:      FP32                           │
 │ • Adam Variance v:      FP32                           │
 │   Update: W_fp32 = W_fp32 - lr * (m / (sqrt(v) + eps)) │
-│   Cast W_fp32 -> BF16 for next forward step            │
+│   Quantize/Cast W_fp32 -> BF16 for next forward step   │
 └────────────────────────────────────────────────────────┘
 ```
 
-**Why can master weights not be stored in BF16?**
-Because individual parameter update steps $\Delta W = -\eta \frac{m}{\sqrt{v} + \epsilon}$ are tiny (e.g., $10^{-6}$). Adding a small delta to a large number ($W = 1.5$) in BF16 (which has only 7 mantissa bits) truncates the lower bits completely (the "swallowing" problem), causing training to stall.
+**Why Does Deterministic Round-to-Nearest Require FP32 Master Weights?**
+- **Machine Epsilon ($\epsilon_{\text{mach}}$) Limitations**:
+  - BF16 has only 7 mantissa bits, yielding $\epsilon_{\text{mach}} = 2^{-7} \approx 7.8 \times 10^{-3}$;
+  - FP16 has 10 mantissa bits, yielding $\epsilon_{\text{mach}} = 2^{-10} \approx 9.7 \times 10^{-4}$.
+- **The "Swallowing" / Cancellation Problem**:
+  In deep learning optimization, single-step parameter deltas $\Delta W = -\eta \frac{m}{\sqrt{v} + \epsilon}$ are frequently tiny ($10^{-5} \sim 10^{-6}$). Under standard hardware **Round-to-Nearest-Even**, when $|\Delta W| < \frac{\epsilon_{\text{mach}}}{2} \cdot |W|$:
+  $$\text{Round}(W + \Delta W) = W$$
+  Adding a microscopic delta to a unit-scale weight ($W = 1.0$) causes the lower bits to be completely truncated. Direct accumulation on BF16/FP16 weights without high-precision accumulators results in stalled convergence.
+
+---
+
+#### (2) Is FP32 Strictly Mandatory? SOTA Low-Precision Innovations
+
+**The requirement that "master weights and optimizer states must unconditionally remain FP32" applies strictly to classical baseline AMP. Modern hardware and research have introduced major low-precision alternatives:**
+
+```text
+Precision Hierarchy & Optimizer Evolution:
+┌───────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐
+│ 1. Classical AMP(2017)│ 2. 8-Bit Optimizers   │ 3. FP8 Training(Hopper│ 4. Native NVFP4 (B200)│
+├───────────────────────┼───────────────────────┼───────────────────────┼───────────────────────┤
+│ • GEMM: BF16 / FP16   │ • GEMM: BF16 / FP16   │ • GEMM: FP8 (E4M3/E5M2│ • GEMM: NVFP4 (E2M1)  │
+│ • Master: FP32        │ • Master: FP32 / BF16 │ • Master: FP32 / BF16 │ • Microscaling Vectors│
+│ • Adam (m,v): FP32    │ • Adam (m,v): 8-Bit   │ • Adam: FP8 / BF16    │ • Scaled Accumulators │
+└───────────────────────┴───────────────────────┴───────────────────────┴───────────────────────┘
+```
+
+##### 1. Stochastic Rounding (SR): Eliminating FP32 Master Weights
+- **Unbiased Expectation**: Replaces deterministic rounding with probabilistic rounding:
+  $$\text{SR}(x) = \begin{cases} \lfloor x \rfloor & \text{with prob } 1 - \frac{x - \lfloor x \rfloor}{\delta} \\ \lceil x \rceil & \text{with prob } \frac{x - \lfloor x \rfloor}{\delta} \end{cases}$$
+- **Mathematical Theorem**: $\mathbb{E}[\text{SR}(x)] = x$. Even if $\Delta W = 10^{-6}$ is far below the machine epsilon of BF16, it maintains a non-zero probability ($10^{-4}$) of flipping the least significant bit. Over millions of iterations, **the expected accumulation matches full precision**, enabling pure 16-bit weight updates without allocating extra FP32 master weight memory.
+
+##### 2. 8-Bit Optimizers (bitsandbytes / Block-wise Dynamic Quantization)
+- Tim Dettmers et al. proved that Adam momentum $m$ and variance $v$ can be quantized into 8-bit non-linear (quantile/FP8) formats with dynamic per-block scales (e.g., 2048 elements/block), cutting optimizer memory by 75% without performance loss.
+
+##### 3. FP8 Mixed-Precision Training (Hopper H100 / Transformer Engine / MS-AMP)
+- **E4M3 (1 sign + 4 exponent + 3 mantissa)**: Used for forward GEMMs and compute weights (higher numerical precision);
+- **E5M2 (1 sign + 5 exponent + 2 mantissa)**: Used for backward gradients (wider dynamic range to prevent underflow);
+- **Delayed Scaling**: Tracks running maximum absolute values across recent steps to calibrate dynamic FP8 scale factors.
+
+##### 4. Native NVFP4 (E2M1) Microscaling Training on NVIDIA Blackwell
+NVIDIA Blackwell (B200 / GB200) introduces native **NVFP4 Tensor Cores** and **Microscaling Formats (MXFP4 / OCP)**:
+- **NVFP4 Bit Layout (E2M1)**: Consists of 1 sign bit, 2 exponent bits, and 1 mantissa bit, scaled by an 8-bit (E8M0) microscaling factor shared across 16 or 32 elements;
+- **How Does Native NVFP4 Training Execute?**
+  1. **Compute Phase (GEMMs)**: Forward and backward matrix multiplications ($QK^T$, FFNs) run on 5th-gen Tensor Cores in **NVFP4 (E2M1)**, achieving up to 8x higher FLOP throughput compared to BF16;
+  2. **Accumulation & Weight Re-quantization**: Because NVFP4 has only 16 discrete representable values, direct delta addition would cause immediate quantization collapse. Thus:
+     - **Master Accumulators** are maintained in high precision (FP32, BF16 with Stochastic Rounding, or high-precision micro-blocks);
+     - After each optimizer update, weights are dynamically re-quantized into NVFP4 blocks with updated scale vectors for the subsequent training step.
 
 ---
 

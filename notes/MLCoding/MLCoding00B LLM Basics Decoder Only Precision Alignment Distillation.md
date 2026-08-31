@@ -205,32 +205,80 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 ---
 
-### 4. FP32 Master Weights（主权重）机制
+### 4. 经典 Master Weights（主权重）机制与现代低精度演进（FP8 / NVFP4 / 随机舍入）
 
-无论使用 FP16 还是 BF16 混合精度训练，**优化器内部的 Master Weights（模型主参数）以及 Adam 的动量（Momentum $m$）和方差（Variance $v$）必须全程保留在 FP32**。
+#### (1) 经典 AMP 中的 FP32 Master Weights 原理
+
+在传统的 16 位混合精度训练体系（如 PyTorch AMP, Megatron-LM, DeepSpeed ZeRO）中，前向与反向计算使用 BF16/FP16，而**优化器内部维护一份 FP32 的 Master Weights（模型主权重副本）以及 FP32 的 Adam 动量（$m$）与方差（$v$）**。
 
 ```text
-混合精度参数显存分布与流动：
+经典混合精度参数显存分布与流动：
 ┌────────────────────────────────────────────────────────┐
-│ GPU Tensor Cores (快速低精度计算)                      │
+│ GPU Tensor Cores (快速低精度矩阵乘计算)                │
 │ • 前向传播激活值 (Activations): BF16 / FP16             │
-│ • 模型前向权重 (Model Weights): BF16 / FP16             │
+│ • 模型计算权重 (Compute Weights): BF16 / FP16           │
 │ • 反向传播梯度 (Gradients):     BF16 / FP16             │
 └───────────────────────────┬────────────────────────────┘
-                            │ (梯度汇总并转为 FP32)
+                            │ (反向梯度汇总并转为高精度)
                             ▼
 ┌────────────────────────────────────────────────────────┐
-│ Optimizer 状态空间 (高精度累加)                        │
+│ Optimizer 状态空间 (高精度累加更新)                    │
 │ • Master Model Weights: FP32                           │
 │ • Adam 一阶动量 m:      FP32                           │
 │ • Adam 二阶方差 v:      FP32                           │
 │   更新公式: W_fp32 = W_fp32 - lr * (m / (sqrt(v) + eps))│
-│   更新完成后，将 W_fp32 截断转换为 BF16 供下一步前向计算│
+│   更新完成后，将 W_fp32 量化/截断为 BF16 供下一步前向计算 │
 └────────────────────────────────────────────────────────┘
 ```
 
-**为什么主权重不能用 BF16/FP16 存储？**
-因为单步参数更新量 $\Delta W = -\eta \cdot \frac{m}{\sqrt{v} + \epsilon}$ 通常极小（如 $10^{-6}$）。如果主权重本身是 BF16（只有 7 位尾数），将一个极小的更新量加到一个较大数值（如 $W = 1.5$）上时，低位有效数字会被直接抹去（Swallowing Problem），导致权重永远无法累积更新。
+**为什么在确定性舍入（Round-to-Nearest）下，经典混合精度必须使用 FP32 主权重？**
+- **机器精度限制（Machine Epsilon）**：
+  - BF16 的尾数仅有 7 位，其机器精度 $\epsilon_{\text{mach}} = 2^{-7} \approx 7.8 \times 10^{-3}$；
+  - FP16 的尾数有 10 位，其机器精度 $\epsilon_{\text{mach}} = 2^{-10} \approx 9.7 \times 10^{-4}$。
+- **“吞数”现象（The Swallowing / Cancellation Problem）**：
+  在深度学习优化过程中，单步参数更新量 $\Delta W = -\eta \cdot \frac{m}{\sqrt{v} + \epsilon}$ 通常非常微小（如 $10^{-5} \sim 10^{-6}$）。
+  在硬件默认的**最近偶数舍入（Round-to-Nearest-Even）**模式下，当加数 $|\Delta W| < \frac{\epsilon_{\text{mach}}}{2} \cdot |W|$ 时：
+  $$\text{Round}(W + \Delta W) = W$$
+  微小的更新量在与较大权重（如 $W = 1.0$）相加时，低位有效数字会被硬件直接截断抹零。如果直接在 BF16 权重上累加，模型权重将完全无法发生累积更新，导致训练停滞（Stalled Convergence）。
+
+---
+
+#### (2) 必须全程保留在 FP32 吗？现代低精度训练的前沿突破
+
+**严格来说，“优化器状态和主权重必须是 FP32”是经典标准 AMP 的结论。近年来硬件与系统架构已取得一系列重大突破：**
+
+```text
+低精度训练体系演进分级：
+┌───────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐
+│ 1. 经典 AMP (2017)    │ 2. 8-bit 优化器 (2021)│ 3. FP8 混合训练(Hopper│ 4. 原生 NVFP4 (Blackwell│
+├───────────────────────┼───────────────────────┼───────────────────────┼───────────────────────┤
+│ • GEMM: BF16 / FP16   │ • GEMM: BF16 / FP16   │ • GEMM: FP8 (E4M3/E5M2│ • GEMM: NVFP4 (E2M1)  │
+│ • Master: FP32        │ • Master: FP32 / BF16 │ • Master: FP32 / BF16 │ • 微缩放 (Microscaling│
+│ • Adam (m,v): FP32    │ • Adam (m,v): 8-bit   │ • Adam: FP8 / BF16    │ • 累加器: 高精度/块缩放│
+└───────────────────────┴───────────────────────┴───────────────────────┴───────────────────────┘
+```
+
+##### 1. 随机舍入（Stochastic Rounding, SR）：彻底消除 FP32 主权重
+- **核心数学定理**：放弃确定性舍入，采用概率舍入：
+  $$\text{SR}(x) = \begin{cases} \lfloor x \rfloor & \text{以概率 } 1 - \frac{x - \lfloor x \rfloor}{\delta} \\ \lceil x \rceil & \text{以概率 } \frac{x - \lfloor x \rfloor}{\delta} \end{cases}$$
+- **无偏估计**：$\mathbb{E}[\text{SR}(x)] = x$。即使单步更新量 $\Delta W = 10^{-6}$ 远小于 BF16 尾数位，它依然有 $10^{-4}$ 的概率使低位比特翻转。在数万步训练中，**期望累加值与全精度完全一致**，允许直接在纯 16 位张量上完成更新，省去 50% 主权重显存。
+
+##### 2. 8-bit 优化器（bitsandbytes / Block-wise Dynamic Quantization）
+- Tim Dettmers 等人提出将 Adam 的一阶动量 $m$ 和二阶方差 $v$ 按块（如每 2048 个参数）量化为 8-bit 非线性分布（分位数量化或 FP8），仅在更新瞬间反量化，将优化器状态显存压缩 75%，在大模型预训练中无损收敛。
+
+##### 3. FP8 混合精度训练（Hopper H100 / Transformer Engine / MS-AMP）
+- **E4M3（1 符号 + 4 指数 + 3 尾数）**：用于前向传播矩阵乘法与权重（更高精度）；
+- **E5M2（1 符号 + 5 指数 + 2 尾数）**：用于反向传播梯度（更大动态范围，防下溢）；
+- **延迟缩放（Delayed Scaling）**：根据前几步的最大绝对值动态维护 FP8 缩放因子。
+
+##### 4. NVIDIA Blackwell 原生 NVFP4（E2M1）微缩放训练机制
+在 NVIDIA Blackwell（B200 / GB200）架构中，硬件引入了原生的 **NVFP4 Tensor Cores** 与 **Microscaling（MXFP4 / OCP 格式）**：
+- **NVFP4 格式（E2M1）**：仅有 4 位（1 位符号 + 2 位指数 + 1 位尾数），结合每 16 或 32 个元素共享的 8 位（E8M0）微缩放因子（Microscaling Factor）；
+- **NVFP4 训练如何处理权重更新？**
+  1. **计算阶段（GEMM）**：前向传播与反向传播的核心矩阵乘法（$QK^T, \text{FFN}$）全部跑在 **NVFP4 (E2M1)** 上，提供相比 BF16 高达 8 倍的 Tensor Core 吞吐；
+  2. **累加与主参数维护**：NVFP4 的表征极其粗糙（仅有 16 个离散值），无法直接在其上累加微小梯度。因此在现代 NVFP4 训练流水线中：
+     - **主参数累加器（Master Accumulator）** 依然保留在高精度（FP32、带随机舍入的 BF16 或高精微缩放块）；
+     - 每次优化器 Step 完成后，主权重通过硬件级微缩放器（Hardware Scaler）**重新动态量化为 NVFP4 块**，供下一步的前向与反向 GEMM 使用。
 
 ---
 
