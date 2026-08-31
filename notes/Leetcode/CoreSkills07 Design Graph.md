@@ -25,7 +25,288 @@ neighbors(u):
 - 遍历时忘记 `visited`，在有环图上陷入死循环。
 - 节点编号不连续（比如字符串节点，或编号有跳号）时仍强行用数组下标，应改用字典存储邻接表。
 
-这一章接下来的九个模块，覆盖 NeetCode 150 里 Graphs 和 Advanced Graphs 两个分类的全部 19 道题目，按解题技巧分组：网格上的隐式图遍历、邻接表上的显式图遍历、并查集、最小生成树、最短路、欧拉路径、拓扑排序。
+---
+
+## 图论万能解题决策框架与六大核心模板（Universal Graph Problem-Solving Blueprint）
+
+面对面试中千变万化的图论题目，只要抓住**“图的形态（网格/显式点边）”**、**“边权性质（无权/非负权/负权带步数限制）”**与**“目标语义（连通/最短路/拓扑序/欧拉路径）”**，即可 100% 映射进以下 6 大万能模板：
+
+```text
+图论 4 步定型决策流：
+┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
+│ 1. 图的形态识别       │ ➔   │ 2. 边权与距离特征     │ ➔   │ 3. 连通性与结构特征   │ ➔   │ 4. 选定万能模板       │
+│ 隐式网格 vs 显式邻接表│     │ 无权 vs 非负权 vs 负权│     │ 动态连通 vs 拓扑 vs 欧拉│   │ 直接套用标准骨架代码  │
+└───────────────────────┘     └───────────────────────┘     └───────────────────────┘     └───────────────────────┘
+```
+
+### 1. 六大图论万能代码模板库
+
+#### 模板一：网格隐式图万能模板（Matrix DFS & Multi-Source BFS）
+
+- **适用场景**：岛屿数量、岛屿最大面积、被围绕的区域、太平洋大西洋水流、腐烂的橘子、墙与门。
+
+```python
+from collections import deque
+from typing import List
+
+# 1. 网格 DFS 连通块 / 面积 / 染色通用模板
+def solve_grid_dfs(grid: List[List[str]]) -> int:
+    if not grid or not grid[0]:
+        return 0
+    rows, cols = len(grid), len(grid[0])
+    visited = set()
+
+    def in_bounds(r: int, c: int) -> bool:
+        return 0 <= r < rows and 0 <= c < cols
+
+    def dfs(r: int, c: int) -> int:
+        # 边界检查 + 终止条件短路
+        if not in_bounds(r, c) or (r, c) in visited or grid[r][c] == "0":
+            return 0
+        visited.add((r, c))
+        area = 1
+        # 四方向扩散
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            area += dfs(r + dr, c + dc)
+        return area
+
+    count = 0
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == "1" and (r, c) not in visited:
+                dfs(r, c)
+                count += 1
+    return count
+
+
+# 2. 网格多源分层 BFS 通用模板 (无权最短路 / 时间扩散)
+def solve_grid_multisource_bfs(grid: List[List[int]]) -> int:
+    rows, cols = len(grid), len(grid[0])
+    queue = deque()
+    visited = set()
+
+    # Step 1: 多源同时入队初始化 (第 0 分钟 / 距离 0)
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 2:  # 起始源点 (如腐烂橘子 / 门)
+                queue.append((r, c))
+                visited.add((r, c))
+
+    dist = 0
+    while queue:
+        # Step 2: len(queue) 快照分层推进
+        for _ in range(len(queue)):
+            r, c = queue.popleft()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited and grid[nr][nc] == 1:
+                    visited.add((nr, nc))  # 关键：入队时立刻标记 visited，防重复入队！
+                    queue.append((nr, nc))
+        if queue:
+            dist += 1
+    return dist
+```
+
+---
+
+#### 模板二：显式图遍历与哈希克隆模板（Explicit Graph DFS / BFS）
+
+- **适用场景**：克隆图（Clone Graph）、单词接龙（Word Ladder 隐式状态 BFS）。
+
+```python
+class Node:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
+
+
+class Solution:
+    def cloneGraph(self, node: "Node") -> "Node":
+        if not node:
+            return None
+        clones = {}  # 原节点 -> 新克隆节点映射
+
+        def dfs(curr: "Node") -> "Node":
+            if curr in clones:
+                return clones[curr]
+            copy = Node(curr.val)
+            clones[curr] = copy
+            for neighbor in curr.neighbors:
+                copy.neighbors.append(dfs(neighbor))
+            return copy
+
+        return dfs(node)
+```
+
+---
+
+#### 模板三：工业级并查集万能类（Universal Disjoint Set Union / DSU）
+
+- **适用场景**：无向图连通分量、图是否为有效树、冗余连接、Kruskal 最小生成树。
+
+```python
+class UnionFind:
+    """带路径压缩与按秩合并的高性能并查集"""
+    def __init__(self, n: int):
+        self.parent = list(range(n))
+        self.rank = [1] * n
+        self.count = n  # 动态连通分量计数
+
+    def find(self, x: int) -> int:
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # 路径压缩
+        return self.parent[x]
+
+    def union(self, x: int, y: int) -> bool:
+        root_x, root_y = self.find(x), self.find(y)
+        if root_x == root_y:
+            return False  # 已在同一连通分量，产生环！
+        # 按秩合并：小树挂在大树下
+        if self.rank[root_x] < self.rank[root_y]:
+            root_x, root_y = root_y, root_x
+        self.parent[root_y] = root_x
+        if self.rank[root_x] == self.rank[root_y]:
+            self.rank[root_x] += 1
+        self.count -= 1
+        return True
+
+    def connected(self, x: int, y: int) -> bool:
+        return self.find(x) == self.find(y)
+```
+
+---
+
+#### 模板四：拓扑排序 Kahn 算法万能模板（Topological Sort / Cycle Detection）
+
+- **适用场景**：课程表 I（判环）、课程表 II（输出拓扑序）、外星人词典（Alien Dictionary）。
+
+```python
+from collections import defaultdict, deque
+from typing import List, Optional
+
+def solve_topological_sort(num_nodes: int, prerequisites: List[List[int]]) -> Optional[List[int]]:
+    graph = defaultdict(list)
+    in_degree = [0] * num_nodes
+
+    # 1. 建图并统计入度 (prereq -> course)
+    for course, prereq in prerequisites:
+        graph[prereq].append(course)
+        in_degree[course] += 1
+
+    # 2. 所有入度为 0 的节点入队
+    queue = deque([i for i in range(num_nodes) if in_degree[i] == 0])
+    topo_order = []
+
+    # 3. BFS 推进与入度扣减
+    while queue:
+        node = queue.popleft()
+        topo_order.append(node)
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    # 4. 判环：拓扑序长度等于总点数说明无环有效，否则图中有环
+    return topo_order if len(topo_order) == num_nodes else None
+```
+
+---
+
+#### 模板五：最短路全家桶万能模板（Dijkstra & Bellman-Ford）
+
+- **Dijkstra**：适用于**非负权边**单源最短路（Network Delay Time, Swim in Rising Water）。
+- **Bellman-Ford**：适用于**存在边数/跳数限制 $k$** 或**负权边**的最短路（Cheapest Flights Within K Stops）。
+
+```python
+import heapq
+from collections import defaultdict
+from typing import List, Dict
+
+# 1. Dijkstra 最小堆非负权最短路
+def dijkstra(n: int, times: List[List[int]], start: int) -> Dict[int, int]:
+    graph = defaultdict(list)
+    for u, v, w in times:
+        graph[u].append((v, w))
+
+    dist = {}
+    heap = [(0, start)]  # (当前累计距离, 节点)
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in dist:
+            continue
+        dist[u] = d
+        for v, w in graph[u]:
+            if v not in dist:
+                heapq.heappush(heap, (d + w, v))
+
+    return dist  # 返回所有可达节点的最短距离字典
+
+
+# 2. Bellman-Ford 带 k 步限制最短路
+def bellman_ford_k_stops(n: int, flights: List[List[int]], src: int, dst: int, k: int) -> int:
+    INF = float("inf")
+    prices = [INF] * n
+    prices[src] = 0
+
+    # 限制最多 k 个中转 = 最多做 k + 1 轮松弛
+    for _ in range(k + 1):
+        next_prices = prices.copy()  # 必须读旧数组写新数组，防止同一步内多重串联！
+        for u, v, w in flights:
+            if prices[u] != INF and prices[u] + w < next_prices[v]:
+                next_prices[v] = prices[u] + w
+        prices = next_prices
+
+    return -1 if prices[dst] == INF else prices[dst]
+```
+
+---
+
+#### 模板六：欧拉路径 Hierholzer 算法万能模板（Eulerian Path）
+
+- **适用场景**：重新安排行程（Reconstruct Itinerary，用尽图中每条边恰好一次且字典序最小）。
+
+```python
+import heapq
+from collections import defaultdict
+from typing import List
+
+def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[str]:
+    graph = defaultdict(list)
+    # 最小堆保证每次贪心弹出字典序最小的目的地
+    for src, dst in tickets:
+        heapq.heappush(graph[src], dst)
+
+    route = []
+
+    def dfs(curr: str) -> None:
+        while graph[curr]:
+            nxt = heapq.heappop(graph[curr])  # 消耗掉这条边
+            dfs(nxt)
+        route.append(curr)  # 核心：后序位置记录死胡同与完成节点
+
+    dfs(start)
+    return route[::-1]  # 整体反转即为正向欧拉行程
+```
+
+---
+
+### 2. 图论全场景题型快速决策速查矩阵
+
+| 场景模式 | 核心考点 | 推荐万能模板 | 代表经典题 | 时间复杂度 | 空间复杂度 |
+|---|---|---|---|---|---|
+| **隐式网格连通性** | Flood Fill 染色/面积 | **模板一 (Grid DFS)** | Number of Islands, Max Area of Island | $O(mn)$ | $O(mn)$ |
+| **无权网格最短路** | 多源同时分层扩散 | **模板一 (Multi-Source BFS)** | Rotting Oranges, Walls and Gates | $O(mn)$ | $O(mn)$ |
+| **显式图状态复制** | 邻接表哈希深拷贝 | **模板二 (Graph DFS + Map)** | Clone Graph | $O(V + E)$ | $O(V)$ |
+| **隐式状态步数** | 按位变换生成邻居 | **模板一/二 (State BFS)** | Word Ladder | $O(N \cdot L^2)$ | $O(N \cdot L)$ |
+| **动态连通/环检测** | 连通分量计数/删边判树 | **模板三 (Union-Find / DSU)** | Graph Valid Tree, Redundant Connection | $O(E \alpha(V))$ | $O(V)$ |
+| **最小生成树 (MST)** | 点集最小互联成本 | **模板三 (Kruskal + DSU)** / Prim | Min Cost to Connect All Points | $O(E \log E)$ | $O(V + E)$ |
+| **有向图拓扑排布** | 选课依赖/字典偏序/判环 | **模板四 (Kahn BFS 入度表)** | Course Schedule I/II, Alien Dictionary | $O(V + E)$ | $O(V + E)$ |
+| **非负权最短路** | 网络延迟/瓶颈高度 | **模板五 (Dijkstra 最小堆)** | Network Delay Time, Swim in Rising Water | $O(E \log V)$ | $O(V + E)$ |
+| **有跳数限制最短路** | 最多 $k$ 站中转 | **模板五 (Bellman-Ford $k+1$ 轮)** | Cheapest Flights Within K Stops | $O(k \cdot E)$ | $O(V)$ |
+| **用尽每条边恰好一次**| 字典序最小欧拉路径 | **模板六 (Hierholzer 后序堆)** | Reconstruct Itinerary | $O(E \log E)$ | $O(V + E)$ |
+
+---
 
 ## 学习顺序
 

@@ -25,7 +25,289 @@ Common pitfalls:
 - Forgetting `visited` during traversal, causing an infinite loop on a graph with a cycle.
 - Using array indices for nodes that are not contiguous integers (string nodes, or integer nodes with gaps); a dictionary-based adjacency list should be used instead.
 
-The nine modules that follow cover all 19 problems from NeetCode 150's Graphs and Advanced Graphs categories, grouped by technique: implicit graph traversal on a grid, explicit graph traversal on an adjacency list, Union-Find, minimum spanning trees, shortest paths, Eulerian paths, and topological sort.
+---
+
+## Universal Graph Problem-Solving Blueprint & Master Templates
+
+When facing graph problems in technical interviews, every question maps cleanly to one of **6 universal archetypes** by analyzing:
+1. **Graph representation** (Implicit 2D grid vs Explicit adjacency list),
+2. **Edge weights** (Unweighted vs Non-negative vs Negative / Step-bounded), and
+3. **Target semantics** (Connectivity / Shortest path / Topological order / Eulerian path).
+
+```text
+Graph 4-Step Decision Flow:
+┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
+│ 1. Graph Structure    │ ➔   │ 2. Edge Weighting     │ ➔   │ 3. Connectivity/Order │ ➔   │ 4. Master Template    │
+│ Implicit Grid vs List │     │ Unweighted vs Weighted│     │ Dynamic DSU vs Topo   │     │ Drop-in Skeleton Code │
+└───────────────────────┘     └───────────────────────┘     └───────────────────────┘     └───────────────────────┘
+```
+
+### 1. The 6 Master Graph Code Templates
+
+#### Template 1: Implicit Grid Graph (Matrix DFS & Multi-Source BFS)
+
+- **Target Problems**: Number of Islands, Max Area of Island, Surrounded Regions, Pacific Atlantic Water Flow, Rotting Oranges, Walls and Gates.
+
+```python
+from collections import deque
+from typing import List
+
+# 1. Grid DFS for Connected Components, Area, and Flood Fill
+def solve_grid_dfs(grid: List[List[str]]) -> int:
+    if not grid or not grid[0]:
+        return 0
+    rows, cols = len(grid), len(grid[0])
+    visited = set()
+
+    def in_bounds(r: int, c: int) -> bool:
+        return 0 <= r < rows and 0 <= c < cols
+
+    def dfs(r: int, c: int) -> int:
+        if not in_bounds(r, c) or (r, c) in visited or grid[r][c] == "0":
+            return 0
+        visited.add((r, c))
+        area = 1
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            area += dfs(r + dr, c + dc)
+        return area
+
+    count = 0
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == "1" and (r, c) not in visited:
+                dfs(r, c)
+                count += 1
+    return count
+
+
+# 2. Grid Multi-Source BFS for Unweighted Shortest Path / Time Diffusion
+def solve_grid_multisource_bfs(grid: List[List[int]]) -> int:
+    rows, cols = len(grid), len(grid[0])
+    queue = deque()
+    visited = set()
+
+    # Step 1: Seed all source cells simultaneously into queue
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 2:  # Starting sources (e.g. rotten oranges / gates)
+                queue.append((r, c))
+                visited.add((r, c))
+
+    dist = 0
+    while queue:
+        # Step 2: Layered snapshot progression via len(queue)
+        for _ in range(len(queue)):
+            r, c = queue.popleft()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited and grid[nr][nc] == 1:
+                    visited.add((nr, nc))  # Mark visited at ENQUEUE time to prevent duplicates!
+                    queue.append((nr, nc))
+        if queue:
+            dist += 1
+    return dist
+```
+
+---
+
+#### Template 2: Explicit Graph Traversal & Hash Map Cloning (Graph DFS / BFS)
+
+- **Target Problems**: Clone Graph, Word Ladder (implicit state transformation BFS).
+
+```python
+class Node:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
+
+
+class Solution:
+    def cloneGraph(self, node: "Node") -> "Node":
+        if not node:
+            return None
+        clones = {}  # Original node -> Cloned node mapping
+
+        def dfs(curr: "Node") -> "Node":
+            if curr in clones:
+                return clones[curr]
+            copy = Node(curr.val)
+            clones[curr] = copy
+            for neighbor in curr.neighbors:
+                copy.neighbors.append(dfs(neighbor))
+            return copy
+
+        return dfs(node)
+```
+
+---
+
+#### Template 3: Production-Grade Disjoint Set Union (Universal DSU / Union-Find)
+
+- **Target Problems**: Number of Connected Components, Graph Valid Tree, Redundant Connection, Kruskal's MST.
+
+```python
+class UnionFind:
+    """High-performance Disjoint Set Union with Path Compression and Union by Rank."""
+    def __init__(self, n: int):
+        self.parent = list(range(n))
+        self.rank = [1] * n
+        self.count = n  # Dynamic connected components counter
+
+    def find(self, x: int) -> int:
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # Path compression
+        return self.parent[x]
+
+    def union(self, x: int, y: int) -> bool:
+        root_x, root_y = self.find(x), self.find(y)
+        if root_x == root_y:
+            return False  # Already connected; cycle / redundant connection detected!
+        # Union by rank: attach smaller tree under larger root
+        if self.rank[root_x] < self.rank[root_y]:
+            root_x, root_y = root_y, root_x
+        self.parent[root_y] = root_x
+        if self.rank[root_x] == self.rank[root_y]:
+            self.rank[root_x] += 1
+        self.count -= 1
+        return True
+
+    def connected(self, x: int, y: int) -> bool:
+        return self.find(x) == self.find(y)
+```
+
+---
+
+#### Template 4: Topological Sort & Cycle Detection via Kahn's Algorithm
+
+- **Target Problems**: Course Schedule (cycle check), Course Schedule II (topological order), Alien Dictionary (character precedence).
+
+```python
+from collections import defaultdict, deque
+from typing import List, Optional
+
+def solve_topological_sort(num_nodes: int, prerequisites: List[List[int]]) -> Optional[List[int]]:
+    graph = defaultdict(list)
+    in_degree = [0] * num_nodes
+
+    # 1. Build directed adjacency list & in-degree array (prereq -> course)
+    for course, prereq in prerequisites:
+        graph[prereq].append(course)
+        in_degree[course] += 1
+
+    # 2. Enqueue all 0-in-degree nodes
+    queue = deque([i for i in range(num_nodes) if in_degree[i] == 0])
+    topo_order = []
+
+    # 3. BFS traversal & in-degree deduction
+    while queue:
+        node = queue.popleft()
+        topo_order.append(node)
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    # 4. Cycle check: valid if topo_order contains all nodes; else graph has cycles
+    return topo_order if len(topo_order) == num_nodes else None
+```
+
+---
+
+#### Template 5: Shortest Path Suite (Dijkstra & Bellman-Ford)
+
+- **Dijkstra**: For **non-negative edge weights** single-source shortest path (Network Delay Time, Swim in Rising Water).
+- **Bellman-Ford**: For **hop-bounded ($k$ stops)** or negative edge weights (Cheapest Flights Within K Stops).
+
+```python
+import heapq
+from collections import defaultdict
+from typing import List, Dict
+
+# 1. Dijkstra: Min-Heap Non-Negative Shortest Path
+def dijkstra(n: int, times: List[List[int]], start: int) -> Dict[int, int]:
+    graph = defaultdict(list)
+    for u, v, w in times:
+        graph[u].append((v, w))
+
+    dist = {}
+    heap = [(0, start)]  # (cumulative_distance, node)
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in dist:
+            continue
+        dist[u] = d
+        for v, w in graph[u]:
+            if v not in dist:
+                heapq.heappush(heap, (d + w, v))
+
+    return dist  # Dictionary of all reachable shortest distances
+
+
+# 2. Bellman-Ford: k-Stops Bounded Shortest Path
+def bellman_ford_k_stops(n: int, flights: List[List[int]], src: int, dst: int, k: int) -> int:
+    INF = float("inf")
+    prices = [INF] * n
+    prices[src] = 0
+
+    # At most k stops = at most k + 1 flights/rounds
+    for _ in range(k + 1):
+        next_prices = prices.copy()  # Must read old and write new to prevent multi-hop cascading!
+        for u, v, w in flights:
+            if prices[u] != INF and prices[u] + w < next_prices[v]:
+                next_prices[v] = prices[u] + w
+        prices = next_prices
+
+    return -1 if prices[dst] == INF else prices[dst]
+```
+
+---
+
+#### Template 6: Eulerian Path via Hierholzer's Algorithm
+
+- **Target Problems**: Reconstruct Itinerary (visit every edge exactly once in lexicographical order).
+
+```python
+import heapq
+from collections import defaultdict
+from typing import List
+
+def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[str]:
+    graph = defaultdict(list)
+    # Min-heap ensures smallest destination is greedily explored first
+    for src, dst in tickets:
+        heapq.heappush(graph[src], dst)
+
+    route = []
+
+    def dfs(curr: str) -> None:
+        while graph[curr]:
+            nxt = heapq.heappop(graph[curr])  # Consume this edge
+            dfs(nxt)
+        route.append(curr)  # Crucial: post-order records dead ends and terminal nodes first
+
+    dfs(start)
+    return route[::-1]  # Reverse to obtain forward itinerary
+```
+
+---
+
+### 2. Master Graph Problem-Solving Decision Matrix
+
+| Pattern Archetype | Core Concept | Recommended Template | Canonical Problems | Time Complexity | Space Complexity |
+|---|---|---|---|---|---|
+| **Grid Connectivity** | Flood Fill / Connected Area | **Template 1 (Grid DFS)** | Number of Islands, Max Area of Island | $O(mn)$ | $O(mn)$ |
+| **Grid Shortest Path** | Multi-Source Layered Diffusion | **Template 1 (Multi-Source BFS)** | Rotting Oranges, Walls and Gates | $O(mn)$ | $O(mn)$ |
+| **State Deep Copy** | Adjacency List Hash Clone | **Template 2 (Graph DFS + Map)** | Clone Graph | $O(V + E)$ | $O(V)$ |
+| **Implicit Transformation**| Single-char neighbor substitution | **Template 1/2 (State BFS)** | Word Ladder | $O(N \cdot L^2)$ | $O(N \cdot L)$ |
+| **Dynamic Connectivity** | Component count / Cycle check | **Template 3 (Union-Find / DSU)** | Graph Valid Tree, Redundant Connection | $O(E \alpha(V))$ | $O(V)$ |
+| **Minimum Spanning Tree** | Minimum total connection weight | **Template 3 (Kruskal + DSU)** / Prim | Min Cost to Connect All Points | $O(E \log E)$ | $O(V + E)$ |
+| **Topological Precedence**| Course deps / Alien Dictionary | **Template 4 (Kahn BFS In-degree)** | Course Schedule I/II, Alien Dictionary | $O(V + E)$ | $O(V + E)$ |
+| **Non-negative Shortest Path**| Network delay / Minimax path | **Template 5 (Dijkstra Min-Heap)** | Network Delay Time, Swim in Rising Water | $O(E \log V)$ | $O(V + E)$ |
+| **Hop-Bounded Shortest Path**| At most $k$ intermediate stops | **Template 5 (Bellman-Ford $k+1$ rounds)**| Cheapest Flights Within K Stops | $O(k \cdot E)$ | $O(V)$ |
+| **Traverse Every Edge Once** | Lexicographical Eulerian Path | **Template 6 (Hierholzer Post-Order)** | Reconstruct Itinerary | $O(E \log E)$ | $O(V + E)$ |
+
+---
 
 ## Learning Order
 
