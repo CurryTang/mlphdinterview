@@ -296,7 +296,7 @@ def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[st
 | 场景模式 | 核心考点 | 推荐万能模板 | 代表经典题 | 时间复杂度 | 空间复杂度 |
 |---|---|---|---|---|---|
 | **隐式网格连通性** | Flood Fill 染色/面积 | **模板一 (Grid DFS)** | Number of Islands, Max Area of Island | $O(mn)$ | $O(mn)$ |
-| **无权网格最短路** | 多源同时分层扩散 | **模板一 (Multi-Source BFS)** | Rotting Oranges, Walls and Gates | $O(mn)$ | $O(mn)$ |
+| **无权网格最短路** | 多源同时分层扩散 | **模板一 (Multi-Source BFS)** | Rotting Oranges, Islands and Treasure | $O(mn)$ | $O(mn)$ |
 | **显式图状态复制** | 邻接表哈希深拷贝 | **模板二 (Graph DFS + Map)** | Clone Graph | $O(V + E)$ | $O(V)$ |
 | **隐式状态步数** | 按位变换生成邻居 | **模板一/二 (State BFS)** | Word Ladder | $O(N \cdot L^2)$ | $O(N \cdot L)$ |
 | **动态连通/环检测** | 连通分量计数/删边判树 | **模板三 (Union-Find / DSU)** | Graph Valid Tree, Redundant Connection | $O(E \alpha(V))$ | $O(V)$ |
@@ -317,7 +317,7 @@ def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[st
 | 3 | [417. Pacific Atlantic Water Flow](https://neetcode.io/problems/pacific-atlantic-water-flow/question?list=neetcode150) | 双源 DFS/BFS，流动条件反转 |
 | 4 | [130. Surrounded Regions](https://neetcode.io/problems/surrounded-regions/question?list=neetcode150) | 先标记边界安全区域，再翻转其余部分 |
 | 5 | [994. Rotting Oranges](https://neetcode.io/problems/rotting-oranges/question?list=neetcode150) | 多源分层 BFS |
-| 6 | [286. Walls and Gates](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150) | 多源 BFS 填充到最近源点的距离 |
+| 6 | [Islands and Treasure (286. Walls and Gates)](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150) | 多源 BFS 填充到最近源点的距离（无需 visited 集合） |
 | 7 | [133. Clone Graph](https://neetcode.io/problems/clone-graph/question?list=neetcode150) | 邻接表 DFS + 哈希表记录克隆映射 |
 | 8 | [127. Word Ladder](https://neetcode.io/problems/word-ladder/question?list=neetcode150) | BFS + 按位替换生成邻居 |
 | 9 | [323. Number of Connected Components in an Undirected Graph](https://neetcode.io/problems/count-connected-components/question?list=neetcode150) | 并查集统计连通分量 |
@@ -692,19 +692,24 @@ class Solution:
 
 </details>
 
-### 6. Walls and Gates
+### 6. Islands and Treasure (Walls and Gates)
 
 [NeetCode 题目链接](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150)
 
-经典 LeetCode 题目名是 Walls and Gates，NeetCode 上重命名为 Islands and Treasure，题意不变：把每个空房间（`INF`）填成到最近一个门（`0`）的最短距离，墙（`-1`）不可通行。所有门作为多源 BFS 的起点一次性入队，按层扩展，第一次到达某个空房间时所处的层数就是它到最近门的最短距离，BFS 在无权图上第一次到达即最短。
+在 NeetCode 150 中本题命名为 **Islands and Treasure**（对应 LeetCode 经典题目 **286. Walls and Gates**）：把每个空地房间（`INF` / `2147483647`）填成到最近一个宝藏门（`0`）的最短距离，水/墙（`-1`）不可通行。
+
+**为什么本题完全不需要 `visited` 集合？**
+- 原始网格中待填充的空地初始值都是 `INF`；
+- 当多源 BFS 首次扩展到邻居 `(nr, nc)` 时，满足 `grid[nr][nc] == INF`，我们**立刻就地修改** `grid[nr][nc] = grid[r][c] + 1`；
+- 修改后的值显然小于 `INF`，因此后续任何波前再次尝试访问该格子时，`grid[nr][nc] == INF` 判断均会返回 `False`，**天然充当了防重入的 visited 标记，从而彻底省去 $O(mn)$ 的哈希集合空间开销**！
 
 | 项目 | 内容 |
 |---|---|
-| 组合技巧 | 多源 BFS 填充到最近源点的距离 |
-| 关键不变量 | 空房间第一次被访问的那一层，就是它到所有门中最近一个的最短距离 |
-| 时间 / 空间 | `O(mn) / O(mn)` |
+| 组合技巧 | 多源 BFS 原地距离填充（无需 visited 集合） |
+| 关键不变量 | 空地第一次被修改为 `grid[r][c] + 1` 时，就是它到最近宝藏门的最短距离 |
+| 时间 / 空间 | `O(mn) / O(mn)`（仅队列空间，原地修改无额外 set 开销） |
 
-#### Quick Coding：Walls and Gates
+#### Quick Coding：Islands and Treasure
 
 ```python
 def islandsAndTreasure(grid):
@@ -723,35 +728,27 @@ INF = 2147483647
 
 class Solution:
     def islandsAndTreasure(self, grid: List[List[int]]) -> None:
-        rows, cols = len(grid), len(grid[0])
+        rows = len(grid)
+        cols = len(grid[0])
         queue = deque()
-        visited = set()
 
-        for r in range(rows):
-            for c in range(cols):
-                if grid[r][c] == 0:
-                    queue.append((r, c))
-                    visited.add((r, c))
+        # 1. 将所有宝藏/门 (0) 作为多源 BFS 的初始层同时入队
+        for i in range(rows):
+            for j in range(cols):
+                if grid[i][j] == 0:
+                    queue.append((i, j))
 
-        dist = 0
+        # 2. 多源 BFS 原地向四周扩散，无需额外 visited 集合
         while queue:
-            dist += 1
-            for _ in range(len(queue)):
-                r, c = queue.popleft()
-                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nr, nc = r + dr, c + dc
-                    if (
-                        0 <= nr < rows
-                        and 0 <= nc < cols
-                        and (nr, nc) not in visited
-                        and grid[nr][nc] == INF
-                    ):
-                        grid[nr][nc] = dist
-                        visited.add((nr, nc))
-                        queue.append((nr, nc))
+            r, c = queue.popleft()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if (nr >= 0 and nr < rows) and (nc >= 0 and nc < cols) and grid[nr][nc] == INF:
+                    grid[nr][nc] = grid[r][c] + 1
+                    queue.append((nr, nc))
 ```
 
-标准示例的 4x4 网格上，两个门分别在 `(0,2)` 和 `(3,0)`，BFS 从这两个门同时展开，填充结果是 `[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]`，每个空房间的最终值都对应它到最近门的真实最短距离。`visited` 在入队时就标记，避免同一个房间被两个门的 BFS 波前重复计算成两个不同的距离。
+标准示例的 4x4 网格上，两个门分别在 `(0,2)` 和 `(3,0)`，BFS 从这两个门同时展开，原地填充结果为 `[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]`，每个空地的最终值严格对应其到最近宝藏门的曼哈顿最短距离。
 
 </details>
 

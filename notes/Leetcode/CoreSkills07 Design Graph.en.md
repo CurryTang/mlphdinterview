@@ -297,7 +297,7 @@ def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[st
 | Pattern Archetype | Core Concept | Recommended Template | Canonical Problems | Time Complexity | Space Complexity |
 |---|---|---|---|---|---|
 | **Grid Connectivity** | Flood Fill / Connected Area | **Template 1 (Grid DFS)** | Number of Islands, Max Area of Island | $O(mn)$ | $O(mn)$ |
-| **Grid Shortest Path** | Multi-Source Layered Diffusion | **Template 1 (Multi-Source BFS)** | Rotting Oranges, Walls and Gates | $O(mn)$ | $O(mn)$ |
+| **Grid Shortest Path** | Multi-Source Layered Diffusion | **Template 1 (Multi-Source BFS)** | Rotting Oranges, Islands and Treasure | $O(mn)$ | $O(mn)$ |
 | **State Deep Copy** | Adjacency List Hash Clone | **Template 2 (Graph DFS + Map)** | Clone Graph | $O(V + E)$ | $O(V)$ |
 | **Implicit Transformation**| Single-char neighbor substitution | **Template 1/2 (State BFS)** | Word Ladder | $O(N \cdot L^2)$ | $O(N \cdot L)$ |
 | **Dynamic Connectivity** | Component count / Cycle check | **Template 3 (Union-Find / DSU)** | Graph Valid Tree, Redundant Connection | $O(E \alpha(V))$ | $O(V)$ |
@@ -318,7 +318,7 @@ def solve_eulerian_path(tickets: List[List[str]], start: str = "JFK") -> List[st
 | 3 | [417. Pacific Atlantic Water Flow](https://neetcode.io/problems/pacific-atlantic-water-flow/question?list=neetcode150) | Two-source DFS/BFS with a reversed flow condition |
 | 4 | [130. Surrounded Regions](https://neetcode.io/problems/surrounded-regions/question?list=neetcode150) | Marking the border-reachable safe region first, then flipping the rest |
 | 5 | [994. Rotting Oranges](https://neetcode.io/problems/rotting-oranges/question?list=neetcode150) | Multi-source layered BFS |
-| 6 | [286. Walls and Gates](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150) | Multi-source BFS filling in distance to the nearest source |
+| 6 | [Islands and Treasure (286. Walls and Gates)](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150) | Multi-source BFS filling in distance to the nearest source (no visited set needed) |
 | 7 | [133. Clone Graph](https://neetcode.io/problems/clone-graph/question?list=neetcode150) | Adjacency-list DFS plus a hash map tracking the clone mapping |
 | 8 | [127. Word Ladder](https://neetcode.io/problems/word-ladder/question?list=neetcode150) | BFS plus per-position letter substitution to generate neighbors |
 | 9 | [323. Number of Connected Components in an Undirected Graph](https://neetcode.io/problems/count-connected-components/question?list=neetcode150) | Union-Find counting connected components |
@@ -693,19 +693,24 @@ On `grid = [[2,1,1],[1,1,0],[0,1,1]]`, `fresh` starts at 5. Minute 1 rots `(0,1)
 
 </details>
 
-### 6. Walls and Gates
+### 6. Islands and Treasure (Walls and Gates)
 
 [NeetCode problem link](https://neetcode.io/problems/islands-and-treasure/question?list=neetcode150)
 
-The classic LeetCode title is Walls and Gates; NeetCode renamed the same problem Islands and Treasure. The task is unchanged: fill every empty room (`INF`) with its distance to the nearest gate (`0`), where walls (`-1`) block movement. All gates are enqueued together as the starting layer of a multi-source BFS and expanded layer by layer. The layer at which an empty room is first reached is its shortest distance to the nearest gate, since BFS on an unweighted graph reaches every node for the first time along a shortest path.
+In NeetCode 150, this problem is named **Islands and Treasure** (matching LeetCode classic **286. Walls and Gates**): fill every empty room (`INF` / `2147483647`) with its shortest distance to the nearest gate (`0`), where water/walls (`-1`) block movement.
+
+**Why is a `visited` set completely unnecessary here?**
+- All empty land rooms are initialized with `INF`;
+- When multi-source BFS reaches an unvisited neighboring cell `(nr, nc)`, `grid[nr][nc] == INF` is satisfied, and we **immediately modify in-place** `grid[nr][nc] = grid[r][c] + 1`;
+- The newly written value is strictly less than `INF`. Thus, any future BFS wavefront trying to visit `(nr, nc)` will fail the `grid[nr][nc] == INF` check, **naturally acting as the visited guard with zero extra $O(mn)$ hash set space overhead**!
 
 | Item | Detail |
 |---|---|
-| Technique | Multi-source BFS filling in distance to the nearest source |
-| Key invariant | The layer at which an empty room is first visited equals its shortest distance to the nearest gate |
-| Time / Space | `O(mn) / O(mn)` |
+| Technique | Multi-source in-place BFS (no `visited` set required) |
+| Key invariant | The moment an empty room is set to `grid[r][c] + 1`, that value is its true shortest distance to the nearest gate |
+| Time / Space | `O(mn) / O(mn)` (only queue memory; zero auxiliary set overhead) |
 
-#### Quick Coding: Walls and Gates
+#### Quick Coding: Islands and Treasure
 
 ```python
 def islandsAndTreasure(grid):
@@ -724,35 +729,27 @@ INF = 2147483647
 
 class Solution:
     def islandsAndTreasure(self, grid: List[List[int]]) -> None:
-        rows, cols = len(grid), len(grid[0])
+        rows = len(grid)
+        cols = len(grid[0])
         queue = deque()
-        visited = set()
 
-        for r in range(rows):
-            for c in range(cols):
-                if grid[r][c] == 0:
-                    queue.append((r, c))
-                    visited.add((r, c))
+        # 1. Enqueue all treasure chests / gates (0) as the initial layer
+        for i in range(rows):
+            for j in range(cols):
+                if grid[i][j] == 0:
+                    queue.append((i, j))
 
-        dist = 0
+        # 2. Multi-source in-place BFS diffusion without a visited set
         while queue:
-            dist += 1
-            for _ in range(len(queue)):
-                r, c = queue.popleft()
-                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nr, nc = r + dr, c + dc
-                    if (
-                        0 <= nr < rows
-                        and 0 <= nc < cols
-                        and (nr, nc) not in visited
-                        and grid[nr][nc] == INF
-                    ):
-                        grid[nr][nc] = dist
-                        visited.add((nr, nc))
-                        queue.append((nr, nc))
+            r, c = queue.popleft()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if (nr >= 0 and nr < rows) and (nc >= 0 and nc < cols) and grid[nr][nc] == INF:
+                    grid[nr][nc] = grid[r][c] + 1
+                    queue.append((nr, nc))
 ```
 
-On the standard 4x4 example grid, the two gates sit at `(0,2)` and `(3,0)`. BFS expands from both at once, and the filled grid is `[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]`, with every empty room holding its true shortest distance to the nearest gate. `visited` is marked at enqueue time, which keeps a room reached by two gates' wavefronts from being recomputed with two conflicting distances.
+On the standard 4x4 example grid, the two gates sit at `(0,2)` and `(3,0)`. BFS expands from both gates concurrently, in-place filling the grid to `[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]`. Every cell holds its exact Manhattan shortest distance to the closest gate.
 
 </details>
 
