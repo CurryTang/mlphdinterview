@@ -1,4 +1,11 @@
-# 强化学习练习
+# 强化学习系统 · RL 3：RL Infra、分布式后训练与高并发架构自测 35 问
+
+> 💡 **强化学习与后训练三部曲全景（The Post-Training & RL Trilogy）**：
+> - **RL 1（偏好对齐）**：[ML Coding 06B · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)
+> - **RL 2（推理与智能体）**：[ML Coding 06C · RLVR、推理大模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与 Agent 强化学习](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)
+> - **RL 3（系统架构与 Infra 实战）**：**本篇（MLSYS15）**——直击高并发 Rollout 调度、vLLM/SGLang 引擎解耦、异步通信拓扑与显存优化 35 核心问答。
+
+---
 
 ## A · 算法基础（Q1–Q10）
 

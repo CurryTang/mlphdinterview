@@ -340,30 +340,36 @@ NVIDIA Blackwell (B200 / GB200) introduces native **NVFP4 Tensor Cores** and **M
 
 ## Module 3: Post-Training Alignment, Distillation & Evaluation
 
-### 1. Dual-Track Post-Training RL Paradigms: RLHF (Preference Alignment) vs. RLVR (Verifiable Reasoning Alignment)
+### 1. The Post-Training RL Trilogy: Preference Alignment (RL 1) ➔ Slow Reasoning (RL 2) ➔ Distributed Infra (RL 3)
 
-Modern LLM post-training has decoupled into **two distinct, specialized reinforcement learning tracks**:
+Modern LLM post-training has decoupled into a **comprehensive 3-part reinforcement learning curriculum**:
 
 ```text
-The Modern Post-Training Dual-Track RL Architecture:
+The Modern Post-Training & Reinforcement Learning Trilogy:
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Track 1: Human Preference Alignment (RLHF / Preference Optimization)   │
+│ Track 1 (RL 1): Human Preference Alignment (RLHF / Preference Opt)     │
 │ • Core Tasks: Open-ended Q&A, creative writing, safety, format persona │
 │ • Reward Source: Bradley-Terry neural Reward Model or implicit DPO loss│
 │ • Core Methods: PPO (4-Model System) ➔ DPO (Implicit Reward) ➔ SimPO   │
-│ • Dedicated Deep-Dive: See [ML Coding 06B · RLHF & Preference Alignment](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
+│ • Dedicated Deep-Dive: [ML Coding 06B · RLHF & Preference Alignment](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
 ├────────────────────────────────────────────────────────────────────────┤
-│ Track 2: Verifiable Reward RL (RLVR & Reasoning / Agentic RL)          │
+│ Track 2 (RL 2): Verifiable Reward RL (RLVR & Reasoning / Agentic RL)   │
 │ • Core Tasks: Slow-thinking reasoning (o1 / DeepSeek-R1), Math, Code   │
 │ • Reward Source: Deterministic external verifiers (Compilers, Sandboxes│
 │ • Core Methods: GRPO (Group Relative Advantage, zero Critic) ➔ Long-CoT│
-│ • Dedicated Deep-Dive: See [ML Coding 06C · RLVR, Reasoning & Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
+│ • Dedicated Deep-Dive: [ML Coding 06C · RLVR, Reasoning & Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
+├────────────────────────────────────────────────────────────────────────┤
+│ Track 3 (RL 3): RL Infrastructure & Distributed Systems (RL Infra)     │
+│ • Core Tasks: High-concurrency rollout scheduling, vLLM/SGLang decoupled│
+│ • Core Methods: Actor/Rollout/Critic VRAM topology, KV Cache sharing    │
+│ • Dedicated Deep-Dive: [RL Practice · 35 Questions on RL Infra](#MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.md)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-> 💡 **Dedicated Deep-Dive Notes Navigation**:
-> - **RLHF / Human Preference Alignment**: Comprehensive derivations from Bradley-Terry Reward Modeling and PPO 4-Model System to DPO closed-form proofs and Alignment Tax $\to$ [ML Coding 06B · RLHF & Preference Alignment](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.en.md).
-> - **RLVR / Reasoning Models & Agentic RL**: DeepSeek-R1 evolutionary path, GRPO mathematical derivation, rule-based execution verifiers, and multi-turn Agent RL $\to$ [ML Coding 06C · RLVR, Reasoning & Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.en.md).
+> 💡 **The Post-Training & Reinforcement Learning Trilogy Navigation**:
+> - **RL 1 (Preference Alignment)**: [ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.en.md)
+> - **RL 2 (Reasoning & Agents)**: [ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.en.md)
+> - **RL 3 (Distributed Systems & Infra)**: [Reinforcement Learning Practice · RL 3: 35 High-Yield Questions on RL Infra & Distributed Post-Training Systems](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/Mlsys/MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.en.md)
 
 ---
 

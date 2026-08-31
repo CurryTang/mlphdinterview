@@ -340,30 +340,36 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 ## 模块三：后训练对齐、知识蒸馏与评测体系
 
-### 1. 后训练双轨制强化学习范式：RLHF（人类偏好对齐） vs RLVR（可验证推理对齐）
+### 1. 后训练强化学习三部曲：偏好对齐 (RL 1) ➔ 慢思考推理 (RL 2) ➔ 分布式 Infra 实战 (RL 3)
 
-现代大模型后训练（Post-Training）已彻底演进为**两大截然不同、各司其职的强化学习对齐分支**：
+现代大模型后训练（Post-Training）已构建起**三大层次分明、紧密衔接的强化学习知识体系**：
 
 ```text
-现代大模型后训练双轨强化学习架构：
+现代大模型后训练与强化学习三部曲架构：
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 分支一：人类偏好对齐 (RLHF / Preference Alignment)                    │
+│ 篇章一 (RL 1)：人类偏好对齐全景 (RLHF / Preference Alignment)         │
 │ • 核心任务: 开放式问答、润色写作、安全性、格式对齐与人设塑造          │
 │ • 奖励来源: Bradley-Terry 偏好模型 (Reward Model) 或隐式分类目标 (DPO) │
 │ • 核心方法: PPO (4 模型并发) ➔ DPO (隐式闭式解) ➔ IPO / KTO / SimPO    │
 │ • 深度专篇: 详见 [ML Coding 06B · RLHF 与偏好对齐全景](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
 ├────────────────────────────────────────────────────────────────────────┤
-│ 分支二：可验证奖励强化学习 (RLVR & Reasoning / Agentic RL)             │
+│ 篇章二 (RL 2)：可验证奖励强化学习 (RLVR & Reasoning / Agentic RL)     │
 │ • 核心任务: 慢思考推理 (o1 / DeepSeek-R1)、竞赛数学、LeetCode、Agent   │
 │ • 奖励来源: 确定性外部规则验证器 (编译器、沙箱单元测试、形式化证明)   │
 │ • 核心方法: GRPO (分组相对优势，废除 Critic 价值网络) ➔ Long-CoT 涌现 │
 │ • 深度专篇: 详见 [ML Coding 06C · RLVR、推理大模型与 Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
+├────────────────────────────────────────────────────────────────────────┤
+│ 篇章三 (RL 3)：强化学习基础设施与分布式系统 (RL Infra & Systems)      │
+│ • 核心任务: 高并发 Rollout 调度、vLLM/SGLang 引擎解耦、异步通信拓扑   │
+│ • 核心方法: Actor/Rollout/Critic 显存划分、K-V Cache 跨节点共享        │
+│ • 深度专篇: 详见 [强化学习系统 · RL 3：RL Infra 自测 35 问](#MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.md)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-> 💡 **强化学习深度专篇导航**：
-> - **RLHF / 人类偏好对齐完整推导**（从 Reward Model、PPO 4 模型系统到 DPO 隐式奖励闭式推导与对齐税）：请阅读 [ML Coding 06B · RLHF 与偏好对齐全景](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)。
-> - **RLVR / 推理大模型与 Agentic RL**（DeepSeek-R1 演进、GRPO 算法数学推导、规则验证器与多轮 Agent 强化学习）：请阅读 [ML Coding 06C · RLVR、推理大模型与 Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)。
+> 💡 **强化学习深度三部曲专篇导航**：
+> - **RL 1（偏好对齐）**：[ML Coding 06B · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)
+> - **RL 2（推理与智能体）**：[ML Coding 06C · RLVR、推理大模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与 Agent 强化学习](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)
+> - **RL 3（系统与 Infra）**：[强化学习系统 · RL 3：RL Infra、分布式后训练与高并发架构自测 35 问](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/Mlsys/MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.md)
 
 ---
 

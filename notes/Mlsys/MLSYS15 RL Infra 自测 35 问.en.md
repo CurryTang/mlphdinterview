@@ -1,4 +1,11 @@
-# Reinforcement Learning Exercises
+# Reinforcement Learning Practice · RL 3: 35 High-Yield Questions on RL Infra & Distributed Post-Training Systems
+
+> 💡 **The Post-Training & Reinforcement Learning Trilogy**:
+> - **RL 1 (Preference Alignment)**: [ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.en.md)
+> - **RL 2 (Reasoning & Agents)**: [ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.en.md)
+> - **RL 3 (Systems & Distributed Infra)**: **This Note (MLSYS15)**—35 deep questions covering high-concurrency rollout scheduling, vLLM/SGLang engine decoupling, asynchronous communication topologies, and VRAM scaling.
+
+---
 
 ## A · Algorithm Basics (Q1-Q10)
 
