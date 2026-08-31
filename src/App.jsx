@@ -18615,6 +18615,639 @@ function CoinChangeVisual() {
   );
 }
 
+const SUBSET_SUM_PRESETS = [
+  {
+    id: 'lc416',
+    nums: [1, 5, 11, 5],
+    label: 'nums = [1, 5, 11, 5] (LC 416 经典: 和=22, 目标=11 ➔ True)',
+    labelEn: 'nums = [1, 5, 11, 5] (LC 416 Classic: Sum=22, Target=11 ➔ True)',
+  },
+  {
+    id: 'odd_sum',
+    nums: [1, 2, 3, 5],
+    label: 'nums = [1, 2, 3, 5] (奇数和陷阱: 和=11 奇数 ➔ 直接 False)',
+    labelEn: 'nums = [1, 2, 3, 5] (Odd Total Sum: Sum=11 ➔ False)',
+  },
+  {
+    id: 'even_unreachable',
+    nums: [2, 2, 2, 8],
+    label: 'nums = [2, 2, 2, 8] (偶数和不可达: 和=14, 目标=7 ➔ False)',
+    labelEn: 'nums = [2, 2, 2, 8] (Even Unreachable: Sum=14, Target=7 ➔ False)',
+  },
+  {
+    id: 'compact',
+    nums: [1, 2, 5],
+    label: 'nums = [1, 2, 5] (紧凑测试: 和=8, 目标=4 ➔ False)',
+    labelEn: 'nums = [1, 2, 5] (Compact: Sum=8, Target=4 ➔ False)',
+  },
+  {
+    id: 'multi_ways',
+    nums: [3, 3, 3, 4, 5],
+    label: 'nums = [3, 3, 3, 4, 5] (多解组合: 和=18, 目标=9 ➔ True)',
+    labelEn: 'nums = [3, 3, 3, 4, 5] (Multiple Ways: Sum=18, Target=9 ➔ True)',
+  },
+];
+
+function generateSubsetSumSteps(nums) {
+  const total = nums.reduce((acc, v) => acc + v, 0);
+  const n = nums.length;
+  const isOdd = total % 2 !== 0;
+  const target = isOdd ? Math.floor(total / 2) : total / 2;
+
+  let dp1D = Array(target + 1).fill(false);
+  dp1D[0] = true;
+
+  let dp2D = Array.from({ length: n }, () => Array(target + 1).fill(false));
+  for (let i = 0; i < n; i++) {
+    dp2D[i][0] = true;
+  }
+
+  const parentChoice = Array.from({ length: n }, () => Array(target + 1).fill(false));
+  const steps = [];
+
+  steps.push({
+    stepIndex: 0,
+    num: null,
+    numIdx: null,
+    capacity: null,
+    lookbackCapacity: null,
+    lookbackVal: null,
+    oldVal: null,
+    newVal: null,
+    isNewlyUnlocked: false,
+    dp1D: [...dp1D],
+    dp2D: dp2D.map((row) => [...row]),
+    reachableSet: [0],
+    isInitial: true,
+    total,
+    isOdd,
+    target,
+    desc: isOdd
+      ? `总和 total = ${total} 为奇数！整数数组无法分割成两个和相等的子集，直接判定失败，返回 False。`
+      : `初始化：数组总和 total = ${total}（偶数），目标子集和 target = ${total} / 2 = ${target}。dp[0] = True（空子集和为 0），其余 dp[1..${target}] 初始化为 False。`,
+    descEn: isOdd
+      ? `Total sum = ${total} is odd! Cannot partition integer elements into two equal subsets. Returns False.`
+      : `Initialize: Total sum = ${total} (even), target subset sum = ${total} / 2 = ${target}. dp[0] = True, rest dp[1..${target}] = False.`,
+  });
+
+  if (isOdd) {
+    steps.push({
+      stepIndex: 1,
+      num: null,
+      numIdx: null,
+      capacity: null,
+      lookbackCapacity: null,
+      lookbackVal: null,
+      oldVal: null,
+      newVal: null,
+      isNewlyUnlocked: false,
+      dp1D: [...dp1D],
+      dp2D: dp2D.map((row) => [...row]),
+      reachableSet: [0],
+      isFinal: true,
+      total,
+      isOdd: true,
+      canPartition: false,
+      subsetA: [],
+      subsetB: [],
+      target,
+      desc: `计算结束：总和为奇数 (${total})，没有任何可能划分为两个和相等的子集。返回 False。`,
+      descEn: `Terminated: Total sum is odd (${total}), impossible to partition into two equal subsets. Returns False.`,
+    });
+    return steps;
+  }
+
+  let currentStepIdx = 1;
+  let currentReachable = new Set([0]);
+
+  for (let i = 0; i < n; i++) {
+    const x = nums[i];
+    const nextReachable = new Set(currentReachable);
+
+    for (let s = 0; s <= target; s++) {
+      if (i > 0) {
+        dp2D[i][s] = dp2D[i - 1][s];
+      }
+    }
+
+    // 0/1 背包：倒序遍历 j 从 target 递减到 x
+    for (let j = target; j >= x; j--) {
+      const oldVal = dp1D[j];
+      const lookbackVal = dp1D[j - x];
+      const newVal = oldVal || lookbackVal;
+      const isNewlyUnlocked = !oldVal && newVal;
+
+      if (lookbackVal) {
+        dp1D[j] = true;
+        dp2D[i][j] = true;
+        parentChoice[i][j] = true;
+        nextReachable.add(j);
+      }
+
+      let desc = '';
+      let descEn = '';
+
+      if (oldVal) {
+        desc = `当前物品 nums[${i}] = ${x}，检查容量 j = ${j}：dp[${j}] 在之前已可达（True），本轮无需更新，保持 True。`;
+        descEn = `Item nums[${i}] = ${x}, Capacity j = ${j}: dp[${j}] was already True, stays True.`;
+      } else if (lookbackVal) {
+        desc = `当前物品 nums[${i}] = ${x}，检查容量 j = ${j}：回看 dp[${j} - ${x}] = dp[${j - x}] 为 True！选取该数字，成功【新解锁可达和 ${j}】➔ dp[${j}] 变为 True！`;
+        descEn = `Item nums[${i}] = ${x}, Capacity j = ${j}: Lookback dp[${j} - ${x}] = dp[${j - x}] is True! By picking ${x}, successfully unlocked sum ${j} ➔ dp[${j}] becomes True!`;
+      } else {
+        desc = `当前物品 nums[${i}] = ${x}，检查容量 j = ${j}：dp[${j}] 为 False，且回看 dp[${j} - ${x}] 亦为 False ➔ dp[${j}] 保持 False。`;
+        descEn = `Item nums[${i}] = ${x}, Capacity j = ${j}: dp[${j}] is False and lookback dp[${j - x}] is False ➔ dp[${j}] stays False.`;
+      }
+
+      steps.push({
+        stepIndex: currentStepIdx++,
+        num: x,
+        numIdx: i,
+        capacity: j,
+        lookbackCapacity: j - x,
+        lookbackVal,
+        oldVal,
+        newVal: dp1D[j],
+        isNewlyUnlocked,
+        dp1D: [...dp1D],
+        dp2D: dp2D.map((row) => [...row]),
+        reachableSet: Array.from(nextReachable).sort((a, b) => a - b),
+        total,
+        isOdd: false,
+        target,
+        desc,
+        descEn,
+      });
+    }
+
+    currentReachable = nextReachable;
+  }
+
+  const canPartition = dp1D[target];
+  const subsetA = [];
+  const subsetB = [];
+
+  if (canPartition) {
+    let currSum = target;
+    const pickedIndices = new Set();
+    for (let i = n - 1; i >= 0; i--) {
+      if (currSum >= nums[i] && (i === 0 ? currSum === nums[i] : (parentChoice[i][currSum] || (!dp2D[i - 1][currSum] && dp2D[i][currSum])))) {
+        if (i === 0 || !dp2D[i - 1][currSum]) {
+          subsetA.push(nums[i]);
+          pickedIndices.add(i);
+          currSum -= nums[i];
+        }
+      }
+    }
+    if (currSum > 0) {
+      subsetA.length = 0;
+      pickedIndices.clear();
+      let rem = target;
+      for (let i = n - 1; i >= 0; i--) {
+        if (rem >= nums[i] && dp2D[i][rem] && (i === 0 || !dp2D[i - 1][rem])) {
+          subsetA.push(nums[i]);
+          pickedIndices.add(i);
+          rem -= nums[i];
+        }
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      if (!pickedIndices.has(i)) {
+        subsetB.push(nums[i]);
+      }
+    }
+  }
+
+  steps.push({
+    stepIndex: currentStepIdx,
+    num: null,
+    numIdx: null,
+    capacity: target,
+    lookbackCapacity: null,
+    lookbackVal: null,
+    oldVal: null,
+    newVal: dp1D[target],
+    isNewlyUnlocked: false,
+    dp1D: [...dp1D],
+    dp2D: dp2D.map((row) => [...row]),
+    reachableSet: Array.from(currentReachable).sort((a, b) => a - b),
+    isFinal: true,
+    total,
+    isOdd: false,
+    canPartition,
+    subsetA,
+    subsetB,
+    target,
+    desc: canPartition
+      ? `计算完成！目标容量 dp[${target}] = True，成功找到等和子集切分！子集 A: [${subsetA.join(', ')}]（和为 ${target}）== 子集 B: [${subsetB.join(', ')}]（和为 ${target}）。返回 True。`
+      : `计算完成！目标容量 dp[${target}] = False，在所有子集组合中均无法凑出和 ${target}。返回 False。`,
+    descEn: canPartition
+      ? `Done! Target dp[${target}] = True, successfully partitioned! Subset A: [${subsetA.join(', ')}] (Sum=${target}) == Subset B: [${subsetB.join(', ')}] (Sum=${target}). Returns True.`
+      : `Done! Target dp[${target}] = False, impossible to form subset sum ${target}. Returns False.`,
+  });
+
+  return steps;
+}
+
+function PartitionSubsetSumVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [selectedPreset, setSelectedPreset] = useState('lc416');
+  const [viewMode, setViewMode] = useState('1d'); // '1d' | '2d' | 'tree'
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(600);
+
+  const activePreset = SUBSET_SUM_PRESETS.find((p) => p.id === selectedPreset) ?? SUBSET_SUM_PRESETS[0];
+  const nums = activePreset.nums;
+
+  const steps = useMemo(() => generateSubsetSumSteps(nums), [nums]);
+  const currentStep = steps[stepIndex] ?? steps[0];
+  const target = currentStep.target;
+  const isOdd = currentStep.isOdd;
+
+  useEffect(() => {
+    setStepIndex(0);
+    setIsPlaying(false);
+  }, [selectedPreset]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (stepIndex >= steps.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setStepIndex((prev) => Math.min(steps.length - 1, prev + 1));
+    }, speed);
+    return () => clearTimeout(timer);
+  }, [isPlaying, stepIndex, steps.length, speed]);
+
+  const handleCellClick = (cap) => {
+    const targetIdx = steps.findIndex((st) => st.capacity === cap && st.num === currentStep.num);
+    if (targetIdx !== -1) {
+      setIsPlaying(false);
+      setStepIndex(targetIdx);
+    }
+  };
+
+  return (
+    <section aria-label={t('分割等和子集 0/1 背包状态转移演示', 'Partition Equal Subset Sum 0/1 Knapsack Walkthrough')} className="pssv-vis">
+      <header className="pssv-header">
+        <div>
+          <p className="eyebrow">{t('0/1 背包状态转移 · 倒序防复选演化', '0/1 Knapsack State Transition · 1D Backward Traversal')}</p>
+          <h2>{t('Partition Equal Subset Sum：分割等和子集可达性与决策分支可视化', 'Partition Equal Subset Sum: 0/1 Knapsack Reachability & Decision Tree Walkthrough')}</h2>
+          <p>{t(
+            '状态定义：dp[j] 表示当前已遍历元素能否组合凑出子集和 j。转移方程：dp[j] = dp[j] or dp[j - x]。倒序遍历从 target 递减到 x，确保每个元素最多只被使用一次。',
+            'State: dp[j] = whether current elements can sum to j. Recurrence: dp[j] = dp[j] or dp[j - x]. Backward loop from target down to x prevents reusing items.',
+          )}</p>
+        </div>
+      </header>
+
+      {/* Toolbar: Presets & View Modes */}
+      <div className="pssv-toolbar">
+        <div className="pssv-presets-row">
+          <span className="pssv-label">{t('测试用例', 'Presets')}:</span>
+          {SUBSET_SUM_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`pssv-chip ${preset.id === selectedPreset ? 'active' : ''}`}
+              onClick={() => setSelectedPreset(preset.id)}
+            >
+              {isEnglish ? preset.labelEn : preset.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="pssv-modes-row">
+          <span className="pssv-label">{t('视图切换', 'View Mode')}:</span>
+          <button
+            type="button"
+            className={`pssv-chip ${viewMode === '1d' ? 'active' : ''}`}
+            onClick={() => setViewMode('1d')}
+          >
+            {t('一维滚动数组视图 (1D DP · 推荐)', '1D Rolling Array View (1D DP)')}
+          </button>
+          <button
+            type="button"
+            className={`pssv-chip ${viewMode === '2d' ? 'active' : ''}`}
+            onClick={() => setViewMode('2d')}
+          >
+            {t('2D 状态表格与转移依赖 (2D Matrix)', '2D Matrix Table View')}
+          </button>
+          <button
+            type="button"
+            className={`pssv-chip ${viewMode === 'tree' ? 'active' : ''}`}
+            onClick={() => setViewMode('tree')}
+          >
+            {t('可达和集合与二叉决策树 (Decision Tree)', 'Reachable Sums & Tree View')}
+          </button>
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div className="pssv-status-bar">
+        <div className="pssv-badge">
+          <span className="pssv-badge-lbl">{t('原始数组', 'Array')}</span>
+          <strong className="pssv-badge-val">[{nums.join(', ')}]</strong>
+        </div>
+        <div className="pssv-badge">
+          <span className="pssv-badge-lbl">{t('元素总和', 'Total Sum')}</span>
+          <strong className="pssv-badge-val">{currentStep.total} {isOdd ? t('(奇数 ➔ 无解)', '(Odd ➔ Impossible)') : t('(偶数)', '(Even)')}</strong>
+        </div>
+        <div className="pssv-badge highlight">
+          <span className="pssv-badge-lbl">{t('目标子集和', 'Target Sum')}</span>
+          <strong className="pssv-badge-val">{isOdd ? 'N/A' : target}</strong>
+        </div>
+        {currentStep.num !== null && (
+          <div className="pssv-badge active-item">
+            <span className="pssv-badge-lbl">{t('当前处理物品', 'Current Item')}</span>
+            <strong className="pssv-badge-val">nums[{currentStep.numIdx}] = {currentStep.num}</strong>
+          </div>
+        )}
+        {currentStep.capacity !== null && (
+          <div className="pssv-badge active-cap">
+            <span className="pssv-badge-lbl">{t('当前检查容量', 'Current Capacity')}</span>
+            <strong className="pssv-badge-val">j = {currentStep.capacity}</strong>
+          </div>
+        )}
+      </div>
+
+      {/* Main Workspace based on View Mode */}
+      <div className="pssv-workspace">
+        {viewMode === '1d' && (
+          <div className="pssv-view-1d">
+            <div className="pssv-section-title">
+              <span>{t('一维滚动数组布尔状态 (dp[0..target])', '1D Rolling Array Boolean State (dp[0..target])')}</span>
+              <span className="pssv-hint">{t('绿色=可达 (True)，灰色=不可达 (False)，橙色=回看源 (j - x)', 'Green=True, Gray=False, Amber=Lookback (j - x)')}</span>
+            </div>
+
+            <div className="pssv-grid-1d">
+              {currentStep.dp1D.map((isTrue, cap) => {
+                const isCurrentCap = currentStep.capacity === cap;
+                const isLookbackCap = currentStep.lookbackCapacity === cap;
+                const isNewlyUnlocked = currentStep.isNewlyUnlocked && isCurrentCap;
+
+                let cellCls = isTrue ? 'reachable' : 'unreachable';
+                if (isCurrentCap) cellCls += ' current-scanning';
+                if (isLookbackCap) cellCls += ' lookback-source';
+                if (isNewlyUnlocked) cellCls += ' newly-unlocked';
+
+                return (
+                  <div
+                    key={cap}
+                    className={`pssv-cell-1d ${cellCls}`}
+                    onClick={() => handleCellClick(cap)}
+                    title={`dp[${cap}] = ${isTrue ? 'True' : 'False'}`}
+                  >
+                    <div className="pssv-cell-idx">j={cap}</div>
+                    <div className="pssv-cell-val">
+                      {isTrue ? '✓ True' : '· False'}
+                    </div>
+                    {isCurrentCap && <div className="pssv-tag-scan">j ➔</div>}
+                    {isLookbackCap && <div className="pssv-tag-source">j-x</div>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Why Backward Callout Box */}
+            <div className="pssv-callout-box">
+              <div className="pssv-callout-head">
+                <span className="pssv-icon">💡</span>
+                <strong>{t('为什么 0/1 背包必须从右往左倒序？', 'Why Must 0/1 Knapsack Traverse Backward?')}</strong>
+              </div>
+              <p>
+                {t(
+                  '倒序遍历 (j: target ➔ x) 确保在更新 dp[j] 时，其依赖的 dp[j - x] 尚未被本轮当前数字更新过，仍保留上一轮旧状态，保证该数字至多只被选取一次。若正序 (j: x ➔ target)，dp[j - x] 会被同一数字反复累加，退化为完全背包！',
+                  'Backward traversal (j: target ➔ x) ensures that when updating dp[j], the queried dp[j - x] comes from the pristine prior round. Forward traversal would cause multiple reuses of the same item within the same step!',
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {viewMode === '2d' && (
+          <div className="pssv-view-2d">
+            <div className="pssv-section-title">
+              <span>{t('2D 状态表格演化 (行: 元素 nums[0..i]，列: 容量 0..target)', '2D Matrix Evolution (Rows: nums[0..i], Cols: Capacity 0..target)')}</span>
+            </div>
+
+            <div className="pssv-table-container">
+              <table className="pssv-table">
+                <thead>
+                  <tr>
+                    <th>{t('物品', 'Item')}</th>
+                    {Array.from({ length: target + 1 }, (_, cap) => (
+                      <th key={cap} className={currentStep.capacity === cap ? 'col-highlight' : ''}>
+                        {cap}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {nums.map((val, rowIdx) => {
+                    const isRowActive = currentStep.numIdx === rowIdx;
+                    return (
+                      <tr key={rowIdx} className={isRowActive ? 'row-active' : ''}>
+                        <td className="row-header">
+                          <strong>nums[{rowIdx}] = {val}</strong>
+                        </td>
+                        {Array.from({ length: target + 1 }, (_, cap) => {
+                          const isTrue = currentStep.dp2D[rowIdx]?.[cap] ?? false;
+                          const isCurrentCell = isRowActive && currentStep.capacity === cap;
+                          const isLookbackCell = rowIdx > 0 && isRowActive && currentStep.lookbackCapacity === cap;
+
+                          let cellCls = isTrue ? 'cell-true' : 'cell-false';
+                          if (isCurrentCell) cellCls += ' active-cell';
+                          if (isLookbackCell) cellCls += ' lookback-cell';
+
+                          return (
+                            <td key={cap} className={cellCls}>
+                              <span>{isTrue ? '✓' : '·'}</span>
+                              {isLookbackCell && <span className="pssv-arrow-tag">选 x</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'tree' && (
+          <div className="pssv-view-tree">
+            <div className="pssv-section-title">
+              <span>{t('可达和集合演化 (Reachable Sums Progression)', 'Reachable Sums Progression Set')}</span>
+            </div>
+
+            <div className="pssv-tree-list">
+              <div className="pssv-tree-row">
+                <span className="pssv-tree-step">{t('初始状态', 'Initial')}:</span>
+                <div className="pssv-tree-badges">
+                  <span className="pssv-sum-badge base">0</span>
+                </div>
+              </div>
+
+              {nums.slice(0, (currentStep.numIdx ?? -1) + 1).map((val, idx) => {
+                const isCurrentItem = currentStep.numIdx === idx;
+                return (
+                  <div key={idx} className={`pssv-tree-row ${isCurrentItem ? 'active' : ''}`}>
+                    <span className="pssv-tree-step">
+                      {t('加入', 'Add')} nums[{idx}] = {val}:
+                    </span>
+                    <div className="pssv-tree-badges">
+                      {currentStep.reachableSet.map((sumVal) => (
+                        <span
+                          key={sumVal}
+                          className={`pssv-sum-badge ${sumVal === target ? 'target-hit' : ''}`}
+                        >
+                          {sumVal}
+                          {sumVal === target && ' 🎯'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Real-time Formula Card */}
+      <div className="pssv-formula-card">
+        <div className="pssv-formula-header">
+          <span className="pssv-formula-badge">{t('实时状态转移公式', 'Live State Transition Recurrence')}</span>
+          <code>dp[j] = dp[j] or dp[j - x]</code>
+        </div>
+        <div className="pssv-formula-calc">
+          {currentStep.num !== null && currentStep.capacity !== null ? (
+            <div className="pssv-calc-line">
+              <span>dp[{currentStep.capacity}] = dp[{currentStep.capacity}] ({currentStep.oldVal ? 'True' : 'False'}) or dp[{currentStep.capacity} - {currentStep.num}] ({currentStep.lookbackVal ? 'True' : 'False'}) ➔ </span>
+              <strong className={currentStep.newVal ? 'calc-true' : 'calc-false'}>
+                {currentStep.newVal ? 'True' : 'False'}
+              </strong>
+              {currentStep.isNewlyUnlocked && <span className="calc-unlock">✨ {t('新解锁目标和!', 'Newly unlocked sum!')}</span>}
+            </div>
+          ) : (
+            <div className="pssv-calc-line muted">
+              <span>{isOdd ? t('奇数和无法均分，状态转移终止', 'Odd total sum, transition terminated') : t('点击播放或单步步进查看实时运算', 'Click Play or Step Forward to view live evaluation')}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Final Partition Outcome */}
+      {currentStep.isFinal && (
+        <div className={`pssv-outcome-banner ${currentStep.canPartition ? 'success' : 'fail'}`}>
+          <div className="pssv-outcome-icon">{currentStep.canPartition ? '🎉' : '❌'}</div>
+          <div className="pssv-outcome-content">
+            <h4>{currentStep.canPartition ? t('成功找到等和子集划分！', 'Successfully Partitioned!') : t('无法找到等和子集划分', 'No Equal Partition Possible')}</h4>
+            {currentStep.canPartition ? (
+              <p className="pssv-outcome-eq">
+                <span>{t('子集 A', 'Subset A')}: <strong>[{currentStep.subsetA.join(', ')}]</strong> ({t('和', 'Sum')} = {target})</span>
+                <span className="pssv-eq-sign">==</span>
+                <span>{t('子集 B', 'Subset B')}: <strong>[{currentStep.subsetB.join(', ')}]</strong> ({t('和', 'Sum')} = {target})</span>
+              </p>
+            ) : (
+              <p>{isOdd ? t(`总和 ${currentStep.total} 为奇数，无法等分`, `Total sum ${currentStep.total} is odd, cannot partition`) : t(`在所有子集组合中均无法凑出目标和 ${target}`, `Target sum ${target} cannot be formed by any subset`)}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step Controls */}
+      <div className="pssv-controls">
+        <div className="pssv-ctrl-buttons">
+          <button
+            type="button"
+            className="pssv-btn"
+            disabled={stepIndex === 0}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.max(0, prev - 1)); }}
+          >
+            ← {t('上一步', 'Prev')}
+          </button>
+
+          <button
+            type="button"
+            className="pssv-btn primary"
+            onClick={() => {
+              if (stepIndex >= steps.length - 1) {
+                setStepIndex(0);
+              }
+              setIsPlaying((prev) => !prev);
+            }}
+          >
+            {isPlaying ? t('⏸ 暂停', '⏸ Pause') : stepIndex >= steps.length - 1 ? t('🔄 重新播放', '🔄 Replay') : t('▶ 自动播放', '▶ Play')}
+          </button>
+
+          <button
+            type="button"
+            className="pssv-btn"
+            disabled={stepIndex >= steps.length - 1}
+            onClick={() => { setIsPlaying(false); setStepIndex((prev) => Math.min(steps.length - 1, prev + 1)); }}
+          >
+            {t('下一步', 'Next')} →
+          </button>
+
+          <button
+            type="button"
+            className="pssv-btn text-btn"
+            onClick={() => { setIsPlaying(false); setStepIndex(0); }}
+          >
+            {t('重置', 'Reset')}
+          </button>
+        </div>
+
+        <div className="pssv-speed-ctrl">
+          <span className="pssv-label">{t('播放速度', 'Speed')}:</span>
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+            className="pssv-select"
+            aria-label={t('播放速度选择', 'Playback Speed Selector')}
+          >
+            <option value={1000}>0.5x ({t('较慢', 'Slow')})</option>
+            <option value={600}>1.0x ({t('标准', 'Normal')})</option>
+            <option value={250}>2.0x ({t('快速', 'Fast')})</option>
+          </select>
+        </div>
+
+        <div className="pssv-progress-ctrl">
+          <span className="pssv-progress-label">{stepIndex} / {steps.length - 1}</span>
+          <input
+            type="range"
+            min="0"
+            max={steps.length - 1}
+            value={stepIndex}
+            onChange={(e) => { setIsPlaying(false); setStepIndex(Number(e.target.value)); }}
+            className="pssv-slider"
+            aria-label={t('选择分割等和子集 DP 演示步骤', 'Select Subset Sum DP Step')}
+          />
+        </div>
+      </div>
+
+      {/* Step Explanation Card */}
+      <div className="pssv-desc-card">
+        <div className="pssv-desc-title">
+          <span className="pssv-step-badge">{t('步骤', 'Step')} {stepIndex}</span>
+          <strong>
+            {currentStep.num !== null
+              ? `物品 nums[${currentStep.numIdx}] = ${currentStep.num} ➔ 检查容量 j = ${currentStep.capacity}`
+              : currentStep.isFinal
+              ? t('最终求解结果', 'Final Result')
+              : t('初始化', 'Initialization')}
+          </strong>
+        </div>
+        <p className="pssv-desc-text">{isEnglish ? currentStep.descEn : currentStep.desc}</p>
+      </div>
+    </section>
+  );
+}
+
 
 function BacktrackingPatternAtlas() {
   const { isEnglish, t } = useUiCopy();
@@ -20657,7 +21290,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -20765,6 +21398,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'coin-change-demo') {
     return <CoinChangeVisual />;
+  }
+
+  if (match?.[1] === 'subset-sum-demo') {
+    return <PartitionSubsetSumVisual />;
   }
 
   if (match?.[1] === 'greedy-patterns') {

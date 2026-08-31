@@ -1118,6 +1118,48 @@ describe('App', () => {
     fireEvent.click(within(ccv).getByRole('button', { name: /coins = \[1, 3, 4\]/i }));
     expect(within(ccv).getByText(/初始化状态/i)).toBeInTheDocument();
   });
+
+  it('renders the Partition Equal Subset Sum 0/1 Knapsack visual and switches modes', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills10')
+          ? '# Dynamic Programming\n\n```subset-sum-demo\n```'
+          : '# Default note',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 10 ·/i }));
+
+    const pssv = await screen.findByRole('region', { name: '分割等和子集 0/1 背包状态转移演示' });
+    expect(within(pssv).getByText(/Partition Equal Subset Sum：分割等和子集可达性与决策分支可视化/i)).toBeInTheDocument();
+
+    // Verify preset buttons exist
+    expect(within(pssv).getByRole('button', { name: /nums = \[1, 5, 11, 5\]/i })).toBeInTheDocument();
+    expect(within(pssv).getByRole('button', { name: /nums = \[1, 2, 3, 5\]/i })).toBeInTheDocument();
+
+    // Step forward using slider
+    const slider = within(pssv).getByRole('slider', { name: '选择分割等和子集 DP 演示步骤' });
+    fireEvent.change(slider, { target: { value: '1' } });
+
+    // Verify step description
+    expect(within(pssv).getByText(/当前物品 nums\[0\] = 1/i)).toBeInTheDocument();
+
+    // Switch view modes
+    fireEvent.click(within(pssv).getByRole('button', { name: /2D 状态表格与转移依赖/i }));
+    expect(within(pssv).getByText(/2D 状态表格演化/i)).toBeInTheDocument();
+
+    fireEvent.click(within(pssv).getByRole('button', { name: /可达和集合与二叉决策树/i }));
+    expect(within(pssv).getByText(/可达和集合演化/i)).toBeInTheDocument();
+
+    // Switch preset to Odd Sum
+    fireEvent.click(within(pssv).getByRole('button', { name: /nums = \[1, 2, 3, 5\]/i }));
+    expect(within(pssv).getByText(/总和 total = 11 为奇数/i)).toBeInTheDocument();
+  });
 });
 
 

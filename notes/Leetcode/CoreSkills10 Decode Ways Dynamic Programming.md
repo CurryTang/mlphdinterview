@@ -711,6 +711,13 @@ class Solution:
 
 $$dp[j] = dp[j] \lor dp[j - x]$$
 
+#### 0/1 背包一维状态演化、倒序防复选与可达性回溯可视化
+
+```subset-sum-demo
+```
+
+#### 代码实现
+
 ```python
 class Solution:
     def canPartition(self, nums: list[int]) -> bool:

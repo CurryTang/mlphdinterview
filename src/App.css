@@ -19410,6 +19410,679 @@ button.overview-support-card.active {
   line-height: 1.55;
 }
 
+/* =========================================================================
+   Partition Equal Subset Sum 0/1 Knapsack Visualizer (.pssv-vis)
+   ========================================================================= */
+
+.pssv-vis {
+  margin: 2rem 0;
+  padding: 1.6rem;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  font-family: inherit;
+  color: var(--text, #1e293b);
+}
+
+.pssv-header h2 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.pssv-header p {
+  margin: 0 0 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.pssv-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.pssv-presets-row,
+.pssv-modes-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pssv-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  margin-right: 0.25rem;
+}
+
+.pssv-chip {
+  padding: 0.35rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pssv-chip:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.pssv-chip.active {
+  background: #059669;
+  border-color: #047857;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.pssv-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+
+.pssv-badge {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.8rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.pssv-badge.highlight {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.pssv-badge.highlight .pssv-badge-val {
+  color: #059669;
+}
+
+.pssv-badge.active-item {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.pssv-badge.active-item .pssv-badge-val {
+  color: #1d4ed8;
+}
+
+.pssv-badge.active-cap {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.pssv-badge.active-cap .pssv-badge-val {
+  color: #d97706;
+}
+
+.pssv-badge-lbl {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pssv-badge-val {
+  font-size: 0.96rem;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.pssv-workspace {
+  margin-bottom: 1.2rem;
+}
+
+.pssv-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pssv-hint {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* 1D Grid View */
+.pssv-grid-1d {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pssv-cell-1d {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.2rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.pssv-cell-1d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.pssv-cell-1d.reachable {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.pssv-cell-1d.reachable .pssv-cell-val {
+  color: #059669;
+  font-weight: 750;
+}
+
+.pssv-cell-1d.unreachable {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.pssv-cell-1d.unreachable .pssv-cell-val {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.pssv-cell-1d.current-scanning {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2.5px rgba(2, 132, 199, 0.35);
+}
+
+.pssv-cell-1d.lookback-source {
+  border-color: #d97706;
+  box-shadow: 0 0 0 2.5px rgba(217, 119, 6, 0.35);
+  background: #fffbeb;
+}
+
+.pssv-cell-1d.newly-unlocked {
+  animation: pssv-glow 1s infinite alternate ease-in-out;
+}
+
+@keyframes pssv-glow {
+  0% {
+    box-shadow: 0 0 0 2px #10b981;
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 14px #10b981;
+    transform: scale(1.05);
+  }
+}
+
+.pssv-cell-idx {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.15rem;
+}
+
+.pssv-cell-val {
+  font-size: 0.82rem;
+}
+
+.pssv-tag-scan {
+  position: absolute;
+  top: -9px;
+  right: -5px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+.pssv-tag-source {
+  position: absolute;
+  bottom: -9px;
+  left: -5px;
+  background: #d97706;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+/* Callout Box */
+.pssv-callout-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-top: 0.8rem;
+}
+
+.pssv-callout-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: #1e3a8a;
+  margin-bottom: 0.3rem;
+}
+
+.pssv-callout-box p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #1e40af;
+}
+
+/* 2D Table View */
+.pssv-table-container {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.pssv-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 0.84rem;
+}
+
+.pssv-table th,
+.pssv-table td {
+  padding: 0.55rem 0.45rem;
+  border: 1px solid #e2e8f0;
+}
+
+.pssv-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.pssv-table th.col-highlight {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.pssv-table td.row-header {
+  text-align: left;
+  background: #f8fafc;
+  white-space: nowrap;
+  padding-left: 0.8rem;
+}
+
+.pssv-table tr.row-active td.row-header {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.pssv-table td.cell-true {
+  background: #ecfdf5;
+  color: #059669;
+  font-weight: 750;
+}
+
+.pssv-table td.cell-false {
+  background: #ffffff;
+  color: #cbd5e1;
+}
+
+.pssv-table td.active-cell {
+  background: #e0f2fe !important;
+  box-shadow: inset 0 0 0 2px #0284c7;
+}
+
+.pssv-table td.lookback-cell {
+  background: #fef3c7 !important;
+  box-shadow: inset 0 0 0 2px #d97706;
+  position: relative;
+}
+
+.pssv-arrow-tag {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+/* Tree / Reachable Sums View */
+.pssv-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.pssv-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.pssv-tree-row.active {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+}
+
+.pssv-tree-step {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #334155;
+  min-width: 140px;
+}
+
+.pssv-tree-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pssv-sum-badge {
+  padding: 0.2rem 0.55rem;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pssv-sum-badge.base {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.pssv-sum-badge.target-hit {
+  background: #10b981;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+/* Formula Card */
+.pssv-formula-card {
+  margin-bottom: 1.2rem;
+  padding: 0.9rem 1.1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.pssv-formula-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.pssv-formula-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  background: #e2e8f0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.pssv-formula-header code {
+  font-size: 0.88rem;
+  color: #0f172a;
+  background: #ffffff;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.pssv-formula-calc {
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.pssv-calc-line.muted {
+  color: #94a3b8;
+}
+
+.calc-true {
+  color: #059669;
+  font-weight: 800;
+}
+
+.calc-false {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.calc-unlock {
+  margin-left: 0.5rem;
+  color: #059669;
+  font-weight: 700;
+  animation: pssv-glow 0.8s infinite alternate;
+}
+
+/* Outcome Banner */
+.pssv-outcome-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-radius: 10px;
+  margin-bottom: 1.2rem;
+}
+
+.pssv-outcome-banner.success {
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  color: #065f46;
+}
+
+.pssv-outcome-banner.fail {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  color: #991b1b;
+}
+
+.pssv-outcome-icon {
+  font-size: 2rem;
+}
+
+.pssv-outcome-content h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.pssv-outcome-content p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.pssv-outcome-eq {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.pssv-eq-sign {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+/* Controls */
+.pssv-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.9rem 1.1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 1.2rem;
+}
+
+.pssv-ctrl-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pssv-btn {
+  padding: 0.4rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pssv-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.pssv-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pssv-btn.primary {
+  background: #059669;
+  border-color: #047857;
+  color: #ffffff;
+}
+
+.pssv-btn.primary:hover:not(:disabled) {
+  background: #047857;
+}
+
+.pssv-btn.text-btn {
+  background: transparent;
+  border-color: transparent;
+  color: #64748b;
+}
+
+.pssv-btn.text-btn:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
+.pssv-speed-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pssv-select {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background: #ffffff;
+  color: #334155;
+}
+
+.pssv-progress-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
+}
+
+.pssv-progress-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  min-width: 48px;
+}
+
+.pssv-slider {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* Step Description Card */
+.pssv-desc-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #059669;
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.05);
+}
+
+.pssv-desc-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.pssv-step-badge {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  background: #059669;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.pssv-desc-text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.55;
+}
+
+
 
 
 

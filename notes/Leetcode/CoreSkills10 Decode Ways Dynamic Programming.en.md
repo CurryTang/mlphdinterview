@@ -707,6 +707,13 @@ Real interview problems rarely say "this is knapsack" directly—they hide behin
 - **Reduction**: Determine if a subset can be chosen (each element at most once) summing to $target = \text{total} / 2$.
 - **Transition**: $dp[j] = dp[j] \lor dp[j - x]$ (traversed backward).
 
+#### 0/1 Knapsack 1D State Evolution, Backward Traversal & Reachability Walkthrough
+
+```subset-sum-demo
+```
+
+#### Code Implementation
+
 ```python
 class Solution:
     def canPartition(self, nums: list[int]) -> bool:
