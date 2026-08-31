@@ -1231,6 +1231,28 @@ describe('App', () => {
     fireEvent.click(within(visual).getByRole('button', { name: /3\. 去均值白化基线/i }));
     expect(within(visual).getByText(/去中心化过渡态/i)).toBeInTheDocument();
   });
+
+  it('routes directly to ML Coding 06B (RLHF) and ML Coding 06C (RLVR / GRPO) via URL hash', async () => {
+    // 1. Test MLCoding06B
+    window.location.hash = '#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md';
+    const { unmount } = render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /ML Coding 06B · RLHF 与偏好对齐全景/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /ML Coding 06B · RLHF & Preference Alignment/i })).toBeInTheDocument();
+
+    unmount();
+
+    // 2. Test MLCoding06C
+    window.location.hash = '#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /ML Coding 06C · RLVR、推理大模型与 Agentic RL/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /ML Coding 06C · RLVR, Reasoning Models & Agentic RL/i })).toBeInTheDocument();
+  });
 });
 
 

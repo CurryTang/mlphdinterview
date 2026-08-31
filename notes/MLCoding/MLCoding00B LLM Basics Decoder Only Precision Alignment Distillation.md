@@ -340,36 +340,30 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 ## 模块三：后训练对齐、知识蒸馏与评测体系
 
-### 1. DPO vs PPO-Style RLHF 架构与目标函数
+### 1. 后训练双轨制强化学习范式：RLHF（人类偏好对齐） vs RLVR（可验证推理对齐）
 
-在大模型后训练阶段（Post-Training），为了使模型输出符合人类意图（Helpful, Honest, Harmless），主流对齐技术经历了从 PPO 到 DPO 的范式转变。
+现代大模型后训练（Post-Training）已彻底演进为**两大截然不同、各司其职的强化学习对齐分支**：
 
 ```text
-PPO 4 模型复杂体系 vs DPO 单一闭式目标：
+现代大模型后训练双轨强化学习架构：
 ┌────────────────────────────────────────────────────────────────────────┐
-│ PPO 强化学习对齐 (4 个并发模型常驻显存):                                │
-│ 1. Actor (策略模型，训练更新)                                           │
-│ 2. Critic / Value (价值模型，评估状态收益，训练更新)                   │
-│ 3. Reward Model (奖励模型，离线预先训练好，推理冻结)                   │
-│ 4. Reference Model (参考基准模型，计算 KL 散度惩罚，推理冻结)           │
-│ 挑战: 强化学习训练极不稳定、显存占用极高、GAE 优势估计超参调优困难     │
-└────────────────────────────────────────────────────────────────────────┘
-                                    ▼ 革命性演进
-┌────────────────────────────────────────────────────────────────────────┐
-│ DPO (Direct Preference Optimization, 仅需 Actor + Reference 两个模型): │
-│ 基于 Bradley-Terry 偏好模型，隐式解析出最优策略与奖励的解析关系:        │
-│                r(x, y) = β * log( π_θ(y|x) / π_ref(y|x) )              │
-│ 直接在偏好对 (x, y_w, y_l) 上构建闭式分类对数损失，彻底废除 Reward 模型│
+│ 分支一：人类偏好对齐 (RLHF / Preference Alignment)                    │
+│ • 核心任务: 开放式问答、润色写作、安全性、格式对齐与人设塑造          │
+│ • 奖励来源: Bradley-Terry 偏好模型 (Reward Model) 或隐式分类目标 (DPO) │
+│ • 核心方法: PPO (4 模型并发) ➔ DPO (隐式闭式解) ➔ IPO / KTO / SimPO    │
+│ • 深度专篇: 详见 [ML Coding 06B · RLHF 与偏好对齐全景](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
+├────────────────────────────────────────────────────────────────────────┤
+│ 分支二：可验证奖励强化学习 (RLVR & Reasoning / Agentic RL)             │
+│ • 核心任务: 慢思考推理 (o1 / DeepSeek-R1)、竞赛数学、LeetCode、Agent   │
+│ • 奖励来源: 确定性外部规则验证器 (编译器、沙箱单元测试、形式化证明)   │
+│ • 核心方法: GRPO (分组相对优势，废除 Critic 价值网络) ➔ Long-CoT 涌现 │
+│ • 深度专篇: 详见 [ML Coding 06C · RLVR、推理大模型与 Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### DPO 目标函数数学推导
-
-给定提示词 $x$，人类偏好的优质回答 $y_w$（winner）和劣质回答 $y_l$（loser），DPO 损失函数定义为：
-
-$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right]$$
-
-其中 $\beta$ 是温度系数（控制偏离参考策略 $\pi_{\text{ref}}$ 的 KL 惩罚强度），$\sigma(\cdot)$ 是 Sigmoid 函数。
+> 💡 **强化学习深度专篇导航**：
+> - **RLHF / 人类偏好对齐完整推导**（从 Reward Model、PPO 4 模型系统到 DPO 隐式奖励闭式推导与对齐税）：请阅读 [ML Coding 06B · RLHF 与偏好对齐全景](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)。
+> - **RLVR / 推理大模型与 Agentic RL**（DeepSeek-R1 演进、GRPO 算法数学推导、规则验证器与多轮 Agent 强化学习）：请阅读 [ML Coding 06C · RLVR、推理大模型与 Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)。
 
 ---
 

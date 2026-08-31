@@ -340,35 +340,30 @@ NVIDIA Blackwell (B200 / GB200) introduces native **NVFP4 Tensor Cores** and **M
 
 ## Module 3: Post-Training Alignment, Distillation & Evaluation
 
-### 1. DPO vs. PPO-Style RLHF
+### 1. Dual-Track Post-Training RL Paradigms: RLHF (Preference Alignment) vs. RLVR (Verifiable Reasoning Alignment)
+
+Modern LLM post-training has decoupled into **two distinct, specialized reinforcement learning tracks**:
 
 ```text
-PPO 4-Model System vs. DPO Closed-Form Objective:
+The Modern Post-Training Dual-Track RL Architecture:
 ┌────────────────────────────────────────────────────────────────────────┐
-│ PPO Reinforcement Learning System (4 Concurrent Models in GPU Memory): │
-│ 1. Actor (Policy model, actively trained)                              │
-│ 2. Critic / Value (Value baseline model, actively trained)             │
-│ 3. Reward Model (Frozen preference scorer)                             │
-│ 4. Reference Model (Frozen KL regularization baseline)                 │
-│ Challenges: High instability, extreme VRAM overhead, GAE sensitivity   │
-└────────────────────────────────────────────────────────────────────────┘
-                                    ▼ Paradigm Shift
-┌────────────────────────────────────────────────────────────────────────┐
-│ DPO (Direct Preference Optimization - Actor + Reference Model Only):   │
-│ Derives closed-form implicit reward:                                   │
-│                r(x, y) = β * log( π_θ(y|x) / π_ref(y|x) )              │
-│ Directly optimizes binary classification loss over preference pairs     │
-│ (x, y_w, y_l), eliminating the separate Reward Model entirely.         │
+│ Track 1: Human Preference Alignment (RLHF / Preference Optimization)   │
+│ • Core Tasks: Open-ended Q&A, creative writing, safety, format persona │
+│ • Reward Source: Bradley-Terry neural Reward Model or implicit DPO loss│
+│ • Core Methods: PPO (4-Model System) ➔ DPO (Implicit Reward) ➔ SimPO   │
+│ • Dedicated Deep-Dive: See [ML Coding 06B · RLHF & Preference Alignment](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
+├────────────────────────────────────────────────────────────────────────┤
+│ Track 2: Verifiable Reward RL (RLVR & Reasoning / Agentic RL)          │
+│ • Core Tasks: Slow-thinking reasoning (o1 / DeepSeek-R1), Math, Code   │
+│ • Reward Source: Deterministic external verifiers (Compilers, Sandboxes│
+│ • Core Methods: GRPO (Group Relative Advantage, zero Critic) ➔ Long-CoT│
+│ • Dedicated Deep-Dive: See [ML Coding 06C · RLVR, Reasoning & Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### DPO Objective Mathematical Formulation
-
-Given prompt $x$, preferred answer $y_w$ (winner), and dispreferred answer $y_l$ (loser):
-
-$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right]$$
-
-where $\beta$ controls the strength of the KL penalty against reference policy $\pi_{\text{ref}}$, and $\sigma(\cdot)$ is the sigmoid function.
+> 💡 **Dedicated Deep-Dive Notes Navigation**:
+> - **RLHF / Human Preference Alignment**: Comprehensive derivations from Bradley-Terry Reward Modeling and PPO 4-Model System to DPO closed-form proofs and Alignment Tax $\to$ [ML Coding 06B · RLHF & Preference Alignment](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.en.md).
+> - **RLVR / Reasoning Models & Agentic RL**: DeepSeek-R1 evolutionary path, GRPO mathematical derivation, rule-based execution verifiers, and multi-turn Agent RL $\to$ [ML Coding 06C · RLVR, Reasoning & Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.en.md).
 
 ---
 

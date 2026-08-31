@@ -2333,6 +2333,28 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'ML Coding 06B · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税',
+    'MLCoding06B RLHF Preference Alignment PPO DPO.md',
+    'MLCoding06B RLHF Preference Alignment PPO DPO.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax',
+      category: 'Post-Training & Alignment',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 06C · RLVR、推理大模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与 Agent 强化学习',
+    'MLCoding06C RLVR Reasoning GRPO Agentic RL.md',
+    'MLCoding06C RLVR Reasoning GRPO Agentic RL.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL',
+      category: 'Reasoning & Agentic RL',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     '强化学习练习 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
