@@ -1256,32 +1256,13 @@ describe('App', () => {
 
 
 
-  it('routes directly to MLCoding07, MLCoding08, and MLCoding09 notes', async () => {
-    // 1. Test MLCoding07
-    window.location.hash = '#MLCoding07%20Industrial%20Recommendation%20Ranking%20Metrics%20Sampling%20MultiObjective.md';
-    const { unmount: unmount07 } = render(<App />);
-
-    expect(await screen.findByRole('heading', { name: /ML Coding 07 · 工业级推荐排序全景/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 07 · Industrial Recommendation Ranking/i })).toBeInTheDocument();
-    unmount07();
-
-    // 2. Test MLCoding08
-    window.location.hash = '#MLCoding08%20Industrial%20Recommendation%20Long%20Sequence%20Generative%20Reranking.md';
-    const { unmount: unmount08 } = render(<App />);
-
-    expect(await screen.findByRole('heading', { name: /ML Coding 08 · 工业级长序列建模与电商生成式重排全景/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 08 · Industrial Long-Sequence Modeling/i })).toBeInTheDocument();
-    unmount08();
-
-    // 3. Test MLCoding09
-    window.location.hash = '#MLCoding09%20Industrial%20Experimentation%20AB%20Testing%20Causal%20Inference.md';
+  it('routes directly to unified MLCoding07 Industrial ML Systems note', async () => {
+    window.location.hash = '#MLCoding07%20Industrial%20Machine%20Learning%20System%20RecSys%20Reranking%20ABTesting.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 09 · 工业级在线实验与 A\/B 测试/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /ML Coding 07 · 工业级机器学习体系/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 09 · Industrial Online Experimentation/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /ML Coding 07 · Industrial ML Systems/i })).toBeInTheDocument();
   });
 });
 
