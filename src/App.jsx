@@ -2355,6 +2355,39 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'ML Coding 07 · 工业级推荐排序全景：模型体系、负采样概率还原、GAUC 指标与多目标跷跷板治理',
+    'MLCoding07 Industrial Recommendation Ranking Metrics Sampling MultiObjective.md',
+    'MLCoding07 Industrial Recommendation Ranking Metrics Sampling MultiObjective.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 07 · Industrial Recommendation Ranking: Base Models, Sampling, GAUC & Multi-Objective Seesaw Mitigation',
+      category: 'Industrial Recommendation',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 08 · 工业级长序列建模与电商生成式重排全景',
+    'MLCoding08 Industrial Recommendation Long Sequence Generative Reranking.md',
+    'MLCoding08 Industrial Recommendation Long Sequence Generative Reranking.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 08 · Industrial Long-Sequence Modeling & E-Commerce Generative Reranking',
+      category: 'Industrial Recommendation',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 09 · 工业级在线实验与 A/B 测试：因果推断、漏斗转化归因与小样本分层推断',
+    'MLCoding09 Industrial Experimentation AB Testing Causal Inference.md',
+    'MLCoding09 Industrial Experimentation AB Testing Causal Inference.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 09 · Industrial Online Experimentation & A/B Testing: Causal Inference, Funnel Attribution & Small-Sample Tier Inference',
+      category: 'Industrial A/B Testing',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     '强化学习练习 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
