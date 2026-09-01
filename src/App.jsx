@@ -2366,6 +2366,17 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'ML Coding 08 · 极简 Agent 系统实现：基于 Pi Agent 的 300 行核心循环、工具调用与状态机架构',
+    'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.md',
+    'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 08 · Minimalist Agent Architecture: 300-Line Core Loop, Tool Calling & State Machine Inspired by Pi Agent',
+      category: 'Agent Engineering',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
     '强化学习练习 · RL Infra 自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
