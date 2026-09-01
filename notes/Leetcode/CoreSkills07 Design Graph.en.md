@@ -681,57 +681,164 @@ class SolutionBFS:
 
 [NeetCode problem link](https://neetcode.io/problems/surrounded-regions/question?list=neetcode150)
 
-Checking directly whether each `'O'` is surrounded by `'X'` requires repeatedly testing, for every `'O'`, whether a path to the border exists, which duplicates work. An equivalent condition is: only an `'O'` connected to the border avoids being flipped, every other `'O'` is necessarily enclosed. So the algorithm starts DFS/BFS from every `'O'` on the four borders, marking every border-reachable `'O'` with a temporary symbol (such as `'#'`). After that pass, any cell still marked `'O'` is truly enclosed and gets flipped to `'X'`, and the temporary symbol is restored back to `'O'`.
+#### 1. In-Depth Strategy: Why is Forward Search from Inland 'O' Flawed?
 
-| Item | Detail |
-|---|---|
-| Technique | Mark the border-reachable safe region first, then flip everything else |
-| Key invariant | After the two passes, any cell still carrying the original `'O'` mark has no path to the border |
-| Time / Space | `O(mn) / O(mn)` |
+- **The Forward Exploration Dilemma**:
+  If you start exploring from an inland `'O'`:
+  - You must traverse its entire connected component while tracking whether **any cell** touches one of the 4 outer borders;
+  - If no cell touched a border after exploration, you must trigger a **second pass** to flip the entire component from `'O'` to `'X'`;
+  - If a cell touched a border, you must cancel the flip and mark all visited cells as "safe" to avoid redundant work;
+  - This 2-phase state machine (explore-and-verify $\to$ backtrack-or-flip) is error-prone, verbose, and easily leaks state.
 
-#### Quick Coding: Surrounded Regions
+- **The Paradigm Shift: Boundary Inoculation (Escape-Route Protection)**:
+  Look at the **core mathematical invariant**:
+  $$\text{A cell with 'O' is captured (flipped to 'X')} \iff \text{It has NO 4-directional path to ANY of the 4 outer borders}$$
+  Conversely: **Only `'O'` cells located on the 4 outer borders, along with inland `'O'` cells connected to them, possess immunity from capture!**
 
-```python
-def solve(board):
-    ...
+```text
+Boundary Inoculation Topology:
+┌─────────────────────────── 4 Outer Borders ───────────────────────────┐
+│                                                                       │
+│  [Border 'O'] ──(Infiltration)──► ['T'] ──(Infiltration)──► ['T']    │
+│                                            (Immune / Saved)           │
+│                                                                       │
+│        ══════════════ Isolated Interior Region ═══════════════        │
+│                                                                       │
+│                 ['O'] ──► ['O'] ──► ['O']                             │
+│             (Trapped / Cut off from borders -> Flips to 'X')          │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-<details>
-<summary>Reference answer</summary>
+---
+
+#### 2. The Standard 3-Step Production Pipeline (In-Place)
+
+1. **Step 1: Border Multi-Source Infiltration (Inoculation / Marking Immunity)**:
+   - Scan exclusively the 4 outer borders (row 0, row $m-1$, col 0, col $n-1$);
+   - Whenever an `'O'` is encountered, run DFS or Multi-Source BFS to temporarily overwrite all connected `'O'`s with `'T'` (Temporary Safe);
+   - The board is now partitioned into 3 distinct character classes:
+     - `'X'`: Original boundary walls / obstacles;
+     - `'T'`: Border-connected survivors possessing immunity;
+     - `'O'`: **Trapped interior cells** (isolated from all borders, untouched by border traversals, retaining their original `'O'` tag).
+2. **Step 2: Single-Pass Linear Settle**:
+   - Iterate through every cell $(r, c)$ in the $m \times n$ grid:
+     - If `board[r][c] == 'O'`: It is a trapped interior cell $\to$ **flip in-place to `'X'`**;
+     - If `board[r][c] == 'T'`: It is an immune survivor $\to$ **restore in-place to `'O'`**;
+     - If `board[r][c] == 'X'`: Leave untouched.
+3. **Zero Extra Auxiliary Space Optimization**:
+   - **Zero `visited = set()` needed**: Overwriting `'O'` with `'T'` in-place acts as the natural visited guard, cutting auxiliary space overhead down to $O(1)$ (beyond the recursion stack or queue)!
+
+---
+
+#### 3. Dual Implementation Comparison: DFS vs. Multi-Source BFS
+
+##### Recommended Solution 1: Recursive DFS (Cleanest for Whiteboard Interviews, ~6 lines recursion)
 
 ```python
 from typing import List
 
 
 class Solution:
-    def solve(self, board: List[List[str]]) -> None:
-        rows, cols = len(board), len(board[0])
 
-        def dfs(r, c):
-            if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != "O":
-                return
-            board[r][c] = "#"
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                dfs(r + dr, c + dc)
+  def solve(self, board: List[List[str]]) -> None:
+    if not board or not board[0]:
+      return
 
-        for r in range(rows):
-            dfs(r, 0)
-            dfs(r, cols - 1)
-        for c in range(cols):
-            dfs(0, c)
-            dfs(rows - 1, c)
+    rows, cols = len(board), len(board[0])
 
-        for r in range(rows):
-            for c in range(cols):
-                if board[r][c] == "O":
-                    board[r][c] = "X"
-                elif board[r][c] == "#":
-                    board[r][c] = "O"
+    def dfs(r, c):
+      # Out-of-bounds or non-'O' (including 'X' and already visited 'T') returns immediately
+      if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != "O":
+        return
+      board[r][c] = "T"  # In-place temporary mark as immune
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        dfs(r + dr, c + dc)
+
+    # 1. Inoculate left and right vertical borders
+    for r in range(rows):
+      dfs(r, 0)
+      dfs(r, cols - 1)
+    # 2. Inoculate top and bottom horizontal borders
+    for c in range(cols):
+      dfs(0, c)
+      dfs(rows - 1, c)
+
+    # 3. Single-pass in-place resolution: 'O' -> 'X' (captured), 'T' -> 'O' (restored)
+    for r in range(rows):
+      for c in range(cols):
+        if board[r][c] == "O":
+          board[r][c] = "X"
+        elif board[r][c] == "T":
+          board[r][c] = "O"
 ```
 
-On `board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]`, the `'O'` at `(3,1)` sits directly on the border of the last row, so DFS marks it and everything it can reach as `'#'`, and it is restored to `'O'` afterward. The two `'O'` cells in the middle have no path to any border and get flipped to `'X'`. The result is `[["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]`, with only the border-row `'O'` surviving.
+##### Recommended Solution 2: Multi-Source BFS (Production-Grade Stack Safety)
+
+<details>
+<summary>Click to view Multi-Source BFS implementation</summary>
+
+```python
+from collections import deque
+from typing import List
+
+
+class SolutionBFS:
+
+  def solve(self, board: List[List[str]]) -> None:
+    if not board or not board[0]:
+      return
+
+    rows, cols = len(board), len(board[0])
+    queue = deque()
+
+    # 1. Push all border 'O's into queue and in-place rewrite to 'T'
+    for r in range(rows):
+      for c in (0, cols - 1):
+        if board[r][c] == "O":
+          board[r][c] = "T"
+          queue.append((r, c))
+    for c in range(1, cols - 1):
+      for r in (0, rows - 1):
+        if board[r][c] == "O":
+          board[r][c] = "T"
+          queue.append((r, c))
+
+    # 2. Multi-source BFS wavefront expanding inward
+    while queue:
+      r, c = queue.popleft()
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] == "O":
+          board[nr][nc] = "T"  # In-place tag prevents duplicate enqueues
+          queue.append((nr, nc))
+
+    # 3. Single-pass settle
+    for r in range(rows):
+      for c in range(cols):
+        if board[r][c] == "O":
+          board[r][c] = "X"
+        elif board[r][c] == "T":
+          board[r][c] = "O"
+```
 
 </details>
+
+---
+
+#### 4. Edge Cases & Interview Insights
+
+1. **Tiny Grids ($m \le 2$ or $n \le 2$)**:
+   - Every cell in the grid lies on the outer boundary. No cell can possibly be surrounded;
+   - All `'O'`s are tagged `'T'` in Step 1 and restored to `'O'` in Step 2, running cleanly with zero edge-case branches.
+2. **In-Place Mutation Memory**:
+   - The extra auxiliary space is strictly $O(1)$ because the character grid itself serves as the visited table.
+
+| Item | Detail |
+|---|---|
+| Technique | Reverse boundary infiltration tagging (In-place) + single-pass settle |
+| Key invariant | After Step 1, cells retaining `'O'` are strictly and exclusively isolated trapped regions |
+| Time / Space | `O(mn) / O(1)` auxiliary space (only call stack or queue memory) |
 
 ### 5. Rotting Oranges
 

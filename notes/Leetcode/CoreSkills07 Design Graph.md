@@ -681,57 +681,165 @@ class SolutionBFS:
 
 [NeetCode 题目链接](https://neetcode.io/problems/surrounded-regions/question?list=neetcode150)
 
-直接判断每个 `'O'` 是否被 `'X'` 包围，需要对每个 `'O'` 反复检查是否存在到边界的路径，容易重复计算。等价的判断条件是：只有连接到边界的 `'O'` 不会被翻转，其余 `'O'` 一定被完全围住。因此先从四条边界出发，对边界上的每个 `'O'` 做 DFS/BFS，把所有能从边界到达的 `'O'` 标记成一个临时符号（比如 `'#'`）；遍历结束后，剩下还是 `'O'` 的格子就是真正被包围的，翻转成 `'X'`，再把临时符号还原成 `'O'`。
+#### 1. 深度解题思路：为什么正向检查内陆 'O' 会非常别扭？
 
-| 项目 | 内容 |
-|---|---|
-| 组合技巧 | 先标记边界可达的安全区域，再翻转其余部分 |
-| 关键不变量 | 两轮遍历结束后，仍保留原始标记的 `'O'` 一定不存在到边界的路径 |
-| 时间 / 空间 | `O(mn) / O(mn)` |
+- **正向探索的痛点（内陆向外探测）**：
+  如果从内部某个 `'O'` 开始做 DFS/BFS：
+  - 你需要遍历整个连通块，并在过程中动态追踪：“这个连通块里是否有**任何一个格子**碰到了网格的四条外边界？”
+  - 如果遍历完发现**没有碰到边界**，你需要再发起第二轮遍历把这个连通块的所有 `'O'` 翻转为 `'X'`；
+  - 如果中途**碰到了边界**，你必须立刻中止翻转，并把已访问的格子全部标记为“安全”，避免后续重复探测。
+  - 这种“先探索判断、再决定是否回溯翻转”的两阶段状态管理极其繁琐，极易出现状态残留和边界 Bug。
 
-#### Quick Coding：Surrounded Regions
+- **逆向思维：边界逃生免疫法（Boundary Inoculation）**：
+  抓住问题的**核心数学不变量（Mathematical Invariant）**：
+  $$\text{一个 } \text{'O'} \text{ 会被捕获（翻转为 'X'）} \iff \text{它无法通过上下左右连通路径到达网格的任何外边界}$$
+  换言之：**只有直接坐落在 4 条外边界上的 `'O'`，以及与这些边界 `'O'` 连通的内陆 `'O'`，才拥有“免死金牌”（豁免权）！**
 
-```python
-def solve(board):
-    ...
+```text
+边界染色三步法拓扑示意：
+┌─────────────────────────── 4 条外边界 ───────────────────────────┐
+│                                                                  │
+│  [边界 'O'] ──(渗透扩散)──► ['T'] ──(渗透扩散)──► ['T'] (幸免免死) │
+│                                                                  │
+│        ═══════════════ 内部孤立隔绝区 ════════════════           │
+│                                                                  │
+│                ['O'] ──► ['O'] ──► ['O']                         │
+│             (无法连通到任何边界，最终翻转为 'X')                  │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-<details>
-<summary>参考答案</summary>
+---
+
+#### 2. 标准生产三步走流程（In-Place 3-Step Pipeline）
+
+1. **第一步：边界多源渗透（Inoculation / 标记豁免）**：
+   - 仅扫描最外层的 4 条边界（第 0 行、第 $m-1$ 行、第 0 列、第 $n-1$ 列）；
+   - 只要遇到 `'O'`，立刻启动 DFS 或 Multi-Source BFS，将与其连通的所有 `'O'` **就地临时修改为 `'T'`（Temporary Safe / 幸免者）**；
+   - 此时整张棋盘被清晰地解耦为三类字符：
+     - `'X'`：原始的墙壁/障碍物；
+     - `'T'`：与边界连通、具有豁免权的幸存 `'O'`；
+     - `'O'`：**四面楚歌、真正被包围的内陆被困者**（因为它们与边界断连，无法被边界 DFS 触达，依然保留为 `'O'`）。
+2. **第二步：全图单次扫描就地结算（Linear Scan & Settle）**：
+   - 使用双重循环遍历整个 $m \times n$ 网格：
+     - 若 `board[r][c] == 'O'`：说明是被困的内部孤岛，**就地翻转为 `'X'`**；
+     - 若 `board[r][c] == 'T'`：说明是幸存者，**就地还原为 `'O'`**；
+     - 若 `board[r][c] == 'X'`：保持不变。
+3. **空间极致优化：为什么本题能做到严格 $O(1)$ 额外辅助空间？**
+   - **完全不需要 `visited = set()` 集合**！
+   - 将 `'O'` 原地修改为 `'T'` 本身就天然扮演了 `visited` 剪枝标记；后续遍历遇到 `'X'` 或 `'T'` 都会在递归入口立刻返回，彻底省去哈希表开销！
+
+---
+
+#### 3. DFS vs. Multi-Source BFS 双解法对比
+
+##### 推荐解法一：DFS 递归（白板面试最快，6 行核心递归）
 
 ```python
 from typing import List
 
 
 class Solution:
-    def solve(self, board: List[List[str]]) -> None:
-        rows, cols = len(board), len(board[0])
 
-        def dfs(r, c):
-            if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != "O":
-                return
-            board[r][c] = "#"
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                dfs(r + dr, c + dc)
+  def solve(self, board: List[List[str]]) -> None:
+    if not board or not board[0]:
+      return
 
-        for r in range(rows):
-            dfs(r, 0)
-            dfs(r, cols - 1)
-        for c in range(cols):
-            dfs(0, c)
-            dfs(rows - 1, c)
+    rows, cols = len(board), len(board[0])
 
-        for r in range(rows):
-            for c in range(cols):
-                if board[r][c] == "O":
-                    board[r][c] = "X"
-                elif board[r][c] == "#":
-                    board[r][c] = "O"
+    def dfs(r, c):
+      # 越界检查、或非 'O' 字符（包括 'X' 和已标记的 'T'）直接剪枝返回
+      if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != "O":
+        return
+      board[r][c] = "T"  # 就地临时标记为豁免
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        dfs(r + dr, c + dc)
+
+    # 1. 扫描左右两条垂直边界
+    for r in range(rows):
+      dfs(r, 0)
+      dfs(r, cols - 1)
+    # 2. 扫描上下两条水平边界
+    for c in range(cols):
+      dfs(0, c)
+      dfs(rows - 1, c)
+
+    # 3. 单次全图扫描：'O' -> 'X'（捕获被困者），'T' -> 'O'（还原幸免者）
+    for r in range(rows):
+      for c in range(cols):
+        if board[r][c] == "O":
+          board[r][c] = "X"
+        elif board[r][c] == "T":
+          board[r][c] = "O"
 ```
 
-`board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]` 里，`(3,1)` 的 `'O'` 本身就在最后一行的边界上，DFS 会把它连同它能到达的邻居一起标记为 `'#'`，最终还原为 `'O'`；中间那两个 `'O'` 没有任何路径通向边界，被翻转成 `'X'`。结果是 `[["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]`，只有边界行的那个 `'O'` 保留。
+##### 推荐解法二：Multi-Source BFS（工程级防御，零爆栈风险）
+
+<details>
+<summary>点击查看 Multi-Source BFS 版本实现</summary>
+
+```python
+from collections import deque
+from typing import List
+
+
+class SolutionBFS:
+
+  def solve(self, board: List[List[str]]) -> None:
+    if not board or not board[0]:
+      return
+
+    rows, cols = len(board), len(board[0])
+    queue = deque()
+
+    # 1. 将 4 条边界上的所有 'O' 作为多源起点一次性推入队列，并就地改写为 'T'
+    for r in range(rows):
+      for c in (0, cols - 1):
+        if board[r][c] == "O":
+          board[r][c] = "T"
+          queue.append((r, c))
+    for c in range(1, cols - 1):
+      for r in (0, rows - 1):
+        if board[r][c] == "O":
+          board[r][c] = "T"
+          queue.append((r, c))
+
+    # 2. 多源 BFS 波前向内陆扩散
+    while queue:
+      r, c = queue.popleft()
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] == "O":
+          board[nr][nc] = "T"  # 就地改写防重入
+          queue.append((nr, nc))
+
+    # 3. 单次遍历就地结算
+    for r in range(rows):
+      for c in range(cols):
+        if board[r][c] == "O":
+          board[r][c] = "X"
+        elif board[r][c] == "T":
+          board[r][c] = "O"
+```
 
 </details>
+
+---
+
+#### 4. 高频边界条件与易错点
+
+1. **极小网格（$m \le 2$ 或 $n \le 2$）**：
+   - 此时整个矩阵中的所有格子都坐落在外边界上，内部没有任何可以被围绕的独立区域；
+   - 无论 DFS 还是 BFS，所有的 `'O'` 都会在第一步被识别为边界点改写为 `'T'`，并在最后还原为 `'O'`，算法天然正确！
+2. **原地修改的字符选择**：
+   - 可以使用任何非 `'O'` 且非 `'X'` 的单字符（如 `'T'`, `'#'`, `'E'`）；
+   - 切忌在第一步直接将边界连通的 `'O'` 保持为 `'O'` 而试图修改内部点，因为在第一步结束前你无法区分内部点和边界点。
+
+| 项目 | 内容 |
+|---|---|
+| 组合技巧 | 边界逆向渗透染色（In-Place Temporary Tagging）+ 单次全图扫描结算 |
+| 关键不变量 | 第一步结束后，矩阵中依然为 `'O'` 的格子**必然且仅为**与边界断连的被围绕区域 |
+| 时间 / 空间 | `O(mn) / O(1)` 额外辅助空间（仅需系统递归栈或队列内存，无集合开销） |
 
 ### 5. Rotting Oranges
 
