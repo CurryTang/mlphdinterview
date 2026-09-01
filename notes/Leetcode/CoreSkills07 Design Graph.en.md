@@ -518,65 +518,164 @@ On the standard 8-row by 13-column example grid, the largest component covers 6 
 
 [NeetCode problem link](https://neetcode.io/problems/pacific-atlantic-water-flow/question?list=neetcode150)
 
-Water flows from a cell to a neighbor whose height is no greater than its own. Checking directly whether a given cell can reach the Pacific means probing every downhill path starting from that cell, which costs `O((mn)^2)` across all cells. Starting DFS/BFS from the Pacific and Atlantic borders instead, with the flow condition reversed to "neighbor height >= current height," finds exactly the set of cells that can flow downhill to that border. Water can flow from A to B if and only if B can walk backward to A along a non-increasing-height path. Computing the two reachable sets from the two borders and intersecting them gives the answer.
+#### 1. In-Depth Strategy: Why Does Forward Search Cause TLE?
 
-| Item | Detail |
-|---|---|
-| Technique | Two-source DFS/BFS starting from the borders, flow condition reversed to "neighbor height >= current height" |
-| Key invariant | Every cell in the reverse-reachable set has a real, non-ascending water path to the corresponding border |
-| Time / Space | `O(mn) / O(mn)` |
+- **The Forward Simulation Trap**:
+  If you test each inland cell $(r, c)$ by flowing downhill (only moving to neighbors with height $\le$ current cell) toward the Pacific (top/left) and Atlantic (bottom/right):
+  - With $m \times n$ cells, each search may explore up to $O(mn)$ cells in the worst case;
+  - Path memoization is complicated by directed flow cycles on plateaus;
+  - The naive forward simulation runs in $O((mn)^2)$. For $m, n = 200$, this demands $1.6 \times 10^9$ operations $\implies$ guaranteed **Time Limit Exceeded (TLE)**.
 
-#### Quick Coding: Pacific Atlantic Water Flow
+- **The Paradigm Shift: Reverse Flow from the Ocean Borders**:
+  Flip the perspective 180 degrees: **Instead of asking where inland water flows down to, ask where ocean water can flow uphill into!**
+  - **Reversed Flow Condition**: Water can flow downhill from $A$ to $B$ ($h(A) \ge h(B)$) if and only if water can climb uphill from $B$ to $A$ ($h(A) \ge h(B)$, meaning **neighbor height $\ge$ current height**);
+  - Launch a full traversal from the **Pacific borders** (row 0 and col 0), recording all reachable cells in `pacific`;
+  - Launch a full traversal from the **Atlantic borders** (row $m-1$ and col $n-1$), recording all reachable cells in `atlantic`;
+  - The **set intersection `pacific & atlantic`** yields all coordinates that can flow into both oceans!
+  - Each cell is visited at most twice $\implies$ linear $O(mn)$ time complexity.
 
-```python
-def pacificAtlantic(heights):
-    ...
+```text
+Reverse Uphill Infiltration Topology:
+┌───────────────── Pacific Ocean (Top & Left Borders) ─────────────────┐
+│                                                                       │
+│  (0,0)  ────► (0,1) ────► (0,2) ... Climbing uphill (height >= prev) │
+│   │                                                                   │
+│   ▼                                                                   │
+│  (1,0) ... Pacific_set (Reverse-reachable cells)                      │
+│                                                                       │
+│               [ Intersection: Pacific ∩ Atlantic ]                    │
+│                                                                       │
+│                                  Atlantic_set (Reverse-reachable) ... │
+│                                                                   ▲   │
+│                                                                   │   │
+│            ... (m-1, n-3) ◄──── (m-1, n-2) ◄──── (m-1, n-1)          │
+│                                                                       │
+└───────────────── Atlantic Ocean (Bottom & Right Borders) ─────────────┘
 ```
 
-<details>
-<summary>Reference answer</summary>
+---
+
+#### 2. Key Interview Question: Why is DFS Strongly Preferred Over BFS Here?
+
+While both DFS and BFS achieve the same $O(mn)$ asymptotic time and space bounds, **DFS is overwhelmingly preferred in coding interviews and production implementations**:
+
+| Dimension | DFS (Strongly Recommended ⭐⭐⭐⭐⭐) | BFS (Acceptable but Verbose ⚠️) | Detailed Rationale |
+|---|---|---|---|
+| **Problem Match** | **Pure Reachability / Connectivity** | Shortest path / layer count | We only care whether a cell is reachable, *not* how many steps or minutes it took. BFS's core level-synchronization strength is completely unused. |
+| **Heap / Memory Overhead** | **Zero Queue Overhead** | Requires instantiating two `deque` objects | DFS executes directly on the native call stack, eliminating heap allocation and pointer indirection overhead of `deque`. |
+| **Code Conciseness** | **Ultra-Compact (~12 lines core helper)** | Verbose queue setup and loops | DFS recursion is clean; the `visited` set serves as both loop guard and final answer collector. |
+| **Cache Locality** | **High (Spatial Locality on Grid)** | Lower (wavefronts jump across grid) | DFS traverses along mountain ridges contiguously in memory, yielding better hardware cache locality. |
+
+---
+
+#### 3. Code Implementations
+
+##### Recommended Solution: Recursive DFS (Clean & Fast)
 
 ```python
 from typing import List
 
 
 class Solution:
-    def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
-        rows, cols = len(heights), len(heights[0])
-        pacific, atlantic = set(), set()
 
-        def dfs(r, c, visited, prev_height):
-            if (
-                r < 0
-                or r >= rows
-                or c < 0
-                or c >= cols
-                or (r, c) in visited
-                or heights[r][c] < prev_height
-            ):
-                return
-            visited.add((r, c))
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                dfs(r + dr, c + dc, visited, heights[r][c])
+  def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
+    rows, cols = len(heights), len(heights[0])
+    pacific, atlantic = set(), set()
 
-        for c in range(cols):
-            dfs(0, c, pacific, heights[0][c])
-            dfs(rows - 1, c, atlantic, heights[rows - 1][c])
-        for r in range(rows):
-            dfs(r, 0, pacific, heights[r][0])
-            dfs(r, cols - 1, atlantic, heights[r][cols - 1])
+    def dfs(r, c, visited, prev_height):
+      # Out-of-bounds, visited pruning, and uphill flow check (heights[r][c] >= prev_height)
+      if (
+          r < 0
+          or r >= rows
+          or c < 0
+          or c >= cols
+          or (r, c) in visited
+          or heights[r][c] < prev_height
+      ):
+        return
 
-        return [
-            [r, c]
-            for r in range(rows)
-            for c in range(cols)
-            if (r, c) in pacific and (r, c) in atlantic
-        ]
+      visited.add((r, c))
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        dfs(r + dr, c + dc, visited, heights[r][c])
+
+    # 1. Flow uphill from Pacific borders (Top & Left)
+    for c in range(cols):
+      dfs(0, c, pacific, heights[0][c])
+    for r in range(rows):
+      dfs(r, 0, pacific, heights[r][0])
+
+    # 2. Flow uphill from Atlantic borders (Bottom & Right)
+    for c in range(cols):
+      dfs(rows - 1, c, atlantic, heights[rows - 1][c])
+    for r in range(rows):
+      dfs(r, cols - 1, atlantic, heights[r][cols - 1])
+
+    # 3. Intersection of cells reachable from both oceans
+    return [list(coord) for coord in (pacific & atlantic)]
 ```
 
-On the standard 5x5 height matrix, 7 cells can reach both oceans: `[0,4] [1,3] [1,4] [2,2] [3,0] [3,1] [4,0]`. The DFS termination condition uses `heights[r][c] < prev_height` rather than `<=`, which allows continued expansion across flat terrain, since water moves freely across cells at the same height.
+##### Alternative Solution: Iterative BFS (Equivalent but Verbose)
+
+<details>
+<summary>Click to view BFS implementation</summary>
+
+```python
+from collections import deque
+from typing import List
+
+
+class SolutionBFS:
+
+  def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
+    rows, cols = len(heights), len(heights[0])
+
+    def get_reachable_bfs(starts):
+      queue = deque(starts)
+      visited = set(starts)
+      while queue:
+        r, c = queue.popleft()
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+          nr, nc = r + dr, c + dc
+          if (
+              0 <= nr < rows
+              and 0 <= nc < cols
+              and (nr, nc) not in visited
+              and heights[nr][nc] >= heights[r][c]
+          ):
+            visited.add((nr, nc))
+            queue.append((nr, nc))
+      return visited
+
+    pac_starts = [(0, c) for c in range(cols)] + [
+        (r, 0) for r in range(1, rows)
+    ]
+    atl_starts = [(rows - 1, c) for c in range(cols)] + [
+        (r, cols - 1) for r in range(rows - 1)
+    ]
+
+    pacific = get_reachable_bfs(pac_starts)
+    atlantic = get_reachable_bfs(atl_starts)
+
+    return [list(coord) for coord in (pacific & atlantic)]
+```
 
 </details>
+
+---
+
+#### 4. Common Pitfalls & Edge Cases
+
+1. **Plateaus and Equal Heights**:
+   - The reversed flow condition is `heights[next] >= heights[curr]` with strict equality allowed;
+   - Water can flow in both directions between adjacent cells of equal height.
+2. **Infinite Recursion on Flat Terrain**:
+   - Because adjacent cells of the same height can flow both ways ($A \to B$ and $B \to A$), without checking `(r, c) in visited` at the start of `dfs`, execution would infinite-loop. Marking visited immediately at function entry is mandatory.
+
+| Item | Detail |
+|---|---|
+| Technique | Two-source reverse uphill DFS with `heights[next] >= heights[curr]` |
+| Key invariant | Every cell in the reverse set has a path with monotonically non-decreasing height back to that ocean |
+| Time / Space | `O(mn) / O(mn)` (strictly two full traversals; call stack + set memory) |
 
 ### 4. Surrounded Regions
 

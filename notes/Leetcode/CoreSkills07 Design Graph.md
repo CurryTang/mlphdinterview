@@ -517,65 +517,165 @@ class Solution:
 
 [NeetCode 题目链接](https://neetcode.io/problems/pacific-atlantic-water-flow/question?list=neetcode150)
 
-水从高处或平地流向不高于自己的邻居，正向判断"某个格子能否流到太平洋"需要从这个格子出发试探所有下降路径，每个格子都试一遍是 `O((mn)^2)`。从太平洋和大西洋各自的边界出发，按照"邻居高度大于等于当前高度"这个反转后的条件做 DFS/BFS，能找出所有能够顺流而下到达该边界的格子：水能从 A 流到 B，当且仅当能够从 B 沿着高度不下降的方向反向走到 A。分别求出从两条边界出发的可达集合，取交集就是答案。
+#### 1. 深度解题思路：为什么正向搜索会 TLE？
 
-| 项目 | 内容 |
-|---|---|
-| 组合技巧 | 双源 DFS/BFS，从边界反向出发，流动条件反转为"邻居高度 >= 当前高度" |
-| 关键不变量 | 反向可达集合中的每个格子，都存在一条真实水流方向上高度不上升的路径通向对应边界 |
-| 时间 / 空间 | `O(mn) / O(mn)` |
+- **正向思维的困境**：
+  若从网格中每个内陆格子 $(r, c)$ 出发顺流而下（只能走到高度 $\le$ 自己的邻居），检查是否能同时到达太平洋（左/上边界）和大西洋（右/下边界）：
+  - 矩阵中共有 $m \times n$ 个格子，每个格子最坏需遍历整个网格 $O(mn)$；
+  - 虽然看似可以记忆化，但由于水流是有向的且可能在平地间循环，带方向的路径记忆化状态极其复杂；
+  - 暴力正向搜索的总时间复杂度高达 $O((mn)^2)$，在 $m, n = 200$ 时操作数高达 $1.6 \times 10^9$，必然超时（TLE）。
 
-#### Quick Coding：Pacific Atlantic Water Flow
+- **范式跃迁：逆流而上（Reverse Flow from Oceans）**：
+  将问题视角倒转 180 度——**不问“内陆的水能流向何方”，而问“海水能从边界逆流爬坡到哪些内陆格子”**：
+  - **逆向水流规则**：水能从 $A$ 顺流流到 $B$（$h(A) \ge h(B)$），当且仅当水能从 $B$ 逆向爬坡到 $A$（$h(A) \ge h(B)$，即**邻居高度 $\ge$ 当前高度**）；
+  - 从**太平洋边界**（第 0 行与第 0 列）所有格子出发做一次全量遍历，记录能到达的格子集合 `pacific`；
+  - 从**大西洋边界**（第 $m-1$ 行与第 $n-1$ 列）所有格子出发做一次全量遍历，记录能到达的格子集合 `atlantic`；
+  - 两个集合的**交集 `pacific & atlantic`** 即为既能流向太平洋、又能流向大西洋的全部坐标！
+  - 每个格子最多被访问 2 次，时间复杂度直接优化至线性 $O(mn)$。
 
-```python
-def pacificAtlantic(heights):
-    ...
+```text
+逆流而上双向渗透拓扑：
+┌───────────────── 太平洋 (Pacific: 上/左边界) ─────────────────┐
+│                                                                │
+│  (0,0)  ────► (0,1) ────► (0,2) ... 爬坡 (height >= prev)      │
+│   │                                                            │
+│   ▼                                                            │
+│  (1,0) ... 逆流可达点集 Pacific_set                            │
+│                                                                │
+│              【 两大洋逆流交集: Pacific ∩ Atlantic 】          │
+│                                                                │
+│                                   Atlantic_set 逆流可达点集 ...│
+│                                                            ▲   │
+│                                                            │   │
+│            ... (m-1, n-3) ◄──── (m-1, n-2) ◄──── (m-1, n-1)   │
+│                                                                │
+└───────────────── 大西洋 (Atlantic: 下/右边界) ────────────────┘
 ```
 
-<details>
-<summary>参考答案</summary>
+---
+
+#### 2. 核心考点剖析：为什么本题首选 DFS 而不是 BFS？
+
+虽然 DFS 和 BFS 在渐进复杂度上均为 $O(mn)$，但**在实际面试与工程实现中，本题强烈首选 DFS**，核心原因如下：
+
+| 维度 | DFS（强烈推荐 ⭐⭐⭐⭐⭐） | BFS（可行但不推荐 ⚠️） | 深度原因剖析 |
+|---|---|---|---|
+| **问题本质契合度** | **纯连通性/可达性（Reachability）** | 最短路/分层扩散 | 本题只问“海水能否到达该点”，完全不关心“流了多少步/几分钟”。BFS 最核心的**按层计数优势完全无用武之地**。 |
+| **内存与堆开销** | **零队列开销（Zero Heap Alloc）** | 需维护两个显式 `deque` | DFS 直接复用系统调用栈（Call Stack），无需在堆上分配 `deque` 节点对象与指针。 |
+| **代码精炼度** | **极致精简（~12 行核心递归）** | 繁琐（需初始化队列、双重循环出队） | DFS 递归函数签名极短，`visited` 既做剪枝又直接作为最终的答案集合。 |
+| **缓存局部性** | **高（Cache Locality 优）** | 较低（波前在整个二维网格跳跃） | DFS 会顺着一条山脊线一路向上爬到底再回溯，访问的内存在物理数组中空间局部性更好。 |
+
+---
+
+#### 3. 模板代码对比
+
+##### 推荐解法：DFS 递归（优雅、快速）
 
 ```python
 from typing import List
 
 
 class Solution:
-    def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
-        rows, cols = len(heights), len(heights[0])
-        pacific, atlantic = set(), set()
 
-        def dfs(r, c, visited, prev_height):
-            if (
-                r < 0
-                or r >= rows
-                or c < 0
-                or c >= cols
-                or (r, c) in visited
-                or heights[r][c] < prev_height
-            ):
-                return
-            visited.add((r, c))
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                dfs(r + dr, c + dc, visited, heights[r][c])
+  def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
+    rows, cols = len(heights), len(heights[0])
+    pacific, atlantic = set(), set()
 
-        for c in range(cols):
-            dfs(0, c, pacific, heights[0][c])
-            dfs(rows - 1, c, atlantic, heights[rows - 1][c])
-        for r in range(rows):
-            dfs(r, 0, pacific, heights[r][0])
-            dfs(r, cols - 1, atlantic, heights[r][cols - 1])
+    def dfs(r, c, visited, prev_height):
+      # 越界检查、已访问剪枝、以及逆流爬坡条件 (heights[r][c] 必须 >= prev_height)
+      if (
+          r < 0
+          or r >= rows
+          or c < 0
+          or c >= cols
+          or (r, c) in visited
+          or heights[r][c] < prev_height
+      ):
+        return
 
-        return [
-            [r, c]
-            for r in range(rows)
-            for c in range(cols)
-            if (r, c) in pacific and (r, c) in atlantic
-        ]
+      visited.add((r, c))
+      for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        dfs(r + dr, c + dc, visited, heights[r][c])
+
+    # 1. 从太平洋边界 (Top & Left) 出发逆流爬坡
+    for c in range(cols):
+      dfs(0, c, pacific, heights[0][c])
+    for r in range(rows):
+      dfs(r, 0, pacific, heights[r][0])
+
+    # 2. 从大西洋边界 (Bottom & Right) 出发逆流爬坡
+    for c in range(cols):
+      dfs(rows - 1, c, atlantic, heights[rows - 1][c])
+    for r in range(rows):
+      dfs(r, cols - 1, atlantic, heights[r][cols - 1])
+
+    # 3. 收集两洋均可逆流到达的交集点
+    return [list(coord) for coord in (pacific & atlantic)]
 ```
 
-标准示例的 5x5 高度矩阵上，两个海洋都能到达的格子共有 7 个：`[0,4] [1,3] [1,4] [2,2] [3,0] [3,1] [4,0]`。DFS 的终止条件里用 `heights[r][c] < prev_height` 而不是 `<=`，允许在平地之间继续扩展，水在平地上也能流动。
+##### 备选解法：BFS 队列（代码量翻倍，逻辑等价）
+
+<details>
+<summary>点击查看 BFS 版本实现</summary>
+
+```python
+from collections import deque
+from typing import List
+
+
+class SolutionBFS:
+
+  def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
+    rows, cols = len(heights), len(heights[0])
+
+    def get_reachable_bfs(starts):
+      queue = deque(starts)
+      visited = set(starts)
+      while queue:
+        r, c = queue.popleft()
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+          nr, nc = r + dr, c + dc
+          if (
+              0 <= nr < rows
+              and 0 <= nc < cols
+              and (nr, nc) not in visited
+              and heights[nr][nc] >= heights[r][c]
+          ):
+            visited.add((nr, nc))
+            queue.append((nr, nc))
+      return visited
+
+    # 收集太平洋和大西洋的初始边界点
+    pac_starts = [(0, c) for c in range(cols)] + [
+        (r, 0) for r in range(1, rows)
+    ]
+    atl_starts = [(rows - 1, c) for c in range(cols)] + [
+        (r, cols - 1) for r in range(rows - 1)
+    ]
+
+    pacific = get_reachable_bfs(pac_starts)
+    atlantic = get_reachable_bfs(atl_starts)
+
+    return [list(coord) for coord in (pacific & atlantic)]
+```
 
 </details>
+
+---
+
+#### 4. 高频易错点与边界陷阱
+
+1. **平地流动（Plateaus / Equal Heights）**：
+   - 逆流条件必须是 `heights[nr][nc] >= heights[r][c]`（即严格包含等号）；
+   - 水在高度相同的相邻平地之间可以自由双向流动。
+2. **死循环防御（Cycle Prevention on Plateaus）**：
+   - 因为平地允许双向流动（$A \to B$ 且 $B \to A$），如果不先检查 `(r, c) in visited`，递归会在两个高度相等的格子之间无限震荡导致栈溢出。因此**必须在递归开头或入队前立刻标记 visited**。
+
+| 项目 | 内容 |
+|---|---|
+| 组合技巧 | 双源边界逆流 DFS，流动条件反转为 `heights[next] >= heights[curr]` |
+| 关键不变量 | 逆流可达集合中的每个点，都存在一条高度单调不减的路径连接至该边界 |
+| 时间 / 空间 | `O(mn) / O(mn)`（时间为严格两次遍历；空间为递归栈 + 集合） |
 
 ### 4. Surrounded Regions
 
