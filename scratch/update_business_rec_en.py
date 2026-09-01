@@ -1,4 +1,6 @@
-# Industrial Recommendation Ranking: Base Model Family, Sampling Strategies & Multi-Tier Metrics
+import os
+
+en_content = """# Industrial Recommendation Ranking: Base Model Family, Sampling Strategies & Multi-Tier Metrics
 
 In industrial recommender systems and computational advertising, building a high-throughput, multi-objective, and well-calibrated ranking stack is a core engineering and algorithmic foundation. In senior ML system interviews and architecture reviews, **how you structure the presentation of your base model family, training sample scale, negative sampling scheme, and metric hierarchy (ROC-AUC vs. GAUC by User/Request, Calibration Plots, Slice Metrics)** directly distinguishes senior practitioners.
 
@@ -80,20 +82,20 @@ Fundamental Differences: Retrieval vs. Ranking Datasets:
 ### 2. Negative Downsampling & Probability Recovery Derivation
 
 #### Why Production Rankers Downsample Negatives
-In feed and e-commerce ranking, positive CTR is naturally sparse ($p pprox 1\% \sim 5\%$), causing $1:20 \sim 1:100$ class imbalance.
+In feed and e-commerce ranking, positive CTR is naturally sparse ($p \approx 1\% \sim 5\%$), causing $1:20 \sim 1:100$ class imbalance.
 1. **Computational & Storage Efficiency**: Downsampling negatives by $90\%$ cuts training data volume by up to $80\%$, drastically accelerating training throughput;
 2. **Gradient Stability**: Prevents gradients from being overwhelmed by uninformative negative instances.
 
 #### Probability Distortion Under Negative Downsampling
 Let negative samples be randomly retained with downsampling probability $w \in (0, 1]$, while retaining $100\%$ of positive samples.
-The observed conditional probability $\hat{p} = P(Y=1 \mid X, 	ext{sampled})$ learned by the model is artificially inflated:
+The observed conditional probability $\hat{p} = P(Y=1 \mid X, \text{sampled})$ learned by the model is artificially inflated:
 
-$$\hat{p} = rac{P(Y=1 \mid X)}{P(Y=1 \mid X) + w \cdot P(Y=0 \mid X)} = rac{p}{p + w(1-p)}$$
+$$\hat{p} = \frac{P(Y=1 \mid X)}{P(Y=1 \mid X) + w \cdot P(Y=0 \mid X)} = \frac{p}{p + w(1-p)}$$
 
 #### Mathematical Probability Recovery Formula
-For auction bidding ($eCPM = pCTR 	imes pCVR 	imes 	ext{Bid}$) or score blending, raw model output $\hat{p}$ must be inverted back to true physical probability $p$:
+For auction bidding ($eCPM = pCTR \times pCVR \times \text{Bid}$) or score blending, raw model output $\hat{p}$ must be inverted back to true physical probability $p$:
 
-$$p = rac{\hat{p}}{\hat{p} + rac{1 - \hat{p}}{w}}$$
+$$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
 ```text
 Numerical Verification Example:
@@ -111,9 +113,11 @@ The Recommendation Metric Pyramid:
                      ▲
                     / \     [Tier 3: Business & North Star Metrics]
                    /   \    • DAU/MAU, Dwell Time, GMV, D7/D30 Retention, Creator Diversity
-                  /─────                 /       \   [Tier 2: Slice & Guardrail Metrics]
+                  /─────\
+                 /       \   [Tier 2: Slice & Guardrail Metrics]
                 /         \  • New vs. Old Users, Long-Tail Items, P99 Latency
-               /───────────              /             \ [Tier 1: Offline Ranking & Calibration Metrics]
+               /───────────\
+              /             \ [Tier 1: Offline Ranking & Calibration Metrics]
              /               \• GAUC (User/Request Grouped), Global AUC, LogLoss, PCOC, ECE, NDCG@K
             └─────────────────┘
 ```
@@ -123,14 +127,14 @@ The Recommendation Metric Pyramid:
 #### (1) Wilcoxon-Mann-Whitney Definition of Global ROC-AUC
 The area under the ROC curve represents the probability that a randomly chosen positive instance $i \in \mathcal{D}^+$ receives a higher predicted score than a randomly chosen negative instance $j \in \mathcal{D}^-$:
 
-$$	ext{AUC} = rac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + rac{1}{2} \mathbb{I}(s_i = s_j) ight)$$
+$$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \right)$$
 
 - **Pitfall (Cross-User Confounding)**: Global AUC evaluates pairs across different users. If a model merely learns that "User A is active (predict 0.8) and User B is inactive (predict 0.05)", Global AUC will be deceptively high ($\sim 0.85$), despite having **zero discrimination capability within any single user's recommended list**.
 
 #### (2) Mathematical Definition of Grouped AUC (GAUC)
 To isolate within-group discrimination from inter-user baseline activity bias, GAUC evaluates AUC separately within each group $g \in \mathcal{G}$ and computes a weighted average:
 
-$$	ext{GAUC} = rac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot 	ext{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad 	ext{where } w_g = n_g 	ext{ (Impressions) or } n_g^+ 	ext{ (Clicks)}$$
+$$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad \text{where } w_g = n_g \text{ (Impressions) or } n_g^+ \text{ (Clicks)}$$
 
 ---
 
@@ -160,8 +164,8 @@ Comparison of GAUC Grouping Granularities:
 - **Invariance of AUC and GAUC**:
   Under uniform random negative downsampling ($w$), the expected pairwise ordering $\mathbb{P}(s_i > s_j \mid Y_i=1, Y_j=0)$ is mathematically invariant. Thus, **AUC and GAUC computed directly on uniformly downsampled data are asymptotically unbiased estimators of the true full-population AUC/GAUC**!
 - **Unbiased LogLoss via Importance Weighting**:
-  Conversely, LogLoss and calibration metrics are severely distorted by downsampling. To evaluate unbiased population LogLoss on sampled validation sets, one must apply importance weighting ($rac{1}{w}$ for negative samples):
-  $$\mathcal{L}_{	ext{unbiased}} = -rac{1}{N^+} \sum_{i \in \mathcal{D}^+} \log \hat{p}_i - rac{1}{w \cdot N^-} \sum_{j \in \mathcal{D}^-} \log(1 - \hat{p}_j)$$
+  Conversely, LogLoss and calibration metrics are severely distorted by downsampling. To evaluate unbiased population LogLoss on sampled validation sets, one must apply importance weighting ($\frac{1}{w}$ for negative samples):
+  $$\mathcal{L}_{\text{unbiased}} = -\frac{1}{N^+} \sum_{i \in \mathcal{D}^+} \log \hat{p}_i - \frac{1}{w \cdot N^-} \sum_{j \in \mathcal{D}^-} \log(1 - \hat{p}_j)$$
 
 ---
 
@@ -172,12 +176,12 @@ Comparison of GAUC Grouping Granularities:
   - AUC = 0.95 only guarantees order; predicted scores could be clustered between 0.0001 and 0.0002.
 - **Calibration (Reliability)**:
   - Demands that predicted probability matches empirical truth: $\mathbb{E}[Y \mid \hat{p}] = \hat{p}$.
-  - Crucial for $eCPM = pCTR 	imes pCVR 	imes 	ext{Bid}$ and multi-task loss blending.
+  - Crucial for $eCPM = pCTR \times pCVR \times \text{Bid}$ and multi-task loss blending.
 - **Key Calibration Metrics**:
-  - **PCOC (Predictive-over-Observed Ratio)**: $	ext{PCOC} = rac{\sum \hat{p}_i}{\sum y_i}$ ($=1.0$ is perfect);
+  - **PCOC (Predictive-over-Observed Ratio)**: $\text{PCOC} = \frac{\sum \hat{p}_i}{\sum y_i}$ ($=1.0$ is perfect);
   - **ECE (Expected Calibration Error)**: Evaluates weighted absolute probability discrepancies across $M$ equal-frequency bins:
-    $$	ext{ECE} = \sum_{m=1}^M rac{|B_m|}{N} |	ext{acc}(B_m) - 	ext{conf}(B_m)|$$
-  - **Brier Score**: $rac{1}{N} \sum (\hat{p}_i - y_i)^2$, capturing both ranking discrimination and calibration variance.
+    $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} |\text{acc}(B_m) - \text{conf}(B_m)|$$
+  - **Brier Score**: $\frac{1}{N} \sum (\hat{p}_i - y_i)^2$, capturing both ranking discrimination and calibration variance.
 
 ---
 
@@ -207,7 +211,7 @@ Production Training Dashboard Layout (4-Tier Panel Structure):
 ### Dashboard Anti-Confusion Rules
 1. **Explicit Metric Names**: Never label a metric simply as `AUC`! Explicitly label `AUC/Global`, `GAUC/Request`, and `GAUC/User`.
 2. **Dual-Gating Release Rule**: A candidate model with $+0.003$ GAUC gain must be automatically blocked from canary release if `PCOC` diverges outside $[0.98, 1.02]$.
-3. **Slice Discrepancy Tracking**: Continuously visualize $\Delta 	ext{GAUC}_{	ext{cold-start}} - \Delta 	ext{GAUC}_{	ext{overall}}$ to detect Simpson's Paradox before production deployment.
+3. **Slice Discrepancy Tracking**: Continuously visualize $\Delta \text{GAUC}_{\text{cold-start}} - \Delta \text{GAUC}_{\text{overall}}$ to detect Simpson's Paradox before production deployment.
 
 ---
 
@@ -217,10 +221,15 @@ Production Training Dashboard Layout (4-Tier Panel Structure):
 1. **Base Model Family**:
    "Our ranking stack employs a decoupled modular architecture: sparse categorical features map to embedding tables, fed into **DCN-v2 and DLRM dot-product layers** for explicit high-order non-linear feature interaction. To model long-term user interests across thousands of past interactions, we utilize **SIM (Search-based Interest Model)** with two-stage hard search and soft attention. The top layer deploys **PLE (Progressive Layered Extraction)** to simultaneously predict pCTR, pLongView, and pConversion while eliminating task negative transfer."
 2. **Sample Scale & Sampling Scheme**:
-   "The offline training corpus spans rolling 30-day window logs containing billions of impressions, augmented with streaming real-time hourly updates. For sample construction, **ranking uses strictly real, unclicked impressions as negative instances**. To handle severe 1:50 class imbalance, we apply negative downsampling with retention rate $w = 10\%$, dynamically inverting predictions via $p = \frac{\hat{p}}{\hat{p} + (1-\hat{p})/w}$ during online inference."
+   "The offline training corpus spans rolling 30-day window logs containing billions of impressions, augmented with streaming real-time hourly updates. For sample construction, **ranking uses strictly real, unclicked impressions as negative instances**. To handle severe 1:50 class imbalance, we apply negative downsampling with retention rate $w = 10\\%$, dynamically inverting predictions via $p = \\frac{\\hat{p}}{\\hat{p} + (1-\\hat{p})/w}$ during online inference."
 3. **Metric Hierarchy**:
    - "**Offline Discrimination**: Our primary ranking metric is **Request-GAUC** (eliminating diurnal intent shifts and user activity confounding), paired with **User-GAUC** and **NDCG@5**."
    - "**Calibration & Reliability**: We track **PCOC** and **ECE** to ensure absolute probabilities are reliable for $eCPM$ auction bidding and multi-task fusion."
    - "**Slice Diagnostics**: We monitor slice GAUC across cold-start users and long-tail items to prevent Simpson's Paradox."
 4. **How Sampling Changes Metric Meanings**:
    "Negative downsampling shifts the baseline data distribution. Consequently, **raw LogLoss cannot be compared across different sampling ratios, and uncalibrated probabilities will distort multi-objective score fusion and $eCPM$ auction bidding**. However, because GAUC evaluates within-user relative rankings, it exhibits rank-order invariance under uniform negative downsampling."
+"""
+
+with open("notes/BusinessAlgorithm/BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.en.md", "w", encoding="utf-8") as f:
+    f.write(en_content)
+print("Successfully updated English note")

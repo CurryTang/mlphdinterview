@@ -1,4 +1,6 @@
-# 工业级推荐排序全景：模型体系选型、样本采样策略与多层级指标评估体系
+import os
+
+zh_content = """# 工业级推荐排序全景：模型体系选型、样本采样策略与多层级指标评估体系
 
 在工业级推荐系统（Industrial Recommender Systems）与计算广告工程中，构建一个高吞吐、高精度、多目标协同的排序（Ranking）体系是核心技术壁垒。面对面试官或技术架构评审时，**如何系统性、结构化地阐述排序基座模型选型（Base Model Family）、训练样本规模与负采样方案（Sampling Scheme），以及多层级离线与线上指标评估体系（Ranking vs. Business Metrics, Calibration, Slices）**，是区分初级工程师与资深算法专家的关键分水岭。
 
@@ -82,20 +84,20 @@
 ### 2. 负样本下采样（Negative Downsampling）与概率还原数学推导
 
 #### 为什么工业级精排必须做负样本下采样？
-在信息流或电商推荐中，真实点击率通常极低（如 $p pprox 1\% \sim 5\%$），正负样本极度不平衡（$1:20 \sim 1:100$）。
+在信息流或电商推荐中，真实点击率通常极低（如 $p \approx 1\% \sim 5\%$），正负样本极度不平衡（$1:20 \sim 1:100$）。
 1. **节省训练计算资源与存储**：下采样负样本可将训练集体积缩减 70%~90%，大幅提高梯度迭代吞吐量；
 2. **防止梯度被海量易分负样本淹没**。
 
 #### 下采样率对预估概率的系统性扭曲
 假设我们将未点击负样本以采样率 $w \in (0, 1]$ 进行随机下采样（保留比例为 $w$），而正样本全部保留。
-下采样后，模型学到的条件概率 $\hat{p} = P(Y=1 \mid X, 	ext{sampled})$ 会被**人为大幅拉高**：
+下采样后，模型学到的条件概率 $\hat{p} = P(Y=1 \mid X, \text{sampled})$ 会被**人为大幅拉高**：
 
-$$\hat{p} = rac{P(Y=1 \mid X)}{P(Y=1 \mid X) + w \cdot P(Y=0 \mid X)} = rac{p}{p + w(1-p)}$$
+$$\hat{p} = \frac{P(Y=1 \mid X)}{P(Y=1 \mid X) + w \cdot P(Y=0 \mid X)} = \frac{p}{p + w(1-p)}$$
 
 #### 线上推理时的概率校准还原公式（Probability Recovery Formula）
-在竞价广告（$eCPM = pCTR 	imes pCVR 	imes 	ext{Bid}$）或需要精准概率融合的业务中，必须在模型输出后通过解析反函数将 $\hat{p}$ **精确还原为真实自然世界概率 $p$**：
+在竞价广告（$eCPM = pCTR \times pCVR \times \text{Bid}$）或需要精准概率融合的业务中，必须在模型输出后通过解析反函数将 $\hat{p}$ **精确还原为真实自然世界概率 $p$**：
 
-$$p = rac{\hat{p}}{\hat{p} + rac{1 - \hat{p}}{w}}$$
+$$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
 ```text
 概率还原验证示例：
@@ -113,9 +115,11 @@ $$p = rac{\hat{p}}{\hat{p} + rac{1 - \hat{p}}{w}}$$
                      ▲
                     / \     【顶层：商业与北极星业务指标 Business Metrics】
                    /   \    • DAU / MAU, 人均时长, 购买 GMV, D7/D30 留存, 创作者生态多样性
-                  /─────                 /       \   【中层：分片与公平性指标 Slice & Guardrail Metrics】
+                  /─────\
+                 /       \   【中层：分片与公平性指标 Slice & Guardrail Metrics】
                 /         \  • 新老用户分群, 冷启动 Item, 细分类目切片, P99 耗时
-               /───────────              /             \ 【底层：算法与排序离线指标 Ranking & Offline Metrics】
+               /───────────\
+              /             \ 【底层：算法与排序离线指标 Ranking & Offline Metrics】
              /               \• GAUC (User/Request 分组), Global AUC, LogLoss, PCOC, ECE, NDCG@K
             └─────────────────┘
 ```
@@ -125,14 +129,14 @@ $$p = rac{\hat{p}}{\hat{p} + rac{1 - \hat{p}}{w}}$$
 #### (1) 全局 ROC-AUC（Global AUC）的 Wilcoxon-Mann-Whitney 统计学定义
 ROC 曲线下面积在统计学上严格等价于：**从测试集随机抽取一个正样本 $i \in \mathcal{D}^+$ 和一个负样本 $j \in \mathcal{D}^-$，模型的预测打分 $s_i$ 大于 $s_j$ 的概率**：
 
-$$	ext{AUC} = rac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + rac{1}{2} \mathbb{I}(s_i = s_j) ight)$$
+$$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \right)$$
 
 - **缺陷（Simpsons-like Bias）**：Global AUC 混合了跨用户的全部样本。如果模型仅仅学会了“给高活跃用户打整体高分、给低活跃用户打整体低分”，其 Global AUC 也能达到 0.85，但对**任何单一用户展示列表内部的相对优劣排序完全无效**！
 
 #### (2) Grouped AUC (GAUC) 的数学定义
-为了剥离跨用户之间的基线活跃度差异，工业界提出 **GAUC**：在每个独立分组 $g \in \mathcal{G}$ 内部单独计算 $	ext{AUC}_g$，然后按曝光量 $n_g$ 或正样本量 $n_g^+$ 进行加权平均：
+为了剥离跨用户之间的基线活跃度差异，工业界提出 **GAUC**：在每个独立分组 $g \in \mathcal{G}$ 内部单独计算 $\text{AUC}_g$，然后按曝光量 $n_g$ 或正样本量 $n_g^+$ 进行加权平均：
 
-$$	ext{GAUC} = rac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot 	ext{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad 	ext{其中 } w_g = n_g 	ext{ (曝光数) 或 } n_g^+ 	ext{ (点击数)}$$
+$$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad \text{其中 } w_g = n_g \text{ (曝光数) 或 } n_g^+ \text{ (点击数)}$$
 
 ---
 
@@ -162,11 +166,11 @@ GAUC 分组层级统计量对比：
 
 - **排序指标（AUC / GAUC）的无偏性**：
   在对未点击负样本进行**均匀随机下采样（Uniform Negative Downsampling）**时，由于正样本对 $(i)$ 和负样本对 $(j)$ 的大小相对顺序在期望上不被改变：
-  $$\mathbb{E}_{	ext{sampled}}[\mathbb{I}(s_i > s_j) \mid Y_i=1, Y_j=0] = \mathbb{P}(s_i > s_j \mid Y_i=1, Y_j=0)$$
+  $$\mathbb{E}_{\text{sampled}}[\mathbb{I}(s_i > s_j) \mid Y_i=1, Y_j=0] = \mathbb{P}(s_i > s_j \mid Y_i=1, Y_j=0)$$
   因此，**在下采样数据上直接计算的 AUC 和 GAUC 是真实全量数据 AUC/GAUC 的渐近无偏估计**，无需额外乘以加权系数！
 - **似然与损失指标（LogLoss）的重要性加权无偏估计（Importance Weighting）**：
-  相比之下，交叉熵损失（LogLoss）强烈依赖正负样本比例。若直接在下采样数据上计算 LogLoss 会产生严重偏差。若要在采样数据上得到全量分布的无偏损失估计，必须使用重要性权重（Importance Weight $rac{1}{w}$ 为负样本加权）：
-  $$\mathcal{L}_{	ext{unbiased}} = -rac{1}{N^+} \sum_{i \in \mathcal{D}^+} \log \hat{p}_i - rac{1}{w \cdot N^-} \sum_{j \in \mathcal{D}^-} \log(1 - \hat{p}_j)$$
+  相比之下，交叉熵损失（LogLoss）强烈依赖正负样本比例。若直接在下采样数据上计算 LogLoss 会产生严重偏差。若要在采样数据上得到全量分布的无偏损失估计，必须使用重要性权重（Importance Weight $\frac{1}{w}$ 为负样本加权）：
+  $$\mathcal{L}_{\text{unbiased}} = -\frac{1}{N^+} \sum_{i \in \mathcal{D}^+} \log \hat{p}_i - \frac{1}{w \cdot N^-} \sum_{j \in \mathcal{D}^-} \log(1 - \hat{p}_j)$$
 
 ---
 
@@ -177,12 +181,12 @@ GAUC 分组层级统计量对比：
   - **局限**：一个模型的 AUC 即使高达 0.95，其输出的预估值可能全部挤在 $[0.0001, 0.0002]$ 之间。
 - **校准能力（Reliability / Calibration）**：
   - **性质**：要求模型预估的置信度在数值上精确等于真实发生概率，即 $\mathbb{E}[Y \mid \hat{p}] = \hat{p}$；
-  - **商业严重性**：在竞价广告（$eCPM = pCTR 	imes pCVR 	imes 	ext{Bid}$）与主站多目标融分中，如果高估 $50\%$，会导致广告主预算半小时内被快速耗尽、竞价出价严重虚高，直接破坏商业生态。
+  - **商业严重性**：在竞价广告（$eCPM = pCTR \times pCVR \times \text{Bid}$）与主站多目标融分中，如果高估 $50\%$，会导致广告主预算半小时内被快速耗尽、竞价出价严重虚高，直接破坏商业生态。
 - **扩展校准度量**：
-  - **PCOC（Predictive-over-Observed Calibration Ratio）**：$	ext{PCOC} = rac{\sum \hat{p}_i}{\sum y_i}$（$=1.0$ 完美校准）；
+  - **PCOC（Predictive-over-Observed Calibration Ratio）**：$\text{PCOC} = \frac{\sum \hat{p}_i}{\sum y_i}$（$=1.0$ 完美校准）；
   - **ECE（Expected Calibration Error，预期校准误差）**：将样本按预测概率分为 $M$ 个等宽/等频分桶 $B_m$：
-    $$	ext{ECE} = \sum_{m=1}^M rac{|B_m|}{N} \left| 	ext{acc}(B_m) - 	ext{conf}(B_m) ight|$$
-  - **Brier Score（均方概率误差）**：$	ext{Brier} = rac{1}{N} \sum_{i=1}^N (\hat{p}_i - y_i)^2$，同时兼顾排序分辨力与绝对校准度。
+    $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+  - **Brier Score（均方概率误差）**：$\text{Brier} = \frac{1}{N} \sum_{i=1}^N (\hat{p}_i - y_i)^2$，同时兼顾排序分辨力与绝对校准度。
 
 ---
 
@@ -226,7 +230,7 @@ GAUC 分组层级统计量对比：
 1. **模型家族（Base Model）**：
    “我们在精排层采用分层解耦的架构：底层使用高维 Embedding 表，特征交叉层采用 **DCN-v2 与 DLRM 点积** 结合捕获显式高阶组合；序列层采用 **SIM 两阶段检索（Hard Search + Soft Attention）** 提取万级别长周期行为；上层采用 **PLE 多任务网络** 联合建模 pCTR、pLongView 与 pCVR，解决任务负迁移。”
 2. **样本规模与负采样（Sample Size & Negative Sampling）**：
-   “训练集基于近 30 天的数十亿级真实曝光日志构建，辅以小时级流式微调。精排严格采用**真实的曝光未点击作为负例**。针对 1:50 的样本不平衡，采用负样本随机下采样（保留率 $w = 10\%$），并在推理时通过 $p = rac{\hat{p}}{\hat{p} + (1-\hat{p})/w}$ 严格还原真实自然概率。”
+   “训练集基于近 30 天的数十亿级真实曝光日志构建，辅以小时级流式微调。精排严格采用**真实的曝光未点击作为负例**。针对 1:50 的样本不平衡，采用负样本随机下采样（保留率 $w = 10\%$），并在推理时通过 $p = \frac{\hat{p}}{\hat{p} + (1-\hat{p})/w}$ 严格还原真实自然概率。”
 3. **指标矩阵与分组统计量（Metrics & GAUC Distinction）**：
    “在指标监控上，我们严格区分排序与校准：
    - 排序上以 **Request-GAUC** 为最高优先级离线指标（消除跨刷意图漂移与用户静态偏置），辅以 **User-GAUC** 与 **NDCG@5**；
@@ -234,3 +238,8 @@ GAUC 分组层级统计量对比：
    - 同时通过 **Slice GAUC** 监控新用户与长尾内容，防范辛普森悖论。”
 4. **采样对指标意义的底层影响（Why Sampling Shifts Metrics）**：
    “负下采样人为改变了数据先验分布，导致未经调整的 LogLoss 与绝对输出分值漂移，无法跨采样率横向对比；但由于 GAUC 仅取决于单次请求内部正负样本得分的单调相对排名，在均匀随机负采样下保持优良的无偏单调一致性。”
+"""
+
+with open("notes/BusinessAlgorithm/BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md", "w", encoding="utf-8") as f:
+    f.write(zh_content)
+print("Successfully updated Chinese note")
