@@ -157,7 +157,7 @@ The KOL signal in the course is return traffic caused by a user's historical sha
 
 Comments can motivate creators and community discussion, but count and quality differ. Comment-oriented strategies need abuse, report, and low-quality-interaction guardrails.
 
-New items with few comments can receive a larger comment-oriented weight. Users who consistently write highly liked comments can receive a discussion-oriented content pool. The first helps creators get feedback; the second targets community quality.
+New items with few comments can receive a larger comment-oriented we\right. Users who consistently write highly liked comments can receive a discussion-oriented content pool. The first helps creators get feedback; the second targets community quality.
 
 ### 15.11 Chapter self-test
 

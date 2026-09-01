@@ -35,7 +35,7 @@ MHA allows the model to learn information from different "representation subspac
 #### Scaled Dot-Product Attention
 
 $$
-\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \right)V
+\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \r\right)V
 $$
 
 Calculation: ① $QK^T$ gets the similarity matrix → ② Divide by $\sqrt{d_k}$ to prevent gradient disappearance → ③ softmax → ④ Find V with weighting. MHA divides the input into multiple heads and learns different modes in parallel: $\text{MultiHead} = \text{Concat}(\text{head}_i)W^O$, where $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$.
@@ -540,7 +540,7 @@ self.weight = nn.Parameter(torch.empty(num_embeddings_per_partition, embedding_d
 ```python
 mask = (x >= vocab_start_idx) & (x < vocab_end_idx)
 x    = mask * (x - vocab_start_idx)  # zero out out-of-range values (avoid out-of-bounds crashes)
-y    = F.embedding(x, self.weight)   # safe lookup; out-of-range results are meaningless
+y    = F.embedding(x, self.we\right)   # safe lookup; out-of-range results are meaningless
 y    = mask.unsqueeze(1) * y         # mask out meaningless results
 dist.all_reduce(y)                   # for each token only one GPU is nonzero, so sum = correct vector
 ```
@@ -565,7 +565,7 @@ def forward(self, x):
     if context.is_prefill:
         x = x[context.cu_seqlens_q[1:] - 1].contiguous()
 
-    logits = F.linear(x, self.weight)   # [batch, vocab/tp]
+    logits = F.linear(x, self.we\right)   # [batch, vocab/tp]
 
     # gather to rank 0 and concatenate full logits (only rank 0 performs sampling)
     if tp_size > 1:

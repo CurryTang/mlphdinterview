@@ -278,7 +278,7 @@ def heap_sort(nums: List[int]) -> List[int]:
             if left < heap_size and nums[left] > nums[largest]:
                 largest = left
 
-            if right < heap_size and nums[right] > nums[largest]:
+            if right < heap_size and nums[r\right] > nums[largest]:
                 largest = right
 
             if largest == root:

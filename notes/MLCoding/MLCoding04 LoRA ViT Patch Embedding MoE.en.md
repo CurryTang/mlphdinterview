@@ -57,7 +57,7 @@ class LoRALinear(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
 
     def forward(self, x):
-        base = torch.einsum("...i,oi->...o", x, self.weight)
+        base = torch.einsum("...i,oi->...o", x, self.we\right)
         delta = torch.einsum("...i,ri->...r", x, self.lora_A)
         delta = torch.einsum("...r,or->...o", delta, self.lora_B)
         return base + self.scaling * delta
@@ -221,6 +221,6 @@ Reproduced the router's numerical logic in NumPy: softmax over random logits, ta
 
 #### Common mistakes in this module
 
-- LoRA's `B` must be zero-initialized, since `A` is the side that carries the "exploration direction." Swap the two and training starts by perturbing the frozen base weight.
+- LoRA's `B` must be zero-initialized, since `A` is the side that carries the "exploration direction." Swap the two and training starts by perturbing the frozen base we\right.
 - The patch-embedding convolution equivalence only holds when `stride == kernel_size` (no overlap, no skipped pixels). Don't conflate it with ordinary convolution's shared-receptive-field behavior.
 - MoE's top-k probabilities must be renormalized, or the output scale drifts systematically with whichever experts happen to get routed to.

@@ -36,7 +36,7 @@ $$
 $$
 \operatorname{Cov}(X,Y)
 =
-\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
+\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \r\right]
 $$
 
 它看的是两个变量偏离均值时，是不是经常同向变化。
@@ -236,7 +236,7 @@ $$
 $$
 \operatorname{Var}(W)
 =
-\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
+\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \r\right)
 =
 \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
 $$
@@ -422,7 +422,7 @@ $$
 它的六个非对角相关系数都等于 $-1/3$，所以两两相关系数之和是：
 
 $$
-6\cdot\left( -\frac13 \right)=-2
+6\cdot\left( -\frac13 \r\right)=-2
 $$
 
 这个矩阵是 PSD。直观上，它对应三维空间里正四面体的四个顶点方向：四个单位向量对称地指向不同方向，中心在原点，任意两条方向的点积都是 $-1/3$。
@@ -521,9 +521,9 @@ $$
 那么两两之和是：
 
 $$
-\binom n2\left( -\frac{1}{n-1} \right)
+\binom n2\left( -\frac{1}{n-1} \r\right)
 =
-\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
+\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \r\right)
 =
 -\frac n2
 $$

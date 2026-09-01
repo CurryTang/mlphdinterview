@@ -40,7 +40,7 @@ delete(root, key):
   else:
     if root.left is null: return root.right
     if root.right is null: return root.left
-    succ = minNode(root.right)
+    succ = minNode(root.r\right)
     root.val = succ.val
     root.right = delete(root.right, succ.val)
   return root
@@ -95,7 +95,7 @@ delete(root, key):
 
 ```python
 def preorder(root):
-    return [root.val] + preorder(root.left) + preorder(root.right) if root else []
+    return [root.val] + preorder(root.left) + preorder(root.r\right) if root else []
 ```
 
 迭代版先压右子节点，再压左子节点。栈的后进先出性质保证左子树先处理。
@@ -111,7 +111,7 @@ def preorder_iterative(root):
         node = stack.pop()
         order.append(node.val)
         if node.right:
-            stack.append(node.right)
+            stack.append(node.r\right)
         if node.left:
             stack.append(node.left)
     return order
@@ -123,7 +123,7 @@ def preorder_iterative(root):
 
 ```python
 def inorder(root):
-    return inorder(root.left) + [root.val] + inorder(root.right) if root else []
+    return inorder(root.left) + [root.val] + inorder(root.r\right) if root else []
 ```
 
 迭代版反复压入左链。当前指针为空时弹栈、访问，再转向右子树。
@@ -150,7 +150,7 @@ def inorder_iterative(root):
 
 ```python
 def postorder(root):
-    return postorder(root.left) + postorder(root.right) + [root.val] if root else []
+    return postorder(root.left) + postorder(root.r\right) + [root.val] if root else []
 ```
 
 迭代版先生成修改前序 `root → right → left`，再整体反转。为了让右子节点先出栈，代码先压左子节点，再压右子节点。单栈加 `last_visited` 也可实现后序，但状态分支更多。
@@ -168,7 +168,7 @@ def postorder_iterative(root):
         if node.left:
             stack.append(node.left)
         if node.right:
-            stack.append(node.right)
+            stack.append(node.r\right)
 
     return reverse_order[::-1]
 ```
@@ -193,7 +193,7 @@ def level_order(root):
         if node.left:
             queue.append(node.left)
         if node.right:
-            queue.append(node.right)
+            queue.append(node.r\right)
     return order
 ```
 
@@ -218,7 +218,7 @@ def solve(root):
             continue
         if processed:
             left = value[node.left]
-            right = value[node.right]
+            right = value[node.r\right]
             best = max(best, combine_for_answer(left, right, node))
             value[node] = value_for_parent(left, right, node)
         else:
@@ -250,7 +250,7 @@ def same(a, b):
         if not x or not y or x.val != y.val:
             return False
         stack.append((x.left, y.left))
-        stack.append((x.right, y.right))
+        stack.append((x.right, y.r\right))
     return True
 ```
 
@@ -268,7 +268,7 @@ BST 最重要的专用性质是中序遍历有序。它支持三种常见写法�
 | Validate BST | 每个节点携带合法开区间 `(low, high)`；左子树上界收紧为当前值，右子树下界收紧为当前值 |
 | LCA of a BST | 两个目标值都小于当前值时向左，都大于当前值时向右，否则当前节点就是分叉点 |
 
-只检查 `node.left.val < node.val < node.right.val` 会漏掉跨越多层的违规节点。合法区间必须从所有祖先传递下来。LCA 可以沿一条路径运行，时间复杂度为 `O(h)`，无需同时搜索两棵子树。
+只检查 `node.left.val < node.val < node.r\right.val` 会漏掉跨越多层的违规节点。合法区间必须从所有祖先传递下来。LCA 可以沿一条路径运行，时间复杂度为 `O(h)`，无需同时搜索两棵子树。
 
 Validate BST 使用显式栈携带每个节点的祖先边界：
 
@@ -336,7 +336,7 @@ def is_balanced(root):
             continue
         if processed:
             left_h = height[node.left]
-            right_h = height[node.right]
+            right_h = height[node.r\right]
             if abs(left_h - right_h) > 1:
                 return False
             height[node] = 1 + max(left_h, right_h)
@@ -358,7 +358,7 @@ def is_balanced(root):
 AVL 对每个节点维护平衡因子：
 
 $$
-\text{balance}(node) = \text{height}(node.left) - \text{height}(node.right)
+\text{balance}(node) = \text{height}(node.left) - \text{height}(node.r\right)
 $$
 
 任意节点都要求 `|balance| <= 1`。插入或删除导致失衡后，根据较重路径的两次方向选择旋转。
@@ -454,7 +454,7 @@ class Solution:
             if node.left:
                 stack.append(node.left)
             if node.right:
-                stack.append(node.right)
+                stack.append(node.r\right)
         return root
 ```
 
@@ -498,7 +498,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
         return depth
 ```
 
@@ -540,7 +540,7 @@ class Solution:
             if node is None:
                 continue
             if processed:
-                left_h, right_h = height[node.left], height[node.right]
+                left_h, right_h = height[node.left], height[node.r\right]
                 diameter = max(diameter, left_h + right_h)
                 height[node] = 1 + max(left_h, right_h)
             else:
@@ -561,7 +561,7 @@ class Solution:
 | 项目 | 内容 |
 |---|---|
 | 组合模式 | 后序栈 + 高度缓存 + 提前结束 |
-| 关键条件 | `abs(left - right) <= 1` |
+| 关键条件 | `abs(left - r\right) <= 1` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Balanced Binary Tree
@@ -589,7 +589,7 @@ class Solution:
             if node is None:
                 continue
             if processed:
-                left_h, right_h = height[node.left], height[node.right]
+                left_h, right_h = height[node.left], height[node.r\right]
                 if abs(left_h - right_h) > 1:
                     return False
                 height[node] = 1 + max(left_h, right_h)
@@ -636,7 +636,7 @@ class Solution:
             if not a or not b or a.val != b.val:
                 return False
             stack.append((a.left, b.left))
-            stack.append((a.right, b.right))
+            stack.append((a.right, b.r\right))
         return True
 ```
 
@@ -677,7 +677,7 @@ class Solution:
                 if not x or not y or x.val != y.val:
                     return False
                 stack.append((x.left, y.left))
-                stack.append((x.right, y.right))
+                stack.append((x.right, y.r\right))
             return True
 
         if not subRoot:
@@ -690,7 +690,7 @@ class Solution:
             if same(node, subRoot):
                 return True
             stack.append(node.left)
-            stack.append(node.right)
+            stack.append(node.r\right)
         return False
 ```
 
@@ -782,7 +782,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
             result.append(level)
         return result
 ```
@@ -828,7 +828,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
                 if i == level_size - 1:
                     result.append(node.val)
         return result
@@ -1057,12 +1057,12 @@ class Solution:
                 return 0
 
             max_left = max(0, dfs(node.left))
-            max_right = max(0, dfs(node.right))
+            max_right = max(0, dfs(node.r\right))
 
             path_sum = node.val + max_left + max_right
             self.max_sum = max(self.max_sum, path_sum)
 
-            return node.val + max(max_left, max_right)
+            return node.val + max(max_left, max_r\right)
 
         dfs(root)
         return self.max_sum
@@ -1110,7 +1110,7 @@ class Codec:
                 return
             res.append(str(node.val))
             dfs(node.left)
-            dfs(node.right)
+            dfs(node.r\right)
 
         dfs(root)
         return ",".join(res)

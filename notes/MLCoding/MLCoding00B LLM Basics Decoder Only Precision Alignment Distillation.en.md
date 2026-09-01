@@ -104,11 +104,11 @@ Let text representation vectors be $\mathbf{h} \in \mathbb{R}^d$ ($L_2$-normaliz
 - **Ideal Isotropy**: Representation vectors are **uniformly distributed** in all directions across the unit hypersphere $\mathcal{S}^{d-1}$.
   The covariance matrix satisfies the isotropic identity:
 
-$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \r\right] = \frac{1}{d} \mathbf{I}_d$$
 
   All eigenvalues of the covariance matrix are identical ($\lambda_1 = \dots = \lambda_d = \frac{1}{d}$), achieving maximal effective rank. The expected cosine similarity between two independent, semantically unrelated vectors $\mathbf{h}_i, \mathbf{h}_j$ is zero:
 
-$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \r\right] \approx 0$$
 
 - **Representation Degeneration & Anisotropy (The Cone Effect)**:
   In uncalibrated autoregressive decoders, the representation covariance matrix exhibits **severe spectral decay**:
@@ -146,11 +146,11 @@ $$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\
 
 Contrastive InfoNCE loss expands the collapsed cone onto the entire hypersphere:
 
-$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \r\right]$$
 
 Wang & Isola (ICML 2020) proved that as $N \to \infty$, minimizing $\mathcal{L}_{\text{InfoNCE}}$ asymptotically decomposes into two orthogonal geometric imperatives:
 
-$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (Alignment: Pulls true positives together)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (Uniformity: Maximizes entropy across the hypersphere, eliminating the cone)}}$$
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (Alignment: Pulls true positives together)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \r\right) \r\right]}_{\mathcal{L}_{\text{uniform}} \text{ (Uniformity: Maximizes entropy across the hypersphere, eliminating the cone)}}$$
 
 ```anisotropy-cone-demo
 ```
@@ -367,7 +367,7 @@ For vocabulary size $V$ and sequence length $S$, the unnormalized log-probabilit
 
 Standard causal cross-entropy loss:
 
-$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} \right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} \right)$$
+$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} \r\right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} \r\right)$$
 
 #### (1) Uniform Distribution Under Random Initialization
 Under standard parameter initialization ($\mathcal{N}(0, \sigma^2)$ with $\sigma \approx 0.02$ or Xavier/Kaiming):
@@ -375,7 +375,7 @@ Under standard parameter initialization ($\mathcal{N}(0, \sigma^2)$ with $\sigma
 - Output probabilities approach a uniform distribution:
   $$P(y = v) = \frac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} \approx \frac{e^0}{V \cdot e^0} = \frac{1}{V}$$
 - Cross-entropy strictly simplifies to the natural logarithm:
-  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V} \right) = \ln V$$
+  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V} \r\right) = \ln V$$
 
 #### (2) Second-Order Taylor Expansion with Initial Logit Variance
 If $z_v \sim \text{i.i.d. } \mathcal{N}(0, \sigma_z^2)$, second-order Taylor expansion over Log-Sum-Exp yields:
@@ -401,9 +401,9 @@ With $\sigma_z \approx 0.02 \sim 0.1$, $\frac{\sigma_z^2}{2} < 0.005$, proving *
 
 ### 3. Theoretical Impact of Temperature ($T$) & Label Smoothing ($\epsilon$)
 
-1. **Temperature $T$**: $\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} \right)$. As $T \to \infty$, variance is compressed and $\mathcal{L} \to \ln V$.
+1. **Temperature $T$**: $\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} \r\right)$. As $T \to \infty$, variance is compressed and $\mathcal{L} \to \ln V$.
 2. **Label Smoothing $\epsilon$**: With smoothed targets $q(v) = (1-\epsilon)\mathbb{I}(v=c) + \frac{\epsilon}{V}$:
-   $$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V} \right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V} \right) = \ln V$$
+   $$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V} \r\right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V} \r\right) = \ln V$$
    > 💡 **Core Invariance**: **Regardless of the label smoothing factor $\epsilon$, theoretical expected initial loss at random initialization is strictly invariant at $\ln V$**.
 
 ---

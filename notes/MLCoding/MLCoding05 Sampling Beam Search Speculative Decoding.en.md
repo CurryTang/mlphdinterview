@@ -267,6 +267,6 @@ assert np.max(np.abs(empirical - p_target)) < 0.01       # converges to the targ
 assert np.max(np.abs(empirical - p_draft)) > 0.05         # clearly not the draft distribution
 ```
 
-The measured empirical distribution is `[0.0499, 0.3497, 0.3018, 0.1990, 0.0996]`, a maximum error of about `0.0018` against `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` (within Monte Carlo noise at 200,000 samples), versus a maximum error of about `0.25` against `p_draft` (clearly not the draft distribution). The acceptance rate equals `sum(min(p_target, p_draft))`, about `0.55` for these numbers, so on average roughly one in every two draft tokens is accepted outright.
+The measured empirical distribution is `[0.0499, 0.3497, 0.3018, 0.1990, 0.0996]`, a maximum error of about `0.0018` against `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` (within Monte Carlo noise at 200,000 samples), versus a maximum error of about `0.25` against `p_draft` (clearly not the draft distribution). The acceptance rate equals `sum(min(p_target, p_draft))`, about `0.55` for these numbers, so on average roughly one in every two draft tokens is accepted outr\right.
 
 </details>

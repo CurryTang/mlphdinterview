@@ -132,7 +132,7 @@ $$
 **两种解法的一致性验证**：以正文后面会用到的 best-of-7（$N=4$）在比分 $(1,0)$ 为例，$r=N-a=3$，$s=N-b=4$，公平赌局 $q=\tfrac12$：
 
 $$
-P(1,0) = \sum_{k=3}^{6}\binom{6}{k}\left( \frac12 \right)^{6} = \frac{\binom63+\binom64+\binom65+\binom66}{64} = \frac{20+15+6+1}{64} = \frac{42}{64} = \frac{21}{32}
+P(1,0) = \sum_{k=3}^{6}\binom{6}{k}\left( \frac12 \r\right)^{6} = \frac{\binom63+\binom64+\binom65+\binom66}{64} = \frac{20+15+6+1}{64} = \frac{42}{64} = \frac{21}{32}
 $$
 
 和逆向递推算出的结果完全一致，后面例题会给出完整的递推表。
@@ -324,7 +324,7 @@ $g$ 在整个可行域上严格凹，$f^*=2p-1$ 是唯一的全局最大值点�
 **推导（第一问）**：第 $n$ 次才出现反面的概率是 $(\tfrac12)^n$（前 $n-1$ 次正面各 $\tfrac12$，第 $n$ 次反面 $\tfrac12$），对应收益 $2^n$：
 
 $$
-\mathbb E[\text{Payoff}] = \sum_{n=1}^\infty \left( \frac12 \right)^n \cdot 2^n = \sum_{n=1}^\infty 1 = \infty
+\mathbb E[\text{Payoff}] = \sum_{n=1}^\infty \left( \frac12 \r\right)^n \cdot 2^n = \sum_{n=1}^\infty 1 = \infty
 $$
 
 期望收益发散的根本原因是：赢得 $2^n$ 美元这件事的概率以 $2^{-n}$ 的速度衰减，恰好和收益 $2^n$ 增长的速度完全抵消，级数里每一项都贡献恰好 $1$，无穷多项加起来自然发散。但现实中几乎没有人愿意为参与这个游戏支付超过几十美元，这个"理论期望无穷大 vs. 实际支付意愿有限"的反差就是圣彼得堡悖论。
@@ -332,7 +332,7 @@ $$
 **推导（第二问）**：先算终局效用的期望：
 
 $$
-\mathbb E[U(\text{Payoff})] = \sum_{n=1}^\infty \left( \frac12 \right)^n \ln(2^n) = \ln 2\sum_{n=1}^\infty \frac{n}{2^n}
+\mathbb E[U(\text{Payoff})] = \sum_{n=1}^\infty \left( \frac12 \r\right)^n \ln(2^n) = \ln 2\sum_{n=1}^\infty \frac{n}{2^n}
 $$
 
 用等比级数求导技巧算 $\sum_{n=1}^\infty n x^n = \frac{x}{(1-x)^2}$，代入 $x=\tfrac12$ 得 $\sum n/2^n = \frac{1/2}{(1/2)^2}=2$，所以 $\mathbb E[U(\text{Payoff})] = 2\ln2 = \ln4$。设最大入场费（确定性等价财富）为 $C$，令 $U(C)$ 等于这份期望效用：
@@ -354,7 +354,7 @@ $$
 **思路**：$(1,1)$ 时双方都还需要再赢 2 场，等价于把 $(1,1)$ 看成一个全新的"先赢 2 场"迷你系列赛（即 Best-of-3）的起点，可以直接用上面的 Fermat 公式（$N=3,\ a=1,\ b=1$，$r=s=2$）：
 
 $$
-P(1,1) = \sum_{k=2}^{3}\binom{3}{k}\left( \frac12 \right)^3 = \frac{\binom32+\binom33}{8} = \frac{3+1}{8} = \frac12
+P(1,1) = \sum_{k=2}^{3}\binom{3}{k}\left( \frac12 \r\right)^3 = \frac{\binom32+\binom33}{8} = \frac{3+1}{8} = \frac12
 $$
 
 （这个结果也可以由对称性直接看出：$q=\tfrac12$ 且双方剩余需要的场次相同时，局面对 A、B 完全对称，$P=\tfrac12$ 是必然结果，不需要真的展开算，Fermat 公式在这里只是用来交叉验证。）代入模板：

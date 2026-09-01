@@ -29,7 +29,7 @@ Then ask: am I maintaining a merged interval, an active count, or a candidate he
 What interval problems have in common:
 
 ```text
-After sorting, the timeline becomes manageable from left to right.
+After sorting, the timeline becomes manageable from left to r\right.
 ```
 
 The purpose of sorting is not to make things "look nicer", but to let you know:

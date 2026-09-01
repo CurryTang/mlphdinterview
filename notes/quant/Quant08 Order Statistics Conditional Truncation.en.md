@@ -193,7 +193,7 @@ By the law of total expectation:
 $$
 \mathbb E[X_{(1)}X_{(n)}]
 =\mathbb E\big[X_{(n)}\cdot\mathbb E[X_{(1)}\mid X_{(n)}]\big]
-=\mathbb E\left[ X_{(n)}\cdot\frac{X_{(n)}}{n} \right]
+=\mathbb E\left[ X_{(n)}\cdot\frac{X_{(n)}}{n} \r\right]
 =\frac{\mathbb E[X_{(n)}^2]}{n}
 $$
 
@@ -413,7 +413,7 @@ Substituting $t=1/2$ into Problem 6's formula: $(1-2t)_+=(1-1)_+=0$ and $(1-3t)_
 Mutual exclusivity means the probability of the union is just the sum of the individual probabilities:
 
 $$
-P(\text{no triangle})=\sum_{i=1}^3P(Y_i>1/2)=3\cdot\left( \frac12 \right)^2=\frac34,\qquad P(\text{triangle})=\frac14
+P(\text{no triangle})=\sum_{i=1}^3P(Y_i>1/2)=3\cdot\left( \frac12 \r\right)^2=\frac34,\qquad P(\text{triangle})=\frac14
 $$
 
 A Monte Carlo simulation gives $0.2501$, matching $1/4$.
@@ -433,7 +433,7 @@ $$
 **Derivation**: Let 3 points be iid on a circle of circumference 1. Let $A_i$ denote the event that the arc of length $1/2$ starting at point $i$ and going clockwise contains every other point, i.e. the semicircle starting at point $i$ covers all points. Given point $i$, each of the other $n-1$ points independently lands in that fixed semicircle with probability $1/2$:
 
 $$
-P(A_i)=\left( \frac12 \right)^{n-1}
+P(A_i)=\left( \frac12 \r\right)^{n-1}
 $$
 
 The $A_i$ are pairwise mutually exclusive: the $n$ arc lengths always sum to 1, and two different points both being the start of a semicircle covering everyone would require two arcs, each of length $\ge1/2$, whose total cannot exceed 1, a contradiction (the same mechanism as the mutual-exclusivity argument in Problem 7). So:
@@ -626,7 +626,7 @@ $$
 Step 2, the cross moment $\mathbb E[Y_iY_j]$ ($i\ne j$). The $n+1$ spacings satisfy $\sum_{i=1}^{n+1}Y_i=1$; squaring both sides and taking expectations:
 
 $$
-1=\mathbb E\left[ \left( \sum_{i=1}^{n+1}Y_i \right)^2 \right]=(n+1)\,\mathbb E[Y^2]+(n+1)n\,\mathbb E[Y_iY_j]
+1=\mathbb E\left[ \left( \sum_{i=1}^{n+1}Y_i \r\right)^2 \r\right]=(n+1)\,\mathbb E[Y^2]+(n+1)n\,\mathbb E[Y_iY_j]
 $$
 
 Expanding the square gives $n+1$ squared terms and $(n+1)n$ ordered cross-product terms, all with the same expectation by exchangeability. Substituting $\mathbb E[Y^2]$ and solving:
@@ -672,7 +672,7 @@ $$
 The total number of records is $\sum_{k=1}^n I_k$, and by linearity (no independence assumption needed among the $I_k$):
 
 $$
-\mathbb E[\#\text{records}]=\mathbb E\left[ \sum_{k=1}^n I_k \right]=\sum_{k=1}^n\mathbb P(I_k=1)=\boxed{\sum_{k=1}^n\frac1k=H_n}
+\mathbb E[\#\text{records}]=\mathbb E\left[ \sum_{k=1}^n I_k \r\right]=\sum_{k=1}^n\mathbb P(I_k=1)=\boxed{\sum_{k=1}^n\frac1k=H_n}
 $$
 
 where $H_n$ is the $n$-th harmonic number. A Monte Carlo simulation at $n=10$ gives an estimate of $2.929$, matching $H_{10}=2.9290$.
@@ -760,13 +760,13 @@ Substituting $n=4$ gives the answer directly, and a direct computation serves as
 As a direct check, compute a single event's probability: $Y_i$ is one spacing among 3 uniform cut points, with marginal distribution $\mathrm{Beta}(1,3)$, so $P(Y_i>x)=(1-x)^3$ (all 3 cuts must avoid a specific interval of length $\frac12$). At $x=\frac12$:
 
 $$
-P\left( Y_i>\frac12 \right)=\left( \frac12 \right)^3=\frac18
+P\left( Y_i>\frac12 \r\right)=\left( \frac12 \r\right)^3=\frac18
 $$
 
 By mutual exclusivity,
 
 $$
-P(\text{cannot form})=\sum_{i=1}^4 P\left( Y_i>\frac12 \right)=4\times\frac18=\frac12
+P(\text{cannot form})=\sum_{i=1}^4 P\left( Y_i>\frac12 \r\right)=4\times\frac18=\frac12
 $$
 
 so
@@ -816,7 +816,7 @@ $$
 Step 5 (distribution of $\varphi_1$): $\varphi_1/(2\pi)$ is a single spacing among 2 uniform points, distributed as $\mathrm{Beta}(1,2)$ with density $2(1-u)$ on $u\in[0,1]$. Converting back with $x=2\pi u$:
 
 $$
-f_{\varphi_1}(x)=\frac1\pi\left( 1-\frac{x}{2\pi} \right),\qquad 0\le x\le2\pi
+f_{\varphi_1}(x)=\frac1\pi\left( 1-\frac{x}{2\pi} \r\right),\qquad 0\le x\le2\pi
 $$
 
 Step 6 (integrate):
@@ -845,7 +845,7 @@ $$
 
 As a check, simulating 3 random angles directly and computing the triangle's area via the shoelace formula gives a Monte Carlo estimate of $0.47726$, close to $3/(2\pi)=0.47746$.
 
-The same method applied to 4 random points on the circle gives the expected area of the resulting quadrilateral. Here $\mathbb E[A]=4\times\frac12\mathbb E[\sin\varphi_1]=2\mathbb E[\sin\varphi_1]$, where $\varphi_1$ is now a spacing among 3 uniform points with density $\dfrac{3}{2\pi}\left( 1-\dfrac{x}{2\pi} \right)^2$; the corresponding integral gives $\mathbb E[\sin\varphi_1]=3/(2\pi)$, so $\mathbb E[A]=3/\pi$. The computation has the identical structure to the triangle case, only the order of the spacing distribution and the outer coefficient change; the full integral is not repeated here.
+The same method applied to 4 random points on the circle gives the expected area of the resulting quadrilateral. Here $\mathbb E[A]=4\times\frac12\mathbb E[\sin\varphi_1]=2\mathbb E[\sin\varphi_1]$, where $\varphi_1$ is now a spacing among 3 uniform points with density $\dfrac{3}{2\pi}\left( 1-\dfrac{x}{2\pi} \r\right)^2$; the corresponding integral gives $\mathbb E[\sin\varphi_1]=3/(2\pi)$, so $\mathbb E[A]=3/\pi$. The computation has the identical structure to the triangle case, only the order of the spacing distribution and the outer coefficient change; the full integral is not repeated here.
 
 **Takeaway**: the core decomposition for random-polygon-area-on-a-circle problems is fixing one point by rotational symmetry, writing the area as a sum of sines of the spacings, and taking the expectation via the spacings' marginal distribution. This three-step structure does not depend on the number of points; the point count only changes the Beta parameters of the spacing distribution and the outer coefficient.
 
@@ -868,13 +868,13 @@ $$
 The complement of $M\ge k$ is $M\le k-1$, meaning all 3 dice show $\le k-1$:
 
 $$
-\mathbb P(M\ge k)=1-\mathbb P(M\le k-1)=1-\left( \frac{k-1}{6} \right)^3
+\mathbb P(M\ge k)=1-\mathbb P(M\le k-1)=1-\left( \frac{k-1}{6} \r\right)^3
 $$
 
 Substituting into the sum:
 
 $$
-\mathbb E[M]=\sum_{k=1}^6\left[ 1-\frac{(k-1)^3}{216} \right]=6-\frac{0+1+8+27+64+125}{216}=6-\frac{225}{216}
+\mathbb E[M]=\sum_{k=1}^6\left[ 1-\frac{(k-1)^3}{216} \r\right]=6-\frac{0+1+8+27+64+125}{216}=6-\frac{225}{216}
 $$
 
 Simplifying:

@@ -47,7 +47,7 @@ $$
 **Proof sketch**: Let $\Delta W_i = W_{t_i} - W_{t_{i-1}} = \sqrt{\Delta t_i} Z_i$ ($Z_i \sim \mathcal{N}(0, 1)$). Then $\mathbb{E}[|\Delta W_i|] = \sqrt{\frac{2}{\pi}} \sqrt{\Delta t_i}$. For uniform partitions $\Delta t = T/n$:
 
 $$
-\mathbb{E}\left[ \sum_{i=1}^n |\Delta W_i| \right] = n \cdot \sqrt{\frac{2}{\pi}} \sqrt{\frac{T}{n}} = \sqrt{\frac{2}{\pi}} \sqrt{T} \sqrt{n} \xrightarrow{n \to \infty} \infty
+\mathbb{E}\left[ \sum_{i=1}^n |\Delta W_i| \r\right] = n \cdot \sqrt{\frac{2}{\pi}} \sqrt{\frac{T}{n}} = \sqrt{\frac{2}{\pi}} \sqrt{T} \sqrt{n} \xrightarrow{n \to \infty} \infty
 $$
 
 #### (2) Quadratic Variation Converges Deterministically to $T$
@@ -84,7 +84,7 @@ $$
 The transition probability density from $x$ to $y$ across time $t$ is:
 
 $$
-p(t, x, y) = \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(y-x)^2}{2t} \right)
+p(t, x, y) = \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(y-x)^2}{2t} \r\right)
 $$
 
 It directly satisfies the Heat Equation / Kolmogorov backward & forward PDE:
@@ -108,7 +108,7 @@ $$
 Donsker's Invariance Principle states that as $N \to \infty$, $B_N(\cdot)$ converges weakly in $C([0, T], \mathbb{R}^2)$ to standard two-dimensional Brownian motion:
 
 $$
-B_N(t) \implies \left( \frac{1}{\sqrt{2}} B_t^{(1)}, \frac{1}{\sqrt{2}} B_t^{(2)} \right)
+B_N(t) \implies \left( \frac{1}{\sqrt{2}} B_t^{(1)}, \frac{1}{\sqrt{2}} B_t^{(2)} \r\right)
 $$
 
 ```two-d-walk-demo
@@ -214,7 +214,7 @@ A stochastic process $X = \{X_t : t \ge 0\}$ is rigorously defined as an **Itô 
 > **Regardless of whether the coin lands Heads ($+1$) or Tails ($-1$), squaring wipes out the sign and completely erases all randomness!**
 > 
 > Summing up all microscopic squared steps over 1 second:
-> $$\sum_{i=1}^{1/\Delta t} (\Delta W_i)^2 = \left( \frac{1}{\Delta t} \right) \times \Delta t = 1 \text{ second}$$
+> $$\sum_{i=1}^{1/\Delta t} (\Delta W_i)^2 = \left( \frac{1}{\Delta t} \r\right) \times \Delta t = 1 \text{ second}$$
 > 
 > **Core Insight**: On an infinitesimal scale, the square of random noise is a **100% deterministic, vibration-free constant flow of time**! $(dW_t)^2 = dt$ is not an approximation—it is an exact law of nature!
 
@@ -225,7 +225,7 @@ A stochastic process $X = \{X_t : t \ge 0\}$ is rigorously defined as an **Itô 
 > Imagine standing at the bottom of a parabolic bowl $f(x) = x^2$ at $x=0$:
 > - A symmetric gust of wind pushes you randomly Left ($1$ meter) or Right ($1$ meter) with $50/50$ probability;
 > - **Horizontally**: Your average displacement is $\frac{+1 + (-1)}{2} = 0$ (no drift);
-> - **Vertically (Height)**: Moving Right lifts you up $(+1)^2 = 1$ meter; moving Left **also lifts you up $(-1)^2 = 1$ meter**!
+> - **Vertically (He\right)**: Moving Right lifts you up $(+1)^2 = 1$ meter; moving Left **also lifts you up $(-1)^2 = 1$ meter**!
 > - **Result**: Even though horizontal wind is fair pure noise, the upward curvature of the bowl (convexity $f''(x) > 0$) **systematically pumps your average height upward by 1 meter on every jitter!**
 > 
 > This is **Jensen's Inequality operating in real-time continuous dynamics**:
@@ -268,7 +268,7 @@ For an Itô diffusion: $dX_t = \mu(t, X_t) dt + \sigma(t, X_t) dW_t$.
 2. **Step 2 (Add the Itô Curvature Kick)**: $+\frac{1}{2} \frac{\partial^2 f}{\partial x^2} (dX_t)^2$;
 3. **Step 3 (Substitute $(dX_t)^2 = \sigma^2 dt$ & Collect $dt$ terms)**:
 
-$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \r\right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
 
 ---
 
@@ -313,7 +313,7 @@ graph TD
   $$\int_0^T X_t dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} X_{t_i} (W_{t_{i+1}} - W_{t_i})$$
   - The integrand $X_{t_i}$ is evaluated at the **left endpoint**, making it $\mathcal{F}_{t_i}$-measurable and **completely independent** of the forward increment $\Delta W_i = W_{t_{i+1}} - W_{t_i}$.
 * **Stratonovich Integral ($\alpha = 1/2$, denoted $\int_0^T X_t \circ dW_t$)**:
-  $$\int_0^T X_t \circ dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} \left( \frac{X_{t_i} + X_{t_{i+1}}}{2} \right) (W_{t_{i+1}} - W_{t_i})$$
+  $$\int_0^T X_t \circ dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} \left( \frac{X_{t_i} + X_{t_{i+1}}}{2} \r\right) (W_{t_{i+1}} - W_{t_i})$$
   - The integrand is evaluated at the **trapezoidal midpoint**, creating an endogenous correlation between the integrand and future Brownian increment $\Delta W_i$.
 
 ---
@@ -325,15 +325,15 @@ Using $W_{t_i}(W_{t_{i+1}} - W_{t_i}) = \frac{1}{2}(W_{t_{i+1}}^2 - W_{t_i}^2) -
 $$\sum_{i=0}^{n-1} W_{t_i} \Delta W_i = \frac{1}{2} \underbrace{\sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2)}_{\text{Telescoping Sum} = W_T^2 - W_0^2 = W_T^2} - \frac{1}{2} \underbrace{\sum_{i=0}^{n-1} (\Delta W_i)^2}_{\text{Quadratic Variation} \to T}$$
 $$\boxed{\int_0^T W_t dW_t = \frac{1}{2} W_T^2 - \frac{1}{2} T}$$
 * **Expectation Check (Martingale Property)**:
-  $$\mathbb{E}\left[ \int_0^T W_t dW_t \right] = \frac{1}{2} \mathbb{E}[W_T^2] - \frac{1}{2}T = \frac{1}{2}T - \frac{1}{2}T = \mathbf{0}$$
+  $$\mathbb{E}\left[ \int_0^T W_t dW_t \r\right] = \frac{1}{2} \mathbb{E}[W_T^2] - \frac{1}{2}T = \frac{1}{2}T - \frac{1}{2}T = \mathbf{0}$$
   Expected profit from pure noise is strictly zero (no free lunch).
 
 ##### 2. Stratonovich Integral Calculation:
-$$\sum_{i=0}^{n-1} \left( \frac{W_{t_i} + W_{t_{i+1}}}{2} \right) (W_{t_{i+1}} - W_{t_i}) = \frac{1}{2} \sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2) = \frac{1}{2} W_T^2$$
+$$\sum_{i=0}^{n-1} \left( \frac{W_{t_i} + W_{t_{i+1}}}{2} \r\right) (W_{t_{i+1}} - W_{t_i}) = \frac{1}{2} \sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2) = \frac{1}{2} W_T^2$$
 $$\boxed{\int_0^T W_t \circ dW_t = \frac{1}{2} W_T^2}$$
 * **Standard Classical Form**: Identical to Newton calculus $\int x dx = \frac{1}{2}x^2$.
 * **Expectation Trap (Loses Martingale Property)**:
-  $$\mathbb{E}\left[ \int_0^T W_t \circ dW_t \right] = \frac{1}{2} \mathbb{E}[W_T^2] = \mathbf{\frac{1}{2} T \ne 0}$$
+  $$\mathbb{E}\left[ \int_0^T W_t \circ dW_t \r\right] = \frac{1}{2} \mathbb{E}[W_T^2] = \mathbf{\frac{1}{2} T \ne 0}$$
   **Manufactures a fictitious positive deterministic drift of $+\frac{1}{2}T$ out of pure zero-mean noise!**
 
 ---
@@ -353,11 +353,11 @@ $$X_t \circ dW_t = X_t dW_t + \frac{1}{2} \sigma_t dt$$
 * **Stratonovich SDE $\to$ Itô SDE**:
   Given Stratonovich SDE: $dX_t = \underline{b}(X_t) dt + \sigma(X_t) \circ dW_t$
   The equivalent Itô SDE adds the **Wong-Zakai drift correction**:
-  $$\boxed{dX_t = \left( \underline{b}(X_t) + \frac{1}{2} \sigma(X_t) \sigma'(X_t) \right) dt + \sigma(X_t) dW_t}$$
+  $$\boxed{dX_t = \left( \underline{b}(X_t) + \frac{1}{2} \sigma(X_t) \sigma'(X_t) \r\right) dt + \sigma(X_t) dW_t}$$
 * **Itô SDE $\to$ Stratonovich SDE**:
   Given Itô SDE: $dX_t = \mu(X_t) dt + \sigma(X_t) dW_t$
   The equivalent Stratonovich SDE is:
-  $$\boxed{dX_t = \left( \mu(X_t) - \frac{1}{2} \sigma(X_t) \sigma'(X_t) \right) dt + \sigma(X_t) \circ dW_t}$$
+  $$\boxed{dX_t = \left( \mu(X_t) - \frac{1}{2} \sigma(X_t) \sigma'(X_t) \r\right) dt + \sigma(X_t) \circ dW_t}$$
 
 ---
 
@@ -384,7 +384,7 @@ Ideal mathematical "white noise" (correlation time $\tau = 0$) does not exist in
 | **Sampling Point $\alpha$** | $\alpha = 0$ (Left endpoint) | $\alpha = 1/2$ (Trapezoidal midpoint) |
 | **Information Filtration** | $\mathcal{F}_{t_i}$-adapted, **Non-anticipating (Strict Causality)** | Evaluates $X_{t_{i+1}}$, contains forward look-ahead |
 | **Chain Rule Form** | **Second-Order Itô's Lemma**: $d(f) = f' dX + \frac{1}{2}f''\sigma^2 dt$ | **Classical Newton Chain Rule**: $d(f) = f'(X) \circ dX$ |
-| **Martingale Property** | **Strictly Preserved**: $\mathbb{E}\left[ \int H dW \right] = 0$ | **Violated**: $\mathbb{E}\left[ \int W \circ dW \right] = \frac{T}{2} \ne 0$ |
+| **Martingale Property** | **Strictly Preserved**: $\mathbb{E}\left[ \int H dW \r\right] = 0$ | **Violated**: $\mathbb{E}\left[ \int W \circ dW \r\right] = \frac{T}{2} \ne 0$ |
 | **Manifold Invariance** | Second-order drift breaks tensor covariance | **Preserves Lie group and Riemannian symmetries** |
 | **Numerical Schemes** | Euler-Maruyama Scheme | Heun's Method / Stratonovich Runge-Kutta |
 | **Primary Domain** | **Quantitative Trading, Derivatives Pricing, Risk Hedging** | **Statistical Physics, Robotics, Manifold Navigation** |
@@ -403,7 +403,7 @@ Ideal mathematical "white noise" (correlation time $\tau = 0$) does not exist in
 >   - Correction term: $\frac{1}{2}\sigma(S)\sigma'(S) = \frac{1}{2}(\sigma S)(\sigma) = \frac{1}{2}\sigma^2 S$;
 >   - Stratonovich drift subtracts this term: $\underline{b}(S) = (\mu - \frac{1}{2}\sigma^2) S$;
 >   - **Final Stratonovich SDE**:
->     $$\boxed{dS_t = \left( \mu - \frac{1}{2}\sigma^2 \right) S_t dt + \sigma S_t \circ dW_t}$$
+>     $$\boxed{dS_t = \left( \mu - \frac{1}{2}\sigma^2 \r\right) S_t dt + \sigma S_t \circ dW_t}$$
 
 
 ---
@@ -432,16 +432,16 @@ Because state variable $S_t$ appears inside the diffusion term, standard Riemann
 * Consider smooth non-linear map $f(S) = \ln S$;
 * Derivatives: $f'(S) = \frac{1}{S}$, $f''(S) = -\frac{1}{S^2}$;
 * Apply Itô's Lemma to $f(S_t) = \ln S_t$:
-  $$d(\ln S_t) = f'(S_t) dS_t + \frac{1}{2} f''(S_t) (dS_t)^2 = \frac{1}{S_t} (\mu S_t dt + \sigma S_t dW_t) + \frac{1}{2} \left( -\frac{1}{S_t^2} \right) (\sigma^2 S_t^2 dt)$$
+  $$d(\ln S_t) = f'(S_t) dS_t + \frac{1}{2} f''(S_t) (dS_t)^2 = \frac{1}{S_t} (\mu S_t dt + \sigma S_t dW_t) + \frac{1}{2} \left( -\frac{1}{S_t^2} \r\right) (\sigma^2 S_t^2 dt)$$
 * Simplify to obtain a linear drift-diffusion equation for log-prices:
-  $$d(\ln S_t) = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t$$
+  $$d(\ln S_t) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) dt + \sigma dW_t$$
 * Integrate directly across $[0, t]$:
-  $$\ln\left( \frac{S_t}{S_0} \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t$$
+  $$\ln\left( \frac{S_t}{S_0} \r\right) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t$$
 * Exponentiate both sides to reach the **exact analytical solution**:
-  $$\boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}$$
+  $$\boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \r\right)}$$
 
 #### (3) Statistical Moments & Interpretation of Volatility Drag
-* **Log-Normal Distribution**: $\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$;
+* **Log-Normal Distribution**: $\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \r\right)$;
 * **Expected Price**: Using the moment generating function $\mathbb{E}[e^{\sigma W_t}] = e^{\frac{1}{2}\sigma^2 t}$:
   $$\mathbb{E}[S_t] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} \mathbb{E}[e^{\sigma W_t}] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} e^{\frac{1}{2}\sigma^2 t} = S_0 e^{\mu t}$$
 * **Trading Insight**: While the ensemble arithmetic expectation grows at rate $\mu$, almost every individual trajectory compound growth rate is penalized by the deterministic downward **Volatility Drag $-\frac{1}{2}\sigma^2$**.
@@ -465,7 +465,7 @@ $$dV = \frac{\partial V}{\partial t} dt + \frac{\partial V}{\partial S} dS_t + \
 
 Substituting into portfolio PnL:
 
-$$d\Pi_t = \left( \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt \right) - \Delta dS_t = \underbrace{\Theta dt}_{\text{Time Decay Loss (Theta)}} + \underbrace{\frac{1}{2} \Gamma \sigma^2 S_t^2 dt}_{\text{Second-Order Volatility Cash Inflow (Gamma)}}$$
+$$d\Pi_t = \left( \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt \r\right) - \Delta dS_t = \underbrace{\Theta dt}_{\text{Time Decay Loss (Theta)}} + \underbrace{\frac{1}{2} \Gamma \sigma^2 S_t^2 dt}_{\text{Second-Order Volatility Cash Inflow (Gamma)}}$$
 
 ```mermaid
 graph LR
@@ -495,23 +495,23 @@ Using naive real analysis expansion $\mathbb{E}[(\int H dW)^2]$ involves tedious
 #### (2) Theorem Statement & Key Identity
 
 > **Itô Isometry Theorem**:
-> For any square-integrable adapted process $H_t$ with $\mathbb{E}\left[ \int_0^T H_t^2 dt \right] < \infty$:
+> For any square-integrable adapted process $H_t$ with $\mathbb{E}\left[ \int_0^T H_t^2 dt \r\right] < \infty$:
 > 
-> $$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
+> $$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \r\right)^2 \r\right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
 > 
-> Since $\mathbb{E}\left[ \int_0^T H_t dW_t \right] = 0$, the variance is given directly by:
+> Since $\mathbb{E}\left[ \int_0^T H_t dW_t \r\right] = 0$, the variance is given directly by:
 > 
-> $$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \right) = \int_0^T \mathbb{E}[H_t^2] dt}$$
+> $$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \r\right) = \int_0^T \mathbb{E}[H_t^2] dt}$$
 
 #### (3) Concrete Quantitative Examples
 * **Example 1: Variance of $\int_0^T t dW_t$**
   - Integrand is deterministic $H_t = t$;
   - By Itô Isometry:
-    $$\operatorname{Var}\left( \int_0^T t dW_t \right) = \int_0^T t^2 dt = \frac{1}{3} T^3$$
+    $$\operatorname{Var}\left( \int_0^T t dW_t \r\right) = \int_0^T t^2 dt = \frac{1}{3} T^3$$
 * **Example 2: Variance in Vasicek Short-Rate Model $\int_0^T e^{\kappa t} dW_t$**
   - Integrand is $H_t = e^{\kappa t}$;
   - By Itô Isometry:
-    $$\operatorname{Var}\left( \int_0^T e^{\kappa t} dW_t \right) = \int_0^T e^{2\kappa t} dt = \frac{e^{2\kappa T} - 1}{2\kappa}$$
+    $$\operatorname{Var}\left( \int_0^T e^{\kappa t} dW_t \r\right) = \int_0^T e^{2\kappa t} dt = \frac{e^{2\kappa T} - 1}{2\kappa}$$
 
 ---
 
@@ -558,7 +558,7 @@ graph TD
 #### (2) American Options & the Optimal Stopping Problem
 * **Definition**: Can be exercised at **any continuous stopping time $\tau \in [t, T]$** prior to maturity;
 * **Mathematical Pricing Formulation**: Because the rational option holder chooses an exercise stopping time that maximizes expected payoff, American option valuation is an **Optimal Stopping Problem**:
-  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \right]$$
+  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \r\right]$$
 * **Classic Quant Interview Question: Why is it NEVER optimal to early exercise an American Call on a non-dividend-paying stock?**
   - **Rigorous Proof**: The European call price satisfies the lower bound inequality:
     $$C_{\text{Eur}}(t, S_t) \ge S_t - K e^{-r(T-t)} > S_t - K \quad (\text{when } r > 0 \text{ and } T > t)$$
@@ -578,13 +578,13 @@ graph TD
 For any $\theta \in \mathbb{R}$, the Doléans-Dade exponential martingale:
 
 $$
-M_t^\theta = \exp\left( \theta W_t - \frac{1}{2} \theta^2 t \right)
+M_t^\theta = \exp\left( \theta W_t - \frac{1}{2} \theta^2 t \r\right)
 $$
 
 satisfies $dM_t^\theta = \theta M_t^\theta dW_t$. Under the Optional Stopping Theorem (OST):
 
 $$
-\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2}\theta^2 \tau \right) \right] = 1 \quad (\text{Wald's Martingale Identity})
+\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2}\theta^2 \tau \r\right) \r\right] = 1 \quad (\text{Wald's Martingale Identity})
 $$
 
 ---
@@ -617,13 +617,13 @@ $$
 Yielding the **Reflection Principle Formula**:
 
 $$
-\mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \right) \right)
+\mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \r\right) \r\right)
 $$
 
 Differentiating with respect to $t$ gives the **Lévy Distribution** density for hitting time $\tau_a$:
 
 $$
-f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
+f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \r\right) \quad (t > 0)
 $$
 
 ---
@@ -671,19 +671,19 @@ where $\mu \in \mathbb{R}$ is the expected rate of return (drift), $\sigma > 0$ 
 Applying Itô's Lemma to $f(S) = \ln S$ (with $f' = 1/S$ and $f'' = -1/S^2$):
 
 $$
-d(\ln S_t) = \frac{1}{S_t} dS_t - \frac{1}{2 S_t^2} (dS_t)^2 = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t
+d(\ln S_t) = \frac{1}{S_t} dS_t - \frac{1}{2 S_t^2} (dS_t)^2 = \left( \mu - \frac{1}{2}\sigma^2 \r\right) dt + \sigma dW_t
 $$
 
 Integrating over $[0, t]$:
 
 $$
-\ln\left( \frac{S_t}{S_0} \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \implies \boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}
+\ln\left( \frac{S_t}{S_0} \r\right) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \implies \boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \r\right)}
 $$
 
-Thus, $\ln(S_t/S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$, meaning $S_t$ is log-normally distributed with moments:
+Thus, $\ln(S_t/S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \r\right)$, meaning $S_t$ is log-normally distributed with moments:
 
 $$
-\mathbb{E}[S_t] = S_0 e^{\mu t}, \qquad \operatorname{Var}(S_t) = S_0^2 e^{2\mu t} \left( e^{\sigma^2 t} - 1 \right)
+\mathbb{E}[S_t] = S_0 e^{\mu t}, \qquad \operatorname{Var}(S_t) = S_0^2 e^{2\mu t} \left( e^{\sigma^2 t} - 1 \r\right)
 $$
 
 ---
@@ -720,13 +720,13 @@ $$
 By Itô's Lemma, expanding $V(t, S_t)$ to order $dt$:
 
 $$
-dV = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \right) dt + \sigma S \frac{\partial V}{\partial S} dW_t
+dV = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \r\right) dt + \sigma S \frac{\partial V}{\partial S} dW_t
 $$
 
 Substituting $dV$ and $dS_t = \mu S dt + \sigma S dW_t$ into $d\Pi_t$:
 
 $$
-d\Pi_t = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta_t \mu S \right) dt + \sigma S \left( \frac{\partial V}{\partial S} - \Delta_t \right) dW_t
+d\Pi_t = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta_t \mu S \r\right) dt + \sigma S \left( \frac{\partial V}{\partial S} - \Delta_t \r\right) dW_t
 $$
 
 To eliminate the stochastic noise $dW_t$ completely, set the **Delta Hedge**:
@@ -756,7 +756,7 @@ $$
 The discounted asset $e^{-rt}S_t$ is a $\mathbb{Q}$-martingale. The no-arbitrage price is the discounted expected payoff:
 
 $$
-V(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q}\left[ \Phi(S_T) \;\middle|\; \mathcal{F}_t \right]
+V(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q}\left[ \Phi(S_T) \;\middle|\; \mathcal{F}_t \r\right]
 $$
 
 By the **Feynman-Kac Theorem**, this conditional expectation solves the BSM PDE with terminal condition $V(T, S) = \Phi(S)$.
@@ -766,10 +766,10 @@ By the **Feynman-Kac Theorem**, this conditional expectation solves the BSM PDE 
 ### 6.4 Analytical Closed-Form Derivation of the Call and Put Formulas
 
 Consider a European Call option with payoff $\Phi(S_T) = \max(S_T - K, 0)$ and time to maturity $\tau = T - t$.
-Under $\mathbb{Q}$, the terminal price is $S_T = S_t \exp\left( (r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} Z \right)$ where $Z \sim \mathcal{N}(0, 1)$.
+Under $\mathbb{Q}$, the terminal price is $S_T = S_t \exp\left( (r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} Z \r\right)$ where $Z \sim \mathcal{N}(0, 1)$.
 
 $$
-C(S_t, t) = e^{-r\tau} \int_{-\infty}^\infty \max\left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K, 0 \right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz
+C(S_t, t) = e^{-r\tau} \int_{-\infty}^\infty \max\left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K, 0 \r\right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz
 $$
 
 #### Step 1: Integration Lower Bound
@@ -794,13 +794,13 @@ $$
 #### Step 4: Evaluating Asset Integral $I_1$ via Completing the Square
 
 $$
-I_1 = S_t e^{-\frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{z^2 - 2\sigma\sqrt{\tau} z}{2} \right) dz
+I_1 = S_t e^{-\frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{z^2 - 2\sigma\sqrt{\tau} z}{2} \r\right) dz
 $$
 
 Completing the square: $z^2 - 2\sigma\sqrt{\tau} z = (z - \sigma\sqrt{\tau})^2 - \sigma^2\tau$. The factor $e^{\frac{1}{2}\sigma^2\tau}$ cancels $e^{-\frac{1}{2}\sigma^2\tau}$ exactly:
 
 $$
-I_1 = S_t \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \right) dz
+I_1 = S_t \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \r\right) dz
 $$
 
 Substituting $u = z - \sigma\sqrt{\tau}$ changes the lower bound to $-d_2 - \sigma\sqrt{\tau} \triangleq -d_1$:
@@ -915,7 +915,7 @@ $$\boxed{\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma = r(V - S\Delta)}$$
 In practical market making, options are priced with implied vol $\sigma_I$, while the underlying moves with realized vol $\sigma_R$:
 
 $$
-\boxed{d\Pi_t = \frac{1}{2} S_t^2 \Gamma_t \left( \sigma_R^2 - \sigma_I^2 \right) dt}
+\boxed{d\Pi_t = \frac{1}{2} S_t^2 \Gamma_t \left( \sigma_R^2 - \sigma_I^2 \r\right) dt}
 $$
 
 ```delta-hedging-demo
@@ -962,14 +962,14 @@ $$\mathbb{E}[W_t \mid W_s = a, W_u = b] = \boxed{\frac{u - t}{u - s} a + \frac{t
 **Problem**: For standard Brownian bridge $B_t$ on $[0, 1]$ ($B_0 = B_1 = 0$), find $\mathbb{P}(\max_{0 \le t \le 1} B_t \ge y)$ for $y > 0$.
 **Solution**:
 By the reflection principle conditioned on $W_1 = 0$, reflected paths end at $2y$:
-$$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \frac{\phi(2y)}{\phi(0)} = \boxed{e^{-2y^2}} \quad (y > 0)$$
+$$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \r\right) = \frac{\phi(2y)}{\phi(0)} = \boxed{e^{-2y^2}} \quad (y > 0)$$
 
 ---
 
 #### Practice 5: Two-Sided Exit for Drifted Brownian Motion
 **Problem**: $X_t = \mu t + \sigma W_t$ with barriers $-a < 0 < b$. Find hitting probability $p_b$ and expected exit time $\mathbb{E}[\tau]$.
 **Solution**:
-Using exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ with $\gamma = \frac{2\mu}{\sigma^2}$:
+Using exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \r\right)$ with $\gamma = \frac{2\mu}{\sigma^2}$:
 $$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}, \qquad \mathbb{E}[\tau] = \boxed{\frac{b p_b - a(1 - p_b)}{\mu}}$$
 
 ---
@@ -1010,16 +1010,16 @@ $$
 Alternatively, using $W_t = \int_0^t dW_s$ and changing the order of integration (stochastic Fubini):
 
 $$
-X = \int_0^T \left( \int_0^t dW_s \right) dt = \int_0^T \left( \int_s^T dt \right) dW_s = \int_0^T (T - t) dW_t
+X = \int_0^T \left( \int_0^t dW_s \r\right) dt = \int_0^T \left( \int_s^T dt \r\right) dW_s = \int_0^T (T - t) dW_t
 $$
 
 Both $X$ and $Y$ are Itô integrals of deterministic functions with respect to standard Brownian motion, so $(X, Y)$ is jointly Gaussian with zero mean: $\mathbb{E}[X] = \mathbb{E}[Y] = 0$.
 
 **Step 2: Variances and Covariance via Itô Isometry**
 1. **Variance of $X$**:
-   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right)^2 \right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \right]_0^T = \frac{T^3}{3}$$
+   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \r\right)^2 \r\right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \r\right]_0^T = \frac{T^3}{3}$$
 2. **Variance of $Y$**:
-   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \right)^2 \right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \right]_0^T = \frac{T^3}{3}$$
+   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \r\right)^2 \r\right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \r\right]_0^T = \frac{T^3}{3}$$
 3. **Covariance of $X$ and $Y$**:
    $$\operatorname{Cov}(X, Y) = \mathbb{E}[X Y] = \int_0^T (T - t) t dt = \int_0^T (T t - t^2) dt = \frac{T^3}{2} - \frac{T^3}{3} = \frac{T^3}{6}$$
 
@@ -1030,7 +1030,7 @@ $$
 $$
 
 **Consistency Check**:
-$\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(W_T) = T^3 = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left( \frac{T^3}{6} \right) = T^3$. Exact match!
+$\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(W_T) = T^3 = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left( \frac{T^3}{6} \r\right) = T^3$. Exact match!
 
 ---
 
@@ -1049,23 +1049,23 @@ $\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(
 **Perspective 1: Independent Component Convolution & Lévy-Cauchy Mixture**
 1. **Distribution of First Hitting Time $\tau$**:
    Since $X_t$ and $Y_t$ are independent, $\tau$ is the first hitting time of $0$ for the 1D horizontal Brownian motion $X_t$ starting at $x_0 > 0$. By the reflection principle, $\tau$ follows the **Lévy distribution**:
-   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) \quad (t > 0)$$
+   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \r\right) \quad (t > 0)$$
 2. **Conditional Distribution of $Y_\tau \mid (\tau = t)$**:
    $Y_\tau \mid (\tau = t) \sim \mathcal{N}(y_0, t)$.
 3. **Marginal Density of $Y_\tau$**:
-   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \right) dt$$
+   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \r\right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \r\right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \r\right) dt$$
    Substituting $v = \frac{x_0^2 + (u - y_0)^2}{2t}$ gives:
    $$f_{Y_\tau}(u) = \boxed{\frac{1}{\pi} \frac{x_0}{x_0^2 + (u - y_0)^2}}$$
    This is the **Cauchy distribution** $\text{Cauchy}(y_0, x_0)$ with location $y_0$ and scale $x_0$!
 4. **Probability of Hitting the Positive $y$-Axis**:
-   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \right) \right]_0^\infty = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
+   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \r\right) \r\right]_0^\infty = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \r\right)}$$
 
 **Perspective 2: Harmonic Measure & Conformal Angle Invariance**
 - Let $u(x, y) = \mathbb{P}_{(x, y)}(Y_\tau > 0)$. By the strong Markov property of Brownian motion, $u(x, y)$ is **harmonic** ($\Delta u = 0$) in the right half-plane $\mathbb{H} = \{x > 0\}$.
 - Boundary conditions along $x = 0$: $u(0, y) = 1$ for $y > 0$, and $u(0, y) = 0$ for $y < 0$.
 - In polar coordinates, the angle $\theta = \arctan(y/x) \in (-\pi/2, \pi/2)$ is harmonic ($\text{Im}(\ln z) = \theta$).
 - Matching boundary limits directly yields:
-  $$u(x_0, y_0) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
+  $$u(x_0, y_0) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \r\right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \r\right)}$$
 
 **Special Case Verification**:
 - **Starting at $(1, 1)$**:
@@ -1091,7 +1091,7 @@ $\operatorname{Var}(X + Y) = \operatorname{Var}(T W_T) = T^2 \operatorname{Var}(
 The vector $(W_t, W_T)^T$ is jointly Gaussian:
 
 $$
-\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \right)
+\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \r\right)
 $$
 
 1. **Conditional Expectation**:
@@ -1099,7 +1099,7 @@ $$
 2. **Conditional Variance**:
    $$\operatorname{Var}(W_t \mid W_T = x) = \operatorname{Var}(W_t) - \frac{(\operatorname{Cov}(W_t, W_T))^2}{\operatorname{Var}(W_T)} = t - \frac{t^2}{T} = \boxed{\frac{t(T - t)}{T}}$$
 3. **Full Conditional Distribution**:
-   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \right)}$$
+   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \r\right)}$$
 
 **Step 2: Orthogonal Increments Representation**
 Let $X = W_t \sim \mathcal{N}(0, t)$ and $Y = W_T - W_t \sim \mathcal{N}(0, T - t)$ be independent increments.
@@ -1115,7 +1115,7 @@ $\operatorname{Cov}(\epsilon, Z) = \frac{T - t}{T} t - \frac{t}{T}(T - t) = 0$. 
 For $B_t = W_t - \frac{t}{T} W_T$:
 
 $$
-\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T) = s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T} = \boxed{s \left( 1 - \frac{t}{T} \right)}
+\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T) = s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T} = \boxed{s \left( 1 - \frac{t}{T} \r\right)}
 $$
 
 **Step 4: Special Case ($T=2, t=1/2, x=1$)**

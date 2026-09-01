@@ -475,9 +475,9 @@ class Solution:
 3. **Complexity & Catalan Numbers**:
    The number of valid parentheses combinations for $n$ pairs is given by the $n$-th **Catalan Number**:
    $$
-   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \right)
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \r\right)
    $$
-   Materializing each valid solution takes $O(n)$ string concatenation time, so total time complexity is $O\left( \frac{4^n}{\sqrt{n}} \right)$, and space complexity is $O(n)$ for the recursion call stack of depth $2n$.
+   Materializing each valid solution takes $O(n)$ string concatenation time, so total time complexity is $O\left( \frac{4^n}{\sqrt{n}} \r\right)$, and space complexity is $O(n)$ for the recursion call stack of depth $2n$.
 
 ## 7. Letter Combinations of a Phone Number
 
@@ -566,7 +566,7 @@ class Solution:
 
         def is_palindrome(left: int, right: int) -> bool:
             while left < right:
-                if s[left] != s[right]:
+                if s[left] != s[r\right]:
                     return False
                 left += 1
                 right -= 1
@@ -596,7 +596,7 @@ There are `n-1` positions between `n` characters where a cut may or may not happ
 
 ### Statement
 
-Given an `m × n` grid of characters and a string `word`, decide whether `word` can be spelled out by adjacent cells (up, down, left, right). A cell may not be reused within one path. The grid is at most 6 × 6 and `word` is at most 15 characters.
+Given an `m × n` grid of characters and a string `word`, decide whether `word` can be spelled out by adjacent cells (up, down, left, r\right). A cell may not be reused within one path. The grid is at most 6 × 6 and `word` is at most 15 characters.
 
 ### Where the Backtracking Happens on a Grid
 

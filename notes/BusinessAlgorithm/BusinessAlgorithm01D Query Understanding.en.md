@@ -38,7 +38,7 @@ Chinese text has no natural word boundaries. Dictionary-based segmentation finds
 \operatorname{cost}(0,t)
 =\min_{s<t}
 \left[ \operatorname{cost}(0,s)
--\log P(x_{s:t}) \right].
+-\log P(x_{s:t}) \r\right].
 ```
 
 Frequent words have lower costs. Production dictionaries also boost brands, product models, names, places, and business terms so that phrases such as `"iPhone 15 Pro Max"` are not split incorrectly.
@@ -96,7 +96,7 @@ Term weights support:
 - relevance features;
 - category and intent classification.
 
-IDF is not a semantic term weight. IDF measures rarity in a document collection; a query term weight measures importance to this particular intent.
+IDF is not a semantic term we\right. IDF measures rarity in a document collection; a query term weight measures importance to this particular intent.
 
 ### 5.4 Category prediction
 

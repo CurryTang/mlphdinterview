@@ -394,8 +394,8 @@ def blelloch_scan(x):
             right = i + stride - 1
 
             temp = x[left]             # 保存左子节点的值
-            x[left] = x[right]         # 左子节点 = 父节点的值（来自上方）
-            x[right] += temp           # 右子节点 = 父节点值 + 原左子节点值
+            x[left] = x[r\right]         # 左子节点 = 父节点的值（来自上方）
+            x[r\right] += temp           # 右子节点 = 父节点值 + 原左子节点值
 
     return x  # 现在 x 包含 exclusive prefix sum
 ```

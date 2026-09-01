@@ -32,7 +32,7 @@ Let's see how these five problems fit into the same skeleton:
 The window uses a closed interval:
 
 $$
-[left,right], \qquad \text{length}=right-left+1.
+[left,r\right], \qquad \text{length}=right-left+1.
 $$
 
 ### Why the Window Length is `+ 1`
@@ -53,8 +53,8 @@ This also depends on the interval notation:
 
 | Window Convention | Includes `right`? | Length |
 |---|---:|---:|
-| Closed interval `[left, right]` | Yes | `right - left + 1` |
-| Half-open interval `[left, right)` | No | `right - left` |
+| Closed interval `[left, r\right]` | Yes | `right - left + 1` |
+| Half-open interval `[left, r\right)` | No | `right - left` |
 
 In the code for this note, `right` is the index of the character currently visited by `enumerate(s)` and added to the window, so `answer = max(answer, right - left + 1)` records the number of characters in the current valid closed interval.
 
@@ -104,12 +104,12 @@ answer = initialize_answer()
 for right, item in enumerate(items):
     add_right(state, item)
 
-    while should_shrink(state, left, right):
-        record_before_shrink(answer, state, left, right)  # Optional
+    while should_shrink(state, left, r\right):
+        record_before_shrink(answer, state, left, r\right)  # Optional
         remove_left(state, items[left])
         left += 1
 
-    record_after_shrink(answer, state, left, right)       # Optional
+    record_after_shrink(answer, state, left, r\right)       # Optional
 
 return answer
 ```
@@ -130,7 +130,7 @@ for right, item in enumerate(items):
         left += 1
 
     if right - left + 1 == k:
-        record_window(state, left, right)
+        record_window(state, left, r\right)
 ```
 
 Therefore, `Permutation in String` and `Sliding Window Maximum` do not need to force a `while` loop. Writing it as a `while` would yield the correct result, but `if` more directly expresses "the window slides one step to the right each round."
@@ -167,8 +167,8 @@ Given a string `s`, return the length of the longest continuous substring withou
 | Slot | Content for this problem |
 |---|---|
 | `state` | `count[char]`, stores character frequency in the current window |
-| `add_right` | `count[s[right]] += 1` |
-| `should_shrink` | `count[s[right]] > 1` |
+| `add_right` | `count[s[r\right]] += 1` |
+| `should_shrink` | `count[s[r\right]] > 1` |
 | `remove_left` | `count[s[left]] -= 1` |
 | Record after adjustment | Update longest length |
 
@@ -301,7 +301,7 @@ Therefore, you only need to check all windows of length `len(s1)` in `s2`.
 
 ### Why use `if` instead of `while` here?
 
-Let `k = len(s1)`. Before each round starts, the window length is definitely no more than `k`; after adding `s2[right]`, the length is at most `k + 1`. If it exceeds the length, removing one `s2[left]` will immediately return it to `k`, so it's impossible to need to remove multiple elements continuously.
+Let `k = len(s1)`. Before each round starts, the window length is definitely no more than `k`; after adding `s2[r\right]`, the length is at most `k + 1`. If it exceeds the length, removing one `s2[left]` will immediately return it to `k`, so it's impossible to need to remove multiple elements continuously.
 
 ```text
 Previous round: length k
@@ -481,7 +481,7 @@ The old value can never beat the new value in the future, so it is no longer a c
 
 ```mermaid
 flowchart LR
-  A["add_right"] --> B{"back value <= nums[right]"}
+  A["add_right"] --> B{"back value <= nums[r\right]"}
   B -->|Yes| C["pop back"]
   C --> B
   B -->|No| D["append right"]
@@ -517,7 +517,7 @@ class Solution:
             while candidates and nums[candidates[-1]] <= value:
                 candidates.pop()
 
-            candidates.append(right)
+            candidates.append(r\right)
 
             if right - left + 1 > k:
                 if candidates[0] == left:
@@ -647,7 +647,7 @@ Fill out this small table before writing code:
 
 | Slot | Content to be clear about |
 |---|---|
-| window | Accurate meaning of `[left, right]` |
+| window | Accurate meaning of `[left, r\right]` |
 | state | Frequency, sum, satisfied count, or monotonic queue |
 | add | How to update state after `right` enters the window |
 | adjust | `while` for variable-length, or `if length > k` for fixed-length |

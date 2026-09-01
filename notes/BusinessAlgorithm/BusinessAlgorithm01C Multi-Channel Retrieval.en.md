@@ -129,7 +129,7 @@ Recommendation usually filters out content the user has recently seen or explici
 Large exposure sets often use a Bloom filter for approximate membership tests. It answers "definitely unseen" or "possibly seen." The second answer may be a false positive and suppress an unseen item. For `n` inserted items, `m` bits, and `k` hash functions, the false-positive rate is approximately:
 
 ```math
-\left( 1-e^{-kn/m} \right)^k.
+\left( 1-e^{-kn/m} \r\right)^k.
 ```
 
 A standard Bloom filter cannot delete individual entries. A rolling exposure window can keep one filter per day or week and discard whole expired filters. Counting Bloom filters or exact storage are alternatives when individual deletion is required. Choose `m` and `k` from an acceptable false-drop rate, not memory alone.

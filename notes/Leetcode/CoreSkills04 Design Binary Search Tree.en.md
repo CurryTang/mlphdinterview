@@ -40,7 +40,7 @@ delete(root, key):
   else:
     if root.left is null: return root.right
     if root.right is null: return root.left
-    succ = minNode(root.right)
+    succ = minNode(root.r\right)
     root.val = succ.val
     root.right = delete(root.right, succ.val)
   return root
@@ -95,7 +95,7 @@ The recursive form concatenates results in visit order.
 
 ```python
 def preorder(root):
-    return [root.val] + preorder(root.left) + preorder(root.right) if root else []
+    return [root.val] + preorder(root.left) + preorder(root.r\right) if root else []
 ```
 
 The iterative form pushes the right child before the left child. The stack's last-in, first-out order processes the left subtree first.
@@ -111,7 +111,7 @@ def preorder_iterative(root):
         node = stack.pop()
         order.append(node.val)
         if node.right:
-            stack.append(node.right)
+            stack.append(node.r\right)
         if node.left:
             stack.append(node.left)
     return order
@@ -123,7 +123,7 @@ The recursive form completes the left subtree before visiting the root. A BST wi
 
 ```python
 def inorder(root):
-    return inorder(root.left) + [root.val] + inorder(root.right) if root else []
+    return inorder(root.left) + [root.val] + inorder(root.r\right) if root else []
 ```
 
 The iterative form repeatedly pushes the left chain. When `current` becomes empty, pop and visit one node, then move to its right subtree.
@@ -150,7 +150,7 @@ The recursive form places the root after both subtrees.
 
 ```python
 def postorder(root):
-    return postorder(root.left) + postorder(root.right) + [root.val] if root else []
+    return postorder(root.left) + postorder(root.r\right) + [root.val] if root else []
 ```
 
 The iterative form first produces modified preorder `root → right → left`, then reverses the complete sequence. Push the left child before the right child so the right child pops first. A single stack with `last_visited` also works, but it requires more state branches.
@@ -168,7 +168,7 @@ def postorder_iterative(root):
         if node.left:
             stack.append(node.left)
         if node.right:
-            stack.append(node.right)
+            stack.append(node.r\right)
 
     return reverse_order[::-1]
 ```
@@ -193,7 +193,7 @@ def level_order(root):
         if node.left:
             queue.append(node.left)
         if node.right:
-            queue.append(node.right)
+            queue.append(node.r\right)
     return order
 ```
 
@@ -218,7 +218,7 @@ def solve(root):
             continue
         if processed:
             left = value[node.left]
-            right = value[node.right]
+            right = value[node.r\right]
             best = max(best, combine_for_answer(left, right, node))
             value[node] = value_for_parent(left, right, node)
         else:
@@ -250,7 +250,7 @@ def same(a, b):
         if not x or not y or x.val != y.val:
             return False
         stack.append((x.left, y.left))
-        stack.append((x.right, y.right))
+        stack.append((x.right, y.r\right))
     return True
 ```
 
@@ -268,7 +268,7 @@ The most useful BST-specific fact is that inorder traversal is sorted. It suppor
 | Validate BST | Each node carries an open interval `(low, high)`; the left upper bound and right lower bound tighten to the current value |
 | LCA of a BST | Move left when both targets are smaller, move right when both are larger, and stop at the split point |
 
-Checking only `node.left.val < node.val < node.right.val` misses violations that cross multiple levels. The allowed interval must include constraints from every ancestor. LCA follows one path in `O(h)` time and does not search both subtrees.
+Checking only `node.left.val < node.val < node.r\right.val` misses violations that cross multiple levels. The allowed interval must include constraints from every ancestor. LCA follows one path in `O(h)` time and does not search both subtrees.
 
 Validate BST uses an explicit stack to carry the ancestor bounds for each node:
 
@@ -336,7 +336,7 @@ def is_balanced(root):
             continue
         if processed:
             left_h = height[node.left]
-            right_h = height[node.right]
+            right_h = height[node.r\right]
             if abs(left_h - right_h) > 1:
                 return False
             height[node] = 1 + max(left_h, right_h)
@@ -358,7 +358,7 @@ Inserting sorted values into a plain BST can leave every node with only a right 
 An AVL tree maintains a balance factor at every node:
 
 $$
-\text{balance}(node) = \text{height}(node.left) - \text{height}(node.right)
+\text{balance}(node) = \text{height}(node.left) - \text{height}(node.r\right)
 $$
 
 Every node requires `|balance| <= 1`. After an insertion or deletion creates an imbalance, the two directions along the heavy path select the rotation.
@@ -370,7 +370,7 @@ Every node requires `|balance| <= 1`. After an insertion or deletion creates an 
 | LR | left → right | Left-rotate the left child, then right-rotate the unbalanced node |
 | RL | right → left | Right-rotate the right child, then left-rotate the unbalanced node |
 
-The LL example uses nodes `30, 20, 10, 25`. After the right rotation, `20` becomes the new root and `30` moves to the right. The previous `20.right = 25` is reattached as `30.left`. The inorder sequence remains `10, 20, 25, 30`.
+The LL example uses nodes `30, 20, 10, 25`. After the right rotation, `20` becomes the new root and `30` moves to the r\right. The previous `20.right = 25` is reattached as `30.left`. The inorder sequence remains `10, 20, 25, 30`.
 
 ```text
         30                 20
@@ -454,7 +454,7 @@ class Solution:
             if node.left:
                 stack.append(node.left)
             if node.right:
-                stack.append(node.right)
+                stack.append(node.r\right)
         return root
 ```
 
@@ -498,7 +498,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
         return depth
 ```
 
@@ -506,7 +506,7 @@ class Solution:
 
 ### 3. Diameter of Binary Tree
 
-Iterative postorder finalizes both child heights before computing the current node's height. A separate variable records `left_height + right_height` at every node. The diameter is measured in edges.
+Iterative postorder finalizes both child heights before computing the current node's he\right. A separate variable records `left_height + right_height` at every node. The diameter is measured in edges.
 
 | Item | Value |
 |---|---|
@@ -540,7 +540,7 @@ class Solution:
             if node is None:
                 continue
             if processed:
-                left_h, right_h = height[node.left], height[node.right]
+                left_h, right_h = height[node.left], height[node.r\right]
                 diameter = max(diameter, left_h + right_h)
                 height[node] = 1 + max(left_h, right_h)
             else:
@@ -561,7 +561,7 @@ Iterative postorder caches the height of every subtree. The function returns `Fa
 | Item | Value |
 |---|---|
 | Composed patterns | Postorder stack + height cache + early termination |
-| Condition | `abs(left - right) <= 1` |
+| Condition | `abs(left - r\right) <= 1` |
 | Time / Space | `O(n) / O(h)` |
 
 #### Quick Coding: Balanced Binary Tree
@@ -589,7 +589,7 @@ class Solution:
             if node is None:
                 continue
             if processed:
-                left_h, right_h = height[node.left], height[node.right]
+                left_h, right_h = height[node.left], height[node.r\right]
                 if abs(left_h - right_h) > 1:
                     return False
                 height[node] = 1 + max(left_h, right_h)
@@ -636,7 +636,7 @@ class Solution:
             if not a or not b or a.val != b.val:
                 return False
             stack.append((a.left, b.left))
-            stack.append((a.right, b.right))
+            stack.append((a.right, b.r\right))
         return True
 ```
 
@@ -677,7 +677,7 @@ class Solution:
                 if not x or not y or x.val != y.val:
                     return False
                 stack.append((x.left, y.left))
-                stack.append((x.right, y.right))
+                stack.append((x.right, y.r\right))
             return True
 
         if not subRoot:
@@ -690,7 +690,7 @@ class Solution:
             if same(node, subRoot):
                 return True
             stack.append(node.left)
-            stack.append(node.right)
+            stack.append(node.r\right)
         return False
 ```
 
@@ -782,7 +782,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
             result.append(level)
         return result
 ```
@@ -828,7 +828,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.right)
+                    queue.append(node.r\right)
                 if i == level_size - 1:
                     result.append(node.val)
         return result
@@ -1057,12 +1057,12 @@ class Solution:
                 return 0
 
             max_left = max(0, dfs(node.left))
-            max_right = max(0, dfs(node.right))
+            max_right = max(0, dfs(node.r\right))
 
             path_sum = node.val + max_left + max_right
             self.max_sum = max(self.max_sum, path_sum)
 
-            return node.val + max(max_left, max_right)
+            return node.val + max(max_left, max_r\right)
 
         dfs(root)
         return self.max_sum
@@ -1110,7 +1110,7 @@ class Codec:
                 return
             res.append(str(node.val))
             dfs(node.left)
-            dfs(node.right)
+            dfs(node.r\right)
 
         dfs(root)
         return ",".join(res)

@@ -265,7 +265,7 @@ q(x) = target model probability
 接受概率：
 
 $$
-\alpha(x) = \min\left(1, \frac{q(x)}{p(x)} \right)
+\alpha(x) = \min\left(1, \frac{q(x)}{p(x)} \r\right)
 $$
 
 如果接受，就把 `x` 放进输出。如果拒绝，要从修正分布里采样：

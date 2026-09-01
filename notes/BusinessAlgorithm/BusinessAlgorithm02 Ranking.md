@@ -27,7 +27,7 @@ Pointwise 把每个候选当作独立分类或回归样本：
 
 ```math
 \mathcal L_{\text{point}}
-=-\left[ y\log p+(1-y)\log(1-p) \right].
+=-\left[ y\log p+(1-y)\log(1-p) \r\right].
 ```
 
 优点是样本和训练都简单，预测概率还能做校准。缺点是它没有直接表达同一个 query/user 下候选之间的顺序。
@@ -86,7 +86,7 @@ CTR、CVR 等 pointwise 预估先看 LogLoss：
 ```math
 \operatorname{LogLoss}
 =-\frac{1}{N}\sum_i
-\left[ y_i\log p_i+(1-y_i)\log(1-p_i) \right].
+\left[ y_i\log p_i+(1-y_i)\log(1-p_i) \r\right].
 ```
 
 它关心概率本身。AUC 则衡量随机正例排在随机负例前的概率，适合观察整体区分能力，但不特别关注列表头部，也不能说明分数已经校准。

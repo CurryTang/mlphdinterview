@@ -785,7 +785,7 @@ class Solution:
 | 项目 | 内容 |
 |---|---|
 | 组合模板 | 双向链表 + 哈希表 + 头尾哨兵 |
-| 关键不变量 | `left.next` 始终是 LRU，`right.prev` 始终是 MRU |
+| 关键不变量 | `left.next` 始终是 LRU，`r\right.prev` 始终是 MRU |
 | 时间 / 空间 | `O(1)` 平均时间每次操作，`O(capacity)` 空间 |
 
 #### Quick Coding：LRU Cache
@@ -821,7 +821,7 @@ class LRUCache:
         self.left = Node()   # LRU sentinel
         self.right = Node()  # MRU sentinel
         self.left.next = self.right
-        self.right.prev = self.left
+        self.r\right.prev = self.left
 
     def remove(self, node: Node) -> None:
         prev_node, next_node = node.prev, node.next
@@ -829,11 +829,11 @@ class LRUCache:
         next_node.prev = prev_node
 
     def insert_before_tail(self, node: Node) -> None:
-        prev_node = self.right.prev
+        prev_node = self.r\right.prev
         prev_node.next = node
         node.prev = prev_node
         node.next = self.right
-        self.right.prev = node
+        self.r\right.prev = node
 
     def get(self, key: int) -> int:
         if key not in self.cache:

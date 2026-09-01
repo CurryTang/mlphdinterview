@@ -47,7 +47,7 @@ $$
 **直觉与证明要点**：设 $\Delta W_i = W_{t_i} - W_{t_{i-1}} \sim \sqrt{\Delta t_i} Z_i$（$Z_i \sim \mathcal{N}(0, 1)$）。则 $\mathbb{E}[|\Delta W_i|] = \sqrt{\Delta t_i} \mathbb{E}[|Z_i|] = \sqrt{\frac{2}{\pi}} \sqrt{\Delta t_i}$。若取等间距 $\Delta t = T/n$，求和期望为：
 
 $$
-\mathbb{E}\left[ \sum_{i=1}^n |\Delta W_i| \right] = n \cdot \sqrt{\frac{2}{\pi}} \sqrt{\frac{T}{n}} = \sqrt{\frac{2}{\pi}} \sqrt{T} \sqrt{n} \xrightarrow{n \to \infty} \infty
+\mathbb{E}\left[ \sum_{i=1}^n |\Delta W_i| \r\right] = n \cdot \sqrt{\frac{2}{\pi}} \sqrt{\frac{T}{n}} = \sqrt{\frac{2}{\pi}} \sqrt{T} \sqrt{n} \xrightarrow{n \to \infty} \infty
 $$
 
 #### （2）二次变差（Quadratic Variation）严格收敛到常数 $T$
@@ -85,7 +85,7 @@ $$
 从 $x$ 出发在时刻 $t$ 到达 $y$ 的转移概率密度为：
 
 $$
-p(t, x, y) = \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(y-x)^2}{2t} \right)
+p(t, x, y) = \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(y-x)^2}{2t} \r\right)
 $$
 
 直接求偏导可得热传导方程（Heat Equation / Kolmogorov 倒向与前向方程）：
@@ -110,7 +110,7 @@ $$
 **Donsker 不变原理**断言：当 $N \to \infty$ 时，随机折线 $B_N(\cdot)$ 在连续函数空间 $C([0, T], \mathbb{R}^2)$ 上弱收敛（依分布收敛）至标准二维布朗运动：
 
 $$
-B_N(t) \implies \left( \frac{1}{\sqrt{2}} B_t^{(1)}, \frac{1}{\sqrt{2}} B_t^{(2)} \right)
+B_N(t) \implies \left( \frac{1}{\sqrt{2}} B_t^{(1)}, \frac{1}{\sqrt{2}} B_t^{(2)} \r\right)
 $$
 
 其中 $B^{(1)}$ 与 $B^{(2)}$ 为两个独立的一维标准布朗运动。
@@ -226,7 +226,7 @@ $$\boxed{dX_t = \underbrace{\mu(t, X_t) dt}_{\text{确定性漂移项 (Drift Ter
 > **无论硬币抛出正面（$+1$）还是反面（$-1$），平方之后正负号彻底消失，随机性被彻底抹平！**
 > 
 > 把 1 秒内的所有微步平方累加起来：
-> $$\sum_{i=1}^{1/\Delta t} (\Delta W_i)^2 = \left( \frac{1}{\Delta t} \right) \times \Delta t = 1 \text{ 秒}$$
+> $$\sum_{i=1}^{1/\Delta t} (\Delta W_i)^2 = \left( \frac{1}{\Delta t} \r\right) \times \Delta t = 1 \text{ 秒}$$
 > 
 > **核心启示**：随机波动的平方，在极微观尺度下是一个**完全确定、毫无波动的常数时间流**！$(dW_t)^2 = dt$ 不是近似，而是大数定律下的必然常数！
 
@@ -280,7 +280,7 @@ $$\boxed{dX_t = \underbrace{\mu(t, X_t) dt}_{\text{确定性漂移项 (Drift Ter
 2. **第 2 步（伊藤曲率踢一脚）**：补上二阶修正项 $+\frac{1}{2} \frac{\partial^2 f}{\partial x^2} (dX_t)^2$；
 3. **第 3 步（代入 $(dX_t)^2 = \sigma^2 dt$ 并合并）**：
 
-$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
+$$\boxed{df(t, X_t) = \left( \frac{\partial f}{\partial t} + \mu \frac{\partial f}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 f}{\partial x^2} \r\right) dt + \sigma \frac{\partial f}{\partial x} dW_t}$$
 
 ---
 
@@ -325,7 +325,7 @@ graph TD
   $$\int_0^T X_t dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} X_{t_i} (W_{t_{i+1}} - W_{t_i})$$
   - 被积函数 $X_{t_i}$ 在小区间**左端点**采样，完全可由 $\mathcal{F}_{t_i}$ 决定，与未来的布朗增量 $\Delta W_i = W_{t_{i+1}} - W_{t_i}$ **完全独立**！
 * **斯特拉托诺维奇积分（$\alpha = 1/2$，记为 $\int_0^T X_t \circ dW_t$）**：
-  $$\int_0^T X_t \circ dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} \left( \frac{X_{t_i} + X_{t_{i+1}}}{2} \right) (W_{t_{i+1}} - W_{t_i})$$
+  $$\int_0^T X_t \circ dW_t \triangleq \lim_{|\Pi| \to 0} \sum_{i=0}^{n-1} \left( \frac{X_{t_i} + X_{t_{i+1}}}{2} \r\right) (W_{t_{i+1}} - W_{t_i})$$
   - 采样点为**梯形中点均值**。由于包含了未来的 $X_{t_{i+1}}$，被积项与布朗增量 $\Delta W_i$ 产生内生相关性！
 
 ---
@@ -339,15 +339,15 @@ graph TD
 $$\sum_{i=0}^{n-1} W_{t_i} \Delta W_i = \frac{1}{2} \underbrace{\sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2)}_{\text{裂项相消} = W_T^2 - W_0^2 = W_T^2} - \frac{1}{2} \underbrace{\sum_{i=0}^{n-1} (\Delta W_i)^2}_{\text{二次变差收敛于 } T}$$
 $$\boxed{\int_0^T W_t dW_t = \frac{1}{2} W_T^2 - \frac{1}{2} T}$$
 * **期望值验证（鞅性质）**：
-  $$\mathbb{E}\left[ \int_0^T W_t dW_t \right] = \frac{1}{2} \mathbb{E}[W_T^2] - \frac{1}{2}T = \frac{1}{2}T - \frac{1}{2}T = \mathbf{0}$$
+  $$\mathbb{E}\left[ \int_0^T W_t dW_t \r\right] = \frac{1}{2} \mathbb{E}[W_T^2] - \frac{1}{2}T = \frac{1}{2}T - \frac{1}{2}T = \mathbf{0}$$
   在纯白噪声中，期望收益严格为 0，符合市场无套利与公平博弈！
 
 ##### 2. 斯特拉托诺维奇积分计算：
-$$\sum_{i=0}^{n-1} \left( \frac{W_{t_i} + W_{t_{i+1}}}{2} \right) (W_{t_{i+1}} - W_{t_i}) = \frac{1}{2} \sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2) = \frac{1}{2} W_T^2$$
+$$\sum_{i=0}^{n-1} \left( \frac{W_{t_i} + W_{t_{i+1}}}{2} \r\right) (W_{t_{i+1}} - W_{t_i}) = \frac{1}{2} \sum_{i=0}^{n-1} (W_{t_{i+1}}^2 - W_{t_i}^2) = \frac{1}{2} W_T^2$$
 $$\boxed{\int_0^T W_t \circ dW_t = \frac{1}{2} W_T^2}$$
 * **与经典微积分形式完全一致**：如同牛顿微积分中的 $\int x dx = \frac{1}{2}x^2$！
 * **期望值陷阱（失去鞅性质）**：
-  $$\mathbb{E}\left[ \int_0^T W_t \circ dW_t \right] = \frac{1}{2} \mathbb{E}[W_T^2] = \mathbf{\frac{1}{2} T \ne 0}$$
+  $$\mathbb{E}\left[ \int_0^T W_t \circ dW_t \r\right] = \frac{1}{2} \mathbb{E}[W_T^2] = \mathbf{\frac{1}{2} T \ne 0}$$
   **凭空产生了一个 $+\frac{1}{2}T$ 的确定性正漂移！**
 
 ---
@@ -367,11 +367,11 @@ $$X_t \circ dW_t = X_t dW_t + \frac{1}{2} \sigma_t dt$$
 * **从 Stratonovich SDE 转换到 Itô SDE**：
   若已知系统满足斯特拉托诺维奇 SDE：$dX_t = \underline{b}(X_t) dt + \sigma(X_t) \circ dW_t$
   则等价的伊藤 SDE 形式必须补上**漂移修正项（Stratonovich Drift Correction）**：
-  $$\boxed{dX_t = \left( \underline{b}(X_t) + \frac{1}{2} \sigma(X_t) \sigma'(X_t) \right) dt + \sigma(X_t) dW_t}$$
+  $$\boxed{dX_t = \left( \underline{b}(X_t) + \frac{1}{2} \sigma(X_t) \sigma'(X_t) \r\right) dt + \sigma(X_t) dW_t}$$
 * **从 Itô SDE 转换到 Stratonovich SDE**：
   若已知伊藤 SDE：$dX_t = \mu(X_t) dt + \sigma(X_t) dW_t$
   则等价的斯特拉托诺维奇 SDE 形式为：
-  $$\boxed{dX_t = \left( \mu(X_t) - \frac{1}{2} \sigma(X_t) \sigma'(X_t) \right) dt + \sigma(X_t) \circ dW_t}$$
+  $$\boxed{dX_t = \left( \mu(X_t) - \frac{1}{2} \sigma(X_t) \sigma'(X_t) \r\right) dt + \sigma(X_t) \circ dW_t}$$
 
 ---
 
@@ -398,7 +398,7 @@ $$X_t \circ dW_t = X_t dW_t + \frac{1}{2} \sigma_t dt$$
 | **采样点定义 $\alpha$** | $\alpha = 0$（严格区间左端点） | $\alpha = 1/2$（梯形中点平均值） |
 | **信息结构** | $\mathcal{F}_{t_i}$-适应过程，**严禁窥视未来（Non-anticipating）** | 涉及未来点状态 $X_{t_{i+1}}$，内生包含前瞻信息 |
 | **微积分链式法则** | **二阶修正形式（伊藤引理）**：<br/>$d(f(X)) = f' dX + \frac{1}{2} f'' \sigma^2 dt$ | **古典牛顿普通形式**：<br/>$d(f(X)) = f'(X) \circ dX$ |
-| **鞅性（Martingale）** | **严格保持鞅性**：$\mathbb{E}\left[ \int_0^t H_s dW_s \right] = 0$ | **破坏鞅性**：$\mathbb{E}\left[ \int_0^t W_s \circ dW_s \right] = \frac{t}{2} \ne 0$ |
+| **鞅性（Martingale）** | **严格保持鞅性**：$\mathbb{E}\left[ \int_0^t H_s dW_s \r\right] = 0$ | **破坏鞅性**：$\mathbb{E}\left[ \int_0^t W_s \circ dW_s \r\right] = \frac{t}{2} \ne 0$ |
 | **微分流形坐标不变性** | 坐标变换后漂移项会产生额外的二阶几何漂移（破坏几何张量协变性） | **完美保持微分流形与李群对称性**（微分几何协变形式） |
 | **数值离散算法** | 欧拉-丸山算法（Euler-Maruyama Scheme） | 霍伊恩算法 / 斯特拉托诺维奇龙格-库塔法（Heun Scheme） |
 | **主要应用领域** | **量化金融、期权对冲、算法交易、信贷风险定价** | **经典与统计物理、机器人轨迹规划、非线性控制、流形导航** |
@@ -415,9 +415,9 @@ $$X_t \circ dW_t = X_t dW_t + \frac{1}{2} \sigma_t dt$$
 > * **推导解析**：
 >   - 扩散项系数为 $\sigma(S) = \sigma S$，其导数 $\sigma'(S) = \sigma$；
 >   - 黄-扎凯修正项为 $\frac{1}{2} \sigma(S) \sigma'(S) = \frac{1}{2}(\sigma S)(\sigma) = \frac{1}{2}\sigma^2 S$；
->   - 斯特拉托诺维奇漂移项需减去该修正项：$\underline{b}(S) = \mu S - \frac{1}{2}\sigma^2 S = \left( \mu - \frac{1}{2}\sigma^2 \right) S$；
+>   - 斯特拉托诺维奇漂移项需减去该修正项：$\underline{b}(S) = \mu S - \frac{1}{2}\sigma^2 S = \left( \mu - \frac{1}{2}\sigma^2 \r\right) S$；
 >   - **最终斯特拉托诺维奇 SDE**：
->     $$\boxed{dS_t = \left( \mu - \frac{1}{2}\sigma^2 \right) S_t dt + \sigma S_t \circ dW_t}$$
+>     $$\boxed{dS_t = \left( \mu - \frac{1}{2}\sigma^2 \r\right) S_t dt + \sigma S_t \circ dW_t}$$
 
 
 ---
@@ -447,16 +447,16 @@ $$\frac{dS_t}{S_t} = \mu dt + \sigma dW_t \iff dS_t = \mu S_t dt + \sigma S_t dW
 * 计算一阶偏导与二阶偏导：
   $$f'(S) = \frac{1}{S}, \qquad f''(S) = -\frac{1}{S^2}$$
 * 对 $f(S_t) = \ln S_t$ 应用伊藤引理：
-  $$d(\ln S_t) = f'(S_t) dS_t + \frac{1}{2} f''(S_t) (dS_t)^2 = \frac{1}{S_t} (\mu S_t dt + \sigma S_t dW_t) + \frac{1}{2} \left( -\frac{1}{S_t^2} \right) (\sigma^2 S_t^2 dt)$$
+  $$d(\ln S_t) = f'(S_t) dS_t + \frac{1}{2} f''(S_t) (dS_t)^2 = \frac{1}{S_t} (\mu S_t dt + \sigma S_t dW_t) + \frac{1}{2} \left( -\frac{1}{S_t^2} \r\right) (\sigma^2 S_t^2 dt)$$
 * 化简同类项，得到对数价格的线性微分方程：
-  $$d(\ln S_t) = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t$$
+  $$d(\ln S_t) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) dt + \sigma dW_t$$
 * 对两边在 $[0, t]$ 上直接积分：
-  $$\ln\left( \frac{S_t}{S_0} \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t$$
+  $$\ln\left( \frac{S_t}{S_0} \r\right) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t$$
 * 两边取指数，即得著名的 **GBM 显式闭式解**：
-  $$\boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}$$
+  $$\boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \r\right)}$$
 
 #### （3）统计性质与波动率拖拽的数学诠释
-* **对数正态分布**：$\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$；
+* **对数正态分布**：$\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \r\right)$；
 * **价格期望值**：利用对数正态分布矩母函数 $\mathbb{E}[e^{\sigma W_t}] = e^{\frac{1}{2}\sigma^2 t}$：
   $$\mathbb{E}[S_t] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} \mathbb{E}[e^{\sigma W_t}] = S_0 e^{(\mu - \frac{1}{2}\sigma^2)t} e^{\frac{1}{2}\sigma^2 t} = S_0 e^{\mu t}$$
 * **深度洞察**：虽然期望均值按算术漂移 $e^{\mu t}$ 增长，但几乎所有单条样本轨道的几何长期复合中位数增速仅为 $\mu - \frac{1}{2}\sigma^2$。伊藤修正项 $-\frac{1}{2}\sigma^2$ 正是连续时间下的波动率损耗（Volatility Drag）。
@@ -480,7 +480,7 @@ $$dV = \frac{\partial V}{\partial t} dt + \frac{\partial V}{\partial S} dS_t + \
 
 代入对冲组合的瞬时损益：
 
-$$d\Pi_t = \left( \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt \right) - \Delta dS_t = \underbrace{\Theta dt}_{\text{时间价值衰减损耗 (Theta Decay)}} + \underbrace{\frac{1}{2} \Gamma \sigma^2 S_t^2 dt}_{\text{二阶伊藤波动率现金流 (Gamma Cash Inflow)}}$$
+$$d\Pi_t = \left( \Theta dt + \Delta dS_t + \frac{1}{2} \Gamma \sigma^2 S_t^2 dt \r\right) - \Delta dS_t = \underbrace{\Theta dt}_{\text{时间价值衰减损耗 (Theta Decay)}} + \underbrace{\frac{1}{2} \Gamma \sigma^2 S_t^2 dt}_{\text{二阶伊藤波动率现金流 (Gamma Cash Inflow)}}$$
 
 ```mermaid
 graph LR
@@ -507,30 +507,30 @@ graph LR
 在资产配置、均值-方差组合优化以及随机控制中，经常需要计算连续随机积分过程 $I_T = \int_0^T H_t dW_t$ 的方差。
 若采用传统概率论的二重积分展开：
 
-$$\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \int_0^T \mathbb{E}[H_s H_t dW_s dW_t]$$
+$$\mathbb{E}\left[ \left( \int_0^T H_t dW_t \r\right)^2 \r\right] = \int_0^T \int_0^T \mathbb{E}[H_s H_t dW_s dW_t]$$
 
 由于被积项涉及连续时间鞅微分的内生相关性，直接计算极为繁琐。伊藤清利用希尔伯特空间 $L^2(\Omega \times [0, T])$ 上的保范等距同构性质，建立了著名的**伊藤等距定理（Itô Isometry）**。
 
 #### （2）定理陈述与核心公式
 
 > **伊藤等距定理（Itô Isometry Theorem）**：
-> 设 $H_t$ 为平方可积的适应随机过程（即 $\mathbb{E}\left[ \int_0^T H_t^2 dt \right] < \infty$），则随机积分 $\int_0^T H_t dW_t$ 的二阶矩严格等于其被积函数平方的时间积分的数学期望：
+> 设 $H_t$ 为平方可积的适应随机过程（即 $\mathbb{E}\left[ \int_0^T H_t^2 dt \r\right] < \infty$），则随机积分 $\int_0^T H_t dW_t$ 的二阶矩严格等于其被积函数平方的时间积分的数学期望：
 > 
-> $$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \right)^2 \right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
+> $$\boxed{\mathbb{E}\left[ \left( \int_0^T H_t dW_t \r\right)^2 \r\right] = \int_0^T \mathbb{E}[H_t^2] dt}$$
 > 
-> 由于伊藤积分的期望值恒为零（$\mathbb{E}\left[ \int_0^T H_t dW_t \right] = 0$），因此该随机积分的方差为：
+> 由于伊藤积分的期望值恒为零（$\mathbb{E}\left[ \int_0^T H_t dW_t \r\right] = 0$），因此该随机积分的方差为：
 > 
-> $$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \right) = \int_0^T \mathbb{E}[H_t^2] dt}$$
+> $$\boxed{\operatorname{Var}\left( \int_0^T H_t dW_t \r\right) = \int_0^T \mathbb{E}[H_t^2] dt}$$
 
 #### （3）量化实战计算示例
 * **例题 1：计算随机积分 $\int_0^T t dW_t$ 的方差**
   - 这里被积函数为确定性时间函数 $H_t = t$；
   - 由伊藤等距定理直接化简为一维普通积分：
-    $$\operatorname{Var}\left( \int_0^T t dW_t \right) = \int_0^T t^2 dt = \left[ \frac{1}{3} t^3 \right]_0^T = \frac{1}{3} T^3$$
+    $$\operatorname{Var}\left( \int_0^T t dW_t \r\right) = \int_0^T t^2 dt = \left[ \frac{1}{3} t^3 \r\right]_0^T = \frac{1}{3} T^3$$
 * **例题 2：计算 Vasicek 利率模型中随机项 $\int_0^T e^{\kappa t} dW_t$ 的方差**
   - 被积函数 $H_t = e^{\kappa t}$；
   - 由伊藤等距定理可得：
-    $$\operatorname{Var}\left( \int_0^T e^{\kappa t} dW_t \right) = \int_0^T e^{2\kappa t} dt = \frac{e^{2\kappa T} - 1}{2\kappa}$$
+    $$\operatorname{Var}\left( \int_0^T e^{\kappa t} dW_t \r\right) = \int_0^T e^{2\kappa t} dt = \frac{e^{2\kappa T} - 1}{2\kappa}$$
 
 ---
 
@@ -576,7 +576,7 @@ graph TD
 #### （2）美式期权（American Options）与最优停时问题
 * **定义**：买方可以在到期前**任意连续时刻 $\tau \in [t, T]$** 随时发起提前行权（Early Exercise）；
 * **数学定价形式**：由于买方会选择对自己期望收益最大的最优行权时机，因此美式期权定价本质是一个**最优停时问题（Optimal Stopping Problem）**：
-  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \right]$$
+  $$V_{\text{Am}}(t, S_t) = \sup_{\tau \in [t, T]} \mathbb{E}^\mathbb{Q} \left[ e^{-r(\tau - t)} \Phi(S_\tau) \;\middle|\; \mathcal{F}_t \r\right]$$
 * **量化面试经典命题：不分红股票的美式看涨期权为什么绝不应提前行权？**
   - **严格证明**：欧式看涨期权价值满足下界不等式：
     $$C_{\text{Eur}}(t, S_t) \ge S_t - K e^{-r(T-t)} > S_t - K \quad (\text{当 } r > 0 \text{ 且 } T > t)$$
@@ -598,7 +598,7 @@ graph TD
 对于任意实常数 $\theta \in \mathbb{R}$，定义 **Doléans-Dade 指数鞅**：
 
 $$
-M_t^\theta = \exp\left( \theta W_t - \frac{1}{2} \theta^2 t \right)
+M_t^\theta = \exp\left( \theta W_t - \frac{1}{2} \theta^2 t \r\right)
 $$
 
 应用伊藤引理：$dM_t^\theta = \theta M_t^\theta dW_t$，由于无 $dt$ 漂移项且满足 Novikov 条件，故 $M_t^\theta$ 是一个真正的鞅。
@@ -606,7 +606,7 @@ $$
 **最优停时定理（OST）应用**：设 $\tau$ 为满足 OST 条件的停时，则：
 
 $$
-\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2} \theta^2 \tau \right) \right] = \mathbb{E}[M_0^\theta] = 1 \quad (\text{Wald 鞅恒等式})
+\mathbb{E}\left[ \exp\left( \theta W_\tau - \frac{1}{2} \theta^2 \tau \r\right) \r\right] = \mathbb{E}[M_0^\theta] = 1 \quad (\text{Wald 鞅恒等式})
 $$
 
 ---
@@ -647,13 +647,13 @@ $$
 由此得到著名的 **反射原理公式**：
 
 $$
-\mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \right) \right)
+\mathbb{P}(M_t \ge a) = \mathbb{P}(\tau_a \le t) = 2 \mathbb{P}(W_t \ge a) = 2 \left( 1 - \Phi\left( \frac{a}{\sqrt{t}} \r\right) \r\right)
 $$
 
 对 $t$ 求导，得到首次到达水平 $a$ 的时间密度函数（**Lévy 分布**）：
 
 $$
-f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \right) \quad (t > 0)
+f_{\tau_a}(t) = \frac{d}{dt} \mathbb{P}(\tau_a \le t) = \frac{a}{\sqrt{2\pi t^3}} \exp\left( -\frac{a^2}{2t} \r\right) \quad (t > 0)
 $$
 
 ---
@@ -701,19 +701,19 @@ $$
 对复合函数 $f(S) = \ln S$ 应用伊藤引理（一阶导 $f' = 1/S$，二阶导 $f'' = -1/S^2$）：
 
 $$
-d(\ln S_t) = \frac{1}{S_t} dS_t + \frac{1}{2} \left( -\frac{1}{S_t^2} \right) (dS_t)^2 = \left( \mu dt + \sigma dW_t \right) - \frac{1}{2 S_t^2} \left( \sigma^2 S_t^2 dt \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) dt + \sigma dW_t
+d(\ln S_t) = \frac{1}{S_t} dS_t + \frac{1}{2} \left( -\frac{1}{S_t^2} \r\right) (dS_t)^2 = \left( \mu dt + \sigma dW_t \r\right) - \frac{1}{2 S_t^2} \left( \sigma^2 S_t^2 dt \r\right) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) dt + \sigma dW_t
 $$
 
 两边在时间区间 $[0, t]$ 上直接积分：
 
 $$
-\ln\left( \frac{S_t}{S_0} \right) = \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \implies \boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \right) t + \sigma W_t \right)}
+\ln\left( \frac{S_t}{S_0} \r\right) = \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \implies \boxed{S_t = S_0 \exp\left( \left( \mu - \frac{1}{2}\sigma^2 \r\right) t + \sigma W_t \r\right)}
 $$
 
-由此可见，$\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \right)$ 服从正态分布，因而 $S_t$ 服从**对数正态分布（Log-Normal Distribution）**。利用对数正态分布的矩母函数可得：
+由此可见，$\ln(S_t / S_0) \sim \mathcal{N}\left( (\mu - \frac{1}{2}\sigma^2)t, \sigma^2 t \r\right)$ 服从正态分布，因而 $S_t$ 服从**对数正态分布（Log-Normal Distribution）**。利用对数正态分布的矩母函数可得：
 
 $$
-\mathbb{E}[S_t] = S_0 e^{\mu t}, \qquad \operatorname{Var}(S_t) = S_0^2 e^{2\mu t} \left( e^{\sigma^2 t} - 1 \right)
+\mathbb{E}[S_t] = S_0 e^{\mu t}, \qquad \operatorname{Var}(S_t) = S_0^2 e^{2\mu t} \left( e^{\sigma^2 t} - 1 \r\right)
 $$
 
 ---
@@ -750,13 +750,13 @@ $$
 根据伊藤引理，将衍生品价值 $V(t, S_t)$ 展开至 $dt$ 阶：
 
 $$
-dV = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \right) dt + \sigma S \frac{\partial V}{\partial S} dW_t
+dV = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \r\right) dt + \sigma S \frac{\partial V}{\partial S} dW_t
 $$
 
 将 $dV$ 与 $dS_t = \mu S dt + \sigma S dW_t$ 代入 $d\Pi_t$ 并整理同类项：
 
 $$
-d\Pi_t = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta_t \mu S \right) dt + \sigma S \left( \frac{\partial V}{\partial S} - \Delta_t \right) dW_t
+d\Pi_t = \left( \frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta_t \mu S \r\right) dt + \sigma S \left( \frac{\partial V}{\partial S} - \Delta_t \r\right) dW_t
 $$
 
 为了使投资组合彻底摆脱随机波动 $dW_t$ 的干扰（即消除所有市场方向性风险），令随机项系数为 0，选择 **Delta 对冲仓位**：
@@ -768,13 +768,13 @@ $$
 代入后，$dW_t$ 项完全消失，$d\Pi_t$ 变成确定性微分方程：
 
 $$
-d\Pi_t = \left( \frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \right) dt
+d\Pi_t = \left( \frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} \r\right) dt
 $$
 
 根据无套利定理，一个完全无风险的资产组合，其瞬时收益率必须严格等于无风险利率 $r$，即 $d\Pi_t = r \Pi_t dt = r (V - \Delta_t S) dt$。联立两式：
 
 $$
-\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} = r \left( V - S \frac{\partial V}{\partial S} \right)
+\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} = r \left( V - S \frac{\partial V}{\partial S} \r\right)
 $$
 
 移项整理即得著名的 **Black-Scholes-Merton 偏微分方程**：
@@ -798,7 +798,7 @@ $$
 折现资产价格 $e^{-rt}S_t$ 是 $\mathbb{Q}$ 下的鞅。无套利衍生品定价理论断言：衍生品的公允价值等于其在风险中性测度下未来支付的**折现条件期望**：
 
 $$
-V(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q} \left[ \Phi(S_T) \;\middle|\; \mathcal{F}_t \right]
+V(t, S_t) = e^{-r(T-t)} \mathbb{E}^\mathbb{Q} \left[ \Phi(S_T) \;\middle|\; \mathcal{F}_t \r\right]
 $$
 
 根据 **Feynman-Kac 定理**，上述条件期望正是 BSM 偏微分方程满足终端条件 $V(T, S) = \Phi(S)$ 时的唯一柯西解。
@@ -811,20 +811,20 @@ $$
 在风险中性测度 $\mathbb{Q}$ 下，$S_T$ 可精确写为：
 
 $$
-S_T = S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \right)\tau + \sigma\sqrt{\tau} Z \right), \quad Z \sim \mathcal{N}(0, 1)
+S_T = S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \r\right)\tau + \sigma\sqrt{\tau} Z \r\right), \quad Z \sim \mathcal{N}(0, 1)
 $$
 
 期权价格为：
 
 $$
-C(S_t, t) = e^{-r\tau} \mathbb{E}^\mathbb{Q} \left[ \max(S_T - K, 0) \right] = e^{-r\tau} \int_{-\infty}^\infty \max\left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K, 0 \right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz
+C(S_t, t) = e^{-r\tau} \mathbb{E}^\mathbb{Q} \left[ \max(S_T - K, 0) \r\right] = e^{-r\tau} \int_{-\infty}^\infty \max\left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K, 0 \r\right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz
 $$
 
 #### 步骤 1：确定实值行权分界点（Integration Lower Bound）
 期权在到期时产生正收益（$S_T > K$）当且仅当：
 
 $$
-S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \right)\tau + \sigma\sqrt{\tau} z \right) > K \iff \sigma\sqrt{\tau} z > \ln\left( \frac{K}{S_t} \right) - \left( r - \frac{1}{2}\sigma^2 \right)\tau
+S_t \exp\left( \left( r - \frac{1}{2}\sigma^2 \r\right)\tau + \sigma\sqrt{\tau} z \r\right) > K \iff \sigma\sqrt{\tau} z > \ln\left( \frac{K}{S_t} \r\right) - \left( r - \frac{1}{2}\sigma^2 \r\right)\tau
 $$
 
 两边除以 $\sigma\sqrt{\tau}$ 并利用 $\ln(K/S_t) = -\ln(S_t/K)$：
@@ -842,7 +842,7 @@ $$
 #### 步骤 2：拆解积分项为资产项 $I_1$ 与现金项 $I_2$
 
 $$
-C(S_t, t) = e^{-r\tau} \int_{-d_2}^\infty \left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K \right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz = I_1 - I_2
+C(S_t, t) = e^{-r\tau} \int_{-d_2}^\infty \left( S_t e^{(r - \frac{1}{2}\sigma^2)\tau + \sigma\sqrt{\tau} z} - K \r\right) \frac{1}{\sqrt{2\pi}} e^{-z^2/2} dz = I_1 - I_2
 $$
 
 #### 步骤 3：求解现金项 $I_2$
@@ -856,7 +856,7 @@ $$
 #### 步骤 4：求解资产项 $I_1$（核心配方法）
 
 $$
-I_1 = e^{-r\tau} S_t e^{r\tau - \frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} e^{\sigma\sqrt{\tau} z - \frac{z^2}{2}} dz = S_t e^{-\frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{z^2 - 2\sigma\sqrt{\tau}z}{2} \right) dz
+I_1 = e^{-r\tau} S_t e^{r\tau - \frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} e^{\sigma\sqrt{\tau} z - \frac{z^2}{2}} dz = S_t e^{-\frac{1}{2}\sigma^2\tau} \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{z^2 - 2\sigma\sqrt{\tau}z}{2} \r\right) dz
 $$
 
 对指数中的二次多项式进行**完全平方配方**：
@@ -868,13 +868,13 @@ $$
 代入指数：
 
 $$
-\exp\left( -\frac{(z - \sigma\sqrt{\tau})^2 - \sigma^2\tau}{2} \right) = \exp\left( \frac{1}{2}\sigma^2\tau \right) \cdot \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \right)
+\exp\left( -\frac{(z - \sigma\sqrt{\tau})^2 - \sigma^2\tau}{2} \r\right) = \exp\left( \frac{1}{2}\sigma^2\tau \r\right) \cdot \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \r\right)
 $$
 
 注意项外系数 $e^{-\frac{1}{2}\sigma^2\tau}$ 与配方产生的 $e^{\frac{1}{2}\sigma^2\tau}$ **精确抵消为 1**！
 
 $$
-I_1 = S_t \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \right) dz
+I_1 = S_t \int_{-d_2}^\infty \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{(z - \sigma\sqrt{\tau})^2}{2} \r\right) dz
 $$
 
 做变量代换：令 $u = z - \sigma\sqrt{\tau}$，则 $dz = du$。积分下限变为 $-d_2 - \sigma\sqrt{\tau} \triangleq -d_1$：
@@ -941,15 +941,15 @@ $$
 
 **证明**：
 $$
-\frac{\phi(d_1)}{\phi(d_2)} = \frac{e^{-d_1^2/2}}{e^{-d_2^2/2}} = \exp\left( -\frac{d_1^2 - d_2^2}{2} \right) = \exp\left( -\frac{(d_1 - d_2)(d_1 + d_2)}{2} \right)
+\frac{\phi(d_1)}{\phi(d_2)} = \frac{e^{-d_1^2/2}}{e^{-d_2^2/2}} = \exp\left( -\frac{d_1^2 - d_2^2}{2} \r\right) = \exp\left( -\frac{(d_1 - d_2)(d_1 + d_2)}{2} \r\right)
 $$
 由于 $d_1 - d_2 = \sigma\sqrt{\tau}$，且 $d_1 + d_2 = \frac{2\ln(S/K) + 2r\tau}{\sigma\sqrt{\tau}}$：
 $$
-\frac{d_1^2 - d_2^2}{2} = \frac{\sigma\sqrt{\tau}}{2} \cdot \frac{2\ln(S/K) + 2r\tau}{\sigma\sqrt{\tau}} = \ln\left( \frac{S}{K} \right) + r\tau
+\frac{d_1^2 - d_2^2}{2} = \frac{\sigma\sqrt{\tau}}{2} \cdot \frac{2\ln(S/K) + 2r\tau}{\sigma\sqrt{\tau}} = \ln\left( \frac{S}{K} \r\right) + r\tau
 $$
 代入指数：
 $$
-\exp\left( -\left(\ln\left( \frac{S}{K} \right) + r\tau \right) \right) = \frac{K}{S} e^{-r\tau} \implies S \phi(d_1) = K e^{-r\tau} \phi(d_2)
+\exp\left( -\left(\ln\left( \frac{S}{K} \r\right) + r\tau \r\right) \r\right) = \frac{K}{S} e^{-r\tau} \implies S \phi(d_1) = K e^{-r\tau} \phi(d_2)
 $$
 这个恒等式是求导所有期权希腊字母（Greeks）时交叉项自动相消的数学核心！
 
@@ -967,7 +967,7 @@ $$
 1. **组合复制证明**：在到期日 $T$，组合 $C_T - P_T = \max(S_T - K, 0) - \max(K - S_T, 0) = S_T - K$。该支付与"持有 1 股股票并借入现金 $K$"在 $T$ 时刻的价值完全等价。由无套利定价原理，两组合在时刻 $t$ 的价值必须处处相等：$C_t - P_t = S_t - K e^{-r\tau}$。
 2. **BSM 公式代数验证**：
 $$
-C - P = \left( S\Phi(d_1) - Ke^{-r\tau}\Phi(d_2) \right) - \left( Ke^{-r\tau}\Phi(-d_2) - S\Phi(-d_1) \right)
+C - P = \left( S\Phi(d_1) - Ke^{-r\tau}\Phi(d_2) \r\right) - \left( Ke^{-r\tau}\Phi(-d_2) - S\Phi(-d_1) \r\right)
 $$
 $$
 = S(\Phi(d_1) + \Phi(-d_1)) - Ke^{-r\tau}(\Phi(d_2) + \Phi(-d_2)) = S(1) - Ke^{-r\tau}(1) = S - Ke^{-r\tau}
@@ -1041,7 +1041,7 @@ $$
 将 $dV_t$ 按真实路径展开（包含 $\sigma_R^2$），同时利用定价方程中的 $\Theta + r S \Delta + \frac{1}{2}\sigma_I^2 S^2 \Gamma = r V$，相消后得到极其优雅的 **波动率套利主方程**：
 
 $$
-\boxed{d\Pi_t = \frac{1}{2} S_t^2 \Gamma_t \left( \sigma_R^2 - \sigma_I^2 \right) dt}
+\boxed{d\Pi_t = \frac{1}{2} S_t^2 \Gamma_t \left( \sigma_R^2 - \sigma_I^2 \r\right) dt}
 $$
 
 ```delta-hedging-demo
@@ -1065,8 +1065,8 @@ $$
 **题目**：计算 $W_T$ 与 $X = \int_0^T W_t dt$ 的协方差 $\operatorname{Cov}(W_T, X)$，以及 $W_T$ 与 $Y = \int_0^T t dW_t$ 的协方差 $\operatorname{Cov}(W_T, Y)$。
 **解答**：
 - 写出 $W_T = \int_0^T 1 dW_t$。
-- $\operatorname{Cov}(W_T, X) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T (T - t) dW_t \right) = \int_0^T (T - t) dt = \frac{T^2}{2}$。
-- $\operatorname{Cov}(W_T, Y) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T t dW_t \right) = \int_0^T t dt = \frac{T^2}{2}$。
+- $\operatorname{Cov}(W_T, X) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T (T - t) dW_t \r\right) = \int_0^T (T - t) dt = \frac{T^2}{2}$。
+- $\operatorname{Cov}(W_T, Y) = \operatorname{Cov}\left( \int_0^T 1 dW_t, \int_0^T t dW_t \r\right) = \int_0^T t dt = \frac{T^2}{2}$。
 - 两者相加：$\operatorname{Cov}(W_T, X + Y) = \operatorname{Cov}(W_T, T W_T) = T \operatorname{Var}(W_T) = T^2 = \frac{T^2}{2} + \frac{T^2}{2}$，完美自洽！
 
 ---
@@ -1095,7 +1095,7 @@ $$
 **题目**：设 $B_t$ 为 $[0, 1]$ 上的标准布朗桥（$B_0 = 0, B_1 = 0$）。求其最大值 $M = \max_{0 \le t \le 1} B_t$ 超过给定正阈值 $y > 0$ 的精确概率 $\mathbb{P}(M \ge y)$。
 **解答**：
 - 利用终点约束下的反射原理：
-  $$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \right) = \lim_{\epsilon \to 0} \mathbb{P}\left( \max_{0 \le t \le 1} W_t \ge y \;\middle|\; W_1 \in (-\epsilon, \epsilon) \right)$$
+  $$\mathbb{P}\left( \max_{0 \le t \le 1} B_t \ge y \r\right) = \lim_{\epsilon \to 0} \mathbb{P}\left( \max_{0 \le t \le 1} W_t \ge y \;\middle|\; W_1 \in (-\epsilon, \epsilon) \r\right)$$
 - 轨迹跨过水平线 $y$ 后沿 $y$ 作镜像翻转，终点 $W_1 = 0$ 被对称映射到 $2y - 0 = 2y$。
 - 比对正态密度之比：
   $$\mathbb{P}(M \ge y) = \frac{\phi(2y)}{\phi(0)} = \frac{\frac{1}{\sqrt{2\pi}} e^{-\frac{(2y)^2}{2}}}{\frac{1}{\sqrt{2\pi}} e^0} = \boxed{e^{-2y^2}} \quad (y > 0)$$
@@ -1106,7 +1106,7 @@ $$
 #### 过渡题 5：带漂移布朗运动双边界退出（止盈与止损）
 **题目**：$X_t = \mu t + \sigma W_t$（$\mu > 0$），$X_0 = 0$，退出边界为 $-a < 0 < b$。求止盈概率 $p_b$ 及平均退出时间 $\mathbb{E}[\tau]$。
 **解答**：
-- 构造指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$，令 $\gamma = \frac{2\mu}{\sigma^2}$。由 OST 得：
+- 构造指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \r\right)$，令 $\gamma = \frac{2\mu}{\sigma^2}$。由 OST 得：
   $$p_b = \boxed{\frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}}$$
 - 对去漂移鞅 $X_t - \mu t$ 用 OST 得：
   $$\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \boxed{\frac{b \cdot p_b - a(1 - p_b)}{\mu}}$$
@@ -1149,19 +1149,19 @@ $$
 也可以利用 $W_t = \int_0^t dW_s$ 将 $X$ 转化为纯伊藤积分（Fubini 交换积分次序）：
 
 $$
-X = \int_0^T \left( \int_0^t dW_s \right) dt = \int_0^T \left( \int_s^T dt \right) dW_s = \int_0^T (T - t) dW_t
+X = \int_0^T \left( \int_0^t dW_s \r\right) dt = \int_0^T \left( \int_s^T dt \r\right) dW_s = \int_0^T (T - t) dW_t
 $$
 
 由此可见，$X$ 与 $Y$ 都是确定性函数关于标准布朗运动的伊藤积分，因此 $X$ 与 $Y$ 联合服从**二元正态分布**，且期望均为 0：$\mathbb{E}[X] = \mathbb{E}[Y] = 0$。
 
 **步骤 2：计算方差与协方差（应用伊藤等距）**
 1. **$X$ 的方差**：
-   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right)^2 \right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \right]_0^T = \frac{T^3}{3}$$
+   $$\operatorname{Var}(X) = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \r\right)^2 \r\right] = \int_0^T (T - t)^2 dt = \left[ -\frac{(T - t)^3}{3} \r\right]_0^T = \frac{T^3}{3}$$
 2. **$Y$ 的方差**：
-   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \right)^2 \right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \right]_0^T = \frac{T^3}{3}$$
+   $$\operatorname{Var}(Y) = \mathbb{E}\left[ \left( \int_0^T t dW_t \r\right)^2 \r\right] = \int_0^T t^2 dt = \left[ \frac{t^3}{3} \r\right]_0^T = \frac{T^3}{3}$$
 3. **$X$ 与 $Y$ 的协方差**：
    利用极化恒等式或直接伊藤等距：
-   $$\operatorname{Cov}(X, Y) = \mathbb{E}[X Y] = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \right) \left( \int_0^T t dW_t \right) \right] = \int_0^T (T - t) t dt = \int_0^T (T t - t^2) dt = \frac{T^3}{2} - \frac{T^3}{3} = \frac{T^3}{6}$$
+   $$\operatorname{Cov}(X, Y) = \mathbb{E}[X Y] = \mathbb{E}\left[ \left( \int_0^T (T - t) dW_t \r\right) \left( \int_0^T t dW_t \r\right) \r\right] = \int_0^T (T - t) t dt = \int_0^T (T t - t^2) dt = \frac{T^3}{2} - \frac{T^3}{3} = \frac{T^3}{6}$$
 
 **步骤 3：计算相关系数**
 
@@ -1171,7 +1171,7 @@ $$
 
 **几何直觉验算**：
 因为 $X + Y = T W_T$，其总方差为 $\operatorname{Var}(T W_T) = T^2 \operatorname{Var}(W_T) = T^3$。
-展开求和方差：$\operatorname{Var}(X + Y) = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left( \frac{T^3}{6} \right) = T^3$。各分量完全自洽！
+展开求和方差：$\operatorname{Var}(X + Y) = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y) = \frac{T^3}{3} + \frac{T^3}{3} + 2\left( \frac{T^3}{6} \r\right) = T^3$。各分量完全自洽！
 
 ---
 
@@ -1190,27 +1190,27 @@ $$
 **视角一：独立分量卷积与尺度混合（Lévy-Cauchy Mixture）**
 1. **首达时间 $\tau$ 的分布**：
    由于 $X_t$ 与 $Y_t$ 独立，$\tau$ 完全由水平一维布朗运动 $X_t$（从 $x_0$ 走到 0）决定。由反射原理，$\tau$ 服从 **Lévy 分布**：
-   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) \quad (t > 0)$$
+   $$f_\tau(t) = \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \r\right) \quad (t > 0)$$
 2. **给定 $\tau=t$ 时垂直分量 $Y_\tau$ 的条件分布**：
    由于 $Y_t$ 与 $X_t$ 独立，$Y_\tau \mid (\tau = t) \sim \mathcal{N}(y_0, t)$。
 3. **计算 $Y_\tau$ 的边缘密度函数**（对 $t$ 全概率积分）：
-   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \right) dt$$
+   $$f_{Y_\tau}(u) = \int_0^\infty \frac{1}{\sqrt{2\pi t}} \exp\left( -\frac{(u - y_0)^2}{2t} \r\right) \cdot \frac{x_0}{\sqrt{2\pi t^3}} \exp\left( -\frac{x_0^2}{2t} \r\right) dt = \frac{x_0}{2\pi} \int_0^\infty \frac{1}{t^2} \exp\left( -\frac{x_0^2 + (u - y_0)^2}{2t} \r\right) dt$$
    令 $v = \frac{x_0^2 + (u - y_0)^2}{2t}$，则 $dt = -\frac{x_0^2 + (u - y_0)^2}{2 v^2} dv$：
    $$f_{Y_\tau}(u) = \frac{x_0}{2\pi} \cdot \frac{2}{x_0^2 + (u - y_0)^2} \int_0^\infty e^{-v} dv = \boxed{\frac{1}{\pi} \frac{x_0}{x_0^2 + (u - y_0)^2}}$$
    这正是位置参数为 $y_0$、尺度参数为 $x_0$ 的 **柯西分布（Cauchy Distribution）** $\text{Cauchy}(y_0, x_0)$！
 4. **计算落在正半轴的概率**：
-   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \right) \right]_0^\infty = \frac{1}{\pi} \left( \frac{\pi}{2} - \arctan\left( -\frac{y_0}{x_0} \right) \right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \right)}$$
+   $$\mathbb{P}(Y_\tau > 0) = \int_0^\infty \frac{x_0}{\pi (x_0^2 + (u - y_0)^2)} du = \left[ \frac{1}{\pi} \arctan\left( \frac{u - y_0}{x_0} \r\right) \r\right]_0^\infty = \frac{1}{\pi} \left( \frac{\pi}{2} - \arctan\left( -\frac{y_0}{x_0} \r\right) \r\right) = \boxed{\frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y_0}{x_0} \r\right)}$$
 
 **视角二：调和函数与共形几何（Harmonic Measure & Polar Angle）**
 - 设 $u(x, y) = \mathbb{P}_{(x, y)}(Y_\tau > 0)$。由布朗运动强马氏性，函数 $u(x, y)$ 在右半平面 $\mathbb{H} = \{x > 0\}$ 内是**调和函数**（$\Delta u = \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} = 0$）。
 - 边界条件（$x = 0$）：$u(0, y) = 1$（当 $y > 0$）；$u(0, y) = 0$（当 $y < 0$）。
 - 观察原点极坐标角 $\theta = \arctan(y/x) \in (-\pi/2, \pi/2)$。由于复对数函数的虚部 $\text{Im}(\ln z) = \theta$ 天然是调和函数，构造线性变换：
-  $$u(x, y) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \right) = \frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y}{x} \right)$$
+  $$u(x, y) = \frac{1}{\pi}\left( \theta + \frac{\pi}{2} \r\right) = \frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{y}{x} \r\right)$$
   代入边界验证：当 $x \to 0^+$ 且 $y > 0$ 时 $\theta \to \pi/2 \implies u = 1$；当 $y < 0$ 时 $\theta \to -\pi/2 \implies u = 0$。唯一性定理保证这就是解析解！
 
 **特殊情形代入**：
 - **起点为 $(1, 1)$**（原图特例）：
-  $$\mathbb{P}(Y_\tau > 0) = \frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{1}{1} \right) = \frac{1}{2} + \frac{1}{\pi} \cdot \frac{\pi}{4} = \frac{1}{2} + \frac{1}{4} = \boxed{\frac{3}{4} = 75\%}$$
+  $$\mathbb{P}(Y_\tau > 0) = \frac{1}{2} + \frac{1}{\pi} \arctan\left( \frac{1}{1} \r\right) = \frac{1}{2} + \frac{1}{\pi} \cdot \frac{\pi}{4} = \frac{1}{2} + \frac{1}{4} = \boxed{\frac{3}{4} = 75\%}$$
 - **起点在 $x$ 轴上（$y_0 = 0$）**：$\mathbb{P} = \frac{1}{2} + 0 = 50\%$（对称性成立）。
 - **$y_0 \to +\infty$**：$\mathbb{P} \to 1$；$y_0 \to -\infty$：$\mathbb{P} \to 0$。
 
@@ -1233,7 +1233,7 @@ $$
 向量 $(W_t, W_T)^T$ 服从二元正态分布：
 
 $$
-\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} \operatorname{Var}(W_t) & \operatorname{Cov}(W_t, W_T) \\ \operatorname{Cov}(W_t, W_T) & \operatorname{Var}(W_T) \end{pmatrix} \right) = \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \right)
+\begin{pmatrix} W_t \\ W_T \end{pmatrix} \sim \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} \operatorname{Var}(W_t) & \operatorname{Cov}(W_t, W_T) \\ \operatorname{Cov}(W_t, W_T) & \operatorname{Var}(W_T) \end{pmatrix} \r\right) = \mathcal{N}\left( \begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} t & t \\ t & T \end{pmatrix} \r\right)
 $$
 
 应用标准高斯线性回归公式：
@@ -1242,7 +1242,7 @@ $$
 2. **条件方差**：
    $$\operatorname{Var}(W_t \mid W_T = x) = \operatorname{Var}(W_t) - \frac{(\operatorname{Cov}(W_t, W_T))^2}{\operatorname{Var}(W_T)} = t - \frac{t^2}{T} = \boxed{\frac{t(T - t)}{T}}$$
 3. **完整条件分布**：
-   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \right)}$$
+   $$\boxed{W_t \mid (W_T = x) \sim \mathcal{N}\left( \frac{t}{T} x, \frac{t(T - t)}{T} \r\right)}$$
 
 **步骤 2：独立增量正交分解证明法（Orthogonal Increment Projection）**
 令 $X = W_t \sim \mathcal{N}(0, t)$，$Y = W_T - W_t \sim \mathcal{N}(0, T - t)$。由布朗运动性质，$X$ 与 $Y$ 相互独立。
@@ -1261,34 +1261,34 @@ $$
 验证协方差：
 
 $$
-\operatorname{Cov}(\epsilon, Z) = \operatorname{Cov}\left( \frac{T - t}{T} X - \frac{t}{T} Y, X + Y \right) = \frac{T - t}{T} \operatorname{Var}(X) - \frac{t}{T} \operatorname{Var}(Y) = \frac{T - t}{T} t - \frac{t}{T} (T - t) = 0
+\operatorname{Cov}(\epsilon, Z) = \operatorname{Cov}\left( \frac{T - t}{T} X - \frac{t}{T} Y, X + Y \r\right) = \frac{T - t}{T} \operatorname{Var}(X) - \frac{t}{T} \operatorname{Var}(Y) = \frac{T - t}{T} t - \frac{t}{T} (T - t) = 0
 $$
 
 因为多元正态分布中“协方差为 0 等价于严格独立”，故 $\epsilon$ 独立于 $Z = W_T$。其均值为 0，方差为：
 
 $$
-\operatorname{Var}(\epsilon) = \left( \frac{T - t}{T} \right)^2 t + \left( \frac{t}{T} \right)^2 (T - t) = \frac{t(T - t)}{T^2} \left( (T - t) + t \right) = \frac{t(T - t)}{T}
+\operatorname{Var}(\epsilon) = \left( \frac{T - t}{T} \r\right)^2 t + \left( \frac{t}{T} \r\right)^2 (T - t) = \frac{t(T - t)}{T^2} \left( (T - t) + t \r\right) = \frac{t(T - t)}{T}
 $$
 
-因此 $\mathbb{E}[X \mid Z = x] = \mathbb{E}\left[ \frac{t}{T} Z + \epsilon \;\middle|\; Z = x \right] = \frac{t}{T} x + \mathbb{E}[\epsilon] = \frac{t}{T} x$。
+因此 $\mathbb{E}[X \mid Z = x] = \mathbb{E}\left[ \frac{t}{T} Z + \epsilon \;\middle|\; Z = x \r\right] = \frac{t}{T} x + \mathbb{E}[\epsilon] = \frac{t}{T} x$。
 
 **步骤 3：布朗桥过程 $B_t$ 的协方差结构（$0 \le s \le t \le T$）**
 定义标准布朗桥 $B_t = W_t - \frac{t}{T} W_T$（满足 $B_0 = 0, B_T = 0$）：
 
 $$
-\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}\left( W_s - \frac{s}{T}W_T, W_t - \frac{t}{T}W_T \right) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T)
+\operatorname{Cov}(B_s, B_t) = \operatorname{Cov}\left( W_s - \frac{s}{T}W_T, W_t - \frac{t}{T}W_T \r\right) = \operatorname{Cov}(W_s, W_t) - \frac{t}{T}\operatorname{Cov}(W_s, W_T) - \frac{s}{T}\operatorname{Cov}(W_T, W_t) + \frac{st}{T^2}\operatorname{Var}(W_T)
 $$
 
 代入 $\operatorname{Cov}(W_s, W_t) = s, \operatorname{Cov}(W_s, W_T) = s, \operatorname{Cov}(W_T, W_t) = t, \operatorname{Var}(W_T) = T$：
 
 $$
-= s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T^2} T = \boxed{s \left( 1 - \frac{t}{T} \right)}
+= s - \frac{st}{T} - \frac{st}{T} + \frac{st}{T^2} T = \boxed{s \left( 1 - \frac{t}{T} \r\right)}
 $$
 
 **步骤 4：特殊数值验证（原图特例：$T=2, t=1/2, x=1$）**
 代入公式：
 - 条件期望：$\mathbb{E}[W_{1/2} \mid W_2 = 1] = \frac{1/2}{2} \times 1 = \boxed{\frac{1}{4}}$
-- 条件方差：$\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{\frac{1}{2} \cdot \left( 2 - \frac{1}{2} \right)}{2} = \frac{\frac{1}{2} \cdot \frac{3}{2}}{2} = \boxed{\frac{3}{8}}$
+- 条件方差：$\operatorname{Var}(W_{1/2} \mid W_2 = 1) = \frac{\frac{1}{2} \cdot \left( 2 - \frac{1}{2} \r\right)}{2} = \frac{\frac{1}{2} \cdot \frac{3}{2}}{2} = \boxed{\frac{3}{8}}$
 
 
 ---

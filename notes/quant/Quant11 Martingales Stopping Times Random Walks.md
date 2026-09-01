@@ -162,7 +162,7 @@ $$S_T = \sum_{n=1}^\infty X_n \mathbf{1}_{\{T \ge n\}}$$
 
 利用 Fubini-Tonelli 定理交换求和与数学期望积分（由 $\mathbb{E}[T] < \infty$ 和 $\mathbb{E}[|X_1|] < \infty$ 保证绝对收敛）：
 
-$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}\left[ X_n \mathbf{1}_{\{T \ge n\}} \right] = \sum_{n=1}^\infty \mathbb{E}[X_n] \cdot \mathbb{E}\left[ \mathbf{1}_{\{T \ge n\}} \right] = \mathbb{E}[X_1] \sum_{n=1}^\infty \mathbb{P}(T \ge n)$$
+$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}\left[ X_n \mathbf{1}_{\{T \ge n\}} \r\right] = \sum_{n=1}^\infty \mathbb{E}[X_n] \cdot \mathbb{E}\left[ \mathbf{1}_{\{T \ge n\}} \r\right] = \mathbb{E}[X_1] \sum_{n=1}^\infty \mathbb{P}(T \ge n)$$
 
 根据离散非负随机变量尾概率积分公式 $\mathbb{E}[T] = \sum_{n=1}^\infty \mathbb{P}(T \ge n)$，立即得出：
 
@@ -176,7 +176,7 @@ $$\mathbb{E}[S_T] = \mathbb{E}[X_1] \cdot \mathbb{E}[T]$$
 
 若二阶矩有限 $\mathbb{E}[X_1^2] < \infty$ 且 $\mathbb{E}[T] < \infty$，记方差 $\sigma^2 = \text{Var}(X_1) = \mathbb{E}[X_1^2] - \mu^2$，则：
 
-$$\mathbb{E}\left[ (S_T - T\mu)^2 \right] = \sigma^2 \mathbb{E}[T]$$
+$$\mathbb{E}\left[ (S_T - T\mu)^2 \r\right] = \sigma^2 \mathbb{E}[T]$$
 
 特别地，当步长均值 $\mu = 0$ 的对称游走时：
 
@@ -194,7 +194,7 @@ $$M_n(\theta) = \frac{e^{\theta S_n}}{(M(\theta))^n}$$
 
 在一致可积条件下应用 OST 即得：
 
-$$\mathbb{E}\left[ \frac{e^{\theta S_T}}{(M(\theta))^T} \right] = 1$$
+$$\mathbb{E}\left[ \frac{e^{\theta S_T}}{(M(\theta))^T} \r\right] = 1$$
 
 - **对 $\theta$ 求一阶导令 $\theta \to 0$**：直接导出 Wald 一阶等式 $\mathbb{E}[S_T] = \mu \mathbb{E}[T]$；
 - **对 $\theta$ 求二阶导令 $\theta \to 0$**：直接导出 Wald 二阶等式 $\mathbb{E}[(S_T - T\mu)^2] = \sigma^2 \mathbb{E}[T]$；
@@ -225,15 +225,15 @@ $$\mathbb{E}\left[ \frac{e^{\theta S_T}}{(M(\theta))^T} \right] = 1$$
 | **一维对称游走期望步数** | $M_n = S_n^2 - n$ | $\mathbb{E}[S_T^2] - \mathbb{E}[T] = 0 \implies \mathbb{E}[T] = a \cdot b$ | $\mu = 0$ 且 $\sigma^2 = 1$，注意二阶 Wald 等式 |
 | **一维非对称游走破产概率** | $M_n = (q/p)^{S_n}$ | $\mathbb{P}_a (q/p)^a + (1 - \mathbb{P}_a)(q/p)^{-b} = 1$ | 根源于 $p(q/p) + q(p/q) = 1$ |
 | **一维非对称游走期望步数** | $M_n = S_n - n(p - q)$ | $\mathbb{E}[T] = \frac{\mathbb{E}[S_T] - S_0}{p - q} = \frac{a \mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$ | 漂移率分母 $p - q \ne 0$，一阶 Wald 等式 |
-| **单边自由首达等待时间** | Wald 指数鞅 $e^{\theta S_n} / M(\theta)^n$ | $\mathbb{E}[s^{T_a}] = \left( \frac{1 - \sqrt{1 - 4pqs^2}}{2ps} \right)^a$ | 自由单边 $\mathbb{P}(T < \infty) = 1$ 但 $\mathbb{E}[T] = \infty$（零漂移陷阱） |
+| **单边自由首达等待时间** | Wald 指数鞅 $e^{\theta S_n} / M(\theta)^n$ | $\mathbb{E}[s^{T_a}] = \left( \frac{1 - \sqrt{1 - 4pqs^2}}{2ps} \r\right)^a$ | 自由单边 $\mathbb{P}(T < \infty) = 1$ 但 $\mathbb{E}[T] = \infty$（零漂移陷阱） |
 | **序列模式匹配等待时间** | 赌场赌资累积净利润鞅 | $\mathbb{E}[T_A] = (A * A)_2 = \sum 2^k \mathbf{1}_{\{\text{前缀}=\text{后缀}\}}$ | Penney's Game 非传递性：后手总能构造克制序列 |
 | **无放回抽样最优停止** | 比例鞅 $M_n = \frac{I_n}{N - n}$ 与 Doob 分解 | $\Delta_n = \mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n]$，在 $\Delta_n \le 0$ 时停下 | 1-SLA 单步前瞻法，Chow-Robbins 单调停止定理 |
 | **带固定重掷成本最优停止** | 超额收益 Wald 鞅 $\sum (Z_k - \mu_n)$ | $\mu_{n^*} = \mathbb{E}[\max(X - n^*, 0)] = c \implies \mathbb{E}[\text{Payoff}] = n^* + c$ | 边际收益等于边际成本（无差异均衡） |
 | **带清零危险的停掷决策** | 截断吸收下鞅 $Y_n = S_n \mathbf{1}_{\{T > n\}}$ | 在安全区内 $\mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n] = \mu_D > 0$ | 证明 $\sup_\tau \mathbb{E}[Y_\tau] > S_0$，得出必须继续投掷 |
-| **连续漂移扩散首达概率** | 指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ | $\mathbb{P}(X_\tau = b) = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}$（$\gamma = \frac{2\mu}{\sigma^2}$） | 漂移布朗运动 $X_t = \mu t + \sigma W_t$ 上的尺度变换 |
+| **连续漂移扩散首达概率** | 指数鞅 $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \r\right)$ | $\mathbb{P}(X_\tau = b) = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}$（$\gamma = \frac{2\mu}{\sigma^2}$） | 漂移布朗运动 $X_t = \mu t + \sigma W_t$ 上的尺度变换 |
 | **连续漂移扩散期望时间** | 线性鞅 $N_t = X_t - \mu t$ | $\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \frac{b p_b - a(1 - p_b)}{\mu}$ | 消除扩散项，由均值漂移项主导平均时间 |
 | **分支过程灭绝概率** | 规模归一鞅 $Z_n / m^n$ 与母函数鞅 $s^{Z_n}$ | 灭绝概率 $\pi$ 是母函数不动点 $G(s) = s$ 的最小非负根 | $m \le 1$ 几乎必然灭绝（除平凡情况），$m > 1$ 部分存活 |
-| **波利亚罐比例演化** | 比例鞅 $M_n = \frac{R_n}{R + B + n c}$ | $M_n \to M_\infty$ 几乎必然收敛，且 $M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)$ | 鞅收敛定理（Martingale Convergence Theorem） |
+| **波利亚罐比例演化** | 比例鞅 $M_n = \frac{R_n}{R + B + n c}$ | $M_n \to M_\infty$ 几乎必然收敛，且 $M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \r\right)$ | 鞅收敛定理（Martingale Convergence Theorem） |
 | **无放回翻牌等期望划分** | 示性函数对称性 / 局部比例鞅 | 翻出第 1 张红牌期望步数 $\frac{B+R+1}{R+1}$，最后剩余黑牌 $\frac{B}{R+1}$ | $R$ 张红牌将 $B$ 张黑牌均匀分割为 $R+1$ 个等长区间 |
 
 ---
@@ -285,7 +285,7 @@ $$
 因为停止概率 $p = \mathbb{P}(X > n) > 0$，停时 $N$ 服从几何分布，$\mathbb{E}[N] = 1/p < \infty$，且增量 $|Z_k - \mu_n|$ 有界，完全满足 OST 条件 (C)：
 
 $$
-\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k \right] = \mu_n \mathbb{E}[N]
+\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k \r\right] = \mu_n \mathbb{E}[N]
 $$
 
 根据停时 $N$ 的定义：
@@ -415,7 +415,7 @@ $$
 两边除以剩余牌数 $(B + 1) - (n + 1) = B - n$：
 
 $$
-\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \right] = \frac{I_n \cdot \frac{B - n}{B + 1 - n}}{B - n} = \frac{I_n}{B + 1 - n} = M_n
+\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \r\right] = \frac{I_n \cdot \frac{B - n}{B + 1 - n}}{B - n} = \frac{I_n}{B + 1 - n} = M_n
 $$
 
 而在 $I_n = 0$（已经出了红牌）时，$I_{n+1} \equiv 0$，等式 $0 = 0$ 恒成立。
@@ -460,7 +460,7 @@ $$
 > **当手头累积抽到 $n^*$ 张蓝牌时，立即选择停止游戏**，其中通用最优阈值为：
 > 
 > $$
-> \boxed{n^* = \left\lfloor \frac{B}{3}  ight floor}
+> \boxed{n^* = \left\lfloor \frac{B}{3}  \right\rfloor}
 > $$
 > 
 > - **核心速记要诀**：**在单红牌全部倒扣罚没规则下，最优停止点永远落在总蓝牌数的 $1/3$ 处！**
@@ -508,13 +508,13 @@ $$
 构造指数鞅 $M_t = \exp(-\gamma X_t)$，代入 $X_t$ 并令 $t$ 的系数为 0：
 
 $$
-\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t \right) = 1 \implies -\gamma \mu + \frac{1}{2}\gamma^2 \sigma^2 = 0 \implies \gamma = \frac{2\mu}{\sigma^2}
+\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t \r\right) = 1 \implies -\gamma \mu + \frac{1}{2}\gamma^2 \sigma^2 = 0 \implies \gamma = \frac{2\mu}{\sigma^2}
 $$
 
 由于过程在 $[-a, b]$ 内有界，由 OST $\mathbb{E}[M_\tau] = M_0 = 1$：
 
 $$
-p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left( \gamma = \frac{2\mu}{\sigma^2} \right)
+p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left( \gamma = \frac{2\mu}{\sigma^2} \r\right)
 $$
 
 #### 3. 线性鞅求解期望退出时间
@@ -556,7 +556,7 @@ $$
 由于每轮选中 1 号瓶的概率独立为 $1/2$：
 
 $$
-X \sim \text{Bin}\left( k, \frac{1}{2} \right), \quad R \sim \text{Bin}\left( N - k, \frac{1}{2} \right), \quad X \text{ 与 } R \text{ 相互独立}
+X \sim \text{Bin}\left( k, \frac{1}{2} \r\right), \quad R \sim \text{Bin}\left( N - k, \frac{1}{2} \r\right), \quad X \text{ 与 } R \text{ 相互独立}
 $$
 
 从 1 号瓶和 2 号瓶成功取出的球数分别为 $\min(X, R)$ 和 $\min(k - X, (N - k) - R)$。总成功取球数 $Y$ 为：
@@ -569,7 +569,7 @@ $$
 应用经典恒等式 $\min(a, b) = \frac{a + b - |a - b|}{2}$：
 
 $$
-Y = \frac{(X + R) + (k - X + N - k - R) - |X - R| - |(k - X) - (N - k - R)|}{2} = \frac{N - \left( |X - R| + |(2k - N) - (X - R)| \right)}{2}
+Y = \frac{(X + R) + (k - X + N - k - R) - |X - R| - |(k - X) - (N - k - R)|}{2} = \frac{N - \left( |X - R| + |(2k - N) - (X - R)| \r\right)}{2}
 $$
 
 引入核心卷积随机变量：
@@ -581,7 +581,7 @@ $$
 注意：$X \sim \text{Bin}(k, 1/2)$，而 $(N - k) - R \sim \text{Bin}(N - k, 1/2)$。由二项分布的独立卷积性质：
 
 $$
-Z \sim \text{Bin}\left(k + (N - k), \frac{1}{2} \right) = \text{Bin}\left( N, \frac{1}{2} \right)
+Z \sim \text{Bin}\left(k + (N - k), \frac{1}{2} \r\right) = \text{Bin}\left( N, \frac{1}{2} \r\right)
 $$
 
 **惊人发现：$Z$ 的概率分布完全与策略参数 $k$ 无关，永远服从总轮数为 $N$ 的标准二项分布！**
@@ -602,7 +602,7 @@ $$
 此时收益公式化为极其优美的形式：
 
 $$
-Y = \frac{N}{2} - \left| Z - \frac{N}{2}  ight| = m - |Z - m|
+Y = \frac{N}{2} - \left| Z - \frac{N}{2}  \right| = m - |Z - m|
 $$
 
 #### 6. 随机游走鞅与绝对值一阶矩精确计算
@@ -752,7 +752,7 @@ $$
 代入总期望得到通用下界公式：
 
 $$
-\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D \right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D}
+\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D \r\right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \r\right) + \frac{K - 1}{K} \mu_D}
 $$
 
 #### 4. 特例数值验证（$S_0 = 35$，$K = 6$ 面骰子，危险点 $H = 36 = 6^2$）
@@ -804,7 +804,7 @@ $$
 由 Doob 有界鞅收敛定理，$M_n \to M_\infty$ 几乎必然收敛。利用矩母匹配或经典 Beta-Binomial 极限可得：
 
 $$
-\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)}
+\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \r\right)}
 $$
 
 特别地，当初始 $R=1, B=1, c=1$ 时，极限比例服从 $(0, 1)$ 上的**标准连续均匀分布 $\text{Uniform}(0, 1)$**！
@@ -826,7 +826,7 @@ $$
 2. **母函数鞅**：设 $s \in [0, 1]$ 是不动点方程 $G(s) = s$ 的任意解。构造过程 $Y_n = s^{Z_n}$：
 
 $$
-\mathbb{E}[Y_{n+1} \mid \mathcal{F}_n] = \mathbb{E}\left[ s^{\sum_{i=1}^{Z_n} K_i} \;\middle|\; Z_n \right] = (G(s))^{Z_n} = s^{Z_n} = Y_n
+\mathbb{E}[Y_{n+1} \mid \mathcal{F}_n] = \mathbb{E}\left[ s^{\sum_{i=1}^{Z_n} K_i} \;\middle|\; Z_n \r\right] = (G(s))^{Z_n} = s^{Z_n} = Y_n
 $$
 
 因此 $Y_n = s^{Z_n}$ 是一个**严格有界鞅**（$0 \le Y_n \le 1$）！

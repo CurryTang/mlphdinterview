@@ -11,7 +11,7 @@ This note systematically breaks down the entire quantitative interview game theo
 ### 1. Mathematical Formulation of Games
 
 #### Normal-Form (Strategic-Form) Games
-An $n$-player finite normal-form game is defined by a tuple $\mathcal{G} = \left( \mathcal{N}, (S_i)_{i \in \mathcal{N}}, (u_i)_{i \in \mathcal{N}} \right)$:
+An $n$-player finite normal-form game is defined by a tuple $\mathcal{G} = \left( \mathcal{N}, (S_i)_{i \in \mathcal{N}}, (u_i)_{i \in \mathcal{N}} \r\right)$:
 - Player set $\mathcal{N} = \{1, 2, \dots, n\}$;
 - Pure strategy space $S_i$ for each player $i$; profile space $S = S_1 \times S_2 \times \dots \times S_n$;
 - Payoff function $u_i: S \to \mathbb{R}$.

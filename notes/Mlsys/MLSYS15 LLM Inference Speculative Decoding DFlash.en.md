@@ -265,7 +265,7 @@ q(x) = target model probability
 Acceptance probability:
 
 $$
-\alpha(x) = \min\left(1, \frac{q(x)}{p(x)} \right)
+\alpha(x) = \min\left(1, \frac{q(x)}{p(x)} \r\right)
 $$
 
 If accepted, put `x` into the output. If rejected, sample from the corrected distribution:

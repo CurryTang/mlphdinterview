@@ -17,7 +17,7 @@ Quantization research for LLMs took off in 2022, driven primarily by the memory 
 
 Map a floating-point tensor $x$ to a $b$-bit integer:
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ight ceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
 
 Dequantization:
 
@@ -54,7 +54,7 @@ You may also see notations such as **KV4** (4-bit KV cache) and **W1.58** (the t
 **Why does quantization hurt model accuracy?** The root cause is information loss. Compressing an FP32 number (roughly $4.2 \times 10^9$ possible values) into INT8 (256 values) or INT4 (16 values) maps many original values into the same quantization bin, producing irreversible rounding error. Concretely:
 
 - **Accumulated rounding error**: the rounding error of any single weight may be small, but matrix multiplication propagates and amplifies errors through the computation graph. The deeper the network and the larger the model, the stronger this cumulative effect.
-- **Outlier problem**: if a tensor contains a few extremely large values (outliers), the scale becomes large, forcing the many normal values into a very narrow quantization interval and sharply degrading precision. This is exactly the core challenge in LLM quantization: emergent outliers in Transformer activations cause naive quantization to fail outright.
+- **Outlier problem**: if a tensor contains a few extremely large values (outliers), the scale becomes large, forcing the many normal values into a very narrow quantization interval and sharply degrading precision. This is exactly the core challenge in LLM quantization: emergent outliers in Transformer activations cause naive quantization to fail outr\right.
 - **Dynamic-range mismatch**: low-bit integers have limited representable range; values outside that range are clipped by `clamp`, causing permanent information loss.
 
 The central goal of quantization research is therefore to keep these accuracy losses within an acceptable range at the lowest possible bit width, using various techniques such as better scale selection, error compensation, and outlier handling.
@@ -189,7 +189,7 @@ Model quantization is divided into these two paradigms according to **whether tr
 │  │  x → x_q → x̂    │  Data type remains FP32, but values now contain quantization error │
 │  └────────┬─────────┘                                          │
 │           ▼                                                    │
-│  ┌──────────────────┐     w (FP32 master weight)               │
+│  ┌──────────────────┐     w (FP32 master we\right)               │
 │  │  Linear(x̂, ŵ)   │ ◄── ŵ = dequant(quant(w))  same fake quantization │
 │  └────────┬─────────┘                                          │
 │           ▼                                                    │
@@ -414,9 +414,9 @@ W8A8 can now be regarded as **basically solved** in current LLM quantization. On
 
 **From OBQ to GPTQ**:
 
-OBQ (Optimal Brain Quantizer, Frantar & Alistarh 2022) is the precursor to GPTQ and follows exactly the same idea — quantize one weight at a time + compensate the error using the Hessian. But OBQ must **greedily choose** which weight to quantize at every step (the one with the smallest error), resulting in $O(d^3)$ complexity; quantizing even a BERT model takes hours, making it impossible to scale to LLMs. GPTQ’s key contribution is the observation that **fixing the quantization order (left to right) incurs almost no accuracy loss**, while reducing complexity to $O(d^2)$ and enabling large-scale parallelization.
+OBQ (Optimal Brain Quantizer, Frantar & Alistarh 2022) is the precursor to GPTQ and follows exactly the same idea — quantize one weight at a time + compensate the error using the Hessian. But OBQ must **greedily choose** which weight to quantize at every step (the one with the smallest error), resulting in $O(d^3)$ complexity; quantizing even a BERT model takes hours, making it impossible to scale to LLMs. GPTQ’s key contribution is the observation that **fixing the quantization order (left to r\right) incurs almost no accuracy loss**, while reducing complexity to $O(d^2)$ and enabling large-scale parallelization.
 
-**Core algorithm**: for a weight matrix $W \in \mathbb{R}^{d_{\text{out}} \times d_{\text{in}}}$, process each row independently. Within each row, quantize columns from left to right. When quantizing column $i$:
+**Core algorithm**: for a weight matrix $W \in \mathbb{R}^{d_{\text{out}} \times d_{\text{in}}}$, process each row independently. Within each row, quantize columns from left to r\right. When quantizing column $i$:
 
 $$\hat{w}_i = Q(w_i)$$
 
@@ -706,7 +706,7 @@ Whenever the residual buffer fills up (after accumulating R tokens) → batch-qu
 
 After quantization, attention must be computed in two parts — the quantized portion and the FP16 residual portion:
 
-$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
+$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \r\right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
 
 Here $K_{\text{quant}}, V_{\text{quant}}$ are the 2-bit quantized portion, and $K_{\text{res}}, V_{\text{res}}$ are the FP16 residual buffer. In practice:
 
@@ -759,7 +759,7 @@ Even after accounting for the residual buffer’s fixed FP16 overhead (about 2MB
 
 3. **Hadamard transforms no longer suffice**: in Transformers, Hadamard rotation effectively equalizes maximum values (the core of QuaRot). But MambaQuant proves theoretically that a Hadamard transform **cannot guarantee equalized channel variance**. Specifically, after a Hadamard transform, the variance of channel $l$ becomes:
 
-$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \right)^2\lambda_j$$
+$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \r\right)^2\lambda_j$$
 
 Since $H$ is fixed while $K$ (eigenvectors) and $\lambda$ (eigenvalues) vary with the input, Hadamard cannot adapt to different channel distributions, so variances remain unequal after rotation.
 
@@ -826,7 +826,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 First subtract the mean (centering), then take the sign. The mean subtraction is crucial — if the weight distribution is asymmetric (mean ≠ 0), applying `Sign` directly leads to a severe imbalance between +1 and -1, wasting representational capacity.
 
 **Activation quantization**: activations are quantized to $b$ bits (8-bit in the paper), using absmax symmetric quantization:
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ight ceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  \right\rceil, -2^{b-1}+1, 2^{b-1}-1 \r\right)$$
 
 **Full BitLinear forward pass**:
 ```
@@ -855,7 +855,7 @@ BitNet b1.58 is the key improvement over BitNet: the weight space is extended fr
 
 **Weight quantization**:
 
-$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
+$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \r\right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
 
 $\gamma$ is the mean absolute value of the weights (an L1 normalization factor). After normalization, most weights fall in $[-1, 1]$ and can be rounded to {-1, 0, +1}.
 
@@ -1194,7 +1194,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # dequantize
 
 **8-bit symmetric quantization (blockwise)** — corresponding to the symmetric formula in §1.1, but computing the scale independently per block (default 2048 elements):
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ight ceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 The benefit of block-wise quantization is that it prevents a few large global values from inflating the scale and squeezing the precision of the remaining normal values.
 

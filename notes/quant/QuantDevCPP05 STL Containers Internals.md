@@ -259,7 +259,7 @@ for (auto it = v.begin(); it != v.end(); ) {
 **堆的数组表示**：二叉堆是一棵完全二叉树，但不需要真的用指针存树形结构，而是直接用一段连续数组隐式表示，下标关系是：
 
 $$
-\text{parent}(i) = \left\lfloor \frac{i-1}{2}  ight floor,\quad
+\text{parent}(i) = \left\lfloor \frac{i-1}{2}  \right\rfloor,\quad
 \text{left}(i) = 2i+1,\quad
 \text{right}(i) = 2i+2
 $$

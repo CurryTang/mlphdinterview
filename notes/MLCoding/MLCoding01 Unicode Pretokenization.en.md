@@ -776,7 +776,7 @@ class Linear(nn.Module):
         nn.init.trunc_normal_(self.weight, mean=0.0, std=std, a=-3 * std, b=3 * std)
 
     def forward(self, x):
-        return torch.einsum("...i,oi->...o", x, self.weight)
+        return torch.einsum("...i,oi->...o", x, self.we\right)
 ```
 
 </details>
@@ -846,7 +846,7 @@ class RMSNorm(nn.Module):
         x_float = x.to(torch.float32)
         rms = torch.sqrt(torch.mean(x_float * x_float, dim=-1, keepdim=True) + self.eps)
         y = x_float / rms
-        return (y * self.weight).to(in_dtype)
+        return (y * self.we\right).to(in_dtype)
 ```
 
 </details>

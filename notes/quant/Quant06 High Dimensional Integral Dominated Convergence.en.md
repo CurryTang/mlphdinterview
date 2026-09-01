@@ -52,7 +52,7 @@ Each point in the cloud represents one random sample $(X_1,\ldots,X_n)$, with co
 $$
 (\bar X_n,Q_n,R_n)
 \longrightarrow
-\left( \frac12,\frac13,\frac23 \right).
+\left( \frac12,\frac13,\frac23 \r\right).
 $$
 
 This is the geometric form of the law of large numbers: sample statistics become more concentrated as the dimension grows. The cloud's average height is a Monte Carlo estimate from fixed pseudorandom samples. It illustrates the trend but is not part of the rigorous proof.
@@ -75,7 +75,7 @@ $$
 \sum_i \frac{x_i}{\sum_jx_j}\,x_i.
 $$
 
-The weights $x_i/\sum_jx_j$ are nonnegative and sum to 1. The function therefore lies in $[0,1]$, with larger $x_i$ receiving greater weight. This $[0,1]$ bound will later provide the dominating function.
+The weights $x_i/\sum_jx_j$ are nonnegative and sum to 1. The function therefore lies in $[0,1]$, with larger $x_i$ receiving greater we\right. This $[0,1]$ bound will later provide the dominating function.
 
 ---
 
@@ -92,7 +92,7 @@ Because the joint density equals 1 on $[0,1]^n$:
 $$
 I_n
 =
-\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n} \right].
+\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n} \r\right].
 $$
 
 Divide both numerator and denominator by $n$:
@@ -110,7 +110,7 @@ $$
 For finite $n$, expectation cannot pass directly through a ratio:
 
 $$
-\mathbb E\left[ \frac{Q_n}{\bar X_n} \right]
+\mathbb E\left[ \frac{Q_n}{\bar X_n} \r\right]
 \ne
 \frac{\mathbb E[Q_n]}{\mathbb E[\bar X_n]}.
 $$
@@ -250,8 +250,8 @@ $$
 \begin{aligned}
 \lim_{n\to\infty}I_n
 &=\lim_{n\to\infty}\mathbb E[R_n]\\
-&=\mathbb E\left[ \lim_{n\to\infty}R_n \right]\\
-&=\mathbb E\left[ \frac23 \right]\\
+&=\mathbb E\left[ \lim_{n\to\infty}R_n \r\right]\\
+&=\mathbb E\left[ \frac23 \r\right]\\
 &=\frac23.
 \end{aligned}
 $$
@@ -308,7 +308,7 @@ For a high-dimensional integral of the form:
 $$
 \int_{[0,1]^n}
 \Phi\left(\frac1n\sum_i h_1(x_i),\ldots,
-\frac1n\sum_i h_k(x_i) \right)dx,
+\frac1n\sum_i h_k(x_i) \r\right)dx,
 $$
 
 check the following in order:
@@ -328,7 +328,7 @@ dominated convergence, interchange limit and expectation
 For this problem, the proof compresses to four lines:
 
 $$
-I_n=\mathbb E\left[ \frac{\overline{X^2}_n}{\bar X_n} \right],
+I_n=\mathbb E\left[ \frac{\overline{X^2}_n}{\bar X_n} \r\right],
 \qquad X_i\overset{i.i.d.}{\sim}U[0,1],
 $$
 

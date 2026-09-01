@@ -35,7 +35,7 @@ MHA 允许模型同时从不同"表示子空间"学习信息，三个核心向�
 #### Scaled Dot-Product Attention
 
 $$
-\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \right)V
+\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \r\right)V
 $$
 
 计算：① $QK^T$ 得相似度矩阵 → ② 除以 $\sqrt{d_k}$ 防梯度消失 → ③ softmax → ④ 加权求 V。MHA 将输入分多头并行学习不同模式：$\text{MultiHead} = \text{Concat}(\text{head}_i)W^O$，其中 $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$。
@@ -540,7 +540,7 @@ self.weight = nn.Parameter(torch.empty(num_embeddings_per_partition, embedding_d
 ```python
 mask = (x >= vocab_start_idx) & (x < vocab_end_idx)
 x    = mask * (x - vocab_start_idx)  # 范围外归零（避免越界崩溃）
-y    = F.embedding(x, self.weight)   # 安全查表，范围外结果无意义
+y    = F.embedding(x, self.we\right)   # 安全查表，范围外结果无意义
 y    = mask.unsqueeze(1) * y         # mask 抹掉无意义结果
 dist.all_reduce(y)                   # 每个 token 只有一卡非零，sum = 正确向量
 ```
@@ -565,7 +565,7 @@ def forward(self, x):
     if context.is_prefill:
         x = x[context.cu_seqlens_q[1:] - 1].contiguous()
 
-    logits = F.linear(x, self.weight)   # [batch, vocab/tp]
+    logits = F.linear(x, self.we\right)   # [batch, vocab/tp]
 
     # gather 到 rank 0 拼接完整 logits（只有 rank 0 做采样）
     if tp_size > 1:

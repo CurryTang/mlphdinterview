@@ -60,7 +60,7 @@ pop():
 | 顺序 | 原题 | 要掌握的内容 |
 |---:|---|---|
 | 1 | [703. Kth Largest Element In a Stream](https://neetcode.io/problems/kth-largest-element-in-a-stream/question?list=neetcode150) | 固定大小的堆，堆顶就是答案 |
-| 2 | [1046. Last Stone Weight](https://neetcode.io/problems/last-stone-weight/question?list=neetcode150) | 取负数模拟最大堆 |
+| 2 | [1046. Last Stone We\right](https://neetcode.io/problems/last-stone-weight/question?list=neetcode150) | 取负数模拟最大堆 |
 | 3 | [973. K Closest Points to Origin](https://neetcode.io/problems/k-closest-points-to-origin/question?list=neetcode150) | 固定大小的堆，比较键换成距离 |
 | 4 | [215. Kth Largest Element In an Array](https://neetcode.io/problems/kth-largest-element-in-an-array/question?list=neetcode150) | 同一个模板，外加快速选择作为进阶写法 |
 | 5 | [621. Task Scheduler](https://neetcode.io/problems/task-scheduler/question?list=neetcode150) | 频率统计 + 公式，比堆模拟更好记 |
@@ -316,19 +316,19 @@ class Solution:
         target = len(nums) - k
 
         def partition(left: int, right: int) -> int:
-            pivot_index = random.randint(left, right)
-            nums[pivot_index], nums[right] = nums[right], nums[pivot_index]
+            pivot_index = random.randint(left, r\right)
+            nums[pivot_index], nums[r\right] = nums[r\right], nums[pivot_index]
             store = left
-            for i in range(left, right):
-                if nums[i] < nums[right]:
+            for i in range(left, r\right):
+                if nums[i] < nums[r\right]:
                     nums[i], nums[store] = nums[store], nums[i]
                     store += 1
-            nums[store], nums[right] = nums[right], nums[store]
+            nums[store], nums[r\right] = nums[r\right], nums[store]
             return store
 
         left, right = 0, len(nums) - 1
         while True:
-            pivot_index = partition(left, right)
+            pivot_index = partition(left, r\right)
             if pivot_index == target:
                 return nums[pivot_index]
             if pivot_index < target:

@@ -228,7 +228,7 @@ $$y_i = \mathbf{w}^T \mathbf{x}_i + \epsilon_i, \quad \epsilon_i \sim \mathcal{N
 
 其样本条件概率密度为：
 
-$$p(y_i \mid \mathbf{x}_i; \mathbf{w}, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left( -\frac{(y_i - \mathbf{w}^T \mathbf{x}_i)^2}{2\sigma^2} \right)$$
+$$p(y_i \mid \mathbf{x}_i; \mathbf{w}, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left( -\frac{(y_i - \mathbf{w}^T \mathbf{x}_i)^2}{2\sigma^2} \r\right)$$
 
 构建全样本的对数似然函数 $\ell(\mathbf{w})$：
 
@@ -252,11 +252,11 @@ $$P(y_i \mid \mathbf{x}_i) = \hat{p}_i^{y_i} (1 - \hat{p}_i)^{1 - y_i}$$
 
 全样本对数似然函数为：
 
-$$\ell(\mathbf{w}) = \sum_{i=1}^N \left[ y_i \ln \hat{p}_i + (1 - y_i) \ln(1 - \hat{p}_i) \right]$$
+$$\ell(\mathbf{w}) = \sum_{i=1}^N \left[ y_i \ln \hat{p}_i + (1 - y_i) \ln(1 - \hat{p}_i) \r\right]$$
 
 取负均值得到二元交叉熵损失（Binary Cross-Entropy / Log Loss）：
 
-$$\mathcal{L}_{\text{Logistic}}(\mathbf{w}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{p}_i) + (1 - y_i) \log(1 - \hat{p}_i) \right]$$
+$$\mathcal{L}_{\text{Logistic}}(\mathbf{w}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{p}_i) + (1 - y_i) \log(1 - \hat{p}_i) \r\right]$$
 
 ---
 
@@ -321,7 +321,7 @@ $$\frac{d}{dc} \mathbb{E}[(Y - c)^2] = \mathbb{E}[-2(Y - c)] = -2\mathbb{E}[Y] +
    求期望风险极小值：$\min_c \mathbb{E}[|Y - c|]$
    对 $c$ 求导（利用 Leibniz 积分法则）：
 
-$$\frac{d}{dc} \left( \int_{-\infty}^c (c - y) p(y)dy + \int_c^{\infty} (y - c) p(y)dy \right) = P(Y \le c) - P(Y > c) = 0$$
+$$\frac{d}{dc} \left( \int_{-\infty}^c (c - y) p(y)dy + \int_c^{\infty} (y - c) p(y)dy \r\right) = P(Y \le c) - P(Y > c) = 0$$
 
 $$P(Y \le c) = P(Y > c) = 0.5 \implies c^* = \text{Median}(Y)$$
 
@@ -331,7 +331,7 @@ $$P(Y \le c) = P(Y > c) = 0.5 \implies c^* = \text{Median}(Y)$$
 
 为了兼顾 MSE 的平滑可导性与 MAE 的抗离群鲁棒性，工业界常使用 **Huber Loss**：
 
-$$\mathcal{L}_\delta(e) = \begin{cases} \frac{1}{2} e^2 & \text{for } |e| \le \delta \\ \delta \left( |e| - \frac{1}{2}\delta \right) & \text{for } |e| > \delta \end{cases}$$
+$$\mathcal{L}_\delta(e) = \begin{cases} \frac{1}{2} e^2 & \text{for } |e| \le \delta \\ \delta \left( |e| - \frac{1}{2}\delta \r\right) & \text{for } |e| > \delta \end{cases}$$
 
 - **小误差区间（$|e| \le \delta$）**：表现为 MSE，梯度为 $e$，连续平滑，便于微调收敛；
 - **大误差区间（$|e| > \delta$）**：平滑过渡为 MAE，梯度被截断为固定的 $\pm \delta$，防止异常值梯度爆炸。

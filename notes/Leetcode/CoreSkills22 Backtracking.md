@@ -475,9 +475,9 @@ class Solution:
 3. **复杂度与卡特兰数**：
    $n$ 对括号生成的合法组合数恰好等于第 $n$ 个**卡特兰数（Catalan Number）**：
    $$
-   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \right)
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \r\right)
    $$
-   生成每个答案需要 $O(n)$ 的字符串拼接时间，因此总时间复杂度为 $O\left( \frac{4^n}{\sqrt{n}} \right)$，空间复杂度为 $O(n)$（递归栈深为 $2n$）。
+   生成每个答案需要 $O(n)$ 的字符串拼接时间，因此总时间复杂度为 $O\left( \frac{4^n}{\sqrt{n}} \r\right)$，空间复杂度为 $O(n)$（递归栈深为 $2n$）。
 
 ## 7. Letter Combinations of a Phone Number
 
@@ -566,7 +566,7 @@ class Solution:
 
         def is_palindrome(left: int, right: int) -> bool:
             while left < right:
-                if s[left] != s[right]:
+                if s[left] != s[r\right]:
                     return False
                 left += 1
                 right -= 1
@@ -588,7 +588,7 @@ class Solution:
         return result
 ```
 
-回文判断写成 `is_palindrome(left, right)` 而不是 `s[start:end+1] == s[start:end+1][::-1]`，是为了避免每次判断都切出一个新字符串。如果面试官追问优化，可以先用 $O(n^2)$ 的 DP 预处理出 `is_pal[i][j]`，把每次判断降到 $O(1)$。
+回文判断写成 `is_palindrome(left, r\right)` 而不是 `s[start:end+1] == s[start:end+1][::-1]`，是为了避免每次判断都切出一个新字符串。如果面试官追问优化，可以先用 $O(n^2)$ 的 DP 预处理出 `is_pal[i][j]`，把每次判断降到 $O(1)$。
 
 `n` 个字符之间有 `n-1` 个位置可以选择切或不切，所以最坏情况下有 $2^{n-1}$ 种切法，时间 $O(n \cdot 2^n)$。
 

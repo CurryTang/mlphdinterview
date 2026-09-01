@@ -140,7 +140,7 @@ $$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}[X_n] \mathbb{P}(T \ge n) = \mat
 
 If $\mathbb{E}[X_1^2] < \infty$ and $\mathbb{E}[T] < \infty$, let $\sigma^2 = \text{Var}(X_1)$:
 
-$$\mathbb{E}\left[ (S_T - T\mu)^2 \right] = \sigma^2 \mathbb{E}[T]$$
+$$\mathbb{E}\left[ (S_T - T\mu)^2 \r\right] = \sigma^2 \mathbb{E}[T]$$
 
 For zero-drift walks ($\mu = 0$): $\mathbb{E}[S_T^2] = \sigma^2 \mathbb{E}[T]$.
 
@@ -168,7 +168,7 @@ Notice that the event $\{T \ge n\} = \{T \le n - 1\}^c \in \mathcal{F}_{n-1}$ is
 
 Applying the Fubini-Tonelli Theorem to interchange expectation and summation (justified by $\mathbb{E}[T] < \infty$ and $\mathbb{E}[|X_1|] < \infty$):
 
-$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}\left[ X_n \mathbf{1}_{\{T \ge n\}} \right] = \sum_{n=1}^\infty \mathbb{E}[X_n] \cdot \mathbb{E}\left[ \mathbf{1}_{\{T \ge n\}} \right] = \mathbb{E}[X_1] \sum_{n=1}^\infty \mathbb{P}(T \ge n)$$
+$$\mathbb{E}[S_T] = \sum_{n=1}^\infty \mathbb{E}\left[ X_n \mathbf{1}_{\{T \ge n\}} \r\right] = \sum_{n=1}^\infty \mathbb{E}[X_n] \cdot \mathbb{E}\left[ \mathbf{1}_{\{T \ge n\}} \r\right] = \mathbb{E}[X_1] \sum_{n=1}^\infty \mathbb{P}(T \ge n)$$
 
 Using the tail sum formula for discrete non-negative random variables $\mathbb{E}[T] = \sum_{n=1}^\infty \mathbb{P}(T \ge n)$:
 
@@ -182,7 +182,7 @@ Q.E.D.
 
 If $\mathbb{E}[X_1^2] < \infty$ and $\mathbb{E}[T] < \infty$, denote the variance by $\sigma^2 = \text{Var}(X_1) = \mathbb{E}[X_1^2] - \mu^2$. Then:
 
-$$\mathbb{E}\left[ (S_T - T\mu)^2 \right] = \sigma^2 \mathbb{E}[T]$$
+$$\mathbb{E}\left[ (S_T - T\mu)^2 \r\right] = \sigma^2 \mathbb{E}[T]$$
 
 In particular, for zero-drift symmetric walks ($\mu = 0$):
 
@@ -200,7 +200,7 @@ $$M_n(\theta) = \frac{e^{\theta S_n}}{(M(\theta))^n}$$
 
 is a martingale. Under uniform integrability conditions, applying OST yields:
 
-$$\mathbb{E}\left[ \frac{e^{\theta S_T}}{(M(\theta))^T} \right] = 1$$
+$$\mathbb{E}\left[ \frac{e^{\theta S_T}}{(M(\theta))^T} \r\right] = 1$$
 
 - **Differentiating with respect to $\theta$ and setting $\theta \to 0$**: Recovers Wald's first identity $\mathbb{E}[S_T] = \mu \mathbb{E}[T]$;
 - **Differentiating twice with respect to $\theta$ and setting $\theta \to 0$**: Recovers Wald's second identity $\mathbb{E}[(S_T - T\mu)^2] = \sigma^2 \mathbb{E}[T]$;
@@ -231,15 +231,15 @@ In quantitative finance interviews and stochastic decision making, martingales a
 | **Symmetric Walk Expected Time** | $M_n = S_n^2 - n$ | $\mathbb{E}[S_T^2] - \mathbb{E}[T] = 0 \implies \mathbb{E}[T] = a \cdot b$ | $\mu = 0, \sigma^2 = 1$; 2nd Wald identity |
 | **Asymmetric Walk Ruin Probability** | $M_n = (q/p)^{S_n}$ | $\mathbb{P}_a (q/p)^a + (1 - \mathbb{P}_a)(q/p)^{-b} = 1$ | Derived from $p(q/p) + q(p/q) = 1$ |
 | **Asymmetric Walk Expected Time** | $M_n = S_n - n(p - q)$ | $\mathbb{E}[T] = \frac{\mathbb{E}[S_T] - S_0}{p - q} = \frac{a \mathbb{P}_a - b(1 - \mathbb{P}_a)}{p - q}$ | Non-zero denominator $p - q \ne 0$; 1st Wald identity |
-| **One-Sided Free Hitting Time** | Wald Exponential Martingale $e^{\theta S_n} / M(\theta)^n$ | $\mathbb{E}[s^{T_a}] = \left( \frac{1 - \sqrt{1 - 4pqs^2}}{2ps} \right)^a$ | $\mathbb{P}(T < \infty) = 1$ but $\mathbb{E}[T] = \infty$ (zero-drift trap) |
+| **One-Sided Free Hitting Time** | Wald Exponential Martingale $e^{\theta S_n} / M(\theta)^n$ | $\mathbb{E}[s^{T_a}] = \left( \frac{1 - \sqrt{1 - 4pqs^2}}{2ps} \r\right)^a$ | $\mathbb{P}(T < \infty) = 1$ but $\mathbb{E}[T] = \infty$ (zero-drift trap) |
 | **Pattern Waiting Times** | Casino bankroll net profit martingale | $\mathbb{E}[T_A] = (A * A)_2 = \sum 2^k \mathbf{1}_{\{\text{Prefix}=\text{Suffix}\}}$ | Penney's game non-transitivity |
 | **Sampling Without Replacement** | Proportion martingale $M_n = \frac{I_n}{N - n}$ & Doob decomposition | $\Delta_n = \mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n]$; stop when $\Delta_n \le 0$ | 1-SLA rule; Chow-Robbins Monotone Stopping Theorem |
 | **Optimal Stopping with Search Cost** | Excess return Wald martingale $\sum (Z_k - \mu_n)$ | $\mu_{n^*} = \mathbb{E}[\max(X - n^*, 0)] = c \implies \mathbb{E}[\text{Payoff}] = n^* + c$ | Marginal benefit equals marginal search cost |
 | **Absorbing Hazard Roll-or-Stop** | Absorbing submartingale $Y_n = S_n \mathbf{1}_{\{T > n\}}$ | In safe zone $\mathbb{E}[Y_{n+1} - Y_n \mid \mathcal{F}_n] = \mu_D > 0$ | Proves $\sup_\tau \mathbb{E}[Y_\tau] > S_0 \implies$ continue rolling |
-| **Continuous Drifted Diffusion Exit** | Exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \right)$ | $\mathbb{P}(X_\tau = b) = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}$ ($\gamma = \frac{2\mu}{\sigma^2}$) | Scale function for Brownian motion with drift |
+| **Continuous Drifted Diffusion Exit** | Exponential martingale $M_t = \exp\left( -\frac{2\mu}{\sigma^2} X_t \r\right)$ | $\mathbb{P}(X_\tau = b) = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}$ ($\gamma = \frac{2\mu}{\sigma^2}$) | Scale function for Brownian motion with drift |
 | **Continuous Drifted Expected Time** | Linear martingale $N_t = X_t - \mu t$ | $\mathbb{E}[\tau] = \frac{\mathbb{E}[X_\tau]}{\mu} = \frac{b p_b - a(1 - p_b)}{\mu}$ | Drift dominates mean exit time |
 | **Branching Process Extinction** | Normalized size $Z_n / m^n$ & generating function $s^{Z_n}$ | Extinction probability $\pi$ is minimal non-negative root of $G(s) = s$ | Almost sure extinction if $m \le 1$ |
-| **Pólya's Urn Proportion Limit** | Proportion martingale $M_n = \frac{R_n}{R + B + n c}$ | $M_n \to M_\infty$ almost surely, with $M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)$ | Martingale Convergence Theorem |
+| **Pólya's Urn Proportion Limit** | Proportion martingale $M_n = \frac{R_n}{R + B + n c}$ | $M_n \to M_\infty$ almost surely, with $M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \r\right)$ | Martingale Convergence Theorem |
 | **Card Drawing Without Replacement** | Indicator symmetry / exchangeability | Expected cards to 1st red is $\frac{B+R+1}{R+1}$; remaining black is $\frac{B}{R+1}$ | $R$ red cards partition $B$ black cards into $R+1$ equal bins |
 
 ---
@@ -365,7 +365,7 @@ $$
 Dividing both sides by $(B + 1) - (n + 1) = B - n$:
 
 $$
-\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \right] = \frac{I_n}{B + 1 - n} = M_n
+\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \r\right] = \frac{I_n}{B + 1 - n} = M_n
 $$
 
 When $I_n = 0$, $I_{n+1} \equiv 0$. Thus $M_n$ is a strict discrete-time martingale.
@@ -391,7 +391,7 @@ Analyzing $\Delta_n = \frac{B - 3n}{B + 1 - n}$:
 Because $B - 3n$ is strictly decreasing, the stopping region is absorbing. By the **Chow-Robbins Monotone Stopping Theorem**, the 1-SLA rule achieves the exact global optimum:
 
 $$
-\boxed{n^* = \left\lfloor \frac{B}{3}  ight floor}
+\boxed{n^* = \left\lfloor \frac{B}{3}  \right\rfloor}
 $$
 
 > **Rule of Thumb**: Under full forfeiture penalty, always stop after drawing **one-third** of the total blue cards!
@@ -423,7 +423,7 @@ This problem belongs to **Exponential MGF Martingales & Linear Drift Cancellatio
 Construct $M_t = \exp(-\gamma X_t)$ with $\gamma = \frac{2\mu}{\sigma^2}$. By OST $\mathbb{E}[M_\tau] = 1$:
 
 $$
-p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left( \gamma = \frac{2\mu}{\sigma^2} \right)
+p_b e^{-\gamma b} + (1 - p_b) e^{\gamma a} = 1 \implies \boxed{p_b = \frac{e^{\gamma a} - 1}{e^{\gamma a} - e^{-\gamma b}}} \quad \left( \gamma = \frac{2\mu}{\sigma^2} \r\right)
 $$
 
 #### 3. Linear Martingale for Expected Exit Time
@@ -453,7 +453,7 @@ $X \sim \text{Bin}(k, 1/2), R \sim \text{Bin}(N-k, 1/2)$ are independent. Total 
 Using $\min(a, b) = \frac{a+b-|a-b|}{2}$ and convolution $Z = X + (N-k-R) \sim \text{Bin}(N, 1/2)$:
 
 $$
-Y = \frac{N}{2} - \frac{|Z - (N-k)| + |Z - k|}{2} \le \frac{N}{2} - \left| Z - \frac{N}{2}  ight|
+Y = \frac{N}{2} - \frac{|Z - (N-k)| + |Z - k|}{2} \le \frac{N}{2} - \left| Z - \frac{N}{2}  \right|
 $$
 
 Optimal allocation is $k^* = N/2 = m$. Mapping $2Z - N \stackrel{d}{=} S_N$ (an $N$-step symmetric random walk):
@@ -517,7 +517,7 @@ Thus $Y_n$ is a strict submartingale in the safe zone.
 Construct stopping rule $\tau$: roll once ($n=1$); if $D_1 \ne d$, roll a second time ($n=2$) and stop.
 
 $$
-\mathbb{E}[Y_\tau] = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D
+\mathbb{E}[Y_\tau] = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \r\right) + \frac{K - 1}{K} \mu_D
 $$
 
 **Special Case ($S_0 = 35, H = 36 = 6^2, K = 6, \mu_D = 3.5$)**:
@@ -545,7 +545,7 @@ $M_n \in [0, 1]$ is a bounded martingale.
 By Doob's Martingale Convergence Theorem, $M_n \to M_\infty$ a.s. with:
 
 $$
-\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)}
+\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \r\right)}
 $$
 
 For $R=1, B=1, c=1$, $M_\infty \sim \text{Uniform}(0, 1)$.

@@ -32,7 +32,7 @@ record：什么时候更新答案
 窗口使用闭区间：
 
 $$
-[left,right], \qquad \text{length}=right-left+1.
+[left,r\right], \qquad \text{length}=right-left+1.
 $$
 
 ### 为什么窗口长度要 `+ 1`
@@ -53,8 +53,8 @@ left = 2, right = 4
 
 | 窗口约定 | 是否包含 `right` | 长度 |
 |---|---:|---:|
-| 闭区间 `[left, right]` | 是 | `right - left + 1` |
-| 左闭右开 `[left, right)` | 否 | `right - left` |
+| 闭区间 `[left, r\right]` | 是 | `right - left + 1` |
+| 左闭右开 `[left, r\right)` | 否 | `right - left` |
 
 本笔记的代码中，`right` 是 `enumerate(s)` 当前访问并已加入窗口的字符下标，因此 `answer = max(answer, right - left + 1)` 记录的就是当前合法闭区间中的字符数。
 
@@ -104,12 +104,12 @@ answer = initialize_answer()
 for right, item in enumerate(items):
     add_right(state, item)
 
-    while should_shrink(state, left, right):
-        record_before_shrink(answer, state, left, right)  # 可选
+    while should_shrink(state, left, r\right):
+        record_before_shrink(answer, state, left, r\right)  # 可选
         remove_left(state, items[left])
         left += 1
 
-    record_after_shrink(answer, state, left, right)       # 可选
+    record_after_shrink(answer, state, left, r\right)       # 可选
 
 return answer
 ```
@@ -130,7 +130,7 @@ for right, item in enumerate(items):
         left += 1
 
     if right - left + 1 == k:
-        record_window(state, left, right)
+        record_window(state, left, r\right)
 ```
 
 因此 `Permutation in String` 和 `Sliding Window Maximum` 不需要硬套 `while`。写成 `while` 结果也对，但 `if` 更直接地表达“窗口每次向右滑一格”。
@@ -167,8 +167,8 @@ flowchart LR
 | 槽位 | 本题内容 |
 |---|---|
 | `state` | `count[char]`，保存当前窗口的字符频次 |
-| `add_right` | `count[s[right]] += 1` |
-| `should_shrink` | `count[s[right]] > 1` |
+| `add_right` | `count[s[r\right]] += 1` |
+| `should_shrink` | `count[s[r\right]] > 1` |
 | `remove_left` | `count[s[left]] -= 1` |
 | 窗口调整后记录 | 更新最长长度 |
 
@@ -301,7 +301,7 @@ max_freq = max(count.values())
 
 ### 为什么本题用 `if`，不是 `while`
 
-设 `k = len(s1)`。每轮开始前，窗口长度一定不超过 `k`；加入 `s2[right]` 后，长度最多是 `k + 1`。如果超长，移出一个 `s2[left]` 就会立刻回到 `k`，不可能需要连续移出多个元素。
+设 `k = len(s1)`。每轮开始前，窗口长度一定不超过 `k`；加入 `s2[r\right]` 后，长度最多是 `k + 1`。如果超长，移出一个 `s2[left]` 就会立刻回到 `k`，不可能需要连续移出多个元素。
 
 ```text
 上一轮：长度 k
@@ -481,7 +481,7 @@ class Solution:
 
 ```mermaid
 flowchart LR
-  A["add_right"] --> B{"队尾值 <= nums[right]"}
+  A["add_right"] --> B{"队尾值 <= nums[r\right]"}
   B -->|是| C["pop 队尾"]
   C --> B
   B -->|否| D["append right"]
@@ -517,7 +517,7 @@ class Solution:
             while candidates and nums[candidates[-1]] <= value:
                 candidates.pop()
 
-            candidates.append(right)
+            candidates.append(r\right)
 
             if right - left + 1 > k:
                 if candidates[0] == left:
@@ -647,7 +647,7 @@ for right, item in enumerate(items):
 
 | 槽位 | 要写清楚的内容 |
 |---|---|
-| window | `[left, right]` 的准确含义 |
+| window | `[left, r\right]` 的准确含义 |
 | state | 频次、和、满足种类数，或单调队列 |
 | add | `right` 进入窗口后怎样更新状态 |
 | adjust | 变长窗口的 `while`，还是定长窗口的 `if length > k` |

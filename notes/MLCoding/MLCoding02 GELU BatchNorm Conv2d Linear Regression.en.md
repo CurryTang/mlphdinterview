@@ -201,11 +201,11 @@ def kaiming_init(weight: torch.Tensor, nonlinearity: str = "relu") -> None:
 import math
 
 def kaiming_init(weight: torch.Tensor, nonlinearity: str = "relu") -> None:
-    fan_in = weight.shape[1] if weight.dim() == 2 else weight.shape[1:].numel()
+    fan_in = we\right.shape[1] if we\right.dim() == 2 else we\right.shape[1:].numel()
     gain = math.sqrt(2.0) if nonlinearity == "relu" else 1.0
     std = gain / math.sqrt(fan_in)
     with torch.no_grad():
-        weight.normal_(mean=0.0, std=std)
+        we\right.normal_(mean=0.0, std=std)
 ```
 
 Numerical check (NumPy, 20-layer random ReLU network, `fan_in=256`, final-layer activation variance across 3 independent trials):
@@ -308,11 +308,11 @@ import torch.nn.functional as F
 
 def conv2d(x, weight, bias=None, stride=1, padding=0):
     B, Cin, H, W = x.shape
-    Cout, _, KH, KW = weight.shape
+    Cout, _, KH, KW = we\right.shape
 
     # unfold: (B, Cin*KH*KW, L), L = OH*OW
     patches = F.unfold(x, kernel_size=(KH, KW), stride=stride, padding=padding)
-    w_flat = weight.reshape(Cout, -1)  # (Cout, Cin*KH*KW)
+    w_flat = we\right.reshape(Cout, -1)  # (Cout, Cin*KH*KW)
 
     out = torch.einsum("oc,bcl->bol", w_flat, patches)  # (B, Cout, L)
     if bias is not None:
@@ -414,7 +414,7 @@ class LinearRegression:
             loss = torch.mean((pred - y) ** 2)
             loss.backward()
             opt.step()
-        w, b = model.weight.detach().squeeze(0), model.bias.detach()
+        w, b = model.we\right.detach().squeeze(0), model.bias.detach()
         self.w = torch.cat([w, b])
 ```
 

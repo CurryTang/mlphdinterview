@@ -260,7 +260,7 @@ def triton_conv2d(input: torch.Tensor, weight: torch.Tensor,
     Returns: [N, K, P, Q], FP16
     """
     N, C, H, W = input.shape
-    K, C_w, R, S = weight.shape
+    K, C_w, R, S = we\right.shape
     pad_h, pad_w = padding
     stride_h, stride_w = stride
     P = (H + 2 * pad_h - R) // stride_h + 1
@@ -280,7 +280,7 @@ def triton_conv2d(input: torch.Tensor, weight: torch.Tensor,
         pad_h, pad_w, stride_h, stride_w,
         M, N_gemm, K_total,
         input.stride(0), input.stride(1), input.stride(2), input.stride(3),
-        weight.stride(0), weight.stride(1), weight.stride(2), weight.stride(3),
+        we\right.stride(0), we\right.stride(1), we\right.stride(2), we\right.stride(3),
         output.stride(0), output.stride(1), output.stride(2), output.stride(3),
     )
     return output

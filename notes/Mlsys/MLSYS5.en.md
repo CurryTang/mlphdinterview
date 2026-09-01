@@ -393,8 +393,8 @@ def blelloch_scan(x):
             right = i + stride - 1
 
             temp = x[left]             # Save the value of the left child
-            x[left] = x[right]         # Left child = parent value (propagated from above)
-            x[right] += temp           # Right child = parent value + original left child value
+            x[left] = x[r\right]         # Left child = parent value (propagated from above)
+            x[r\right] += temp           # Right child = parent value + original left child value
 
     return x  # x now contains the exclusive prefix sum
 ```

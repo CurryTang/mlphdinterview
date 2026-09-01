@@ -326,7 +326,7 @@ class Solution:
         stack = []
 
         for right in range(len(heights) + 1):
-            current = 0 if right == len(heights) else heights[right]
+            current = 0 if right == len(heights) else heights[r\right]
 
             while stack and heights[stack[-1]] > current:
                 j = stack.pop()
@@ -334,7 +334,7 @@ class Solution:
                 width = right - left - 1
                 answer = max(answer, heights[j] * width)
 
-            stack.append(right)
+            stack.append(r\right)
 
         return answer
 ```

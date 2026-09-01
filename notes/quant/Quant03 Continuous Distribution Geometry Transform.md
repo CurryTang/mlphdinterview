@@ -253,7 +253,7 @@ $$
 $$
 P(AB\le u)
 =
-\int_0^1 \min\left( 1,\frac{u}{y} \right)\,dy
+\int_0^1 \min\left( 1,\frac{u}{y} \r\right)\,dy
 $$
 
 这就是二重积分的本质。它不是凭空出现的公式，而是在单位正方形里把区域切成很多条横线，再把每条横线的长度加起来。
@@ -570,7 +570,7 @@ $$
 所以：
 
 $$
-F_T(t)=\int_0^1 t^{1/c}\left(1-\ln(t^{1/c}) \right)\,dc
+F_T(t)=\int_0^1 t^{1/c}\left(1-\ln(t^{1/c}) \r\right)\,dc
 $$
 
 令：
@@ -594,21 +594,21 @@ $$
 于是：
 
 $$
-F_T(t)=\int_0^1 e^{-a/c}\left( 1+\frac{a}{c} \right)\,dc
+F_T(t)=\int_0^1 e^{-a/c}\left( 1+\frac{a}{c} \r\right)\,dc
 $$
 
 这里用到的导数是：
 
 $$
-\frac{d}{dc}\left( c e^{-a/c} \right)
+\frac{d}{dc}\left( c e^{-a/c} \r\right)
 =
-e^{-a/c}\left( 1+\frac{a}{c} \right)
+e^{-a/c}\left( 1+\frac{a}{c} \r\right)
 $$
 
 所以：
 
 $$
-F_T(t)=\left[ c e^{-a/c} \right]_{0}^{1}
+F_T(t)=\left[ c e^{-a/c} \r\right]_{0}^{1}
 $$
 
 上限是：
@@ -747,7 +747,7 @@ $$
 因此：
 
 $$
-P(CG\ge a)=\int_a^\infty \left( 1-\frac{a}{g} \right)g e^{-g}\,dg
+P(CG\ge a)=\int_a^\infty \left( 1-\frac{a}{g} \r\right)g e^{-g}\,dg
 $$
 
 化简：
@@ -817,7 +817,7 @@ $$
 右边是三个独立 $\mathrm{Exp}(1)$ 的和，所以是 $\mathrm{Gamma}(3,1)$。结果：
 
 $$
-F_T(t)=t\left(1-\ln t+\frac{(\ln t)^2}{2} \right),\qquad 0<t<1
+F_T(t)=t\left(1-\ln t+\frac{(\ln t)^2}{2} \r\right),\qquad 0<t<1
 $$
 
 ### 7.3 $T=|X|^{|Y|}$
@@ -937,7 +937,7 @@ $$
 $$
 F_T(t)
 =
-1-\left[ 1-t(1-\ln t) \right](1-t),\qquad 0<t<1
+1-\left[ 1-t(1-\ln t) \r\right](1-t),\qquad 0<t<1
 $$
 
 ### 7.7 $T=(|XYZ|)^{|W|}$
@@ -963,5 +963,5 @@ $$
 结果是：
 
 $$
-F_T(t)=t\left( 1-\frac{1}{2}\ln t \right),\qquad 0<t<1
+F_T(t)=t\left( 1-\frac{1}{2}\ln t \r\right),\qquad 0<t<1
 $$

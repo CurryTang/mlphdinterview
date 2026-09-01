@@ -86,7 +86,7 @@
 | **架构路由** | **Shared-Bottom** | 共享单一底层 MLP，顶部分叉 Task Towers。 | **极差（0 分）** | 任务间梯度强行对冲，跷跷板效应最剧烈。 |
 | **架构路由** | **MMoE** | 共享 Experts 池，每个任务拥有独立的 Softmax 门控：$g_t(x) = \text{Softmax}(W_t x)$。 | **中等** | 实现了动态软路由，但所有 Expert 仍是全局共享的，弱相关任务仍会争抢容量。 |
 | **架构路由** | **PLE (Progressive Extraction)** | 显式解耦为 **Task-Specific 独占专家** 与 **Shared 共享专家**，分层渐进抽取。 | **卓越（SOTA）** | **任务私有特征与共享特征严格物理隔离**，彻底阻断不同任务间的负迁移。 |
-| **损失平衡** | **Uncertainty Weighting** | 建模同方差不确定性 $\sigma_k^2$：<br>$$\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k \right)$$ | **优良** | 自动根据任务方差与噪声动态调整损失权重，避免人工粗暴调参。 |
+| **损失平衡** | **Uncertainty Weighting** | 建模同方差不确定性 $\sigma_k^2$：<br>$$\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k \r\right)$$ | **优良** | 自动根据任务方差与噪声动态调整损失权重，避免人工粗暴调参。 |
 | **梯度手术** | **PCGrad (Gradient Projection)** | 当梯度冲突 $\mathbf{g}_i \cdot \mathbf{g}_j < 0$ 时，将 $\mathbf{g}_i$ 正交投影到 $\mathbf{g}_j$ 的法平面：<br>$$\mathbf{g}_i \leftarrow \mathbf{g}_i - \frac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2}\mathbf{g}_j$$ | **极强** | 从梯度动力学层面消除相互抵消的破坏性分量。 |
 | **决策融合** | **Constrained Pareto Fusion** | 拉格朗日乘子约束优化与实时 PID 控权：<br>$$\max \text{GMV} \text{ s.t. } \text{CTR} \ge \text{CTR}_0$$ | **线上闭环** | 替代静态超参融合，自适应追踪业务护栏。 |
 
@@ -217,7 +217,7 @@ $$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 - 采用局部临时占位符 `<C_01>` 到 `<C_50>`，每步解码仅生成 1 个 Token；
 - **硬约束 Masked Softmax**：在每步解码时，将已选商品及非法 ID 的 Logits 强行设为 $-\infty$，彻底杜绝重复生成与幻觉；
 - **Plackett-Luce 与全屏奖励优化**：
-  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \right)$$
+  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \r\right)$$
   $$R(\pi) = \sum_{k=1}^K \gamma^{k-1} (\text{Click}_k \cdot \text{Margin}_k + \text{GMV}_k) - \lambda \cdot \text{Redundancy}(\pi)$$
 
 ### 3. P99 ≤ 20ms 时延治理与评估全矩阵
@@ -245,7 +245,7 @@ $$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
 ### 1. ROC-AUC 与 GAUC（Grouped AUC）数学定义
 - **全局 ROC-AUC**：
-  $$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \right)$$
+  $$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \r\right)$$
   （易受跨用户活跃度偏倚混淆，产生辛普森悖论）；
 - **Grouped AUC (GAUC)**：
   $$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad \text{其中 } w_g = n_g \text{ (曝光数)}$$
