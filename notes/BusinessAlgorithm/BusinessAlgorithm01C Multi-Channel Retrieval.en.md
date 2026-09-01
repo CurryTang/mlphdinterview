@@ -129,7 +129,7 @@ Recommendation usually filters out content the user has recently seen or explici
 Large exposure sets often use a Bloom filter for approximate membership tests. It answers "definitely unseen" or "possibly seen." The second answer may be a false positive and suppress an unseen item. For `n` inserted items, `m` bits, and `k` hash functions, the false-positive rate is approximately:
 
 ```math
-\left(1-e^{-kn/m}\right)^k.
+\left( 1-e^{-kn/m} \right)^k.
 ```
 
 A standard Bloom filter cannot delete individual entries. A rolling exposure window can keep one filter per day or week and discard whole expired filters. Counting Bloom filters or exact storage are alternatives when individual deletion is required. Choose `m` and `k` from an acceptable false-drop rate, not memory alone.
@@ -196,8 +196,8 @@ In the retrieval stage, first check whether the target candidates have entered t
 
 ```math
 \operatorname{Recall@K}
-=\frac{\lvert \text{Relevant items in top-K}\rvert}
-{\lvert \text{Relevant items in test window}\rvert}.
+=\frac{\lvert \text{Relevant items in top-K} vert}
+{\lvert \text{Relevant items in test window} vert}.
 ```
 
 The denominator in recommendation is usually the clicks, effective views, or purchases that occurred in the test window, not all of the user's potential interests. Search can use human relevance annotations, but they must be bucketed by head, long-tail, entity, and complex queries. A single total Recall is easily masked by high-frequency samples.

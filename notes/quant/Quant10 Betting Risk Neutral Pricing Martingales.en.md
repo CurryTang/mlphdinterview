@@ -98,7 +98,7 @@ $$
 For Best-of-7 ($N=4$) at score $(1,0)$: $r=3, s=4, q=\tfrac12$:
 
 $$
-P(1,0) = \sum_{k=3}^6 \binom{6}{k} \left(\frac12\right)^6 = \frac{20 + 15 + 6 + 1}{64} = \frac{42}{64} = \frac{21}{32} = 0.65625
+P(1,0) = \sum_{k=3}^6 \binom{6}{k} \left( \frac12 \right)^6 = \frac{20 + 15 + 6 + 1}{64} = \frac{42}{64} = \frac{21}{32} = 0.65625
 $$
 
 ---
@@ -232,7 +232,7 @@ Check: $8875+1875=10750=W(3,1)$ (fair wealth after A extends the lead to 3–1) 
 By the Strong Law of Large Numbers, the asymptotic growth rate is:
 
 $$
-g(f) = \lim_{n\to\infty} \frac{1}{n} \ln\left(\frac{W_n}{W_0}\right) = p \ln(1+f) + (1-p) \ln(1-f)
+g(f) = \lim_{n\to\infty} \frac{1}{n} \ln\left( \frac{W_n}{W_0} \right) = p \ln(1+f) + (1-p) \ln(1-f)
 $$
 
 Differentiating and setting to zero:
@@ -252,11 +252,11 @@ Since $g''(f) = -\frac{p}{(1+f)^2} - \frac{1-p}{(1-f)^2} < 0$, $f^* = 2p - 1$ is
 **Derivation**:
 1. Raw expectation:
 $$
-\mathbb E[\text{Payoff}] = \sum_{n=1}^\infty \left(\frac12\right)^n 2^n = \sum_{n=1}^\infty 1 = \infty
+\mathbb E[\text{Payoff}] = \sum_{n=1}^\infty \left( \frac12 \right)^n 2^n = \sum_{n=1}^\infty 1 = \infty
 $$
 2. Expected log utility:
 $$
-\mathbb E[U(\text{Payoff})] = \sum_{n=1}^\infty \left(\frac12\right)^n \ln(2^n) = \ln 2 \sum_{n=1}^\infty \frac{n}{2^n}
+\mathbb E[U(\text{Payoff})] = \sum_{n=1}^\infty \left( \frac12 \right)^n \ln(2^n) = \ln 2 \sum_{n=1}^\infty \frac{n}{2^n}
 $$
 Using the identity $\sum_{n=1}^\infty n x^n = \frac{x}{(1-x)^2}$ for $x = \tfrac12$, $\sum \frac{n}{2^n} = 2$.
 Thus $\mathbb E[U] = 2\ln 2 = \ln 4$.

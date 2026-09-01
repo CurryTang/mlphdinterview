@@ -30,7 +30,7 @@
 - 假设每次扩容都把容量翻倍（几何增长）。从空容器开始插入 $n$ 个元素，扩容会发生在容量为 $1, 2, 4, 8, \ldots$ 时，每次扩容要拷贝当时已有的全部元素。总拷贝成本是：
 
 $$
-1+2+4+\cdots+2^{\lceil \log_2 n\rceil} < 2n
+1+2+4+\cdots+2^{\lceil \log_2 n ceil} < 2n
 $$
 
 这是一个公比为 2 的等比数列求和，总和被 $O(n)$ 控制住。加上 $n$ 次本身的插入操作也是 $O(n)$，所以 $n$ 次 `push_back` 总成本是 $O(n)$，均摊到每次是 $O(1)$。
@@ -259,7 +259,7 @@ for (auto it = v.begin(); it != v.end(); ) {
 **堆的数组表示**：二叉堆是一棵完全二叉树，但不需要真的用指针存树形结构，而是直接用一段连续数组隐式表示，下标关系是：
 
 $$
-\text{parent}(i) = \left\lfloor \frac{i-1}{2} \right\rfloor,\quad
+\text{parent}(i) = \left\lfloor \frac{i-1}{2}  ight floor,\quad
 \text{left}(i) = 2i+1,\quad
 \text{right}(i) = 2i+2
 $$

@@ -253,7 +253,7 @@ Therefore:
 $$
 P(AB\le u)
 =
-\int_0^1 \min\left(1,\frac{u}{y}\right)\,dy
+\int_0^1 \min\left( 1,\frac{u}{y} \right)\,dy
 $$
 
 This is the essence of a double integral. It is not a formula that appears out of thin air, but rather the result of slicing the region in the unit square into many horizontal lines and summing their lengths.
@@ -570,7 +570,7 @@ $$
 So:
 
 $$
-F_T(t)=\int_0^1 t^{1/c}\left(1-\ln(t^{1/c})\right)\,dc
+F_T(t)=\int_0^1 t^{1/c}\left(1-\ln(t^{1/c}) \right)\,dc
 $$
 
 Let:
@@ -594,21 +594,21 @@ $$
 Thus:
 
 $$
-F_T(t)=\int_0^1 e^{-a/c}\left(1+\frac{a}{c}\right)\,dc
+F_T(t)=\int_0^1 e^{-a/c}\left( 1+\frac{a}{c} \right)\,dc
 $$
 
 The derivative used here is:
 
 $$
-\frac{d}{dc}\left(c e^{-a/c}\right)
+\frac{d}{dc}\left( c e^{-a/c} \right)
 =
-e^{-a/c}\left(1+\frac{a}{c}\right)
+e^{-a/c}\left( 1+\frac{a}{c} \right)
 $$
 
 So:
 
 $$
-F_T(t)=\left[c e^{-a/c}\right]_{0}^{1}
+F_T(t)=\left[ c e^{-a/c} \right]_{0}^{1}
 $$
 
 The upper limit is:
@@ -747,7 +747,7 @@ $$
 Therefore:
 
 $$
-P(CG\ge a)=\int_a^\infty \left(1-\frac{a}{g}\right)g e^{-g}\,dg
+P(CG\ge a)=\int_a^\infty \left( 1-\frac{a}{g} \right)g e^{-g}\,dg
 $$
 
 Simplify:
@@ -817,7 +817,7 @@ $$
 The right side is the sum of three independent $\mathrm{Exp}(1)$ variables, so it is $\mathrm{Gamma}(3,1)$. Result:
 
 $$
-F_T(t)=t\left(1-\ln t+\frac{(\ln t)^2}{2}\right),\qquad 0<t<1
+F_T(t)=t\left(1-\ln t+\frac{(\ln t)^2}{2} \right),\qquad 0<t<1
 $$
 
 ### 7.3 $T=|X|^{|Y|}$
@@ -937,7 +937,7 @@ Therefore:
 $$
 F_T(t)
 =
-1-\left[1-t(1-\ln t)\right](1-t),\qquad 0<t<1
+1-\left[ 1-t(1-\ln t) \right](1-t),\qquad 0<t<1
 $$
 
 ### 7.7 $T=(|XYZ|)^{|W|}$
@@ -963,5 +963,5 @@ $$
 The result is:
 
 $$
-F_T(t)=t\left(1-\frac{1}{2}\ln t\right),\qquad 0<t<1
+F_T(t)=t\left( 1-\frac{1}{2}\ln t \right),\qquad 0<t<1
 $$

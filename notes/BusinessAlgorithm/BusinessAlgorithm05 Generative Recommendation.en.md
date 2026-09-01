@@ -138,7 +138,7 @@ BPR optimization:
 
 ```math
 \mathcal L_{\mathrm{BPR}}
-=-\log\sigma\left(s(u,i^+)-s(u,i^-)\right).
+=-\log\sigma\left(s(u,i^+)-s(u,i^-) \right).
 ```
 
 For [DPO](https://proceedings.neurips.cc/paper_files/paper/2023/hash/a85b405ed65c6477a4fe8302b5e06ce7-Abstract-Conference.html), first define the sequence score relative to the reference:
@@ -155,7 +155,7 @@ The objective becomes:
 \mathcal L_{\mathrm{DPO}}
 =-\log\sigma\left(
 \beta[g_\theta(x,y^+)-g_\theta(x,y^-)]
-\right).
+ \right).
 ```
 
 The two are formally isomorphic: both require the score of the positive example to be higher than that of the negative example. BPR scores are typically user-item scores, while DPO scores are the log probability of the entire generated sequence relative to the reference. The reference limits policy drift but does not solve the data problem for us. Recommendation logs usually only display one list; chosen/rejected pairs must still be constructed via logs, sampling, old policies, or reward models.
@@ -167,9 +167,8 @@ The core term of policy gradient is:
 ```math
 \nabla_\theta J
 \approx
-\mathbb E\left[
-A_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)
-\right].
+\mathbb E\left[ A_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)
+ \right].
 ```
 
 When `A_t > 0`, the action becomes more likely; when `A_t < 0`, it becomes less likely. This resembles reward-weighted positive and negative sampling, but the sign comes from advantage relative to a baseline. Absolute reward alone does not determine it, and the weight changes with the policy, sampling batch, and baseline.

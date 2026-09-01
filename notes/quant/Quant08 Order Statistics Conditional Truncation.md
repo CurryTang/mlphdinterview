@@ -193,7 +193,7 @@ $$
 $$
 \mathbb E[X_{(1)}X_{(n)}]
 =\mathbb E\big[X_{(n)}\cdot\mathbb E[X_{(1)}\mid X_{(n)}]\big]
-=\mathbb E\left[X_{(n)}\cdot\frac{X_{(n)}}{n}\right]
+=\mathbb E\left[ X_{(n)}\cdot\frac{X_{(n)}}{n} \right]
 =\frac{\mathbb E[X_{(n)}^2]}{n}
 $$
 
@@ -413,7 +413,7 @@ $$
 互斥意味着并集概率直接等于各项概率之和：
 
 $$
-P(\text{拼不成三角形})=\sum_{i=1}^3P(Y_i>1/2)=3\cdot\left(\frac12\right)^2=\frac34,\qquad P(\text{能拼成三角形})=\frac14
+P(\text{拼不成三角形})=\sum_{i=1}^3P(Y_i>1/2)=3\cdot\left( \frac12 \right)^2=\frac34,\qquad P(\text{能拼成三角形})=\frac14
 $$
 
 数值模拟给出 $0.2501$，与 $1/4$ 一致。
@@ -433,7 +433,7 @@ $$
 **推导**：设 3 个点独立同分布地落在周长为 1 的圆上。记 $A_i$ 为事件"从点 $i$ 出发顺时针走长度 $1/2$ 的弧包含了其余所有点"，也就是以点 $i$ 为起点的半圆覆盖了全部点。给定点 $i$，其余 $n-1$ 个点各自独立、以概率 $1/2$ 落在这个固定半圆里：
 
 $$
-P(A_i)=\left(\frac12\right)^{n-1}
+P(A_i)=\left( \frac12 \right)^{n-1}
 $$
 
 $A_i$ 两两互斥：$n$ 段弧长之和恒为 1，若两个不同的点各自都是覆盖全部点的半圆起点，就要求各自往顺时针方向的那段弧长都 $\ge1/2$，但两段弧长同时 $\ge1/2$、总和却不能超过 1，矛盾（与问题 7 的互斥论证是同一个机制）。所以：
@@ -626,7 +626,7 @@ $$
 第二步，求交叉矩 $\mathbb E[Y_iY_j]$（$i\ne j$）。$n+1$ 段间距满足 $\sum_{i=1}^{n+1}Y_i=1$，两边平方取期望：
 
 $$
-1=\mathbb E\left[\left(\sum_{i=1}^{n+1}Y_i\right)^2\right]=(n+1)\,\mathbb E[Y^2]+(n+1)n\,\mathbb E[Y_iY_j]
+1=\mathbb E\left[ \left( \sum_{i=1}^{n+1}Y_i \right)^2 \right]=(n+1)\,\mathbb E[Y^2]+(n+1)n\,\mathbb E[Y_iY_j]
 $$
 
 展开后有 $n+1$ 个平方项、$(n+1)n$ 个有序交叉项，由可交换性所有交叉项期望相同。代入 $\mathbb E[Y^2]$ 解出交叉矩：
@@ -672,7 +672,7 @@ $$
 记录值总数是 $\sum_{k=1}^n I_k$，由线性性（不要求各 $I_k$ 之间独立）：
 
 $$
-\mathbb E[\#\text{记录值}]=\mathbb E\left[\sum_{k=1}^n I_k\right]=\sum_{k=1}^n\mathbb P(I_k=1)=\boxed{\sum_{k=1}^n\frac1k=H_n}
+\mathbb E[\#\text{记录值}]=\mathbb E\left[ \sum_{k=1}^n I_k \right]=\sum_{k=1}^n\mathbb P(I_k=1)=\boxed{\sum_{k=1}^n\frac1k=H_n}
 $$
 
 其中 $H_n$ 是第 $n$ 个调和数。对 $n=10$ 做蒙特卡洛模拟，估计值 $2.929$，和 $H_{10}=2.9290$ 一致。
@@ -760,13 +760,13 @@ $$
 直接算单个事件的概率作为校验：$Y_i$ 是 3 个均匀切点产生的一个间距，边缘分布是 $\mathrm{Beta}(1,3)$，即 $P(Y_i>x)=(1-x)^3$（3 个切点都要落在避开某个长度为 $\frac12$ 的区间里）。取 $x=\frac12$：
 
 $$
-P\left(Y_i>\frac12\right)=\left(\frac12\right)^3=\frac18
+P\left( Y_i>\frac12 \right)=\left( \frac12 \right)^3=\frac18
 $$
 
 由互斥性，
 
 $$
-P(\text{不能拼成})=\sum_{i=1}^4 P\left(Y_i>\frac12\right)=4\times\frac18=\frac12
+P(\text{不能拼成})=\sum_{i=1}^4 P\left( Y_i>\frac12 \right)=4\times\frac18=\frac12
 $$
 
 所以
@@ -816,7 +816,7 @@ $$
 第五步（$\varphi_1$ 的分布）：$\varphi_1/(2\pi)$ 是 2 个均匀点产生的一个间距，服从 $\mathrm{Beta}(1,2)$，密度为 $2(1-u)$（$u\in[0,1]$）；换回 $x=2\pi u$，
 
 $$
-f_{\varphi_1}(x)=\frac1\pi\left(1-\frac{x}{2\pi}\right),\qquad 0\le x\le2\pi
+f_{\varphi_1}(x)=\frac1\pi\left( 1-\frac{x}{2\pi} \right),\qquad 0\le x\le2\pi
 $$
 
 第六步（积分）：
@@ -845,7 +845,7 @@ $$
 
 直接模拟 3 个随机角度、用鞋带公式算三角形面积做蒙特卡洛校验：估计值 $0.47726$，和 $3/(2\pi)=0.47746$ 吻合。
 
-同样的方法换成圆上 4 个随机点，可以得到四边形的期望面积。此时 $\mathbb E[A]=4\times\frac12\mathbb E[\sin\varphi_1]=2\mathbb E[\sin\varphi_1]$，$\varphi_1$ 变成 3 个均匀点产生的间距，密度是 $\dfrac{3}{2\pi}\left(1-\dfrac{x}{2\pi}\right)^2$；对应的积分给出 $\mathbb E[\sin\varphi_1]=3/(2\pi)$，最终 $\mathbb E[A]=3/\pi$。计算结构和三角形情形完全一样，只是间距的阶数和最外层系数变了，这里不重复完整积分。
+同样的方法换成圆上 4 个随机点，可以得到四边形的期望面积。此时 $\mathbb E[A]=4\times\frac12\mathbb E[\sin\varphi_1]=2\mathbb E[\sin\varphi_1]$，$\varphi_1$ 变成 3 个均匀点产生的间距，密度是 $\dfrac{3}{2\pi}\left( 1-\dfrac{x}{2\pi} \right)^2$；对应的积分给出 $\mathbb E[\sin\varphi_1]=3/(2\pi)$，最终 $\mathbb E[A]=3/\pi$。计算结构和三角形情形完全一样，只是间距的阶数和最外层系数变了，这里不重复完整积分。
 
 **要点**：圆上随机多边形面积问题的核心拆解是旋转对称固定一点、面积写成扇形正弦和、间距边缘分布求期望这三步，这个流程本身不依赖点的个数，个数只改变间距的 Beta 参数和最外层的系数。
 
@@ -868,13 +868,13 @@ $$
 $M\ge k$ 的补事件是 $M\le k-1$，也就是 3 颗骰子都 $\le k-1$：
 
 $$
-\mathbb P(M\ge k)=1-\mathbb P(M\le k-1)=1-\left(\frac{k-1}{6}\right)^3
+\mathbb P(M\ge k)=1-\mathbb P(M\le k-1)=1-\left( \frac{k-1}{6} \right)^3
 $$
 
 代入求和：
 
 $$
-\mathbb E[M]=\sum_{k=1}^6\left[1-\frac{(k-1)^3}{216}\right]=6-\frac{0+1+8+27+64+125}{216}=6-\frac{225}{216}
+\mathbb E[M]=\sum_{k=1}^6\left[ 1-\frac{(k-1)^3}{216} \right]=6-\frac{0+1+8+27+64+125}{216}=6-\frac{225}{216}
 $$
 
 化简：

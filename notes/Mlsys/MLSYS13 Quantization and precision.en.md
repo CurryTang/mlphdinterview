@@ -17,7 +17,7 @@ Quantization research for LLMs took off in 2022, driven primarily by the memory 
 
 Map a floating-point tensor $x$ to a $b$-bit integer:
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s} \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ight ceil + z,\; 0,\; 2^b - 1\Big)$$
 
 Dequantization:
 
@@ -31,7 +31,7 @@ There are two key parameters:
 Two common configurations:
 
 - **Symmetric quantization**: $z = 0$, $s = \max(|x|)\;/\;(2^{b-1} - 1)$. The integer range is symmetric around zero, which is simple to implement, but wastes quantization levels if the distribution is heavily skewed.
-- **Asymmetric quantization**: $z \neq 0$, $s = (x_{\max} - x_{\min})\;/\;(2^b - 1)$, $z = \lfloor -x_{\min}/s \rceil$. The zero-point $z$ aligns integer zero with the lower bound of the actual distribution, making more compact use of all $2^b$ quantization levels.
+- **Asymmetric quantization**: $z \neq 0$, $s = (x_{\max} - x_{\min})\;/\;(2^b - 1)$, $z = \lfloor -x_{\min}/s  ceil$. The zero-point $z$ aligns integer zero with the lower bound of the actual distribution, making more compact use of all $2^b$ quantization levels.
 
 ### 1.2 Terminology and Notation
 
@@ -73,7 +73,7 @@ Finer granularity gives higher precision, but also increases the storage and com
 
 ### 1.4 Straight-Through Estimator (STE)
 
-**Why do we need STE?** The core quantization operation is rounding $\lfloor \cdot \rceil$, a staircase function: the output jumps at integer points and is completely flat elsewhere. Mathematically, its gradient is almost everywhere zero. This means that if we introduce quantization during training (i.e., QAT), gradients stop at the quantization node during backpropagation, so weights cannot be updated by gradient descent and training fails completely. STE is the standard way around this contradiction: quantize honestly in the forward pass, but in the backward pass pretend the quantization operator does not exist and let the gradient pass through directly.
+**Why do we need STE?** The core quantization operation is rounding $\lfloor \cdot  ceil$, a staircase function: the output jumps at integer points and is completely flat elsewhere. Mathematically, its gradient is almost everywhere zero. This means that if we introduce quantization during training (i.e., QAT), gradients stop at the quantization node during backpropagation, so weights cannot be updated by gradient descent and training fails completely. STE is the standard way around this contradiction: quantize honestly in the forward pass, but in the backward pass pretend the quantization operator does not exist and let the gradient pass through directly.
 
 In QAT, STE is used to bypass the issue:
 
@@ -263,7 +263,7 @@ In §1-§2 we built the basic toolbox for quantization. Now we move into LLM qua
 **Why do outliers make naive quantization collapse?** Recall the quantization formula in §1.1: the scale $s$ is determined by the maximum absolute value in the tensor. Suppose most values in an activation vector lie in $[-1, 1]$, but one channel takes value 100:
 
 - $s = 100 / 127 \approx 0.79$ (INT8 symmetric quantization)
-- A normal value $0.5$ is quantized to $\lfloor 0.5 / 0.79 \rceil = 1$, then dequantized back to $0.79$, giving 58% error
+- A normal value $0.5$ is quantized to $\lfloor 0.5 / 0.79  ceil = 1$, then dequantized back to $0.79$, giving 58% error
 - Without the outlier: $s = 1 / 127 \approx 0.008$, $0.5$ is quantized to $63$, dequantized back to $0.50$, with error < 1%
 
 **A single outlier enlarges the scale and destroys the quantization precision of the remaining 99.9% of normal values.**
@@ -706,7 +706,7 @@ Whenever the residual buffer fills up (after accumulating R tokens) → batch-qu
 
 After quantization, attention must be computed in two parts — the quantized portion and the FP16 residual portion:
 
-$$\text{Attn}(Q, K, V) = \text{softmax}\!\left(\frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}}\right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
+$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
 
 Here $K_{\text{quant}}, V_{\text{quant}}$ are the 2-bit quantized portion, and $K_{\text{res}}, V_{\text{res}}$ are the FP16 residual buffer. In practice:
 
@@ -759,7 +759,7 @@ Even after accounting for the residual buffer’s fixed FP16 overhead (about 2MB
 
 3. **Hadamard transforms no longer suffice**: in Transformers, Hadamard rotation effectively equalizes maximum values (the core of QuaRot). But MambaQuant proves theoretically that a Hadamard transform **cannot guarantee equalized channel variance**. Specifically, after a Hadamard transform, the variance of channel $l$ becomes:
 
-$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left(\sum_{i=1}^{m}H_{il}K_{ij}\right)^2\lambda_j$$
+$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \right)^2\lambda_j$$
 
 Since $H$ is fixed while $K$ (eigenvectors) and $\lambda$ (eigenvalues) vary with the input, Hadamard cannot adapt to different channel distributions, so variances remain unequal after rotation.
 
@@ -826,7 +826,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 First subtract the mean (centering), then take the sign. The mean subtraction is crucial — if the weight distribution is asymmetric (mean ≠ 0), applying `Sign` directly leads to a severe imbalance between +1 and -1, wasting representational capacity.
 
 **Activation quantization**: activations are quantized to $b$ bits (8-bit in the paper), using absmax symmetric quantization:
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1) \right\rceil, -2^{b-1}+1, 2^{b-1}-1\right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ight ceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
 
 **Full BitLinear forward pass**:
 ```
@@ -855,7 +855,7 @@ BitNet b1.58 is the key improvement over BitNet: the weight space is extended fr
 
 **Weight quantization**:
 
-$$\hat{W} = \text{RoundClip}\!\left(\frac{W}{\gamma},\,-1,\,1\right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
+$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
 
 $\gamma$ is the mean absolute value of the weights (an L1 normalization factor). After normalization, most weights fall in $[-1, 1]$ and can be rounded to {-1, 0, +1}.
 
@@ -917,7 +917,7 @@ where $f_{\max}$ is the maximum representable value of the FP8 format (E4M3: 448
 | **Per-tensor** | One $s$ for the whole tensor | Low (outliers enlarge $s$) | Lowest | Transformer Engine default |
 | **Per-token × per-channel** | One $s$ per token for activations, one per output channel for weights | Medium (dimension-wise adaptation) | Medium | Some academic work |
 | **Per-block (MXFP8)** | One $s$ per fixed tile (e.g., 32 elements), with $s$ itself stored in 8-bit | High (good local precision) | Higher | Blackwell MXFP8 |
-| **Delayed scaling** | Use the `amax` from previous steps instead of the current step’s $\max\lvert x \rvert$ (which would require an extra pass) | Medium | Low (but introduces temporal dependence) | NVIDIA recipe |
+| **Delayed scaling** | Use the `amax` from previous steps instead of the current step’s $\max\lvert x  vert$ (which would require an extra pass) | Medium | Low (but introduces temporal dependence) | NVIDIA recipe |
 
 **Delayed scaling in detail**: one practical issue with per-tensor scaling is that to compute $s = \max|x| / f_{\max}$, one must first run a forward pass to obtain $x$, then compute $s$, and then rerun the forward pass with quantization. To avoid this extra pass, delayed scaling estimates the current step’s $s$ using historical $\max|x|$ values from previous steps. Assuming that neighboring steps have similar statistics (which is usually true), this one-step delay is accurate enough.
 
@@ -1023,9 +1023,9 @@ Optimizer update: FP32 master weights (same as mixed-precision training)
 
 $$L(N, D, P_{fwd}, P_{bwd}) = \frac{A}{(\text{effN})^\alpha} + \frac{B}{(\text{effD})^\beta} + E$$
 
-where $\text{effN} = N \cdot \rho(P_{fwd})$ is the "effective parameter count" (lower forward precision reduces parameter information capacity), and $\text{effD} = D \cdot \eta(P_{bwd})$ is the "effective data amount" (lower-precision gradients reduce how much each token contributes to learning). The core findings are:
+where $\text{effN} = N \cdot  ho(P_{fwd})$ is the "effective parameter count" (lower forward precision reduces parameter information capacity), and $\text{effD} = D \cdot \eta(P_{bwd})$ is the "effective data amount" (lower-precision gradients reduce how much each token contributes to learning). The core findings are:
 
-- **Forward precision affects parameter efficiency**: FP4 forward has $\rho \approx 0.69-0.78$, meaning an FP4 model needs about 1.3-1.45× more parameters than BF16 to match the same accuracy
+- **Forward precision affects parameter efficiency**: FP4 forward has $ ho \approx 0.69-0.78$, meaning an FP4 model needs about 1.3-1.45× more parameters than BF16 to match the same accuracy
 - **Backward precision affects data efficiency**: FP4 backward has $\eta \approx 0.85$, meaning about 1.18× more data is needed as compensation
 - **Forward is more sensitive than backward**: this explains why Quartet uses more accurate QuEST in the forward pass and simpler SR in the backward pass
 
@@ -1132,7 +1132,7 @@ In §3 we introduced outliers as the core challenge in LLM quantization, and in 
 
 **Core finding 1: outlier metrics do not predict PTQ accuracy**
 
-§3 introduced outliers as the central difficulty of LLM quantization. Intuitively, larger outliers should mean harder quantization — traditional work uses metrics such as MMR (max/median ratio) or kurtosis to measure outlier severity, and designs quantization methods accordingly (e.g., SmoothQuant in §4.2 explicitly aims to reduce activation outliers). But Beyond Outliers finds that **when comparing across optimizers, MMR and kurtosis are almost uncorrelated with post-PTQ accuracy** ($\rho = 0.62$ and $\rho = -0.89$ for a 760M model):
+§3 introduced outliers as the central difficulty of LLM quantization. Intuitively, larger outliers should mean harder quantization — traditional work uses metrics such as MMR (max/median ratio) or kurtosis to measure outlier severity, and designs quantization methods accordingly (e.g., SmoothQuant in §4.2 explicitly aims to reduce activation outliers). But Beyond Outliers finds that **when comparing across optimizers, MMR and kurtosis are almost uncorrelated with post-PTQ accuracy** ($ ho = 0.62$ and $ ho = -0.89$ for a 760M model):
 
 - **Muon** has the lowest MMR (fewest outliers), but suffers the **largest drop** after PTQ (760M: 64.63% → 50.00%)
 - **Shampoo** has the highest MMR (largest outliers), but preserves accuracy **best** after PTQ (760M: 63.05% → 59.26%)
@@ -1151,7 +1151,7 @@ $$G_\ell = G_{1,\ell} \cdot G_{2,\ell}$$
 
 where $G_{1,\ell}$ is the spectral-norm ratio (change in weight spectral norm before vs after quantization, close to 1 across optimizers), and $G_{2,\ell}$ is the alignment ratio (how well the quantization-error direction aligns with the dominant singular direction of the weight matrix). **Muon has the largest $G_\ell$ in linear layers** — its quantization error points exactly in the direction most amplified by the weights, so errors accumulate rapidly; Shampoo and AdamW have the smallest $G_\ell$.
 
-The paper’s proposed metric $R_L$ (the accumulated quantization error in the final layer) correlates strongly with PTQ accuracy ($\rho = 0.70$).
+The paper’s proposed metric $R_L$ (the accumulated quantization error in the final layer) correlates strongly with PTQ accuracy ($ ho = 0.70$).
 
 **Core finding 2: the best optimizer for QAT is not the best optimizer for full precision**
 
@@ -1159,9 +1159,9 @@ In full-precision training, Muon performs best, but under 4-bit QAT (using the Q
 
 **Core finding 3: a scaling law for QAT**
 
-Similar to the low-precision scaling law proposed by Quartet in §8.3 (using effN to describe how precision affects parameter efficiency), Beyond Outliers derives an optimizer-aware scaling law for QAT: $L = A' / (N \cdot \rho)^\alpha + E$, where $\rho$ is "parameter efficiency" — the equivalent parameter count of a 4-bit QAT model is $\rho \cdot N$. The reported $\rho_{4bit}$ for different optimizers is:
+Similar to the low-precision scaling law proposed by Quartet in §8.3 (using effN to describe how precision affects parameter efficiency), Beyond Outliers derives an optimizer-aware scaling law for QAT: $L = A' / (N \cdot  ho)^\alpha + E$, where $ ho$ is "parameter efficiency" — the equivalent parameter count of a 4-bit QAT model is $ ho \cdot N$. The reported $ ho_{4bit}$ for different optimizers is:
 
-| Optimizer | $\rho_{4bit}$ | Meaning |
+| Optimizer | $ ho_{4bit}$ | Meaning |
 |---|---|---|
 | **Shampoo** | **0.879** | 4-bit retains 87.9% parameter efficiency |
 | AdamW | 0.863 | |
@@ -1194,7 +1194,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # dequantize
 
 **8-bit symmetric quantization (blockwise)** — corresponding to the symmetric formula in §1.1, but computing the scale independently per block (default 2048 elements):
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}} \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ight ceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 The benefit of block-wise quantization is that it prevents a few large global values from inflating the scale and squeezing the precision of the remaining normal values.
 

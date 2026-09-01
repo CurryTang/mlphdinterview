@@ -27,7 +27,7 @@ Pointwise treats each candidate as an independent classification or regression s
 
 ```math
 \mathcal L_{\text{point}}
-=-\left[y\log p+(1-y)\log(1-p)\right].
+=-\left[ y\log p+(1-y)\log(1-p) \right].
 ```
 
 The advantage is that both sampling and training are simple, and predicted probabilities can be calibrated. The disadvantage is that it does not directly express the order between candidates under the same query/user.
@@ -86,7 +86,7 @@ For pointwise estimations like CTR and CVR, first look at LogLoss:
 ```math
 \operatorname{LogLoss}
 =-\frac{1}{N}\sum_i
-\left[y_i\log p_i+(1-y_i)\log(1-p_i)\right].
+\left[ y_i\log p_i+(1-y_i)\log(1-p_i) \right].
 ```
 
 It focuses on the probability itself. AUC measures the probability that a random positive example is ranked higher than a random negative example, which is suitable for observing overall discriminative ability, but it does not specifically focus on the top of the list, nor does it indicate whether scores are calibrated.

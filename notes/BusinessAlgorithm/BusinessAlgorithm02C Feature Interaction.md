@@ -26,7 +26,7 @@ Factorization Machine 对二阶交叉使用低秩向量：
 ```math
 \hat y
 =w_0+\sum_i w_ix_i
-+\sum_{i<j}\langle v_i,v_j\rangle x_ix_j.
++\sum_{i<j}\langle v_i,v_j angle x_ix_j.
 ```
 
 若 `x` 是 one-hot，多数维度为零，计算只涉及非零特征。内积共享统计强度，即使某个特征对很少共同出现，也能通过各自 embedding 学到合理交互。
@@ -48,10 +48,9 @@ def fm_predict(x, bias, linear_weights, factors):
 
 ```math
 \frac{1}{2}\sum_f
-\left[
-\left(\sum_i v_{i,f}x_i\right)^2
+\left[ \left( \sum_i v_{i,f}x_i \right)^2
 -\sum_i(v_{i,f}x_i)^2
-\right].
+ \right].
 ```
 
 输入维度不一致时抛出 `ValueError`。

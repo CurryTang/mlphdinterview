@@ -37,7 +37,7 @@ $$
 \mathbb{E}[N_i] = 10 \times \frac16 = \frac{5}{3}
 $$
 
-**Fatal Error**: Multiplying marginal expectations directly yields $\left(\frac{5}{3}\right)^6 \approx 21.43$. This is **completely incorrect**.
+**Fatal Error**: Multiplying marginal expectations directly yields $\left( \frac{5}{3} \right)^6 \approx 21.43$. This is **completely incorrect**.
 
 **Why Factorization Fails**:
 1. **Fixed Sum Constraint (Negative Correlation)**: The sum is strictly constrained by $\sum_{i=1}^6 N_i = 10$. If face 1 appears frequently (e.g., $N_1 = 5$), only $5$ rolls remain for the other 5 faces combined, drastically reducing their counts. This inherent **negative covariance** suppresses the joint product far below the independent baseline.
@@ -50,21 +50,21 @@ $$
 The joint counts follow a **Multinomial Distribution**:
 
 $$
-(N_1, N_2, \ldots, N_6) \sim \text{Multinomial}\left(10;\, \frac16, \frac16, \frac16, \frac16, \frac16, \frac16\right)
+(N_1, N_2, \ldots, N_6) \sim \text{Multinomial}\left( 10;\, \frac16, \frac16, \frac16, \frac16, \frac16, \frac16 \right)
 $$
 
 **Core Theorem (Multinomial Falling Factorial Moments)**:
 Let $(N_1, \dots, N_k) \sim \text{Multinomial}(n; p_1, \dots, p_k)$. With $(x)_a = x(x-1)\cdots(x-a+1)$ denoting the falling factorial, for any non-negative integers $a_1, \dots, a_k$:
 
 $$
-\boxed{\mathbb{E}\left[\prod_{j=1}^k (N_j)_{a_j}\right] = (n)_{a_1 + a_2 + \cdots + a_k} \prod_{j=1}^k p_j^{a_j}}
+\boxed{\mathbb{E}\left[ \prod_{j=1}^k (N_j)_{a_j} \right] = (n)_{a_1 + a_2 + \cdots + a_k} \prod_{j=1}^k p_j^{a_j}}
 $$
 
 **Application to the Dice Problem**:
 Each face appears with power $1$. Since $(N_i)_1 = N_i$, we have $a_1 = \dots = a_6 = 1$, and total order $\sum a_j = 6$:
 
 $$
-\mathbb{E}[N_1 N_2 N_3 N_4 N_5 N_6] = (10)_6 \left(\frac16\right)^6
+\mathbb{E}[N_1 N_2 N_3 N_4 N_5 N_6] = (10)_6 \left( \frac16 \right)^6
 $$
 
 Expanding $(10)_6 = 10 \times 9 \times 8 \times 7 \times 6 \times 5 = 151{,}200$:
@@ -104,13 +104,13 @@ $$
    $$
 2. For any such distinct sequence $(t_1, \dots, t_6)$, the probability of these specific outcomes on these 6 independent trials is:
    $$
-   \left(\frac16\right)^6
+   \left( \frac16 \right)^6
    $$
 
 Summing all non-zero terms gives:
 
 $$
-\mathbb{E}[N_1 N_2 \dots N_6] = (10)_6 \left(\frac16\right)^6 = \frac{175}{54}
+\mathbb{E}[N_1 N_2 \dots N_6] = (10)_6 \left( \frac16 \right)^6 = \frac{175}{54}
 $$
 
 ---
@@ -127,7 +127,7 @@ $$
 #### Case B: Higher Powers (e.g., $\mathbb{E}[N_1^2 N_2 N_3 N_4 N_5 N_6]$)
 Convert powers to falling factorials: $N_1^2 = (N_1)_2 + (N_1)_1$.
 $$
-\mathbb{E}[N_1^2 N_2 \dots N_6] = \mathbb{E}[(N_1)_2 N_2 \dots N_6] + \mathbb{E}[(N_1)_1 N_2 \dots N_6] = (10)_7 \left(\frac16\right)^7 + (10)_6 \left(\frac16\right)^6
+\mathbb{E}[N_1^2 N_2 \dots N_6] = \mathbb{E}[(N_1)_2 N_2 \dots N_6] + \mathbb{E}[(N_1)_1 N_2 \dots N_6] = (10)_7 \left( \frac16 \right)^7 + (10)_6 \left( \frac16 \right)^6
 $$
 
 ---
@@ -209,7 +209,7 @@ where $H_n = 1 + \frac12 + \dots + \frac1n$ is the $n$-th **Harmonic Number**.
 For large $n$, by Euler's asymptotic formula:
 
 $$
-H_n = \ln n + \gamma + \frac{1}{2n} - \frac{1}{12n^2} + O\left(\frac{1}{n^4}\right)
+H_n = \ln n + \gamma + \frac{1}{2n} - \frac{1}{12n^2} + O\left( \frac{1}{n^4} \right)
 $$
 
 where $\gamma \approx 0.57721566$ is the Euler–Mascheroni constant.
@@ -230,7 +230,7 @@ For continuous i.i.d. random variables, the record indicators $I_1, I_2, \ldots,
 Because of independence, variances add linearly:
 
 $$
-\operatorname{Var}(K_n) = \sum_{i=1}^n \operatorname{Var}(I_i) = \sum_{i=1}^n \frac{1}{i}\left(1 - \frac{1}{i}\right) = \sum_{i=1}^n \frac{1}{i} - \sum_{i=1}^n \frac{1}{i^2}
+\operatorname{Var}(K_n) = \sum_{i=1}^n \operatorname{Var}(I_i) = \sum_{i=1}^n \frac{1}{i}\left( 1 - \frac{1}{i} \right) = \sum_{i=1}^n \frac{1}{i} - \sum_{i=1}^n \frac{1}{i^2}
 $$
 
 $$

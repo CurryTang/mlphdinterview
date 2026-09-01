@@ -262,7 +262,7 @@ public:
 **估算公式**：
 
 $$
-N_{\text{threads}} = N_{\text{cores}} \times \left(1 + \frac{\text{等待时间}}{\text{计算时间}}\right)
+N_{\text{threads}} = N_{\text{cores}} \times \left( 1 + \frac{\text{等待时间}}{\text{计算时间}} \right)
 $$
 
 其中 $N_{\text{cores}}$ 是可用的 CPU 核心数；等待时间(wait time)是任务里线程处于阻塞状态（等待 IO、等待锁、等待其他线程）的时间；计算时间(compute time)是任务里线程真正占用 CPU 执行指令的时间。这个公式的直觉是：如果一个任务的生命周期里大部分时间在等待而不在计算，那么单个核心在等待期间是"空闲"的，可以安排更多线程来填满这段空闲时间；等待时间和计算时间的比值越大，需要的线程数就越多。对纯 CPU 密集型任务，等待时间趋近于 0，公式退化为 $N_{\text{threads}} \approx N_{\text{cores}}$；对等待时间是计算时间 9 倍的高度 IO 密集型任务，公式给出 $N_{\text{threads}} \approx 10 \times N_{\text{cores}}$。

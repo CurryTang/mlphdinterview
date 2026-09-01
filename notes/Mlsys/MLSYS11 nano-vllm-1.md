@@ -35,7 +35,7 @@ MHA 允许模型同时从不同"表示子空间"学习信息，三个核心向�
 #### Scaled Dot-Product Attention
 
 $$
-\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \right)V
 $$
 
 计算：① $QK^T$ 得相似度矩阵 → ② 除以 $\sqrt{d_k}$ 防梯度消失 → ③ softmax → ④ 加权求 V。MHA 将输入分多头并行学习不同模式：$\text{MultiHead} = \text{Concat}(\text{head}_i)W^O$，其中 $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$。
@@ -67,7 +67,7 @@ $$
 
 **示例解析**：
 $$
-C[\textcolor{blue}{GH}IJ\textcolor{red}{KL}] \cdot D[\textcolor{blue}{GH}MN\textcolor{red}{KL}] \rightarrow E[\textcolor{blue}{GH}IJMN]
+C[\textcolor{blue}{GH}IJ\textcolor{red}{KL}] \cdot D[\textcolor{blue}{GH}MN\textcolor{red}{KL}]  ightarrow E[\textcolor{blue}{GH}IJMN]
 $$
 
 用 einsum 表示：`einsum('ghijkl,ghmnkl->ghijmn', C, D)`
@@ -154,9 +154,9 @@ $B$=batch，$T/S$=序列长（Q/KV），$D$=model dim，$F$=FFN dim，$N$=Q head
 
 | 操作 | 训练 FLOPs |
 |------|------------|
-| $Q[\textcolor{blue}{B}, T, \textcolor{blue}{K}, G, \textcolor{red}{H}] \cdot K[\textcolor{blue}{B}, S, \textcolor{blue}{K}, \textcolor{red}{H}]^T \rightarrow S[B,T,S,N]$ | $6BTSNH$ |
-| $\text{softmax}_S(S) \rightarrow P$ | $O(BTSN)$ 可忽略 |
-| $P[\textcolor{blue}{B}, T, \textcolor{red}{S}, \textcolor{blue}{K}, G] \cdot V[\textcolor{blue}{B}, \textcolor{red}{S}, \textcolor{blue}{K}, H] \rightarrow O[B,T,N,H]$ | $6BTSNH$ |
+| $Q[\textcolor{blue}{B}, T, \textcolor{blue}{K}, G, \textcolor{red}{H}] \cdot K[\textcolor{blue}{B}, S, \textcolor{blue}{K}, \textcolor{red}{H}]^T  ightarrow S[B,T,S,N]$ | $6BTSNH$ |
+| $\text{softmax}_S(S)  ightarrow P$ | $O(BTSN)$ 可忽略 |
+| $P[\textcolor{blue}{B}, T, \textcolor{red}{S}, \textcolor{blue}{K}, G] \cdot V[\textcolor{blue}{B}, \textcolor{red}{S}, \textcolor{blue}{K}, H]  ightarrow O[B,T,N,H]$ | $6BTSNH$ |
 | **Attention 总计** (self-attention: S=T) | ==$\approx 12BT^2NH$== |
 
 *注：Decoder-only 的 causal attention 只算下三角，实际 FLOPs 减半，但需要 Flash Attention 等专用 kernel 才能利用。*

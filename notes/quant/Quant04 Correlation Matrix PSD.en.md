@@ -36,7 +36,7 @@ For two random variables $X,Y$, covariance is defined as:
 $$
 \operatorname{Cov}(X,Y)
 =
-\mathbb{E}\left[(X-\mathbb{E}X)(Y-\mathbb{E}Y)\right]
+\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
 $$
 
 It measures whether the two variables tend to move in the same direction when they deviate from their means.
@@ -132,25 +132,25 @@ $$
 Let:
 
 $$
-\rho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
+ ho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
 $$
 
 Then:
 
 $$
-t^2-2\rho t+1\ge0,\qquad \forall t
+t^2-2 ho t+1\ge0,\qquad \forall t
 $$
 
 This quadratic is nonnegative for every $t$, so its discriminant cannot be positive:
 
 $$
-(-2\rho)^2-4\le0
+(-2 ho)^2-4\le0
 $$
 
 Therefore:
 
 $$
-\rho^2\le1
+ ho^2\le1
 $$
 
 That is:
@@ -159,7 +159,7 @@ $$
 -1\le \operatorname{corr}(X,Y)\le 1
 $$
 
-Note that $\rho=0$ means only that there is no linear correlation, not that the variables are independent. Independence implies zero covariance, but the converse does not always hold.
+Note that $ ho=0$ means only that there is no linear correlation, not that the variables are independent. Independence implies zero covariance, but the converse does not always hold.
 
 ---
 
@@ -198,10 +198,10 @@ Therefore:
 $$
 R=
 \begin{pmatrix}
-1 & \rho_{12} & \cdots & \rho_{1n}\\
-\rho_{21} & 1 & \cdots & \rho_{2n}\\
+1 &  ho_{12} & \cdots &  ho_{1n}\\
+ ho_{21} & 1 & \cdots &  ho_{2n}\\
 \vdots & \vdots & \ddots & \vdots\\
-\rho_{n1} & \rho_{n2} & \cdots & 1
+ ho_{n1} &  ho_{n2} & \cdots & 1
 \end{pmatrix}
 $$
 
@@ -236,7 +236,7 @@ Expanding the variance:
 $$
 \operatorname{Var}(W)
 =
-\operatorname{Var}\left(\sum_{i=1}^n a_iZ_i\right)
+\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
 =
 \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
 $$
@@ -284,13 +284,13 @@ R is PSD
 Standardized random variables can be treated as vectors with inner product:
 
 $$
-\langle Z_i,Z_j\rangle=\operatorname{Cov}(Z_i,Z_j)
+\langle Z_i,Z_j angle=\operatorname{Cov}(Z_i,Z_j)
 $$
 
 Because:
 
 $$
-\langle Z_i,Z_i\rangle=\operatorname{Var}(Z_i)=1
+\langle Z_i,Z_i angle=\operatorname{Var}(Z_i)=1
 $$
 
 each $Z_i$ behaves like a unit vector. The correlation is the cosine of the angle between two unit vectors:
@@ -302,7 +302,7 @@ $$
 The correlation matrix is the Gram matrix of all pairwise inner products:
 
 $$
-R_{ij}=\langle Z_i,Z_j\rangle
+R_{ij}=\langle Z_i,Z_j angle
 $$
 
 A Gram matrix is always PSD because:
@@ -310,9 +310,9 @@ A Gram matrix is always PSD because:
 $$
 a^\top R a
 =
-\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j\right\rangle
+\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j ight angle
 =
-\left\|\sum_i a_iZ_i\right\|^2
+\left\|\sum_i a_iZ_i ight\|^2
 \ge0
 $$
 
@@ -345,7 +345,7 @@ corr(X1,X2)+corr(X1,X3)+corr(X1,X4)
 Let:
 
 $$
-\rho_{ij}=\operatorname{corr}(X_i,X_j)
+ ho_{ij}=\operatorname{corr}(X_i,X_j)
 $$
 
 Standardize the variables:
@@ -358,7 +358,7 @@ Then:
 
 $$
 \operatorname{Var}(Z_i)=1,\qquad
-\operatorname{Cov}(Z_i,Z_j)=\rho_{ij}
+\operatorname{Cov}(Z_i,Z_j)= ho_{ij}
 $$
 
 Now consider the sum of all standardized variables:
@@ -387,19 +387,19 @@ Since every $\operatorname{Var}(Z_i)=1$:
 $$
 \operatorname{Var}(W)
 =
-4+2\sum_{1\le i<j\le4}\rho_{ij}
+4+2\sum_{1\le i<j\le4} ho_{ij}
 $$
 
 From $\operatorname{Var}(W)\ge0$:
 
 $$
-4+2\sum_{1\le i<j\le4}\rho_{ij}\ge0
+4+2\sum_{1\le i<j\le4} ho_{ij}\ge0
 $$
 
 Therefore:
 
 $$
-\sum_{1\le i<j\le4}\rho_{ij}\ge -2
+\sum_{1\le i<j\le4} ho_{ij}\ge -2
 $$
 
 The answer cannot be smaller than $-2$.
@@ -421,7 +421,7 @@ $$
 All six off-diagonal correlations equal $-1/3$, so their sum is:
 
 $$
-6\cdot\left(-\frac13\right)=-2
+6\cdot\left( -\frac13 \right)=-2
 $$
 
 This matrix is PSD. Geometrically, it corresponds to the four vertex directions of a regular tetrahedron in three-dimensional space: four unit vectors point symmetrically in different directions, their center is the origin, and the dot product of every pair is $-1/3$.
@@ -514,15 +514,15 @@ $$
 This lower bound is also attainable. Set all off-diagonal correlations equal to:
 
 $$
-\rho_{ij}=-\frac{1}{n-1},\qquad i\ne j
+ ho_{ij}=-\frac{1}{n-1},\qquad i\ne j
 $$
 
 Then their sum is:
 
 $$
-\binom n2\left(-\frac{1}{n-1}\right)
+\binom n2\left( -\frac{1}{n-1} \right)
 =
-\frac{n(n-1)}{2}\left(-\frac{1}{n-1}\right)
+\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
 =
 -\frac n2
 $$

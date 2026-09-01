@@ -143,7 +143,7 @@ Pairwise logistic encourages the right order:
 
 ```math
 \mathcal L_{\text{pair}}
-=\log\left(1+\exp[-\gamma(s_i-s_j)]\right),
+=\log\left(1+\exp[-\gamma(s_i-s_j)] \right),
 \qquad y_i>y_j.
 ```
 

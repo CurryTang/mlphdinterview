@@ -37,10 +37,9 @@ parser_version: qp_2026_07_18
 ```math
 \operatorname{cost}(0,t)
 =\min_{s<t}
-\left[
-\operatorname{cost}(0,s)
+\left[ \operatorname{cost}(0,s)
 -\log P(x_{s:t})
-\right].
+ \right].
 ```
 
 词频高的切分代价低。工程上还会给品牌、型号、人名、地点和业务词加权，避免把 `"iPhone 15 Pro Max"` 或 `"三体电视剧"` 切坏。

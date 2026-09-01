@@ -136,7 +136,7 @@ Device 2: [A2]     →   Device 2: [A0, A1, A2, A3]
 Device 3: [A3]     →   Device 3: [A0, A1, A2, A3]
 ```
 
-**Notation**: $\text{AllGather}_X([A_X, B]) \rightarrow [A, B]$
+**Notation**: $\text{AllGather}_X([A_X, B])  ightarrow [A, B]$
 
 **Cost**: $T = \frac{V}{W_{bidirectional}}$, where $V$ is the total data volume
 
@@ -147,13 +147,13 @@ Device 3: [A3]     →   Device 3: [A0, A1, A2, A3]
 
 **Latency correction**: when the data volume per hop is small, the per-hop latency $T_\text{min} \approx 1\,\mu\text{s}$ becomes the bottleneck:
 
-$$T_\text{hop} = \max\!\left[T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}}\right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}}\right]$$
+$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \right]$$
 
 For TPU v5e ($W_\text{ici} = 4.5 \times 10^{10}$ B/s), the latency threshold is around 45 kB: arrays smaller than this size are latency bound.
 
 **Multi-axis AllGather**: if AllGather runs simultaneously over multiple mesh axes $\{X_1, X_2, \ldots\}$, the effective bandwidth increases proportionally:
 
-$$T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}}\right]$$
+$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \right]$$
 
 ![AllGather measured bandwidth (TPU v5e 8×16): about 95% peak above 10 MB](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
 
@@ -180,7 +180,7 @@ Device 2: [A2, B2, C2, D2]   →   Device 2: [C0+C1+C2+C3]
 Device 3: [A3, B3, C3, D3]   →   Device 3: [D0+D1+D2+D3]
 ```
 
-**Notation**: $\text{ReduceScatter}_{X,K}([A, K]\{U_X\}) \rightarrow [A, K_X]$
+**Notation**: $\text{ReduceScatter}_{X,K}([A, K]\{U_X\})  ightarrow [A, K_X]$
 
 **Cost**: same as AllGather
 > **Dual relationship between ReduceScatter and AllGather** (Kronecker product perspective):
@@ -218,7 +218,7 @@ Device 0: [A0, B0]   →   Device 0: [A0, A1]
 Device 1: [A1, B1]   →   Device 1: [B0, B1]
 ```
 
-**Notation**: $\text{AllToAll}_{X, J}([A, B_X]) \rightarrow [A_X, B]$
+**Notation**: $\text{AllToAll}_{X, J}([A, B_X])  ightarrow [A_X, B]$
 
 **Cost**: about one-quarter of AllGather
 
@@ -385,7 +385,7 @@ When performing sharded matrix multiplication $C = A \cdot B$, the communication
 
 #### Case 1: Neither contraction dimension is sharded
 
-$$A[I_X, J] \cdot B[J, K_Y] \rightarrow C[I_X, K_Y]$$
+$$A[I_X, J] \cdot B[J, K_Y]  ightarrow C[I_X, K_Y]$$
 
 **No communication required.** Each device can perform the local multiplication independently.
 
@@ -397,7 +397,7 @@ local_C = torch.matmul(local_A, local_B)
 
 #### Case 2: The contraction dimension of one input is sharded
 
-$$A[I, J_X] \cdot B[J, K] \rightarrow C[I, K]$$
+$$A[I, J_X] \cdot B[J, K]  ightarrow C[I, K]$$
 
 **Requires AllGather**: first gather A, then perform the local multiplication
 
@@ -410,7 +410,7 @@ local_C = torch.matmul(full_A, local_B)
 
 #### Case 3: Both inputs have the contraction dimension sharded along the same axis
 
-$$A[I, J_X] \cdot B[J_X, K] \rightarrow C[I, K]\{U_X\}$$
+$$A[I, J_X] \cdot B[J_X, K]  ightarrow C[I, K]\{U_X\}$$
 
 **Local multiplication produces partial sums, so AllReduce is required**:
 
@@ -428,7 +428,7 @@ full_C = all_reduce(partial_C, op=SUM)
 
 #### Case 4: Two non-contraction dimensions are sharded along the same axis (invalid)
 
-$$A[I_X, J] \cdot B[J, K_X] \rightarrow C[I_X, K_X] \quad \text{❌ Invalid!}$$
+$$A[I_X, J] \cdot B[J, K_X]  ightarrow C[I_X, K_X] \quad \text{❌ Invalid!}$$
 
 **You must AllGather one of the inputs first**:
 
@@ -503,7 +503,7 @@ The following chapters (FSDP and TP) simply change the sharding choice. The comm
 
 **Data parallelism** is the simplest parallel strategy:
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D] \rightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D]  ightarrow \text{Out}[B_X, D]$$
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -610,7 +610,7 @@ for batch in dataloader:
 
 **FSDP** (Fully Sharded Data Parallel), also known as **ZeRO-3**, addresses the memory limitations of pure data parallelism:
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X] \rightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X]  ightarrow \text{Out}[B_X, D]$$
 
 Core idea: **parameters, gradients, and optimizer states are all sharded along the data-parallel dimension**.
 
@@ -797,7 +797,7 @@ ZeRO++ optimization 3: quantized ReduceScatter (qRS)
 
 **Tensor parallelism** (also known as Megatron sharding) shards model dimensions:
 
-$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D] \rightarrow \text{Out}[B, D_Y]$$
+$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D]  ightarrow \text{Out}[B, D_Y]$$
 
 Core idea: **shard model dimensions rather than data dimensions**.
 
@@ -1324,7 +1324,7 @@ When actually training large models, multiple parallel strategies are usually co
 
 The most commonly used combination is FSDP (data parallelism) + tensor parallelism:
 
-$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X] \rightarrow \text{Out}[B_X, D_Y]$$
+$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X]  ightarrow \text{Out}[B_X, D_Y]$$
 
 **Advantages**:
 
@@ -1371,7 +1371,7 @@ The golden rule for understanding parallelism is: **imagine yourself inside a si
 
 **Local activation shape formula**:
 
-$$\text{local shape} = \left[\frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D\right]$$
+$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \right]$$
 
 - $B / \text{dp}$: data parallelism shards the batch
 - $S / (\text{cp} \times \text{sp})$: Context Parallel and Sequence Parallel jointly shard the sequence

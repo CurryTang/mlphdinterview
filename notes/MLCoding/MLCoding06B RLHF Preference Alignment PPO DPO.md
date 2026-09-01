@@ -41,12 +41,12 @@
 #### Bradley-Terry 偏好概率建模
 给定提示词 $x$，人类偏好的优质回答为 $y_w$（winner），劣质回答为 $y_l$（loser）。假设存在一个真实的隐式标量奖励函数 $r^*(x, y)$，人类偏好 $y_w$ 优于 $y_l$ 的概率服从 Bradley-Terry 模型：
 
-$$P(y_w \succ y_l \mid x) = \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l) \right) = \frac{1}{1 + e^{-(r_\psi(x, y_w) - r_\psi(x, y_l))}}$$
+$$P(y_w \succ y_l \mid x) = \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l)  \right) = \frac{1}{1 + e^{-(r_\psi(x, y_w) - r_\psi(x, y_l))}}$$
 
 #### 奖励模型目标损失函数（Binary Ranking Loss）
 为了训练参数为 $\psi$ 的奖励模型 $r_\psi$，我们在偏好数据集 $\mathcal{D} = \{(x, y_w, y_l)\}$ 上最大化对数似然，即最小化负对数似然损失：
 
-$$\mathcal{L}_{\text{RM}}(\psi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l) \right) \right]$$
+$$\mathcal{L}_{\text{RM}}(\psi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l)  \right)  \right]$$
 
 - **梯度行为**：当奖励模型预测错误（$r_\psi(x, y_w) < r_\psi(x, y_l)$）时，$\sigma(\cdot)$ 导数很大，强力将 $r_\psi(x, y_w)$ 调高、将 $r_\psi(x, y_l)$ 压低；
 - **$K$-way 排名扩展**：对于包含 $K$ 个候选回答的排序列表，可将其拆分为 $\binom{K}{2}$ 个二元对联合训练。
@@ -111,7 +111,7 @@ $$R_t = \begin{cases} -\beta \mathbb{D}_{\text{KL}}(\pi_\theta \parallel \pi_{\t
 
 $$r_t(\theta) = \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\text{old}}(y_t \mid x, y_{<t})}$$
 
-$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) \right]$$
+$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t  \right)  \right]$$
 
 PPO 通过将概率比率 $r_t(\theta)$ 限制在 $[1-\epsilon, 1+\epsilon]$（如 $\epsilon=0.2$）内，防止单步策略更新幅度过大导致策略崩溃。
 
@@ -141,13 +141,13 @@ PPO 4 模型强化学习闭环 vs DPO 单一分类对数损失：
 #### 第一步：带 KL 正则项的强化学习最优策略解析解
 标准的 RL 优化目标为：
 
-$$\max_{\pi} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi(\cdot \mid x)} \left[ r(x, y) \right] - \beta \mathbb{D}_{\text{KL}}(\pi(y \mid x) \parallel \pi_{\text{ref}}(y \mid x))$$
+$$\max_{\pi} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi(\cdot \mid x)} \left[ r(x, y)  \right] - \beta \mathbb{D}_{\text{KL}}(\pi(y \mid x) \parallel \pi_{\text{ref}}(y \mid x))$$
 
 通过变分法（Calculus of Variations）可严格求解出其最优策略 $\pi^*$ 的闭式解：
 
-$$\pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$$
+$$\pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y)  \right)$$
 
-其中 $Z(x) = \sum_y \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$ 为配分函数（Partition Function）。
+其中 $Z(x) = \sum_y \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y)  \right)$ 为配分函数（Partition Function）。
 
 #### 第二步：反解真实隐式奖励函数（Implicit Reward）
 对上述公式两边取自然对数并重新整理，可得到真实奖励 $r(x, y)$ 与最优策略 $\pi^*$ 的解析映射关系：
@@ -157,9 +157,9 @@ $$r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \bet
 #### 第三步：代入 Bradley-Terry 偏好模型（配分函数奇迹相消）
 将隐式奖励公式代入 Bradley-Terry 偏好对数概率公式中：
 
-$$P(y_w \succ y_l \mid x) = \sigma\left( r(x, y_w) - r(x, y_l) \right)$$
+$$P(y_w \succ y_l \mid x) = \sigma\left( r(x, y_w) - r(x, y_l)  \right)$$
 
-$$r(x, y_w) - r(x, y_l) = \left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} + \beta \log Z(x) \right) - \left( \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} + \beta \log Z(x) \right)$$
+$$r(x, y_w) - r(x, y_l) = \left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} + \beta \log Z(x)  \right) - \left( \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} + \beta \log Z(x)  \right)$$
 
 注意到，**依赖于输入 $x$ 的配分函数 $\beta \log Z(x)$ 在相减过程中被精确抵消！**
 
@@ -168,7 +168,7 @@ $$r(x, y_w) - r(x, y_l) = \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y
 #### 第四步：构建 DPO 策略损失函数
 直接用可学习的策略模型 $\pi_\theta$ 替代最优策略 $\pi^*$，构建全样本的负对数似然损失：
 
-$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right]$$
+$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}  \right)  \right]$$
 
 ---
 
@@ -176,7 +176,7 @@ $$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w,
 
 对参数 $\theta$ 求梯度，可揭示 DPO 的内在优化动力学：
 
-$$\nabla_\theta \mathcal{L}_{\text{DPO}}(\theta) = -\beta \mathbb{E} \left[ \underbrace{\sigma\left( \hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w) \right)}_{\text{动态权重系数 } w(x, y_w, y_l)} \cdot \left( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x) \right) \right]$$
+$$\nabla_\theta \mathcal{L}_{\text{DPO}}(\theta) = -\beta \mathbb{E} \left[ \underbrace{\sigma\left( \hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w)  \right)}_{\text{动态权重系数 } w(x, y_w, y_l)} \cdot \left( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x)  \right)  \right]$$
 
 - **当模型预测严重错误时（$\hat{r}_\theta(x, y_w) \ll \hat{r}_\theta(x, y_l)$）**：
   权重 $w \to 1$，梯度以最大力度增大 $y_w$ 的概率、压低 $y_l$ 的概率；
@@ -196,7 +196,7 @@ $$\nabla_\theta \mathcal{L}_{\text{DPO}}(\theta) = -\beta \mathbb{E} \left[ \und
 | **IPO** | 在 DPO 损失上增加平方正则项，防止策略过拟合偏好数据 | $(\log \frac{\pi_\theta(y_w)}{\pi_{\text{ref}}(y_w)} - \log \frac{\pi_\theta(y_l)}{\pi_{\text{ref}}(y_l)} - \frac{1}{2\tau})^2$ | **必须 (2 模型)** | 解决 DPO 在极端偏好对上的概率发散与过拟合问题 |
 | **KTO** | 基于前景理论（Prospect Theory），支持单点二元标签（Like/Dislike） | 分别对单个好样本与坏样本优化效用期望 | **必须 (2 模型)** | **无需成对数据**，适用于实际业务中只有点赞/点踩日志的冷启动对齐 |
 | **ORPO** | 将 SFT 交叉熵与优势几率比（Odds Ratio）惩罚融为一体 | $\mathcal{L}_{\text{SFT}} + \lambda \mathcal{L}_{\text{OddsRatio}}$ | **无需 (1 模型)** | 单阶段完成 SFT + 对齐，彻底消除了参考模型显存开销 |
-| **SimPO** | 使用生成长度归一化的平均 Logits 差，结合 Target Margin 惩罚 | $-\log \sigma\left(\frac{\beta}{|y_w|}\log \pi_\theta(y_w) - \frac{\beta}{|y_l|}\log \pi_\theta(y_l) - \gamma\right)$ | **无需 (1 模型)** | **当前开源评测 SOTA**，彻底摆脱参考模型，且内生性消除长度偏见 |
+| **SimPO** | 使用生成长度归一化的平均 Logits 差，结合 Target Margin 惩罚 | $-\log \sigma\left(\frac{\beta}{|y_w|}\log \pi_\theta(y_w) - \frac{\beta}{|y_l|}\log \pi_\theta(y_l) - \gamma \right)$ | **无需 (1 模型)** | **当前开源评测 SOTA**，彻底摆脱参考模型，且内生性消除长度偏见 |
 
 ## 模块五：RLHF 对齐陷阱、评测体系与生产治理实战
 

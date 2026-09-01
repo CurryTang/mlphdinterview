@@ -891,7 +891,7 @@ WarpGroup 1:        [GEMM] [softmax] [GEMM] [softmax] ...
 FP8 的问题：transformer 中 Q/K 常有少量"outlier"维度值特别大，FP8 的动态范围无法同时表示大值和小值。
 
 **解决方案**：乘以随机正交矩阵 $M$（Hadamard + 随机符号翻转）"打散"outlier：
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{(QM)(KM)^T}{\sqrt{d}}\right) V$$
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{(QM)(KM)^T}{\sqrt{d}} \right) V$$
 因为 $MM^T = I$，数学结果不变：$(QM)(KM)^T = QMM^TK^T = QK^T$。但乘以 $M$ 后各维度幅值趋于均匀，FP8 量化误差降低 2.6 倍。$M$ 的应用通过 Fast Walsh-Hadamard Transform 实现，复杂度 $O(d \log d)$，可与 RoPE 融合零额外开销。
 
 #### 6.5.3 Triton 实现的可行性与局限

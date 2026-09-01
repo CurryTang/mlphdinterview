@@ -104,11 +104,11 @@ Let text representation vectors be $\mathbf{h} \in \mathbb{R}^d$ ($L_2$-normaliz
 - **Ideal Isotropy**: Representation vectors are **uniformly distributed** in all directions across the unit hypersphere $\mathcal{S}^{d-1}$.
   The covariance matrix satisfies the isotropic identity:
 
-$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T  \right] = \frac{1}{d} \mathbf{I}_d$$
 
   All eigenvalues of the covariance matrix are identical ($\lambda_1 = \dots = \lambda_d = \frac{1}{d}$), achieving maximal effective rank. The expected cosine similarity between two independent, semantically unrelated vectors $\mathbf{h}_i, \mathbf{h}_j$ is zero:
 
-$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j)  \right] \approx 0$$
 
 - **Representation Degeneration & Anisotropy (The Cone Effect)**:
   In uncalibrated autoregressive decoders, the representation covariance matrix exhibits **severe spectral decay**:
@@ -146,11 +146,11 @@ $$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\
 
 Contrastive InfoNCE loss expands the collapsed cone onto the entire hypersphere:
 
-$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}}  \right]$$
 
 Wang & Isola (ICML 2020) proved that as $N \to \infty$, minimizing $\mathcal{L}_{\text{InfoNCE}}$ asymptotically decomposes into two orthogonal geometric imperatives:
 
-$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (Alignment: Pulls true positives together)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (Uniformity: Maximizes entropy across the hypersphere, eliminating the cone)}}$$
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (Alignment: Pulls true positives together)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2    \right)  \right]}_{\mathcal{L}_{\text{uniform}} \text{ (Uniformity: Maximizes entropy across the hypersphere, eliminating the cone)}}$$
 
 ```anisotropy-cone-demo
 ```
@@ -316,7 +316,7 @@ Precision Hierarchy & Optimizer Evolution:
 
 ##### 1. Stochastic Rounding (SR): Eliminating FP32 Master Weights
 - **Unbiased Expectation**: Replaces deterministic rounding with probabilistic rounding:
-  $$\text{SR}(x) = \begin{cases} \lfloor x \rfloor & \text{with prob } 1 - \frac{x - \lfloor x \rfloor}{\delta} \\ \lceil x \rceil & \text{with prob } \frac{x - \lfloor x \rfloor}{\delta} \end{cases}$$
+  $$\text{SR}(x) = \begin{cases} \lfloor x  floor & \text{with prob } 1 - \frac{x - \lfloor x  floor}{\delta} \\ \lceil x  ceil & \text{with prob } \frac{x - \lfloor x  floor}{\delta} \end{cases}$$
 - **Mathematical Theorem**: $\mathbb{E}[\text{SR}(x)] = x$. Even if $\Delta W = 10^{-6}$ is far below the machine epsilon of BF16, it maintains a non-zero probability ($10^{-4}$) of flipping the least significant bit. Over millions of iterations, **the expected accumulation matches full precision**, enabling pure 16-bit weight updates without allocating extra FP32 master weight memory.
 
 ##### 2. 8-Bit Optimizers (bitsandbytes / Block-wise Dynamic Quantization)
@@ -338,134 +338,89 @@ NVIDIA Blackwell (B200 / GB200) introduces native **NVFP4 Tensor Cores** and **M
 
 ---
 
-## Module 3: Next-Token Loss at Random Initialization & Step-0 Sanity Check (Initial Loss & ln(V) Derivation)
+## Module 3: Next-Token Initial Loss ln(V) Derivation & Step-0 Sanity Check
 
-Before committing thousands of GPU hours to pre-train large language models, **the exact numerical value of the Step-0 loss is the single most critical empirical sanity check** to verify parameter initialization, causal attention masking, label alignment, and numerical stability.
+Before launching distributed training on thousands of GPUs (costing hundreds of thousands of GPU hours), **the numerical behavior at Step 0 (First-Step Loss) is the single most critical sanity check for verifying causal masking, data loaders, and numerical stability**.
 
 ```text
-Step-0 Initial Loss Diagnostic Decision Tree:
+Step 0 Loss Diagnostic Decision Tree:
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Compute Step-0 Forward Pass Loss L_0                                   │
+│ Compute Step 0 Forward Loss L_0                                        │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
        ┌────────────────────────────┼────────────────────────────┐
        ▼                            ▼                            ▼
 ┌──────────────┐             ┌──────────────┐             ┌──────────────┐
 │ L_0 ≈ ln(V)  │             │  L_0 ≫ ln(V) │             │  L_0 ≪ ln(V) │
-│  (± 0.05)    │             │ (e.g. 20.0+) │             │  (e.g. 3.5)  │
+│  (± 0.05)    │             │  (e.g. 20.0+)│             │  (e.g. 3.5)  │
 ├──────────────┤             ├──────────────┤             ├──────────────┤
-│  ✅ PASS     │             │ ❌ Exploding │             │ ❌ Data Leak │
-│  Proceed run │             │ Init / Scale │             │ Unmasked Pad │
+│  ✅ PASS     │             │ ❌ Exploding │             │ ❌ Causal    │
+│  Proceed     │             │ Residuals/LR │             │ Leakage/Pad  │
 └──────────────┘             └──────────────┘             └──────────────┘
 ```
 
 ---
 
-### 1. Mathematical Derivation of Initial Cross-Entropy Loss ($\ln V$)
+### 1. Mathematical Derivation of Standard Next-Token Initial Loss
 
-Consider an autoregressive language model with vocabulary size $V$. At sequence position $t$, the output linear projection produces unnormalized logits $z = [z_1, z_2, \dots, z_V] \in \mathbb{R}^V$. For target token $c \in \{1, 2, \dots, V\}$, standard cross-entropy loss is:
+For vocabulary size $V$ and sequence length $S$, the unnormalized log-probabilities (Logits) at position $t$ are $z^{(t)} = [z_1, z_2, \dots, z_V] \in \mathbb{R}^V$ for target token $c \in \{1, 2, \dots, V\}$.
 
-$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( rac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} ight) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} ight)$$
+Standard causal cross-entropy loss:
 
-#### (1) Uniform Probability Distribution Under Random Initialization
-Under standard zero-mean weight initializations (e.g. Gaussian $\mathcal{N}(0, \sigma^2)$ with $\sigma pprox 0.02$ or Xavier/He initialization):
-- All logits $z_v$ have expectation $\mathbb{E}[z_v] pprox 0$ with small variance;
-- The softmax probabilities approximate a uniform categorical distribution:
-  $$P(y = v) = rac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} pprox rac{1}{V}$$
-- The cross-entropy loss simplifies strictly to the natural log of vocabulary size:
-  $$\mathcal{L}_{	ext{init}} = -\ln \left(rac{1}{V}ight) = \ln V$$
+$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}}  \right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v}  \right)$$
 
-#### (2) Second-Order Taylor Expansion with Non-Zero Logit Variance
-If initial logits $z_v \sim 	ext{i.i.d. } \mathcal{N}(0, \sigma_z^2)$, expanding the Log-Sum-Exp function yields:
+#### (1) Uniform Distribution Under Random Initialization
+Under standard parameter initialization ($\mathcal{N}(0, \sigma^2)$ with $\sigma \approx 0.02$ or Xavier/Kaiming):
+- Output logits $z_v$ have mean near 0 ($\mathbb{E}[z_v] \approx 0$) with near-zero variance;
+- Output probabilities approach a uniform distribution:
+  $$P(y = v) = \frac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} \approx \frac{e^0}{V \cdot e^0} = \frac{1}{V}$$
+- Cross-entropy strictly simplifies to the natural logarithm:
+  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V}  \right) = \ln V$$
 
-$$\mathbb{E}[\mathcal{L}_{	ext{init}}] = -\mathbb{E}[z_c] + \mathbb{E}\left[\ln \sum_{v=1}^V e^{z_v}ight] pprox \ln V + rac{\sigma_z^2}{2} + \mathcal{O}(\sigma_z^4)$$
+#### (2) Second-Order Taylor Expansion with Initial Logit Variance
+If $z_v \sim \text{i.i.d. } \mathcal{N}(0, \sigma_z^2)$, second-order Taylor expansion over Log-Sum-Exp yields:
 
-For well-calibrated initializations ($\sigma_z \le 0.1$), $rac{\sigma_z^2}{2} < 0.005$, making $\mathcal{L}_{	ext{init}} pprox \ln V$ extremely accurate.
+$$\mathbb{E}[\mathcal{L}_{\text{init}}] = -\mathbb{E}[z_c] + \mathbb{E}[\ln S] \approx \ln V + \frac{\sigma_z^2}{2} + \mathcal{O}(\sigma_z^4)$$
+
+With $\sigma_z \approx 0.02 \sim 0.1$, $\frac{\sigma_z^2}{2} < 0.005$, proving **$\mathbb{E}[\mathcal{L}_{\text{init}}] \approx \ln V$ with extreme precision**.
 
 ---
 
-### 2. Theoretical Initial Loss Across Frontier Foundation Models
+### 2. Standard Foundation LLM Theoretical Initial Loss Reference
 
-| Foundation Model | Vocabulary Size $V$ | Theoretical Step-0 Loss: $\ln V$ (nats/token) |
+| Model Family | Vocab Size $V$ | Theoretical Initial Loss: $\ln V$ (nats/token) |
 |---|---|---|
-| **GPT-2 / GPT-3** | $50,257$ | $\ln(50257) pprox \mathbf{10.825}$ |
-| **LLaMA-1 / LLaMA-2 / Mistral-7B** | $32,000$ | $\ln(32000) pprox \mathbf{10.373}$ |
-| **LLaMA-3 / LLaMA-3.1 / LLaMA-3.3** | $128,256$ | $\ln(128256) pprox \mathbf{11.762}$ |
-| **DeepSeek-V2 / DeepSeek-V3 / DeepSeek-R1** | $129,280$ | $\ln(129280) pprox \mathbf{11.770}$ |
-| **Qwen-2 / Qwen-2.5** | $152,064$ | $\ln(152064) pprox \mathbf{11.932}$ |
-| **Gemma / Gemma-2** | $256,000$ | $\ln(256000) pprox \mathbf{12.453}$ |
+| **GPT-2 / GPT-3** | $50,257$ | $\ln(50257) \approx \mathbf{10.825}$ |
+| **LLaMA-1 / LLaMA-2 / Mistral-7B** | $32,000$ | $\ln(32000) \approx \mathbf{10.373}$ |
+| **LLaMA-3 / LLaMA-3.1 / LLaMA-3.3** | $128,256$ | $\ln(128256) \approx \mathbf{11.762}$ |
+| **DeepSeek-V2 / DeepSeek-V3 / DeepSeek-R1** | $129,280$ | $\ln(129280) \approx \mathbf{11.770}$ |
+| **Qwen-2 / Qwen-2.5** | $152,064$ | $\ln(152064) \approx \mathbf{11.932}$ |
+| **Gemma / Gemma-2** | $256,000$ | $\ln(256000) \approx \mathbf{12.453}$ |
 
 ---
 
-### 3. Theoretical Impact of Temperature and Label Smoothing
+### 3. Theoretical Impact of Temperature ($T$) & Label Smoothing ($\epsilon$)
 
-#### (1) Temperature Scaling $T$
-When temperature $T$ is applied to logits ($z / T$):
-$$\mathcal{L}(T) = -rac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} ight)$$
-- As $T 	o \infty$: Logit variance vanishes, driving probabilities strictly uniform and $\mathcal{L} 	o \ln V$.
-- For $T < 1.0$: Amplifies logit fluctuations, slightly increasing initial loss variance ($\mathbb{E}[\mathcal{L}] pprox \ln V + rac{\sigma_z^2}{2 T^2}$).
-
-#### (2) Label Smoothing $\epsilon$
-With label smoothing target distribution $q(v) = (1-\epsilon)\mathbb{I}(v=c) + rac{\epsilon}{V}$:
-$$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln P(c) - rac{\epsilon}{V}\sum_{v=1}^V \ln P(v)$$
-Substituting uniform random initialization ($P(v) pprox rac{1}{V}$):
-$$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln \left(rac{1}{V}ight) - rac{\epsilon}{V} \cdot V \ln \left(rac{1}{V}ight) = \ln V$$
-> 💡 **Core Insight**: **Label smoothing does NOT alter the expected initial loss at random initialization—it remains strictly equal to $\ln V$!**
+1. **Temperature $T$**: $\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T}  \right)$. As $T \to \infty$, variance is compressed and $\mathcal{L} \to \ln V$.
+2. **Label Smoothing $\epsilon$**: With smoothed targets $q(v) = (1-\epsilon)\mathbb{I}(v=c) + \frac{\epsilon}{V}$:
+   $$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V} \right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V} \right) = \ln V$$
+   > 💡 **Core Invariance**: **Regardless of the label smoothing factor $\epsilon$, theoretical expected initial loss at random initialization is strictly invariant at $\ln V$**.
 
 ---
 
-### 4. Tokenizer Effects & Vocabulary Padding
+### 4. High-Yield Interview Multiple-Choice Question
 
-1. **Per-Token Loss vs. Sequence-Level Compression**:
-   - Expanding vocabulary from 32K (LLaMA-2) to 128K (LLaMA-3) increases per-token initial loss from 10.37 to 11.76 ($\Delta pprox +1.39$ nats/token);
-   - **However**: Larger vocabularies compress text more efficiently (requiring $\sim 30\%$ fewer tokens for identical text), so total document-level cross-entropy loss is actually lower.
-2. **Vocabulary Alignment Padding (GPU Tensor Core Alignment)**:
-   - In production frameworks (Megatron-LM / HuggingFace), vocabularies are often padded to multiples of 64 or 128 (e.g., $V_{	ext{embed}} = 32,256$ for $V_{	ext{actual}} = 32,000$ to optimize memory bus alignment);
-   - **Note**: The expected initial loss will evaluate to $\ln(V_{	ext{embed}})$, matching the actual projection head dimension.
+<details class="exercise">
+<summary><span class="q-label">Q1 · Multiple Choice</span> <span class="q-text">When starting pre-training for LLaMA-3 ($V = 128,256$) on a 1000-GPU cluster at Step 0 before any optimizer steps, which of the following statements is <strong>strictly correct</strong>?</span></summary>
 
----
+- [ ] **A.** Step 0 loss should be close to 0.0; any value above 1.0 indicates severe initialization divergence.
+- [ ] **B.** Expected initial loss is $\ln(128256) \approx 11.76$; an observed $L_0 = 3.2$ indicates rapid and superior model convergence.
+- [x] **C.** Expected initial loss is $\ln(128256) \approx 11.76$; an observed $L_0 = 3.2$ strongly indicates a critical bug such as missing causal attention masks (future token leakage) or unmasked target padding tokens (`ignore_index=-100`).
+- [ ] **D.** If label smoothing $\epsilon = 0.1$ is applied, initial loss drops significantly to $(1-\epsilon)\ln V \approx 10.58$.
 
-### 5. The Step-0 Pre-Training Sanity Check Diagnostic Matrix
-
-```text
-Step-0 Diagnostic Protocol:
-┌─────────────────────────┬────────────────────────────────────────────────────────────────────────┐
-│ Observed Loss           │ Root Causes & Immediate Fixes                                          │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 1. L_0 ≈ ln(V) ± 0.05   │ ✅ PASS. Initialization, causal mask, projections, and loss are valid. │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 2. L_0 ≫ ln(V)          │ ❌ Initialization variance too large; missing 1/√(2*N_layers) residual │
-│    (e.g., L_0 = 25.0)   │    scaling causing logit explosion; LayerNorm weights misconfigured.   │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 3. L_0 ≪ ln(V)          │ ❌ Fatal Data Leakage: Causal attention mask missing (model looks ahead);│
-│    (e.g., L_0 = 3.5)    │ ❌ Target Padding Leakage: Missing `ignore_index=-100` on [PAD] tokens;│
-│                         │ ❌ Off-by-one label alignment missing (`shift_labels = input_ids[1:]`).│
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 4. L_0 = NaN / Inf      │ ❌ Missing 1/√d_k attention scale causing softmax exponent overflow;   │
-│                         │ ❌ FP16 dynamic loss scale initial value too aggressive.               │
-└─────────────────────────┴────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Module 4: High-Yield Interview Rapid-Fire
-
-### Q1: Why is BERT's masked bidirectional architecture unsuitable for modern foundation LLMs?
-> **Answer**:
-> 1. Masked Language Modeling (MLM) breaks the causal autoregressive chain, preventing the model from naturally generating variable-length text sequences;
-> 2. BERT lacks a causal KV cache. Generating each new token requires a full $O(S^2)$ forward pass over the entire sequence, making open-ended generation computationally prohibitive.
-
-### Q2: When an LLM training run encounters NaN loss, what is the systematic debugging sequence?
-> **Answer**:
-> 1. Check for gradient overflow under FP16 and verify dynamic loss scale values;
-> 2. Ensure the $\frac{1}{\sqrt{d_k}}$ attention scale factor is active to prevent softmax exponent overflow;
-> 3. Verify that normalization layer $\epsilon$ values (LayerNorm/RMSNorm) are sufficient ($10^{-5} \sim 10^{-6}$) to avoid division by zero;
-> 4. Audit dataset batches for corrupted all-zero inputs or extreme length anomalies.
-
-### Q3: Why must the Step-0 loss of an autoregressive language model equal $\ln V$? What does it mean if $\mathcal{L}_0 = 2.0$?
-> **Answer**:
-> 1. **Mechanism**: At random initialization with zero-mean weights, the model assigns an approximately uniform probability $P(y=c) = \frac{1}{V}$ across all $V$ candidate tokens. The cross-entropy loss is therefore $-\ln(1/V) = \ln V$.
-> 2. **Loss = 2.0 Diagnosis**: Indicates a **severe implementation bug or bidirectional data leakage**:
->    - **Cause 1 (Broken Causal Mask)**: The attention mask failed to enforce causal lower-triangular masking, allowing self-attention to attend directly to future target tokens.
->    - **Cause 2 (Unmasked Padding)**: Target batch padding tokens lacked `ignore_index=-100`, allowing the model to trivially predict constant `[PAD]` tokens.
->    - **Cause 3 (Unshifted Labels)**: The target labels were not shifted by one position relative to inputs (`labels = input_ids`), causing the model to simply copy the current input token.
+> 💡 **Explanation**:
+> - **Correct Answer: C**.
+>   1. Under uniform initialization, $P(y=v) \approx \frac{1}{V} \implies \mathcal{L}_{\text{init}} = \ln V = \ln(128256) \approx 11.762$.
+>   2. If $L_0 \ll \ln V$, the model has causal mask leakage (acting as bidirectional attention) or padding tokens are contributing zero loss artificially.
+>   3. Option D is mathematically false because label smoothing under uniform probability distribution preserves the expectation $\ln V$ exactly.
+</details>

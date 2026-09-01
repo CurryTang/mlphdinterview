@@ -147,7 +147,7 @@ explanation: 70B BF16 参数约 140GB，Adam 状态和梯度还会继续放大�
 设备 3: [A3]     →   设备 3: [A0, A1, A2, A3]
 ```
 
-**符号表示**：$\text{AllGather}_X([A_X, B]) \rightarrow [A, B]$
+**符号表示**：$\text{AllGather}_X([A_X, B])  ightarrow [A, B]$
 
 **耗时**：$T = \frac{V}{W_{双向}}$，其中 $V$ 是总数据量
 
@@ -158,13 +158,13 @@ explanation: 70B BF16 参数约 140GB，Adam 状态和梯度还会继续放大�
 
 **延迟修正**：当每跳数据量很小时，每跳延迟 $T_\text{min} \approx 1\,\mu\text{s}$ 成为瓶颈：
 
-$$T_\text{hop} = \max\!\left[T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}}\right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}}\right]$$
+$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \right]$$
 
 对于 TPU v5e（$W_\text{ici} = 4.5 \times 10^{10}$ B/s），**延迟阈值约为 45 kB**：小于此大小的数组是延迟受限的。
 
 **多轴 AllGather**：对多个网格轴 $\{X_1, X_2, \ldots\}$ 同时 AllGather，带宽成比例增加：
 
-$$T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}}\right]$$
+$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \right]$$
 
 ![AllGather 实测带宽（TPU v5e 8×16）：在 10 MB 以上可达约 95% 峰值](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
 
@@ -191,7 +191,7 @@ $$T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V
 设备 3: [A3, B3, C3, D3]   →   设备 3: [D0+D1+D2+D3]
 ```
 
-**符号表示**：$\text{ReduceScatter}_{X,K}([A, K]\{U_X\}) \rightarrow [A, K_X]$
+**符号表示**：$\text{ReduceScatter}_{X,K}([A, K]\{U_X\})  ightarrow [A, K_X]$
 
 **耗时**：与 AllGather 相同
 > **ReduceScatter 与 AllGather 的对偶关系**（Kronecker 积视角）：
@@ -229,7 +229,7 @@ $$T_\text{total} = \max\!\left[\frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V
 设备 1: [A1, B1]   →   设备 1: [B0, B1]
 ```
 
-**符号表示**：$\text{AllToAll}_{X, J}([A, B_X]) \rightarrow [A_X, B]$
+**符号表示**：$\text{AllToAll}_{X, J}([A, B_X])  ightarrow [A_X, B]$
 
 **耗时**：约为 AllGather 的 1/4
 
@@ -407,7 +407,7 @@ y = torch.einsum('BD,DF->BF', A, B)  # y 的分片自动为 [Shard(0), Shard(1)]
 
 #### 情况 1：收缩维度均未分片
 
-$$A[I_X, J] \cdot B[J, K_Y] \rightarrow C[I_X, K_Y]$$
+$$A[I_X, J] \cdot B[J, K_Y]  ightarrow C[I_X, K_Y]$$
 
 **无需通信**！每个设备可以独立完成本地乘法。
 
@@ -419,7 +419,7 @@ local_C = torch.matmul(local_A, local_B)
 
 #### 情况 2：一个输入的收缩维度被分片
 
-$$A[I, J_X] \cdot B[J, K] \rightarrow C[I, K]$$
+$$A[I, J_X] \cdot B[J, K]  ightarrow C[I, K]$$
 
 **需要 AllGather**：先收集 A，再本地乘法
 
@@ -432,7 +432,7 @@ local_C = torch.matmul(full_A, local_B)
 
 #### 情况 3：两个输入的收缩维度沿同一轴分片
 
-$$A[I, J_X] \cdot B[J_X, K] \rightarrow C[I, K]\{U_X\}$$
+$$A[I, J_X] \cdot B[J_X, K]  ightarrow C[I, K]\{U_X\}$$
 
 **本地乘法产生部分和，需要 AllReduce**：
 
@@ -450,7 +450,7 @@ full_C = all_reduce(partial_C, op=SUM)
 
 #### 情况 4：两个非收缩维度沿同一轴分片（非法）
 
-$$A[I_X, J] \cdot B[J, K_X] \rightarrow C[I_X, K_X] \quad \text{❌ 非法！}$$
+$$A[I_X, J] \cdot B[J, K_X]  ightarrow C[I_X, K_X] \quad \text{❌ 非法！}$$
 
 **必须先 AllGather 其中一个输入**：
 
@@ -536,7 +536,7 @@ explanation: 收缩维度 J 沿同一设备轴切分时，每个 rank 只计算�
 
 **数据并行**是最简单的并行策略：
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D] \rightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D]  ightarrow \text{Out}[B_X, D]$$
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -654,7 +654,7 @@ explanation: DDP 中每张 GPU 持有完整模型并处理不同 batch shard，�
 
 **FSDP**（Fully Sharded Data Parallel）也称为 **ZeRO-3**，解决了纯数据并行的内存限制：
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X] \rightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X]  ightarrow \text{Out}[B_X, D]$$
 
 核心思想：**参数、梯度和优化器状态都沿数据并行维度分片**
 
@@ -860,7 +860,7 @@ explanation: ZeRO-1 分 optimizer state，ZeRO-2 再分 gradient，ZeRO-3 / FSDP
 
 **张量并行**（也称为 Megatron 分片）将模型的维度分片：
 
-$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D] \rightarrow \text{Out}[B, D_Y]$$
+$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D]  ightarrow \text{Out}[B, D_Y]$$
 
 核心思想：**分片模型维度而非数据维度**
 
@@ -1445,7 +1445,7 @@ explanation: 1F1B 在稳态中 forward/backward 交错，activation 峰值从 GP
 
 最常用的组合是 FSDP（数据并行）+ 张量并行：
 
-$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X] \rightarrow \text{Out}[B_X, D_Y]$$
+$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X]  ightarrow \text{Out}[B_X, D_Y]$$
 
 **优势**：
 
@@ -1503,7 +1503,7 @@ explanation: TP 通信最频繁，最好走 NVLink/NVSwitch；PP 只在 stage �
 
 **本地激活形状公式**：
 
-$$\text{local shape} = \left[\frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D\right]$$
+$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \right]$$
 
 - $B / \text{dp}$：数据并行分了 batch
 - $S / (\text{cp} \times \text{sp})$：Context Parallel 和 Sequence Parallel 共同分了序列

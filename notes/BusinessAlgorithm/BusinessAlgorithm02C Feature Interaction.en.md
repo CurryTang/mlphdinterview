@@ -26,7 +26,7 @@ Factorization Machine uses low-rank vectors for second-order interactions:
 ```math
 \hat y
 =w_0+\sum_i w_ix_i
-+\sum_{i<j}\langle v_i,v_j\rangle x_ix_j.
++\sum_{i<j}\langle v_i,v_j angle x_ix_j.
 ```
 
 If `x` is one-hot, most dimensions are zero, and calculation only involves non-zero features. Inner products share statistical strength; even if a pair of features rarely appears together, reasonable interactions can be learned through their respective embeddings.
@@ -48,10 +48,9 @@ Where `factors[i]` is the `latent_dim`-dimensional vector for the `i`-th feature
 
 ```math
 \frac{1}{2}\sum_f
-\left[
-\left(\sum_i v_{i,f}x_i\right)^2
+\left[ \left( \sum_i v_{i,f}x_i \right)^2
 -\sum_i(v_{i,f}x_i)^2
-\right].
+ \right].
 ```
 
 Raise a `ValueError` if input dimensions are inconsistent.

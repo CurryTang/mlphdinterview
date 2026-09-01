@@ -892,7 +892,7 @@ The two warpgroups alternate through the `bar.sync` hardware barrier, so the sof
 The issue with FP8 is that Q/K in transformers often contain a small number of “outlier” dimensions with very large values, and FP8’s dynamic range cannot represent both large and small values well at the same time.
 
 **Solution**: multiply by a random orthogonal matrix $M$ (Hadamard + random sign flips) to “spread out” the outliers:
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{(QM)(KM)^T}{\sqrt{d}}\right) V$$
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{(QM)(KM)^T}{\sqrt{d}} \right) V$$
 Because $MM^T = I$, the math is unchanged: $(QM)(KM)^T = QMM^TK^T = QK^T$. But after multiplying by $M$, the magnitudes across dimensions become more uniform, reducing FP8 quantization error by 2.6×. Applying $M$ can be implemented with the Fast Walsh-Hadamard Transform at complexity $O(d \log d)$, and it can be fused with RoPE at effectively zero additional cost.
 
 #### 6.5.3 Feasibility and Limitations in Triton

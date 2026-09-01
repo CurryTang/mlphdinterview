@@ -6,13 +6,13 @@ $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 $$
 
-其中 $(X,Y)$ 是二维标准正态，相关系数是 $\rho$。答案是：
+其中 $(X,Y)$ 是二维标准正态，相关系数是 $ ho$。答案是：
 
 $$
 \boxed{
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 =
-\frac{2}{\pi}\arcsin\rho
+\frac{2}{\pi}\arcsin ho
 }
 $$
 
@@ -55,7 +55,7 @@ $$
 \qquad
 \operatorname{Var}(X)=\operatorname{Var}(Y)=1,
 \qquad
-\operatorname{corr}(X,Y)=\rho
+\operatorname{corr}(X,Y)= ho
 $$
 
 那么它的协方差矩阵是：
@@ -63,18 +63,18 @@ $$
 $$
 \Sigma=
 \begin{pmatrix}
-1 & \rho\\
-\rho & 1
+1 &  ho\\
+ ho & 1
 \end{pmatrix}
 $$
 
-$\rho$ 控制椭圆的倾斜方向：
+$ ho$ 控制椭圆的倾斜方向：
 
-| $\rho$ | 图像直觉 |
+| $ ho$ | 图像直觉 |
 | --- | --- |
-| $\rho>0$ | 椭圆沿 $y=x$ 方向拉长，两个变量更容易同号 |
-| $\rho=0$ | 圆对称，两个变量独立 |
-| $\rho<0$ | 椭圆沿 $y=-x$ 方向拉长，两个变量更容易异号 |
+| $ ho>0$ | 椭圆沿 $y=x$ 方向拉长，两个变量更容易同号 |
+| $ ho=0$ | 圆对称，两个变量独立 |
+| $ ho<0$ | 椭圆沿 $y=-x$ 方向拉长，两个变量更容易异号 |
 
 相关二维正态的一个标准构造是：
 
@@ -87,10 +87,10 @@ $$
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
-于是 $(X,Y)$ 就是相关系数为 $\rho$ 的二维标准正态。
+于是 $(X,Y)$ 就是相关系数为 $ ho$ 的二维标准正态。
 
 <figure class="quant-svg-figure quant-svg-wide">
 <svg viewBox="0 0 1060 420" role="img" aria-label="Cholesky transform from independent normal variables to correlated normal variables">
@@ -152,7 +152,7 @@ $$
 
 $$
 \mathbb{E}X=0,\qquad
-\mathbb{E}Y=\rho\mathbb{E}U+\sqrt{1-\rho^2}\mathbb{E}V=0
+\mathbb{E}Y= ho\mathbb{E}U+\sqrt{1- ho^2}\mathbb{E}V=0
 $$
 
 再看方差：
@@ -160,9 +160,9 @@ $$
 $$
 \operatorname{Var}(Y)
 =
-\rho^2\operatorname{Var}(U)
+ ho^2\operatorname{Var}(U)
 +
-(1-\rho^2)\operatorname{Var}(V)
+(1- ho^2)\operatorname{Var}(V)
 =
 1
 $$
@@ -172,15 +172,15 @@ $$
 $$
 \operatorname{Cov}(X,Y)
 =
-\operatorname{Cov}(U,\rho U+\sqrt{1-\rho^2}V)
+\operatorname{Cov}(U, ho U+\sqrt{1- ho^2}V)
 =
-\rho
+ ho
 $$
 
 因为 $U,V$ 独立，所以 $\operatorname{Cov}(U,V)=0$。又因为 $X,Y$ 的方差都是 1：
 
 $$
-\operatorname{corr}(X,Y)=\rho
+\operatorname{corr}(X,Y)= ho
 $$
 
 矩阵写法是：
@@ -193,7 +193,7 @@ Y
 =
 \begin{pmatrix}
 1&0\\
-\rho&\sqrt{1-\rho^2}
+ ho&\sqrt{1- ho^2}
 \end{pmatrix}
 \begin{pmatrix}
 U\\
@@ -205,14 +205,14 @@ $$
 
 $$
 \begin{pmatrix}
-1&\rho\\
-\rho&1
+1& ho\\
+ ho&1
 \end{pmatrix}
 $$
 
 的 Cholesky factor。
 
-这一步需要 jointly normal。只知道 $X,Y$ 各自是标准正态、相关系数是 $\rho$，还不够推出这个线性表示。
+这一步需要 jointly normal。只知道 $X,Y$ 各自是标准正态、相关系数是 $ ho$，还不够推出这个线性表示。
 
 ---
 
@@ -278,7 +278,7 @@ $$
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
 所以：
@@ -286,7 +286,7 @@ $$
 $$
 p
 =
-P(U>0,\ \rho U+\sqrt{1-\rho^2}V>0)
+P(U>0,\  ho U+\sqrt{1- ho^2}V>0)
 $$
 
 现在看 $(U,V)$ 平面。因为 $U,V$ 独立标准正态，它们的联合密度是：
@@ -322,19 +322,19 @@ $$
 和：
 
 $$
-\rho U+\sqrt{1-\rho^2}V>0
+ ho U+\sqrt{1- ho^2}V>0
 $$
 
 第二个条件的边界线是：
 
 $$
-V=-\frac{\rho}{\sqrt{1-\rho^2}}U
+V=-\frac{ ho}{\sqrt{1- ho^2}}U
 $$
 
 令：
 
 $$
-\alpha=\arcsin\rho
+\alpha=\arcsin ho
 $$
 
 那么这条边界线与正 $U$ 轴的夹角是 $-\alpha$。第一条边界 $U=0$ 对应角度 $\pi/2$。两个半平面交出来的扇形角度是：
@@ -342,7 +342,7 @@ $$
 $$
 \frac{\pi}{2}+\alpha
 =
-\frac{\pi}{2}+\arcsin\rho
+\frac{\pi}{2}+\arcsin ho
 $$
 
 <figure class="quant-svg-figure quant-svg-wide">
@@ -407,9 +407,9 @@ $$
 $$
 p
 =
-\frac{\frac{\pi}{2}+\arcsin\rho}{2\pi}
+\frac{\frac{\pi}{2}+\arcsin ho}{2\pi}
 =
-\frac14+\frac{\arcsin\rho}{2\pi}
+\frac14+\frac{\arcsin ho}{2\pi}
 $$
 
 ---
@@ -427,7 +427,7 @@ $$
 代入：
 
 $$
-p=\frac14+\frac{\arcsin\rho}{2\pi}
+p=\frac14+\frac{\arcsin ho}{2\pi}
 $$
 
 得到：
@@ -435,16 +435,16 @@ $$
 $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 =
-4\left(\frac14+\frac{\arcsin\rho}{2\pi}\right)-1
+4\left( \frac14+\frac{\arcsin ho}{2\pi} \right)-1
 =
-\frac{2}{\pi}\arcsin\rho
+\frac{2}{\pi}\arcsin ho
 $$
 
 ---
 
 ## 8. 特殊值检查
 
-| $\rho$ | 情况 | 公式结果 |
+| $ ho$ | 情况 | 公式结果 |
 | --- | --- | --- |
 | $0$ | 独立，同号和异号一样多 | $0$ |
 | $1$ | $Y=X$，永远同号 | $1$ |
@@ -476,7 +476,7 @@ $$
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
 第二，独立标准正态平面是圆对称的。任何过原点的扇形概率只由角度决定。

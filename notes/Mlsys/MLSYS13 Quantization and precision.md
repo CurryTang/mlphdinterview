@@ -17,7 +17,7 @@ LLM 的量化研究从 2022 年开始爆发，核心驱动力是模型规模急�
 
 将浮点张量 $x$ 映射到 $b$-bit 整数：
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s} \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ight ceil + z,\; 0,\; 2^b - 1\Big)$$
 
 反量化：
 
@@ -31,7 +31,7 @@ $$\hat{x} = s \cdot (x_q - z)$$
 两种常见配置：
 
 - **对称量化**：$z = 0$，$s = \max(|x|)\;/\;(2^{b-1} - 1)$。整数范围关于 0 对称，实现简单，但若分布严重偏斜则浪费量化位。
-- **非对称量化**：$z \neq 0$，$s = (x_{\max} - x_{\min})\;/\;(2^b - 1)$，$z = \lfloor -x_{\min}/s \rceil$。$z$ 将整数零点对齐到实际分布的下界，更紧凑地利用全部 $2^b$ 个量化级。
+- **非对称量化**：$z \neq 0$，$s = (x_{\max} - x_{\min})\;/\;(2^b - 1)$，$z = \lfloor -x_{\min}/s  ceil$。$z$ 将整数零点对齐到实际分布的下界，更紧凑地利用全部 $2^b$ 个量化级。
 
 ### 1.2 术语与记号
 
@@ -73,7 +73,7 @@ $$\hat{x} = s \cdot (x_q - z)$$
 
 ### 1.4 Straight-Through Estimator (STE)
 
-**为什么需要 STE？** 量化的核心操作是取整 $\lfloor \cdot \rceil$，这是一个阶梯函数——输出在整数点跳变，其余地方完全平坦。数学上，它的梯度几乎处处为 0。这意味着如果我们想在训练中引入量化（即 QAT），反向传播到量化节点时梯度直接"断掉"，权重无法通过梯度下降更新，训练完全失效。STE 是解决这一矛盾的标准手段：前向传播老老实实做量化，反向传播时假装量化操作不存在，让梯度直接穿过去。
+**为什么需要 STE？** 量化的核心操作是取整 $\lfloor \cdot  ceil$，这是一个阶梯函数——输出在整数点跳变，其余地方完全平坦。数学上，它的梯度几乎处处为 0。这意味着如果我们想在训练中引入量化（即 QAT），反向传播到量化节点时梯度直接"断掉"，权重无法通过梯度下降更新，训练完全失效。STE 是解决这一矛盾的标准手段：前向传播老老实实做量化，反向传播时假装量化操作不存在，让梯度直接穿过去。
 
 QAT 中用 STE 绕过：
 
@@ -263,7 +263,7 @@ BF16 因为省去了 loss scaling 的复杂性且训练更稳定，已成为大�
 **为什么离群值让朴素量化崩溃？** 回顾 §1.1 的量化公式，scale $s$ 由张量的最大绝对值决定。假设一个激活向量大部分值在 $[-1, 1]$，但有一个通道的值为 100：
 
 - $s = 100 / 127 \approx 0.79$（INT8 对称量化）
-- 正常值 $0.5$ 被量化为 $\lfloor 0.5 / 0.79 \rceil = 1$，反量化回 $0.79$，误差 58%
+- 正常值 $0.5$ 被量化为 $\lfloor 0.5 / 0.79  ceil = 1$，反量化回 $0.79$，误差 58%
 - 如果没有离群值：$s = 1 / 127 \approx 0.008$，$0.5$ 被量化为 $63$，反量化回 $0.50$，误差 < 1%
 
 **一个离群值拉大了 scale，毁掉了其余 99.9% 正常值的量化精度。**
@@ -706,7 +706,7 @@ KV cache 结构：
 
 量化后 Attention 的计算需要分成两部分——量化部分和 FP16 残差部分：
 
-$$\text{Attn}(Q, K, V) = \text{softmax}\!\left(\frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}}\right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
+$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
 
 其中 $K_{\text{quant}}, V_{\text{quant}}$ 是 2-bit 量化部分，$K_{\text{res}}, V_{\text{res}}$ 是 FP16 残差 buffer。实际实现中：
 
@@ -759,7 +759,7 @@ $$\text{Attn}(Q, K, V) = \text{softmax}\!\left(\frac{Q \cdot [K_{\text{quant}}; 
 
 3. **Hadamard 变换失效**：在 Transformer 上 Hadamard 旋转能有效均匀化 max value（QuaRot 的核心）。但 MambaQuant 从理论上证明：Hadamard 变换**无法保证通道方差一致**。具体来说，Hadamard 变换后第 $l$ 个通道的方差为：
 
-$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left(\sum_{i=1}^{m}H_{il}K_{ij}\right)^2\lambda_j$$
+$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \right)^2\lambda_j$$
 
 由于 $H$ 是固定矩阵而 $K$（特征向量）和 $\lambda$（特征值）随输入变化，Hadamard 无法适应不同的通道分布，导致旋转后方差仍然不一致。
 
@@ -826,7 +826,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 先减去均值（中心化），再取符号。减均值很关键——如果权重分布不对称（均值 ≠ 0），直接 Sign 会让 +1 和 -1 的数量严重不平衡，浪费表达能力。
 
 **激活量化**：激活量化到 $b$-bit（论文中用 8-bit），使用 absmax 对称量化：
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1) \right\rceil, -2^{b-1}+1, 2^{b-1}-1\right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ight ceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
 
 **完整的 BitLinear 前向**：
 ```
@@ -855,7 +855,7 @@ BitNet b1.58 是 BitNet 的关键改进：权重从二值 {-1, +1} 扩展到三�
 
 **权重量化**：
 
-$$\hat{W} = \text{RoundClip}\!\left(\frac{W}{\gamma},\,-1,\,1\right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
+$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
 
 $\gamma$ 是权重绝对值的均值（L1 归一化因子）。归一化后权重大部分落在 $[-1, 1]$ 内，取整到 {-1, 0, +1}。
 
@@ -917,7 +917,7 @@ $$x_{\text{fp8}} = \texttt{cast\_fp8}(x \,/\, s), \qquad s = \frac{\max|x|}{f_{\
 | **Per-tensor** | 整张量一个 $s$ | 低（离群值拉大 s） | 最低 | Transformer Engine 默认 |
 | **Per-token × per-channel** | 激活按 token 一个 $s$，权重按 output channel 一个 $s$ | 中（分维度适配） | 中 | 部分学术工作 |
 | **Per-block (MXFP8)** | 固定 tile（如 32 元素）一个 $s$，$s$ 本身用 8-bit 存储 | 高（局部精度好） | 较高 | Blackwell MXFP8 |
-| **Delayed scaling** | 不用当前 step 的 $\max\lvert x \rvert$（需要额外 pass），而是用前几步的 amax 估计 $s$ | 中 | 低（但有时序依赖） | NVIDIA recipe |
+| **Delayed scaling** | 不用当前 step 的 $\max\lvert x  vert$（需要额外 pass），而是用前几步的 amax 估计 $s$ | 中 | 低（但有时序依赖） | NVIDIA recipe |
 
 **Delayed scaling 详解**：Per-tensor scaling 的一个实际问题是——要算 $s = \max|x| / f_{\max}$，需要先跑一遍前向得到 $x$，才能算 $s$，然后再用 $s$ 做量化跑第二遍前向。为了避免两遍开销，delayed scaling 用前几步的历史 $\max|x|$ 来估计当前 step 的 $s$。假设相邻 step 的统计变化不大（通常成立），这种"延迟"一步的近似足够好。
 
@@ -1023,9 +1023,9 @@ Quartet 一步训练流程：
 
 $$L(N, D, P_{fwd}, P_{bwd}) = \frac{A}{(\text{effN})^\alpha} + \frac{B}{(\text{effD})^\beta} + E$$
 
-其中 $\text{effN} = N \cdot \rho(P_{fwd})$ 为"有效参数量"（低精度降低了参数的信息容量），$\text{effD} = D \cdot \eta(P_{bwd})$ 为"有效数据量"（低精度梯度降低了每个 token 的学习效率）。核心发现：
+其中 $\text{effN} = N \cdot  ho(P_{fwd})$ 为"有效参数量"（低精度降低了参数的信息容量），$\text{effD} = D \cdot \eta(P_{bwd})$ 为"有效数据量"（低精度梯度降低了每个 token 的学习效率）。核心发现：
 
-- **前向精度影响参数效率**：FP4 前向的 $\rho$ 约 0.69-0.78，即 FP4 模型需要约 1.3-1.45× 参数才能匹配 BF16 同等精度
+- **前向精度影响参数效率**：FP4 前向的 $ ho$ 约 0.69-0.78，即 FP4 模型需要约 1.3-1.45× 参数才能匹配 BF16 同等精度
 - **后向精度影响数据效率**：FP4 后向的 $\eta$ 约 0.85，需要约 1.18× 数据补偿
 - **前向比后向更敏感**：这解释了为什么 Quartet 在前向用更精确的 QuEST 而后向用简单的 SR
 
@@ -1132,7 +1132,7 @@ $$m = \begin{cases} \beta \cdot r_m & \text{if } r_m > 0 \wedge r_s > 1 \\ 0 & \
 
 **核心发现 1：离群值指标不能预测 PTQ 精度**
 
-§3 中我们介绍了离群值（outlier）是 LLM 量化的核心难点。直觉上，离群值越大量化越难——传统工作用 MMR（max/median ratio）或 Kurtosis 来衡量离群程度，并以此指导量化方案设计（如 §4.2 SmoothQuant 的目标就是降低激活的离群值）。但 Beyond Outliers 发现，**跨优化器比较时 MMR 和 Kurtosis 与 PTQ 后精度几乎无相关性**（$\rho = 0.62$ 和 $\rho = -0.89$ 对 760M 模型）：
+§3 中我们介绍了离群值（outlier）是 LLM 量化的核心难点。直觉上，离群值越大量化越难——传统工作用 MMR（max/median ratio）或 Kurtosis 来衡量离群程度，并以此指导量化方案设计（如 §4.2 SmoothQuant 的目标就是降低激活的离群值）。但 Beyond Outliers 发现，**跨优化器比较时 MMR 和 Kurtosis 与 PTQ 后精度几乎无相关性**（$ ho = 0.62$ 和 $ ho = -0.89$ 对 760M 模型）：
 
 - **Muon** 的 MMR 最低（离群最小），但 PTQ 后精度**下降最严重**（760M: 64.63% → 50.00%）
 - **Shampoo** 的 MMR 最高（离群最大），但 PTQ 后精度**保持最好**（760M: 63.05% → 59.26%）
@@ -1151,7 +1151,7 @@ $$G_\ell = G_{1,\ell} \cdot G_{2,\ell}$$
 
 $G_{1,\ell}$ 是谱范数比（量化前后权重谱范数变化，各优化器接近 1），$G_{2,\ell}$ 是对齐比（量化误差方向与权重主奇异方向的对齐程度）。**Muon 的 $G_\ell$ 在线性层最高**——量化误差恰好指向权重放大最强的方向，导致误差快速积累；Shampoo 和 AdamW 的 $G_\ell$ 最低。
 
-论文提出的新指标 $R_L$（最终层累积量化误差）与 PTQ 精度高度相关（$\rho = 0.70$）。
+论文提出的新指标 $R_L$（最终层累积量化误差）与 PTQ 精度高度相关（$ ho = 0.70$）。
 
 **核心发现 2：QAT 最佳优化器 ≠ 全精度最佳优化器**
 
@@ -1159,9 +1159,9 @@ $G_{1,\ell}$ 是谱范数比（量化前后权重谱范数变化，各优化器�
 
 **核心发现 3：QAT 的 scaling law**
 
-类似 §8.3 Quartet 提出的低精度 scaling law（用 effN 描述精度对参数效率的影响），Beyond Outliers 推导了 QAT 下的 optimizer-aware scaling law：$L = A' / (N \cdot \rho)^\alpha + E$，其中 $\rho$ 是"参数效率"——4-bit QAT 模型的等效参数量为 $\rho \cdot N$。各优化器的 $\rho_{4bit}$：
+类似 §8.3 Quartet 提出的低精度 scaling law（用 effN 描述精度对参数效率的影响），Beyond Outliers 推导了 QAT 下的 optimizer-aware scaling law：$L = A' / (N \cdot  ho)^\alpha + E$，其中 $ ho$ 是"参数效率"——4-bit QAT 模型的等效参数量为 $ ho \cdot N$。各优化器的 $ ho_{4bit}$：
 
-| 优化器 | $\rho_{4bit}$ | 含义 |
+| 优化器 | $ ho_{4bit}$ | 含义 |
 |---|---|---|
 | **Shampoo** | **0.879** | 4-bit 保留 87.9% 参数效率 |
 | AdamW | 0.863 | |
@@ -1194,7 +1194,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # 反量化
 
 **8-bit 对称量化（blockwise）**——对应 §1.1 的对称公式，但按 block（默认 2048 元素）独立计算 scale：
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}} \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ight ceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 分 block 的好处：避免全局少数大值拉高 scale，挤压其余正常值的量化精度。
 

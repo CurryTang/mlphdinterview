@@ -26,13 +26,13 @@ The 3-Dimensional Evolution of Industrial Ranking Backbones:
 ### Multi-Objective Representation Conflicts & The Seesaw Effect
 1. **Directional Gradient Conflicts**: $\cos(\mathbf{g}_A, \mathbf{g}_B) < 0$;
 2. **Frequency & Magnitude Domination**: High-frequency CTR dominates sparse conversion tasks;
-3. **Sample Space Mismatch**: CTR on $\mathcal{D}_{	ext{imp}}$ vs. CVR on $\mathcal{D}_{	ext{click}}$.
+3. **Sample Space Mismatch**: CTR on $\mathcal{D}_{\text{imp}}$ vs. CVR on $\mathcal{D}_{\text{click}}$.
 
 #### Solution Matrix
 - **PLE (Progressive Layered Extraction)**: Physical isolation of task-specific and shared experts;
-- **Uncertainty Weighting**: $\mathcal{L} = \sum rac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k$;
-- **PCGrad**: Orthogonal projection of conflicting gradients $\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2}\mathbf{g}_j$;
-- **Constrained Pareto Fusion**: Real-time PID control tracking $\max 	ext{GMV} 	ext{ s.t. } 	ext{CTR} \ge 	ext{CTR}_0$.
+- **Uncertainty Weighting**: $\mathcal{L} = \sum \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k$;
+- **PCGrad**: Orthogonal projection of conflicting gradients $\mathbf{g}_i \leftarrow \mathbf{g}_i - \frac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2}\mathbf{g}_j$;
+- **Constrained Pareto Fusion**: Real-time PID control tracking $\max \text{GMV} \text{ s.t. } \text{CTR} \ge \text{CTR}_0$.
 
 ---
 
@@ -45,7 +45,7 @@ Fundamental Differences: Retrieval vs. Ranking Datasets:
 ```
 
 ### Mathematical Probability Recovery Formula Under Negative Downsampling ($w$)
-$$\hat{p} = rac{p}{p + w(1-p)} \implies p = rac{\hat{p}}{\hat{p} + rac{1 - \hat{p}}{w}}$$
+$$\hat{p} = \frac{p}{p + w(1-p)} \implies p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
 ---
 
@@ -53,11 +53,11 @@ $$\hat{p} = rac{p}{p + w(1-p)} \implies p = rac{\hat{p}}{\hat{p} + rac{1 - \h
 
 | Architecture | FLOPs Complexity / Query | Memory Bandwidth Bound | Online Latency (P99) | Max Sequence Length $L$ | Typical Industrial Placement |
 |---|---|---|---|---|---|
-| **Truncated Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **High** (Self-attention memory matrix) | Moderate ($10 \sim 20	ext{ms}$) | $N \le 100$ | Pre-ranking / Short-term intent |
-| **Compressive Memory<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **Ultra-Low** (Slot matrix $C \ll L$) | **Ultra-Fast** ($< 3	ext{ms}$) | $L \ge 10,000$ | High-QPS Retrieval / Coarse Ranking |
-| **Lifelong Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **Excessive** (Fetches $L$ embeddings) | **Excessive** ($> 50	ext{ms}$) | $L \le 200$ | Short-to-medium sequence ranking |
-| **Retrieval-Augmented<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$ ($M \ll L$) | **Ultra-Low** (Fetches only Top-50 IDs) | **Ultra-Fast** ($5 \sim 8	ext{ms}$) | **$L \ge 50,000+$** | **Production Precision Ranking SOTA** |
-| **Retrieval-Augmented<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + 	ext{LSH})$ | **Moderate** (Maintains vector index) | Excellent ($8 \sim 12	ext{ms}$) | **$L \ge 10,000+$** | Cross-category long-sequence ranking |
+| **Truncated Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **High** (Self-attention memory matrix) | Moderate ($10 \sim 20\text{ms}$) | $N \le 100$ | Pre-ranking / Short-term intent |
+| **Compressive Memory<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **Ultra-Low** (Slot matrix $C \ll L$) | **Ultra-Fast** ($< 3\text{ms}$) | $L \ge 10,000$ | High-QPS Retrieval / Coarse Ranking |
+| **Lifelong Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **Excessive** (Fetches $L$ embeddings) | **Excessive** ($> 50\text{ms}$) | $L \le 200$ | Short-to-medium sequence ranking |
+| **Retrieval-Augmented<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$ ($M \ll L$) | **Ultra-Low** (Fetches only Top-50 IDs) | **Ultra-Fast** ($5 \sim 8\text{ms}$) | **$L \ge 50,000+$** | **Production Precision Ranking SOTA** |
+| **Retrieval-Augmented<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + \text{LSH})$ | **Moderate** (Maintains vector index) | Excellent ($8 \sim 12\text{ms}$) | **$L \ge 10,000+$** | Cross-category long-sequence ranking |
 
 ---
 
@@ -77,8 +77,9 @@ End-to-End Generative Reranking Pipeline:
 [3. Final Display Slate: π = [π₁, π₂, ..., π_K] (K = 6~10)]
 ```
 
-- **Plackett-Luce Loss**: $\mathcal{L}_{	ext{List}} = -\sum_{k=1}^K \log \left( rac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} ight)$
-- **Slate Reward RL**: $R(\pi) = \sum \gamma^{k-1}(	ext{Click}_k \cdot 	ext{Margin}_k + 	ext{GMV}_k) - \lambda \cdot 	ext{Redundancy}(\pi)$
+- **Plackett-Luce Loss**: $\mathcal{L}_{\text{List}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} 
+ight)$
+- **Slate Reward RL**: $R(\pi) = \sum \gamma^{k-1}(\text{Click}_k \cdot \text{Margin}_k + \text{GMV}_k) - \lambda \cdot \text{Redundancy}(\pi)$
 - **P99 ≤ 20ms SLA**: Prefix KV Cache sharing across beam steps + 18ms hard timeout fallback to precision ranking order.
 
 ---
@@ -87,13 +88,13 @@ End-to-End Generative Reranking Pipeline:
 
 ### 1. Global ROC-AUC vs Grouped AUC (GAUC)
 - **Global AUC**: Vulnerable to inter-user activity bias;
-- **GAUC**: Weighted within-group average $	ext{GAUC} = rac{\sum w_g 	ext{AUC}_g}{\sum w_g}$:
+- **GAUC**: Weighted within-group average $\text{GAUC} = \frac{\sum w_g \text{AUC}_g}{\sum w_g}$:
   - **User-GAUC**: Evaluates cross-session profile matching (confounded by diurnal drift);
   - **Request-GAUC**: Evaluates within-slate item ranking on a single refresh (**the gold standard for ranking**).
 
 ### 2. Probability Calibration (PCOC & ECE)
-- **PCOC**: $rac{\sum \hat{p}_i}{\sum y_i} = 1.0$ (Critical for $eCPM$ auction bidding);
-- **ECE**: $\sum rac{|B_m|}{N} |	ext{acc}(B_m) - 	ext{conf}(B_m)|$.
+- **PCOC**: $\frac{\sum \hat{p}_i}{\sum y_i} = 1.0$ (Critical for $eCPM$ auction bidding);
+- **ECE**: $\sum \frac{|B_m|}{N} |\text{acc}(B_m) - \text{conf}(B_m)|$.
 
 ### 3. Production Training Dashboard Layout (4-Tier Instrumentation)
 - Panel 1: Optimization Dynamics (Loss, Grad Norm, LR);
@@ -106,8 +107,9 @@ End-to-End Generative Reranking Pipeline:
 ## Module 6: Industrial Online Experimentation & A/B Testing Lifecycle
 
 ### Mathematical Principle of CUPED Variance Reduction
-$$\hat{Y}_{	ext{CUPED}} = Y - 	heta(X - \mathbb{E}[X]), \quad 	ext{where } 	heta = rac{	ext{Cov}(Y, X)}{	ext{Var}(X)}$$
-$$	ext{Var}(\hat{Y}_{	ext{CUPED}}) = 	ext{Var}(Y) \cdot (1 - ho^2)$$
+$$\hat{Y}_{\text{CUPED}} = Y - 	heta(X - \mathbb{E}[X]), \quad \text{where } 	heta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+$$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - 
+ho^2)$$
 
 ---
 
@@ -118,19 +120,71 @@ $$	ext{Var}(\hat{Y}_{	ext{CUPED}}) = 	ext{Var}(Y) \cdot (1 - ho^2)$$
 - Viewport Intersection Observer triggered exposure to prevent dilution bias.
 
 ### Case 2: PDP UI Redesign (CTR Up, CVR Flat) & Small-Sample Tier Inference
-1. **Net Lift**: $	ext{CTCVR} = 	ext{CTR} 	imes 	ext{CVR} \implies +12\%$ **net gain in total purchase orders per impression**;
+1. **Net Lift**: $\text{CTCVR} = \text{CTR} 	imes \text{CVR} \implies +12\%$ **net gain in total purchase orders per impression**;
 2. **Traffic Dilution**: Influx of lower-intent marginal users dilutes denominator while preserving baseline conversion rate;
 3. **Small-Sample VIP Tier Statistical Inference**:
-   - **Empirical Bayes Partial Pooling / Shrinkage**: $\hat{	heta}_{	ext{small}}^{	ext{shrunk}} = B \cdot \mu_{	ext{grand}} + (1 - B) \cdot ar{Y}_{	ext{small}}$;
+   - **Empirical Bayes Partial Pooling / Shrinkage**: $\hat{	heta}_{\text{small}}^{\text{shrunk}} = B \cdot \mu_{\text{grand}} + (1 - B) \cdot ar{Y}_{\text{small}}$;
    - **CUPED with 30-Day Historical Baseline Spending**: Compresses variance to $28\%$, expanding effective sample size by $3.5	imes$;
    - **Non-Parametric Exact Permutation Tests & Bayesian Posterior Superiority**: $P(	heta_T > 	heta_C \mid \mathcal{D}) > 0.90$.
 
 ---
 
-## Module 8: Senior Technical Interview Pitch Framework
+## Module 8: High-Yield Industrial ML Multiple-Choice Quizzes
 
-### Verbal Pitch Architecture
-1. **Architecture & Multi-Objective**: "Decoupled DCN-v2 + DLRM feature interactions, SIM lifelong sequence modeling, and PLE with PCGrad & PID constrained Pareto fusion to eliminate seesaw negative transfer."
-2. **Sampling & Unbiased Evaluation**: "Strict unclicked impression negatives, negative downsampling with exact probability recovery, evaluated on Request-GAUC and PCOC calibration."
-3. **Generative Reranking**: "Slot token serialization, prefix KV cache sharing, and constrained beam search optimizing joint slate utility under P99 $\le 15	ext{ms}$."
-4. **Online A/B Testing & Attribution**: "14-day orthogonal A/B testing with CUPED variance reduction, CTCVR funnel decomposition for traffic dilution, and Empirical Bayes shrinkage for small-sample VIP tiers."
+<details class="exercise">
+<summary><span class="q-label">Q1 · Negative Downsampling & Probability Recovery</span> <span class="q-text">A feed ranking model operates with natural CTR $p = 1\%$. Negative samples are uniformly downsampled with retention rate $w = 10\%$ ($w=0.1$). If the model outputs $\hat{p} = 0.0917$ ($9.17\%$), how should downstream auction bidding restore natural probability $p$?</span></summary>
+
+- [ ] **A.** Approximate via linear scaling: $\hat{p} \times w = 0.00917$.
+- [ ] **B.** Rescale via $p = \hat{p} / w = 0.917$.
+- [x] **C.** Apply exact closed-form probability recovery: $p = \frac{\hat{p}}{\hat{p} + \frac{1-\hat{p}}{w}}$, producing $p = 0.01$ ($1.0\%$).
+- [ ] **D.** Negative downsampling only affects LogLoss, so no recovery is required for predicted probabilities.
+
+> 💡 **Explanation**:
+> - **Correct Answer: C**.
+>   1. **Prior Distortion**: Under negative downsampling rate $w$, model predictions are distorted to $\hat{p} = \frac{p}{p + w(1-p)}$.
+>   2. **Exact Inverse**: Solving for $p$ yields $p = \frac{\hat{p}}{\hat{p} + \frac{1-\hat{p}}{w}}$. Substituting $\hat{p}=0.0917$ and $w=0.1$ exactly recovers natural probability $p = 0.01$ ($1.0\%$).
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q2 · Multi-Objective Learning & Seesaw Mitigation</span> <span class="q-text">In a multi-objective ranking model (joint CTR & CVR prediction), which architecture and optimization protocol <strong>most effectively isolates task-specific representations from negative gradient conflicts ($\cos(\mathbf{g}_i, \mathbf{g}_j) < 0$)</strong>?</span></summary>
+
+- [ ] **A.** Shared-Bottom architecture: all shared representations average gradients across tasks.
+- [ ] **B.** Static loss weight grid search (e.g. $\mathcal{L} = 0.8\mathcal{L}_{\text{CTR}} + 0.2\mathcal{L}_{\text{CVR}}$).
+- [x] **C.** PLE (Progressive Layered Extraction) with PCGrad orthogonal projection: physical decoupling of task-specific and shared experts with orthogonal gradient projection.
+- [ ] **D.** Independent single-task training combined with offline probability multiplication ($p\text{CTCVR} = p\text{CTR} \times p\text{CVR}$).
+
+> 💡 **Explanation**:
+> - **Correct Answer: C**.
+>   1. **Shared-Bottom Flaw**: Shared parameter layers suffer direct destructive interference from opposing gradient vectors.
+>   2. **PLE Advantage**: PLE enforces structural physical isolation between task-specific and shared expert modules.
+>   3. **PCGrad**: Projects conflicting gradient components onto the normal plane, eliminating gradient destruction.
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q3 · Grouped AUC (GAUC) Invariance</span> <span class="q-text">Why is <strong>Request-Grouped GAUC</strong> favored over Global ROC-AUC as the primary offline ranking benchmark in precision rankers?</span></summary>
+
+- [ ] **A.** Request-GAUC is mathematically larger, providing inflated metrics for management presentations.
+- [ ] **B.** Global AUC is sensitive to negative sampling, whereas GAUC is not.
+- [x] **C.** Global AUC conflates cross-user activity baselines (Simpson's paradox); Request-GAUC measures within-slate discrimination on a single refresh, directly matching real user decisions.
+- [ ] **D.** Request-GAUC can substitute for PCOC and ECE in evaluating absolute probability calibration.
+
+> 💡 **Explanation**:
+> - **Correct Answer: C**.
+>   1. **Global AUC Bias**: A model that simply assigns higher scores to active users achieves high Global AUC while failing at within-session ranking.
+>   2. **Request-GAUC Alignment**: Evaluates pairwise rankings strictly within the 6~10 items presented on a single screen refresh, eliminating diurnal drift.
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q4 · A/B Testing Attribution & Small-Sample Inference</span> <span class="q-text">An e-commerce PDP UI test increases list CTR by $+12\%$ ($p < 0.01$) while PDP CVR is flat ($\Delta \text{CVR} \approx 0\%$, $p = 0.65$). For an enterprise VIP tier with $N \approx 100$, what is the <strong>most rigorous statistical approach</strong>?</span></summary>
+
+- [ ] **A.** Since $p > 0.05$ in the VIP slice, conclude the UI harms high-value users and abort the rollout.
+- [ ] **B.** Conclude the experiment failed because within-PDP conversion rate did not increase.
+- [x] **C.** Total orders per impression $\text{CTCVR} = \text{CTR} \times \text{CVR}$ increased by $+12\%$; flat CVR is driven by traffic dilution from marginal users; use <strong>Empirical Bayes Partial Pooling / Shrinkage</strong> and CUPED baseline covariates for VIP tier inference.
+- [ ] **D.** Extend the test for 6 months until sample size in the VIP tier reaches hundreds of thousands.
+
+> 💡 **Explanation**:
+> - **Correct Answer: C**.
+>   1. **Net Funnel Lift**: $\text{CTCVR} = 1.12 \times 1.0 = 1.12$ ($+12\%$ net order volume per impression).
+>   2. **Traffic Dilution**: Lower click friction brings in marginal lower-intent visitors. Maintaining flat conversion confirms strong page performance.
+>   3. **Small-Sample Inference**: $p > 0.05$ reflects low power ($\text{Power} < 20\%$), not evidence of absence. Empirical Bayes shrinkage $\hat{\theta}_{\text{small}}^{\text{shrunk}} = B \mu_{\text{grand}} + (1-B) \bar{Y}_{\text{small}}$ borrows statistical strength across tiers.
+</details>

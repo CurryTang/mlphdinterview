@@ -52,7 +52,7 @@ $$
 $$
 (\bar X_n,Q_n,R_n)
 \longrightarrow
-\left(\frac12,\frac13,\frac23\right).
+\left( \frac12,\frac13,\frac23 \right).
 $$
 
 这正是大数定律的几何形状：维度越高，样本统计量越集中。图中的点云平均高度是固定伪随机样本给出的 Monte Carlo 估计，用来展示趋势，不参与严格证明。
@@ -92,9 +92,8 @@ $$
 $$
 I_n
 =
-\mathbb E\left[
-\frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n}
-\right].
+\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n}
+ \right].
 $$
 
 把分子、分母同时除以 $n$：
@@ -112,7 +111,7 @@ $$
 注意：有限 $n$ 时不能把期望直接穿过比值：
 
 $$
-\mathbb E\left[\frac{Q_n}{\bar X_n}\right]
+\mathbb E\left[ \frac{Q_n}{\bar X_n} \right]
 \ne
 \frac{\mathbb E[Q_n]}{\mathbb E[\bar X_n]}.
 $$
@@ -252,8 +251,8 @@ $$
 \begin{aligned}
 \lim_{n\to\infty}I_n
 &=\lim_{n\to\infty}\mathbb E[R_n]\\
-&=\mathbb E\left[\lim_{n\to\infty}R_n\right]\\
-&=\mathbb E\left[\frac23\right]\\
+&=\mathbb E\left[ \lim_{n\to\infty}R_n \right]\\
+&=\mathbb E\left[ \frac23 \right]\\
 &=\frac23.
 \end{aligned}
 $$
@@ -310,7 +309,7 @@ $$
 $$
 \int_{[0,1]^n}
 \Phi\left(\frac1n\sum_i h_1(x_i),\ldots,
-\frac1n\sum_i h_k(x_i)\right)dx
+\frac1n\sum_i h_k(x_i) \right)dx
 $$
 
 的高维积分，可以依次检查：
@@ -330,7 +329,7 @@ E[Φ(经验均值)]
 本题压缩成四行就是：
 
 $$
-I_n=\mathbb E\left[\frac{\overline{X^2}_n}{\bar X_n}\right],
+I_n=\mathbb E\left[ \frac{\overline{X^2}_n}{\bar X_n} \right],
 \qquad X_i\overset{i.i.d.}{\sim}U[0,1],
 $$
 

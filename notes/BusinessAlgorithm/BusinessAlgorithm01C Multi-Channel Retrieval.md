@@ -129,7 +129,7 @@ def reciprocal_rank_fusion(rankings, rrf_k=60, top_n=None):
 用户已曝光集合很大时，常用 Bloom filter 做近似 membership test。它回答 `"一定没看过"` 或 `"可能看过"`：后者可能是假阳性，会误伤未曝光物品。若集合含 `n` 个元素、bit array 长度为 `m`、使用 `k` 个哈希函数，假阳性率近似为：
 
 ```math
-\left(1-e^{-kn/m}\right)^k.
+\left( 1-e^{-kn/m} \right)^k.
 ```
 
 Bloom filter 原生不支持删除。按月只保留曝光窗口时，可使用按天/周滚动的多个 filter，过期后整体丢弃；若需要逐项删除，则使用 counting Bloom filter 或精确存储。`m` 和 `k` 要从可接受误伤率反推，不能只追求省内存。
@@ -196,8 +196,8 @@ tail query q -> head rewrite q' -> cached documents d
 
 ```math
 \operatorname{Recall@K}
-=\frac{\lvert \text{top-K 中的相关项}\rvert}
-{\lvert \text{测试窗口中的相关项}\rvert}.
+=\frac{\lvert \text{top-K 中的相关项} vert}
+{\lvert \text{测试窗口中的相关项} vert}.
 ```
 
 推荐里的分母通常是测试窗口中发生过的点击、有效播放或购买，并非用户全部潜在兴趣。搜索可以使用人工相关性标注，但要按头部、长尾、实体和复杂 query 分桶。一个总 Recall 很容易被高频样本掩盖。

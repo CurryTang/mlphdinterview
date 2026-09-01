@@ -35,7 +35,7 @@ MHA allows the model to learn information from different "representation subspac
 #### Scaled Dot-Product Attention
 
 $$
-\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}} \right)V
 $$
 
 Calculation: ① $QK^T$ gets the similarity matrix → ② Divide by $\sqrt{d_k}$ to prevent gradient disappearance → ③ softmax → ④ Find V with weighting. MHA divides the input into multiple heads and learns different modes in parallel: $\text{MultiHead} = \text{Concat}(\text{head}_i)W^O$, where $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$.
@@ -67,7 +67,7 @@ For high-dimensional tensor shrinkage, we need to distinguish three types of dim
 
 **Example analysis**:
 $$
-C[\textcolor{blue}{GH}IJ\textcolor{red}{KL}] \cdot D[\textcolor{blue}{GH}MN\textcolor{red}{KL}] \rightarrow E[\textcolor{blue}{GH}IJMN]
+C[\textcolor{blue}{GH}IJ\textcolor{red}{KL}] \cdot D[\textcolor{blue}{GH}MN\textcolor{red}{KL}]  ightarrow E[\textcolor{blue}{GH}IJMN]
 $$
 
 Use einsum to express: `einsum('ghijkl,ghmnkl->ghijmn', C, D)`
@@ -154,9 +154,9 @@ Modern Transformer uses **Gated MLP** (SwiGLU): $W_{out} \cdot [\sigma(W_{in1} x
 
 | Operations | Training FLOPs |
 |------|------------|
-| $Q[\textcolor{blue}{B}, T, \textcolor{blue}{K}, G, \textcolor{red}{H}] \cdot K[\textcolor{blue}{B}, S, \textcolor{blue}{K}, \textcolor{red}{H}]^T \rightarrow S[B,T,S,N]$ | $6BTSNH$ |
-| $\text{softmax}_S(S) \rightarrow P$ | $O(BTSN)$ can be ignored |
-| $P[\textcolor{blue}{B}, T, \textcolor{red}{S}, \textcolor{blue}{K}, G] \cdot V[\textcolor{blue}{B}, \textcolor{red}{S}, \textcolor{blue}{K}, H] \rightarrow O[B,T,N,H]$ | $6BTSNH$ |
+| $Q[\textcolor{blue}{B}, T, \textcolor{blue}{K}, G, \textcolor{red}{H}] \cdot K[\textcolor{blue}{B}, S, \textcolor{blue}{K}, \textcolor{red}{H}]^T  ightarrow S[B,T,S,N]$ | $6BTSNH$ |
+| $\text{softmax}_S(S)  ightarrow P$ | $O(BTSN)$ can be ignored |
+| $P[\textcolor{blue}{B}, T, \textcolor{red}{S}, \textcolor{blue}{K}, G] \cdot V[\textcolor{blue}{B}, \textcolor{red}{S}, \textcolor{blue}{K}, H]  ightarrow O[B,T,N,H]$ | $6BTSNH$ |
 | **Attention total** (self-attention: S=T) | ==$\approx 12BT^2NH$== |
 
 *Note: Decoder-only causal attention only counts the lower triangle, and the actual FLOPs are halved, but it requires dedicated kernels such as Flash Attention to utilize it. *

@@ -37,10 +37,9 @@ Chinese text has no natural word boundaries. Dictionary-based segmentation finds
 ```math
 \operatorname{cost}(0,t)
 =\min_{s<t}
-\left[
-\operatorname{cost}(0,s)
+\left[ \operatorname{cost}(0,s)
 -\log P(x_{s:t})
-\right].
+ \right].
 ```
 
 Frequent words have lower costs. Production dictionaries also boost brands, product models, names, places, and business terms so that phrases such as `"iPhone 15 Pro Max"` are not split incorrectly.

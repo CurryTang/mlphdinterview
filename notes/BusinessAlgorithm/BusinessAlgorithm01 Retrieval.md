@@ -258,7 +258,7 @@ R\approx UV^\top,
 ```math
 \min_{U,V}
 \sum_{u,i} c_{ui}
-\left(p_{ui}-u_u^\top v_i\right)^2
+\left( p_{ui}-u_u^\top v_i \right)^2
 \lambda(\|U\|_F^2+\|V\|_F^2),
 ```
 

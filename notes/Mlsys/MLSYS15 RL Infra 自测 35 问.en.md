@@ -72,7 +72,7 @@ $$
 **Importance sampling (IS)**: when the training data comes from an old policy $\pi_{\text{old}}$ but we want to optimize a new policy $\pi_\theta$, we correct the expectation with an IS ratio:
 
 $$
-\mathbb{E}_{\pi_\theta}[f] \approx \mathbb{E}_{\pi_{\text{old}}}\left[\frac{\pi_\theta(a|s)}{\pi_{\text{old}}(a|s)} f\right]
+\mathbb{E}_{\pi_\theta}[f] \approx \mathbb{E}_{\pi_{\text{old}}}\left[ \frac{\pi_\theta(a|s)}{\pi_{\text{old}}(a|s)} f \right]
 $$
 
 This is exactly where $r_t(\theta)$ in the PPO objective comes from. IS is the algorithmic foundation of async RL: it allows training on slightly stale data as long as the IS ratio does not explode, which clipping controls.
@@ -131,7 +131,7 @@ where $\mu_g, \sigma_g$ are the mean and standard deviation of rewards within th
 **PPO clipping mechanism**:
 
 $$
-\mathcal{L}_{\text{clip}} = \mathbb{E}_t\left[\min\left(\underbrace{r_t \hat{A}_t}_{\text{original objective}},\ \underbrace{\text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t}_{\text{clipped version}}\right)\right]
+\mathcal{L}_{\text{clip}} = \mathbb{E}_t\left[ \min\left(\underbrace{r_t \hat{A}_t}_{\text{original objective}},\ \underbrace{\text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t}_{\text{clipped version}} \right) \right]
 $$
 
 **Why take the min (a pessimistic lower bound)**:
@@ -286,7 +286,7 @@ That is, the log-ratio of the current policy relative to the reference policy, m
 
 **TRPO (Trust Region Policy Optimization)**: applies a trust region through an exact KL constraint:
 $$
-\max_\theta \mathbb{E}\left[\frac{\pi_\theta}{\pi_{\text{old}}} A\right] \quad \text{s.t.} \quad \text{KL}[\pi_{\text{old}} \| \pi_\theta] \leq \delta
+\max_\theta \mathbb{E}\left[ \frac{\pi_\theta}{\pi_{\text{old}}} A \right] \quad \text{s.t.} \quad \text{KL}[\pi_{\text{old}} \| \pi_\theta] \leq \delta
 $$
 It is solved with second-order methods, using an approximate inverse of the Fisher information matrix. The compute cost is extremely high, so it is unusable for LLMs.
 

@@ -475,9 +475,9 @@ class Solution:
 3. **Complexity & Catalan Numbers**:
    The number of valid parentheses combinations for $n$ pairs is given by the $n$-th **Catalan Number**:
    $$
-   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left(\frac{4^n}{n^{1.5}}\right)
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \right)
    $$
-   Materializing each valid solution takes $O(n)$ string concatenation time, so total time complexity is $O\left(\frac{4^n}{\sqrt{n}}\right)$, and space complexity is $O(n)$ for the recursion call stack of depth $2n$.
+   Materializing each valid solution takes $O(n)$ string concatenation time, so total time complexity is $O\left( \frac{4^n}{\sqrt{n}} \right)$, and space complexity is $O(n)$ for the recursion call stack of depth $2n$.
 
 ## 7. Letter Combinations of a Phone Number
 

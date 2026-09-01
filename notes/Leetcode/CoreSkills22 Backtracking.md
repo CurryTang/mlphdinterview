@@ -475,9 +475,9 @@ class Solution:
 3. **复杂度与卡特兰数**：
    $n$ 对括号生成的合法组合数恰好等于第 $n$ 个**卡特兰数（Catalan Number）**：
    $$
-   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left(\frac{4^n}{n^{1.5}}\right)
+   C_n = \frac{1}{n + 1} \binom{2n}{n} = \Theta\left( \frac{4^n}{n^{1.5}} \right)
    $$
-   生成每个答案需要 $O(n)$ 的字符串拼接时间，因此总时间复杂度为 $O\left(\frac{4^n}{\sqrt{n}}\right)$，空间复杂度为 $O(n)$（递归栈深为 $2n$）。
+   生成每个答案需要 $O(n)$ 的字符串拼接时间，因此总时间复杂度为 $O\left( \frac{4^n}{\sqrt{n}} \right)$，空间复杂度为 $O(n)$（递归栈深为 $2n$）。
 
 ## 7. Letter Combinations of a Phone Number
 

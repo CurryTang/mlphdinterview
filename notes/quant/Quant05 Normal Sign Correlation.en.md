@@ -6,13 +6,13 @@ $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 $$
 
-where $(X,Y)$ is a bivariate standard normal distribution with correlation coefficient $\rho$. The answer is:
+where $(X,Y)$ is a bivariate standard normal distribution with correlation coefficient $ ho$. The answer is:
 
 $$
 \boxed{
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 =
-\frac{2}{\pi}\arcsin\rho
+\frac{2}{\pi}\arcsin ho
 }
 $$
 
@@ -55,7 +55,7 @@ $$
 \qquad
 \operatorname{Var}(X)=\operatorname{Var}(Y)=1,
 \qquad
-\operatorname{corr}(X,Y)=\rho
+\operatorname{corr}(X,Y)= ho
 $$
 
 Then its covariance matrix is:
@@ -63,18 +63,18 @@ Then its covariance matrix is:
 $$
 \Sigma=
 \begin{pmatrix}
-1 & \rho\\
-\rho & 1
+1 &  ho\\
+ ho & 1
 \end{pmatrix}
 $$
 
-$\rho$ controls the tilt of the ellipse:
+$ ho$ controls the tilt of the ellipse:
 
-| $\rho$ | Intuition |
+| $ ho$ | Intuition |
 | --- | --- |
-| $\rho>0$ | Ellipse stretches along $y=x$; variables are more likely to have the same sign |
-| $\rho=0$ | Circularly symmetric; variables are independent |
-| $\rho<0$ | Ellipse stretches along $y=-x$; variables are more likely to have opposite signs |
+| $ ho>0$ | Ellipse stretches along $y=x$; variables are more likely to have the same sign |
+| $ ho=0$ | Circularly symmetric; variables are independent |
+| $ ho<0$ | Ellipse stretches along $y=-x$; variables are more likely to have opposite signs |
 
 A standard construction for a correlated bivariate normal is:
 
@@ -87,10 +87,10 @@ Define:
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
-Then $(X,Y)$ is a bivariate standard normal with correlation coefficient $\rho$.
+Then $(X,Y)$ is a bivariate standard normal with correlation coefficient $ ho$.
 
 <figure class="quant-svg-figure quant-svg-wide">
 <svg viewBox="0 0 1060 420" role="img" aria-label="Cholesky transform from independent normal variables to correlated normal variables">
@@ -152,7 +152,7 @@ First, check the means:
 
 $$
 \mathbb{E}X=0,\qquad
-\mathbb{E}Y=\rho\mathbb{E}U+\sqrt{1-\rho^2}\mathbb{E}V=0
+\mathbb{E}Y= ho\mathbb{E}U+\sqrt{1- ho^2}\mathbb{E}V=0
 $$
 
 Next, check the variances:
@@ -160,9 +160,9 @@ Next, check the variances:
 $$
 \operatorname{Var}(Y)
 =
-\rho^2\operatorname{Var}(U)
+ ho^2\operatorname{Var}(U)
 +
-(1-\rho^2)\operatorname{Var}(V)
+(1- ho^2)\operatorname{Var}(V)
 =
 1
 $$
@@ -172,15 +172,15 @@ The covariance is:
 $$
 \operatorname{Cov}(X,Y)
 =
-\operatorname{Cov}(U,\rho U+\sqrt{1-\rho^2}V)
+\operatorname{Cov}(U, ho U+\sqrt{1- ho^2}V)
 =
-\rho
+ ho
 $$
 
 Because $U,V$ are independent, $\operatorname{Cov}(U,V)=0$. Since the variances of $X$ and $Y$ are both 1:
 
 $$
-\operatorname{corr}(X,Y)=\rho
+\operatorname{corr}(X,Y)= ho
 $$
 
 In matrix form:
@@ -193,7 +193,7 @@ Y
 =
 \begin{pmatrix}
 1&0\\
-\rho&\sqrt{1-\rho^2}
+ ho&\sqrt{1- ho^2}
 \end{pmatrix}
 \begin{pmatrix}
 U\\
@@ -205,14 +205,14 @@ The relevant correlation matrix is:
 
 $$
 \begin{pmatrix}
-1&\rho\\
-\rho&1
+1& ho\\
+ ho&1
 \end{pmatrix}
 $$
 
 The factor shown in the previous equation is its Cholesky factor.
 
-This step requires joint normality. Knowing only that $X$ and $Y$ are individually standard normal with correlation $\rho$ is not enough to derive this linear representation.
+This step requires joint normality. Knowing only that $X$ and $Y$ are individually standard normal with correlation $ ho$ is not enough to derive this linear representation.
 
 ---
 
@@ -278,7 +278,7 @@ From the Cholesky representation:
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
 So:
@@ -286,7 +286,7 @@ So:
 $$
 p
 =
-P(U>0,\ \rho U+\sqrt{1-\rho^2}V>0)
+P(U>0,\  ho U+\sqrt{1- ho^2}V>0)
 $$
 
 Now consider the $(U,V)$ plane. Because $U,V$ are independent standard normals, their joint density is:
@@ -322,19 +322,19 @@ $$
 and:
 
 $$
-\rho U+\sqrt{1-\rho^2}V>0
+ ho U+\sqrt{1- ho^2}V>0
 $$
 
 The boundary line of the second condition is:
 
 $$
-V=-\frac{\rho}{\sqrt{1-\rho^2}}U
+V=-\frac{ ho}{\sqrt{1- ho^2}}U
 $$
 
 Let:
 
 $$
-\alpha=\arcsin\rho
+\alpha=\arcsin ho
 $$
 
 Then the angle between this boundary line and the positive $U$-axis is $-\alpha$. The first boundary $U=0$ corresponds to an angle of $\pi/2$. The angle of the sector formed by the intersection of the two half-planes is:
@@ -342,7 +342,7 @@ Then the angle between this boundary line and the positive $U$-axis is $-\alpha$
 $$
 \frac{\pi}{2}+\alpha
 =
-\frac{\pi}{2}+\arcsin\rho
+\frac{\pi}{2}+\arcsin ho
 $$
 
 <figure class="quant-svg-figure quant-svg-wide">
@@ -407,9 +407,9 @@ So:
 $$
 p
 =
-\frac{\frac{\pi}{2}+\arcsin\rho}{2\pi}
+\frac{\frac{\pi}{2}+\arcsin ho}{2\pi}
 =
-\frac14+\frac{\arcsin\rho}{2\pi}
+\frac14+\frac{\arcsin ho}{2\pi}
 $$
 
 ---
@@ -427,7 +427,7 @@ $$
 Substituting:
 
 $$
-p=\frac14+\frac{\arcsin\rho}{2\pi}
+p=\frac14+\frac{\arcsin ho}{2\pi}
 $$
 
 We get:
@@ -435,16 +435,16 @@ We get:
 $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 =
-4\left(\frac14+\frac{\arcsin\rho}{2\pi}\right)-1
+4\left( \frac14+\frac{\arcsin ho}{2\pi} \right)-1
 =
-\frac{2}{\pi}\arcsin\rho
+\frac{2}{\pi}\arcsin ho
 $$
 
 ---
 
 ## 8. Special Value Check
 
-| $\rho$ | Case | Formula Result |
+| $ ho$ | Case | Formula Result |
 | --- | --- | --- |
 | $0$ | Independent, same and opposite signs are equally likely | $0$ |
 | $1$ | $Y=X$, always same sign | $1$ |
@@ -476,7 +476,7 @@ First, a correlated bivariate normal can be written as:
 
 $$
 X=U,\qquad
-Y=\rho U+\sqrt{1-\rho^2}V
+Y= ho U+\sqrt{1- ho^2}V
 $$
 
 Second, the independent standard normal plane is circularly symmetric. The probability of any sector passing through the origin is determined solely by its angle.

@@ -102,11 +102,11 @@ Embedding 演进路线与表征范式突破：
 - **理想的各向同性（Isotropy）**：表征向量在整个高维单位超球面 $\mathcal{S}^{d-1}$ 上各个方向**均匀分布（Uniform Distribution）**。
   其协方差矩阵满足各向同性条件：
 
-$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T  \right] = \frac{1}{d} \mathbf{I}_d$$
 
   此时协方差矩阵的所有特征值相等（$\lambda_1 = \lambda_2 = \dots = \lambda_d = \frac{1}{d}$），空间有效秩（Effective Rank）达到最大。两个任意语义无关的独立随机向量 $\mathbf{h}_i, \mathbf{h}_j$ 的余弦相似度期望为 0：
 
-$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j)  \right] \approx 0$$
 
 - **表征退化与各向异性（Anisotropy / Cone Effect）**：
   在未经对比微调的自回归 Decoder-Only 模型中，协方差矩阵出现**极端的谱衰减（Extreme Spectral Decay）**：
@@ -144,11 +144,11 @@ $$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\
 
 对比学习损失（InfoNCE）通过最大化互信息将圆锥拉伸为超球面：
 
-$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}}  \right]$$
 
 Wang & Isola (ICML 2020) 严格证明，当负样本数 $N \to \infty$ 时，$\mathcal{L}_{\text{InfoNCE}}$ 渐进等价分解为两大正交力量：
 
-$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (对齐性: 拉近正样本)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (均匀性: 强行将表征均匀铺满超球面，消除圆锥)}}$$
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (对齐性: 拉近正样本)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2    \right)  \right]}_{\mathcal{L}_{\text{uniform}} \text{ (均匀性: 强行将表征均匀铺满超球面，消除圆锥)}}$$
 
 ```anisotropy-cone-demo
 ```
@@ -316,7 +316,7 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 ##### 1. 随机舍入（Stochastic Rounding, SR）：彻底消除 FP32 主权重
 - **核心数学定理**：放弃确定性舍入，采用概率舍入：
-  $$\text{SR}(x) = \begin{cases} \lfloor x \rfloor & \text{以概率 } 1 - \frac{x - \lfloor x \rfloor}{\delta} \\ \lceil x \rceil & \text{以概率 } \frac{x - \lfloor x \rfloor}{\delta} \end{cases}$$
+  $$\text{SR}(x) = \begin{cases} \lfloor x  floor & \text{以概率 } 1 - \frac{x - \lfloor x  floor}{\delta} \\ \lceil x  ceil & \text{以概率 } \frac{x - \lfloor x  floor}{\delta} \end{cases}$$
 - **无偏估计**：$\mathbb{E}[\text{SR}(x)] = x$。即使单步更新量 $\Delta W = 10^{-6}$ 远小于 BF16 尾数位，它依然有 $10^{-4}$ 的概率使低位比特翻转。在数万步训练中，**期望累加值与全精度完全一致**，允许直接在纯 16 位张量上完成更新，省去 50% 主权重显存。
 
 ##### 2. 8-bit 优化器（bitsandbytes / Block-wise Dynamic Quantization）
@@ -367,22 +367,22 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 标准因果语言建模采用交叉熵损失（Cross-Entropy Loss）：
 
-$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( rac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} ight) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} ight)$$
+$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}}  \right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v}  \right)$$
 
 #### (1) 随机初始化下的均匀分布假设
 在标准的模型参数初始化（如高斯分布 $\mathcal{N}(0, \sigma^2)$，其中 $\sigma = 0.02$ 或 Xavier/Kaiming 初始化）下：
-- 所有输出 Logits $z_v$ 均值接近于 0（$\mathbb{E}[z_v] pprox 0$），且方差极小；
+- 所有输出 Logits $z_v$ 均值接近于 0（$\mathbb{E}[z_v] \approx 0$），且方差极小；
 - 此时各 Token 的预测概率接近均匀分布（Uniform Distribution）：
-  $$P(y = v) = rac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} pprox rac{e^0}{V \cdot e^0} = rac{1}{V}$$
+  $$P(y = v) = \frac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} \approx \frac{e^0}{V \cdot e^0} = \frac{1}{V}$$
 - 交叉熵损失严格简化为自然对数：
-  $$\mathcal{L}_{	ext{init}} = -\ln \left(rac{1}{V}ight) = \ln V$$
+  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V}  \right) = \ln V$$
 
 #### (2) 考虑 Logits 初始方差的二阶泰勒展开推导
-若初始 Logits $z_v \sim 	ext{i.i.d. } \mathcal{N}(0, \sigma_z^2)$，令 $S = \sum_{v=1}^V e^{z_v}$。通过对 Log-Sum-Exp 进行二阶泰勒展开：
+若初始 Logits $z_v \sim \text{i.i.d. } \mathcal{N}(0, \sigma_z^2)$，令 $S = \sum_{v=1}^V e^{z_v}$。通过对 Log-Sum-Exp 进行二阶泰勒展开：
 
-$$\mathbb{E}[\mathcal{L}_{	ext{init}}] = -\mathbb{E}[z_c] + \mathbb{E}[\ln S] pprox \ln V + rac{\sigma_z^2}{2} + \mathcal{O}(\sigma_z^4)$$
+$$\mathbb{E}[\mathcal{L}_{\text{init}}] = -\mathbb{E}[z_c] + \mathbb{E}[\ln S] \approx \ln V + \frac{\sigma_z^2}{2} + \mathcal{O}(\sigma_z^4)$$
 
-在合理的权重初始化尺度下（$\sigma_z pprox 0.02 \sim 0.1$），$rac{\sigma_z^2}{2} < 0.005$ 极小，因此**理论期望初始 Loss 极其精确地等于 $\ln V$**。
+在合理的权重初始化尺度下（$\sigma_z \approx 0.02 \sim 0.1$），$\frac{\sigma_z^2}{2} < 0.005$ 极小，因此**理论期望初始 Loss 极其精确地等于 $\ln V$**。
 
 ---
 
@@ -390,33 +390,33 @@ $$\mathbb{E}[\mathcal{L}_{	ext{init}}] = -\mathbb{E}[z_c] + \mathbb{E}[\ln S] p
 
 | 基础模型家族 | 词表大小 $V$ | 理论初始 Loss：$\ln V$ (nats/token) |
 |---|---|---|
-| **GPT-2 / GPT-3** | $50,257$ | $\ln(50257) pprox \mathbf{10.825}$ |
-| **LLaMA-1 / LLaMA-2 / Mistral-7B** | $32,000$ | $\ln(32000) pprox \mathbf{10.373}$ |
-| **LLaMA-3 / LLaMA-3.1 / LLaMA-3.3** | $128,256$ | $\ln(128256) pprox \mathbf{11.762}$ |
-| **DeepSeek-V2 / DeepSeek-V3 / DeepSeek-R1** | $129,280$ | $\ln(129280) pprox \mathbf{11.770}$ |
-| **Qwen-2 / Qwen-2.5** | $152,064$ | $\ln(152064) pprox \mathbf{11.932}$ |
-| **Gemma / Gemma-2** | $256,000$ | $\ln(256000) pprox \mathbf{12.453}$ |
+| **GPT-2 / GPT-3** | $50,257$ | $\ln(50257) \approx \mathbf{10.825}$ |
+| **LLaMA-1 / LLaMA-2 / Mistral-7B** | $32,000$ | $\ln(32000) \approx \mathbf{10.373}$ |
+| **LLaMA-3 / LLaMA-3.1 / LLaMA-3.3** | $128,256$ | $\ln(128256) \approx \mathbf{11.762}$ |
+| **DeepSeek-V2 / DeepSeek-V3 / DeepSeek-R1** | $129,280$ | $\ln(129280) \approx \mathbf{11.770}$ |
+| **Qwen-2 / Qwen-2.5** | $152,064$ | $\ln(152064) \approx \mathbf{11.932}$ |
+| **Gemma / Gemma-2** | $256,000$ | $\ln(256000) \approx \mathbf{12.453}$ |
 
 ---
 
 ### 3. 温度系数（Temperature）与标签平滑（Label Smoothing）的理论影响
 
 #### (1) 温度系数 $T$ 的影响
-若在前向计算 Loss 时引入了温度系数 $T$（即计算 Softmax($z / T$)）：
+若在前向计算 Loss 时引入了温度系数 $T$（即计算 $\text{Softmax}(z / T)$）：
 
-$$\mathcal{L}(T) = -rac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} ight)$$
+$$\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T}  \right)$$
 
-- 当 $T 	o \infty$ 时：Logits 方差被极致压缩，输出绝对均匀，$\mathcal{L} 	o \ln V$；
-- 当 $T < 1.0$ 时：放大了初始 Logits 的微小随机扰动，初始 Loss 的方差与均值会略微偏大（$\mathbb{E}[\mathcal{L}] pprox \ln V + rac{\sigma_z^2}{2 T^2}$）。
+- 当 $T \to \infty$ 时：Logits 方差被极致压缩，输出绝对均匀，$\mathcal{L} \to \ln V$；
+- 当 $T < 1.0$ 时：放大了初始 Logits 的微小随机扰动，初始 Loss 的方差与均值会略微偏大（$\mathbb{E}[\mathcal{L}] \approx \ln V + \frac{\sigma_z^2}{2 T^2}$）。
 
 #### (2) 标签平滑（Label Smoothing $\epsilon$）的影响
-若采用标签平滑，真实目标分布变为 $q(v) = (1-\epsilon)\mathbb{I}(v=c) + rac{\epsilon}{V}$：
+若采用标签平滑，真实目标分布变为 $q(v) = (1-\epsilon)\mathbb{I}(v=c) + \frac{\epsilon}{V}$：
 
-$$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln P(c) - rac{\epsilon}{V}\sum_{v=1}^V \ln P(v)$$
+$$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln P(c) - \frac{\epsilon}{V}\sum_{v=1}^V \ln P(v)$$
 
-在随机初始化（$P(v) pprox rac{1}{V}$）时代入：
+在随机初始化（$P(v) \approx \frac{1}{V}$）时代入：
 
-$$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln \left(rac{1}{V}ight) - rac{\epsilon}{V} \cdot V \ln \left(rac{1}{V}ight) = \ln V$$
+$$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V}  \right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V}  \right) = \ln V$$
 
 > 💡 **核心结论**：**无论标签平滑系数 $\epsilon$ 设为多少，在均匀随机初始化下，理论期望初始 Loss 严格恒等于 $\ln V$**！
 
@@ -428,8 +428,8 @@ $$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln \left(rac{1}{V}ight) - rac{\e
    - 词表从 32K（LLaMA-2）扩展到 128K（LLaMA-3），Token 级别的初始 Loss 从 10.37 上升到 11.76（上升了约 1.39 nats）；
    - **但是**：大词表具有更高的文本压缩率（相同的 1000 英文单词，32K Tokenizer 需 1300 个 Token，而 128K Tokenizer 仅需 950 个 Token）。因此**整篇文档的总负对数似然（Sequence-level NLL）反而显著下降**！
 2. **词表对齐填充（Vocabulary Padding for GPU Tensor Core Alignment）**：
-   - 工业界常将词表大小向 64 或 128 的整数倍向上取整（例如实际有效词表为 32,000，但 Embedding Head 维度填充为 $V_{	ext{embed}} = 32,256$ 以最大化 Tensor Core 矩阵乘法吞吐）；
-   - **注意**：此时第 0 步计算的理论 Loss 对应为 $\ln(V_{	ext{embed}})$，而非未填充的有效词表。
+   - 工业界常将词表大小向 64 或 128 的整数倍向上取整（例如实际有效词表为 32,000，但 Embedding Head 维度填充为 $V_{\text{embed}} = 32,256$ 以最大化 Tensor Core 矩阵乘法吞吐）；
+   - **注意**：此时第 0 步计算的理论 Loss 对应为 $\ln(V_{\text{embed}})$，而非未填充的有效词表。
 
 ---
 
@@ -448,34 +448,27 @@ $$\mathcal{L}_{	ext{smooth}} = -(1-\epsilon)\ln \left(rac{1}{V}ight) - rac{\e
 │    (如 L_0 = 25.0)      │ ❌ 输出线性层权重未归一化；LayerNorm 权重被错误初始化。                │
 ├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
 │ 3. L_0 ≪ ln(V)          │ ❌ 致命数据穿越：因果下三角 Mask 缺失（变成双向注意力，模型直接抄后文）；│
-│    (如 L_0 = 3.5)       │ ❌ Target Padding 泄露：未设置 ignore_index=-100，模型无脑预测 [PAD]； │
-│                         │ ❌ 标签偏移错误：labels 未错开一位 (shift_labels = input_ids[..., 1:])。│
+│    (如 L_0 = 3.5)       │ ❌ 未对 Padding Token 设置 ignore_index=-100（导致对填充符虚假拟合）。 │
 ├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 4. L_0 = NaN / Inf      │ ❌ Attention 缩放因子 1/√d_k 丢失导致 Softmax 溢出；                   │
-│                         │ ❌ FP16 动态 Loss Scale 初值过大，或混合精度未开启 FP32 Master Weights。 │
+│ 4. L_0 = NaN / Inf      │ ❌ Attention 分数缺少 1/√d_k 缩放导致 Softmax 上溢；未开启 FP16 缩放。 │
 └─────────────────────────┴────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 模块四：高频面试精选问答（Interview Rapid-Fire）
+### 6. 高频大模型面试自测单选题（Multiple-Choice Question）
 
-### Q1：为什么现在几乎没有团队使用 BERT 架构来做通用大模型了？
-> **答**：
-> 1. BERT 的双向自注意力机制虽然利于上下文特征提取，但其预训练目标是 Masked Language Modeling（MLM），破坏了自回归生成的因果链条，无法自然、连续地生成任意长度的文本；
-> 2. BERT 没有自回归因果 KV Cache 概念，每次推断新词必须对全序列重走一次前向传播，推理时间复杂度高达 $O(S^2)$，在工程上完全无法支撑开放式长文本生成。
+<details class="exercise">
+<summary><span class="q-label">Q1 · 单选题</span> <span class="q-text">使用 LLaMA-3（词表大小 $V = 128,256$）在千卡集群启动千亿 Token 预训练，在 Step 0 随机初始化未经过任何梯度更新时，下列关于训练损失（Training Loss）与排查诊断的说法中，<strong>哪一项是完全正确的</strong>？</span></summary>
 
-### Q2：在训练大模型时，遇到 Loss 变为 NaN，排查梯度的第一步是什么？
-> **答**：
-> 1. 检查当前步的梯度是否发生溢出（Overflow），确认是否使用了 FP16 且 Loss Scale 过大；
-> 2. 检查 Attention 矩阵的缩放因子 $\frac{1}{\sqrt{d_k}}$ 是否丢失导致 Softmax 溢出；
-> 3. 检查 LayerNorm / RMSNorm 的 $\epsilon$ 是否过小（推荐 $10^{-5} \sim 10^{-6}$）导致除以零；
-> 4. 检查数据集中是否存在超长离群样本或未清洗的空文本/全零输入。
+- [ ] **A.** 初始 Loss 理论期望值应接近 0，若大于 1.0 说明参数初始化方差过大发生数值发散。
+- [ ] **B.** 理论期望初始 Loss 为 $\ln(128256) \approx 11.76$；若实测 $L_0 = 3.2$，说明模型预训练能力极强收敛极快。
+- [x] **C.** 理论期望初始 Loss 为 $\ln(128256) \approx 11.76$；若实测 $L_0 = 3.2$，极大概率存在因果下三角掩码（Causal Mask）丢失或 Padding Token 未设置 `ignore_index=-100` 的严重数据泄漏 bug。
+- [ ] **D.** 若开启了标签平滑（Label Smoothing $\epsilon = 0.1$），第 0 步理论期望 Loss 将显著下降为 $(1-\epsilon)\ln V \approx 10.58$。
 
-### Q3：为什么自回归语言模型的第 0 步 Loss 必须等于 $\ln V$？如果等于 2.0 说明了什么？
-> **答**：
-> 1. **原理解释**：在随机初始化状态下，模型未学到任何语言知识，对词表中所有 $V$ 个 Token 给出接近均匀的概率分布 $P(y=c) = \frac{1}{V}$。交叉熵损失 $\mathcal{L} = -\ln(1/V) = \ln V$；
-> 2. **Loss = 2.0 诊断**：说明发生了**极其严重的实现 Bug 或数据穿越（Data Leakage）**：
->    - **原因 1（因果 Mask 丢失）**：注意力掩码未正确配置为因果下三角矩阵，模型利用双向注意力直接在同一行看到了“未来的目标词”；
->    - **原因 2（Padding 未屏蔽）**：数据批次中的大量 `[PAD]` 填充 Token 没有在 Loss 计算中被屏蔽（未设置 `ignore_index=-100`），模型只需在绝大多数位置无脑预测 `[PAD]` 即可获得极低的虚假损失；
->    - **原因 3（自回归标签未对齐）**：输入序列与目标序列没有错开 1 位（`labels = input_ids`），导致模型直接预测当前输入词本身。
+> 💡 **答案解析**：
+> - **正确选项：C**。
+>   1. **理论初值**：在随机均匀初始化下，每个 Token 的预测概率 $P(y=v) \approx \frac{1}{V}$，标准交叉熵损失 $\mathcal{L}_{\text{init}} = -\ln(1/V) = \ln V$。对于 LLaMA-3，$V=128,256$，$\ln(128256) \approx 11.762$；
+>   2. **$L_0 \ll \ln V$ 的严重缺陷**：如果第 0 步 Loss 远低于 11.76（例如 3.2 甚至接近 0），绝非模型天生收敛快，而是模型发生**向未来偷看（Information Leakage）**：Causal Mask 失效变成了双向注意力（直接抄写后一个 Token 的 Embedding），或者 Padding 填充位置参与了 Loss 计算；
+>   3. **D 选项错误**：数学上已严密证明，无论标签平滑系数 $\epsilon$ 设为多少，在均匀随机初始化下 $\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln(1/V) - \frac{\epsilon}{V} \cdot V \ln(1/V) = \ln V$，保持完全恒定！
+</details>

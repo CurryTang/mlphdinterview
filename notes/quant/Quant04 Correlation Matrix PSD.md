@@ -36,7 +36,7 @@ $$
 $$
 \operatorname{Cov}(X,Y)
 =
-\mathbb{E}\left[(X-\mathbb{E}X)(Y-\mathbb{E}Y)\right]
+\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
 $$
 
 它看的是两个变量偏离均值时，是不是经常同向变化。
@@ -132,25 +132,25 @@ $$
 记：
 
 $$
-\rho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
+ ho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
 $$
 
 则：
 
 $$
-t^2-2\rho t+1\ge0,\qquad \forall t
+t^2-2 ho t+1\ge0,\qquad \forall t
 $$
 
 这个二次函数对所有 $t$ 都非负，所以判别式不能为正：
 
 $$
-(-2\rho)^2-4\le0
+(-2 ho)^2-4\le0
 $$
 
 因此：
 
 $$
-\rho^2\le1
+ ho^2\le1
 $$
 
 也就是：
@@ -159,7 +159,7 @@ $$
 -1\le \operatorname{corr}(X,Y)\le 1
 $$
 
-注意：$\rho=0$ 只表示没有线性相关，不等于独立。独立会推出协方差为 0，但反过来不一定成立。
+注意：$ ho=0$ 只表示没有线性相关，不等于独立。独立会推出协方差为 0，但反过来不一定成立。
 
 ---
 
@@ -198,10 +198,10 @@ $$
 $$
 R=
 \begin{pmatrix}
-1 & \rho_{12} & \cdots & \rho_{1n}\\
-\rho_{21} & 1 & \cdots & \rho_{2n}\\
+1 &  ho_{12} & \cdots &  ho_{1n}\\
+ ho_{21} & 1 & \cdots &  ho_{2n}\\
 \vdots & \vdots & \ddots & \vdots\\
-\rho_{n1} & \rho_{n2} & \cdots & 1
+ ho_{n1} &  ho_{n2} & \cdots & 1
 \end{pmatrix}
 $$
 
@@ -236,7 +236,7 @@ $$
 $$
 \operatorname{Var}(W)
 =
-\operatorname{Var}\left(\sum_{i=1}^n a_iZ_i\right)
+\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
 =
 \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
 $$
@@ -284,13 +284,13 @@ R is PSD
 可以把标准化随机变量看成向量，内积定义为：
 
 $$
-\langle Z_i,Z_j\rangle=\operatorname{Cov}(Z_i,Z_j)
+\langle Z_i,Z_j angle=\operatorname{Cov}(Z_i,Z_j)
 $$
 
 因为：
 
 $$
-\langle Z_i,Z_i\rangle=\operatorname{Var}(Z_i)=1
+\langle Z_i,Z_i angle=\operatorname{Var}(Z_i)=1
 $$
 
 每个 $Z_i$ 都像一个单位向量。相关系数就是两个单位向量的夹角余弦：
@@ -302,7 +302,7 @@ $$
 相关矩阵就是这些向量两两内积组成的 Gram matrix：
 
 $$
-R_{ij}=\langle Z_i,Z_j\rangle
+R_{ij}=\langle Z_i,Z_j angle
 $$
 
 Gram matrix 一定 PSD，因为：
@@ -310,9 +310,9 @@ Gram matrix 一定 PSD，因为：
 $$
 a^\top R a
 =
-\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j\right\rangle
+\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j ight angle
 =
-\left\|\sum_i a_iZ_i\right\|^2
+\left\|\sum_i a_iZ_i ight\|^2
 \ge0
 $$
 
@@ -346,7 +346,7 @@ corr(X1,X2)+corr(X1,X3)+corr(X1,X4)
 记：
 
 $$
-\rho_{ij}=\operatorname{corr}(X_i,X_j)
+ ho_{ij}=\operatorname{corr}(X_i,X_j)
 $$
 
 把变量标准化：
@@ -359,7 +359,7 @@ $$
 
 $$
 \operatorname{Var}(Z_i)=1,\qquad
-\operatorname{Cov}(Z_i,Z_j)=\rho_{ij}
+\operatorname{Cov}(Z_i,Z_j)= ho_{ij}
 $$
 
 现在考虑所有标准化变量之和：
@@ -388,19 +388,19 @@ $$
 $$
 \operatorname{Var}(W)
 =
-4+2\sum_{1\le i<j\le4}\rho_{ij}
+4+2\sum_{1\le i<j\le4} ho_{ij}
 $$
 
 由 $\operatorname{Var}(W)\ge0$ 得：
 
 $$
-4+2\sum_{1\le i<j\le4}\rho_{ij}\ge0
+4+2\sum_{1\le i<j\le4} ho_{ij}\ge0
 $$
 
 所以：
 
 $$
-\sum_{1\le i<j\le4}\rho_{ij}\ge -2
+\sum_{1\le i<j\le4} ho_{ij}\ge -2
 $$
 
 这说明答案不可能小于 $-2$。
@@ -422,7 +422,7 @@ $$
 它的六个非对角相关系数都等于 $-1/3$，所以两两相关系数之和是：
 
 $$
-6\cdot\left(-\frac13\right)=-2
+6\cdot\left( -\frac13 \right)=-2
 $$
 
 这个矩阵是 PSD。直观上，它对应三维空间里正四面体的四个顶点方向：四个单位向量对称地指向不同方向，中心在原点，任意两条方向的点积都是 $-1/3$。
@@ -515,15 +515,15 @@ $$
 这个下界也能达到。令所有非对角相关系数都相等：
 
 $$
-\rho_{ij}=-\frac{1}{n-1},\qquad i\ne j
+ ho_{ij}=-\frac{1}{n-1},\qquad i\ne j
 $$
 
 那么两两之和是：
 
 $$
-\binom n2\left(-\frac{1}{n-1}\right)
+\binom n2\left( -\frac{1}{n-1} \right)
 =
-\frac{n(n-1)}{2}\left(-\frac{1}{n-1}\right)
+\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
 =
 -\frac n2
 $$

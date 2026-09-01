@@ -314,7 +314,7 @@ class Solution:
 This problem does not ask for a position inside an array. It asks for a boundary in the range of possible eating speeds. As speed increases, the number of hours needed to finish all piles does not increase, so the predicate "hours needed `<= h`" is monotonic in speed and the template applies directly.
 
 $$
-\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}} \right\rceil
+\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}}  ight ceil
 $$
 
 | Item | Value |

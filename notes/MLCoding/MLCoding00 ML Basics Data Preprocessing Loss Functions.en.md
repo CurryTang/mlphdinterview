@@ -229,7 +229,7 @@ $$y_i = \mathbf{w}^T \mathbf{x}_i + \epsilon_i \implies y_i \mid \mathbf{x}_i \s
 
 The likelihood of observing sample $y_i$ is:
 
-$$p(y_i \mid \mathbf{x}_i; \mathbf{w}, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left( -\frac{(y_i - \mathbf{w}^T \mathbf{x}_i)^2}{2\sigma^2} \right)$$
+$$p(y_i \mid \mathbf{x}_i; \mathbf{w}, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left( -\frac{(y_i - \mathbf{w}^T \mathbf{x}_i)^2}{2\sigma^2}  \right)$$
 
 The total log-likelihood $\ell(\mathbf{w})$ across $N$ i.i.d. observations is:
 
@@ -253,11 +253,11 @@ $$P(y_i \mid \mathbf{x}_i) = \hat{p}_i^{y_i} (1 - \hat{p}_i)^{1 - y_i}$$
 
 The dataset log-likelihood is:
 
-$$\ell(\mathbf{w}) = \sum_{i=1}^N \left[ y_i \ln \hat{p}_i + (1 - y_i) \ln(1 - \hat{p}_i) \right]$$
+$$\ell(\mathbf{w}) = \sum_{i=1}^N \left[ y_i \ln \hat{p}_i + (1 - y_i) \ln(1 - \hat{p}_i)  \right]$$
 
 Negating and scaling by $1/N$ gives the Binary Cross-Entropy / Log Loss objective:
 
-$$\mathcal{L}_{\text{Logistic}}(\mathbf{w}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{p}_i) + (1 - y_i) \log(1 - \hat{p}_i) \right]$$
+$$\mathcal{L}_{\text{Logistic}}(\mathbf{w}) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{p}_i) + (1 - y_i) \log(1 - \hat{p}_i)  \right]$$
 
 ---
 
@@ -319,7 +319,7 @@ $$\frac{d}{dc} \mathbb{E}[(Y - c)^2] = \mathbb{E}[-2(Y - c)] = -2\mathbb{E}[Y] +
 2. **MAE converges to Median**:
    Minimize $\min_c \mathbb{E}[|Y - c|]$. Applying Leibniz's rule:
 
-$$\frac{d}{dc} \left( \int_{-\infty}^c (c - y) p(y)dy + \int_c^{\infty} (y - c) p(y)dy \right) = P(Y \le c) - P(Y > c) = 0 \implies c^* = \text{Median}(Y)$$
+$$\frac{d}{dc} \left( \int_{-\infty}^c (c - y) p(y)dy + \int_c^{\infty} (y - c) p(y)dy  \right) = P(Y \le c) - P(Y > c) = 0 \implies c^* = \text{Median}(Y)$$
 
 ---
 
@@ -327,7 +327,7 @@ $$\frac{d}{dc} \left( \int_{-\infty}^c (c - y) p(y)dy + \int_c^{\infty} (y - c) 
 
 **Huber Loss** combines the smoothness of MSE near zero with the outlier robustness of MAE for large errors:
 
-$$\mathcal{L}_\delta(e) = \begin{cases} \frac{1}{2} e^2 & \text{for } |e| \le \delta \\ \delta \left(|e| - \frac{1}{2}\delta\right) & \text{for } |e| > \delta \end{cases}$$
+$$\mathcal{L}_\delta(e) = \begin{cases} \frac{1}{2} e^2 & \text{for } |e| \le \delta \\ \delta \left( |e| - \frac{1}{2}\delta \right) & \text{for } |e| > \delta \end{cases}$$
 
 ```text
 Gradient behavior comparison as error e -> infinity:
