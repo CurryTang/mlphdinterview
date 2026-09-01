@@ -1,124 +1,186 @@
-# Multi-Objective Ranking: Negative Transfer Mechanisms, Architectural Evolution & Seesaw Mitigation
+# Multi-Objective Learning and Score Fusion
 
-In modern industrial recommender systems and computational advertising, systems must simultaneously balance multiple competing business objectives. For instance, short-video platforms balance **click-through rate (pCTR), long-view/completion rate (pLongView), social interaction rate (pInteract), and negative feedback rate (pDislike)**; e-commerce rankers balance **pCTR, add-to-cart (pCart), purchase conversion rate (pCVR), and gross merchandise value (pGMV)**.
+## Chapter 10: Multi-Objective Learning and Score Fusion
 
-When multiple objectives are trained jointly over shared representations, engineers frequently observe the **Seesaw Effect (Negative Transfer)**—where optimizing Task A directly causes significant performance degradation in Task B.
+### 10.1 Why Multi-Objective?
 
-This note systematically covers 3 foundational pillars of multi-objective ranking:
-1. **Root Causes of Shared Representation Conflicts (Gradient Conflicts, Magnitude Dominance & Sample Selection Bias)**
-2. **Horizontal Comparison of 6 Mainstream Multi-Task Architectures & Optimization Strategies (Shared-Bottom, MMoE, PLE, Uncertainty Weighting, PCGrad & Constrained Fusion)**
-3. **Offline Diagnostic Ablation Framework & Real-Time Online Guardrail Circuit Breakers**
+Short-video platforms may simultaneously care about clicks, watch time, completion, likes, follows, and negative feedback. E-commerce cares about clicks, add-to-cart, orders, and GMV. Search must also consider relevance, quality, timeliness, geography, and personalization.
 
----
+Roughly summing all objectives into one label loses structure. Training multiple models separately leads to redundant computation and causes low-frequency tasks to lack data. Multi-task learning finds a balance between these two extremes.
 
-## Module 1: Why Targets Conflict in Shared Representations (The Seesaw Effect)
+Two different problems are often conflated here:
 
 ```text
-The 3 Root Causes of Multi-Objective Representation Conflicts:
-┌────────────────────────────────────────────────────────────────────────┐
-│ Root Cause 1: Gradient Directional Conflicts (cos(g_A, g_B) < 0)       │
-│ • Task A (CTR) pushes parameters toward clickbait/catchy headlines     │
-│ • Task B (Completion) pushes parameters toward long-form depth         │
-│ • The shared representation is torn apart, hurting both objectives.    │
-├────────────────────────────────────────────────────────────────────────┤
-│ Root Cause 2: Gradient Magnitude & Frequency Imbalance                 │
-│ • High-frequency task (CTR ~ 5% positive) gradient norm ≫ CVR (~ 0.1%) │
-│ • Shared layers are dominated by CTR; rare conversion tasks starve.    │
-├────────────────────────────────────────────────────────────────────────┤
-│ Root Cause 3: Sample Space Mismatch & Selection Bias                   │
-│ • CTR is trained on the entire impression space D_imp                  │
-│ • CVR is traditionally trained only on clicked samples D_click         │
-└────────────────────────────────────────────────────────────────────────┘
+Multi-task learning: how to share representations while predicting CTR, duration, CVR, and other targets
+Score fusion: how those predictions become the final online ranking score
 ```
 
-### 1. Directional Gradient Conflicts
-When loss functions $\mathcal{L}_A$ and $\mathcal{L}_B$ compute gradients with respect to shared parameters $W_{	ext{shared}}$:
+MMoE, Shared-Bottom, and ESMM mainly address the first problem. Additive, multiplicative, rank-based, or learned fusion addresses the second. More accurate heads do not guarantee a better list. If the fusion weights let a frequent objective dominate quality and negative feedback, a sophisticated network will still optimize the wrong behavior.
 
-$$\mathbf{g}_A = 
-abla_{W_{	ext{shared}}} \mathcal{L}_A, \quad \mathbf{g}_B = 
-abla_{W_{	ext{shared}}} \mathcal{L}_B$$
+Fusion cannot repair poorly defined labels either. Clicks, duration, and purchases have different observation windows, sampling rates, and calibration requirements. Each head needs an interpretable target before its weight is tuned. Online weighting is a product tradeoff among defined objectives, not a substitute for defining the training data.
 
-If $\cos(\mathbf{g}_A, \mathbf{g}_B) < 0$ ($\mathbf{g}_A \cdot \mathbf{g}_B < 0$), the gradients point in conflicting directions. Parameter updates $\Delta W \propto -(\mathbf{g}_A + \mathbf{g}_B)$ will inevitably increase the loss of at least one task.
+### 10.2 Shared-Bottom
 
-### 2. Frequency & Magnitude Domination
-High-frequency interactions generate orders of magnitude more gradient updates than rare conversion events. Without explicit normalization, the shared embedding and bottom MLP parameters are hijacked by the high-frequency task, leading to under-fitting on critical sparse objectives.
-
----
-
-## Module 2: Comparison of 6 Core Architectures & Optimization Strategies
+The simplest structure shares the bottom layers:
 
 ```text
-The 3-Dimensional Solution Matrix:
-┌───────────────────────────────────┬───────────────────────────────────┐
-│ 1. Architectural Feature Routing  │ Shared-Bottom ➔ MMoE ➔ PLE (SOTA) │
-├───────────────────────────────────┼───────────────────────────────────┤
-│ 2. Optimization & Loss Balancing  │ Uncertainty Weighting ➔ PCGrad    │
-├───────────────────────────────────┼───────────────────────────────────┤
-│ 3. Score Fusion & Decision Layer  │ Static Weights ➔ Constrained PID  │
-└───────────────────────────────────┴───────────────────────────────────┘
+features -> shared network -> task A tower
+                           -> task B tower
+                           -> task C tower
 ```
 
-### 1. Architectural Routing (Shared-Bottom vs. MMoE vs. PLE)
+Total loss:
 
-| Architecture | Routing Mechanism | Negative Transfer Defense | Pros | Cons / Limitations |
-|---|---|---|---|---|
-| **Shared-Bottom** | Single shared bottom MLP; branches into task towers at the top. | **Very Poor** (Zero isolation) | Minimal compute and parameter footprint. | Severe gradient conflicts; worst seesaw effect. |
-| **MMoE<br>(Multi-gate MoE)** | Shared pool of experts; dedicated softmax gating per task: $g_t(x) = 	ext{Softmax}(W_t x)$. | **Moderate** (Partial mitigation) | Dynamic sample-level soft routing across experts. | **All experts remain globally shared**; weakly correlated tasks still fight over capacity. |
-| **PLE<br>(Progressive Extraction)** | Explicitly separates **Task-Specific Experts** from **Shared Experts** with multi-level extraction. | **SOTA** (Eliminates negative transfer) | **Physical isolation of private vs shared representations**; completely eliminates negative transfer. | ~15-25% higher parameter and FLOPs overhead. |
-
----
-
-### 2. Optimization & Gradient Balancing (Uncertainty Weighting & PCGrad)
-
-#### (1) Homoscedastic Uncertainty Weighting (Kendall et al.)
-Replaces arbitrary manual loss weights with learned task-dependent uncertainty parameters $\sigma_k^2$:
-
-$$\mathcal{L}_{	ext{total}} = \sum_{k=1}^K \left( rac{1}{2\sigma_k^2} \mathcal{L}_k + \ln \sigma_k ight)$$
-
-- **Mechanism**: Automatically attenuates the loss weight $rac{1}{2\sigma_k^2}$ of noisy or high-variance tasks while the logarithmic barrier $\ln \sigma_k$ prevents weights from collapsing to zero.
-
-#### (2) Projecting Conflicting Gradients (PCGrad)
-When gradients conflict ($\mathbf{g}_i \cdot \mathbf{g}_j < 0$), project $\mathbf{g}_i$ onto the normal plane of $\mathbf{g}_j$:
-
-$$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2} \mathbf{g}_j$$
-
-- **Effect**: Eliminates the destructive component acting against Task $j$ while preserving Task $i$'s original trajectory.
-
----
-
-### 3. Decision-Level Score Fusion & Pareto Constrained Optimization
-Instead of brittle static formulas ($S = pCTR 	imes pCVR^lpha$), production systems formulate score fusion as a constrained optimization problem:
-
-$$\max \mathbb{E}[	ext{GMV}] \quad 	ext{s.t.} \quad 	ext{CTR} \ge 	ext{CTR}_0, \quad 	ext{Dislike Rate} \le 	au$$
-
-Online servers run real-time PID controllers that continuously adjust Lagrangian multipliers $\lambda(t)$ every 5 minutes to track ecosystem guardrails dynamically.
-
----
-
-## Module 3: Offline Diagnostic Ablation Matrix & Online Guardrail Architecture
-
-```text
-Diagnostic and Production Defense Loop:
-┌────────────────────────────────────────────────────────────────────────┐
-│ 1. Offline Diagnostic Ablations                                        │
-│ • Single-Task Upper Bounds: Train K dedicated independent models       │
-│ • Gradient Cosine Matrix: Track percentage of negative cos(g_i, g_j)   │
-│ • Task GAUC Delta Matrix: ΔGAUC_k = GAUC_MTL(k) - GAUC_Single(k)       │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ 2. Online Guardrails & Adaptive Throttling                             │
-│ • Real-time PID Fusion Control: Dynamically adjusts weights per minute │
-│ • Automated Circuit Breaker: Drops to baseline if guardrails regress   │
-└────────────────────────────────────────────────────────────────────────┘
+```math
+\mathcal L=\sum_t \lambda_t\mathcal L_t.
 ```
 
-### 1. Offline Ablation Protocol
-1. **Single-Task Upper Bounds**: Train independent, unshared models for each task to establish theoretical performance ceilings $	ext{GAUC}_{	ext{Single}, k}$;
-2. **Relative Delta Matrix**: Measure $\Delta 	ext{GAUC}_k = 	ext{GAUC}_{	ext{MTL}, k} - 	ext{GAUC}_{	ext{Single}, k}$. A pattern where Task A is $+0.008$ while Task B is $-0.006$ directly confirms severe negative transfer;
-3. **Gradient Conflict Monitoring**: Compute pairwise cosine similarities across training iterations; if negative steps exceed $30\%$, transition to PLE or PCGrad;
-4. **Subgroup Slice Consistency**: Audit metrics across new vs. active users to catch localized seesaw degradation.
+The problem is that task gradients may conflict. Click preference favors title attractiveness, while long watch time favors sustained content value; they do not always update shared parameters in the same direction.
 
-### 2. Online Guardrail Circuit Breakers
-- **PID-Controlled Feedback Loop**: Dynamically adapts fusion weights based on real-time sliding window telemetry;
-- **Automated Canary Circuit Breaker**: If online negative feedback rate rises $>5\%$ or GMV drops $>2\%$ over 3 consecutive monitoring windows, the canary bucket automatically aborts and falls back to the baseline control model.
+### 10.3 MMoE
+
+MMoE uses multiple experts to generate representations, with each task having its own gate:
+
+```math
+h_t(x)
+=\sum_{e=1}^{E}g_{t,e}(x)f_e(x),
+```
+
+```math
+g_t(x)=\operatorname{softmax}(W_t x).
+```
+
+Task `t` dynamically combines experts based on the sample. It is more flexible than Shared-Bottom, but do not interpret the gate as a stable business division of labor. A specific expert does not necessarily represent "clicks" permanently, and the gate may collapse into a few experts.
+
+A small amount of expert dropout on the gate output can reduce polarization: mask some experts, renormalize the gate, and stop a task from always following one path. This does not replace load monitoring, and aggressive dropout can destroy useful specialization.
+
+When diagnosing MMoE, one can look at:
+
+- The entropy of each task's gate;
+- Whether expert usage is balanced;
+- Task gradient cosine similarity;
+- Gains from single-task vs. multi-task grouping;
+- Whether low-frequency tasks are suppressed by high-frequency tasks.
+
+### 10.4 ESMM and the Conversion Funnel
+
+E-commerce CVR is only observable after a click. If CVR is trained using only click samples, the training distribution differs from the full exposure distribution.
+
+ESMM utilizes:
+
+```math
+P(\text{click and conversion})
+=P(\text{click})P(\text{conversion}\mid\text{click}),
+```
+
+It jointly learns CTR and CTCVR in the full exposure space, then constrains CVR through their relationship. It alleviates sample selection bias and conversion sparsity, but still relies on model assumptions and data definitions, and does not mean the counterfactual problem is completely solved.
+
+### 10.5 Duration Modeling
+
+Watch time is zero-inflated and influenced by video length. Directly regressing seconds will bias toward long videos.
+
+Optional approaches:
+
+- Predict effective views and conditional duration;
+- Log-transform or bucketize duration;
+- Predict the watch ratio;
+- Calibrate by video length;
+- Model exit using survival/hazard analysis.
+
+One YouTube-style objective maps observed watch seconds `t` to a soft label:
+
+```math
+y=\frac{t}{1+t},\qquad p=\sigma(z).
+```
+
+Train `p` against `y` with binary cross-entropy. When `p=y`, `e^z=t`, so `e^z` is the duration estimate at inference. Completion can instead regress watch ratio or classify an event such as "watched more than 80%." Both need length-based calibration because short videos are easier to complete.
+
+When evaluating, bucket by content length, user activity, and scenario. An increase in average duration might just mean the system pushed more long videos.
+
+### 10.6 Score Fusion
+
+Model outputs usually cannot be added linearly. CTR might be in `[0, 0.2]`, duration prediction is in seconds, and CVR is even sparser. Calibrate first, then discuss fusion.
+
+Common form:
+
+```math
+S
+=w_1f_1(\hat p_{\text{click}})
++w_2f_2(\hat t)
++w_3f_3(\hat p_{\text{conversion}})
+-w_4\hat p_{\text{negative}}.
+```
+
+`f_t` can be a log, power function, piecewise function, or quantile mapping. Weights do not rely solely on offline search; they ultimately require online experimentation.
+
+Several common fusion forms behave differently:
+
+```math
+S_{\text{add}}
+=p_{\text{click}}+w_1p_{\text{like}}+w_2p_{\text{share}}+\cdots,
+```
+
+```math
+S_{\text{rank}}
+=\sum_j\frac{w_j}{r_j+\beta_j},
+```
+
+```math
+S_{\text{commerce}}
+=p_{\text{click}}^{\alpha}
+\times p_{\text{cart}}^{\beta}
+\times p_{\text{pay}}^{\gamma}
+\times \operatorname{price}^{\delta}.
+```
+
+The additive form depends on calibrated scales. Rank fusion is more scale-robust but discards score gaps. The multiplicative e-commerce form follows the exposure-to-payment funnel and strongly suppresses an item when any stage is near zero.
+
+Another path is to learn a fusion model, taking scores from each objective and context as input. However, it still requires training labels and is harder to interpret regarding objective trade-offs. Strong business constraints are best kept in the re-ranking or rule layer.
+
+### 10.7 Calibration
+
+If a model says 0.2, and the samples have approximately 20% actual clicks, the score is calibrated. Common methods:
+
+- Platt scaling;
+- Isotonic regression;
+- Temperature scaling;
+- Scenario-based or population-based calibration.
+
+Ranking only requires relative order, but fusion often requires comparable probabilities. Calibration changes do not necessarily change AUC, but they can significantly change the results of multi-objective fusion.
+
+Negative downsampling also requires probability correction. If only an `\alpha` fraction of negatives is retained and the sampled-data estimate is `p_s`, the original-distribution probability is:
+
+```math
+p
+=\frac{\alpha p_s}
+{1-p_s+\alpha p_s}.
+```
+
+Downsampling without this correction systematically inflates CTR and downstream rates, and makes fusion weights depend on the sampling ratio.
+
+### 10.8 From Ranking Loss to Preference Optimization
+
+BCE judges a single pair, BPR compares a pair of items, and InfoNCE makes one positive example compete with a set of candidates. All three utilize positive/negative feedback, but differ in comparison granularity and negative sample sources.
+
+Generative recommendation extends the comparison unit to tokens or complete sequences. Next-token CE competes with the entire vocabulary, DPO compares chosen/rejected sequences, and policy gradient uses advantage to weight rollouts. Low-advantage RL rollouts cannot simply be treated as fixed negative samples because candidates are generated by the current policy, and sample weights change with training. For details, see [[BusinessAlgorithm05 Generative Recommendation.md#18.9 From Positive/Negative Samples to RL|Preference Optimization in Generative Recommendation]].
+
+### 10.9 Chapter Self-Test
+
+1. Where does negative transfer in Shared-Bottom come from?
+2. How can MMoE gates be diagnosed?
+3. Which two problems does ESMM solve for CVR?
+4. Why does directly predicting watch seconds bias toward long videos?
+5. When AUC is unchanged, why might calibration still improve online fusion?
+6. How do the comparison granularities of BCE, BPR, and InfoNCE differ?
+
+<details>
+<summary>Reference answers</summary>
+
+1. Shared parameters receive gradients from multiple tasks; gradients may conflict, and a high-volume task may dominate updates.
+2. Inspect gate distributions, entropy, expert load, and specialization by task and slice. Constant or identical gates are warning signs.
+3. ESMM models exposure-to-click and click-to-conversion jointly, reducing CVR sample-selection bias and sparsity from clicked-only training.
+4. Watch-time scale grows with video length, so the model may learn length instead of satisfaction. Use completion rate, buckets, or normalization.
+5. AUC only measures order. Fusion needs comparable probability scales, and calibration stops one head from dominating through numerical scale alone.
+6. BCE classifies one sample, BPR compares one positive-negative pair, and InfoNCE compares the positive against a set of candidates.
+
+</details>

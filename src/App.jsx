@@ -2621,24 +2621,6 @@ const businessAlgorithmNoteDefinitions = [
     'BusinessAlgorithm07 System Design.en.md',
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
   ),
-  createTutorialDefinition(
-    '第 21 章 · 工业级 ML 与 A/B 测试实战：从因果推断到 Sign-Up 漏斗设计',
-    'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md',
-    'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.en.md',
-    { directory: 'BusinessAlgorithm', category: 'Industrial ML & A/B Testing', difficulty: 'Applied' },
-  ),
-  createTutorialDefinition(
-    '第 22 章 · 工业级推荐排序实战：模型选型、样本采样与多维指标评测体系',
-    'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md',
-    'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.en.md',
-    { directory: 'BusinessAlgorithm', category: 'Industrial Recommendation', difficulty: 'Applied' },
-  ),
-  createTutorialDefinition(
-    '第 23 章 · 电商生成式重排全景：从候选序列化、Listwise 目标到时延与上线评估',
-    'BusinessAlgorithm10 Generative Reranking E-Commerce.md',
-    'BusinessAlgorithm10 Generative Reranking E-Commerce.en.md',
-    { directory: 'BusinessAlgorithm', category: 'Generative Recommendation', difficulty: 'Applied' },
-  ),
 ];
 
 const businessAlgorithmEnglishTitles = {
@@ -2662,9 +2644,6 @@ const businessAlgorithmEnglishTitles = {
   'BusinessAlgorithm05 Generative Recommendation.md': 'Chapter 18 · LLM Ranking and Generative Recommendation',
   'BusinessAlgorithm06 Agentic Search.md': 'Chapter 19 · RAG and Agentic Search',
   'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
-  'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md': 'Chapter 21 · Industrial ML & A/B Testing: Causal Inference & Sign-Up Funnel Design',
-  'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md': 'Chapter 22 · Industrial Recommendation Ranking: Base Models, Sampling & Multi-Tier Metrics',
-  'BusinessAlgorithm10 Generative Reranking E-Commerce.md': 'Chapter 23 · E-Commerce Generative Reranking: Serialization, Listwise Objectives & Latency SLAs',
 };
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({

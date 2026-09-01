@@ -1,137 +1,186 @@
-# 多目标排序全景：负迁移机理、模型架构演进与跷跷板效应治理
+# 多目标学习与分数融合
 
-在工业级推荐系统（Industrial Recommender Systems）与计算广告中，业务往往需要同时优化多个相互冲突或相关性各异的业务指标。例如：短视频推荐需同时兼顾**点击率（pCTR）、长读完播率（pLongView）、点赞收藏互动率（pInteract）与负反馈率（pDislike）**；电商推荐需同时优化**点击率（pCTR）、加购率（pCart）、购买转化率（pCVR）与客单成交额（pGMV）**。
+## 第 10 章 多目标学习与分数融合
 
-当多个任务通过底层共享表征（Shared Representations）联合训练时，经常会观察到**“任务 A 效果提升，但任务 B 发生严重回退”的跷跷板效应（Seesaw Effect / Negative Transfer）**。
+### 10.1 为什么会有多目标
 
-本篇系统拆解多目标排序体系三大核心支柱：
-1. **多任务表征冲突与跷跷板效应底层根因（Gradient Conflicts, Magnitude Dominance & Selection Bias）**
-2. **六大主流多目标模型与优化方案横向对比（Shared-Bottom, MMoE, PLE, Uncertainty Weighting, PCGrad, Constrained Fusion）**
-3. **跷跷板效应消融实验诊断矩阵与线上实时护栏熔断机制（Ablations & Online Guardrails）**
+短视频平台可能同时关心点击、播放时长、完播、点赞、关注和负反馈。电商关心点击、加购、下单和成交额。搜索还要考虑相关性、质量、时效、地域和个性化。
 
----
+把所有目标粗暴加成一个标签，会丢掉结构。分别训练多个模型又会重复计算，并让低频任务缺少数据。多任务学习就在这两端之间找平衡。
 
-## 模块一：多目标任务为何会在共享表征中相互打架？（跷跷板底层根因）
+这里有两件经常被混在一起的事：
 
 ```text
-多目标表征冲突三大根因示意:
-┌────────────────────────────────────────────────────────────────────────┐
-│ 根因 1: 梯度方向负冲突 (Gradient Conflict: cos(g_A, g_B) < 0)           │
-│ • Task A (点击) 梯度推动参数向"吸引人标题"方向更新                     │
-│ • Task B (完播) 梯度推动参数向"深度高质量内容"方向更新 ➔ 共享参数被撕裂 │
-├────────────────────────────────────────────────────────────────────────┤
-│ 根因 2: 梯度量级与样本频次压制 (Magnitude & Frequency Imbalance)       │
-│ • 高频正样本 Task (CTR 约 5%) 梯度范数 ≫ 低频稀疏 Task (CVR 约 0.1%)   │
-│ • 共享 Embedding 与底层 MLP 权重被高频任务完全主导，低频任务欠拟合      │
-├────────────────────────────────────────────────────────────────────────┤
-│ 根因 3: 样本空间不一致与选择偏差 (Sample Space Mismatch)               │
-│ • CTR 在全量曝光空间训练: D_imp                                         │
-│ • CVR 传统上仅在点击后样本空间训练: D_click (非随机丢弃 ➔ 样本选择偏差)│
-└────────────────────────────────────────────────────────────────────────┘
+多任务学习：怎样共享表示，同时预测 CTR、时长、CVR 等目标
+分数融合：线上最终怎样用这些预估决定一个 item 的排序分
 ```
 
-### 1. 梯度方向负冲突（Negative Gradient Cosine Similarity）
-当两个任务的损失函数 $\mathcal{L}_A$ 与 $\mathcal{L}_B$ 对共享参数 $W_{	ext{shared}}$ 计算梯度时：
+MMoE、Shared-Bottom 和 ESMM 主要解决前一件事。加法、乘法、rank fusion 或学习式融合解决后一件事。多个 head 都预测得更准，不代表最终列表一定更好；如果融合权重让一个高频目标压过质量和负反馈，模型结构再漂亮也会走偏。
 
-$$\mathbf{g}_A = 
-abla_{W_{	ext{shared}}} \mathcal{L}_A, \quad \mathbf{g}_B = 
-abla_{W_{	ext{shared}}} \mathcal{L}_B$$
+反过来，融合公式也救不了坏标签。点击、时长和购买的观察窗口、采样率与校准口径不同，必须先让每个 head 的目标可解释，再讨论权重。线上调权是在明确的目标之间做产品取舍，不是弥补训练数据没有定义清楚。
 
-若 $\cos(\mathbf{g}_A, \mathbf{g}_B) < 0$（即 $\mathbf{g}_A \cdot \mathbf{g}_B < 0$），两个任务的梯度方向形成钝角甚至反向对冲。此时参数更新 $\Delta W \propto -(\mathbf{g}_A + \mathbf{g}_B)$ 必然会导致至少一个任务的损失上升，形成**典型的跷跷板恶性循环**。
+### 10.2 Shared-Bottom
 
-### 2. 梯度量级失衡与高频任务压制（Frequency Dominance）
-高频行为（如展示点击，正样本率 5%）的样本量和更新步数通常是低频稀疏行为（如高单价购买或付费转化，正样本率 0.1%）的数十倍乃至上百倍。如果不加约束，共享层参数会被点击任务的梯度彻底“洗脑”，低频重要任务的语义表征空间被严重挤压。
-
----
-
-## 模块二：六大多目标模型架构与优化策略深度横向对比
+最简单的结构共享底层：
 
 ```text
-多目标解决方案三维谱系:
-┌───────────────────────────────────┬───────────────────────────────────┐
-│ 1. 架构级特征路由 (Architecture)  │ Shared-Bottom ➔ MMoE ➔ PLE (渐进分层)│
-├───────────────────────────────────┼───────────────────────────────────┤
-│ 2. 优化级梯度与损失平衡 (Loss/Grad)│ 动态不确定性加权 ➔ PCGrad 梯度投影    │
-├───────────────────────────────────┼───────────────────────────────────┤
-│ 3. 决策级分数融合 (Score Fusion)  │ 静态加权 ➔ 帕累托约束优化 / PID 控制  │
-└───────────────────────────────────┴───────────────────────────────────┘
+features -> shared network -> task A tower
+                           -> task B tower
+                           -> task C tower
 ```
 
-### 1. 架构级方案对比（Shared-Bottom vs. MMoE vs. PLE）
+总损失：
 
-| 架构方案 | 网络拓扑与路由机制 | 负迁移防御能力 | 优势（Pros） | 缺陷与局限（Cons） |
-|---|---|---|---|---|
-| **Shared-Bottom** | 所有任务完全共享单一底层 MLP，顶部分叉 Task Towers。 | **极差**（无防御能力） | 结构最简单，计算开销极低。 | 任务间梯度强行对冲，跷跷板效应最剧烈。 |
-| **MMoE<br>(Multi-gate MoE)** | 共享一组 Experts，每个任务拥有独立的 Softmax 门控网络 $g_t(x) = 	ext{Softmax}(W_t x)$。 | **一般**（部分缓解） | 实现了动态软路由加权，自适应分配专家。 | **所有 Expert 依然是全局共享的**，弱相关任务间仍会争夺 Expert 容量。 |
-| **PLE<br>(Progressive Extraction)** | 显式解耦为 **任务独占专家（Task-Specific Experts）** 与 **全局共享专家（Shared Experts）**，分层渐进抽取。 | **卓越（SOTA）**（彻底阻断负迁移） | **任务私有特征与共享特征严格物理隔离**；高层逐步融合，彻底消除负迁移。 | 参数量与前向计算开销略微增加（约 15%~25%）。 |
-
----
-
-### 2. 优化与损失级方案（Uncertainty Weighting & PCGrad）
-
-#### (1) 同方差不确定性加权（Homoscedastic Uncertainty Weighting, Kendall et al.）
-传统固定超参数加权 $\mathcal{L} = \sum w_k \mathcal{L}_k$ 极其依赖人工网格调参。Uncertainty Weighting 将每个任务的不确定性 $\sigma_k^2$ 建模为可学习参数：
-
-$$\mathcal{L}_{	ext{total}} = \sum_{k=1}^K \left( rac{1}{2\sigma_k^2} \mathcal{L}_k + \ln \sigma_k ight)$$
-
-- **自适应平衡机制**：当任务 $k$ 噪声大、方差 $\sigma_k^2$ 高时，自动缩减其损失权重 $rac{1}{2\sigma_k^2}$，同时对数正则项 $\ln \sigma_k$ 防止权重退化为 0。
-
-#### (2) 冲突梯度正交投影（PCGrad: Projecting Conflicting Gradients）
-当检测到任务 $i$ 与任务 $j$ 的梯度发生冲突时（$\mathbf{g}_i \cdot \mathbf{g}_j < 0$），将 $\mathbf{g}_i$ **正交投影到 $\mathbf{g}_j$ 的法平面上**：
-
-$$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2} \mathbf{g}_j$$
-
-- **效果**：消除了对任务 $j$ 有害的分量，同时最大限度保留了任务 $i$ 的原更新方向，从梯度动力学层面彻底切断负对冲。
-
----
-
-### 3. 决策级分数融合（Constrained Fusion & Pareto Optimization）
-
-即使底层多任务模型预估出了极准的 $\hat{p}_{	ext{CTR}}$ 与 $\hat{p}_{	ext{CVR}}$，线上如何将它们融合成单一排序分 $S$ 依然是业务核心：
-- **传统朴素加权**：$S = \hat{p}_{	ext{CTR}} 	imes \hat{p}_{	ext{CVR}}^lpha$（超参 $lpha$ 静态固化，遇大促或流量波动易失效）；
-- **带约束的拉格朗日优化与 PID 控制**：
-  $$\max \mathbb{E}[	ext{GMV}] \quad 	ext{s.t.} \quad 	ext{CTR} \ge 	ext{CTR}_0, \quad 	ext{Dislike Rate} \le 	au$$
-  在线服务维护实时 PID 控制器，根据最近 5 分钟的实际 CTR 动态调整拉格朗日乘子 $\lambda(t)$，保证在满足生态护栏的前提下实现主商业目标最大化。
-
----
-
-## 模块三：跷跷板效应的消融诊断矩阵与线上实时护栏体系
-
-```text
-多目标跷跷板效应离线诊断与线上防御闭环:
-┌────────────────────────────────────────────────────────────────────────┐
-│ 1. 离线消融诊断 (Offline Diagnostic Ablations)                         │
-│ • 单任务上界基准 (Single-Task Upper Bounds): 训练 K 个独立单模型       │
-│ • 任务梯度余弦相似度矩阵: 全局追踪 cos(g_i, g_j) 负相关比例            │
-│ • 任务 GAUC 增益矩阵: ΔGAUC_k = GAUC_MTL(k) - GAUC_Single(k)          │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ 2. 线上实时护栏与自适应熔断 (Online Guardrails & Adaptive Throttling)  │
-│ • 实时 PID 动态控权: 每分钟基于线上大盘指标动态微调融合权重 λ          │
-│ • 自动熔断降级 (Circuit Breaker): 关键护栏指标下跌超阈值自动回退       │
-└────────────────────────────────────────────────────────────────────────┘
+```math
+\mathcal L=\sum_t \lambda_t\mathcal L_t.
 ```
 
-### 1. 离线消融诊断标准四步法（The 4-Step Offline Ablation Protocol）
+问题是任务梯度可能冲突。点击偏好标题吸引力，长时长偏好内容持续价值，它们不总朝同一方向更新共享参数。
 
-1. **单任务性能天花板测定（Single-Task Benchmarks）**：
-   为每个任务独立训练一个专属的单任务模型（完全无参数共享），记录其 $	ext{GAUC}_{	ext{Single}, k}$ 作为该任务的理论上界；
-2. **多任务相对增益测算（Task Delta Matrix）**：
-   计算 $\Delta 	ext{GAUC}_k = 	ext{GAUC}_{	ext{MTL}, k} - 	ext{GAUC}_{	ext{Single}, k}$。若出现“任务 A $\Delta 	ext{GAUC} = +0.008$，但任务 B $\Delta 	ext{GAUC} = -0.006$”，直接证实严重负迁移；
-3. **梯度冲突热力图追踪（Gradient Cosine Heatmap）**：
-   在训练过程中每 1000 步记录一次各任务梯度余弦相似度 $\cos(\mathbf{g}_i, \mathbf{g}_j)$。若负相关步数占比超过 30%，必须引入 PLE 或 PCGrad；
-4. **子群切片差异性检验（Slice Heterogeneity）**：
-   检查高活跃用户与低活跃用户、冷启动 Item 上的多目标表现，排查局部跷跷板现象。
+### 10.3 MMoE
 
----
+MMoE 用多个 expert 产生表示，每个任务有自己的 gate：
 
-### 2. 线上实时护栏与自适应控权机制（Online Guardrails）
+```math
+h_t(x)
+=\sum_{e=1}^{E}g_{t,e}(x)f_e(x),
+```
 
-1. **动态 PID 控权闭环**：
-   设目标为最大化 GMV 且确保大盘 CTR 相对跌幅不超过 $-1\%$。线上收集实时滑动窗口（如 5 分钟）的 $	ext{CTR}_{	ext{online}}$：
-   $$e(t) = 	ext{CTR}_{	ext{online}}(t) - 	ext{CTR}_{	ext{target}}$$
-   $$\lambda(t) = \lambda(t-1) + K_p e(t) + K_i \int e(	au) d	au + K_d rac{de(t)}{dt}$$
-   动态调整融合公式中的 CTR 权重 $\lambda(t)$；
-2. **自动熔断回路（Circuit Breakers）**：
-   若线上核心护栏指标（如负反馈率上升 $> 5\%$ 或核心类目 GMV 下跌 $> 2\%$）持续 3 个监控周期，系统自动将分流灰度流量无缝降级回退到基线策略，并向值班团队发送 P0 告警。
+```math
+g_t(x)=\operatorname{softmax}(W_t x).
+```
+
+任务 `t` 根据样本动态组合 experts。它比 Shared-Bottom 更灵活，但不要把 gate 解释成稳定的业务分工。某个 expert 不一定永久代表"点击"，gate 也可能塌缩到少数 experts。
+
+训练时对 gate 的 softmax 输出做少量 expert dropout，是缓解极化的一种办法：随机屏蔽部分 expert 后重新归一化，迫使任务别永远依赖同一条路径。它不能替代负载监控，dropout 过强还会破坏本来有用的专门化。
+
+诊断 MMoE 时可以看：
+
+- 各任务 gate 的熵；
+- expert 使用是否均衡；
+- 任务梯度余弦相似度；
+- 单任务与多任务的分群收益；
+- 低频任务是否被高频任务压制。
+
+### 10.4 ESMM 与转化漏斗
+
+电商 CVR 只在点击后可观察。若只用点击样本训练 CVR，训练分布与全量曝光分布不同。
+
+ESMM 利用：
+
+```math
+P(\text{click and conversion})
+=P(\text{click})P(\text{conversion}\mid\text{click}),
+```
+
+在全量曝光空间联合学习 CTR 和 CTCVR，再由二者关系约束 CVR。它缓解样本选择偏差与转化稀疏，但仍依赖模型假设和数据口径，不代表反事实问题完全解决。
+
+### 10.5 时长建模
+
+播放时长既有零膨胀，又受视频长度影响。直接回归秒数会偏向长视频。
+
+可选做法：
+
+- 预测有效播放和条件时长；
+- 对时长做 log 或分桶；
+- 预测播放比例；
+- 分视频长度校准；
+- 用 survival/hazard 思路建模退出。
+
+YouTube 的一种时长写法把观测秒数 `t` 变成 soft label：
+
+```math
+y=\frac{t}{1+t},\qquad p=\sigma(z).
+```
+
+用二元交叉熵拟合 `y`。当 `p=y` 时有 `e^z=t`，所以推理阶段可用 `e^z` 作为时长预估。完播则可回归播放比例，或把 `"播放超过 80%"` 当二分类；无论哪种，都要按视频长度校准，因为短视频天然更容易完播。
+
+评价时要按内容长度、用户活跃度和场景分桶。平均时长上涨可能只是系统多推了长视频。
+
+### 10.6 分数融合
+
+模型输出通常不能直接线性相加。CTR 可能在 `[0, 0.2]`，时长预测是秒，CVR 更稀疏。先做校准，再讨论融合。
+
+常见形式：
+
+```math
+S
+=w_1f_1(\hat p_{\text{click}})
++w_2f_2(\hat t)
++w_3f_3(\hat p_{\text{conversion}})
+-w_4\hat p_{\text{negative}}.
+```
+
+`f_t` 可以是 log、幂函数、分段函数或分位数映射。权重不只靠离线搜索，最终需要在线实验。
+
+课程里的几种典型融合各有侧重点：
+
+```math
+S_{\text{add}}
+=p_{\text{click}}+w_1p_{\text{like}}+w_2p_{\text{share}}+\cdots,
+```
+
+```math
+S_{\text{rank}}
+=\sum_j\frac{w_j}{r_j+\beta_j},
+```
+
+```math
+S_{\text{commerce}}
+=p_{\text{click}}^{\alpha}
+\times p_{\text{cart}}^{\beta}
+\times p_{\text{pay}}^{\gamma}
+\times \operatorname{price}^{\delta}.
+```
+
+第一种依赖校准后的数值尺度；第二种只看各目标的候选内名次，尺度更稳但丢失分差；电商乘法形式贴合曝光到支付的漏斗，任何一项接近零都会强烈压低总分。
+
+另一条路是学习融合模型，把各目标分数和上下文作为输入。但它仍要有训练标签，且更难解释目标权衡。业务强约束最好保留在重排或规则层。
+
+### 10.7 校准
+
+如果模型说 0.2 的样本约有 20% 真正点击，分数就是校准的。常用方法：
+
+- Platt scaling；
+- isotonic regression；
+- temperature scaling；
+- 分场景或分人群校准。
+
+排序只要求相对顺序，融合却经常需要可比较的概率。校准变化不一定改变 AUC，却可能大幅改变多目标融合的结果。
+
+负样本降采样后，模型输出也要还原。若负例只保留比例 `\alpha`，采样数据上的预估为 `p_s`，原分布概率是：
+
+```math
+p
+=\frac{\alpha p_s}
+{1-p_s+\alpha p_s}.
+```
+
+只做降采样、不做校准，会系统性高估 CTR 和后续交互率，融分权重也会随采样率变化。
+
+### 10.8 从排序损失到偏好优化
+
+BCE 判断单个 pair，BPR 比较一对 item，InfoNCE 让一个正例与一组候选竞争。三者都利用正负反馈，比较粒度和负样本来源不同。
+
+生成式推荐把比较单位扩展到 token 或完整序列。next-token CE 与整个词表竞争，DPO 比较 chosen/rejected 序列，policy gradient 用 advantage 给 rollout 加权。RL 的低 advantage rollout 不能简单当成固定负样本，因为候选由当前 policy 产生，样本权重也会随训练变化。细节见 [[BusinessAlgorithm05 Generative Recommendation.md#18.9 从正负样本到 RL|生成式推荐中的偏好优化]]。
+
+### 10.9 本章自测
+
+1. Shared-Bottom 的负迁移从哪里来？
+2. MMoE 的 gate 可以怎样诊断？
+3. ESMM 解决了 CVR 的哪两个问题？
+4. 为什么直接预测播放秒数会偏长视频？
+5. AUC 不变时，校准为什么仍可能改善线上融合？
+6. BCE、BPR、InfoNCE 的比较粒度有什么不同？
+
+<details>
+<summary>参考答案</summary>
+
+1. 多个任务共享同一表示时，梯度方向可能冲突，数据量大的任务还会主导参数更新，使其他任务变差。
+2. 看不同任务和样本上的 gate 分布、expert 使用率、熵与负载；长期只选一个 expert 或所有 gate 完全相同都值得检查。
+3. 它用曝光→点击和点击→转化的联合建模缓解 CVR 样本选择偏差，并利用全曝光空间缓解只在点击样本上训练造成的数据稀疏。
+4. 秒数上界随视频长度增长，模型容易把长度当作收益。可预测完播率、分桶时长或使用带长度归一化的目标。
+5. AUC 只看相对顺序。融合多个目标时需要概率尺度可比，校准能避免某个头仅因分数偏大而压过其他目标。
+6. BCE 判断单个样本；BPR 比较一对正负 item；InfoNCE 让正例与一组 batch 或采样候选共同竞争。
+
+</details>
