@@ -1188,7 +1188,7 @@ describe('App', () => {
     window.location.hash = '#MLCoding00B%20LLM%20Basics%20Decoder%20Only%20Precision%20Alignment%20Distillation.md';
     const { unmount } = render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM 基础：Decoder-Only 为何胜出/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM 基础：Decoder-Only 架构胜出原理解析/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM Basics: Why Decoder-Only Won/i })).toBeInTheDocument();

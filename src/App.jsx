@@ -2245,12 +2245,12 @@ const mlCodingNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
-    'ML Coding 00B · LLM 基础：Decoder-Only 为何胜出、混合精度训练、对齐评测与知识蒸馏',
+    'ML Coding 00B · LLM 基础：Decoder-Only 架构胜出原理解析、文本向量表征与混合精度训练体系',
     'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.md',
     'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 00B · LLM Basics: Why Decoder-Only Won, Mixed-Precision Training, Alignment, Distillation & Evaluation',
+      titleEn: 'ML Coding 00B · LLM Basics: Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Training Systems',
       category: 'LLM Basics',
       difficulty: 'Medium',
     },

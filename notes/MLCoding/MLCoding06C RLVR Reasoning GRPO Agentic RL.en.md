@@ -151,7 +151,17 @@ DeepSeek-R1 4-Stage Training Pipeline:
 │ • Mechanism: Rule rewards (for math/code) + Preference Model (safety)  │
 │ • Goal: Achieve SOTA reasoning aligned with human values               │
 └────────────────────────────────────────────────────────────────────────┘
-```
+### 2. Knowledge Distillation Paradigms: White-Box Logits vs. Black-Box Sequence SFT (DeepSeek-R1-Distill)
+
+Once a frontier reasoning model (such as DeepSeek-R1 671B) is trained via large-scale RL, how can its reasoning prowess be transferred into lightweight edge models (e.g., 1.5B / 7B / 8B / 14B / 32B)? Two distillation paradigms exist in production:
+
+| Distillation Mode | Core Mechanism | Pros | Cons / Limitations | Industrial Case Studies |
+|---|---|---|---|---|
+| **White-Box (Logit-based KD)** | Student aligns its output logit probability distribution with the teacher's via KL divergence:<br>$$\mathcal{L}_{KD} = D_{KL}(P_{\text{teacher}} \parallel P_{\text{student}})$$ | Retains rich "Dark Knowledge" (probability correlations over non-top-1 candidates). | Requires **strictly identical tokenizer vocabulary** between teacher and student; impossible over commercial APIs. | Same-family model compression (e.g., LLaMA-3-70B $\to$ LLaMA-3-8B). |
+| **Black-Box (Sequence-Level SFT)** | Teacher generates massive synthetic problem-solving and long-CoT reasoning trajectories; student fine-tunes via standard SFT. | **Zero architectural constraints** (e.g., distilling DeepSeek-R1 into Qwen-2.5 or LLaMA-3); supports commercial API generation. | Loses soft-target distribution information; heavily dependent on deduplication and rigorous verification. | **DeepSeek-R1-Distill-Qwen/LLaMA Series** (800K curated R1 reasoning traces fine-tuning open-source models). |
+
+> 💡 **Core Finding from DeepSeek-R1**:
+> Distilling 800K synthetic long-CoT reasoning traces directly into smaller dense models (such as Qwen-2.5-32B) yields competitive performance (DeepSeek-R1-Distill-32B) that significantly outperforms training those smaller models with pure RL from scratch. This demonstrates that **complex reasoning capabilities are highly distillable and transferable across model architectures!**
 
 ---
 

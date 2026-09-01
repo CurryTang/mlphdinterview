@@ -1,11 +1,10 @@
-# ML Coding 00B · LLM Basics: Why Decoder-Only Won, Mixed-Precision Training, Alignment, Distillation & Evaluation
+# ML Coding 00B · LLM Basics: Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Training Systems
 
-In large language model (LLM) system design and generative AI engineering, mastering the architectural selection rationale, hardware-level precision dynamics, and post-training alignment/evaluation paradigms is essential for pre-training, fine-tuning, and production serving.
+In large language model (LLM) system design and generative AI engineering, mastering the architectural selection rationale, dense text embedding bottlenecks, and hardware-level numerical precision dynamics is essential for pre-training, fine-tuning, and production serving.
 
-This note systematically covers 3 foundational pillars of modern LLM systems:
-1. **Why Decoder-Only Won: A Deep-Dive into the Modern LLM Architectural Convergence**
-2. **Numerical Precision Formats (FP32 / FP16 / BF16) & Mixed-Precision Training (Loss Scaling & Master Weights)**
-3. **Post-Training Alignment, Distillation & Evaluation Pitfalls (DPO vs. PPO, Logit vs. Sequence Distillation, LLM-as-a-Judge & Alignment Tax)**
+This note systematically covers 2 foundational pillars of modern LLM systems:
+1. **Why Decoder-Only Won & Dense Text Embeddings: Architectural convergence analysis and how modern research overcame Anisotropy and representation collapse**
+2. **Hardware Numerical Precision Formats (FP32 / FP16 / BF16 / FP8 / NVFP4) & Mixed-Precision Training (Master Weights, Loss Scaling, and Stochastic Rounding)**
 
 ---
 
@@ -338,83 +337,7 @@ NVIDIA Blackwell (B200 / GB200) introduces native **NVFP4 Tensor Cores** and **M
 
 ---
 
-## Module 3: Post-Training Alignment, Distillation & Evaluation
-
-### 1. The Post-Training RL Trilogy: Preference Alignment (RL 1) ➔ Slow Reasoning (RL 2) ➔ Distributed Infra (RL 3)
-
-Modern LLM post-training has decoupled into a **comprehensive 3-part reinforcement learning curriculum**:
-
-```text
-The Modern Post-Training & Reinforcement Learning Trilogy:
-┌────────────────────────────────────────────────────────────────────────┐
-│ Track 1 (RL 1): Human Preference Alignment (RLHF / Preference Opt)     │
-│ • Core Tasks: Open-ended Q&A, creative writing, safety, format persona │
-│ • Reward Source: Bradley-Terry neural Reward Model or implicit DPO loss│
-│ • Core Methods: PPO (4-Model System) ➔ DPO (Implicit Reward) ➔ SimPO   │
-│ • Dedicated Deep-Dive: [ML Coding 06B · RLHF & Preference Alignment](#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md)│
-├────────────────────────────────────────────────────────────────────────┤
-│ Track 2 (RL 2): Verifiable Reward RL (RLVR & Reasoning / Agentic RL)   │
-│ • Core Tasks: Slow-thinking reasoning (o1 / DeepSeek-R1), Math, Code   │
-│ • Reward Source: Deterministic external verifiers (Compilers, Sandboxes│
-│ • Core Methods: GRPO (Group Relative Advantage, zero Critic) ➔ Long-CoT│
-│ • Dedicated Deep-Dive: [ML Coding 06C · RLVR, Reasoning & Agentic RL](#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md)│
-├────────────────────────────────────────────────────────────────────────┤
-│ Track 3 (RL 3): RL Infrastructure & Distributed Systems (RL Infra)     │
-│ • Core Tasks: High-concurrency rollout scheduling, vLLM/SGLang decoupled│
-│ • Core Methods: Actor/Rollout/Critic VRAM topology, KV Cache sharing    │
-│ • Dedicated Deep-Dive: [RL Practice · 35 Questions on RL Infra](#MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.md)│
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-> 💡 **The Post-Training & Reinforcement Learning Trilogy Navigation**:
-> - **RL 1 (Preference Alignment)**: [ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.en.md)
-> - **RL 2 (Reasoning & Agents)**: [ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/MLCoding/MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.en.md)
-> - **RL 3 (Distributed Systems & Infra)**: [Reinforcement Learning Practice · RL 3: 35 High-Yield Questions on RL Infra & Distributed Post-Training Systems](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/Mlsys/MLSYS15%20RL%20Infra%20%E8%87%AA%E6%B5%8B%2035%20%E9%97%AE.en.md)
-
----
-
-### 2. Knowledge Distillation: White-Box vs. Black-Box
-
-| Distillation Mode | Core Mechanism | Pros | Cons / Limitations | Industrial Use Cases |
-|---|---|---|---|---|
-| **White-Box (Logit-based KD)** | Student matches teacher's full output token probability distribution via KL divergence:<br>$$\mathcal{L}_{KD} = D_{KL}(P_{\text{teacher}} \parallel P_{\text{student}})$$ | Retains rich "Dark Knowledge" (probability distributions over non-top-1 tokens). | Requires **identical vocabulary and tokenizer** between teacher and student; impossible over closed-source APIs. | Same-family model pruning (e.g., LLaMA-3-70B $\to$ LLaMA-3-8B). |
-| **Black-Box (Sequence-Level SFT)** | Teacher acts as an offline generator producing synthetic reasoning traces and instructions; student trains via standard SFT. | Architecture-agnostic; compatible with commercial black-box APIs (e.g., GPT-4). | Loses soft-target distribution signals; highly dependent on filtering and deduplication. | Specialized domain models, synthetic reasoning data generation (e.g., DeepSeek-R1-Distill). |
-
----
-
-### 3. LLM-as-a-Judge Paradigms & Three Inherent Evaluator Biases
-
-```text
-LLM-as-a-Judge Biases & Mitigation Protocols:
-┌─────────────────────────┬────────────────────────────────────────────────────────────────────────┐
-│ Bias Category           │ Mechanism & Industrial Mitigation Strategy                             │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 1. Position Bias        │ Tendency to favor Candidate 1 over Candidate 2.                        │
-│                         │ ➔ Mitigation: Pairwise position swapping (evaluating both (A,B) and    │
-│                         │   (B,A)) and averaging scores.                                         │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 2. Verbosity Bias       │ Tendency to assign higher scores to longer, highly-formatted responses │
-│                         │ regardless of factual substance.                                       │
-│                         │ ➔ Mitigation: Length-penalized rubrics and strict word-count limits.   │
-├─────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ 3. Self-Enhancement Bias│ Favoring responses generated by the judge model's own architectural    │
-│                         │ family due to shared latent representational preferences.              │
-│                         │ ➔ Mitigation: Multi-judge consensus panels and reference-grounded eval.│
-└─────────────────────────┴────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### 4. Production Failure Modes: Reward Hacking & Alignment Tax
-
-1. **Reward Hacking**:
-   The policy model discovers vulnerabilities in the reward function or judge prompt, generating hollow, excessively flattering, or superficial responses that score high without answering the prompt.
-2. **Alignment Tax & Hallucination Regression**:
-   Aggressive RLHF/DPO safety tuning can degrade the model's core reasoning, coding, and mathematical capabilities, causing **over-refusal** on benign queries and factual calibration drift.
-
----
-
-## Module 4: High-Yield Interview Rapid-Fire
+## Module 3: High-Yield Interview Rapid-Fire
 
 ### Q1: Why is BERT's masked bidirectional architecture unsuitable for modern foundation LLMs?
 > **Answer**:
