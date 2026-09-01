@@ -2600,6 +2600,12 @@ const businessAlgorithmNoteDefinitions = [
     'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.en.md',
     { directory: 'BusinessAlgorithm', category: 'Industrial Recommendation', difficulty: 'Applied' },
   ),
+  createTutorialDefinition(
+    '第 23 章 · 电商生成式重排全景：从候选序列化、Listwise 目标到时延与上线评估',
+    'BusinessAlgorithm10 Generative Reranking E-Commerce.md',
+    'BusinessAlgorithm10 Generative Reranking E-Commerce.en.md',
+    { directory: 'BusinessAlgorithm', category: 'Generative Recommendation', difficulty: 'Applied' },
+  ),
 ];
 
 const businessAlgorithmEnglishTitles = {
@@ -2625,6 +2631,7 @@ const businessAlgorithmEnglishTitles = {
   'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
   'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md': 'Chapter 21 · Industrial ML & A/B Testing: Causal Inference & Sign-Up Funnel Design',
   'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md': 'Chapter 22 · Industrial Recommendation Ranking: Base Models, Sampling & Multi-Tier Metrics',
+  'BusinessAlgorithm10 Generative Reranking E-Commerce.md': 'Chapter 23 · E-Commerce Generative Reranking: Serialization, Listwise Objectives & Latency SLAs',
 };
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({

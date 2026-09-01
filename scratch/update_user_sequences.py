@@ -1,4 +1,6 @@
-# 工业级长序列建模全景：从截断 Transformer、压缩记忆网络到两阶段检索与时延选型
+import os
+
+zh_content = """# 工业级长序列建模全景：从截断 Transformer、压缩记忆网络到两阶段检索与时延选型
 
 在工业级推荐系统（Industrial Recommender Systems）中，**用户行为序列建模（User Behavior Sequence Modeling）** 是捕捉用户兴趣演进、周期复购需求与个性化意图的核心引擎。用户的短期行为（最近 10~50 次交互）反映了瞬时即时的上下文冲动，而**超长周期行为（过去数月乃至数年积累的数百至数万次行为）** 则沉淀了用户的深层品类偏好、消费层级与生命周期规律。
 
@@ -42,7 +44,7 @@
   - 将用户历史序列截断为最近 $N$ 个行为（通常 $N \in [50, 100]$）；
   - 引入可学习的位置编码（Positional Embeddings），使用因果 Mask 的多层 Multi-Head Self-Attention 捕获 Item-Item 之间的顺序依赖。
 - **优势（Pros）**：
-  - 能够精准捕捉用户短期的连续协同转移（如“买手机 $	o$ 看手机膜 $	o$ 买保护套”）。
+  - 能够精准捕捉用户短期的连续协同转移（如“买手机 $\to$ 看手机膜 $\to$ 买保护套”）。
 - **致命瓶颈（Cons）**：
   - **计算复杂度 $O(N^2)$ 爆炸**：当序列长度 $N > 200$ 时，Self-Attention 矩阵乘法计算量与显存占用飙升；
   - **严重遗忘长周期兴趣**：强制截断丢弃了数月前的周期性复购行为（如每隔 3 周购买一次咖啡豆）。
@@ -52,7 +54,7 @@
 ### 2. 压缩记忆网络（Memory / Compressive Architectures: MIMN / NTM）
 
 - **技术机制**：
-  - 借鉴神经图灵机（Neural Turing Machine），在服务端为每个用户维护一个**固定大小的槽位记忆矩阵 $M_u \in \mathbb{R}^{C 	imes d}$**（如 $C = 8 \sim 16$ 个兴趣槽位）；
+  - 借鉴神经图灵机（Neural Turing Machine），在服务端为每个用户维护一个**固定大小的槽位记忆矩阵 $M_u \in \mathbb{R}^{C \times d}$**（如 $C = 8 \sim 16$ 个兴趣槽位）；
   - 每当用户产生新行为时，通过写入门控（Write Gate）增量更新记忆矩阵，线上推理时直接以 $O(1)$ 复杂度读取记忆。
 - **优势（Pros）**：
   - **线上推理极快（$O(1)$ 复杂度）**：模型前向传播完全无需遍历历史序列，仅需一次矩阵点积。
@@ -65,7 +67,7 @@
 
 - **技术机制**：
   - 不做 Self-Attention，而是以当前**候选商品 $q$ 作为 Query**，与历史序列中所有 $L$ 个行为向量 $h_1, \dots, h_L$ 计算局部相关性权重：
-    $$u(q) = \sum_{j=1}^L lpha(h_j, q) \cdot h_j, \quad 	ext{其中 } lpha(h_j, q) = 	ext{MLP}(h_j, q, h_j - q, h_j \odot q)$$
+    $$u(q) = \sum_{j=1}^L \alpha(h_j, q) \cdot h_j, \quad \text{其中 } \alpha(h_j, q) = \text{MLP}(h_j, q, h_j - q, h_j \odot q)$$
 - **优势（Pros）**：
   - 彻底解决了 Pooling 的模糊压缩，实现了“面对不同候选展现不同用户画像”。
 - **致命瓶颈（Cons）**：
@@ -91,11 +93,11 @@
 
 - **技术机制（工业界统治级方案）**：
   将超长序列建模彻底解耦为**“第一阶段快速粗筛（Sub-sequence Retrieval） + 第二阶段精细注意力（Exact Target Attention）”**：
-  1. **第一阶段检索（$10,000 	o 50$）**：
+  1. **第一阶段检索（$10,000 \to 50$）**：
      - **Hard Search**：基于候选商品的类目/一级类目（Category Key），直接在倒排行为链中以 $O(1)$ 提取同类目历史行为；
      - **Soft Search**：利用轻量向量索引或局部敏感哈希（LSH / ETA）检索 Top-50 语义近邻；
-  2. **第二阶段精细建模（$50 	o 	ext{User Representation}$）**：
-     - 仅对检索出的 $M pprox 50$ 个高相关子序列执行带时间衰减的精细 Target Attention。
+  2. **第二阶段精细建模（$50 \to \text{User Representation}$）**：
+     - 仅对检索出的 $M \approx 50$ 个高相关子序列执行带时间衰减的精细 Target Attention。
 
 ```text
 SIM 两阶段检索与解耦计算流:
@@ -114,11 +116,11 @@ SIM 两阶段检索与解耦计算流:
 
 | 架构体系 | 算力复杂度 (FLOPs / Query) | 显存与通信带宽 (Memory Bound) | 在线时延 (P99) | 最大承载序列长度 $L$ | 工业界核心应用位置 |
 |---|---|---|---|---|---|
-| **截断 Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **高**（自注意力矩阵随 $N$ 平方激增） | 中等（$10 \sim 20	ext{ms}$） | $N \le 100$ | 粗排 / 短期即时兴趣捕获 |
-| **压缩记忆网络<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **极低**（仅存槽位矩阵 $C \ll L$） | **极快**（$< 3	ext{ms}$） | $L \ge 10,000$ | 超高 QPS 召回 / 粗排 |
-| **全量 Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **极高**（每次请求拉取 $L$ 维全量向量） | **极慢**（超标，$> 50	ext{ms}$） | $L \le 200$ | 中短序列精排 |
-| **两阶段检索增强<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$<br>$(M \ll L)$ | **极低**（仅按需传输 Top-50 命中特征） | **极快**（$5 \sim 8	ext{ms}$） | **$L \ge 50,000+$** | **工业级精排第一绝对主力** |
-| **两阶段检索增强<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + 	ext{LSH})$ | **中等**（需维护用户向量索引） | 优良（$8 \sim 12	ext{ms}$） | **$L \ge 10,000+$** | 跨类目跨域长序列精排 |
+| **截断 Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **高**（自注意力矩阵随 $N$ 平方激增） | 中等（$10 \sim 20\text{ms}$） | $N \le 100$ | 粗排 / 短期即时兴趣捕获 |
+| **压缩记忆网络<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **极低**（仅存槽位矩阵 $C \ll L$） | **极快**（$< 3\text{ms}$） | $L \ge 10,000$ | 超高 QPS 召回 / 粗排 |
+| **全量 Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **极高**（每次请求拉取 $L$ 维全量向量） | **极慢**（超标，$> 50\text{ms}$） | $L \le 200$ | 中短序列精排 |
+| **两阶段检索增强<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$<br>$(M \ll L)$ | **极低**（仅按需传输 Top-50 命中特征） | **极快**（$5 \sim 8\text{ms}$） | **$L \ge 50,000+$** | **工业级精排第一绝对主力** |
+| **两阶段检索增强<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + \text{LSH})$ | **中等**（需维护用户向量索引） | 优良（$8 \sim 12\text{ms}$） | **$L \ge 10,000+$** | 跨类目跨域长序列精排 |
 
 ---
 
@@ -178,3 +180,8 @@ SIM 两阶段检索与解耦计算流:
    - 第二阶段结合 **时间差编码（$\Delta t$ Embedding）** 与行为强度权重，对 50 个命中商品执行精确的 Target Attention，将数万长度的计算开销直接降维到常数级。”
 3. **噪声治理与时延保驾护航**：
    “针对过期事件与误触噪声，我们通过行为强度阈值过滤一次性偶发点击，并使用指数时间衰减抑制已发生购买的耐用品类目。在时延治理上，短期兴趣（Last-50）使用流式实时特征，长期序列使用分布式缓存按需拉取，在 **P99 ≤ 8ms** 的极低预算下捕获万级终身兴趣。”
+"""
+
+with open("notes/BusinessAlgorithm/BusinessAlgorithm02D User Sequences.md", "w", encoding="utf-8") as f:
+    f.write(zh_content)
+print("Successfully updated Chinese User Sequences note")

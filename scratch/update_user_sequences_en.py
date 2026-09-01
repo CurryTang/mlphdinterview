@@ -1,4 +1,6 @@
-# Industrial Long-Sequence Modeling: Truncated Transformers, Compressive Memory & Retrieval-Augmented Architectures
+import os
+
+en_content = """# Industrial Long-Sequence Modeling: Truncated Transformers, Compressive Memory & Retrieval-Augmented Architectures
 
 In industrial recommender systems, **User Behavior Sequence Modeling** is the core engine for capturing user interest evolution, periodic replenishment cycles, and latent intents. While short-term behaviors (the last 10~50 actions) capture immediate situational impulses, **lifelong long-term behaviors ($10^3 \sim 10^5$ actions accumulated over months or years)** encapsulate foundational category preferences, spending power, and life-stage transitions.
 
@@ -38,13 +40,13 @@ The 5-Dimensional Evolution of Industrial Sequence Modeling:
 
 ### 1. Truncated Transformers (SASRec / BERT4Rec / BST)
 - **Mechanism**: Truncates sequence to recent $N$ actions ($N \in [50, 100]$); applies causal multi-head self-attention with positional embeddings.
-- **Pros**: Captures fine-grained item-to-item sequential transitions (e.g., "Phone $	o$ Screen Protector $	o$ Phone Case").
+- **Pros**: Captures fine-grained item-to-item sequential transitions (e.g., "Phone $\to$ Screen Protector $\to$ Phone Case").
 - **Cons**: Quadratic complexity $\mathcal{O}(N^2)$ prevents scaling beyond $N > 200$; completely discards long-term periodic replenishment patterns.
 
 ---
 
 ### 2. Compressive Memory Networks (MIMN / Neural Memory)
-- **Mechanism**: Maintains a fixed-size memory bank $M_u \in \mathbb{R}^{C 	imes d}$ per user ($C = 8 \sim 16$ slots). Updates slots via neural write gates on each action.
+- **Mechanism**: Maintains a fixed-size memory bank $M_u \in \mathbb{R}^{C \times d}$ per user ($C = 8 \sim 16$ slots). Updates slots via neural write gates on each action.
 - **Pros**: **$\mathcal{O}(1)$ online inference complexity** with zero sequence traversal.
 - **Cons**: Severe lossy compression and catastrophic forgetting over long spans; cannot retain item-level co-occurrence signals.
 
@@ -52,7 +54,7 @@ The 5-Dimensional Evolution of Industrial Sequence Modeling:
 
 ### 3. Lifelong Target Attention (DIN / DIEN)
 - **Mechanism**: Uses candidate item $q$ as Query against all $L$ historical items:
-  $$u(q) = \sum_{j=1}^L lpha(h_j, q) \cdot h_j, \quad 	ext{where } lpha(h_j, q) = 	ext{MLP}(h_j, q, h_j - q, h_j \odot q)$$
+  $$u(q) = \sum_{j=1}^L \alpha(h_j, q) \cdot h_j, \quad \text{where } \alpha(h_j, q) = \text{MLP}(h_j, q, h_j - q, h_j \odot q)$$
 - **Pros**: Eliminates static pooling loss; tailors user representations dynamically per candidate.
 - **Cons**: **Compute explodes as $\mathcal{O}(K \cdot L)$**. For $K = 1,000$ candidates and $L = 10,000$ history, requires $10^7$ attention computations per request, violating production latency SLAs.
 
@@ -70,10 +72,10 @@ The 5-Dimensional Evolution of Industrial Sequence Modeling:
 
 ### 5. Retrieval-Augmented Histories (SIM / ETA / UBR4Rec)
 - **Mechanism (Industry Standard)**: Decouples lifelong sequence modeling into **Two Stages**:
-  1. **Stage 1 (Sub-sequence Search: $10,000 	o 50$)**:
+  1. **Stage 1 (Sub-sequence Search: $10,000 \to 50$)**:
      - **Hard Search**: Direct $O(1)$ inverted index lookup by candidate category key;
      - **Soft Search**: Top-50 approximate nearest neighbor retrieval via Locality-Sensitive Hashing (LSH / ETA);
-  2. **Stage 2 (Exact Target Attention: $50 	o 	ext{User Representation}$)**:
+  2. **Stage 2 (Exact Target Attention: $50 \to \text{User Representation}$)**:
      - Applies exact Target Attention with time-delta embeddings only on the filtered 50 sub-sequence items.
 
 ```text
@@ -93,11 +95,11 @@ Dynamic Candidate-Aware User Representation u(q)
 
 | Architecture | FLOPs Complexity / Query | Memory Bandwidth Bound | Online Latency (P99) | Max Sequence Length $L$ | Typical Industrial Placement |
 |---|---|---|---|---|---|
-| **Truncated Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **High** (Self-attention memory matrix) | Moderate ($10 \sim 20	ext{ms}$) | $N \le 100$ | Pre-ranking / Short-term intent |
-| **Compressive Memory<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **Ultra-Low** (Slot matrix $C \ll L$) | **Ultra-Fast** ($< 3	ext{ms}$) | $L \ge 10,000$ | High-QPS Retrieval / Coarse Ranking |
-| **Lifelong Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **Excessive** (Fetches $L$ embeddings) | **Excessive** ($> 50	ext{ms}$) | $L \le 200$ | Short-to-medium sequence ranking |
-| **Retrieval-Augmented<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$ ($M \ll L$) | **Ultra-Low** (Fetches only Top-50 IDs) | **Ultra-Fast** ($5 \sim 8	ext{ms}$) | **$L \ge 50,000+$** | **Production Precision Ranking SOTA** |
-| **Retrieval-Augmented<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + 	ext{LSH})$ | **Moderate** (Maintains vector index) | Excellent ($8 \sim 12	ext{ms}$) | **$L \ge 10,000+$** | Cross-category long-sequence ranking |
+| **Truncated Transformer<br>(SASRec/BST)** | $\mathcal{O}(K \cdot N^2 \cdot d)$ | **High** (Self-attention memory matrix) | Moderate ($10 \sim 20\text{ms}$) | $N \le 100$ | Pre-ranking / Short-term intent |
+| **Compressive Memory<br>(MIMN)** | $\mathcal{O}(K \cdot C \cdot d)$ | **Ultra-Low** (Slot matrix $C \ll L$) | **Ultra-Fast** ($< 3\text{ms}$) | $L \ge 10,000$ | High-QPS Retrieval / Coarse Ranking |
+| **Lifelong Target-Attention<br>(DIN)** | $\mathcal{O}(K \cdot L \cdot d)$ | **Excessive** (Fetches $L$ embeddings) | **Excessive** ($> 50\text{ms}$) | $L \le 200$ | Short-to-medium sequence ranking |
+| **Retrieval-Augmented<br>(SIM Hard Search)** | $\mathcal{O}(K \cdot M \cdot d)$ ($M \ll L$) | **Ultra-Low** (Fetches only Top-50 IDs) | **Ultra-Fast** ($5 \sim 8\text{ms}$) | **$L \ge 50,000+$** | **Production Precision Ranking SOTA** |
+| **Retrieval-Augmented<br>(SIM Soft / ETA)** | $\mathcal{O}(K \cdot M \cdot d + \text{LSH})$ | **Moderate** (Maintains vector index) | Excellent ($8 \sim 12\text{ms}$) | **$L \ge 10,000+$** | Cross-category long-sequence ranking |
 
 ---
 
@@ -110,7 +112,7 @@ In lifelong sequences spanning 1~2 years, unfiltered histories introduce severe 
    - *Defense*: Filter actions by dwell-time thresholds (>10s) and purchase signals; prune low-confidence interactions.
 2. **Life-Stage Concept Drift**:
    - *Phenomenon*: Life-stage transitions (e.g., college graduation, moving homes) render old preferences obsolete.
-   - *Defense*: Explicit Time-Delta Embeddings ($\Delta t = t_{	ext{now}} - t_{	ext{event}}$) and exponential decay kernels ($e^{-\lambda \Delta t}$).
+   - *Defense*: Explicit Time-Delta Embeddings ($\Delta t = t_{\text{now}} - t_{\text{event}}$) and exponential decay kernels ($e^{-\lambda \Delta t}$).
 3. **Durable Goods Repurchase Saturation**:
    - *Phenomenon*: After buying major appliances (e.g., refrigerator), repeat purchase probability drops to zero.
    - *Defense*: Hard post-purchase category suppression masks.
@@ -146,4 +148,9 @@ Engineering Decision Tree Under Latency SLAs:
    - Stage 1 uses candidate category keys for **$O(1)$ Hard Search** across the user's 50,000+ lifelong actions to retrieve Top-50 relevant interactions;
    - Stage 2 applies **Time-Delta ($\Delta t$) aware Target Attention** over the 50 retrieved items, decoupling sequence capacity from inference FLOPs."
 3. **Noise Governance & SLA Adherence**:
-   "We filter stale noise using dwell-time thresholds and exponential decay kernels, paired with post-purchase suppression for durable goods. By maintaining short-term sequences in streaming memory and querying long-term logs on demand, we scale to 50k+ actions while maintaining a **P99 latency $\le 8	ext{ms}$**."
+   "We filter stale noise using dwell-time thresholds and exponential decay kernels, paired with post-purchase suppression for durable goods. By maintaining short-term sequences in streaming memory and querying long-term logs on demand, we scale to 50k+ actions while maintaining a **P99 latency $\le 8\text{ms}$**."
+"""
+
+with open("notes/BusinessAlgorithm/BusinessAlgorithm02D User Sequences.en.md", "w", encoding="utf-8") as f:
+    f.write(en_content)
+print("Successfully updated English User Sequences note")
