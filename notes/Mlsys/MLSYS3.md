@@ -58,7 +58,7 @@ $$I_{\text{algo}} = \frac{W}{Q} \quad \text{(FLOPs/Byte)}$$
 **Step 4: 判断瓶颈类型**
 
 比较 $I_{\text{algo}}$ 与 $I_c$：
-$$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}}  \right)$$
+$$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}} \right)$$
 - 若 $I_{\text{algo}} > I_c$：**Compute-bound**，$T_{\text{actual}} = T_{\text{compute}}$
 - 若 $I_{\text{algo}} < I_c$：**Memory-bound**，$T_{\text{actual}} = T_{\text{memory}}$
 

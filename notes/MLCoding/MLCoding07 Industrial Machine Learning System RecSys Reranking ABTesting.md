@@ -9,7 +9,7 @@
 4. **电商生成式重排全链路（候选 Token 化、前缀约束束搜索、Listwise 目标与 P99 ≤ 20ms 时延熔断）**
 5. **多维度指标金字塔体系（ROC-AUC, GAUC 用户/请求分组、无偏估计、校准曲线 PCOC 与看板设计）**
 6. **工业级在线实验与 A/B 测试全生命周期规范（CUPED 方差缩减、SRM 检验与决策红线）**
-7. **经典实战案例库：注册漏斗 $2 	imes 2$ 全因子实验、商详页改版转化归因与极小样本分层推断**
+7. **经典实战案例库：注册漏斗 $2 \times 2$ 全因子实验、商详页改版转化归因与极小样本分层推断**
 8. **资深算法专家高频面试标准答题模板与方法论**
 
 ---
@@ -84,7 +84,7 @@
 | **架构路由** | **Shared-Bottom** | 共享单一底层 MLP，顶部分叉 Task Towers。 | **极差（0 分）** | 任务间梯度强行对冲，跷跷板效应最剧烈。 |
 | **架构路由** | **MMoE** | 共享 Experts 池，每个任务拥有独立的 Softmax 门控：$g_t(x) = \text{Softmax}(W_t x)$。 | **中等** | 实现了动态软路由，但所有 Expert 仍是全局共享的，弱相关任务仍会争抢容量。 |
 | **架构路由** | **PLE (Progressive Extraction)** | 显式解耦为 **Task-Specific 独占专家** 与 **Shared 共享专家**，分层渐进抽取。 | **卓越（SOTA）** | **任务私有特征与共享特征严格物理隔离**，彻底阻断不同任务间的负迁移。 |
-| **损失平衡** | **Uncertainty Weighting** | 建模同方差不确定性 $\sigma_k^2$：<br>$$\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k  \right)$$ | **优良** | 自动根据任务方差与噪声动态调整损失权重，避免人工粗暴调参。 |
+| **损失平衡** | **Uncertainty Weighting** | 建模同方差不确定性 $\sigma_k^2$：<br>$$\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k \right)$$ | **优良** | 自动根据任务方差与噪声动态调整损失权重，避免人工粗暴调参。 |
 | **梯度手术** | **PCGrad (Gradient Projection)** | 当梯度冲突 $\mathbf{g}_i \cdot \mathbf{g}_j < 0$ 时，将 $\mathbf{g}_i$ 正交投影到 $\mathbf{g}_j$ 的法平面：<br>$$\mathbf{g}_i \leftarrow \mathbf{g}_i - \frac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2}\mathbf{g}_j$$ | **极强** | 从梯度动力学层面消除相互抵消的破坏性分量。 |
 | **决策融合** | **Constrained Pareto Fusion** | 拉格朗日乘子约束优化与实时 PID 控权：<br>$$\max \text{GMV} \text{ s.t. } \text{CTR} \ge \text{CTR}_0$$ | **线上闭环** | 替代静态超参融合，自适应追踪业务护栏。 |
 
@@ -132,7 +132,7 @@
 $$\hat{p} = \frac{P(Y=1 \mid X)}{P(Y=1 \mid X) + w \cdot P(Y=0 \mid X)} = \frac{p}{p + w(1-p)}$$
 
 #### 线上推理时的概率校准还原公式（Probability Recovery Formula）
-在竞价广告（$eCPM = pCTR 	imes pCVR 	imes \text{Bid}$）或需要精准概率融合的业务中，必须在模型输出后通过解析反函数将 $\hat{p}$ **精确还原为真实自然世界概率 $p$**：
+在竞价广告（$eCPM = pCTR \times pCVR \times \text{Bid}$）或需要精准概率融合的业务中，必须在模型输出后通过解析反函数将 $\hat{p}$ **精确还原为真实自然世界概率 $p$**：
 
 $$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
@@ -215,8 +215,7 @@ $$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 - 采用局部临时占位符 `<C_01>` 到 `<C_50>`，每步解码仅生成 1 个 Token；
 - **硬约束 Masked Softmax**：在每步解码时，将已选商品及非法 ID 的 Logits 强行设为 $-\infty$，彻底杜绝重复生成与幻觉；
 - **Plackett-Luce 与全屏奖励优化**：
-  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} 
-ight)$$
+  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \right)$$
   $$R(\pi) = \sum_{k=1}^K \gamma^{k-1} (\text{Click}_k \cdot \text{Margin}_k + \text{GMV}_k) - \lambda \cdot \text{Redundancy}(\pi)$$
 
 ### 3. P99 ≤ 20ms 时延治理与评估全矩阵
@@ -241,8 +240,7 @@ ight)$$
 ```
 
 ### 1. ROC-AUC 与 GAUC（Grouped AUC）数学定义
-- **全局 ROC-AUC**：$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) 
-ight)$（易受跨用户活跃度偏倚混淆）；
+- **全局 ROC-AUC**：$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \right)$（易受跨用户活跃度偏倚混淆）；
 - **Grouped AUC (GAUC)**：
   $$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad w_g = n_g \text{ (曝光数)}$$
   - **User-Grouped GAUC**：衡量跨会话个性化偏好，受早晚/工作日意图漂移影响；
@@ -301,7 +299,7 @@ A/B 测试因果验证全生命周期:
 4. **多目标冲突**：单目标 CTR 模型引发标题党诱导点击，损害转化率与长期留存。
 
 ### 2. CUPED 方差缩减数学原理
-$$\hat{Y}_{\text{CUPED}} = Y - 	heta(X - \mathbb{E}[X]), \quad \text{其中 } 	heta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+$$\hat{Y}_{\text{CUPED}} = Y - \theta(X - \mathbb{E}[X]), \quad \text{其中 } \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
 $$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - 
 ho^2)$$
 若实验前后的相关系数 $
@@ -311,7 +309,7 @@ ho = 0.8$，则方差直接骤降 $64\%$，在不增加流量的前提下将所�
 
 ## 模块七：经典实战案例库与小样本分层因果推断
 
-### 案例一：注册漏斗 $2 	imes 2$ 全因子实验设计（Sign-Up Funnel）
+### 案例一：注册漏斗 $2 \times 2$ 全因子实验设计（Sign-Up Funnel）
 
 ```text
 2x2 全因子实验矩阵 (Full Factorial Design):
@@ -345,13 +343,13 @@ ho = 0.8$，则方差直接骤降 $64\%$，在不增加流量的前提下将所�
 ```
 
 1. **全盘无条件成交净增（CTCVR 增长）**：
-   $$\text{CTCVR} = \frac{\text{总购买订单数}}{\text{总展示曝光数}} = \text{CTR} 	imes \text{CVR} \implies \text{净增长 } +12\%$$
+   $$\text{CTCVR} = \frac{\text{总购买订单数}}{\text{总展示曝光数}} = \text{CTR} \times \text{CVR} \implies \text{净增长 } +12\%$$
 2. **流量稀释效应（Traffic Dilution）**：吸纳了原本不会点击的低意向边缘访客。在分母被稀释的情况下仍维持 CVR 平稳，证明商详页承接转化能力强劲；
 3. **极小样本分层三大科学推断方案（$N \approx 100$, Power $< 20\%$）**：
    - **经验贝叶斯部分池化（Empirical Bayes Partial Pooling / Shrinkage）**：
-     $$\hat{	heta}_{\text{small}}^{\text{shrunk}} = B \cdot \mu_{\text{grand}} + (1 - B) \cdot ar{Y}_{\text{small}}, \quad \text{其中 } B = \frac{\sigma_{\text{small}}^2}{\sigma_{\text{small}}^2 + 	au^2}$$
+     $$\hat{\theta}_{\text{small}}^{\text{shrunk}} = B \cdot \mu_{\text{grand}} + (1 - B) \cdot ar{Y}_{\text{small}}, \quad \text{其中 } B = \frac{\sigma_{\text{small}}^2}{\sigma_{\text{small}}^2 + \tau^2}$$
    - **CUPED 引入前置 30 天历史消费协变量**：削减方差至 $28\%$，等效放大有效样本量 3.5 倍；
-   - **非参数精确置换检验（Exact Permutation Test）** 与后验超越概率 $P(	heta_T > 	heta_C \mid \text{Data}) > 0.90$。
+   - **非参数精确置换检验（Exact Permutation Test）** 与后验超越概率 $P(\theta_T > \theta_C \mid \text{Data}) > 0.90$。
 
 ---
 

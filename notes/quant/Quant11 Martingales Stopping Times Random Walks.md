@@ -285,7 +285,7 @@ $$
 因为停止概率 $p = \mathbb{P}(X > n) > 0$，停时 $N$ 服从几何分布，$\mathbb{E}[N] = 1/p < \infty$，且增量 $|Z_k - \mu_n|$ 有界，完全满足 OST 条件 (C)：
 
 $$
-\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k  \right] = \mu_n \mathbb{E}[N]
+\mathbb{E}[M_N] = M_0 = 0 \implies \mathbb{E}\left[ \sum_{k=1}^N Z_k \right] = \mu_n \mathbb{E}[N]
 $$
 
 根据停时 $N$ 的定义：
@@ -415,7 +415,7 @@ $$
 两边除以剩余牌数 $(B + 1) - (n + 1) = B - n$：
 
 $$
-\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n  \right] = \frac{I_n \cdot \frac{B - n}{B + 1 - n}}{B - n} = \frac{I_n}{B + 1 - n} = M_n
+\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \right] = \frac{I_n \cdot \frac{B - n}{B + 1 - n}}{B - n} = \frac{I_n}{B + 1 - n} = M_n
 $$
 
 而在 $I_n = 0$（已经出了红牌）时，$I_{n+1} \equiv 0$，等式 $0 = 0$ 恒成立。
@@ -508,7 +508,7 @@ $$
 构造指数鞅 $M_t = \exp(-\gamma X_t)$，代入 $X_t$ 并令 $t$ 的系数为 0：
 
 $$
-\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t  \right) = 1 \implies -\gamma \mu + \frac{1}{2}\gamma^2 \sigma^2 = 0 \implies \gamma = \frac{2\mu}{\sigma^2}
+\mathbb{E}[e^{-\gamma(\mu t + \sigma W_t)}] = \exp\left( -\gamma \mu t + \frac{1}{2}\gamma^2 \sigma^2 t \right) = 1 \implies -\gamma \mu + \frac{1}{2}\gamma^2 \sigma^2 = 0 \implies \gamma = \frac{2\mu}{\sigma^2}
 $$
 
 由于过程在 $[-a, b]$ 内有界，由 OST $\mathbb{E}[M_\tau] = M_0 = 1$：
@@ -569,7 +569,7 @@ $$
 应用经典恒等式 $\min(a, b) = \frac{a + b - |a - b|}{2}$：
 
 $$
-Y = \frac{(X + R) + (k - X + N - k - R) - |X - R| - |(k - X) - (N - k - R)|}{2} = \frac{N - \left( |X - R| + |(2k - N) - (X - R)|  \right)}{2}
+Y = \frac{(X + R) + (k - X + N - k - R) - |X - R| - |(k - X) - (N - k - R)|}{2} = \frac{N - \left( |X - R| + |(2k - N) - (X - R)| \right)}{2}
 $$
 
 引入核心卷积随机变量：
@@ -752,7 +752,7 @@ $$
 代入总期望得到通用下界公式：
 
 $$
-\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D  \right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k  \right) + \frac{K - 1}{K} \mu_D}
+\boxed{\mathbb{E}[Y_\tau] = \frac{K - 1}{K} \left( S_0 + \frac{\sum_{k \ne d} k}{K - 1} + \mu_D \right) = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D}
 $$
 
 #### 4. 特例数值验证（$S_0 = 35$，$K = 6$ 面骰子，危险点 $H = 36 = 6^2$）
@@ -804,7 +804,7 @@ $$
 由 Doob 有界鞅收敛定理，$M_n \to M_\infty$ 几乎必然收敛。利用矩母匹配或经典 Beta-Binomial 极限可得：
 
 $$
-\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c}  \right)}
+\boxed{M_\infty \sim \text{Beta}\left( \frac{R}{c}, \frac{B}{c} \right)}
 $$
 
 特别地，当初始 $R=1, B=1, c=1$ 时，极限比例服从 $(0, 1)$ 上的**标准连续均匀分布 $\text{Uniform}(0, 1)$**！
@@ -826,7 +826,7 @@ $$
 2. **母函数鞅**：设 $s \in [0, 1]$ 是不动点方程 $G(s) = s$ 的任意解。构造过程 $Y_n = s^{Z_n}$：
 
 $$
-\mathbb{E}[Y_{n+1} \mid \mathcal{F}_n] = \mathbb{E}\left[ s^{\sum_{i=1}^{Z_n} K_i} \;\middle|\; Z_n  \right] = (G(s))^{Z_n} = s^{Z_n} = Y_n
+\mathbb{E}[Y_{n+1} \mid \mathcal{F}_n] = \mathbb{E}\left[ s^{\sum_{i=1}^{Z_n} K_i} \;\middle|\; Z_n \right] = (G(s))^{Z_n} = s^{Z_n} = Y_n
 $$
 
 因此 $Y_n = s^{Z_n}$ 是一个**严格有界鞅**（$0 \le Y_n \le 1$）！

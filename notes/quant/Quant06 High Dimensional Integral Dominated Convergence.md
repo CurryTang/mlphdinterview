@@ -92,8 +92,7 @@ $$
 $$
 I_n
 =
-\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n}
- \right].
+\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n} \right].
 $$
 
 把分子、分母同时除以 $n$：

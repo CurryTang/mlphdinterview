@@ -44,8 +44,7 @@ MMR 每次从未选集合中挑一个候选：
 i^*
 =\arg\max_{i\in R}
 \left[ \theta\,r_i
--(1-\theta)\max_{j\in S}\operatorname{sim}(i,j)
- \right].
+-(1-\theta)\max_{j\in S}\operatorname{sim}(i,j) \right].
 ```
 
 `r_i` 是精排收益，`S` 是已选集合，`θ` 控制收益与多样性的权衡。
@@ -71,8 +70,7 @@ def mmr_rerank(candidates, relevance, similarities, k, theta):
 
 ```math
 \arg\max_i
-\left[ \theta r_i-(1-\theta)\max_{j\in S}sim(i,j)
- \right].
+\left[ \theta r_i-(1-\theta)\max_{j\in S}sim(i,j) \right].
 ```
 
 `similarities` 使用 `(item_a, item_b) -> score` 的字典，可只提供一个方向。相同 MMR 分数时按候选 ID 升序。

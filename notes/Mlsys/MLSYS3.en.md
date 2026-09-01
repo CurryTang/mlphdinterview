@@ -58,7 +58,7 @@ $$I_{\text{algo}} = \frac{W}{Q} \quad \text{(FLOPs/Byte)}$$
 **Step 4: Determine the bottleneck type**
 
 Compare $I_{\text{algo}}$ with $I_c$:
-$$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}}  \right)$$
+$$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}} \right)$$
 - If $I_{\text{algo}} > I_c$: **Compute-bound**, $T_{\text{actual}} = T_{\text{compute}}$
 - If $I_{\text{algo}} < I_c$: **Memory-bound**, $T_{\text{actual}} = T_{\text{memory}}$
 

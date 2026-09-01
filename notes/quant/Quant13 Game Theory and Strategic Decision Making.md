@@ -11,7 +11,7 @@
 ### 1. 博弈的数学表达形式
 
 #### 标准式博弈（Normal-Form Game）
-一个 $n$ 人有限标准式博弈定义为一个三元组 $\mathcal{G} = \left( \mathcal{N}, (S_i)_{i \in \mathcal{N}}, (u_i)_{i \in \mathcal{N}}  \right)$：
+一个 $n$ 人有限标准式博弈定义为一个三元组 $\mathcal{G} = \left( \mathcal{N}, (S_i)_{i \in \mathcal{N}}, (u_i)_{i \in \mathcal{N}} \right)$：
 - 局中人集合 $\mathcal{N} = \{1, 2, \dots, n\}$；
 - 每个局中人的纯策略空间 $S_i$；策略组合空间 $S = S_1 \times S_2 \times \dots \times S_n$；
 - 收益函数（Payoff Function）$u_i: S \to \mathbb{R}$。
@@ -273,7 +273,7 @@ $$\boxed{\text{枪手 A 的最优决策是：第一轮故意朝天放枪 (Shoot 
 2. **第 2 轮剔除**：已知所有理性人的出价均落入 $[0, 66.67]$，则全场均值 $\mu \le 66.67$，目标值上限变为 $\frac{2}{3} \times 66.67 = \frac{400}{9} \approx 44.44$。
    - 策略空间收缩为 $S_2 = [0, 44.44]$。
 3. **第 $k$ 轮递归收缩**：
-   $$S_k = \left[ 0, 100 \times \left( \frac{2}{3} \right)^k  \right]$$
+   $$S_k = \left[ 0, 100 \times \left( \frac{2}{3} \right)^k \right]$$
 4. **求极限**：
    $$\lim_{k \to \infty} 100 \times \left( \frac{2}{3} \right)^k = 0 \implies S_\infty = \{0\}$$
 
@@ -352,7 +352,7 @@ $$\boxed{\text{唯一纳什均衡为：所有人都出 } 0 \quad (x_1^* = x_2^* 
 - 在对称均衡处出价满足 $b = b(v) \implies \beta(b) = v$ 且 $\beta'(b) = \frac{1}{b'(v)}$：
   $$-v^{n-1} + (v - b(v)) (n - 1) v^{n-2} \frac{1}{b'(v)} = 0 \implies b'(v) v + (n - 1) b(v) = (n - 1) v$$
 - 两边同乘积分因子 $v^{n-2}$：
-  $$\frac{d}{dv} \left[ b(v) v^{n-1}  \right] = (n - 1) v^{n-1} \implies b(v) v^{n-1} = \frac{n - 1}{n} v^n + C$$
+  $$\frac{d}{dv} \left[ b(v) v^{n-1} \right] = (n - 1) v^{n-1} \implies b(v) v^{n-1} = \frac{n - 1}{n} v^n + C$$
 - 由边界条件 $b(0) = 0 \implies C = 0$：
   $$\boxed{b^*(v) = \frac{n - 1}{n} v}$$
   *对于两人拍卖（$n=2$），$b^*(v) = \frac{1}{2}v$（打五折出价）*。
@@ -394,7 +394,7 @@ $$\mathbb{E}[\text{Revenue}] = \frac{n - 1}{n + 1}$$
   - 因此在收购成功时，公司 A 获得的收购后标的物期望价值仅为：
     $$\mathbb{E}[1.5 V \mid V \le B] = 1.5 \times \frac{B}{2} = 0.75 B$$
   - 公司 A 的期望净利润为：
-    $$\mathbb{E}[\text{Profit}] = \mathbb{P}(V \le B) \cdot \left( \mathbb{E}[1.5 V \mid V \le B] - B  \right) = \frac{B}{100} \cdot (0.75 B - B) = -\frac{0.25 B^2}{100} \le 0$$
+    $$\mathbb{E}[\text{Profit}] = \mathbb{P}(V \le B) \cdot \left( \mathbb{E}[1.5 V \mid V \le B] - B \right) = \frac{B}{100} \cdot (0.75 B - B) = -\frac{0.25 B^2}{100} \le 0$$
 
 $$\boxed{\text{最优出价为：} B^* = 0 \quad (\text{任何正出价 } B > 0 \text{ 都会导致期望净亏损，绝不发起收购！})}$$
 

@@ -77,8 +77,7 @@ End-to-End Generative Reranking Pipeline:
 [3. Final Display Slate: π = [π₁, π₂, ..., π_K] (K = 6~10)]
 ```
 
-- **Plackett-Luce Loss**: $\mathcal{L}_{\text{List}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} 
-ight)$
+- **Plackett-Luce Loss**: $\mathcal{L}_{\text{List}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \right)$
 - **Slate Reward RL**: $R(\pi) = \sum \gamma^{k-1}(\text{Click}_k \cdot \text{Margin}_k + \text{GMV}_k) - \lambda \cdot \text{Redundancy}(\pi)$
 - **P99 ≤ 20ms SLA**: Prefix KV Cache sharing across beam steps + 18ms hard timeout fallback to precision ranking order.
 
@@ -107,7 +106,7 @@ ight)$
 ## Module 6: Industrial Online Experimentation & A/B Testing Lifecycle
 
 ### Mathematical Principle of CUPED Variance Reduction
-$$\hat{Y}_{\text{CUPED}} = Y - 	heta(X - \mathbb{E}[X]), \quad \text{where } 	heta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+$$\hat{Y}_{\text{CUPED}} = Y - \theta(X - \mathbb{E}[X]), \quad \text{where } \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
 $$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - 
 ho^2)$$
 
@@ -115,17 +114,17 @@ ho^2)$$
 
 ## Module 7: Flagship Case Studies & Small-Sample Inference
 
-### Case 1: Sign-Up Funnel $2 	imes 2$ Full Factorial Experiment
+### Case 1: Sign-Up Funnel $2 \times 2$ Full Factorial Experiment
 - Interaction effect estimator: $\hat{eta}_3 = T_3 - T_2 - T_1 + T_0$;
 - Viewport Intersection Observer triggered exposure to prevent dilution bias.
 
 ### Case 2: PDP UI Redesign (CTR Up, CVR Flat) & Small-Sample Tier Inference
-1. **Net Lift**: $\text{CTCVR} = \text{CTR} 	imes \text{CVR} \implies +12\%$ **net gain in total purchase orders per impression**;
+1. **Net Lift**: $\text{CTCVR} = \text{CTR} \times \text{CVR} \implies +12\%$ **net gain in total purchase orders per impression**;
 2. **Traffic Dilution**: Influx of lower-intent marginal users dilutes denominator while preserving baseline conversion rate;
 3. **Small-Sample VIP Tier Statistical Inference**:
-   - **Empirical Bayes Partial Pooling / Shrinkage**: $\hat{	heta}_{\text{small}}^{\text{shrunk}} = B \cdot \mu_{\text{grand}} + (1 - B) \cdot ar{Y}_{\text{small}}$;
-   - **CUPED with 30-Day Historical Baseline Spending**: Compresses variance to $28\%$, expanding effective sample size by $3.5	imes$;
-   - **Non-Parametric Exact Permutation Tests & Bayesian Posterior Superiority**: $P(	heta_T > 	heta_C \mid \mathcal{D}) > 0.90$.
+   - **Empirical Bayes Partial Pooling / Shrinkage**: $\hat{\theta}_{\text{small}}^{\text{shrunk}} = B \cdot \mu_{\text{grand}} + (1 - B) \cdot ar{Y}_{\text{small}}$;
+   - **CUPED with 30-Day Historical Baseline Spending**: Compresses variance to $28\%$, expanding effective sample size by $3.5\times$;
+   - **Non-Parametric Exact Permutation Tests & Bayesian Posterior Superiority**: $P(\theta_T > \theta_C \mid \mathcal{D}) > 0.90$.
 
 ---
 

@@ -92,8 +92,7 @@ Because the joint density equals 1 on $[0,1]^n$:
 $$
 I_n
 =
-\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n}
- \right].
+\mathbb E\left[ \frac{X_1^2+\cdots+X_n^2}{X_1+\cdots+X_n} \right].
 $$
 
 Divide both numerator and denominator by $n$:

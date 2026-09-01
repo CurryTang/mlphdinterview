@@ -365,7 +365,7 @@ $$
 Dividing both sides by $(B + 1) - (n + 1) = B - n$:
 
 $$
-\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n  \right] = \frac{I_n}{B + 1 - n} = M_n
+\mathbb{E}\left[ \frac{I_{n+1}}{B + 1 - (n + 1)} \;\middle|\; \mathcal{F}_n \right] = \frac{I_n}{B + 1 - n} = M_n
 $$
 
 When $I_n = 0$, $I_{n+1} \equiv 0$. Thus $M_n$ is a strict discrete-time martingale.
@@ -517,7 +517,7 @@ Thus $Y_n$ is a strict submartingale in the safe zone.
 Construct stopping rule $\tau$: roll once ($n=1$); if $D_1 \ne d$, roll a second time ($n=2$) and stop.
 
 $$
-\mathbb{E}[Y_\tau] = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k  \right) + \frac{K - 1}{K} \mu_D
+\mathbb{E}[Y_\tau] = \frac{K - 1}{K} S_0 + \frac{1}{K} \left( \sum_{k \ne d} k \right) + \frac{K - 1}{K} \mu_D
 $$
 
 **Special Case ($S_0 = 35, H = 36 = 6^2, K = 6, \mu_D = 3.5$)**:

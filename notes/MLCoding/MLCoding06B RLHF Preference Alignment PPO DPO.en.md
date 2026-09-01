@@ -41,12 +41,12 @@ Humans find it difficult to assign absolute, calibrated scalar scores (e.g. 8.7/
 #### Bradley-Terry Preference Probability
 Given prompt $x$, human-preferred winner $y_w$, and dispreferred loser $y_l$, assuming an underlying latent scalar reward $r^*(x, y)$, the preference probability follows the Bradley-Terry model:
 
-$$P(y_w \succ y_l \mid x) = \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l)  \right) = \frac{1}{1 + e^{-(r_\psi(x, y_w) - r_\psi(x, y_l))}}$$
+$$P(y_w \succ y_l \mid x) = \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l) \right) = \frac{1}{1 + e^{-(r_\psi(x, y_w) - r_\psi(x, y_l))}}$$
 
 #### Reward Model Objective (Binary Ranking Loss)
 Given preference dataset $\mathcal{D} = \{(x, y_w, y_l)\}$, the reward model $r_\psi$ is trained by minimizing negative log-likelihood:
 
-$$\mathcal{L}_{\text{RM}}(\psi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l)  \right)  \right]$$
+$$\mathcal{L}_{\text{RM}}(\psi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma\left( r_\psi(x, y_w) - r_\psi(x, y_l) \right) \right]$$
 
 ---
 
@@ -100,7 +100,7 @@ To balance **variance** and **bias** in value estimation, PPO computes token-lev
 
 $$r_t(\theta) = \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\text{old}}(y_t \mid x, y_{<t})}$$
 
-$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t  \right)  \right]$$
+$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) \right]$$
 
 ---
 
@@ -126,13 +126,13 @@ PPO 4-Model RL System vs DPO 2-Model Binary Classification:
 #### Step 1: Analytical Optimal Policy for KL-Regularized RL
 The standard KL-regularized RL objective is:
 
-$$\max_{\pi} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi(\cdot \mid x)} \left[ r(x, y)  \right] - \beta \mathbb{D}_{\text{KL}}(\pi(y \mid x) \parallel \pi_{\text{ref}}(y \mid x))$$
+$$\max_{\pi} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi(\cdot \mid x)} \left[ r(x, y) \right] - \beta \mathbb{D}_{\text{KL}}(\pi(y \mid x) \parallel \pi_{\text{ref}}(y \mid x))$$
 
 Using calculus of variations, the optimal policy $\pi^*$ has an exact analytical solution:
 
-$$\pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y)  \right)$$
+$$\pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$$
 
-where $Z(x) = \sum_y \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y)  \right)$ is the partition function.
+where $Z(x) = \sum_y \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$ is the partition function.
 
 #### Step 2: Inverting for the Implicit Reward Function
 Taking the natural logarithm and rearranging yields:
@@ -142,9 +142,9 @@ $$r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \bet
 #### Step 3: Substitution into Bradley-Terry Model (Partition Function Cancels Out)
 Substitute the implicit reward formulation into the Bradley-Terry preference probability:
 
-$$P(y_w \succ y_l \mid x) = \sigma\left( r(x, y_w) - r(x, y_l)  \right)$$
+$$P(y_w \succ y_l \mid x) = \sigma\left( r(x, y_w) - r(x, y_l) \right)$$
 
-$$r(x, y_w) - r(x, y_l) = \left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} + \beta \log Z(x)  \right) - \left( \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} + \beta \log Z(x)  \right)$$
+$$r(x, y_w) - r(x, y_l) = \left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} + \beta \log Z(x) \right) - \left( \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} + \beta \log Z(x) \right)$$
 
 **Crucial Insight**: The intractable partition function $\beta \log Z(x)$ cancels out cleanly!
 
@@ -153,13 +153,13 @@ $$r(x, y_w) - r(x, y_l) = \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y
 #### Step 4: The Closed-Form DPO Loss
 Parameterizing the optimal policy with $\pi_\theta$, we obtain the DPO objective:
 
-$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}  \right)  \right]$$
+$$\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right]$$
 
 ---
 
 ### 2. DPO Dynamic Gradient Weighting
 
-$$\nabla_\theta \mathcal{L}_{\text{DPO}}(\theta) = -\beta \mathbb{E} \left[ \underbrace{\sigma\left( \hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w)  \right)}_{\text{Dynamic Weight } w(x, y_w, y_l)} \cdot \left( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x)  \right)  \right]$$
+$$\nabla_\theta \mathcal{L}_{\text{DPO}}(\theta) = -\beta \mathbb{E} \left[ \underbrace{\sigma\left( \hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w) \right)}_{\text{Dynamic Weight } w(x, y_w, y_l)} \cdot \left( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x) \right) \right]$$
 
 - When the model is severely mistaken ($\hat{r}_\theta(y_w) \ll \hat{r}_\theta(y_l)$), $w \to 1$, applying maximum gradient to push up $y_w$ and down $y_l$;
 - When the model has already mastered the preference ($\hat{r}_\theta(y_w) \gg \hat{r}_\theta(y_l)$), $w \to 0$, naturally preventing overfitting.
