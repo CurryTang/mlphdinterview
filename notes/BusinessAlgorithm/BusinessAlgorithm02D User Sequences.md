@@ -32,42 +32,79 @@
 
 Last-N 的 N 不是越大越好。长历史带来噪声、存储与服务成本，也可能把旧兴趣重新放大。
 
-### 12.3 DIN
+### 12.3 DIN (Deep Interest Network)
 
-DIN 用候选物品 `q` 查询历史行为 `h_j`：
+DIN 核心创新是 **Target Attention**：用候选 Item $\mathbf{q}$ 与用户历史行为序列 $[\mathbf{h}_1, \dots, \mathbf{h}_L]$ 计算自适应注意力权重：
 
-```math
-\alpha_j
-=\operatorname{MLP}
-(h_j,q,h_j-q,h_j\odot q),
+$$\alpha_j = \text{MLP}([\mathbf{h}_j, \mathbf{q}, \mathbf{h}_j - \mathbf{q}, \mathbf{h}_j \odot \mathbf{q}]), \quad \mathbf{u}(\mathbf{q}) = \sum_{j=1}^L \alpha_j \mathbf{h}_j$$
+
+#### 伪代码实现：DIN 目标注意力前向
+```python
+import torch
+import torch.nn as nn
+
+class DINAttention(nn.Module):
+    def __init__(self, embed_dim=64, hidden_dim=64):
+        super().__init__()
+        # 输入维度: [q, h, q - h, q * h] -> 4 * embed_dim
+        self.mlp = nn.Sequential(
+            nn.Linear(4 * embed_dim, hidden_dim),
+            nn.PReLU(),
+            nn.Linear(hidden_dim, 1) # 输出标量注意力权重
+        )
+
+    def forward(self, query, history, mask=None):
+        # query: [B, embed_dim], history: [B, L, embed_dim], mask: [B, L] (1=有效, 0=padding)
+        B, L, d = history.shape
+        q_expanded = query.unsqueeze(1).expand(B, L, d) # [B, L, d]
+        # 拼接 4 种交互特征
+        interaction = torch.cat([
+            q_expanded, history, q_expanded - history, q_expanded * history
+        ], dim=-1) # [B, L, 4*d]
+        # 计算未归一化注意力得分 (DIN 不做 Softmax 归一化以保留总体兴趣强度)
+        scores = self.mlp(interaction).squeeze(-1) # [B, L]
+        if mask is not None:
+            scores = scores.masked_fill(~mask, 0.0)
+        # 加权求和得到用户针对该候选物的动态兴趣表征
+        user_interest = torch.bmm(scores.unsqueeze(1), history).squeeze(1) # [B, d]
+        return user_interest
 ```
 
-```math
-u(q)=\sum_j\alpha_j h_j.
+---
+
+### 12.4 SIM (Search-based Interest Model: Hard & Soft Search)
+
+面对 $L \ge 10,000$ 的终身超长序列，SIM 采用两阶段解耦策略：
+1. **Hard Search（类目硬检索）**：在数万行为中快速过滤出与候选 Item 同类目（Sub-category）的 Top-$M$（$M \approx 50$）子序列；
+2. **Soft Attention（精细注意力）**：在 $M$ 维子序列上结合时间差 Embedding（$\Delta t$）执行加权注意力。
+
+#### 伪代码实现：SIM 检索增强长序列前向
+```python
+class SIMSequenceModel(nn.Module):
+    def __init__(self, embed_dim=64):
+        super().__init__()
+        self.time_delta_emb = nn.Embedding(100, embed_dim) # 时间差分桶嵌入
+        self.attention = DINAttention(embed_dim * 2, hidden_dim=64)
+
+    def forward(self, cand_id, cand_cat, user_hist_ids, user_hist_cats, user_hist_times, item_embed_table):
+        # 1. 第一阶段: Hard Search (类目硬筛选 Top-M)
+        # 筛选出与 cand_cat 匹配的历史行为索引
+        match_mask = (user_hist_cats == cand_cat.unsqueeze(1)) # [B, L]
+        # 取最近 M=50 个匹配项
+        # 2. 第二阶段: 拼接商品向量与时间差向量进行精细 Target Attention
+        cand_vec = item_embed_table(cand_id) # [B, d]
+        # 假定选出 Top-M 的 history_ids 和 time_deltas
+        hist_vec = item_embed_table(user_hist_ids[:, :50]) # [B, 50, d]
+        time_vec = self.time_delta_emb(user_hist_times[:, :50]) # [B, 50, d]
+        combined_hist = torch.cat([hist_vec, time_vec], dim=-1) # [B, 50, 2*d]
+        combined_cand = torch.cat([cand_vec, torch.zeros_like(cand_vec)], dim=-1) # [B, 2*d]
+        # 执行目标注意力
+        return self.attention(combined_cand, combined_hist)
 ```
 
-同一用户面对篮球鞋和炒锅，会得到不同的兴趣表示。记 DIN 时抓住"用户表示依赖候选"即可，attention 只是实现手段。
-
-代价也在这里：每个候选都要与历史交互。候选多、序列长时计算量迅速上升。
-
-上线时还要把 padding mask、行为类型和时间间隔带进 attention。若把补零位置当成真实行为，或者离线按固定长度训练、线上按另一套规则截断，attention 权重再漂亮也没有意义。服务端常按序列长度分桶，避免一个超长用户拖慢整批请求。
-
-### 12.4 SIM
-
-SIM 把长序列分两步：
-
-1. 从很长历史中粗选与候选相关的子序列；
-2. 对子序列做精细注意力建模。
-
-粗选可用 Hard Search：只保留与候选同类目的行为；也可用 Soft Search：拿候选向量在用户历史向量中做 top-k 近邻。前者便宜稳定，后者召回语义更灵活，但需要用户级序列索引。
-
-长期行为还要加入时间间隔 embedding。两次同类目点击，一个发生在昨天、一个发生在两年前，权重不应相同。
-
-思路与召回-排序漏斗相同：先便宜筛选，再贵地交互。长序列模型如果没有高效检索，在线很难落地。
-
-Soft Search 的用户历史索引也是线上状态，必须记录 embedding 版本、构建时间和刷新延迟。索引不可用或版本不兼容时，应直接回退到 Last-N 或 Hard Search；不要让一次序列检索故障拖垮整个排序请求。
 
 ### 12.5 训练中的时间问题
+
 
 序列模型最危险的 bug 是时间穿越。
 

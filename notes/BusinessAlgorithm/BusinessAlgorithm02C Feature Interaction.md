@@ -87,20 +87,115 @@ def fm_predict(x, bias, linear_weights, factors):
 
 </details>
 
-### 11.3 DCN
+### 11.3 DCN 与 DCN-v2 (Deep & Cross Network)
 
-DCN 的 cross layer 常写成：
+DCN 的核心是显式 Cross Layer：
 
-```math
-x_{l+1}
-=x_0(x_l^\top w_l)+b_l+x_l.
+$$\mathbf{x}_{l+1} = \mathbf{x}_0 \odot (\mathbf{W}_l \mathbf{x}_l) + \mathbf{b}_l + \mathbf{x}_l$$
+
+在 **DCN-v2** 中，为了降低全连接矩阵 $\mathbf{W}_l \in \mathbb{R}^{d \times d}$ 的计算开销并捕捉低秩子空间，引入了**低秩矩阵分解（Low-Rank Matrix Decomposition: $\mathbf{W}_l = \mathbf{U}_l \mathbf{V}_l^T$）与混合门控路由（MoE-style Subspaces）**：
+
+#### 伪代码实现：DCN-v2 Cross Network 前向
+```python
+import torch
+import torch.nn as nn
+
+class CrossNetworkV2(nn.Module):
+    def __init__(self, in_features, num_layers=3, low_rank=32, num_experts=4):
+        super().__init__()
+        self.num_layers = num_layers
+        self.num_experts = num_experts
+        # 低秩分解: W_l = U_l @ V_l.T, U in R^(d x r), V in R^(d x r)
+        self.u_list = nn.ParameterList([
+            nn.Parameter(torch.randn(num_experts, in_features, low_rank) * 0.01)
+            for _ in range(num_layers)
+        ])
+        self.v_list = nn.ParameterList([
+            nn.Parameter(torch.randn(num_experts, in_features, low_rank) * 0.01)
+            for _ in range(num_layers)
+        ])
+        self.gate_list = nn.ModuleList([
+            nn.Linear(in_features, num_experts, bias=False) for _ in range(num_layers)
+        ])
+        self.bias_list = nn.ParameterList([
+            nn.Parameter(torch.zeros(in_features)) for _ in range(num_layers)
+        ])
+
+    def forward(self, x0):
+        # x0: [batch_size, in_features]
+        xl = x0
+        for l in range(self.num_layers):
+            # 1. 动态计算 Expert 门控权重: [batch_size, num_experts, 1]
+            gate = torch.softmax(self.gate_list[l](xl), dim=-1).unsqueeze(-1)
+            # 2. 低秩矩阵变换: (xl @ V) @ U.T
+            # xl: [B, 1, d] -> xl @ V: [B, E, r] -> (xl @ V) @ U.T: [B, E, d]
+            xl_expanded = xl.unsqueeze(1) # [B, 1, d]
+            v = self.v_list[l] # [E, d, r]
+            u = self.u_list[l] # [E, d, r]
+            low_rank_out = torch.einsum('bmd,edr->ber', xl_expanded, v) # [B, E, r]
+            expert_out = torch.einsum('ber,edr->bed', low_rank_out, u)   # [B, E, d]
+            # 3. MoE 专家加权汇聚: [B, d]
+            moe_out = (expert_out * gate).sum(dim=1)
+            # 4. 显式特征交叉与残差相加
+            xl = x0 * (moe_out + self.bias_list[l]) + xl
+        return xl
 ```
 
-每层都保留原始输入 `x_0`，逐层构造更高阶显式交叉。并行的 deep network 学习隐式关系，最后拼接。
+---
 
-DCN 给模型加入了有结构的乘性交互，参数量比暴力枚举高阶组合小。把它记成"比 MLP 多一个层"会漏掉这一点。
+### 11.4 DLRM (Deep Learning Recommendation Model)
 
-### 11.4 LHUC、SENet 与 FiBiNET
+Meta DLRM 架构将特征解耦为数值 Dense 特征与稀疏 Sparse 类别特征：
+1. **Bottom MLP**：将连续稠密特征映射为 $d$ 维稠密向量；
+2. **Embedding Tables**：为各 Sparse 类别 ID 查表得到 $d$ 维嵌入向量；
+3. **Explicit Dot-Product Triu Interaction**：计算所有 $d$ 维向量之间的两两点积（Dot Product），提取上三角矩阵元素并拉平；
+4. **Top MLP**：将点积交叉结果与原始 Bottom 特征拼接后送入 Top MLP 输出预估概率。
+
+#### 伪代码实现：DLRM 特征交互与前向
+```python
+class DLRM(nn.Module):
+    def __init__(self, embedding_sizes, dense_in_dim, embed_dim=64):
+        super().__init__()
+        # 1. Sparse 嵌入表
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, embed_dim) for num_classes in embedding_sizes
+        ])
+        # 2. Bottom MLP 处理 Dense 数值特征
+        self.bottom_mlp = nn.Sequential(
+            nn.Linear(dense_in_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, embed_dim)
+        )
+        # 3. 计算两两点积组合数: (num_sparse + 1) * num_sparse / 2
+        num_fields = len(embedding_sizes) + 1
+        num_interactions = (num_fields * (num_fields - 1)) // 2
+        # 4. Top MLP 最终分类
+        self.top_mlp = nn.Sequential(
+            nn.Linear(num_interactions + embed_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, dense_x, sparse_x):
+        # dense_x: [B, dense_in_dim], sparse_x: [B, num_sparse]
+        v_dense = self.bottom_mlp(dense_x).unsqueeze(1) # [B, 1, embed_dim]
+        v_sparse = [emb(sparse_x[:, i]).unsqueeze(1) for i, emb in enumerate(self.embeddings)]
+        # 全部字段向量拼接: [B, num_fields, embed_dim]
+        all_embeddings = torch.cat([v_dense] + v_sparse, dim=1)
+        # 批量矩阵乘法计算两两内积: [B, num_fields, num_fields]
+        dot_interactions = torch.bmm(all_embeddings, all_embeddings.transpose(1, 2))
+        # 提取上三角非对角线元素 (去冗余): [B, num_interactions]
+        triu_indices = torch.triu_indices(all_embeddings.size(1), all_embeddings.size(1), offset=1)
+        flat_interactions = dot_interactions[:, triu_indices[0], triu_indices[1]]
+        # 拼接原始 Bottom 特征后喂入 Top MLP
+        top_input = torch.cat([flat_interactions, v_dense.squeeze(1)], dim=-1)
+        return self.top_mlp(top_input)
+```
+
+
+### 11.5 LHUC、SENet 与 FiBiNET
+、SENet 与 FiBiNET
 
 LHUC 对隐藏单元做条件化缩放：
 

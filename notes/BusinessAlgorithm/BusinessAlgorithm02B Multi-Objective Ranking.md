@@ -37,32 +37,105 @@ features -> shared network -> task A tower
 
 问题是任务梯度可能冲突。点击偏好标题吸引力，长时长偏好内容持续价值，它们不总朝同一方向更新共享参数。
 
-### 10.3 MMoE
+### 10.3 MMoE (Multi-gate Mixture-of-Experts)
 
-MMoE 用多个 expert 产生表示，每个任务有自己的 gate：
+MMoE 为每个任务设计独立的门控网络，在共享的 Experts 集合上实现软路由：
 
-```math
-h_t(x)
-=\sum_{e=1}^{E}g_{t,e}(x)f_e(x),
+$$\mathbf{h}_t(\mathbf{x}) = \sum_{e=1}^E g_{t,e}(\mathbf{x}) f_e(\mathbf{x}), \quad \mathbf{g}_t(\mathbf{x}) = \text{Softmax}(\mathbf{W}_t \mathbf{x})$$
+
+#### 伪代码实现：MMoE 多门控混合专家前向
+```python
+import torch
+import torch.nn as nn
+
+class MMoE(nn.Module):
+    def __init__(self, in_features, num_experts=4, expert_dim=64, num_tasks=2):
+        super().__init__()
+        self.num_experts = num_experts
+        self.num_tasks = num_tasks
+        # 共享 Experts 专家网络池
+        self.experts = nn.ModuleList([
+            nn.Sequential(nn.Linear(in_features, expert_dim), nn.ReLU())
+            for _ in range(num_experts)
+        ])
+        # 各任务独占门控网络 (Softmax Gating)
+        self.task_gates = nn.ModuleList([
+            nn.Linear(in_features, num_experts) for _ in range(num_tasks)
+        ])
+        # 顶层任务塔 (Task Towers)
+        self.task_towers = nn.ModuleList([
+            nn.Sequential(nn.Linear(expert_dim, 32), nn.ReLU(), nn.Linear(32, 1), nn.Sigmoid())
+            for _ in range(num_tasks)
+        ])
+
+    def forward(self, x):
+        # x: [B, in_features]
+        # 1. 计算所有专家前向输出: [B, num_experts, expert_dim]
+        expert_outputs = torch.stack([exp(x) for exp in self.experts], dim=1)
+        # 2. 分别为每个任务进行门控加权汇聚
+        task_predictions = []
+        for t in range(self.num_tasks):
+            gate_weights = torch.softmax(self.task_gates[t](x), dim=-1).unsqueeze(-1) # [B, num_experts, 1]
+            task_rep = (expert_outputs * gate_weights).sum(dim=1) # [B, expert_dim]
+            task_pred = self.task_towers[t](task_rep) # [B, 1]
+            task_predictions.append(task_pred)
+        return task_predictions # [pCTR, pCVR]
 ```
 
-```math
-g_t(x)=\operatorname{softmax}(W_t x).
+---
+
+### 10.4 PLE (Progressive Layered Extraction: 渐进式分层抽取)
+
+PLE 彻底解耦了**任务独占专家（Task-Specific Experts）**与**全局共享专家（Shared Experts）**，阻断弱相关任务间的负迁移：
+
+#### 伪代码实现：PLE 分层解耦专家前向
+```python
+class PLECustomExtractionLayer(nn.Module):
+    def __init__(self, in_features, num_task_experts=2, num_shared_experts=2, expert_dim=64, num_tasks=2):
+        super().__init__()
+        self.num_tasks = num_tasks
+        # 各任务独占专家
+        self.task_experts = nn.ModuleList([
+            nn.ModuleList([nn.Linear(in_features, expert_dim) for _ in range(num_task_experts)])
+            for _ in range(num_tasks)
+        ])
+        # 全局共享专家
+        self.shared_experts = nn.ModuleList([
+            nn.Linear(in_features, expert_dim) for _ in range(num_shared_experts)
+        ])
+        # 各任务私有门控 (只在任务专家 + 共享专家上做 Softmax)
+        total_task_experts = num_task_experts + num_shared_experts
+        self.task_gates = nn.ModuleList([
+            nn.Linear(in_features, total_task_experts) for _ in range(num_tasks)
+        ])
+        # 共享门控 (在全部专家上做 Softmax)
+        total_all_experts = num_task_experts * num_tasks + num_shared_experts
+        self.shared_gate = nn.Linear(in_features, total_all_experts)
+
+    def forward(self, task_inputs, shared_input):
+        # 计算各专家输出
+        task_exp_outs = [[exp(task_inputs[t]) for exp in self.task_experts[t]] for t in range(self.num_tasks)]
+        shared_exp_outs = [exp(shared_input) for exp in self.shared_experts]
+        
+        # 1. 任务私有路由
+        task_next_inputs = []
+        for t in range(self.num_tasks):
+            pool = torch.stack(task_exp_outs[t] + shared_exp_outs, dim=1) # [B, task_exp + shared_exp, d]
+            gate = torch.softmax(self.task_gates[t](task_inputs[t]), dim=-1).unsqueeze(-1)
+            task_rep = (pool * gate).sum(dim=1)
+            task_next_inputs.append(task_rep)
+            
+        # 2. 共享路由 (汇聚全局)
+        all_pool = torch.stack([item for sublist in task_exp_outs for item in sublist] + shared_exp_outs, dim=1)
+        shared_gate = torch.softmax(self.shared_gate(shared_input), dim=-1).unsqueeze(-1)
+        shared_next_input = (all_pool * shared_gate).sum(dim=1)
+        
+        return task_next_inputs, shared_next_input
 ```
 
-任务 `t` 根据样本动态组合 experts。它比 Shared-Bottom 更灵活，但不要把 gate 解释成稳定的业务分工。某个 expert 不一定永久代表"点击"，gate 也可能塌缩到少数 experts。
 
-训练时对 gate 的 softmax 输出做少量 expert dropout，是缓解极化的一种办法：随机屏蔽部分 expert 后重新归一化，迫使任务别永远依赖同一条路径。它不能替代负载监控，dropout 过强还会破坏本来有用的专门化。
+### 10.5 ESMM 与转化漏斗
 
-诊断 MMoE 时可以看：
-
-- 各任务 gate 的熵；
-- expert 使用是否均衡；
-- 任务梯度余弦相似度；
-- 单任务与多任务的分群收益；
-- 低频任务是否被高频任务压制。
-
-### 10.4 ESMM 与转化漏斗
 
 电商 CVR 只在点击后可观察。若只用点击样本训练 CVR，训练分布与全量曝光分布不同。
 

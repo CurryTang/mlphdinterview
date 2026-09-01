@@ -32,6 +32,100 @@ One can add:
 
 For Last-N, bigger is not always better. Long histories introduce noise, storage, and service costs, and may re-amplify old interests.
 
+### 12.3 DIN (Deep Interest Network)
+
+DIN introduces **Target Attention** to compute dynamic user interest representation $\mathbf{u}(\mathbf{q})$ conditioned on candidate query $\mathbf{q}$:
+
+$$\alpha_j = \text{MLP}([\mathbf{h}_j, \mathbf{q}, \mathbf{h}_j - \mathbf{q}, \mathbf{h}_j \odot \mathbf{q}]), \quad \mathbf{u}(\mathbf{q}) = \sum_{j=1}^L \alpha_j \mathbf{h}_j$$
+
+#### Pseudocode: DIN Target-Attention Forward Pass
+```python
+import torch
+import torch.nn as nn
+
+class DINAttention(nn.Module):
+    def __init__(self, embed_dim=64, hidden_dim=64):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(4 * embed_dim, hidden_dim),
+            nn.PReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, query, history, mask=None):
+        B, L, d = history.shape
+        q_expanded = query.unsqueeze(1).expand(B, L, d)
+        interaction = torch.cat([
+            q_expanded, history, q_expanded - history, q_expanded * history
+        ], dim=-1) # [B, L, 4*d]
+        scores = self.mlp(interaction).squeeze(-1) # [B, L]
+        if mask is not None:
+            scores = scores.masked_fill(~mask, 0.0)
+        user_interest = torch.bmm(scores.unsqueeze(1), history).squeeze(1) # [B, d]
+        return user_interest
+```
+
+---
+
+### 12.4 SIM (Search-based Interest Model: Hard & Soft Search)
+
+For lifelong user sequences ($L \ge 10,000$), SIM employs a two-stage decoupled search architecture:
+1. **Hard Search**: Fast sub-sequence retrieval filtering top-$M$ ($M \approx 50$) category-matched historical events;
+2. **Soft Attention**: Fine-grained Target Attention combined with time-delta embeddings $\Delta t$.
+
+#### Pseudocode: SIM Long-Sequence Forward Pass
+```python
+class SIMSequenceModel(nn.Module):
+    def __init__(self, embed_dim=64):
+        super().__init__()
+        self.time_delta_emb = nn.Embedding(100, embed_dim)
+        self.attention = DINAttention(embed_dim * 2, hidden_dim=64)
+
+    def forward(self, cand_id, cand_cat, user_hist_ids, user_hist_cats, user_hist_times, item_embed_table):
+        cand_vec = item_embed_table(cand_id) # [B, d]
+        # Stage 1: Hard Search extracts top-50 items matching cand_cat
+        hist_vec = item_embed_table(user_hist_ids[:, :50]) # [B, 50, d]
+        time_vec = self.time_delta_emb(user_hist_times[:, :50]) # [B, 50, d]
+        combined_hist = torch.cat([hist_vec, time_vec], dim=-1) # [B, 50, 2*d]
+        combined_cand = torch.cat([cand_vec, torch.zeros_like(cand_vec)], dim=-1) # [B, 2*d]
+        # Stage 2: Target-Attention
+        return self.attention(combined_cand, combined_hist)
+```
+
+
+### 12.5 Time Issues in Training
+hapter 12: User Behavior Sequences
+
+A behavior sequence is not better simply because it is longer, and feeding every log event into a Transformer does not finish the modeling problem. The model estimates the user's current state: which interests remain active, whether a recent action changed intent, and which part of history matters to the current candidate. Storage and latency limit how it can make that estimate.
+
+The first choices happen before the model. An accidental tap, autoplay, and an explicit save should not have equal weight. Watching ten items from one creator may not provide ten independent pieces of evidence. Behavior strength, deduplication, session boundaries, time gaps, and negative feedback often affect the result before another network layer does.
+
+Production systems commonly keep two user representations. A general user embedding is computed once per request and works well for retrieval or a large candidate set. A candidate-conditioned representation queries history with the current item and captures finer intent, but repeats work for every candidate. DIN, SIM, and longer-sequence models choose different points on this quality-cost tradeoff.
+
+### 12.1 What Does Average Pooling Lose?
+
+A user has viewed basketball, cooking, music, and travel content. Averaging all item embeddings yields a fuzzy "overall interest," but it doesn't know which part of the history is relevant to the current candidate, nor does it account for temporal order.
+
+Sequence models primarily solve three things:
+
+- Different behaviors have different weights;
+- The current candidate needs to read different parts of the history;
+- Interests evolve over time.
+
+### 12.2 Last-N
+
+The simplest approach takes the last N behaviors. It is inexpensive and often stronger than complex models suggest.
+
+One can add:
+
+- Behavioral type weights;
+- Time decay;
+- Deduplication and continuous playback compression;
+- Effective view thresholds;
+- Category or author grouping.
+
+For Last-N, bigger is not always better. Long histories introduce noise, storage, and service costs, and may re-amplify old interests.
+
 ### 12.3 DIN
 
 DIN uses the candidate item `q` to query historical behaviors `h_j`:

@@ -87,20 +87,100 @@ For `d` features and latent dimension `m`, time is `O(dm)` and auxiliary space i
 
 </details>
 
-### 11.3 DCN
+### 11.3 DCN & DCN-v2 (Deep & Cross Network)
 
-The cross layer of DCN is often written as:
+The standard Cross Layer in DCN is defined as:
 
-```math
-x_{l+1}
-=x_0(x_l^\top w_l)+b_l+x_l.
+$$\mathbf{x}_{l+1} = \mathbf{x}_0 \odot (\mathbf{W}_l \mathbf{x}_l) + \mathbf{b}_l + \mathbf{x}_l$$
+
+In **DCN-v2**, low-rank matrix decomposition ($\mathbf{W}_l = \mathbf{U}_l \mathbf{V}_l^T$) and MoE-style subspace routing are introduced to reduce compute while capturing high-order feature combinations:
+
+#### Pseudocode: DCN-v2 Cross Network Forward Pass
+```python
+import torch
+import torch.nn as nn
+
+class CrossNetworkV2(nn.Module):
+    def __init__(self, in_features, num_layers=3, low_rank=32, num_experts=4):
+        super().__init__()
+        self.num_layers = num_layers
+        self.num_experts = num_experts
+        # Low-rank decomposition: W_l = U_l @ V_l.T
+        self.u_list = nn.ParameterList([
+            nn.Parameter(torch.randn(num_experts, in_features, low_rank) * 0.01)
+            for _ in range(num_layers)
+        ])
+        self.v_list = nn.ParameterList([
+            nn.Parameter(torch.randn(num_experts, in_features, low_rank) * 0.01)
+            for _ in range(num_layers)
+        ])
+        self.gate_list = nn.ModuleList([
+            nn.Linear(in_features, num_experts, bias=False) for _ in range(num_layers)
+        ])
+        self.bias_list = nn.ParameterList([
+            nn.Parameter(torch.zeros(in_features)) for _ in range(num_layers)
+        ])
+
+    def forward(self, x0):
+        xl = x0
+        for l in range(self.num_layers):
+            gate = torch.softmax(self.gate_list[l](xl), dim=-1).unsqueeze(-1) # [B, E, 1]
+            xl_expanded = xl.unsqueeze(1) # [B, 1, d]
+            v = self.v_list[l] # [E, d, r]
+            u = self.u_list[l] # [E, d, r]
+            low_rank_out = torch.einsum('bmd,edr->ber', xl_expanded, v) # [B, E, r]
+            expert_out = torch.einsum('ber,edr->bed', low_rank_out, u)   # [B, E, d]
+            moe_out = (expert_out * gate).sum(dim=1) # [B, d]
+            xl = x0 * (moe_out + self.bias_list[l]) + xl
+        return xl
 ```
 
-Each layer retains the original input `x_0`, constructing higher-order explicit interactions layer by layer. Parallel deep networks learn implicit relationships, which are then concatenated.
+---
 
-DCN adds structured multiplicative interactions to the model, with fewer parameters than brute-force high-order combinations. Remembering it as "one layer more than an MLP" misses this point.
+### 11.4 DLRM (Deep Learning Recommendation Model)
 
-### 11.4 LHUC, SENet, and FiBiNET
+Meta's DLRM architecture explicitly decouples dense continuous features from sparse categorical embeddings:
+1. **Bottom MLP**: Transforms continuous dense features into a $d$-dimensional vector;
+2. **Embedding Tables**: Maps sparse categorical IDs into $d$-dimensional embeddings;
+3. **Explicit Dot-Product Triu Interaction**: Computes pairwise inner products across all $d$-dim vectors;
+4. **Top MLP**: Concatenates interaction dot-products with the original bottom representation to generate probabilities.
+
+#### Pseudocode: DLRM Architecture Forward Pass
+```python
+class DLRM(nn.Module):
+    def __init__(self, embedding_sizes, dense_in_dim, embed_dim=64):
+        super().__init__()
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, embed_dim) for num_classes in embedding_sizes
+        ])
+        self.bottom_mlp = nn.Sequential(
+            nn.Linear(dense_in_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, embed_dim)
+        )
+        num_fields = len(embedding_sizes) + 1
+        num_interactions = (num_fields * (num_fields - 1)) // 2
+        self.top_mlp = nn.Sequential(
+            nn.Linear(num_interactions + embed_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, dense_x, sparse_x):
+        v_dense = self.bottom_mlp(dense_x).unsqueeze(1)
+        v_sparse = [emb(sparse_x[:, i]).unsqueeze(1) for i, emb in enumerate(self.embeddings)]
+        all_embeddings = torch.cat([v_dense] + v_sparse, dim=1) # [B, num_fields, d]
+        dot_interactions = torch.bmm(all_embeddings, all_embeddings.transpose(1, 2))
+        triu_indices = torch.triu_indices(all_embeddings.size(1), all_embeddings.size(1), offset=1)
+        flat_interactions = dot_interactions[:, triu_indices[0], triu_indices[1]]
+        top_input = torch.cat([flat_interactions, v_dense.squeeze(1)], dim=-1)
+        return self.top_mlp(top_input)
+```
+
+
+### 11.5 LHUC, SENet, and FiBiNET
+, SENet, and FiBiNET
 
 LHUC performs conditional scaling on hidden units:
 

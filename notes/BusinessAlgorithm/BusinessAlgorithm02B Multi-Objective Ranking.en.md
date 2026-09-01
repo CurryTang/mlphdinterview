@@ -37,32 +37,93 @@ Total loss:
 
 The problem is that task gradients may conflict. Click preference favors title attractiveness, while long watch time favors sustained content value; they do not always update shared parameters in the same direction.
 
-### 10.3 MMoE
+### 10.3 MMoE (Multi-gate Mixture-of-Experts)
 
-MMoE uses multiple experts to generate representations, with each task having its own gate:
+MMoE deploys dedicated Softmax gating networks per task over shared expert layers:
 
-```math
-h_t(x)
-=\sum_{e=1}^{E}g_{t,e}(x)f_e(x),
+$$\mathbf{h}_t(\mathbf{x}) = \sum_{e=1}^E g_{t,e}(\mathbf{x}) f_e(\mathbf{x}), \quad \mathbf{g}_t(\mathbf{x}) = \text{Softmax}(\mathbf{W}_t \mathbf{x})$$
+
+#### Pseudocode: MMoE Architecture Forward Pass
+```python
+import torch
+import torch.nn as nn
+
+class MMoE(nn.Module):
+    def __init__(self, in_features, num_experts=4, expert_dim=64, num_tasks=2):
+        super().__init__()
+        self.num_experts = num_experts
+        self.num_tasks = num_tasks
+        self.experts = nn.ModuleList([
+            nn.Sequential(nn.Linear(in_features, expert_dim), nn.ReLU())
+            for _ in range(num_experts)
+        ])
+        self.task_gates = nn.ModuleList([
+            nn.Linear(in_features, num_experts) for _ in range(num_tasks)
+        ])
+        self.task_towers = nn.ModuleList([
+            nn.Sequential(nn.Linear(expert_dim, 32), nn.ReLU(), nn.Linear(32, 1), nn.Sigmoid())
+            for _ in range(num_tasks)
+        ])
+
+    def forward(self, x):
+        expert_outputs = torch.stack([exp(x) for exp in self.experts], dim=1) # [B, E, d]
+        task_predictions = []
+        for t in range(self.num_tasks):
+            gate_weights = torch.softmax(self.task_gates[t](x), dim=-1).unsqueeze(-1)
+            task_rep = (expert_outputs * gate_weights).sum(dim=1)
+            task_pred = self.task_towers[t](task_rep)
+            task_predictions.append(task_pred)
+        return task_predictions
 ```
 
-```math
-g_t(x)=\operatorname{softmax}(W_t x).
+---
+
+### 10.4 PLE (Progressive Layered Extraction)
+
+PLE physically decouples **Task-Specific Experts** from **Shared Experts**, eliminating negative transfer across weakly correlated objectives:
+
+#### Pseudocode: PLE Extraction Layer Forward Pass
+```python
+class PLECustomExtractionLayer(nn.Module):
+    def __init__(self, in_features, num_task_experts=2, num_shared_experts=2, expert_dim=64, num_tasks=2):
+        super().__init__()
+        self.num_tasks = num_tasks
+        self.task_experts = nn.ModuleList([
+            nn.ModuleList([nn.Linear(in_features, expert_dim) for _ in range(num_task_experts)])
+            for _ in range(num_tasks)
+        ])
+        self.shared_experts = nn.ModuleList([
+            nn.Linear(in_features, expert_dim) for _ in range(num_shared_experts)
+        ])
+        total_task_experts = num_task_experts + num_shared_experts
+        self.task_gates = nn.ModuleList([
+            nn.Linear(in_features, total_task_experts) for _ in range(num_tasks)
+        ])
+        total_all_experts = num_task_experts * num_tasks + num_shared_experts
+        self.shared_gate = nn.Linear(in_features, total_all_experts)
+
+    def forward(self, task_inputs, shared_input):
+        task_exp_outs = [[exp(task_inputs[t]) for exp in self.task_experts[t]] for t in range(self.num_tasks)]
+        shared_exp_outs = [exp(shared_input) for exp in self.shared_experts]
+        
+        # 1. Task-Specific Routing
+        task_next_inputs = []
+        for t in range(self.num_tasks):
+            pool = torch.stack(task_exp_outs[t] + shared_exp_outs, dim=1)
+            gate = torch.softmax(self.task_gates[t](task_inputs[t]), dim=-1).unsqueeze(-1)
+            task_next_inputs.append((pool * gate).sum(dim=1))
+            
+        # 2. Shared Global Routing
+        all_pool = torch.stack([item for sublist in task_exp_outs for item in sublist] + shared_exp_outs, dim=1)
+        shared_gate = torch.softmax(self.shared_gate(shared_input), dim=-1).unsqueeze(-1)
+        shared_next_input = (all_pool * shared_gate).sum(dim=1)
+        
+        return task_next_inputs, shared_next_input
 ```
 
-Task `t` dynamically combines experts based on the sample. It is more flexible than Shared-Bottom, but do not interpret the gate as a stable business division of labor. A specific expert does not necessarily represent "clicks" permanently, and the gate may collapse into a few experts.
 
-A small amount of expert dropout on the gate output can reduce polarization: mask some experts, renormalize the gate, and stop a task from always following one path. This does not replace load monitoring, and aggressive dropout can destroy useful specialization.
-
-When diagnosing MMoE, one can look at:
-
-- The entropy of each task's gate;
-- Whether expert usage is balanced;
-- Task gradient cosine similarity;
-- Gains from single-task vs. multi-task grouping;
-- Whether low-frequency tasks are suppressed by high-frequency tasks.
-
-### 10.4 ESMM and the Conversion Funnel
+### 10.5 ESMM and Conversion Funnels
+ and the Conversion Funnel
 
 E-commerce CVR is only observable after a click. If CVR is trained using only click samples, the training distribution differs from the full exposure distribution.
 

@@ -38,19 +38,25 @@
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. 经典工业级基座模型三大支柱
+### 1. 经典工业级基座模型三大支柱（含业务算法专篇深度链接与伪代码解析）
 
-1. **特征交叉基座（Feature Interaction Backbone）**：
-   - **DCN-v2 (Deep & Cross Network v2)**：通过显式多项式交叉层（Cross Network）结合低秩矩阵分解（Low-Rank MoE Matrix Multiplication），在极低延迟下逼近任意高阶特征交叉；
-   - **DLRM (Deep Learning Recommendation Model)**：Meta 开源的标准架构，将特征明确解耦为用于稀疏 ID 的 Embedding 表与用于数值特征的 Bottom MLP，通过显式 Dot-product 交互后喂入 Top MLP。
-2. **行为序列建模基座（User Behavior Sequence Backbone）**：
-   - **DIN (Deep Interest Network)**：利用候选 Item 与历史行为序列计算 **Target Attention**，克服了传统 Pooling 对用户多样化兴趣的静态压缩损失；
-   - **SIM (Search-based Interest Model)**：将用户行为序列扩展到数万步（Long-Term Sequence），第一阶段使用类目/Tag 倒排索引做 **Sub-sequence 快速检索（Hard Search）**，第二阶段在小集合上执行精细 Attention（Soft Search）。
-3. **多目标排序基座（Multi-Task Learning Backbone）**：
-   - **MMoE (Multi-gate Mixture-of-Experts)**：为每个任务分配独立的 Softmax 门控网络，动态加权共享 Expert；
-   - **PLE (Progressive Layered Extraction)**：将专家网络严格区分为 **任务独占专家（Task-Specific Experts）** 与 **全局共享专家（Shared Experts）**，彻底阻断了点击（CTR）与转化（CVR）等相关性较弱任务间的负迁移现象。
+工业界精排模型必须在极严苛的 $P99 \le 15\text{ms}$ 延迟下完成高维交叉与数十万用户行为的精准激活。以下三大支柱的具体实现与 PyTorch 伪代码均已深度沉淀在业务算法专篇中：
 
----
+#### 支柱一：特征交叉基座（Feature Interaction Backbone）
+> 📘 **详见专篇**：[第 11 章 · 特征交叉、粗排与个性化](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.md)（含 FM / DCN-v2 / DLRM 完整代码）
+- **DCN-v2 (Deep & Cross Network v2)**：引入低秩矩阵分解（$\mathbf{W}_l = \mathbf{U}_l \mathbf{V}_l^T$）与 MoE 子空间门控，以 $\mathcal{O}(d \cdot r)$ 极低复杂度计算显式高阶多项式特征交叉：
+  $$\mathbf{x}_{l+1} = \mathbf{x}_0 \odot (\mathbf{W}_l \mathbf{x}_l) + \mathbf{b}_l + \mathbf{x}_l$$
+- **DLRM (Deep Learning Recommendation Model)**：Meta 经典架构，将特征解耦为 Dense Bottom MLP 与 Sparse Embedding Tables，通过显式矩阵点积（`torch.bmm(E, E.T)`）提取上三角交互特征送入 Top MLP。
+
+#### 支柱二：行为序列建模基座（User Behavior Sequence Backbone）
+> 📘 **详见专篇**：[第 12 章 · 用户行为序列建模](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/BusinessAlgorithm/BusinessAlgorithm02D%20User%20Sequences.md)（含 DIN 目标注意力与 SIM 两阶段检索代码）
+- **DIN (Deep Interest Network)**：利用候选 Item $\mathbf{q}$ 对历史序列 $[\mathbf{h}_1, \dots, \mathbf{h}_L]$ 计算 **Target Attention**：$\mathbf{u}(\mathbf{q}) = \sum \alpha_j \mathbf{h}_j$，其中 $\alpha_j = \text{MLP}([\mathbf{q}, \mathbf{h}_j, \mathbf{q}-\mathbf{h}_j, \mathbf{q}\odot\mathbf{h}_j])$；
+- **SIM (Search-based Interest Model)**：两阶段解耦——第一阶段 **Hard Search** 按同类目粗筛 Top-50，第二阶段在小集合上结合时间差 $\Delta t$ 进行精细 Target Attention，突破数万步长序列建模瓶颈。
+
+#### 支柱三：多目标排序基座（Multi-Task Learning Backbone）
+> 📘 **详见专篇**：[第 10 章 · 多目标学习与分值融合](file:///Users/czk/Documents/mlsysnotes/MLSYS_tutorial/notes/BusinessAlgorithm/BusinessAlgorithm02B%20Multi-Objective%20Ranking.md)（含 MMoE 与 PLE 分层解耦专家代码）
+- **MMoE (Multi-gate Mixture-of-Experts)**：多任务共享 Experts 池，各任务使用 Softmax 门控加权 $\mathbf{h}_t = \sum g_{t,e} f_e(\mathbf{x})$；
+- **PLE (Progressive Layered Extraction)**：显式区分为 **Task-Specific 独占专家** 与 **Shared 共享专家**，物理隔离不同任务表征，彻底阻断 CTR 与 CVR 之间的负迁移与跷跷板效应。
 
 ### 2. 多目标表征冲突与“跷跷板效应（Seesaw Effect）”底层机理
 
