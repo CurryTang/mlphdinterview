@@ -161,7 +161,7 @@ The PPO training loop involves four model roles:
 PPO objective function (clipped version):
 
 $$
-\mathcal{L}_{\text{PPO}} = \mathbb{E}_t\left[ \min\left(r_t(\theta)\hat{A}_t,\ \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \r\right) \r\right] - \beta \cdot \text{KL}[\pi_\theta || \pi_{\text{ref}}]
+\mathcal{L}_{\text{PPO}} = \mathbb{E}_t\left[ \min\left(r_t(\theta)\hat{A}_t,\ \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \right) \right] - \beta \cdot \text{KL}[\pi_\theta || \pi_{\text{ref}}]
 $$
 
 Where $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)}$ is the importance sampling ratio, $\hat{A}_t$ is the advantage estimated by GAE, and $\epsilon$ is the clipping threshold (usually 0.2).

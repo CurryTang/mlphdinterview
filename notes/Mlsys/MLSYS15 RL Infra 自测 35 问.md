@@ -72,7 +72,7 @@ $$
 **重要性采样（IS）**：当训练数据来自旧 policy $\pi_{\text{old}}$，但我们想优化新 policy $\pi_\theta$ 时，用 IS ratio 修正期望：
 
 $$
-\mathbb{E}_{\pi_\theta}[f] \approx \mathbb{E}_{\pi_{\text{old}}}\left[ \frac{\pi_\theta(a|s)}{\pi_{\text{old}}(a|s)} f \r\right]
+\mathbb{E}_{\pi_\theta}[f] \approx \mathbb{E}_{\pi_{\text{old}}}\left[ \frac{\pi_\theta(a|s)}{\pi_{\text{old}}(a|s)} f \right]
 $$
 
 这正是 PPO 目标函数中 $r_t(\theta)$ 的来源。IS 是异步 RL 的算法基础：允许用略旧的数据训练，只要 IS ratio 不爆炸（用 clip 控制）。
@@ -131,7 +131,7 @@ $$
 **PPO clip 机制**：
 
 $$
-\mathcal{L}_{\text{clip}} = \mathbb{E}_t\left[ \min\left(\underbrace{r_t \hat{A}_t}_{\text{原始目标}},\ \underbrace{\text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t}_{\text{裁剪版}} \r\right) \r\right]
+\mathcal{L}_{\text{clip}} = \mathbb{E}_t\left[ \min\left(\underbrace{r_t \hat{A}_t}_{\text{原始目标}},\ \underbrace{\text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t}_{\text{裁剪版}} \right) \right]
 $$
 
 **为什么取 min（悲观下界）**：
@@ -286,7 +286,7 @@ $$
 
 **TRPO（Trust Region Policy Optimization）**：通过精确的 KL 约束做 trust region：
 $$
-\max_\theta \mathbb{E}\left[ \frac{\pi_\theta}{\pi_{\text{old}}} A \r\right] \quad \text{s.t.} \quad \text{KL}[\pi_{\text{old}} \| \pi_\theta] \leq \delta
+\max_\theta \mathbb{E}\left[ \frac{\pi_\theta}{\pi_{\text{old}}} A \right] \quad \text{s.t.} \quad \text{KL}[\pi_{\text{old}} \| \pi_\theta] \leq \delta
 $$
 用二阶方法（Fisher 信息矩阵的近似逆）求解。计算开销极大，LLM 场景不可用。
 

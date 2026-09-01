@@ -11,7 +11,7 @@ Every exercise below assumes you already have these pieces from MLCoding01. Only
 ```python
 def softmax(x: torch.Tensor, dim: int) -> torch.Tensor: ...
 def scaled_dot_product_attention(Q, K, V, mask=None) -> torch.Tensor: ...
-class Linear(nn.Module): ...  # y = x @ we\right.T, no bias
+class Linear(nn.Module): ...  # y = x @ weight.T, no bias
 ```
 
 ## Module 9: Attention Variants

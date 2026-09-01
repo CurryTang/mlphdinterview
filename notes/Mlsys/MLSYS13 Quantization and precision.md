@@ -17,7 +17,7 @@ LLM 的量化研究从 2022 年开始爆发，核心驱动力是模型规模急�
 
 将浮点张量 $x$ 映射到 $b$-bit 整数：
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ightceil + z,\; 0,\; 2^b - 1\Big)$$
 
 反量化：
 
@@ -189,7 +189,7 @@ BF16 因为省去了 loss scaling 的复杂性且训练更稳定，已成为大�
 │  │  x → x_q → x̂    │  数据类型仍为 FP32，但值已含量化误差      │
 │  └────────┬─────────┘                                          │
 │           ▼                                                    │
-│  ┌──────────────────┐     w (FP32 master we\right)               │
+│  ┌──────────────────┐     w (FP32 master weight)               │
 │  │  Linear(x̂, ŵ)   │ ◄── ŵ = dequant(quant(w))  同样伪量化    │
 │  └────────┬─────────┘                                          │
 │           ▼                                                    │
@@ -706,7 +706,7 @@ KV cache 结构：
 
 量化后 Attention 的计算需要分成两部分——量化部分和 FP16 残差部分：
 
-$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \r\right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
+$$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}}; K_{\text{res}}]^T}{\sqrt{d}} \right) \cdot [V_{\text{quant}}; V_{\text{res}}]$$
 
 其中 $K_{\text{quant}}, V_{\text{quant}}$ 是 2-bit 量化部分，$K_{\text{res}}, V_{\text{res}}$ 是 FP16 残差 buffer。实际实现中：
 
@@ -759,7 +759,7 @@ $$\text{Attn}(Q, K, V) = \text{softmax}\!\left( \frac{Q \cdot [K_{\text{quant}};
 
 3. **Hadamard 变换失效**：在 Transformer 上 Hadamard 旋转能有效均匀化 max value（QuaRot 的核心）。但 MambaQuant 从理论上证明：Hadamard 变换**无法保证通道方差一致**。具体来说，Hadamard 变换后第 $l$ 个通道的方差为：
 
-$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \r\right)^2\lambda_j$$
+$$(\mathbf{C}_{\mathbf{X}\mathbf{H}})_{ll} = \frac{1}{n-1}\sum_{j=1}^{m}\left( \sum_{i=1}^{m}H_{il}K_{ij} \right)^2\lambda_j$$
 
 由于 $H$ 是固定矩阵而 $K$（特征向量）和 $\lambda$（特征值）随输入变化，Hadamard 无法适应不同的通道分布，导致旋转后方差仍然不一致。
 
@@ -826,7 +826,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 先减去均值（中心化），再取符号。减均值很关键——如果权重分布不对称（均值 ≠ 0），直接 Sign 会让 +1 和 -1 的数量严重不平衡，浪费表达能力。
 
 **激活量化**：激活量化到 $b$-bit（论文中用 8-bit），使用 absmax 对称量化：
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  \right\rceil, -2^{b-1}+1, 2^{b-1}-1 \r\right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ightceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
 
 **完整的 BitLinear 前向**：
 ```
@@ -855,7 +855,7 @@ BitNet b1.58 是 BitNet 的关键改进：权重从二值 {-1, +1} 扩展到三�
 
 **权重量化**：
 
-$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \r\right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
+$$\hat{W} = \text{RoundClip}\!\left( \frac{W}{\gamma},\,-1,\,1 \right), \qquad \gamma = \frac{\|W\|_1}{nm}$$
 
 $\gamma$ 是权重绝对值的均值（L1 归一化因子）。归一化后权重大部分落在 $[-1, 1]$ 内，取整到 {-1, 0, +1}。
 
@@ -1194,7 +1194,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # 反量化
 
 **8-bit 对称量化（blockwise）**——对应 §1.1 的对称公式，但按 block（默认 2048 元素）独立计算 scale：
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ightceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 分 block 的好处：避免全局少数大值拉高 scale，挤压其余正常值的量化精度。
 

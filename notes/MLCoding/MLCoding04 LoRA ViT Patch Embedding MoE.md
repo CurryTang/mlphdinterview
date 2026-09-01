@@ -57,7 +57,7 @@ class LoRALinear(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
 
     def forward(self, x):
-        base = torch.einsum("...i,oi->...o", x, self.we\right)
+        base = torch.einsum("...i,oi->...o", x, self.weight)
         delta = torch.einsum("...i,ri->...r", x, self.lora_A)
         delta = torch.einsum("...r,or->...o", delta, self.lora_B)
         return base + self.scaling * delta

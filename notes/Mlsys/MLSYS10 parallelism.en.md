@@ -147,13 +147,13 @@ Device 3: [A3]     →   Device 3: [A0, A1, A2, A3]
 
 **Latency correction**: when the data volume per hop is small, the per-hop latency $T_\text{min} \approx 1\,\mu\text{s}$ becomes the bottleneck:
 
-$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \r\right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \r\right]$$
+$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \right]$$
 
 For TPU v5e ($W_\text{ici} = 4.5 \times 10^{10}$ B/s), the latency threshold is around 45 kB: arrays smaller than this size are latency bound.
 
 **Multi-axis AllGather**: if AllGather runs simultaneously over multiple mesh axes $\{X_1, X_2, \ldots\}$, the effective bandwidth increases proportionally:
 
-$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \r\right]$$
+$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \right]$$
 
 ![AllGather measured bandwidth (TPU v5e 8×16): about 95% peak above 10 MB](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
 
@@ -1371,7 +1371,7 @@ The golden rule for understanding parallelism is: **imagine yourself inside a si
 
 **Local activation shape formula**:
 
-$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \r\right]$$
+$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \right]$$
 
 - $B / \text{dp}$: data parallelism shards the batch
 - $S / (\text{cp} \times \text{sp})$: Context Parallel and Sequence Parallel jointly shard the sequence
@@ -1647,7 +1647,7 @@ Stage 3 (GPU3): Layer 24-31  (compute loss)
                  ◀──send_bwd──
 ```
 
-Only activation values ​​(forward) and gradients (reverse) are transferred between processes, and the amount of data = `[B/dp, S/cp, D]`, which is much smaller than the we\right.
+Only activation values ​​(forward) and gradients (reverse) are transferred between processes, and the amount of data = `[B/dp, S/cp, D]`, which is much smaller than the weight.
 
 **1F1B scheduling** (see Chapter 7 §7.3): in steady state, each stage alternates between forward and backward work to minimize GPU idle bubbles. Picotron implements this scheduler directly; PP users only need to provide `forward_step` and `loss_fn`.
 

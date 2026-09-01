@@ -11,7 +11,7 @@ MLCoding01 已经搭出了 stable softmax、scaled dot-product attention 和带 
 ```python
 def softmax(x: torch.Tensor, dim: int) -> torch.Tensor: ...
 def scaled_dot_product_attention(Q, K, V, mask=None) -> torch.Tensor: ...
-class Linear(nn.Module): ...  # y = x @ we\right.T，无 bias
+class Linear(nn.Module): ...  # y = x @ weight.T，无 bias
 ```
 
 ## 模块九：注意力机制变体

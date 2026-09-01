@@ -43,7 +43,7 @@ class Int8Linear(nn.Module):
     def __init__(self, weight: torch.Tensor):
         super().__init__()
         # weight: (out_features, in_features)，量化前是训练好的、冻结的浮点权重
-        scale = we\right.abs().amax(dim=1, keepdim=True) / 127.0
+        scale = weight.abs().amax(dim=1, keepdim=True) / 127.0
         w_int8 = torch.clamp(torch.round(weight / scale), -127, 127).to(torch.int8)
 
         self.register_buffer("w_int8", w_int8)

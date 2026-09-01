@@ -48,8 +48,8 @@ Where `factors[i]` is the `latent_dim`-dimensional vector for the `i`-th feature
 
 ```math
 \frac{1}{2}\sum_f
-\left[ \left( \sum_i v_{i,f}x_i \r\right)^2
--\sum_i(v_{i,f}x_i)^2 \r\right].
+\left[ \left( \sum_i v_{i,f}x_i \right)^2
+-\sum_i(v_{i,f}x_i)^2 \right].
 ```
 
 Raise a `ValueError` if input dimensions are inconsistent.

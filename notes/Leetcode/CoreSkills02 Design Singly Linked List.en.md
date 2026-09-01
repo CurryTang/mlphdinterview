@@ -785,7 +785,7 @@ This extends "linked-list problems" into data-structure design. The hash map pro
 | Item | Value |
 |---|---|
 | Composed idioms | Doubly linked list + hash map + head/tail sentinels |
-| Invariant | `left.next` is always the LRU node, and `r\right.prev` is always the MRU node |
+| Invariant | `left.next` is always the LRU node, and `right.prev` is always the MRU node |
 | Time / Space | `O(1)` average time per operation, `O(capacity)` space |
 
 #### Quick Coding: LRU Cache
@@ -821,7 +821,7 @@ class LRUCache:
         self.left = Node()   # LRU sentinel
         self.right = Node()  # MRU sentinel
         self.left.next = self.right
-        self.r\right.prev = self.left
+        self.right.prev = self.left
 
     def remove(self, node: Node) -> None:
         prev_node, next_node = node.prev, node.next
@@ -829,11 +829,11 @@ class LRUCache:
         next_node.prev = prev_node
 
     def insert_before_tail(self, node: Node) -> None:
-        prev_node = self.r\right.prev
+        prev_node = self.right.prev
         prev_node.next = node
         node.prev = prev_node
         node.next = self.right
-        self.r\right.prev = node
+        self.right.prev = node
 
     def get(self, key: int) -> int:
         if key not in self.cache:

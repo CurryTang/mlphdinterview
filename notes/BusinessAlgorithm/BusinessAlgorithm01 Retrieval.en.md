@@ -112,7 +112,7 @@ TF-IDF considers both the frequency of a term in the current document and its ra
 \log\frac{N}{df(t)}.
 ```
 
-Common terms have low discriminative power, so IDF assigns them a smaller we\right. BM25 builds on this by adding term frequency saturation and document length normalization:
+Common terms have low discriminative power, so IDF assigns them a smaller weight. BM25 builds on this by adding term frequency saturation and document length normalization:
 
 ```math
 \operatorname{BM25}(q,d)
@@ -258,7 +258,7 @@ One weighted matrix factorization objective is:
 ```math
 \min_{U,V}
 \sum_{u,i} c_{ui}
-\left( p_{ui}-u_u^\top v_i \r\right)^2
+\left( p_{ui}-u_u^\top v_i \right)^2
 \lambda(\|U\|_F^2+\|V\|_F^2),
 ```
 

@@ -7,7 +7,7 @@
 - 邻接表空间：`O(V + E)`；邻接矩阵空间：`O(V^2)`。
 - 遍历全部点边的时间都是 `O(V + E)`；邻接矩阵下这个上界会退化到 `O(V^2)`，因为扫描每个点的邻居本身要 `O(V)`。
 
-无向图加一条边时需要同时写入 `u -> v` 和 `v -> u`；加权图的邻居列表通常保存 `(neighbor, we\right)` 这样的元组。
+无向图加一条边时需要同时写入 `u -> v` 和 `v -> u`；加权图的邻居列表通常保存 `(neighbor, weight)` 这样的元组。
 
 ```text
 addEdge(u, v, w=1):
@@ -581,8 +581,8 @@ class Solution:
     rows, cols = len(heights), len(heights[0])
     pacific, atlantic = set(), set()
 
-    def dfs(r, c, visited, prev_he\right):
-      # 越界检查、已访问剪枝、以及逆流爬坡条件 (heights[r][c] 必须 >= prev_he\right)
+    def dfs(r, c, visited, prev_height):
+      # 越界检查、已访问剪枝、以及逆流爬坡条件 (heights[r][c] 必须 >= prev_height)
       if (
           r < 0
           or r >= rows
@@ -603,7 +603,7 @@ class Solution:
     for r in range(rows):
       dfs(r, 0, pacific, heights[r][0])
 
-    # 2. 从大西洋边界 (Bottom & R\right) 出发逆流爬坡
+    # 2. 从大西洋边界 (Bottom & Right) 出发逆流爬坡
     for c in range(cols):
       dfs(rows - 1, c, atlantic, heights[rows - 1][c])
     for r in range(rows):

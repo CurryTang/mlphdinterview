@@ -144,7 +144,7 @@ Pairwise logistic 让高相关文档排在低相关文档前：
 
 ```math
 \mathcal L_{\text{pair}}
-=\log\left(1+\exp[-\gamma(s_i-s_j)] \r\right),
+=\log\left(1+\exp[-\gamma(s_i-s_j)] \right),
 \qquad y_i>y_j.
 ```
 

@@ -52,7 +52,7 @@ Industrial precision rankers must execute bounded high-order feature interaction
 
 #### Solution Matrix
 - **PLE (Progressive Layered Extraction)**: Physical isolation of task-specific and shared experts;
-- **Uncertainty Weighting**: $\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k \r\right)$;
+- **Uncertainty Weighting**: $\mathcal{L} = \sum \left( \frac{1}{2\sigma_k^2}\mathcal{L}_k + \ln \sigma_k \right)$;
 - **PCGrad**: Orthogonal projection of conflicting gradients $\mathbf{g}_i \leftarrow \mathbf{g}_i - \frac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2}\mathbf{g}_j$;
 - **Constrained Pareto Fusion**: Real-time PID control tracking $\max \text{GMV} \text{ s.t. } \text{CTR} \ge \text{CTR}_0$.
 
@@ -224,7 +224,7 @@ End-to-End Generative Reranking Pipeline:
 ```
 
 - **Plackett-Luce Loss**:
-  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \r\right)$$
+  $$\mathcal{L}_{\text{Plackett-Luce}} = -\sum_{k=1}^K \log \left( \frac{\exp(s_{\pi_k})}{\sum_{j=k}^K \exp(s_{\pi_j})} \right)$$
 - **Slate Reward RL**:
   $$R(\pi) = \sum_{k=1}^K \gamma^{k-1}(\text{Click}_k \cdot \text{Margin}_k + \text{GMV}_k) - \lambda \cdot \text{Redundancy}(\pi)$$
 - **P99 ≤ 20ms SLA**: Prefix KV Cache sharing across beam steps + 18ms hard timeout fallback to precision ranking order.
@@ -235,7 +235,7 @@ End-to-End Generative Reranking Pipeline:
 
 ### 1. Global ROC-AUC vs Grouped AUC (GAUC)
 - **Global AUC**:
-  $$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \r\right)$$
+  $$\text{AUC} = \frac{1}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(s_i > s_j) + \frac{1}{2} \mathbb{I}(s_i = s_j) \right)$$
   (Vulnerable to inter-user activity bias and Simpson's paradox);
 - **GAUC**: Weighted within-group average:
   $$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad \text{where } w_g = n_g \text{ (Impressions)}$$
@@ -260,9 +260,9 @@ End-to-End Generative Reranking Pipeline:
 
 ### Mathematical Principle of CUPED Variance Reduction
 $$\hat{Y}_{\text{CUPED}} = Y - \theta(X - \mathbb{E}[X]), \quad \text{where } \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
-$$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - \rho^2)$$
+$$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - ho^2)$$
 
-When pre/post correlation is $\rho = 0.8$, metric variance is slashed by $64\%$, reducing sample size requirements by nearly $3\times$!
+When pre/post correlation is $ho = 0.8$, metric variance is slashed by $64\%$, reducing sample size requirements by nearly $3\times$!
 
 ---
 

@@ -103,7 +103,7 @@ The action `a_t` can be a search query, reading, continuing reasoning, or finish
 
 ### 19.6 Reasoning-Intensive Retrieval
 
-[BRIGHT](https://openreview.net/forum?id=ykuc5q381b) (Su et al., ICLR 2025 Spotl\right) collects queries that require reasoning to identify the correct documents. Relevant documents may not have obvious lexical or embedding overlaps with the query, requiring the model to first deduce implicit conditions.
+[BRIGHT](https://openreview.net/forum?id=ykuc5q381b) (Su et al., ICLR 2025 Spotlight) collects queries that require reasoning to identify the correct documents. Relevant documents may not have obvious lexical or embedding overlaps with the query, requiring the model to first deduce implicit conditions.
 
 High scores on conventional retrieval benchmarks do not guarantee that a model can handle these types of queries. One can generate retrieval plans or intermediate explanations before retrieval, but query drift, additional search counts, and end-to-end latency must be measured separately.
 

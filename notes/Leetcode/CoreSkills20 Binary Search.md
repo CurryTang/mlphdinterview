@@ -314,7 +314,7 @@ class Solution:
 题目不要求在数组里定位元素，而是要求在速度的取值范围里找一个边界。速度越高，吃完全部香蕉需要的小时数越少，因此"吃完所需小时数 `<= h`"这个谓词随速度单调，可以直接套用模板。
 
 $$
-\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}}  \right\rceil
+\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}}  ightceil
 $$
 
 | 项目 | 内容 |
@@ -589,8 +589,8 @@ class Solution:
         if (m + n) % 2 == 1:
             return float(max_left)
 
-        min_right = min(a_right, b_r\right)
-        return (max_left + min_r\right) / 2
+        min_right = min(a_right, b_\right)
+        return (max_left + min_\right) / 2
 ```
 
 </details>

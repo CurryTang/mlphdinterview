@@ -60,7 +60,7 @@ flowchart LR
 left, right = 0, len(nums) - 1
 
 while left < right:
-    if should_move_left(nums[left], nums[r\right]):
+    if should_move_left(nums[left], nums[\right]):
         left += 1
     else:
         right -= 1
@@ -194,7 +194,7 @@ $$
 暴力法枚举三个下标，需要 $O(n^3)$。更好的做法是先排序，固定第一个数 `nums[i]`，再在右侧区间寻找：
 
 $$
-nums[left]+nums[r\right]=-nums[i].
+nums[left]+nums[\right]=-nums[i].
 $$
 
 这就把 3Sum 降成了一个排序数组上的 Two Sum。
@@ -226,15 +226,15 @@ class Solution:
             right = len(nums) - 1
 
             while left < right:
-                total = nums[i] + nums[left] + nums[r\right]
+                total = nums[i] + nums[left] + nums[\right]
 
                 if total == 0:
-                    result.append([nums[i], nums[left], nums[r\right]])
+                    result.append([nums[i], nums[left], nums[\right]])
 
                     # 命中后跳过左右两边的重复值。
                     while left < right and nums[left] == nums[left + 1]:
                         left += 1
-                    while left < right and nums[r\right] == nums[right - 1]:
+                    while left < right and nums[\right] == nums[right - 1]:
                         right -= 1
 
                     left += 1
@@ -339,16 +339,16 @@ class Solution:
                 right = n - 1
 
                 while left < right:
-                    total = nums[i] + nums[j] + nums[left] + nums[r\right]
+                    total = nums[i] + nums[j] + nums[left] + nums[\right]
 
                     if total == target:
                         result.append([
-                            nums[i], nums[j], nums[left], nums[r\right]
+                            nums[i], nums[j], nums[left], nums[\right]
                         ])
 
                         while left < right and nums[left] == nums[left + 1]:
                             left += 1
-                        while left < right and nums[r\right] == nums[right - 1]:
+                        while left < right and nums[\right] == nums[right - 1]:
                             right -= 1
 
                         left += 1
@@ -408,16 +408,16 @@ class Solution:
                 left, right = start, n - 1
 
                 while left < right:
-                    total = nums[left] + nums[r\right]
+                    total = nums[left] + nums[\right]
 
                     if total == target:
-                        result.append([nums[left], nums[r\right]])
+                        result.append([nums[left], nums[\right]])
 
                         left_value = nums[left]
-                        right_value = nums[r\right]
+                        right_value = nums[\right]
                         while left < right and nums[left] == left_value:
                             left += 1
-                        while left < right and nums[r\right] == right_value:
+                        while left < right and nums[\right] == right_value:
                             right -= 1
                     elif total < target:
                         left += 1
@@ -579,7 +579,7 @@ $$
 左边已经有足够高的墙，`right` 位置可以立即结算：
 
 $$
-water[r\right]=rightMax-height[r\right],
+water[\right]=rightMax-height[\right],
 $$
 
 然后令 `right -= 1`。
@@ -600,20 +600,20 @@ class Solution:
             return 0
 
         left = 0
-        right = len(he\right) - 1
+        right = len(height) - 1
         left_max = 0
         right_max = 0
         water = 0
 
         while left <= right:
             left_max = max(left_max, height[left])
-            right_max = max(right_max, height[r\right])
+            right_max = max(right_max, height[\right])
 
             if left_max <= right_max:
                 water += left_max - height[left]
                 left += 1
             else:
-                water += right_max - height[r\right]
+                water += right_max - height[\right]
                 right -= 1
 
         return water
@@ -624,7 +624,7 @@ class Solution:
 $$
 leftMax-height[left]\ge0,
 \qquad
-rightMax-height[r\right]\ge0.
+rightMax-height[\right]\ge0.
 $$
 
 遇到一根更高的新柱子时，它会更新边界，本格水量自然就是 0。
@@ -661,7 +661,7 @@ $$
 [0, left) 和 (right, n-1] 已经被正确结算；
 leftMax 是左侧已扫描区域的最高墙；
 rightMax 是右侧已扫描区域的最高墙；
-[left, r\right] 是尚未结算的区域。
+[left, \right] 是尚未结算的区域。
 ```
 
 每一轮选择较小的 `max` 那一侧。另一侧已经提供了不低于它的边界，所以这一格的水量不会再被未知区域改变。处理后区间至少缩小一格，最终所有位置都会被结算。
@@ -686,7 +686,7 @@ $$
 
 #### 3. 混用两种模板
 
-有些正确写法比较 `height[left]` 和 `height[r\right]`，另一些写法比较 `leftMax` 和 `rightMax`。两者的更新顺序和证明略有不同。这里使用的是 `max` 模板，不要只替换判断条件而保留另一套更新顺序。
+有些正确写法比较 `height[left]` 和 `height[\right]`，另一些写法比较 `leftMax` 和 `rightMax`。两者的更新顺序和证明略有不同。这里使用的是 `max` 模板，不要只替换判断条件而保留另一套更新顺序。
 
 #### 4. 忘记减去柱子本身
 

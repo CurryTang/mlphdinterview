@@ -51,7 +51,7 @@ The "double the tail" step in the two-tailed formula is exact when the null dist
 Observing $X=3$, well above the expected $0.185$, sets the alternative hypothesis to $H_1:p>\frac1{27}$ (the true proportion of Jokers is higher), calling for a right-tailed test:
 
 $$
-p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left( \frac1{27} \r\right)^k\left( \frac{26}{27} \r\right)^{5-k}=\frac{6891}{14348907}\approx0.00048
+p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left( \frac1{27} \right)^k\left( \frac{26}{27} \right)^{5-k}=\frac{6891}{14348907}\approx0.00048
 $$
 
 **Takeaway**: The right-tailed formula $\mathbb P(T\ge t_{\text{obs}})$ does not require the null-hypothesis success probability to be $\frac12$; write down the correct distribution of $T$ under $H_0$ (here $\mathrm{Binomial}(5,\frac1{27})$) and the formula itself carries over unchanged.
@@ -132,7 +132,7 @@ $$
 L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
 $$
 
-The two indicators give the valid range for $\theta$: $\theta\le X_{(1)}$ (no observation can fall below the lower endpoint) and $\theta\ge X_{(n)}/2$ (no observation can exceed the upper endpoint $2\theta$). The valid domain is $\theta\in\left[ \dfrac{X_{(n)}}2,\,X_{(1)} \r\right]$ (non-empty for any real sample).
+The two indicators give the valid range for $\theta$: $\theta\le X_{(1)}$ (no observation can fall below the lower endpoint) and $\theta\ge X_{(n)}/2$ (no observation can exceed the upper endpoint $2\theta$). The valid domain is $\theta\in\left[ \dfrac{X_{(n)}}2,\,X_{(1)} \right]$ (non-empty for any real sample).
 
 On this domain $\theta^{-n}$ is strictly decreasing, so the likelihood is maximized at the domain's left endpoint:
 
@@ -151,7 +151,7 @@ $$
 The first moment:
 
 $$
-\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \r\right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
+\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
 $$
 
 $$
@@ -185,7 +185,7 @@ $$
 **Derivation**: Let $x_1,\ldots,x_n$ be iid normal with known variance $\sigma^2$, with null hypothesis $H_0:\mu=0$ and alternative $H_1:\mu=\mu_0>0$ (writing $\mu$ for $\mu_0$). The goal is to simplify the likelihood ratio statistic and identify the sufficient statistic that determines the rejection region. The ratio of the two likelihoods:
 
 $$
-T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2} \r\right)}{\exp\left( -\dfrac{x_i^2}{2\sigma^2} \r\right)}
+T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2} \right)}{\exp\left( -\dfrac{x_i^2}{2\sigma^2} \right)}
 $$
 
 Expanding and subtracting the exponents of each term:
@@ -197,7 +197,7 @@ $$
 Summing over $i$ and exponentiating:
 
 $$
-T=\exp\left( \sum_{i=1}^n\left[ \frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2} \r\right] \r\right)=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \r\right)
+T=\exp\left( \sum_{i=1}^n\left[ \frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2} \right] \right)=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \right)
 $$
 
 For $\mu>0$, the coefficient $\mu/\sigma^2>0$, so $T$ is a strictly increasing function of $\sum_i x_i$, and the term $-n\mu^2/(2\sigma^2)$ in the exponent is a constant that does not depend on the data. So the event "$T>c$" is equivalent to "$\sum_i x_i>c''$", which is equivalent to "$\bar X>c'$" for some threshold $c'$. The rejection region of the likelihood ratio test is determined entirely by the sample mean $\bar X$, independent of the specific value of $\sigma^2$: all the information the sample carries for distinguishing $\mu=0$ from $\mu>0$ is contained in the single statistic $\bar X$, which is sufficient for this testing problem.
@@ -211,7 +211,7 @@ $$
 Factoring out the common product $\prod_i f(x_i)$ leaves a $1/N$-weighted sum of per-observation likelihood ratios $\dfrac{f(x_j-A)}{f(x_j)}$. This per-term ratio uses exactly the same algebra as the main derivation above; the only difference is an outer sum, by the law of total probability, over which group might have been shifted:
 
 $$
-\frac{f(x_j-A)}{f(x_j)}=\exp\left[ \frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2} \r\right]
+\frac{f(x_j-A)}{f(x_j)}=\exp\left[ \frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2} \right]
 $$
 
 **Takeaway**: If a simplified likelihood ratio can be written as a monotonic function of some statistic, that statistic is sufficient, and this conclusion does not depend on the specific value of $\sigma^2$. A mixture alternative does not change the per-observation likelihood-ratio algebra; it only adds an outer sum over the unknown category by the law of total probability.
@@ -257,13 +257,13 @@ $$
 $$
 
 $$
-\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \r\right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
+\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
 $$
 
 Since $\hat\theta_C=\frac43\bar X$ is a linear rescaling of the sample mean, its variance scales accordingly:
 
 $$
-\mathrm{Var}(\hat\theta_C)=\left( \frac43 \r\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
+\mathrm{Var}(\hat\theta_C)=\left( \frac43 \right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
 $$
 
 **Takeaway**: The method-of-moments procedure never changes: write the population moment, set it equal to the sample moment, solve for the parameter. Variance computations follow the same pattern: find the variance of a single observation first, then rescale by the linear coefficient relating the estimator to the sample mean.
@@ -293,13 +293,13 @@ $$
 Step 2, the distribution of $X_{(n)}$ under this density. A single observation has CDF:
 
 $$
-F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left( \frac x\theta \r\right)^3
+F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left( \frac x\theta \right)^3
 $$
 
 so:
 
 $$
-F_{X_{(n)}}(t)=\left( \frac t\theta \r\right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
+F_{X_{(n)}}(t)=\left( \frac t\theta \right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
 $$
 
 Step 3, moments and bias:
@@ -313,13 +313,13 @@ $$
 $$
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left( \frac{3n}{3n+1} \r\right)^2\theta^2
+\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left( \frac{3n}{3n+1} \right)^2\theta^2
 $$
 
 Let $m=3n$ and put the bracketed part over a common denominator $(m+2)(m+1)^2$:
 
 $$
-\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[ (m+1)^2-m(m+2) \r\right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
+\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[ (m+1)^2-m(m+2) \right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
 $$
 
 since $(m+1)^2-m(m+2)=m^2+2m+1-m^2-2m=1$. Substituting $m=3n$:

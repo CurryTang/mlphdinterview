@@ -247,7 +247,7 @@ class Solution:
 
             length_at[num] = length
             length_at[num - left] = length
-            length_at[num + r\right] = length
+            length_at[num + \right] = length
 
             longest = max(longest, length)
 

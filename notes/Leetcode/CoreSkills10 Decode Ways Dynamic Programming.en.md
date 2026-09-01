@@ -183,7 +183,7 @@ class Solution:
 ### 3. Robbery Family: House Robber & House Robber II
 
 #### House Robber I (Linear Street)
-- **Constraint**: Cannot rob two adjacent houses on the same n\right.
+- **Constraint**: Cannot rob two adjacent houses on the same night.
 - **State**: $dp[i]$ = Max money robbed considering first $i$ houses.
 - **Transition**: $dp[i] = \max(dp[i-1], dp[i-2] + nums[i-1])$.
 
@@ -752,7 +752,7 @@ def universal_knapsack(
         for j in range(1, capacity + 1):
             for weight, val in items:
                 if j >= weight:
-                    dp[j] += dp[j - we\right]
+                    dp[j] += dp[j - weight]
     else:
         # Standard: Items in outer loop, Capacity in inner loop
         for weight, val in items:
@@ -763,13 +763,13 @@ def universal_knapsack(
             )
             for j in step_range:
                 if problem_type in ("01_max", "complete_max"):
-                    dp[j] = max(dp[j], dp[j - we\right] + val)
+                    dp[j] = max(dp[j], dp[j - weight] + val)
                 elif problem_type in ("01_min", "complete_min"):
-                    dp[j] = min(dp[j], dp[j - we\right] + 1)
+                    dp[j] = min(dp[j], dp[j - weight] + 1)
                 elif problem_type in ("01_count", "complete_combo"):
-                    dp[j] += dp[j - we\right]
+                    dp[j] += dp[j - weight]
                 elif problem_type == "01_feas":
-                    dp[j] = dp[j] or dp[j - we\right]
+                    dp[j] = dp[j] or dp[j - weight]
 
     return dp[capacity]
 ```

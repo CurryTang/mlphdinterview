@@ -91,7 +91,7 @@ For this problem, it is worth memorizing `(value, min_so_far)` directly. A two-s
 
 A monotonic stack most often handles this question:
 
-> For every position in an array, find the first (nearest) greater or smaller element to its left or r\right.
+> For every position in an array, find the first (nearest) greater or smaller element to its left or right.
 
 The wording may change while the underlying query stays the same:
 
@@ -145,7 +145,7 @@ while stack and nums[i] > nums[stack[-1]]:
     answer[j] = i
 ```
 
-After the popping stops, push `i`: the current position now begins waiting for its own answer on the r\right. The values represented by the stack are non-increasing from bottom to top, but that monotonic order is a consequence of the waiting-and-removal process, not the goal by itself.
+After the popping stops, push `i`: the current position now begins waiting for its own answer on the right. The values represented by the stack are non-increasing from bottom to top, but that monotonic order is a consequence of the waiting-and-removal process, not the goal by itself.
 
 Why is the current `i` the **first** answer for a popped index `j`? Since `j` was pushed, the scan has visited `j + 1, j + 2, ...` in order. If an earlier value had satisfied the condition, it would already have popped `j`.
 
@@ -326,7 +326,7 @@ class Solution:
         stack = []
 
         for right in range(len(heights) + 1):
-            current = 0 if right == len(heights) else heights[r\right]
+            current = 0 if right == len(heights) else heights[\right]
 
             while stack and heights[stack[-1]] > current:
                 j = stack.pop()
@@ -334,7 +334,7 @@ class Solution:
                 width = right - left - 1
                 answer = max(answer, heights[j] * width)
 
-            stack.append(r\right)
+            stack.append(\right)
 
         return answer
 ```

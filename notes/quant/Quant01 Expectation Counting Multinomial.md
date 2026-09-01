@@ -35,7 +35,7 @@ $$
 \mathbb{E}[N_i] = 10 \times \frac16 = \frac{5}{3}
 $$
 
-**致命误区**：如果直接将期望拆开相乘，会得出 $\left( \frac{5}{3} \r\right)^6 \approx 21.43$。这是**完全错误**的！
+**致命误区**：如果直接将期望拆开相乘，会得出 $\left( \frac{5}{3} \right)^6 \approx 21.43$。这是**完全错误**的！
 
 **根本原因**：
 1. **总次数严格受限（负相关性）**：所有点数的频数之和固定受约束 $\sum_{i=1}^6 N_i = 10$。如果某个点数 $N_1$ 出现次数很多（例如 $N_1 = 5$），则留给其余 5 个点数的总次数只剩下 $5$ 次，其他点数的乘积必然大幅缩水。这种内在的**负相关性（Negative Correlation）**使得乘积的真实期望远小于各自边际期望的乘积。
@@ -48,21 +48,21 @@ $$
 这 10 次投掷的结果服从参数为 $n=10$、概率向量 $\boldsymbol{p} = (\frac16, \dots, \frac16)$ 的**多项分布（Multinomial Distribution）**：
 
 $$
-(N_1, N_2, \ldots, N_6) \sim \text{Multinomial}\left( 10;\, \frac16, \frac16, \frac16, \frac16, \frac16, \frac16 \r\right)
+(N_1, N_2, \ldots, N_6) \sim \text{Multinomial}\left( 10;\, \frac16, \frac16, \frac16, \frac16, \frac16, \frac16 \right)
 $$
 
 **核心定理（多项分布的下降阶乘矩公式）**：
 设 $(N_1, \dots, N_k) \sim \text{Multinomial}(n; p_1, \dots, p_k)$，记 $(x)_a = x(x-1)\cdots(x-a+1)$ 为下降阶乘（Falling Factorial），则对任意非负整数 $a_1, \dots, a_k$，有：
 
 $$
-\boxed{\mathbb{E}\left[ \prod_{j=1}^k (N_j)_{a_j} \r\right] = (n)_{a_1 + a_2 + \cdots + a_k} \prod_{j=1}^k p_j^{a_j}}
+\boxed{\mathbb{E}\left[ \prod_{j=1}^k (N_j)_{a_j} \right] = (n)_{a_1 + a_2 + \cdots + a_k} \prod_{j=1}^k p_j^{a_j}}
 $$
 
 **代入原题求解**：
 本题中每个点数的幂次均为 $1$，由于 $(N_i)_1 = N_i$，因此 $a_1 = a_2 = \cdots = a_6 = 1$，阶乘总阶数为 $\sum a_j = 6$：
 
 $$
-\mathbb{E}[N_1 N_2 N_3 N_4 N_5 N_6] = (10)_6 \left( \frac16 \r\right)^6
+\mathbb{E}[N_1 N_2 N_3 N_4 N_5 N_6] = (10)_6 \left( \frac16 \right)^6
 $$
 
 展开下降阶乘 $(10)_6 = 10 \times 9 \times 8 \times 7 \times 6 \times 5 = 151{,}200$：
@@ -102,13 +102,13 @@ $$
    $$
 2. 对于任意一组互不相同的指定序号 $(t_1, \dots, t_6)$，这 6 次独立试验分别掷出指定点数的概率为：
    $$
-   \mathbb{P}(X_{t_1, 1}=1, \dots, X_{t_6, 6}=1) = \left( \frac16 \r\right)^6
+   \mathbb{P}(X_{t_1, 1}=1, \dots, X_{t_6, 6}=1) = \left( \frac16 \right)^6
    $$
 
 因此所有非零项之和为：
 
 $$
-\mathbb{E}[N_1 N_2 \dots N_6] = (10)_6 \left( \frac16 \r\right)^6 = \frac{175}{54}
+\mathbb{E}[N_1 N_2 \dots N_6] = (10)_6 \left( \frac16 \right)^6 = \frac{175}{54}
 $$
 
 ---
@@ -210,7 +210,7 @@ $$
 当人数 $n$ 很大时，调和数具有著名的 Euler 渐近展开：
 
 $$
-H_n = \ln n + \gamma + \frac{1}{2n} - \frac{1}{12n^2} + O\left( \frac{1}{n^4} \r\right)
+H_n = \ln n + \gamma + \frac{1}{2n} - \frac{1}{12n^2} + O\left( \frac{1}{n^4} \right)
 $$
 
 其中 $\gamma \approx 0.57721566$ 为欧拉-马歇罗尼常数（Euler–Mascheroni constant）。
@@ -232,7 +232,7 @@ $$
 由于各 $I_i$ 相互独立，方差可以直接相加：
 
 $$
-\operatorname{Var}(K_n) = \sum_{i=1}^n \operatorname{Var}(I_i) = \sum_{i=1}^n \mathbb{P}(I_i=1)\big(1 - \mathbb{P}(I_i=1)\big) = \sum_{i=1}^n \frac{1}{i}\left( 1 - \frac{1}{i} \r\right)
+\operatorname{Var}(K_n) = \sum_{i=1}^n \operatorname{Var}(I_i) = \sum_{i=1}^n \mathbb{P}(I_i=1)\big(1 - \mathbb{P}(I_i=1)\big) = \sum_{i=1}^n \frac{1}{i}\left( 1 - \frac{1}{i} \right)
 $$
 
 $$

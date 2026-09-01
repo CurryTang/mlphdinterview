@@ -102,11 +102,11 @@ Embedding 演进路线与表征范式突破：
 - **理想的各向同性（Isotropy）**：表征向量在整个高维单位超球面 $\mathcal{S}^{d-1}$ 上各个方向**均匀分布（Uniform Distribution）**。
   其协方差矩阵满足各向同性条件：
 
-$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \r\right] = \frac{1}{d} \mathbf{I}_d$$
+$$\mathbb{E}_{\mathbf{h}}\left[ \mathbf{h} \mathbf{h}^T \right] = \frac{1}{d} \mathbf{I}_d$$
 
   此时协方差矩阵的所有特征值相等（$\lambda_1 = \lambda_2 = \dots = \lambda_d = \frac{1}{d}$），空间有效秩（Effective Rank）达到最大。两个任意语义无关的独立随机向量 $\mathbf{h}_i, \mathbf{h}_j$ 的余弦相似度期望为 0：
 
-$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \r\right] \approx 0$$
+$$\mathbb{E}_{i \neq j} \left[ \cos(\mathbf{h}_i, \mathbf{h}_j) \right] \approx 0$$
 
 - **表征退化与各向异性（Anisotropy / Cone Effect）**：
   在未经对比微调的自回归 Decoder-Only 模型中，协方差矩阵出现**极端的谱衰减（Extreme Spectral Decay）**：
@@ -144,11 +144,11 @@ $$\cos(\mathbf{h}_i, \mathbf{h}_j) \approx \frac{\|\mathbf{\mu}\|^2}{\|\mathbf{\
 
 对比学习损失（InfoNCE）通过最大化互信息将圆锥拉伸为超球面：
 
-$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \r\right]$$
+$$\mathcal{L}_{\text{InfoNCE}} = -\mathbb{E}\left[ \log \frac{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau}}{e^{\cos(\mathbf{h}_i, \mathbf{h}_i^+) / \tau} + \sum_{j \in \mathcal{N}} e^{\cos(\mathbf{h}_i, \mathbf{h}_j^-) / \tau}} \right]$$
 
 Wang & Isola (ICML 2020) 严格证明，当负样本数 $N \to \infty$ 时，$\mathcal{L}_{\text{InfoNCE}}$ 渐进等价分解为两大正交力量：
 
-$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (对齐性: 拉近正样本)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \r\right) \r\right]}_{\mathcal{L}_{\text{uniform}} \text{ (均匀性: 强行将表征均匀铺满超球面，消除圆锥)}}$$
+$$\mathcal{L}_{\text{InfoNCE}} \iff \underbrace{\mathbb{E}_{(\mathbf{x}, \mathbf{x}^+)} [\|\mathbf{h} - \mathbf{h}^+\|^2]}_{\mathcal{L}_{\text{align}} \text{ (对齐性: 拉近正样本)}} + \underbrace{\log \mathbb{E}_{\mathbf{x}, \mathbf{y} \sim p_{\text{data}}} \left[ \exp\left( -2 \|\mathbf{h}_x - \mathbf{h}_y\|^2 \right) \right]}_{\mathcal{L}_{\text{uniform}} \text{ (均匀性: 强行将表征均匀铺满超球面，消除圆锥)}}$$
 
 ```anisotropy-cone-demo
 ```
@@ -367,7 +367,7 @@ FP16 动态损失缩放 (Dynamic Loss Scaling) 闭环流程：
 
 标准因果语言建模采用交叉熵损失（Cross-Entropy Loss）：
 
-$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} \r\right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} \r\right)$$
+$$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1}^V e^{z_v}} \right) = -z_c + \ln \left( \sum_{v=1}^V e^{z_v} \right)$$
 
 #### (1) 随机初始化下的均匀分布假设
 在标准的模型参数初始化（如高斯分布 $\mathcal{N}(0, \sigma^2)$，其中 $\sigma = 0.02$ 或 Xavier/Kaiming 初始化）下：
@@ -375,7 +375,7 @@ $$\mathcal{L} = -\ln P(y = c \mid x_{<t}) = -\ln \left( \frac{e^{z_c}}{\sum_{v=1
 - 此时各 Token 的预测概率接近均匀分布（Uniform Distribution）：
   $$P(y = v) = \frac{e^{z_v}}{\sum_{j=1}^V e^{z_j}} \approx \frac{e^0}{V \cdot e^0} = \frac{1}{V}$$
 - 交叉熵损失严格简化为自然对数：
-  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V} \r\right) = \ln V$$
+  $$\mathcal{L}_{\text{init}} = -\ln \left( \frac{1}{V} \right) = \ln V$$
 
 #### (2) 考虑 Logits 初始方差的二阶泰勒展开推导
 若初始 Logits $z_v \sim \text{i.i.d. } \mathcal{N}(0, \sigma_z^2)$，令 $S = \sum_{v=1}^V e^{z_v}$。通过对 Log-Sum-Exp 进行二阶泰勒展开：
@@ -404,7 +404,7 @@ $$\mathbb{E}[\mathcal{L}_{\text{init}}] = -\mathbb{E}[z_c] + \mathbb{E}[\ln S] \
 #### (1) 温度系数 $T$ 的影响
 若在前向计算 Loss 时引入了温度系数 $T$（即计算 $\text{Softmax}(z / T)$）：
 
-$$\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} \r\right)$$
+$$\mathcal{L}(T) = -\frac{z_c}{T} + \ln \left( \sum_{v=1}^V e^{z_v / T} \right)$$
 
 - 当 $T \to \infty$ 时：Logits 方差被极致压缩，输出绝对均匀，$\mathcal{L} \to \ln V$；
 - 当 $T < 1.0$ 时：放大了初始 Logits 的微小随机扰动，初始 Loss 的方差与均值会略微偏大（$\mathbb{E}[\mathcal{L}] \approx \ln V + \frac{\sigma_z^2}{2 T^2}$）。
@@ -416,7 +416,7 @@ $$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln P(c) - \frac{\epsilon}{V}\sum_{
 
 在随机初始化（$P(v) \approx \frac{1}{V}$）时代入：
 
-$$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V} \r\right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V} \r\right) = \ln V$$
+$$\mathcal{L}_{\text{smooth}} = -(1-\epsilon)\ln \left( \frac{1}{V} \right) - \frac{\epsilon}{V} \cdot V \ln \left( \frac{1}{V} \right) = \ln V$$
 
 > 💡 **核心结论**：**无论标签平滑系数 $\epsilon$ 设为多少，在均匀随机初始化下，理论期望初始 Loss 严格恒等于 $\ln V$**！
 

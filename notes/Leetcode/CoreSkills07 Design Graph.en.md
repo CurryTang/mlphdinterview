@@ -2,12 +2,12 @@
 
 ## Module 1: Graph Representation
 
-Graphs are commonly stored in two ways: adjacency lists and adjacency matrices. An adjacency list suits sparse graphs, using a `node -> neighbors` mapping to hold each node's neighbors. An adjacency matrix suits graphs with few nodes and frequent edge queries, using an `n x n` 2D array to record whether an edge (or its we\right) exists between any two nodes.
+Graphs are commonly stored in two ways: adjacency lists and adjacency matrices. An adjacency list suits sparse graphs, using a `node -> neighbors` mapping to hold each node's neighbors. An adjacency matrix suits graphs with few nodes and frequent edge queries, using an `n x n` 2D array to record whether an edge (or its weight) exists between any two nodes.
 
 - Adjacency list space: `O(V + E)`; adjacency matrix space: `O(V^2)`.
 - Traversing every node and edge takes `O(V + E)` either way; under an adjacency matrix this bound degrades to `O(V^2)`, since scanning one node's neighbors already costs `O(V)`.
 
-Adding an edge to an undirected graph requires writing both `u -> v` and `v -> u`. A weighted graph's neighbor list usually stores `(neighbor, we\right)` tuples.
+Adding an edge to an undirected graph requires writing both `u -> v` and `v -> u`. A weighted graph's neighbor list usually stores `(neighbor, weight)` tuples.
 
 ```text
 addEdge(u, v, w=1):
@@ -451,7 +451,7 @@ class Solution:
         return count
 ```
 
-On `grid = [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]` there are three components: the 2x2 block in the top-left, the single isolated land cell in the middle, and the pair of adjacent cells in the bottom-r\right. The function returns 3. The `visited` set combined with flood fill guarantees each component is counted exactly once, at the moment it is first encountered.
+On `grid = [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]` there are three components: the 2x2 block in the top-left, the single isolated land cell in the middle, and the pair of adjacent cells in the bottom-right. The function returns 3. The `visited` set combined with flood fill guarantees each component is counted exactly once, at the moment it is first encountered.
 
 </details>
 
@@ -521,7 +521,7 @@ On the standard 8-row by 13-column example grid, the largest component covers 6 
 #### 1. In-Depth Strategy: Why Does Forward Search Cause TLE?
 
 - **The Forward Simulation Trap**:
-  If you test each inland cell $(r, c)$ by flowing downhill (only moving to neighbors with height $\le$ current cell) toward the Pacific (top/left) and Atlantic (bottom/r\right):
+  If you test each inland cell $(r, c)$ by flowing downhill (only moving to neighbors with height $\le$ current cell) toward the Pacific (top/left) and Atlantic (bottom/\right):
   - With $m \times n$ cells, each search may explore up to $O(mn)$ cells in the worst case;
   - Path memoization is complicated by directed flow cycles on plateaus;
   - The naive forward simulation runs in $O((mn)^2)$. For $m, n = 200$, this demands $1.6 \times 10^9$ operations $\implies$ guaranteed **Time Limit Exceeded (TLE)**.
@@ -582,8 +582,8 @@ class Solution:
     rows, cols = len(heights), len(heights[0])
     pacific, atlantic = set(), set()
 
-    def dfs(r, c, visited, prev_he\right):
-      # Out-of-bounds, visited pruning, and uphill flow check (heights[r][c] >= prev_he\right)
+    def dfs(r, c, visited, prev_height):
+      # Out-of-bounds, visited pruning, and uphill flow check (heights[r][c] >= prev_height)
       if (
           r < 0
           or r >= rows
@@ -604,7 +604,7 @@ class Solution:
     for r in range(rows):
       dfs(r, 0, pacific, heights[r][0])
 
-    # 2. Flow uphill from Atlantic borders (Bottom & R\right)
+    # 2. Flow uphill from Atlantic borders (Bottom & Right)
     for c in range(cols):
       dfs(rows - 1, c, atlantic, heights[rows - 1][c])
     for r in range(rows):
@@ -667,7 +667,7 @@ class SolutionBFS:
 
 1. **Plateaus and Equal Heights**:
    - The reversed flow condition is `heights[next] >= heights[curr]` with strict equality allowed;
-   - Water can flow in both directions between adjacent cells of equal he\right.
+   - Water can flow in both directions between adjacent cells of equal height.
 2. **Infinite Recursion on Flat Terrain**:
    - Because adjacent cells of the same height can flow both ways ($A \to B$ and $B \to A$), without checking `(r, c) in visited` at the start of `dfs`, execution would infinite-loop. Marking visited immediately at function entry is mandatory.
 
@@ -1152,7 +1152,7 @@ def union(self, a, b):
     return True
 ```
 
-Union by rank (an estimate of tree he\right) is an equivalent alternative strategy; both share the same idea of attaching the smaller tree under the larger one so trees do not grow deeper than necessary. Using path compression alone, or union by size/rank alone, bounds a single operation at `O(log n)` in the worst case. Combining both bounds any sequence of `n` operations to an amortized `O(α(n))` per operation, where `α` is the inverse Ackermann function, which stays at or below 4 for any realistic `n` and can be treated as approximately `O(1)`.
+Union by rank (an estimate of tree height) is an equivalent alternative strategy; both share the same idea of attaching the smaller tree under the larger one so trees do not grow deeper than necessary. Using path compression alone, or union by size/rank alone, bounds a single operation at `O(log n)` in the worst case. Combining both bounds any sequence of `n` operations to an amortized `O(α(n))` per operation, where `α` is the inverse Ackermann function, which stays at or below 4 for any realistic `n` and can be treated as approximately `O(1)`.
 
 Common pitfalls:
 
@@ -1362,7 +1362,7 @@ Nodes are numbered from 1 to `n`, so `UnionFind` is sized `n + 1` with index 0 l
 </details>
 ## Module 6: Minimum Spanning Tree, Prim and Kruskal
 
-Given a weighted, connected, undirected graph, a minimum spanning tree (MST) is a tree that includes all `n` nodes with the smallest possible total edge we\right. It has exactly `n-1` edges and contains no cycle. MST is the standard model for "connect everything at minimum total cost." Two algorithms dominate: Prim and Kruskal. Both rely on greedily adding edges, differing in the order and criteria used to add them.
+Given a weighted, connected, undirected graph, a minimum spanning tree (MST) is a tree that includes all `n` nodes with the smallest possible total edge weight. It has exactly `n-1` edges and contains no cycle. MST is the standard model for "connect everything at minimum total cost." Two algorithms dominate: Prim and Kruskal. Both rely on greedily adding edges, differing in the order and criteria used to add them.
 
 ### Prim's Algorithm
 
@@ -1743,7 +1743,7 @@ class Solution:
 
 At the start of round `0`, only `src` has price `0`, representing that "without taking any flight, you can only reach the starting point."
 
-Round `1` only allows transitions from the results of round `0`, so it can only reach cities accessible with one fl\right.
+Round `1` only allows transitions from the results of round `0`, so it can only reach cities accessible with one flight.
 
 Round `2` only allows transitions from the results of round `1`, so it reaches cities accessible with at most two flights.
 

@@ -48,8 +48,8 @@ def fm_predict(x, bias, linear_weights, factors):
 
 ```math
 \frac{1}{2}\sum_f
-\left[ \left( \sum_i v_{i,f}x_i \r\right)^2
--\sum_i(v_{i,f}x_i)^2 \r\right].
+\left[ \left( \sum_i v_{i,f}x_i \right)^2
+-\sum_i(v_{i,f}x_i)^2 \right].
 ```
 
 输入维度不一致时抛出 `ValueError`。

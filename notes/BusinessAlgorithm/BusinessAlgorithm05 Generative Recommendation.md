@@ -138,7 +138,7 @@ BPR 优化：
 
 ```math
 \mathcal L_{\mathrm{BPR}}
-=-\log\sigma\left(s(u,i^+)-s(u,i^-) \r\right).
+=-\log\sigma\left(s(u,i^+)-s(u,i^-) \right).
 ```
 
 对 [DPO](https://proceedings.neurips.cc/paper_files/paper/2023/hash/a85b405ed65c6477a4fe8302b5e06ce7-Abstract-Conference.html)，先定义相对 reference 的序列分数：
@@ -154,7 +154,7 @@ g_\theta(x,y)
 ```math
 \mathcal L_{\mathrm{DPO}}
 =-\log\sigma\left(
-\beta[g_\theta(x,y^+)-g_\theta(x,y^-)] \r\right).
+\beta[g_\theta(x,y^+)-g_\theta(x,y^-)] \right).
 ```
 
 两者在形式上同构：都要求正例的分数高于负例。BPR 的分数通常是 user-item 打分，DPO 的分数是整条生成序列相对 reference 的 log probability。reference 限制 policy 漂移，但没有替我们解决数据问题。推荐日志通常只展示一个列表，chosen/rejected 仍要靠日志、采样、旧策略或 reward model 构造。
@@ -166,7 +166,7 @@ policy gradient 的核心项是：
 ```math
 \nabla_\theta J
 \approx
-\mathbb E\left[ A_t\nabla_\theta\log\pi_\theta(a_t\mid s_t) \r\right].
+\mathbb E\left[ A_t\nabla_\theta\log\pi_\theta(a_t\mid s_t) \right].
 ```
 
 `A_t > 0` 时提高该 action 的概率，`A_t < 0` 时降低它。由此可以把 RL 直观理解成 reward-weighted 的正负样本学习，但这只是类比。一个 rollout 是正是负，取决于它相对 baseline 的 advantage，不只取决于 reward 的绝对高低；权重也会随 policy、采样批次和 baseline 改变。

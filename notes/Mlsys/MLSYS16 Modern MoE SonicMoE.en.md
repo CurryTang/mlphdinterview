@@ -106,7 +106,7 @@ Then take the top-k:
 scores = x @ router_weight
 probs = torch.softmax(scores, dim=-1)
 topk_weight, topk_expert = torch.topk(probs, k=top_k, dim=-1)
-topk_weight = topk_weight / topk_we\right.sum(dim=-1, keepdim=True)
+topk_weight = topk_weight / topk_weight.sum(dim=-1, keepdim=True)
 ```
 
 If `top_k=2`, a token might be routed to:
@@ -734,10 +734,10 @@ First, write a slow but clear version:
 ```python
 def naive_moe_forward(x, router, experts, top_k):
     # x: [num_tokens, hidden]
-    scores = x @ router.we\right.T
+    scores = x @ router.weight.T
     probs = torch.softmax(scores, dim=-1)
     topk_weight, topk_expert = torch.topk(probs, top_k, dim=-1)
-    topk_weight = topk_weight / topk_we\right.sum(dim=-1, keepdim=True)
+    topk_weight = topk_weight / topk_weight.sum(dim=-1, keepdim=True)
 
     out = torch.zeros_like(x)
 

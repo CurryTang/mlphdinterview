@@ -36,7 +36,7 @@ For two random variables $X,Y$, covariance is defined as:
 $$
 \operatorname{Cov}(X,Y)
 =
-\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \r\right]
+\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
 $$
 
 It measures whether the two variables tend to move in the same direction when they deviate from their means.
@@ -236,7 +236,7 @@ Expanding the variance:
 $$
 \operatorname{Var}(W)
 =
-\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \r\right)
+\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
 =
 \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
 $$
@@ -421,7 +421,7 @@ $$
 All six off-diagonal correlations equal $-1/3$, so their sum is:
 
 $$
-6\cdot\left( -\frac13 \r\right)=-2
+6\cdot\left( -\frac13 \right)=-2
 $$
 
 This matrix is PSD. Geometrically, it corresponds to the four vertex directions of a regular tetrahedron in three-dimensional space: four unit vectors point symmetrically in different directions, their center is the origin, and the dot product of every pair is $-1/3$.
@@ -520,9 +520,9 @@ $$
 Then their sum is:
 
 $$
-\binom n2\left( -\frac{1}{n-1} \r\right)
+\binom n2\left( -\frac{1}{n-1} \right)
 =
-\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \r\right)
+\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
 =
 -\frac n2
 $$

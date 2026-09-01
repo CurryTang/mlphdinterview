@@ -51,7 +51,7 @@ $$
 观测到 $X=3$ 远大于期望的 $0.185$，备择假设是 $H_1:p>\frac1{27}$（真实大小王比例更高），走右尾检验：
 
 $$
-p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left( \frac1{27} \r\right)^k\left( \frac{26}{27} \r\right)^{5-k}=\frac{6891}{14348907}\approx0.00048
+p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left( \frac1{27} \right)^k\left( \frac{26}{27} \right)^{5-k}=\frac{6891}{14348907}\approx0.00048
 $$
 
 **要点**：右尾公式 $\mathbb P(T\ge t_{\text{obs}})$ 不要求原假设下的成功概率是 $\frac12$；只要写出正确的 $H_0$ 下分布（这里是 $\mathrm{Binomial}(5,\frac1{27})$），公式本身照搬不变。
@@ -132,7 +132,7 @@ $$
 L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
 $$
 
-两个指示函数给出 $\theta$ 的合法范围：$\theta\le X_{(1)}$（每个观测值都不能小于下端点）和 $\theta\ge X_{(n)}/2$（每个观测值都不能超过上端点 $2\theta$）。合法定义域是 $\theta\in\left[ \dfrac{X_{(n)}}2,\,X_{(1)} \r\right]$（对真实样本这个区间非空）。
+两个指示函数给出 $\theta$ 的合法范围：$\theta\le X_{(1)}$（每个观测值都不能小于下端点）和 $\theta\ge X_{(n)}/2$（每个观测值都不能超过上端点 $2\theta$）。合法定义域是 $\theta\in\left[ \dfrac{X_{(n)}}2,\,X_{(1)} \right]$（对真实样本这个区间非空）。
 
 在这个区间上 $\theta^{-n}$ 严格递减，似然最大的位置是区间左端点：
 
@@ -151,7 +151,7 @@ $$
 一阶矩：
 
 $$
-\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \r\right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
+\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
 $$
 
 $$
@@ -185,7 +185,7 @@ $$
 **推导**：设 $x_1,\ldots,x_n$ 独立同分布于方差已知为 $\sigma^2$ 的正态分布，原假设 $H_0:\mu=0$，备择假设 $H_1:\mu=\mu_0>0$（记号简化为 $\mu$），目标是化简似然比统计量，找出决定拒绝域的充分统计量。两个似然之比：
 
 $$
-T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2} \r\right)}{\exp\left( -\dfrac{x_i^2}{2\sigma^2} \r\right)}
+T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2} \right)}{\exp\left( -\dfrac{x_i^2}{2\sigma^2} \right)}
 $$
 
 对每一项的指数部分展开并相减：
@@ -197,7 +197,7 @@ $$
 对 $i$ 求和后取指数：
 
 $$
-T=\exp\left( \sum_{i=1}^n\left[ \frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2} \r\right] \r\right)=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \r\right)
+T=\exp\left( \sum_{i=1}^n\left[ \frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2} \right] \right)=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \right)
 $$
 
 当 $\mu>0$ 时，系数 $\mu/\sigma^2>0$，$T$ 是 $\sum_i x_i$ 的严格递增函数，指数中的 $-n\mu^2/(2\sigma^2)$ 是不依赖数据的常数。于是事件"$T>c$"等价于"$\sum_i x_i>c''$"，也等价于"$\bar X>c'$"（对某个阈值 $c'$）。似然比检验的拒绝域完全由样本均值 $\bar X$ 决定，和 $\sigma^2$ 的具体取值无关；样本携带的、用于区分 $\mu=0$ 和 $\mu>0$ 的全部信息都包含在 $\bar X$ 这一个统计量里，$\bar X$ 是这个检验问题的充分统计量。
@@ -211,7 +211,7 @@ $$
 把公共因子 $\prod_i f(x_i)$ 提出来之后，剩下的是逐项似然比 $\dfrac{f(x_j-A)}{f(x_j)}$ 按 $1/N$ 加权求和；这个逐项比值和上面主推导里的代数完全一样，只是对"哪一组可能被平移"这个未知量按全概率公式做了求和：
 
 $$
-\frac{f(x_j-A)}{f(x_j)}=\exp\left[ \frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2} \r\right]
+\frac{f(x_j-A)}{f(x_j)}=\exp\left[ \frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2} \right]
 $$
 
 **要点**：似然比化简后如果能写成某个统计量的单调函数，这个统计量就是充分统计量，且这个结论不依赖 $\sigma^2$ 的具体取值；混合备择假设不改变单个观测的似然比代数，只是在外层多套一层对未知类别的全概率求和。
@@ -257,13 +257,13 @@ $$
 $$
 
 $$
-\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \r\right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
+\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
 $$
 
 $\hat\theta_C=\frac43\bar X$ 是样本均值的线性变换，方差按线性变换的规则缩放：
 
 $$
-\mathrm{Var}(\hat\theta_C)=\left( \frac43 \r\right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
+\mathrm{Var}(\hat\theta_C)=\left( \frac43 \right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
 $$
 
 **要点**：矩估计的求解顺序固定不变：写出总体矩、令其等于样本矩、解出参数；方差的计算同样先算单个观测的方差，再按估计量对样本均值的线性系数缩放。
@@ -293,13 +293,13 @@ $$
 第二步，求 $X_{(n)}$ 在这个密度下的分布。单个观测的 CDF：
 
 $$
-F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left( \frac x\theta \r\right)^3
+F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left( \frac x\theta \right)^3
 $$
 
 所以：
 
 $$
-F_{X_{(n)}}(t)=\left( \frac t\theta \r\right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
+F_{X_{(n)}}(t)=\left( \frac t\theta \right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
 $$
 
 第三步，矩和偏差：
@@ -313,13 +313,13 @@ $$
 $$
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left( \frac{3n}{3n+1} \r\right)^2\theta^2
+\mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left( \frac{3n}{3n+1} \right)^2\theta^2
 $$
 
 令 $m=3n$，把括号部分通分到 $(m+2)(m+1)^2$：
 
 $$
-\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[ (m+1)^2-m(m+2) \r\right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
+\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[ (m+1)^2-m(m+2) \right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
 $$
 
 因为 $(m+1)^2-m(m+2)=m^2+2m+1-m^2-2m=1$。代入 $m=3n$：

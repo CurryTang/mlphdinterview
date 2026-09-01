@@ -435,7 +435,7 @@ We get:
 $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 =
-4\left( \frac14+\frac{\arcsin ho}{2\pi} \r\right)-1
+4\left( \frac14+\frac{\arcsin ho}{2\pi} \right)-1
 =
 \frac{2}{\pi}\arcsin ho
 $$

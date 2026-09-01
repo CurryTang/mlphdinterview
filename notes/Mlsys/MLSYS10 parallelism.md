@@ -158,13 +158,13 @@ explanation: 70B BF16 参数约 140GB，Adam 状态和梯度还会继续放大�
 
 **延迟修正**：当每跳数据量很小时，每跳延迟 $T_\text{min} \approx 1\,\mu\text{s}$ 成为瓶颈：
 
-$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \r\right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \r\right]$$
+$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \right]$$
 
 对于 TPU v5e（$W_\text{ici} = 4.5 \times 10^{10}$ B/s），**延迟阈值约为 45 kB**：小于此大小的数组是延迟受限的。
 
 **多轴 AllGather**：对多个网格轴 $\{X_1, X_2, \ldots\}$ 同时 AllGather，带宽成比例增加：
 
-$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \r\right]$$
+$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \right]$$
 
 ![AllGather 实测带宽（TPU v5e 8×16）：在 10 MB 以上可达约 95% 峰值](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
 
@@ -1503,7 +1503,7 @@ explanation: TP 通信最频繁，最好走 NVLink/NVSwitch；PP 只在 stage �
 
 **本地激活形状公式**：
 
-$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \r\right]$$
+$$\text{local shape} = \left[ \frac{B}{\text{dp}}, \; \frac{S}{\text{cp} \times \text{sp}}, \; D \right]$$
 
 - $B / \text{dp}$：数据并行分了 batch
 - $S / (\text{cp} \times \text{sp})$：Context Parallel 和 Sequence Parallel 共同分了序列

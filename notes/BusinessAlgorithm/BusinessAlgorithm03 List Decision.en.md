@@ -44,7 +44,7 @@ MMR selects one candidate at a time from the unselected set:
 i^*
 =\arg\max_{i\in R}
 \left[ \theta\,r_i
--(1-\theta)\max_{j\in S}\operatorname{sim}(i,j) \r\right].
+-(1-\theta)\max_{j\in S}\operatorname{sim}(i,j) \right].
 ```
 
 `r_i` is the fine-ranking utility, `S` is the set of already selected items, and `θ` controls the trade-off between utility and diversity.
@@ -70,7 +70,7 @@ Selection at each round:
 
 ```math
 \arg\max_i
-\left[ \theta r_i-(1-\theta)\max_{j\in S}sim(i,j) \r\right].
+\left[ \theta r_i-(1-\theta)\max_{j\in S}sim(i,j) \right].
 ```
 
 `similarities` uses a dictionary of `(item_a, item_b) -> score`; providing only one direction is acceptable. In case of ties in MMR scores, sort by candidate ID in ascending order.

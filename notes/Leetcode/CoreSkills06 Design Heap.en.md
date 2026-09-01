@@ -60,7 +60,7 @@ Problems are drawn from the Heap / Priority Queue module of [NeetCode 150](https
 | Order | Problem | What to Master |
 |---:|---|---|
 | 1 | [703. Kth Largest Element In a Stream](https://neetcode.io/problems/kth-largest-element-in-a-stream/question?list=neetcode150) | A fixed-size heap whose top is the answer |
-| 2 | [1046. Last Stone We\right](https://neetcode.io/problems/last-stone-weight/question?list=neetcode150) | Negating values to simulate a max-heap |
+| 2 | [1046. Last Stone Weight](https://neetcode.io/problems/last-stone-weight/question?list=neetcode150) | Negating values to simulate a max-heap |
 | 3 | [973. K Closest Points to Origin](https://neetcode.io/problems/k-closest-points-to-origin/question?list=neetcode150) | The same fixed-size heap, with distance as the comparison key |
 | 4 | [215. Kth Largest Element In an Array](https://neetcode.io/problems/kth-largest-element-in-an-array/question?list=neetcode150) | The same template, plus quickselect as a follow-up |
 | 5 | [621. Task Scheduler](https://neetcode.io/problems/task-scheduler/question?list=neetcode150) | Frequency counting plus a formula, easier to remember than heap simulation |
@@ -114,7 +114,7 @@ heapq.heappush(max_heap, -x)
 largest = -heapq.heappop(max_heap)
 ```
 
-Used by: Last Stone We\right.
+Used by: Last Stone Weight.
 
 ### 3. Merging Bounded Candidate Sets
 
@@ -316,19 +316,19 @@ class Solution:
         target = len(nums) - k
 
         def partition(left: int, right: int) -> int:
-            pivot_index = random.randint(left, r\right)
-            nums[pivot_index], nums[r\right] = nums[r\right], nums[pivot_index]
+            pivot_index = random.randint(left, \right)
+            nums[pivot_index], nums[\right] = nums[\right], nums[pivot_index]
             store = left
-            for i in range(left, r\right):
-                if nums[i] < nums[r\right]:
+            for i in range(left, \right):
+                if nums[i] < nums[\right]:
                     nums[i], nums[store] = nums[store], nums[i]
                     store += 1
-            nums[store], nums[r\right] = nums[r\right], nums[store]
+            nums[store], nums[\right] = nums[\right], nums[store]
             return store
 
         left, right = 0, len(nums) - 1
         while True:
-            pivot_index = partition(left, r\right)
+            pivot_index = partition(left, \right)
             if pivot_index == target:
                 return nums[pivot_index]
             if pivot_index < target:

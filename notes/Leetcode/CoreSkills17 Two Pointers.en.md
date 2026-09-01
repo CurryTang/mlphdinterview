@@ -60,7 +60,7 @@ Opposite direction two pointers usually start from both ends:
 left, right = 0, len(nums) - 1
 
 while left < right:
-    if should_move_left(nums[left], nums[r\right]):
+    if should_move_left(nums[left], nums[\right]):
         left += 1
     else:
         right -= 1
@@ -194,7 +194,7 @@ $$
 The brute-force method enumerates three indices, requiring $O(n^3)$. A better approach is to sort the array, fix the first number `nums[i]`, and then search in the remaining interval to the right:
 
 $$
-nums[left]+nums[r\right]=-nums[i].
+nums[left]+nums[\right]=-nums[i].
 $$
 
 This reduces 3Sum to a Two Sum problem on a sorted array.
@@ -226,15 +226,15 @@ class Solution:
             right = len(nums) - 1
 
             while left < right:
-                total = nums[i] + nums[left] + nums[r\right]
+                total = nums[i] + nums[left] + nums[\right]
 
                 if total == 0:
-                    result.append([nums[i], nums[left], nums[r\right]])
+                    result.append([nums[i], nums[left], nums[\right]])
 
-                    # After a match, skip duplicate values on the left and r\right.
+                    # After a match, skip duplicate values on the left and right.
                     while left < right and nums[left] == nums[left + 1]:
                         left += 1
-                    while left < right and nums[r\right] == nums[right - 1]:
+                    while left < right and nums[\right] == nums[right - 1]:
                         right -= 1
 
                     left += 1
@@ -339,16 +339,16 @@ class Solution:
                 right = n - 1
 
                 while left < right:
-                    total = nums[i] + nums[j] + nums[left] + nums[r\right]
+                    total = nums[i] + nums[j] + nums[left] + nums[\right]
 
                     if total == target:
                         result.append([
-                            nums[i], nums[j], nums[left], nums[r\right]
+                            nums[i], nums[j], nums[left], nums[\right]
                         ])
 
                         while left < right and nums[left] == nums[left + 1]:
                             left += 1
-                        while left < right and nums[r\right] == nums[right - 1]:
+                        while left < right and nums[\right] == nums[right - 1]:
                             right -= 1
 
                         left += 1
@@ -408,16 +408,16 @@ class Solution:
                 left, right = start, n - 1
 
                 while left < right:
-                    total = nums[left] + nums[r\right]
+                    total = nums[left] + nums[\right]
 
                     if total == target:
-                        result.append([nums[left], nums[r\right]])
+                        result.append([nums[left], nums[\right]])
 
                         left_value = nums[left]
-                        right_value = nums[r\right]
+                        right_value = nums[\right]
                         while left < right and nums[left] == left_value:
                             left += 1
-                        while left < right and nums[r\right] == right_value:
+                        while left < right and nums[\right] == right_value:
                             right -= 1
                     elif total < target:
                         left += 1
@@ -579,7 +579,7 @@ $$
 There is already a sufficiently tall wall on the left, and the `right` position can be settled immediately:
 
 $$
-water[r\right]=rightMax-height[r\right],
+water[\right]=rightMax-height[\right],
 $$
 
 Then set `right -= 1`.
@@ -600,20 +600,20 @@ class Solution:
             return 0
 
         left = 0
-        right = len(he\right) - 1
+        right = len(height) - 1
         left_max = 0
         right_max = 0
         water = 0
 
         while left <= right:
             left_max = max(left_max, height[left])
-            right_max = max(right_max, height[r\right])
+            right_max = max(right_max, height[\right])
 
             if left_max <= right_max:
                 water += left_max - height[left]
                 left += 1
             else:
-                water += right_max - height[r\right]
+                water += right_max - height[\right]
                 right -= 1
 
         return water
@@ -624,7 +624,7 @@ Here, `left_max` and `right_max` are updated first, so:
 $$
 leftMax-height[left]\ge0,
 \qquad
-rightMax-height[r\right]\ge0.
+rightMax-height[\right]\ge0.
 $$
 
 When encountering a new, taller column, it updates the boundary, and the water volume at that cell naturally becomes 0.
@@ -661,7 +661,7 @@ During the loop, the following is always maintained:
 [0, left) and (right, n-1] have been correctly settled;
 leftMax is the tallest wall in the scanned region on the left;
 rightMax is the tallest wall in the scanned region on the right;
-[left, r\right] is the unsettled region.
+[left, \right] is the unsettled region.
 ```
 
 Each round selects the side with the smaller `max`. The other side has already provided a boundary not lower than it, so the water volume at this cell will not be changed by unknown regions. After processing, the interval shrinks by at least one cell, and eventually, all positions are settled.
@@ -686,7 +686,7 @@ For the taller side, we don't yet know if there is a wall of equal height on the
 
 #### 3. Mixing two templates
 
-Some correct implementations compare `height[left]` and `height[r\right]`, while others compare `leftMax` and `rightMax`. The update order and proofs for both are slightly different. This guide uses the `max` template; do not replace the condition while keeping the other update order.
+Some correct implementations compare `height[left]` and `height[\right]`, while others compare `leftMax` and `rightMax`. The update order and proofs for both are slightly different. This guide uses the `max` template; do not replace the condition while keeping the other update order.
 
 #### 4. Forgetting to subtract the column itself
 
