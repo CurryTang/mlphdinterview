@@ -634,7 +634,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('本板块共 20 篇笔记')).toBeInTheDocument();
+    expect(await screen.findByText('本板块共 21 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
@@ -1252,6 +1252,16 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('heading', { name: /ML Coding 06C · RLVR, Reasoning Models & Agentic RL/i })).toBeInTheDocument();
+  });
+
+  it('routes directly to BusinessAlgorithm08 Industrial ML & AB Testing note', async () => {
+    window.location.hash = '#BusinessAlgorithm08%20Industrial%20ML%20AB%20Testing%20Experimentation.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /第 21 章 · 工业级 ML 与 A\/B 测试实战/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /Chapter 21 · Industrial ML & A\/B Testing/i })).toBeInTheDocument();
   });
 });
 

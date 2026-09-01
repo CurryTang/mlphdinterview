@@ -2585,8 +2585,14 @@ const businessAlgorithmNoteDefinitions = [
   createTutorialDefinition(
     '第 20 章 · 系统设计与上线验证',
     'BusinessAlgorithm07 System Design.md',
-    null,
+    'BusinessAlgorithm07 System Design.en.md',
     { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
+  ),
+  createTutorialDefinition(
+    '第 21 章 · 工业级 ML 与 A/B 测试实战：从因果推断到 Sign-Up 漏斗设计',
+    'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md',
+    'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.en.md',
+    { directory: 'BusinessAlgorithm', category: 'Industrial ML & A/B Testing', difficulty: 'Applied' },
   ),
 ];
 
@@ -2611,6 +2617,7 @@ const businessAlgorithmEnglishTitles = {
   'BusinessAlgorithm05 Generative Recommendation.md': 'Chapter 18 · LLM Ranking and Generative Recommendation',
   'BusinessAlgorithm06 Agentic Search.md': 'Chapter 19 · RAG and Agentic Search',
   'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
+  'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md': 'Chapter 21 · Industrial ML & A/B Testing: Causal Inference & Sign-Up Funnel Design',
 };
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({
