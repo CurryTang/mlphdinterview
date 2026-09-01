@@ -1,4 +1,6 @@
-# 多目标排序全景：负迁移机理、模型架构演进与跷跷板效应治理
+import os
+
+zh_content = """# 多目标排序全景：负迁移机理、模型架构演进与跷跷板效应治理
 
 在工业级推荐系统（Industrial Recommender Systems）与计算广告中，业务往往需要同时优化多个相互冲突或相关性各异的业务指标。例如：短视频推荐需同时兼顾**点击率（pCTR）、长读完播率（pLongView）、点赞收藏互动率（pInteract）与负反馈率（pDislike）**；电商推荐需同时优化**点击率（pCTR）、加购率（pCart）、购买转化率（pCVR）与客单成交额（pGMV）**。
 
@@ -31,11 +33,9 @@
 ```
 
 ### 1. 梯度方向负冲突（Negative Gradient Cosine Similarity）
-当两个任务的损失函数 $\mathcal{L}_A$ 与 $\mathcal{L}_B$ 对共享参数 $W_{	ext{shared}}$ 计算梯度时：
+当两个任务的损失函数 $\mathcal{L}_A$ 与 $\mathcal{L}_B$ 对共享参数 $W_{\text{shared}}$ 计算梯度时：
 
-$$\mathbf{g}_A = 
-abla_{W_{	ext{shared}}} \mathcal{L}_A, \quad \mathbf{g}_B = 
-abla_{W_{	ext{shared}}} \mathcal{L}_B$$
+$$\mathbf{g}_A = \nabla_{W_{\text{shared}}} \mathcal{L}_A, \quad \mathbf{g}_B = \nabla_{W_{\text{shared}}} \mathcal{L}_B$$
 
 若 $\cos(\mathbf{g}_A, \mathbf{g}_B) < 0$（即 $\mathbf{g}_A \cdot \mathbf{g}_B < 0$），两个任务的梯度方向形成钝角甚至反向对冲。此时参数更新 $\Delta W \propto -(\mathbf{g}_A + \mathbf{g}_B)$ 必然会导致至少一个任务的损失上升，形成**典型的跷跷板恶性循环**。
 
@@ -62,7 +62,7 @@ abla_{W_{	ext{shared}}} \mathcal{L}_B$$
 | 架构方案 | 网络拓扑与路由机制 | 负迁移防御能力 | 优势（Pros） | 缺陷与局限（Cons） |
 |---|---|---|---|---|
 | **Shared-Bottom** | 所有任务完全共享单一底层 MLP，顶部分叉 Task Towers。 | **极差**（无防御能力） | 结构最简单，计算开销极低。 | 任务间梯度强行对冲，跷跷板效应最剧烈。 |
-| **MMoE<br>(Multi-gate MoE)** | 共享一组 Experts，每个任务拥有独立的 Softmax 门控网络 $g_t(x) = 	ext{Softmax}(W_t x)$。 | **一般**（部分缓解） | 实现了动态软路由加权，自适应分配专家。 | **所有 Expert 依然是全局共享的**，弱相关任务间仍会争夺 Expert 容量。 |
+| **MMoE<br>(Multi-gate MoE)** | 共享一组 Experts，每个任务拥有独立的 Softmax 门控网络 $g_t(x) = \text{Softmax}(W_t x)$。 | **一般**（部分缓解） | 实现了动态软路由加权，自适应分配专家。 | **所有 Expert 依然是全局共享的**，弱相关任务间仍会争夺 Expert 容量。 |
 | **PLE<br>(Progressive Extraction)** | 显式解耦为 **任务独占专家（Task-Specific Experts）** 与 **全局共享专家（Shared Experts）**，分层渐进抽取。 | **卓越（SOTA）**（彻底阻断负迁移） | **任务私有特征与共享特征严格物理隔离**；高层逐步融合，彻底消除负迁移。 | 参数量与前向计算开销略微增加（约 15%~25%）。 |
 
 ---
@@ -72,14 +72,14 @@ abla_{W_{	ext{shared}}} \mathcal{L}_B$$
 #### (1) 同方差不确定性加权（Homoscedastic Uncertainty Weighting, Kendall et al.）
 传统固定超参数加权 $\mathcal{L} = \sum w_k \mathcal{L}_k$ 极其依赖人工网格调参。Uncertainty Weighting 将每个任务的不确定性 $\sigma_k^2$ 建模为可学习参数：
 
-$$\mathcal{L}_{	ext{total}} = \sum_{k=1}^K \left( rac{1}{2\sigma_k^2} \mathcal{L}_k + \ln \sigma_k ight)$$
+$$\mathcal{L}_{\text{total}} = \sum_{k=1}^K \left( \frac{1}{2\sigma_k^2} \mathcal{L}_k + \ln \sigma_k \right)$$
 
-- **自适应平衡机制**：当任务 $k$ 噪声大、方差 $\sigma_k^2$ 高时，自动缩减其损失权重 $rac{1}{2\sigma_k^2}$，同时对数正则项 $\ln \sigma_k$ 防止权重退化为 0。
+- **自适应平衡机制**：当任务 $k$ 噪声大、方差 $\sigma_k^2$ 高时，自动缩减其损失权重 $\frac{1}{2\sigma_k^2}$，同时对数正则项 $\ln \sigma_k$ 防止权重退化为 0。
 
 #### (2) 冲突梯度正交投影（PCGrad: Projecting Conflicting Gradients）
 当检测到任务 $i$ 与任务 $j$ 的梯度发生冲突时（$\mathbf{g}_i \cdot \mathbf{g}_j < 0$），将 $\mathbf{g}_i$ **正交投影到 $\mathbf{g}_j$ 的法平面上**：
 
-$$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2} \mathbf{g}_j$$
+$$\mathbf{g}_i \leftarrow \mathbf{g}_i - \frac{\mathbf{g}_i \cdot \mathbf{g}_j}{\|\mathbf{g}_j\|^2} \mathbf{g}_j$$
 
 - **效果**：消除了对任务 $j$ 有害的分量，同时最大限度保留了任务 $i$ 的原更新方向，从梯度动力学层面彻底切断负对冲。
 
@@ -87,10 +87,10 @@ $$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\
 
 ### 3. 决策级分数融合（Constrained Fusion & Pareto Optimization）
 
-即使底层多任务模型预估出了极准的 $\hat{p}_{	ext{CTR}}$ 与 $\hat{p}_{	ext{CVR}}$，线上如何将它们融合成单一排序分 $S$ 依然是业务核心：
-- **传统朴素加权**：$S = \hat{p}_{	ext{CTR}} 	imes \hat{p}_{	ext{CVR}}^lpha$（超参 $lpha$ 静态固化，遇大促或流量波动易失效）；
+即使底层多任务模型预估出了极准的 $\hat{p}_{\text{CTR}}$ 与 $\hat{p}_{\text{CVR}}$，线上如何将它们融合成单一排序分 $S$ 依然是业务核心：
+- **传统朴素加权**：$S = \hat{p}_{\text{CTR}} \times \hat{p}_{\text{CVR}}^\alpha$（超参 $\alpha$ 静态固化，遇大促或流量波动易失效）；
 - **带约束的拉格朗日优化与 PID 控制**：
-  $$\max \mathbb{E}[	ext{GMV}] \quad 	ext{s.t.} \quad 	ext{CTR} \ge 	ext{CTR}_0, \quad 	ext{Dislike Rate} \le 	au$$
+  $$\max \mathbb{E}[\text{GMV}] \quad \text{s.t.} \quad \text{CTR} \ge \text{CTR}_0, \quad \text{Dislike Rate} \le \tau$$
   在线服务维护实时 PID 控制器，根据最近 5 分钟的实际 CTR 动态调整拉格朗日乘子 $\lambda(t)$，保证在满足生态护栏的前提下实现主商业目标最大化。
 
 ---
@@ -116,9 +116,9 @@ $$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\
 ### 1. 离线消融诊断标准四步法（The 4-Step Offline Ablation Protocol）
 
 1. **单任务性能天花板测定（Single-Task Benchmarks）**：
-   为每个任务独立训练一个专属的单任务模型（完全无参数共享），记录其 $	ext{GAUC}_{	ext{Single}, k}$ 作为该任务的理论上界；
+   为每个任务独立训练一个专属的单任务模型（完全无参数共享），记录其 $\text{GAUC}_{\text{Single}, k}$ 作为该任务的理论上界；
 2. **多任务相对增益测算（Task Delta Matrix）**：
-   计算 $\Delta 	ext{GAUC}_k = 	ext{GAUC}_{	ext{MTL}, k} - 	ext{GAUC}_{	ext{Single}, k}$。若出现“任务 A $\Delta 	ext{GAUC} = +0.008$，但任务 B $\Delta 	ext{GAUC} = -0.006$”，直接证实严重负迁移；
+   计算 $\Delta \text{GAUC}_k = \text{GAUC}_{\text{MTL}, k} - \text{GAUC}_{\text{Single}, k}$。若出现“任务 A $\Delta \text{GAUC} = +0.008$，但任务 B $\Delta \text{GAUC} = -0.006$”，直接证实严重负迁移；
 3. **梯度冲突热力图追踪（Gradient Cosine Heatmap）**：
    在训练过程中每 1000 步记录一次各任务梯度余弦相似度 $\cos(\mathbf{g}_i, \mathbf{g}_j)$。若负相关步数占比超过 30%，必须引入 PLE 或 PCGrad；
 4. **子群切片差异性检验（Slice Heterogeneity）**：
@@ -129,9 +129,14 @@ $$\mathbf{g}_i \leftarrow \mathbf{g}_i - rac{\mathbf{g}_i \cdot \mathbf{g}_j}{\
 ### 2. 线上实时护栏与自适应控权机制（Online Guardrails）
 
 1. **动态 PID 控权闭环**：
-   设目标为最大化 GMV 且确保大盘 CTR 相对跌幅不超过 $-1\%$。线上收集实时滑动窗口（如 5 分钟）的 $	ext{CTR}_{	ext{online}}$：
-   $$e(t) = 	ext{CTR}_{	ext{online}}(t) - 	ext{CTR}_{	ext{target}}$$
-   $$\lambda(t) = \lambda(t-1) + K_p e(t) + K_i \int e(	au) d	au + K_d rac{de(t)}{dt}$$
+   设目标为最大化 GMV 且确保大盘 CTR 相对跌幅不超过 $-1\%$。线上收集实时滑动窗口（如 5 分钟）的 $\text{CTR}_{\text{online}}$：
+   $$e(t) = \text{CTR}_{\text{online}}(t) - \text{CTR}_{\text{target}}$$
+   $$\lambda(t) = \lambda(t-1) + K_p e(t) + K_i \int e(\tau) d\tau + K_d \frac{de(t)}{dt}$$
    动态调整融合公式中的 CTR 权重 $\lambda(t)$；
 2. **自动熔断回路（Circuit Breakers）**：
    若线上核心护栏指标（如负反馈率上升 $> 5\%$ 或核心类目 GMV 下跌 $> 2\%$）持续 3 个监控周期，系统自动将分流灰度流量无缝降级回退到基线策略，并向值班团队发送 P0 告警。
+"""
+
+with open("notes/BusinessAlgorithm/BusinessAlgorithm02B Multi-Objective Ranking.md", "w", encoding="utf-8") as f:
+    f.write(zh_content)
+print("Successfully updated BusinessAlgorithm02B Chinese note")
