@@ -2594,6 +2594,12 @@ const businessAlgorithmNoteDefinitions = [
     'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.en.md',
     { directory: 'BusinessAlgorithm', category: 'Industrial ML & A/B Testing', difficulty: 'Applied' },
   ),
+  createTutorialDefinition(
+    '第 22 章 · 工业级推荐排序实战：模型选型、样本采样与多维指标评测体系',
+    'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md',
+    'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.en.md',
+    { directory: 'BusinessAlgorithm', category: 'Industrial Recommendation', difficulty: 'Applied' },
+  ),
 ];
 
 const businessAlgorithmEnglishTitles = {
@@ -2618,6 +2624,7 @@ const businessAlgorithmEnglishTitles = {
   'BusinessAlgorithm06 Agentic Search.md': 'Chapter 19 · RAG and Agentic Search',
   'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
   'BusinessAlgorithm08 Industrial ML AB Testing Experimentation.md': 'Chapter 21 · Industrial ML & A/B Testing: Causal Inference & Sign-Up Funnel Design',
+  'BusinessAlgorithm09 Industrial Recommendation Ranking Metrics Sampling.md': 'Chapter 22 · Industrial Recommendation Ranking: Base Models, Sampling & Multi-Tier Metrics',
 };
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({

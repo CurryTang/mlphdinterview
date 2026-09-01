@@ -634,7 +634,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('本板块共 21 篇笔记')).toBeInTheDocument();
+    expect(await screen.findByText('本板块共 22 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
@@ -1262,6 +1262,16 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('heading', { name: /Chapter 21 · Industrial ML & A\/B Testing/i })).toBeInTheDocument();
+  });
+
+  it('routes directly to BusinessAlgorithm09 Industrial Recommendation Ranking note', async () => {
+    window.location.hash = '#BusinessAlgorithm09%20Industrial%20Recommendation%20Ranking%20Metrics%20Sampling.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /第 22 章 · 工业级推荐排序实战/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { name: /Chapter 22 · Industrial Recommendation Ranking/i })).toBeInTheDocument();
   });
 });
 
