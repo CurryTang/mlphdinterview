@@ -83,6 +83,130 @@ $$\hat{p} = \frac{p}{p + w(1-p)} \implies p = \frac{\hat{p}}{\hat{p} + \frac{1 -
 
 ---
 
+### 2. Five Long-Sequence Architectures PyTorch Pseudocode (Collapsible)
+
+<details class="exercise" open>
+<summary><span class="q-label">Arch 1 · Pseudocode</span> <span class="q-text">Truncated Self-Attention (SASRec / BST Truncated Transformer)</span></summary>
+
+```python
+import torch
+import torch.nn as nn
+
+class SASRecTruncatedTransformer(nn.Module):
+    def __init__(self, embed_dim=64, num_heads=2, num_layers=2, max_len=50, dropout=0.1):
+        super().__init__()
+        self.pos_emb = nn.Embedding(max_len, embed_dim)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim, nhead=num_heads, dim_feedforward=embed_dim * 4,
+            dropout=dropout, batch_first=True, activation='gelu'
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.layer_norm = nn.LayerNorm(embed_dim)
+
+    def forward(self, seq_embeddings, mask=None):
+        B, N, d = seq_embeddings.shape
+        positions = torch.arange(N, device=seq_embeddings.device).unsqueeze(0).expand(B, N)
+        x = self.layer_norm(seq_embeddings + self.pos_emb(positions))
+        causal_mask = torch.triu(torch.ones(N, N, device=x.device), diagonal=1).bool()
+        padding_mask = (~mask) if mask is not None else None
+        out = self.transformer(x, mask=causal_mask, src_key_padding_mask=padding_mask)
+        return out[:, -1, :] # context representation of latest action [B, d]
+```
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Arch 2 · Pseudocode</span> <span class="q-text">Compressive Memory Networks (MIMN Neural Slot Memory Matrix)</span></summary>
+
+```python
+class MIMNMemoryNetwork(nn.Module):
+    def __init__(self, embed_dim=64, num_slots=8):
+        super().__init__()
+        self.num_slots = num_slots # compressed into C=8 slots
+        self.write_gate = nn.Linear(embed_dim * 2, num_slots)
+        self.erase_gate = nn.Linear(embed_dim, embed_dim)
+        self.add_gate = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, user_history_stream, initial_memory=None):
+        B, L, d = user_history_stream.shape
+        M = initial_memory if initial_memory is not None else torch.zeros(B, self.num_slots, d, device=user_history_stream.device)
+        for t in range(L):
+            xt = user_history_stream[:, t, :]
+            w = torch.softmax(self.write_gate(torch.cat([xt, M.mean(dim=1)], dim=-1)), dim=-1) # [B, C]
+            erase = torch.sigmoid(self.erase_gate(xt)).unsqueeze(1)
+            add = torch.tanh(self.add_gate(xt)).unsqueeze(1)
+            M = M * (1.0 - w.unsqueeze(-1) * erase) + (w.unsqueeze(-1) * add)
+        return M # Slot matrix [B, C, d], read online with O(1) complexity
+```
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Arch 3 · Pseudocode</span> <span class="q-text">Lifelong Target-Attention (DIN Full Sequence Target Attention)</span></summary>
+
+```python
+class DINFullTargetAttention(nn.Module):
+    def __init__(self, embed_dim=64, hidden_dim=64):
+        super().__init__()
+        self.activation_unit = nn.Sequential(
+            nn.Linear(4 * embed_dim, hidden_dim),
+            nn.PReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, candidate_query, lifelong_history, mask=None):
+        B, L, d = lifelong_history.shape
+        q_exp = candidate_query.unsqueeze(1).expand(B, L, d)
+        interaction = torch.cat([q_exp, lifelong_history, q_exp - lifelong_history, q_exp * lifelong_history], dim=-1)
+        scores = self.activation_unit(interaction).squeeze(-1) # [B, L]
+        if mask is not None:
+            scores = scores.masked_fill(~mask, 0.0)
+        return torch.bmm(scores.unsqueeze(1), lifelong_history).squeeze(1) # [B, d]
+```
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Arch 4 · Pseudocode</span> <span class="q-text">Hierarchical Multi-Resolution Pooling (HPMN Multi-Scale Decay)</span></summary>
+
+```python
+class HPMNHierarchicalPooling(nn.Module):
+    def __init__(self, embed_dim=64):
+        super().__init__()
+        self.decay_lambda = nn.Parameter(torch.tensor([0.05]))
+
+    def forward(self, session_seq, daily_seq, monthly_seq, time_deltas_daily, time_deltas_monthly):
+        h_session = session_seq.mean(dim=1)
+        decay_daily = torch.exp(-torch.clamp(self.decay_lambda, min=1e-4) * time_deltas_daily).unsqueeze(-1)
+        h_daily = (daily_seq * decay_daily).sum(dim=1) / (decay_daily.sum(dim=1) + 1e-6)
+        decay_monthly = torch.exp(-torch.clamp(self.decay_lambda, min=1e-4) * time_deltas_monthly).unsqueeze(-1)
+        h_monthly = (monthly_seq * decay_monthly).sum(dim=1) / (decay_monthly.sum(dim=1) + 1e-6)
+        return torch.cat([h_session, h_daily, h_monthly], dim=-1) # [B, 3*d]
+```
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Arch 5 · Pseudocode</span> <span class="q-text">Retrieval-Augmented Lifelong History (SIM Hard/Soft Search)</span></summary>
+
+```python
+class SIMRetrievalAugmentedModel(nn.Module):
+    def __init__(self, embed_dim=64, top_m=50):
+        super().__init__()
+        self.top_m = top_m
+        self.time_delta_emb = nn.Embedding(100, embed_dim)
+        self.attention = DINFullTargetAttention(embed_dim * 2, hidden_dim=64)
+
+    def forward(self, cand_item_id, cand_category_id, user_lifelong_ids, user_lifelong_cats, user_lifelong_times, item_embed_table):
+        # Stage 1: Hard Search category filtering
+        match_mask = (user_lifelong_cats == cand_category_id.unsqueeze(1))
+        # Stage 2: Target-Attention with time-delta embeddings
+        cand_vec = item_embed_table(cand_item_id)
+        hist_vec = item_embed_table(user_lifelong_ids[:, :self.top_m])
+        time_vec = self.time_delta_emb(user_lifelong_times[:, :self.top_m])
+        combined_hist = torch.cat([hist_vec, time_vec], dim=-1)
+        combined_cand = torch.cat([cand_vec, torch.zeros_like(cand_vec)], dim=-1)
+        return self.attention(combined_cand, combined_hist)
+```
+</details>
+
+
 ## Module 4: E-Commerce Generative Reranking Pipeline
 
 ```text
