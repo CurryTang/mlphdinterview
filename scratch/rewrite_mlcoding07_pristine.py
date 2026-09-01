@@ -1,4 +1,6 @@
-# ML Coding 07 · 工业级机器学习体系：推荐精排、长序列建模、生成式重排与 A/B 测试因果推断
+# -*- coding: utf-8 -*-
+
+zh_content = r"""# ML Coding 07 · 工业级机器学习体系：推荐精排、长序列建模、生成式重排与 A/B 测试因果推断
 
 在工业界机器学习（Industrial Machine Learning）与大规模互联网推荐系统（Large-Scale Recommender Systems）中，算法工程师不仅要精通模型底层架构设计与损失函数优化，更要深刻理解**从海量稀疏样本流、终身行为序列建模、全屏生成式重排决策，到多维指标评测体系与在线 A/B 实验因果推断**的完整工业级闭环。
 
@@ -422,3 +424,9 @@ $$\text{Var}(\hat{Y}_{\text{CUPED}}) = \text{Var}(Y) \cdot (1 - \rho^2)$$
 >   2. **流量稀释因果机制**：改版吸引了额外原本不点击的低意图用户，在分母稀释下仍维持原有高转化率，证明落地页承接能力强劲；
 >   3. **小样本推断**：$p > 0.05$ 仅代表统计功效不足（$\text{Power} < 20\%$），绝非无效证明。采用经验贝叶斯收缩模型 $\hat{\theta}_{\text{small}}^{\text{shrunk}} = B \mu_{\text{grand}} + (1-B) \bar{Y}_{\text{small}}$ 跨层借力，是工业界防误判的金标准。
 </details>
+"""
+
+with open("notes/MLCoding/MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.md", "w", encoding="utf-8") as f:
+    f.write(zh_content)
+
+print("Rewrote MLCoding07.md pristine!")
