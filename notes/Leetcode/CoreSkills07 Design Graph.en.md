@@ -1116,9 +1116,17 @@ Generating neighbors by substitution produces `O(L · 26)` candidates per word, 
 
 </details>
 
-## Module 5: Union-Find
+---
 
-Union-Find (also called disjoint set union) maintains a collection of disjoint sets and supports two operations: `find(x)` returns the representative (root) of the set containing `x`, and `union(a, b)` merges the two sets containing `a` and `b` into one. In graph problems, a "set" corresponds to a connected component: running `union` once per edge means that, at the end, any two nodes sharing the same root are in the same connected component, with no need to build an explicit adjacency list or run a traversal.
+## Module 5: Disjoint Set Union (Union-Find & Cycle Detection)
+
+> **🎯 Two Primary Pillars of Union-Find**:
+> 1. **Dynamic Connected Components**: Performing `union(u, v)` for each edge dynamically maintains connectivity clusters without building adjacency lists or running BFS/DFS traversals.
+> 2. **Undirected Cycle Detection**: If `find(u) == find(v)` when adding edge $(u, v)$, both endpoints are already connected. **Adding this edge strictly forms a closed cycle**! This is the foundational criterion for Kruskal's MST and Redundant Connection.
+
+Union-Find (also called disjoint set union) maintains a collection of disjoint sets and supports two core operations:
+- `find(x)`: Returns the representative (root) of the set containing $x$, amortized to $\mathcal{O}(\alpha(n)) \approx \mathcal{O}(1)$ with path compression;
+- `union(a, b)`: Merges the two sets containing $a$ and $b$; **returns `False` if $a$ and $b$ already share the same root (Cycle Alarm!)**.
 
 ### The Core Design of Union-Find
 
