@@ -1607,6 +1607,68 @@ while heap:
 
 For Cheapest Flights, standard Dijkstra is not enough, because "the lowest price to the same city" is not necessarily the final best state. A more expensive state that used fewer flights may still be feasible later. Therefore, the Dijkstra formulation must expand the state to `(cost, city, stopsUsed)`.
 
+### Bellman-Ford Algorithm Review & Standard Pseudocode
+
+Bellman-Ford is a single-source shortest path algorithm founded on **Dynamic Programming (DP)** principles.
+
+#### 1. Mathematical Invariant & State Transitions
+- **State Definition**: $dist^{(k)}[v]$ represents the shortest distance from source $src$ to vertex $v$ using **at most $k$ edges**.
+- **State Transition Equation (Edge Relaxation)**:
+  $$dist^{(k)}[v] = \min \left( dist^{(k-1)}[v], \min_{(u, v) \in E} \left( dist^{(k-1)}[u] + w(u, v) \right) \right)$$
+- **Convergence Theorem**: In a graph with $V$ vertices and **no negative-weight cycles**, any simple shortest path contains at most $V - 1$ edges. Thus, performing $V - 1$ rounds of all-edge relaxation guarantees global convergence!
+
+```text
+Standard Bellman-Ford Pseudocode (O(V · E) Time, Supports Negative Weights & Negative Cycle Detection):
+--------------------------------------------------------------------------------
+def bellman_ford(V, edges, src):
+    # 1. Initialize distance array
+    dist = [float("inf")] * V
+    dist[src] = 0
+
+    # 2. Perform V - 1 relaxation rounds (iterate all edges each round)
+    for i in range(V - 1):
+        updated = False
+        for u, v, w in edges:
+            if dist[u] != float("inf") and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                updated = True
+        if not updated:  # Early termination optimization
+            break
+
+    # 3. Round V check for negative cycles: if relaxation still happens, a negative cycle exists!
+    for u, v, w in edges:
+        if dist[u] != float("inf") and dist[u] + w < dist[v]:
+            raise ValueError("Graph contains a reachable negative weight cycle!")
+
+    return dist
+```
+
+```text
+Bounded-Step Bellman-Ford Pseudocode (Cheapest Flights Within K Stops):
+--------------------------------------------------------------------------------
+def bellman_ford_k_edges(V, edges, src, k_edges):
+    dist = [float("inf")] * V
+    dist[src] = 0
+
+    # Perform exactly k_edges relaxation passes
+    for _ in range(k_edges):
+        next_dist = dist.copy()  # Strictly read from previous round to prevent intra-round chaining!
+        for u, v, w in edges:
+            if dist[u] != float("inf") and dist[u] + w < next_dist[v]:
+                next_dist[v] = dist[u] + w
+        dist = next_dist
+
+    return dist
+```
+
+#### Shortest Path Algorithms Comparison Matrix
+
+| Algorithm | Paradigm | Edge Weights | Step / Hop Constraints | Time Complexity | Space Complexity | Practical / Interview Application |
+|---|---|---|---|---|---|---|
+| **Dijkstra** | Greedy + Min-Heap Priority Queue | **Non-negative only** | No (requires state expansion) | $\mathcal{O}(E \log V)$ | $\mathcal{O}(V + E)$ | **Standard choice for non-negative SSSP** |
+| **Bellman-Ford** | Dynamic Programming ($V-1$ rounds) | **Supports negative edges** | **Native support ($K$ rounds)** | $\mathcal{O}(V \cdot E)$ | $\mathcal{O}(V)$ | **Step limits / Negative weights / Negative cycle detection** |
+| **SPFA (Queue-Optimized BF)** | Queue-driven relaxation tracker | **Supports negative edges** | No | Avg $\mathcal{O}(E)$, Worst $\mathcal{O}(V \cdot E)$ | $\mathcal{O}(V)$ | Sparse graph constant-factor optimization |
+
 ### 13. Network Delay Time
 
 The input is a directed weighted graph `times`, where each edge `[u, v, w]` means a signal takes `w` time units to travel from node `u` to node `v`, and all weights are non-negative. A signal starts at node `k`. Find the minimum time for all `n` nodes to receive the signal; if some node is unreachable, return `-1`. This is the worked example missing from the Dijkstra review above: a single source, one shortest distance per node, with no need to track an extra state dimension such as the number of edges used, unlike Cheapest Flights.
