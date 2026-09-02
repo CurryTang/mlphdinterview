@@ -1068,9 +1068,8 @@ describe('App', () => {
     expect(within(pdp).getByRole('button', { name: /s = "ababa"/i })).toBeInTheDocument();
     expect(within(pdp).getByRole('button', { name: /s = "babad"/i })).toBeInTheDocument();
 
-    // Step forward via slider
-    const slider = within(pdp).getByRole('slider', { name: '选择回文子串 DP 演示步骤' });
-    fireEvent.change(slider, { target: { value: '1' } });
+    // Step forward
+    fireEvent.click(within(pdp).getByRole('button', { name: /下一步/i }));
 
     // Verify step index increment and state change
     expect(within(pdp).getByText(/单个字符自身必为回文/i)).toBeInTheDocument();
