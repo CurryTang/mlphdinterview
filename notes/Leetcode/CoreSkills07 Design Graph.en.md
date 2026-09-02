@@ -1877,6 +1877,7 @@ This is usually more direct than pushing all `(city, stops)` states into a heap,
 - Using standard Dijkstra's `dist[city]` to discard a state that is more expensive but uses fewer stops.
 ---
 
+
 ## Module 8: Eulerian Paths (Hierholzer's Algorithm & Reconstruct Itinerary)
 
 ### 16. Reconstruct Itinerary (LeetCode 332)
@@ -1925,33 +1926,7 @@ Most graph problems (e.g. topological sort, number of islands, course schedule) 
    - As recursion unwinds, outer airports traverse any remaining sub-circuits before appending themselves;
 4. **Final Reverse**: Reversing the post-order sequence `route[::-1]` yields the complete, correctly spliced itinerary starting from `"JFK"`.
 
-### Hierholzer's Algorithm Implementation
-
-```python
-import heapq
-from collections import defaultdict
-from typing import List
-
-
-class Solution:
-    def findItinerary(self, tickets: List[List[str]]) -> List[str]:
-        graph = defaultdict(list)
-        for src, dst in tickets:
-            heapq.heappush(graph[src], dst)
-
-        route = []
-
-        def dfs(node: str) -> None:
-            while graph[node]:
-                nxt = heapq.heappop(graph[node])
-                dfs(nxt)
-            route.append(node)
-
-        dfs("JFK")
-        return route[::-1]
-```
-
-### Trace by Hand
+#### Trace by Hand
 
 `tickets = [["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]`
 
@@ -1970,22 +1945,19 @@ Calling `dfs("JFK")`:
 10. Back in step 1's `ATL`, no candidates left, appends `ATL`: `route = [SFO, ATL, SFO, JFK, ATL]`.
 11. Back in the outermost `JFK`, no candidates left, appends `JFK`: `route = [SFO, ATL, SFO, JFK, ATL, JFK]`.
 
-Reversing `route` gives `["JFK", "ATL", "JFK", "SFO", "ATL", "SFO"]`, matching the expected output, confirmed by running the script.
+Reversing `route` gives `["JFK", "ATL", "JFK", "SFO", "ATL", "SFO"]`, matching the expected output.
 
-### Common Pitfalls
+#### Common Pitfalls
 
-- Not sorting each airport's destination list lexicographically (or not maintaining it as a heap). DFS then pops a candidate that is not the smallest available, and even if every ticket eventually gets used, the resulting itinerary may not be the lexicographically smallest one.
-- Appending a node to the route on entry to an airport, before its heap of outgoing tickets is exhausted. This preorder placement records an airport's position before its dead-end sub-loops get resolved, so once a dead-end branch is hit, there is no way to splice the remaining tickets back in. A concrete case is `tickets = [["JFK","KUL"],["JFK","NRT"],["NRT","JFK"]]`: `KUL` is the lexicographically smallest option out of `JFK`. Appending it on entry would end the route after a single ticket, since `KUL` has no outgoing edge. With postorder, `KUL` is still chosen first by the greedy rule, but it gets recorded immediately because it has no outgoing edge (`route = [KUL]` at that point), and DFS backtracks to try `JFK`'s other ticket, `NRT`. The final reversed result is `["JFK", "NRT", "JFK", "KUL"]`, with `KUL` correctly placed at the end, confirmed by running the script.
-- Forgetting to reverse `route` at the end. The unreversed order has the endpoint first and the starting airport last, the opposite of the actual itinerary.
-- Using a plain list with `list.remove` or index-based deletion to simulate consuming a ticket. Without sorting first, or with an incorrect deletion, an already-used ticket can get picked again, or the destination chosen is not the lexicographically smallest one available.
-
-### 16. Reconstruct Itinerary
+- Not sorting each airport's destination list lexicographically (or not maintaining it as a heap). DFS then pops a candidate that is not the smallest available.
+- Appending a node to the route on entry to an airport, before its heap of outgoing tickets is exhausted. This preorder placement causes premature termination at dead ends without splicing back remaining sub-circuits.
+- Forgetting to reverse `route` at the end. The unreversed order has the endpoint first and the starting airport last.
 
 | Item | Content |
 |---|---|
 | Combined technique | Hierholzer's algorithm: a min-heap of outgoing destinations per node, DFS appends nodes in postorder, the whole result is reversed at the end |
 | Key invariant | A node is appended to `route` only once its heap is exhausted (every ticket leaving it has been used), guaranteeing dead ends and sub-loops get spliced into the correct position |
-| Time / space | Building the heaps is `O(E log E)` (`E` is the number of tickets), DFS visits every edge once for `O(E)`, total `O(E log E)`; space `O(E)` |
+| Time / space | Building the heaps is $\mathcal{O}(E \log E)$ ($E$ is the number of tickets), DFS visits every edge once for $\mathcal{O}(E)$, total $\mathcal{O}(E \log E)$; space $\mathcal{O}(E)$ |
 
 #### Quick Coding: Reconstruct Itinerary
 

@@ -1937,6 +1937,7 @@ class Solution:
 - 用普通 Dijkstra 的 `dist[city]` 压掉了"更贵但 stops 更少"的状态。
 ---
 
+
 ## 模块八：欧拉路径（Hierholzer 算法与 Reconstruct Itinerary）
 
 ### 16. Reconstruct Itinerary（重建行程 · LeetCode 332）
@@ -1985,37 +1986,7 @@ class Solution:
    - 递归回溯时，外层机场会继续调用其它未走完的子回路，待所有子回路走完后才将自身入栈；
 4. **终点反转**：DFS 结束后 `route` 中的顺序是“逆向记录”（终点在最前、起点在最后），将 `route` 整体翻转（`route[::-1]`）即得到完美拼接了所有子回路的合法行程！
 
-### Hierholzer 算法
-
-每个出发机场维护一个目的地的最小堆（或排序后的列表），保证每次都能取出字典序最小的未使用目的地。DFS 从 `JFK` 出发，每一步弹出当前机场堆里最小的目的地并递归深入；当某个机场的堆已经耗尽（没有未使用的机票可以继续走）时，把这个机场追加进 `route`。这个追加动作发生在递归调用返回之后，也就是后序位置。
-
-后序追加是这个算法能正确工作的关键。DFS 沿着字典序最小的选择贪心前进，如果提前走进了一个死胡同（机场还有票没用完，但当前分支已经没有出边可走），后序保证这个死胡同节点会在它所在的死胡同被记录，而递归返回后外层调用会继续尝试同一机场的其它未用机票，把之前跳过的子回路接回主路径。整个 DFS 结束后 `route` 里节点的顺序是"完成时间"从早到晚，终点在最前、起点在最后，把 `route` 整体反转就是从起点开始、按机票使用顺序排列的合法行程。
-
-```python
-import heapq
-from collections import defaultdict
-from typing import List
-
-
-class Solution:
-    def findItinerary(self, tickets: List[List[str]]) -> List[str]:
-        graph = defaultdict(list)
-        for src, dst in tickets:
-            heapq.heappush(graph[src], dst)
-
-        route = []
-
-        def dfs(node: str) -> None:
-            while graph[node]:
-                nxt = heapq.heappop(graph[node])
-                dfs(nxt)
-            route.append(node)
-
-        dfs("JFK")
-        return route[::-1]
-```
-
-### 手工推演
+#### 手工推演示例
 
 `tickets = [["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]`
 
@@ -2034,22 +2005,19 @@ class Solution:
 10. 回到第 1 步的 `ATL`，已无候选，后序追加 `ATL`，`route = [SFO, ATL, SFO, JFK, ATL]`。
 11. 回到最外层的 `JFK`，已无候选，后序追加 `JFK`，`route = [SFO, ATL, SFO, JFK, ATL, JFK]`。
 
-反转 `route` 得到 `["JFK", "ATL", "JFK", "SFO", "ATL", "SFO"]`，与预期输出一致，已用脚本验证。
+反转 `route` 得到 `["JFK", "ATL", "JFK", "SFO", "ATL", "SFO"]`，与预期输出一致。
 
-### 常见坑
+#### 常见易错坑点
 
 - 每个机场的目的地列表没有按字典序排序（或没有用堆维护），DFS 弹出的不是当前最小的候选目的地，即便最终用光了所有机票，得到的也可能不是字典序最小的那一种合法行程。
-- 把追加动作写在进入机场时（前序），没有等到这个机场的堆耗尽后再追加。这样在遇到死胡同子回路时会提前把还没走完的机场记进结果，之后再也没有机会把剩下的机票接回来。典型例子是 `tickets = [["JFK","KUL"],["JFK","NRT"],["NRT","JFK"]]`：`JFK` 的候选里 `KUL` 字典序最小，若一进入 `KUL` 就前序追加，代码会在只用掉一张票时因为 `KUL` 无出边而提前结束；用后序写法，`KUL` 虽然最先被贪心选中，也会因为没有出边而立刻在后序里被记录（此时 `route = [KUL]`），DFS 转而回溯继续 `JFK` 的另一张票 `NRT`，最终反转后得到 `["JFK", "NRT", "JFK", "KUL"]`，`KUL` 被正确地放在了终点位置，已用脚本验证。
+- 把追加动作写在进入机场时（前序），没有等到这个机场的堆耗尽后再追加。这样在遇到死胡同子回路时会提前把还没走完的机场记进结果，之后再也没有机会把剩下的机票接回来。
 - 最后忘记反转 `route`，直接返回后序序列，得到的顺序是终点在前、起点在后，和实际的行程顺序正好相反。
-- 用普通列表存目的地并用 `list.remove` 或下标删除模拟"取用"，如果没有先排序或者删除逻辑写错，容易重复选中同一张已用过的机票，或者没有优先选中字典序最小的目的地。
-
-### 16. Reconstruct Itinerary
 
 | 项目 | 内容 |
 |---|---|
 | 组合技巧 | Hierholzer 算法：每个节点的出边用最小堆维护，DFS 按后序把节点加入结果，最后整体反转 |
 | 关键不变量 | 只有当前机场堆耗尽（这个机场发出的所有机票都已使用）时才把它加入 `route`，保证死胡同和子回路能正确接回主路径 |
-| 时间 / 空间 | 建堆 `O(E log E)`（`E` 是机票数），DFS 访问每条边一次是 `O(E)`，总计 `O(E log E)`；空间 `O(E)` |
+| 时间 / 空间 | 建堆 $\mathcal{O}(E \log E)$（$E$ 是机票数），DFS 访问每条边一次是 $\mathcal{O}(E)$，总计 $\mathcal{O}(E \log E)$；空间 $\mathcal{O}(E)$ |
 
 #### Quick Coding：Reconstruct Itinerary
 
@@ -2085,7 +2053,7 @@ class Solution:
         return route[::-1]
 ```
 
-`graph[node]` 是一个最小堆，保存 `node` 出发但还没用掉的机票目的地，堆顶始终是字典序最小的候选。DFS 每次弹出并深入一个目的地，直到某个机场的堆耗尽，才把这个机场追加进 `route`；这个"耗尽后再追加"的后序写法保证死胡同或子回路总能在恰当的位置被记录下来，不需要额外的回溯撤销逻辑。最后反转 `route`，因为后序记录的顺序是终点在前、起点在后。
+`graph[node]` 是一个最小堆，保存 `node` 出发但还没用掉的机票目的地，堆顶始终是字典序最小的候选。DFS 每次弹出并深入一个目的地，直到某个机场的堆耗尽，才把这个机场追加进 `route`；这个“耗尽后再追加”的后序写法保证死胡同或子回路总能在恰当的位置被记录下来，不需要额外的回溯撤销逻辑。最后反转 `route`，因为后序记录的顺序是终点在前、起点在后。
 
 </details>
 
