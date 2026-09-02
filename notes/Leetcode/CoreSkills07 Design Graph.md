@@ -1783,11 +1783,42 @@ class Solution:
 
 </details>
 
-### 14. Swim in Rising Water
+### 14. Swim in Rising Water（水位上升的泳池中游泳 · LeetCode 778）
 
-题目给出 `n x n` 的高程网格 `grid`。水从左上角开始随时间线性上涨，进入某个格子的前提是当前水位不低于这个格子的高程；一条路径能通过的时间等于路径上出现过的最大高程。目标是求这个路径瓶颈在所有从左上角到右下角的路径里的最小值，这是一个 minimax path 问题。
+#### 题目描述与 Minimax 本质
+题目给出 `n x n` 的高程网格 `grid`。水从左上角 `(0, 0)` 开始随时间 $t$ 线性上涨，在时刻 $t$，你只能游进高程不超过 $t$ 的相邻格子（即 $t \ge \text{grid}[r][c]$）。
+一条从起点到终点 `(n-1, n-1)` 的路径所耗费的最早到达时间，等于该路径上所有格子高程的**最大值（路径瓶颈）**。
+目标是：在所有连通起点与终点的可行路径中，找出耗时最小（即路径最大值最小）的那条路径。这是一个经典的 **Minimax Path（最小化最大值 / 最小瓶颈路）** 问题。
 
-这可以按 Dijkstra/Prim 的思路改写成同一套堆驱动的松弛流程：堆里存 `(bottleneck, r, c)`，`bottleneck` 表示从起点到 `(r, c)` 这条已知路径上出现过的最大高程；每次弹出 `bottleneck` 最小的状态，松弛邻居时把它的瓶颈更新为 `max(bottleneck, grid[neighbor])`。第一次把右下角弹出堆时，对应的 `bottleneck` 就是答案。另一种等价思路是对水位 `t` 做二分，用 BFS/DFS 检查只经过高程 `<= t` 的格子能否从左上角连到右下角；这一节以堆的写法为主。
+#### 专题透视：Minimax / Maximin 路径问题三大解法全景
+
+在算法竞赛与大厂高频面试中，形如“求最大值的最小值（Minimax）”或“求最小值的最大值（Maximin / 瓶颈容量）”的图论问题层出不穷：
+
+```text
+Minimax / Maximin 数学形式对比:
+  1. 普通最短路 (Sum-Metric):      min_{p ∈ P} ∑_{e ∈ p} weight(e)
+  2. 最小瓶颈路 (Minimax Path):    min_{p ∈ P} max_{e ∈ p} weight(e)   <── (如 LeetCode 778 / 1631)
+  3. 最大瓶颈路 (Maximin / 宽度):  max_{p ∈ P} min_{e ∈ p} capacity(e) <── (如 LeetCode 1102 / 2812)
+```
+
+这类问题在图论中拥有三大通用黄金解法（面试三板斧）：
+
+| 解法体系 | 核心机制 | 时间复杂度 | 空间复杂度 | 适用场景与优缺点 |
+|---|---|---|---|---|
+| **方法 1：改写 Dijkstra 堆贪心（本节推荐）** | 将松弛操作由 $d + w$ 改为 $\max(d, w)$。最小堆每次弹出当前瓶颈最小的状态。 | $\mathcal{O}(N^2 \log N)$ | $\mathcal{O}(N^2)$ | **单次查询最直接高效**；支持浮点与任意实数，首次弹出终点即为全局最优解。 |
+| **方法 2：二分答案 + BFS/DFS 连通性验证** | 二分猜一个瓶颈值 $mid$（范围 $[0, \max]$），把网格中 $\le mid$ 的格子视为可走通路，用 BFS/DFS 检查起点能否走到终点。 | $\mathcal{O}(N^2 \log(\text{Max} - \text{Min}))$ | $\mathcal{O}(N^2)$ | **通用降维打击法**；单调性极强时代码极不易出错，容易泛化到复杂多重约束。 |
+| **方法 3：Kruskal 最小生成树 / 并查集动态加边** | 将所有相邻单元格的边（权值为 $\max(u, v)$）按权值升序排序，从小到大执行 `union`。当起点与终点**首次连通**时，当前加入的边权即为答案！ | $\mathcal{O}(N^2 \log N)$ | $\mathcal{O}(N^2)$ | **数学结构最优雅**；最小生成树（MST）在树上的唯一路径天然就是瓶颈最短路。 |
+
+#### 为什么 Dijkstra 贪心在 Minimax 下依然 100% 成立？
+传统 Dijkstra 依赖于路径权值的**非负累加单调性**（$d(u) + w \ge d(u)$）。在 Minimax 问题中：
+$$\text{new\_bottleneck} = \max(\text{bottleneck}(u), \text{grid}[v]) \ge \text{bottleneck}(u)$$
+该松弛算子同样具备**严格的单调不减性（Monotonicity）**！
+当状态 $(bottleneck, r, c)$ 第一次从最小堆中弹出时，它记录的瓶颈值已经是全局所有可能到达 $(r, c)$ 的路径中的最小瓶颈。任何未来从堆中弹出的更大瓶颈状态，后续扩展无论怎么取 $\max$，瓶颈值都绝不可能小于当前值。因此**堆贪心最优子结构严格成立**！
+
+#### 高频同类题谱推荐
+1. **LeetCode 1631. Path With Minimum Effort（最小体力消耗路径）**：边权为相邻格子绝对高度差 $|\Delta h|$ 的 Minimax 问题；
+2. **LeetCode 1102. Path With Maximum Minimum Value（得分最高的路径）**：求路径最小值的最大化（Maximin），用最大堆贪心；
+3. **LeetCode 2812. Find the Safest Path in a Grid（找出安全度最大的路径）**：多源 BFS 计算曼哈顿距离场 + Maximin 堆贪心。
 
 | 项目 | 内容 |
 |---|---|

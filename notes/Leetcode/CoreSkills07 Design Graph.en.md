@@ -1723,11 +1723,42 @@ The initialization of `dist` and `heap`, and the relax step, match the pseudocod
 
 </details>
 
-### 14. Swim in Rising Water
+### 14. Swim in Rising Water (LeetCode 778)
 
-The input is an `n x n` elevation grid `grid`. Water starts at the top-left cell and rises over time; a cell becomes enterable once the current water level is at least its elevation. The time to complete a path equals the maximum elevation visited along that path. The goal is the minimum value of that path bottleneck over all paths from the top-left cell to the bottom-right cell, a minimax path problem.
+#### Problem Formulation & Minimax Essence
+You are given an `n x n` integer matrix `grid` where each cell represents the elevation at that point. Rain starts falling at time $t = 0$. At time $t$, you can swim to any 4-directionally adjacent cell if and only if the elevation of that cell is at most $t$ (i.e. $t \ge \text{grid}[r][c]$).
+The time required to traverse a path from `(0, 0)` to `(n-1, n-1)` equals the **maximum elevation encountered along that path (the path bottleneck)**.
+The goal is to find the minimum time needed to reach the bottom-right cell among all valid paths. This is a classic **Minimax Path (Minimum Bottleneck Path)** problem.
 
-This can be solved with the same heap-driven relaxation loop as Dijkstra or Prim's algorithm: the heap holds `(bottleneck, r, c)`, where `bottleneck` is the largest elevation seen so far on the best known path to `(r, c)`. Each pop takes the state with the smallest bottleneck, and relaxing a neighbor sets its bottleneck to `max(bottleneck, grid[neighbor])`. The first time the bottom-right cell is popped, its bottleneck is the answer. An equivalent approach binary-searches the water level `t` and uses BFS/DFS to check whether cells with elevation `<= t` connect the two corners; this section focuses on the heap-based version.
+#### Deep Dive: The 3 Universal Paradigms for Minimax / Maximin Path Problems
+
+In competitive programming and technical interviews, problems asking for "minimizing the maximum value (Minimax)" or "maximizing the minimum capacity (Maximin / Widest Path)" are extremely common:
+
+```text
+Mathematical Formulations:
+  1. Standard Shortest Path (Sum-Metric):  min_{p ∈ P} ∑_{e ∈ p} weight(e)
+  2. Minimax Path (Minimum Bottleneck):     min_{p ∈ P} max_{e ∈ p} weight(e)   <── (e.g. LeetCode 778 / 1631)
+  3. Maximin Path (Maximum Bottleneck):     max_{p ∈ P} min_{e ∈ p} capacity(e) <── (e.g. LeetCode 1102 / 2812)
+```
+
+There are three universal algorithmic paradigms to solve this class of problems:
+
+| Algorithmic Paradigm | Core Mechanism | Time Complexity | Space Complexity | Practical Pros & Cons |
+|---|---|---|---|---|
+| **Method 1: Modified Dijkstra (Min-Heap Greedy)** | Replace the additive relaxation $d + w$ with $\max(d, w)$. The min-heap always pops the state with the minimum bottleneck so far. | $\mathcal{O}(N^2 \log N)$ | $\mathcal{O}(N^2)$ | **Most direct and fast for single query**; handles continuous/discrete weights seamlessly; first pop of destination is globally optimal. |
+| **Method 2: Binary Search + BFS/DFS Connectivity** | Binary search the bottleneck threshold $mid \in [0, \max]$. Treat cells with $\text{grid}[r][c] \le mid$ as passable, then check start-to-end reachability via BFS/DFS. | $\mathcal{O}(N^2 \log(\text{Max} - \text{Min}))$ | $\mathcal{O}(N^2)$ | **Highly versatile reduction**; robust against edge cases; naturally generalizes to complex multi-constraint scenarios. |
+| **Method 3: Kruskal's MST / Disjoint Set Union (DSU)** | Sort all adjacent cell-to-cell transitions (with weight $\max(u, v)$) in ascending order. Incrementally `union` endpoints. When source and destination **first become connected**, that edge's weight is the exact Minimax answer! | $\mathcal{O}(N^2 \log N)$ | $\mathcal{O}(N^2)$ | **Mathematically elegant**; the unique tree path in a Minimum Spanning Tree is inherently the minimum bottleneck path. |
+
+#### Why Dijkstra's Greedy Choice Remains 100% Valid for Minimax
+Standard Dijkstra relies on the **non-negative additive monotonicity** ($d(u) + w \ge d(u)$). Under the Minimax metric:
+$$\text{new\_bottleneck} = \max(\text{bottleneck}(u), \text{grid}[v]) \ge \text{bottleneck}(u)$$
+This relaxation operator satisfies **strict monotonicity**!
+When $(bottleneck, r, c)$ is first popped from the min-heap, its recorded bottleneck is guaranteed to be the minimum possible among all paths connecting the source to $(r, c)$. Any future path expanded from a larger bottleneck state will always yield $\ge \text{larger bottleneck}$ under the $\max$ operation. Thus, **optimal substructure and greedy choice hold rigorously**!
+
+#### Related High-Frequency Problems
+1. **LeetCode 1631. Path With Minimum Effort**: Minimax path where edge weights are absolute height differences $|\Delta h|$;
+2. **LeetCode 1102. Path With Maximum Minimum Value**: Maximin path on grid values using max-heap greedy;
+3. **LeetCode 2812. Find the Safest Path in a Grid**: Multi-source BFS distance field + Maximin heap/binary search.
 
 | Item | Detail |
 |---|---|

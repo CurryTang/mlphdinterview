@@ -1142,9 +1142,8 @@ describe('App', () => {
     expect(within(pssv).getByRole('button', { name: /nums = \[1, 5, 11, 5\]/i })).toBeInTheDocument();
     expect(within(pssv).getByRole('button', { name: /nums = \[1, 2, 3, 5\]/i })).toBeInTheDocument();
 
-    // Step forward using slider
-    const slider = within(pssv).getByRole('slider', { name: '选择分割等和子集 DP 演示步骤' });
-    fireEvent.change(slider, { target: { value: '1' } });
+    // Step forward
+    fireEvent.click(within(pssv).getByRole('button', { name: /下一步/i }));
 
     // Verify step description
     expect(within(pssv).getByText(/当前物品 nums\[0\] = 1/i)).toBeInTheDocument();
