@@ -1063,13 +1063,55 @@ class Solution:
 
 ### 8. Word Ladder
 
-BFS for the shortest transformation sequence, where each queue entry is `(word, dist)`. The neighbors of a given word are not found by comparing it against every other word in the list; instead, each character position is tried against all 26 letters, and the resulting word is checked for membership in the word set. Distance starts at 1 (`beginWord` itself counts as the first step) and increases by one per layer. A word is removed from the set as soon as it is visited, which replaces a separate `visited` set: removal and the duplicate check are the same operation.
+#### Problem Description (LeetCode 127)
+Given two words, `beginWord` and `endWord`, and a dictionary `wordList` of unique words, return the **number of words in the shortest transformation sequence** from `beginWord` to `endWord`, or `0` if no such sequence exists.
+
+**Transformation Rules**:
+1. Only **one letter** can be changed at a time;
+2. Each transformed word must exist in the word list `wordList` (`beginWord` does not need to be in `wordList`);
+3. The sequence length counts all words from start to finish (e.g., `"hit" -> "hot" -> "dot" -> "dog" -> "cog"` has length 5).
+
+```text
+Implicit Unweighted Graph & Shortest Path (Example: begin="hit", end="cog")
+       [hit] (dist=1, Source)
+         │  (substitute 2nd char 'i'->'o')
+         ▼
+       [hot] (dist=2)
+      ┌──┴───────────────┐
+ (substitute 1st char) (substitute 1st char)
+      ▼                  ▼
+    [dot] (dist=3)     [lot] (dist=3)
+      │                  │
+ (substitute 3rd char) (substitute 3rd char)
+      ▼                  ▼
+    [dog] (dist=4)     [log] (dist=4)
+      └──┬───────────────┘
+         │  (substitute 1st char)
+         ▼
+       [cog] (dist=5, Target reached!)
+```
+
+#### Graph Modeling & Core Engineering Takeaways
+
+1. **Graph Theoretical Formulation**:
+   - **Vertices $V$**: `beginWord` and all words in `wordList`;
+   - **Unweighted Edges $E$**: An undirected edge exists between two words if their Hamming distance is exactly 1 (differ by 1 character);
+   - **Target Algorithm**: Shortest path on an unweighted graph $\implies$ **Breadth-First Search (BFS)** guarantees finding the global shortest sequence on first arrival.
+
+2. **Takeaway 1: Neighbor Generation Complexity ($\mathcal{O}(26 \cdot L^2)$ vs $\mathcal{O}(N \cdot L)$)**:
+   - **Strategy A (Scan Dictionary)**: Compare the current word against every word in `wordList` character-by-character. Cost per step is $\mathcal{O}(N \cdot L)$. For $N = 5000, L = 5$, this requires $5000 \times 5 = 25,000$ comparisons per step!
+   - **Strategy B (Enumerate 26 Letters + Set Lookup)**: Enumerate $L$ positions, substitute 26 letters ('a'~'z'), slice the string in $\mathcal{O}(L)$, and check existence in `word_set` in $\mathcal{O}(L)$. Cost per step is $\mathcal{O}(26 \cdot L^2)$. For $L = 5$, this is $26 \times 25 = 650$ operations!
+   - **Conclusion**: $650 \ll 25000$, Strategy B is almost 40x faster!
+
+3. **Takeaway 2: In-place Set Deletion instead of Visited Set**:
+   - Instead of maintaining a separate `visited = set()`, we can directly remove `next_word` from `word_set` upon enqueueing (`word_set.remove(next_word)`).
+   - Because BFS explores level-by-level, any subsequent attempt to visit this word in a deeper level can never yield a shorter path. Removing it in-place achieves validity checking, deduplication, and pruning in a single $\mathcal{O}(1)$ step!
 
 | Item | Value |
 |---|---|
-| Composed technique | BFS plus per-position letter substitution to generate neighbors, plus removing a word from the set once visited |
-| Invariant | The `dist` of the word at the front of the queue is the shortest number of steps from `beginWord` to it, guaranteed by BFS's layer-by-layer expansion |
-| Time / Space | `O(26 · N · L²) / O(N · L)`, where `N` is the number of words and `L` is the word length |
+| Composed technique | Implicit Graph BFS + 26-Letter Substitution Neighbor Generation + In-place Set Pruning |
+| Invariant | The `dist` of the popped word is strictly the shortest distance from `beginWord` (guaranteed by BFS layer-by-layer expansion) |
+| Time / Space | Time $\mathcal{O}(26 \cdot N \cdot L^2)$, space $\mathcal{O}(N \cdot L)$ ($N$ = dictionary size, $L$ = word length) |
 
 #### Quick Coding: Word Ladder
 
