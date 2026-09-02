@@ -1875,19 +1875,57 @@ This is usually more direct than pushing all `(city, stops)` states into a heap,
 - Forgetting to skip flights where `prices[start] == INF`.
 - Returning early using the current price of `dst`; Bellman-Ford must wait until the current round of relaxation is complete.
 - Using standard Dijkstra's `dist[city]` to discard a state that is more expensive but uses fewer stops.
-## Module 8: Eulerian Path, Reconstruct Itinerary
+---
 
-Most earlier graph problems ask for visiting every node once (topological sort, number of islands, course schedule). Reconstruct Itinerary asks for using every ticket once. A ticket is an edge, so this is an Eulerian path problem: find a path that uses every edge in the graph exactly once, revisiting nodes as needed.
+## Module 8: Eulerian Paths (Hierholzer's Algorithm & Reconstruct Itinerary)
 
-In general, an Eulerian path exists only when at most one node has out-degree exceeding in-degree by 1 (the start), at most one node has in-degree exceeding out-degree by 1 (the end), and every other node has equal in-degree and out-degree. When every node has equal in-degree and out-degree, the Eulerian path degenerates into an Eulerian circuit (start and end coincide). LeetCode guarantees a valid itinerary exists for the given input, so the existence check is not needed in code.
+### 16. Reconstruct Itinerary (LeetCode 332)
 
-The problem also requires returning the lexicographically smallest itinerary when multiple valid ones exist. The standard algorithm for this is Hierholzer's algorithm.
+#### Detailed Problem Description
+You are given a list of airline tickets `tickets` where `tickets[i] = [from_i, to_i]` represents the departure and arrival airports of a one-way flight. Reconstruct the complete flight itinerary in order and return it.
 
-### Hierholzer's Algorithm
+**Core Rules & Invariants**:
+1. **Mandatory Departure**: All itineraries must begin from Kennedy International Airport `"JFK"`;
+2. **Every Ticket Used Exactly Once (Full Edge Coverage)**: You must use all tickets **exactly once** (if duplicate tickets exist, each ticket represents a distinct directed edge and must be flown separately);
+3. **Nodes Can Be Re-visited**: Airports can be visited multiple times (in-degrees and out-degrees can be $> 1$);
+4. **Lexicographically Smallest Order**: If there are multiple valid itineraries, return the itinerary that has the **smallest lexical order** when read as a single string (e.g., `["JFK", "ATL", "JFK"]` has a smaller lexical order than `["JFK", "SFO", "JFK"]`);
+5. **Guarantee of Solution**: You may assume all inputs have at least one valid itinerary.
 
-Each departure airport keeps a min-heap (or sorted list) of destinations, so the lexicographically smallest unused destination is always available first. DFS starts at `JFK`. Each step pops the smallest unused destination from the current airport and recurses into it. Once an airport's heap is exhausted (no unused ticket leaves it), the airport is appended to `route`. This append happens after the recursive call returns, in postorder.
+```text
+Eulerian Path & Dead-End Traps (Example: tickets = [["JFK","KUL"],["JFK","NRT"],["NRT","JFK"]])
+                ┌────────────────┐
+                │                ▼
+             [JFK] (Start) ⇄ [NRT] (Sub-circuit)
+                │
+                ▼ (Dead-end branch: out-degree = 0)
+              [KUL] (Destination)
 
-The postorder append is what makes the algorithm correct. DFS advances greedily along the lexicographically smallest choice at each step. If that greedy path runs into a dead end (an airport with unused tickets elsewhere in the graph, but no outgoing edge left in the current branch), postorder guarantees the dead-end node gets recorded exactly where the dead end occurred. Once the recursive call returns, the outer call resumes trying the departure airport's remaining unused tickets, splicing the skipped sub-loop back into the main path. By the time DFS finishes, the order of nodes in `route` is their finishing order: earliest dead end first, true starting point last. Reversing `route` produces a valid itinerary in the order tickets were actually used.
+★ Greedy Trap: JFK has destinations 'KUL' and 'NRT'. If we greedily take smaller 'KUL' in preorder, we get trapped in KUL (no outgoing edges), leaving the NRT circuit stranded!
+★ Hierholzer Resolution: Post-order recording. KUL hits the dead end first and gets pushed to route first. Backtracking traverses the remaining NRT circuit and pushes JFK last. Reversing gives the correct path: ["JFK", "NRT", "JFK", "KUL"]!
+```
+
+#### Graph Theoretical Formulation: Eulerian Path vs. Hamiltonian Path
+
+Most graph problems (e.g. topological sort, number of islands, course schedule) focus on visiting each **vertex** once (vertex coverage). Reconstruct Itinerary requires using every **ticket (edge)** once, which is an **Eulerian Path** problem:
+
+| Dimension | Eulerian Path / Circuit | Hamiltonian Path / Cycle |
+|---|---|---|
+| **Core Definition** | Traverses **every edge exactly once** (vertices can be revisited) | Traverses **every vertex exactly once** (edges may be skipped) |
+| **Existence Condition** | **Directed Graph**: At most one vertex with $\text{out} - \text{in} = 1$ (start), at most one with $\text{in} - \text{out} = 1$ (end), all others $\text{out} == \text{in}$ | **NP-Hard** (no polynomial necessary & sufficient condition) |
+| **Classic Problems** | Seven Bridges of Königsberg, Line Tracing, Ticket Itinerary (LeetCode 332) | Travelling Salesperson Problem (TSP), Knight's Tour |
+| **Algorithm & Complexity** | **Hierholzer's Algorithm: $\mathcal{O}(E \log E)$** (polynomial time) | Exponential backtracking / DP: $\mathcal{O}(2^V \cdot V^2)$ (NP-Hard) |
+
+#### Hierholzer's Algorithm Mechanics: Post-order DFS & Sub-circuit Splicing
+
+1. **Adjacency Representation**: Store destinations for each airport in a **Min-Heap**, ensuring greedy selection of lexicographically smallest candidate destinations;
+2. **In-place Edge Removal**: Each DFS step pops the smallest edge from the heap (consuming the ticket);
+3. **Post-order Appending**:
+   - Append an airport to `route` only when its heap is exhausted (no more tickets left from this airport);
+   - Dead-end destination airports (such as `KUL`) exhaust their tickets first and get appended first;
+   - As recursion unwinds, outer airports traverse any remaining sub-circuits before appending themselves;
+4. **Final Reverse**: Reversing the post-order sequence `route[::-1]` yields the complete, correctly spliced itinerary starting from `"JFK"`.
+
+### Hierholzer's Algorithm Implementation
 
 ```python
 import heapq
