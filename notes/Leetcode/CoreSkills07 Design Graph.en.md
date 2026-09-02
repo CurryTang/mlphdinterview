@@ -1874,7 +1874,17 @@ class Solution:
 `graph[node]` is a min-heap holding the still-unused ticket destinations leaving `node`, with the heap top always the lexicographically smallest candidate. DFS pops and recurses into a destination until an airport's heap is exhausted, at which point the airport is appended to `route`. This exhaust-then-append (postorder) ordering guarantees dead ends and sub-loops are recorded at the correct position without any extra backtracking logic. `route` is reversed at the end because postorder records the endpoint first and the starting airport last.
 
 </details>
-## Module 9: Topological Sort
+
+---
+
+## Module 9: Topological Sort (DAG, Kahn's Algorithm & Cycle Detection)
+
+> **Core Definition**: A topological sort of a **Directed Acyclic Graph (DAG)** is a linear ordering of its vertices such that for every directed edge $(u, v)$, vertex $u$ appears before $v$ in the ordering.
+>
+> **4-Step Mental Model**: **1. Count Indegrees -> 2. Enqueue In-0 Nodes -> 3. Relax Successors -> 4. Check Node Count (|V|)**.
+
+```topo-demo
+```
 
 Topological sorting is not an algorithm for "sorting an array." It is a graph algorithm that arranges a set of dependencies into a legal execution order. Whenever a problem mentions "precedence, dependencies, courses, build order, letter order, or task scheduling," the first question should be: can these relationships be modeled as a directed graph?
 

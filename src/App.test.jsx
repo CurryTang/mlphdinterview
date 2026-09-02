@@ -1264,7 +1264,42 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('heading', { name: /ML Coding 07 · Industrial ML Systems/i })).toBeInTheDocument();
   });
+
+  it('renders the interactive topological sort visualizer with Kahn BFS and cycle detection', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills07')
+          ? '# Graph Design\n\n```topo-demo\n```'
+          : '# Default Tutorial',
+      };
+    });
+
+    window.location.hash = '#CoreSkills07%20Design%20Graph.md';
+    render(<App />);
+
+    const visual = await screen.findByRole('region', { name: /拓扑排序与 Kahn 算法交互式可视化/i });
+    expect(visual).toBeInTheDocument();
+    expect(within(visual).getByText(/Kahn 算法（入度 BFS）与环检测核心演练/i)).toBeInTheDocument();
+
+    // Step through DAG mode
+    const nextBtn = within(visual).getByRole('button', { name: /下一步/i });
+    fireEvent.click(nextBtn);
+    expect(within(visual).getByText(/Step 1:/i)).toBeInTheDocument();
+
+    // Switch to Cycle detection mode
+    const cycleTab = within(visual).getByRole('button', { name: /有向环死锁检测/i });
+    fireEvent.click(cycleTab);
+    expect(within(visual).getByText(/含 1 <-> 2 互相循环依赖/i)).toBeInTheDocument();
+
+    // Switch to Alien Dictionary mode
+    const alienTab = within(visual).getByRole('button', { name: /外星字典偏序抽取/i });
+    fireEvent.click(alienTab);
+    expect(within(visual).getByText(/外星文字典偏序抽取两步核心法/i)).toBeInTheDocument();
+  });
 });
+
 
 
 
