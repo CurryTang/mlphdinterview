@@ -1926,6 +1926,46 @@ Most graph problems (e.g. topological sort, number of islands, course schedule) 
    - As recursion unwinds, outer airports traverse any remaining sub-circuits before appending themselves;
 4. **Final Reverse**: Reversing the post-order sequence `route[::-1]` yields the complete, correctly spliced itinerary starting from `"JFK"`.
 
+#### Deep Dive: Why is Post-order Recording + Reversing Strictly Correct?
+
+A common question is: *Why can't we record airports upon entry (pre-order), and why must we wait until all outgoing edges are exhausted in post-order before appending to `route` and reversing?*
+
+##### 1. Core Conflict: Pre-order Traversal Collapses on Dead Ends
+Consider `tickets = [["JFK","KUL"], ["JFK","NRT"], ["NRT","JFK"]]`:
+- From $JFK$, there are two outgoing paths: the dead-end branch to $KUL$ ($\text{out-degree} = 0$, the final destination), and the closed sub-circuit $JFK \to NRT \to JFK$;
+- Due to the tie-breaking rule, since `"KUL" < "NRT"`, greedy search **must pick $KUL$ first**;
+- **If using Pre-order**: We immediately record `["JFK", "KUL"]`. Upon reaching $KUL$, no outgoing flights exist, forcing premature termination and stranding the $NRT \to JFK$ sub-circuit tickets!
+
+##### 2. Topological Invariant: The "Unique Dead-End" Theorem
+In any directed Eulerian graph:
+- **Intermediate Nodes**: $\text{out-degree} == \text{in-degree}$. Any entry into the node guarantees a way out; any local cycles are closed sub-circuits returning to this node;
+- **The Final Destination (Dead-end)**: $\text{in-degree} - \text{out-degree} == 1$. The **only node in the entire graph that can run out of exits is the true destination**!
+
+##### 3. How Post-order DFS Automatically Splices Sub-circuits
+Hierholzer's core philosophy: **"I don't record when I arrive; I only record when I can never leave again (all outgoing edges exhausted)."**
+
+```text
+Post-order Recording & Circuit Splicing (tickets = [["JFK","KUL"], ["JFK","NRT"], ["NRT","JFK"]]):
+
+1. DFS("JFK") greedily pops "KUL" ➔ enters DFS("KUL");
+2. KUL has no outgoing edges (while-loop empty) ➔ post-order append: route = ["KUL"] (★ Destination appended first!);
+3. Unwinds back to DFS("JFK") ➔ JFK still has tickets left ("NRT"), while-loop continues!
+4. Pops "NRT" ➔ enters DFS("NRT") ➔ pops "JFK" ➔ enters DFS("JFK");
+5. All tickets now exhausted. Recursion unwinds and appends in post-order:
+   - DFS("JFK") ends ➔ route = ["KUL", "JFK"]
+   - DFS("NRT") ends ➔ route = ["KUL", "JFK", "NRT"]
+   - DFS("JFK") outermost ends ➔ route = ["KUL", "JFK", "NRT", "JFK"]
+```
+
+##### 4. Mathematical Inevitability of Reversing
+The recorded sequence in `route` is:
+$$\text{route} = [ \mathbf{KUL} \text{ (first dead-end destination)}, \quad JFK, \quad NRT, \quad \mathbf{JFK} \text{ (outermost start)} ]$$
+This represents **threading the needle backwards from the destination**. Reversing `route` (`route[::-1]`):
+$$\text{Final Itinerary} = [ \mathbf{JFK} \text{ (Start)}, \quad NRT, \quad JFK, \quad \mathbf{KUL} \text{ (Destination)} ]$$
+- **The dead-end airport is guaranteed to settle at the very end of the itinerary**;
+- **Any sub-circuits explored along the way are spliced into the main path**;
+- **Global Lexicographical Optimality**: Because the post-order splicing is immune to dead-end traps, picking the smallest candidate edge at each step guarantees the smallest sub-path appears first after reversal.
+
 #### Trace by Hand
 
 `tickets = [["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]`
