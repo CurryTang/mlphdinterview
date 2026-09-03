@@ -28,18 +28,18 @@ The 3-Dimensional Evolution of Industrial Ranking Backbones:
 Industrial precision rankers must execute bounded high-order feature interactions and activate tens of thousands of user behavior events under strict $P99 \le 15\text{ms}$ SLAs. The detailed architectural designs and PyTorch pseudocode implementations are documented across the Business Algorithm curriculum:
 
 #### Pillar 1: Feature Interaction Backbone
-> 📘 **Detailed Guide**: [Chapter 11 · Feature Interaction, Coarse Ranking, and Personalization](notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.en.md) (with FM, DCN-v2 & DLRM code)
+> 📘 **Detailed Guide**: [[BusinessAlgorithm02C Feature Interaction.md|Chapter 11 · Feature Interaction, Coarse Ranking, and Personalization]] (with FM, DCN-v2 & DLRM code)
 - **DCN-v2 (Deep & Cross Network v2)**: Employs low-rank decomposition ($\mathbf{W}_l = \mathbf{U}_l \mathbf{V}_l^T$) with MoE subspace gating to compute explicit bounded high-order polynomial cross terms with $\mathcal{O}(d \cdot r)$ efficiency:
   $$\mathbf{x}_{l+1} = \mathbf{x}_0 \odot (\mathbf{W}_l \mathbf{x}_l) + \mathbf{b}_l + \mathbf{x}_l$$
 - **DLRM (Deep Learning Recommendation Model)**: Meta's open-source architecture that explicitly decouples dense continuous features (Bottom MLP) from sparse categorical IDs (Embedding Tables), extracting upper-triangular dot-product interactions (`torch.bmm(E, E.T)`) into a Top MLP.
 
 #### Pillar 2: User Behavior Sequence Modeling Backbone
-> 📘 **Detailed Guide**: [Chapter 12 · User Behavior Sequences](notes/BusinessAlgorithm/BusinessAlgorithm02D%20User%20Sequences.en.md) (with DIN Target-Attention & SIM Two-Stage Retrieval code)
+> 📘 **Detailed Guide**: [[BusinessAlgorithm02D User Sequences.md|Chapter 12 · User Behavior Sequences]] (with DIN Target-Attention & SIM Two-Stage Retrieval code)
 - **DIN (Deep Interest Network)**: Employs candidate query $\mathbf{q}$ over historical actions $[\mathbf{h}_1, \dots, \mathbf{h}_L]$ to compute **Target Attention**: $\mathbf{u}(\mathbf{q}) = \sum \alpha_j \mathbf{h}_j$ where $\alpha_j = \text{MLP}([\mathbf{q}, \mathbf{h}_j, \mathbf{q}-\mathbf{h}_j, \mathbf{q}\odot\mathbf{h}_j])$;
 - **SIM (Search-based Interest Model)**: Two-stage decoupling—**Hard Search** filters Top-50 category-matched actions, followed by fine-grained soft attention with time-delta embeddings $\Delta t$, scaling to 50,000+ lifelong actions.
 
 #### Pillar 3: Multi-Task Learning (MTL) Backbone
-> 📘 **Detailed Guide**: [Chapter 10 · Multi-Objective Learning and Score Fusion](notes/BusinessAlgorithm/BusinessAlgorithm02B%20Multi-Objective%20Ranking.en.md) (with MMoE & PLE decoupled routing code)
+> 📘 **Detailed Guide**: [[BusinessAlgorithm02B Multi-Objective Ranking.md|Chapter 10 · Multi-Objective Learning and Score Fusion]] (with MMoE & PLE decoupled routing code)
 - **MMoE (Multi-gate Mixture-of-Experts)**: Shared expert pool with task-specific Softmax gating $\mathbf{h}_t = \sum g_{t,e} f_e(\mathbf{x})$;
 - **PLE (Progressive Layered Extraction)**: Physical isolation of **Task-Specific Experts** and **Shared Experts**, eliminating negative transfer and seesaw degradation between CTR and CVR.
 

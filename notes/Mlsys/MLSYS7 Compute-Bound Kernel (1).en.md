@@ -91,7 +91,7 @@ __global__ void gemm_naive(
 3. Local computation: each thread reads data from shared memory and computes on it (hitting SRAM, latency ~20 cycles vs. HBM ~400 cycles)
 ```
 
-**How tiling is used in different scenarios** (see [MLSYS6.md](notes/Mlsys/MLSYS6.md) for a more detailed discussion):
+**How tiling is used in different scenarios** (see [[MLSYS6.md]] for a more detailed discussion):
 
 | Scenario | Role of the tile | Key details |
 |------|-----------|---------|

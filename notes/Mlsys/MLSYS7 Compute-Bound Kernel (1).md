@@ -91,7 +91,7 @@ __global__ void gemm_naive(
 3. 本地计算：每个线程从 shared memory 读数据做计算（命中 SRAM，延迟 ~20 cycles vs HBM ~400 cycles）
 ```
 
-**Tiling 在不同场景中的应用**（参见 [MLSYS6.md](notes/Mlsys/MLSYS6.md) 的详细讨论）：
+**Tiling 在不同场景中的应用**（参见 [[MLSYS6.md]] 的详细讨论）：
 
 | 场景 | Tile 的作用 | 关键细节 |
 |------|-----------|---------|

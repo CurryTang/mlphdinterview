@@ -3062,6 +3062,59 @@ function resolveObsidianLink(target, alias) {
   return `[${alias || prettyLabel(target)}](#${encodeURIComponent(routeTarget)})`;
 }
 
+function resolveMarkdownHref(rawHref) {
+  if (!rawHref) {
+    return '#';
+  }
+
+  // Pure in-page anchor (#heading-slug)
+  if (rawHref.startsWith('#') && !rawHref.includes('.md') && !rawHref.includes('::')) {
+    return rawHref;
+  }
+
+  // Hash link that might refer to a note (#note.md or #note.md#heading or #note.md::heading)
+  if (rawHref.startsWith('#')) {
+    const withoutHash = rawHref.slice(1);
+    const [possibleNote, ...headingParts] = withoutHash.includes('::')
+      ? withoutHash.split('::')
+      : withoutHash.split('#');
+    const noteId = resolveNoteId(possibleNote);
+    if (noteId) {
+      const headingPart = headingParts.join('#');
+      const headingSlug = headingPart ? slugify(cleanHeadingText(headingPart)) : '';
+      return headingSlug
+        ? `#${encodeURIComponent(`${noteId}::${headingSlug}`)}`
+        : `#${encodeURIComponent(noteId)}`;
+    }
+    return rawHref;
+  }
+
+  // Check if it is an external link (http/https not belonging to mlphdinterview)
+  const isGithubPages = /^https?:\/\/currytang\.github\.io\/mlphdinterview\/?/i.test(rawHref);
+  const isExternalHttp = /^https?:\/\//i.test(rawHref) && !isGithubPages;
+  if (!isExternalHttp) {
+    let cleanTarget = rawHref;
+    if (isGithubPages) {
+      cleanTarget = cleanTarget.replace(/^https?:\/\/currytang\.github\.io\/mlphdinterview\/?/i, '');
+      if (cleanTarget.startsWith('#')) {
+        return resolveMarkdownHref(cleanTarget);
+      }
+    }
+
+    const [targetWithoutHash, ...headingParts] = cleanTarget.split('#');
+    const noteId = resolveNoteId(targetWithoutHash);
+    if (noteId) {
+      const headingPart = headingParts.join('#');
+      const headingSlug = headingPart ? slugify(cleanHeadingText(headingPart)) : '';
+      return headingSlug
+        ? `#${encodeURIComponent(`${noteId}::${headingSlug}`)}`
+        : `#${encodeURIComponent(noteId)}`;
+    }
+  }
+
+  return rawHref;
+}
+
 function resolveMediaUrl(rawTarget) {
   const [withoutAnchor] = rawTarget.split('#');
   const normalized = normalizePathToken(withoutAnchor);
@@ -22920,8 +22973,19 @@ function parseHashRoute(rawHash) {
     return { view: 'home', noteId: null, sectionId: null, headingId: null };
   }
 
-  const [rawNoteId, ...headingParts] = hashValue.split('::');
-  const headingId = headingParts.join('::') || null;
+  let [rawNoteId, ...headingParts] = hashValue.split('::');
+  let headingId = headingParts.join('::') || null;
+
+  if (!headingId && rawNoteId.includes('#')) {
+    const [subNotePart, ...subHeadingParts] = rawNoteId.split('#');
+    const resolvedSubNote = legacyRoutes[subNotePart]
+      ?? noteIdByAlias.get(normalizePathToken(subNotePart));
+    if (resolvedSubNote) {
+      rawNoteId = resolvedSubNote;
+      headingId = slugify(cleanHeadingText(subHeadingParts.join('#'))) || null;
+    }
+  }
+
   const resolvedNoteId = legacyRoutes[rawNoteId]
     ?? noteIdByAlias.get(normalizePathToken(rawNoteId))
     ?? rawNoteId;
@@ -23439,12 +23503,49 @@ function App() {
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={{
                       a: ({ href, children, ...props }) => {
-                        const external = href?.startsWith('http');
+                        const resolvedHref = resolveMarkdownHref(href);
+                        const external = /^https?:\/\//i.test(resolvedHref);
+                        const isHash = resolvedHref?.startsWith('#');
+
+                        const handleClick = (event) => {
+                          if (!isHash) {
+                            return;
+                          }
+
+                          const targetHash = resolvedHref.slice(1);
+                          // 1. In-page anchor
+                          const anchorElem = document.getElementById(targetHash);
+                          if (anchorElem) {
+                            event.preventDefault();
+                            scrollToHeading(targetHash);
+                            window.history.pushState(null, '', resolvedHref);
+                            return;
+                          }
+
+                          // 2. Note route
+                          const route = parseHashRoute(resolvedHref);
+                          if (route?.noteId) {
+                            if (route.noteId === selectedTutorial?.id && route.headingId) {
+                              event.preventDefault();
+                              scrollToHeading(route.headingId);
+                              window.history.pushState(null, '', resolvedHref);
+                              return;
+                            }
+                            if (window.location.hash === resolvedHref) {
+                              event.preventDefault();
+                              setCurrentView(route.view);
+                              setSelectedTutorialId(route.noteId);
+                              setPendingHeadingId(route.headingId ?? null);
+                            }
+                          }
+                        };
+
                         return (
                           <a
-                            href={href}
+                            href={resolvedHref}
                             target={external ? '_blank' : undefined}
                             rel={external ? 'noreferrer' : undefined}
+                            onClick={handleClick}
                             {...props}
                           >
                             {children}

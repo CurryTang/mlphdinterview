@@ -43,18 +43,18 @@
 工业界精排模型必须在极严苛的 $P99 \le 15\text{ms}$ 延迟下完成高维交叉与数十万用户行为的精准激活。以下三大支柱的具体实现与 PyTorch 伪代码均已深度沉淀在业务算法专篇中：
 
 #### 支柱一：特征交叉基座（Feature Interaction Backbone）
-> 📘 **详见专篇**：[第 11 章 · 特征交叉、粗排与个性化](notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.md)（含 FM / DCN-v2 / DLRM 完整代码）
+> 📘 **详见专篇**：[[BusinessAlgorithm02C Feature Interaction.md|第 11 章 · 特征交叉、粗排与个性化]]（含 FM / DCN-v2 / DLRM 完整代码）
 - **DCN-v2 (Deep & Cross Network v2)**：引入低秩矩阵分解（$\mathbf{W}_l = \mathbf{U}_l \mathbf{V}_l^T$）与 MoE 子空间门控，以 $\mathcal{O}(d \cdot r)$ 极低复杂度计算显式高阶多项式特征交叉：
   $$\mathbf{x}_{l+1} = \mathbf{x}_0 \odot (\mathbf{W}_l \mathbf{x}_l) + \mathbf{b}_l + \mathbf{x}_l$$
 - **DLRM (Deep Learning Recommendation Model)**：Meta 经典架构，将特征解耦为 Dense Bottom MLP 与 Sparse Embedding Tables，通过显式矩阵点积（`torch.bmm(E, E.T)`）提取上三角交互特征送入 Top MLP。
 
 #### 支柱二：行为序列建模基座（User Behavior Sequence Backbone）
-> 📘 **详见专篇**：[第 12 章 · 用户行为序列建模](notes/BusinessAlgorithm/BusinessAlgorithm02D%20User%20Sequences.md)（含 DIN 目标注意力与 SIM 两阶段检索代码）
+> 📘 **详见专篇**：[[BusinessAlgorithm02D User Sequences.md|第 12 章 · 用户行为序列建模]]（含 DIN 目标注意力与 SIM 两阶段检索代码）
 - **DIN (Deep Interest Network)**：利用候选 Item $\mathbf{q}$ 对历史序列 $[\mathbf{h}_1, \dots, \mathbf{h}_L]$ 计算 **Target Attention**：$\mathbf{u}(\mathbf{q}) = \sum \alpha_j \mathbf{h}_j$，其中 $\alpha_j = \text{MLP}([\mathbf{q}, \mathbf{h}_j, \mathbf{q}-\mathbf{h}_j, \mathbf{q}\odot\mathbf{h}_j])$；
 - **SIM (Search-based Interest Model)**：两阶段解耦——第一阶段 **Hard Search** 按同类目粗筛 Top-50，第二阶段在小集合上结合时间差 $\Delta t$ 进行精细 Target Attention，突破数万步长序列建模瓶颈。
 
 #### 支柱三：多目标排序基座（Multi-Task Learning Backbone）
-> 📘 **详见专篇**：[第 10 章 · 多目标学习与分值融合](notes/BusinessAlgorithm/BusinessAlgorithm02B%20Multi-Objective%20Ranking.md)（含 MMoE 与 PLE 分层解耦专家代码）
+> 📘 **详见专篇**：[[BusinessAlgorithm02B Multi-Objective Ranking.md|第 10 章 · 多目标学习与分值融合]]（含 MMoE 与 PLE 分层解耦专家代码）
 - **MMoE (Multi-gate Mixture-of-Experts)**：多任务共享 Experts 池，各任务使用 Softmax 门控加权 $\mathbf{h}_t = \sum g_{t,e} f_e(\mathbf{x})$；
 - **PLE (Progressive Layered Extraction)**：显式区分为 **Task-Specific 独占专家** 与 **Shared 共享专家**，物理隔离不同任务表征，彻底阻断 CTR 与 CVR 之间的负迁移与跷跷板效应。
 

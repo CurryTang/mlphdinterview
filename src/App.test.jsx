@@ -1263,6 +1263,56 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /ML Coding 07 · Industrial ML Systems/i })).toBeInTheDocument();
   });
 
+  it('resolves relative note links inside markdown and routes to BusinessAlgorithm02C', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      if (requestUrl.includes('MLCoding07')) {
+        return {
+          ok: true,
+          text: async () => [
+            '# ML Coding 07',
+            '',
+            '[第 11 章 · 特征交叉、粗排与个性化](notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.md)',
+          ].join('\n'),
+        };
+      }
+      if (requestUrl.includes('BusinessAlgorithm02C')) {
+        return {
+          ok: true,
+          text: async () => '# 第 11 章 · 特征交叉、粗排与个性化\n\n欢迎来到第 11 章。',
+        };
+      }
+      return { ok: true, text: async () => '# Default' };
+    });
+
+    window.location.hash = '#MLCoding07%20Industrial%20Machine%20Learning%20System%20RecSys%20Reranking%20ABTesting.md';
+    render(<App />);
+
+    const link = await screen.findByRole('link', { name: /第 11 章 · 特征交叉、粗排与个性化/i });
+    expect(link).toHaveAttribute('href', '#BusinessAlgorithm02C%20Feature%20Interaction.md');
+
+    fireEvent.click(link);
+    expect(await screen.findByRole('heading', { name: /第 11 章 · 特征交叉、粗排与个性化/i })).toBeInTheDocument();
+  });
+
+  it('routes to BusinessAlgorithm02C via relative path in hash and with heading', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      if (requestUrl.includes('BusinessAlgorithm02C')) {
+        return {
+          ok: true,
+          text: async () => '# 第 11 章 · 特征交叉、粗排与个性化\n\n## 核心原理\n\n内容详情。',
+        };
+      }
+      return { ok: true, text: async () => '# Default' };
+    });
+
+    window.location.hash = '#notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.md#核心原理';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /第 11 章 · 特征交叉、粗排与个性化/i })).toBeInTheDocument();
+  });
+
   it('renders the interactive topological sort visualizer with Kahn BFS and cycle detection', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);

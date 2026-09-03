@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting · ML PhD Interview Notes</title>
+  <script>
+    (function () {
+      var path = window.location.pathname;
+      var search = window.location.search || "";
+      var hash = window.location.hash || "";
+
+      // Repo base is /mlphdinterview/
+      var base = "/mlphdinterview";
+      var relative = path.startsWith(base) ? path.slice(base.length) : path;
+      relative = relative.replace(/^\/+/, "");
+
+      if (!relative) {
+        window.location.replace(base + "/" + search + hash);
+        return;
+      }
+
+      // If it looks like a note path, e.g. notes/BusinessAlgorithm/BusinessAlgorithm02C%20Feature%20Interaction.md
+      var segments = relative.split("/");
+      var filename = segments[segments.length - 1];
+      var decodedFilename = decodeURIComponent(filename);
+
+      if (decodedFilename.endsWith(".md")) {
+        window.location.replace(base + "/#" + encodeURIComponent(decodedFilename) + (hash ? hash : search));
+        return;
+      }
+
+      // General fallback to hash route
+      window.location.replace(base + "/#" + encodeURIComponent(relative) + (hash ? hash : search));
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to note...</p>
+</body>
+</html>

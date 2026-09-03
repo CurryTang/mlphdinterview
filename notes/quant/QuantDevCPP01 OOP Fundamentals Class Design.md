@@ -82,7 +82,7 @@ printArea(c); // 调用 Circle::area
 
 > 追问"多态是怎么实现的"，标准答案要落到虚函数表指针（vptr）和虚函数表（vtable）：每个含有虚函数的类有一张 vtable，存放该类各个虚函数的地址；每个该类对象里有一个隐藏的 vptr 指向本类的 vtable。通过基类指针调用虚函数时，先解引用 vptr 找到 vtable，再按函数在表中的槽位取地址调用，这一步是运行时完成的，因此叫"运行时多态"。常见陷阱是把"函数重载"也算成多态的一种然后混着讲，面试官通常想让你分清运行时多态（虚函数）和编译期多态（重载/模板）。
 >
-> 👉 关于虚函数表（vtable）与虚指针（vptr）的底层内存布局、汇编分发过程、构造/析构期间 vptr 的动态演变与多重继承下的 Thunk 机制，详见 [C++ 面经 3 · 多态、虚函数与关键字](#QuantDevCPP03%20Polymorphism%20Virtual%20Functions%20Keywords.md#2-虚函数实现动态多态的原理vtable-与-vptr)。
+> 👉 关于虚函数表（vtable）与虚指针（vptr）的底层内存布局、汇编分发过程、构造/析构期间 vptr 的动态演变与多重继承下的 Thunk 机制，详见 [[QuantDevCPP03 Polymorphism Virtual Functions Keywords.md#2-虚函数实现动态多态的原理vtable-与-vptr|C++ 面经 3 · 多态、虚函数与关键字]]。
 
 ---
 
