@@ -23013,10 +23013,10 @@ function parseHashRoute(rawHash) {
 }
 
 function replaceObsidianHighlights(markdownText) {
-  const codeSegments = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)/g;
+  const preservedSegments = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`|\$\$[\s\S]*?\$\$|\$[^$\n]+?\$)/g;
 
   return markdownText
-    .split(codeSegments)
+    .split(preservedSegments)
     .map((segment, index) => (
       index % 2 === 1
         ? segment

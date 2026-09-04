@@ -54,6 +54,8 @@ describe('App', () => {
               ? '# System Design 08 · 异步 LLM RL 训练平台\n\n这个例子只有约 60 sample admission QPS。'
             : requestUrl.includes('SystemDesign09')
               ? '# System Design 09 · 一致性哈希\n\n节点变化时只迁移相邻区间。'
+            : requestUrl.includes('CoreSkills10')
+              ? '## 双源推进可行性：Interleaving String\n\n$$dp[i][j] = (dp[i-1][j] \\land s_1[i-1] == s_3[i+j-1]) \\lor (dp[i][j-1] \\land s_2[j-1] == s_3[i+j-1])$$\n'
             : chineseContent,
       };
     });
@@ -174,6 +176,21 @@ describe('App', () => {
       'if right - left + 1 == k and window == need:',
     );
     expect(pythonFrame.querySelector('mark')).toBeNull();
+  });
+
+  it('does not treat double equality operators in LaTeX math as Obsidian highlights', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 10 ·/i }));
+
+    expect(await screen.findByRole('heading', { name: /双源推进可行性：Interleaving String/i })).toBeInTheDocument();
+
+    const mathAnnotations = Array.from(document.querySelectorAll('annotation[encoding="application/x-tex"]')).map(
+      (node) => node.textContent,
+    );
+    expect(mathAnnotations.some((tex) => tex.includes('s_1[i-1] == s_3[i+j-1]'))).toBe(true);
+    expect(document.querySelector('mark')).toBeNull();
   });
 
   it('renders Markdown math through KaTeX without losing LaTeX commands', async () => {
@@ -976,25 +993,25 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Quant 11 · 鞅、停时与随机游走/i }));
 
     expect(await screen.findByRole('heading', { name: /Quant 11 · 鞅、停时与随机游走/i })).toBeInTheDocument();
-    expect(screen.getByText('Wald 等式、1D 随机游走与最优决策')).toBeInTheDocument();
-    expect(screen.getByText('胜率 P(到达 +a)')).toBeInTheDocument();
+    expect(await screen.findByText('Wald 等式、1D 随机游走与最优决策')).toBeInTheDocument();
+    expect(await screen.findByText('胜率 P(到达 +a)')).toBeInTheDocument();
     expect(screen.getByText('期望停止时间 E[T]')).toBeInTheDocument();
 
     // Switch to Secretary Problem tab
     fireEvent.click(screen.getByRole('tab', { name: /秘书问题 37% 法则/i }));
-    expect(screen.getByText(/候选人总人数 n/i)).toBeInTheDocument();
+    expect(await screen.findByText(/候选人总人数 n/i)).toBeInTheDocument();
     expect(screen.getByText(/1\/e ≈ 36\.79%/)).toBeInTheDocument();
 
     // Switch to Pattern Waiting & Li's Martingale tab
     fireEvent.click(screen.getByRole('tab', { name: /模式等待与赌场鞅/i }));
-    expect(screen.getByText(/HTTH vs HTHT/)).toBeInTheDocument();
+    expect(await screen.findByText(/HTTH vs HTHT/)).toBeInTheDocument();
     expect(screen.getByText(/E\[T_A\] = 18/)).toBeInTheDocument();
     expect(screen.getByText(/E\[T_B\] = 20/)).toBeInTheDocument();
   });
 
   it('opens Quant 12 Brownian motion and stochastic calculus note and renders interactive components', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
-      const requestUrl = String(input);
+      const requestUrl = decodeURIComponent(String(input));
       return {
         ok: true,
         text: async () => requestUrl.includes('Quant12')
@@ -1009,7 +1026,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Quant 12 · 布朗运动/i }));
 
     expect(await screen.findByRole('heading', { name: /Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('布朗运动轨道与二次变差演示')).toBeInTheDocument();
+    expect(await screen.findByLabelText('布朗运动轨道与二次变差演示')).toBeInTheDocument();
     expect(screen.getByLabelText('2D 随机游走与布朗运动极限演示')).toBeInTheDocument();
     expect(screen.getByLabelText('伊藤几何与斯特拉托诺维奇积分对比演示')).toBeInTheDocument();
     expect(screen.getByLabelText('停时与反射原理演示')).toBeInTheDocument();
@@ -1018,7 +1035,7 @@ describe('App', () => {
 
   it('opens Quant 13 Game Theory note and renders the game theory simulator', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
-      const requestUrl = String(input);
+      const requestUrl = decodeURIComponent(String(input));
       return {
         ok: true,
         text: async () => requestUrl.includes('Quant13')
@@ -1033,7 +1050,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Quant 13 · 博弈论/i }));
 
     expect(await screen.findByRole('heading', { name: /Quant 13 · 博弈论与策略性决策/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('博弈论与策略性决策演示')).toBeInTheDocument();
+    expect(await screen.findByLabelText('博弈论与策略性决策演示')).toBeInTheDocument();
     expect(screen.getByText(/量化博弈论与经典策略交互模拟器/)).toBeInTheDocument();
 
     // Switch tab to Truel
