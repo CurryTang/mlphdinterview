@@ -1,528 +1,476 @@
-# Bit Manipulation：XOR / Single Number & Missing Number
+# Bit Manipulation：LeetCode & NeetCode 常见位运算套路速查
 
-位运算题的核心不是记很多符号，而是知道每个操作在二进制位上到底做了什么。
-
-这一页从两个最经典的 XOR 例题开始：
-
-```text
-LeetCode 136: Single Number
-LeetCode 268: Missing Number
-```
-
-第一题给定一个数组：
-
-- 只有一个数字出现一次
-- 其他数字都出现两次
-
-返回那个只出现一次的数字。
-
-第二题给定长度为 `n` 的数组，元素来自区间 `[0, n]`，其中恰好缺失一个数字。要求返回缺失值。
+位运算的核心：**利用位级并行操作消除条件分支与循环，实现 $O(1)$ 空间或极值时间复杂度。**  
+本速查表整理 LeetCode 与 NeetCode 150 高频位运算模式：左侧为题目与核心考点，右侧为核心 Python 实现。
 
 ---
 
-## 目录
+## 0. 基础位操作原子速查 (Bit Primitives)
 
-1. [XOR 是什么](#xor-是什么)
-2. [Single Number](#single-number)
-3. [为什么 XOR 可以消掉重复数字](#为什么-xor-可以消掉重复数字)
-4. [可视化 walkthrough](#可视化-walkthrough)
-5. [Single Number 代码](#single-number-代码)
-6. [Missing Number](#missing-number)
-7. [为什么 Missing Number 也能用 XOR](#为什么-missing-number-也能用-xor)
-8. [Missing Number 可视化 walkthrough](#missing-number-可视化-walkthrough)
-9. [Missing Number 代码](#missing-number-代码)
-10. [复杂度](#复杂度)
-11. [常见坑](#常见坑)
-12. [一句话记忆](#一句话记忆)
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">操作模式 / 技巧目标</th>
+    <th>Python 核心表达式 / 操作</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td><strong>获取第 $i$ 位 (Get Bit $i$)</strong><br/>提取整数 $n$ 的第 $i$ 个二进制位（0-indexed）</td>
+    <td>
+
+```python
+bit = (n >> i) & 1
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>置位 (Set Bit $i$)</strong><br/>将第 $i$ 位强制设为 1，其余位不变</td>
+    <td>
+
+```python
+n = n | (1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>清零 (Clear Bit $i$)</strong><br/>将第 $i$ 位强制清零为 0，其余位不变</td>
+    <td>
+
+```python
+n = n & ~(1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>翻转 (Toggle Bit $i$)</strong><br/>第 $i$ 位 0 变 1、1 变 0</td>
+    <td>
+
+```python
+n = n ^ (1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>抹去最低位的 1 (Brian Kernighan)</strong><br/>消去二进制中最右侧的 1，其余位不变</td>
+    <td>
+
+```python
+n = n & (n - 1)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>提取最低位的 1 (lowbit)</strong><br/>仅保留最右侧的 1，其余位全部清零</td>
+    <td>
+
+```python
+lowbit = n & (-n)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>判断奇偶性 (Parity Check)</strong><br/>最低位为 1 是奇数，为 0 是偶数</td>
+    <td>
+
+```python
+is_odd = bool(n & 1)
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## XOR 是什么
+## 1. 成对异或消除族 (XOR Cancellation)
 
-XOR 写作 `^`。
+利用异或核心性质：$x \oplus x = 0$，$x \oplus 0 = x$，满足交换律与结合律。
 
-它的规则是：
-
-```text
-相同为 0，不同为 1
-```
-
-| a | b | a ^ b |
-|---:|---:|---:|
-| 0 | 0 | 0 |
-| 0 | 1 | 1 |
-| 1 | 0 | 1 |
-| 1 | 1 | 0 |
-
-所以：
-
-```text
-5 = 0101
-3 = 0011
----------
-5 ^ 3 = 0110 = 6
-```
-
-XOR 有三个最重要的性质：
-
-### 1. 自己和自己异或会消掉
-
-```text
-x ^ x = 0
-```
-
-因为每一位都相同。
-
-例子：
-
-```text
-7 ^ 7 = 0
-```
-
-### 2. 任何数和 0 异或还是自己
-
-```text
-x ^ 0 = x
-```
-
-因为 `0` 不会改变任何 bit。
-
-例子：
-
-```text
-7 ^ 0 = 7
-```
-
-### 3. XOR 满足交换律和结合律
-
-```text
-a ^ b = b ^ a
-(a ^ b) ^ c = a ^ (b ^ c)
-```
-
-这意味着顺序不重要。
-
-所以：
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-= 4 ^ (1 ^ 1) ^ (2 ^ 2)
-= 4 ^ 0 ^ 0
-= 4
-```
-
-这就是 Single Number 的全部核心。
-
----
-
-## Single Number
-
-### 题目
-
-给定整数数组 `nums`，其中恰好一个元素只出现一次，其余每个元素都出现两次。
-
-返回只出现一次的元素。
-
-例子：
-
-```text
-Input: nums = [2, 2, 1]
-Output: 1
-```
-
-```text
-Input: nums = [4, 1, 2, 1, 2]
-Output: 4
-```
-
----
-
-## 为什么 XOR 可以消掉重复数字
-
-如果用哈希表，当然可以做：
-
-```text
-统计每个数字出现次数
-返回 count == 1 的数字
-```
-
-但这需要 `O(n)` 额外空间。
-
-XOR 的做法更优雅：
-
-```text
-把所有数字全部 XOR 起来
-成对出现的数字会变成 0
-最后剩下的就是 single number
-```
-
-对 `[4, 1, 2, 1, 2]`：
-
-```text
-res = 0
-
-res = 0 ^ 4
-res = 4 ^ 1
-res = 4 ^ 1 ^ 2
-res = 4 ^ 1 ^ 2 ^ 1
-res = 4 ^ 1 ^ 2 ^ 1 ^ 2
-```
-
-因为 XOR 可以重排：
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-= 4 ^ (1 ^ 1) ^ (2 ^ 2)
-= 4 ^ 0 ^ 0
-= 4
-```
-
-所以答案是 `4`。
-
----
-
-## 可视化 walkthrough
-
-以：
-
-```text
-nums = [4, 1, 2, 1, 2]
-```
-
-为例。
-
-| step | num | res before | res = res ^ num | 为什么 |
-|---:|---:|---:|---:|---|
-| 0 | 4 | 0 | 4 | `0 ^ 4 = 4` |
-| 1 | 1 | 4 | 5 | 先暂时混在一起 |
-| 2 | 2 | 5 | 7 | 继续累积 bit 信息 |
-| 3 | 1 | 7 | 6 | 第二个 `1` 把第一个 `1` 消掉 |
-| 4 | 2 | 6 | 4 | 第二个 `2` 把第一个 `2` 消掉 |
-
-用二进制看最后两步更直观：
-
-```text
-7 = 0111
-1 = 0001
----------
-6 = 0110
-```
-
-这里 `1` 的最低位被消掉了。
-
-再 XOR `2`：
-
-```text
-6 = 0110
-2 = 0010
----------
-4 = 0100
-```
-
-`2` 对应的 bit 也被消掉，最后只剩 `4`。
-
----
-
-## Single Number 代码
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">题目与考点 (Problem & Pattern)</th>
+    <th>核心位运算实现 (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 136. Single Number (只出现一次的数字)</strong><br/><br/>
+      • <strong>题意</strong>：其余元素均出现 2 次，恰好 1 个元素出现 1 次。<br/>
+      • <strong>套路</strong>：全员异或，成对元素 $x \oplus x = 0$ 抵消。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$。
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def singleNumber(self, nums: List[int]) -> int:
+    def singleNumber(self, nums: list[int]) -> int:
         res = 0
-        for num in nums:
-            res = res ^ num
+        for x in nums:
+            res ^= x
         return res
 ```
 
-也可以写成：
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 268. Missing Number (丢失的数字)</strong><br/><br/>
+      • <strong>题意</strong>：长度为 $n$ 的数组包含 $[0, n]$ 内 $n$ 个数，求缺失的 1 个数。<br/>
+      • <strong>套路</strong>：将完整集合 $[0..n]$ 与数组所有数异或，成对抵消。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$。
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def singleNumber(self, nums: List[int]) -> int:
-        res = 0
-        for num in nums:
-            res ^= num
-        return res
-```
-
-`res ^= num` 等价于：
-
-```python
-res = res ^ num
-```
-
-## Missing Number
-
-### 题目
-
-给定一个长度为 `n` 的数组 `nums`，其中包含 `[0, n]` 范围内的 `n` 个不同数字。
-
-因为 `[0, n]` 一共有 `n + 1` 个数字，而数组里只有 `n` 个数字，所以恰好缺失一个数字。返回缺失的那个数字。
-
-例子：
-
-```text
-Input: nums = [3, 0, 1]
-Output: 2
-```
-
-```text
-Input: nums = [0, 1]
-Output: 2
-```
-
----
-
-## 为什么 Missing Number 也能用 XOR
-
-Missing Number 的本质也是“成对抵消”。
-
-完整集合应该是：
-
-```text
-0, 1, 2, ..., n
-```
-
-数组里实际出现的是：
-
-```text
-nums[0], nums[1], ..., nums[n - 1]
-```
-
-如果把完整集合和数组里的所有数字都 XOR 在一起：
-
-```text
-0 ^ 1 ^ 2 ^ ... ^ n ^ nums[0] ^ nums[1] ^ ... ^ nums[n - 1]
-```
-
-出现过的数字会在两边各出现一次，因此全部抵消：
-
-```text
-x ^ x = 0
-```
-
-最后只剩下那个没有在 `nums` 里出现的数字。
-
-代码里不需要真的先构造 `[0, 1, ..., n]`。可以一边遍历，一边把索引 `i` 和数字 `num` 都 XOR 进去：
-
-```text
-res = n
-for each i, num:
-  res = res ^ i ^ num
-```
-
-为什么一开始是 `res = n`？
-
-因为遍历数组时，索引只会覆盖：
-
-```text
-0, 1, ..., n - 1
-```
-
-完整集合还差最后一个边界值 `n`，所以先把 `n` 放进 `res`。
-
----
-
-## Missing Number 可视化 walkthrough
-
-以：
-
-```text
-nums = [3, 0, 1]
-n = 3
-```
-
-完整集合应该是：
-
-```text
-0, 1, 2, 3
-```
-
-数组里有：
-
-```text
-3, 0, 1
-```
-
-缺的是 `2`。
-
-用代码的扫描方式：
-
-| step | i | num | res before | res = res ^ i ^ num | 抵消关系 |
-|---:|---:|---:|---:|---:|---|
-| init | - | - | - | 3 | 先放入边界值 `n` |
-| 0 | 0 | 3 | 3 | 0 | `3 ^ 3 = 0`，`0` 不改变结果 |
-| 1 | 1 | 0 | 0 | 1 | 加入索引 `1`，`0` 不改变结果 |
-| 2 | 2 | 1 | 1 | 2 | `1 ^ 1 = 0`，剩下 `2` |
-
-整体看就是：
-
-```text
-res = 3 ^ (0 ^ 3) ^ (1 ^ 0) ^ (2 ^ 1)
-    = (3 ^ 3) ^ (0 ^ 0) ^ (1 ^ 1) ^ 2
-    = 0 ^ 0 ^ 0 ^ 2
-    = 2
-```
-
-这个写法的关键不是“索引有什么特殊魔法”，而是索引 `0..n-1` 加上初始值 `n`，刚好组成完整集合 `0..n`。
-
----
-
-## Missing Number 代码
-
-```python
-class Solution:
-    def missingNumber(self, nums: List[int]) -> int:
+    def missingNumber(self, nums: list[int]) -> int:
         res = len(nums)
-
-        for i, num in enumerate(nums):
-            res ^= i ^ num
-
+        for i, x in enumerate(nums):
+            res ^= i ^ x
         return res
 ```
 
-也可以写得更展开：
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 389. Find the Difference (找不同)</strong><br/><br/>
+      • <strong>题意</strong>：字符串 $t$ 由 $s$ 随机打乱并随机插入 1 个字母组成，求该字母。<br/>
+      • <strong>套路</strong>：遍历拼接字符串 $s + t$，按 ASCII 码累积异或。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$。
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def missingNumber(self, nums: List[int]) -> int:
-        n = len(nums)
-        res = n
+    def findTheDifference(self, s: str, t: str) -> str:
+        ch = 0
+        for c in s + t:
+            ch ^= ord(c)
+        return chr(ch)
+```
 
-        for i, num in enumerate(nums):
-            res = res ^ i
-            res = res ^ num
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 260. Single Number III (只出现一次的数字 III)</strong><br/><br/>
+      • <strong>题意</strong>：恰好两个元素各出现 1 次，其余元素均出现 2 次。<br/>
+      • <strong>套路</strong>：全量异或得 $a \oplus b$；取 `lowbit = diff & (-diff)` 区分二者；按该位是 0 还是 1 分组异或。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$。
+    </td>
+    <td>
 
+```python
+class Solution:
+    def singleNumber(self, nums: list[int]) -> list[int]:
+        diff = 0
+        for x in nums:
+            diff ^= x
+        # 提取 a 和 b 最低不同位
+        lowbit = diff & (-diff)
+        a = b = 0
+        for x in nums:
+            if x & lowbit:
+                a ^= x
+            else:
+                b ^= x
+        return [a, b]
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 2. 最低位消除与汉明统计族 (Brian Kernighan & Lowbit)
+
+利用 `n & (n - 1)` 消除最低 1 位，避开 32 次全量扫描，循环步数严格等于 1 的个数。
+
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">题目与考点 (Problem & Pattern)</th>
+    <th>核心位运算实现 (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 191. Number of 1 Bits (位 1 的个数)</strong><br/><br/>
+      • <strong>题意</strong>：求无符号整数二进制中 1 的个数（汉明重量）。<br/>
+      • <strong>套路</strong>：每次执行 `n &= n - 1` 抹去最右侧 1，循环次数等于 1 的数目。<br/>
+      • <strong>复杂度</strong>：时间 $O(k)$（$k \le 32$ 为 1 的个数），空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def hammingWeight(self, n: int) -> int:
+        count = 0
+        while n:
+            n &= n - 1
+            count += 1
+        return count
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 231. Power of Two (2 的幂)</strong><br/><br/>
+      • <strong>题意</strong>：判断整数 $n$ 是否为 2 的幂次方。<br/>
+      • <strong>套路</strong>：2 的幂必为正整数且二进制表示中仅有唯一的 1。<br/>
+      • <strong>复杂度</strong>：时间 $O(1)$，空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def isPowerOfTwo(self, n: int) -> bool:
+        return n > 0 and (n & (n - 1)) == 0
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 342. Power of Four (4 的幂)</strong><br/><br/>
+      • <strong>题意</strong>：判断整数 $n$ 是否为 4 的幂次方。<br/>
+      • <strong>套路</strong>：需满足为 2 的幂，且唯一的 1 必须位于奇数索引位（与 `0x55555555` 相与不为 0）。<br/>
+      • <strong>复杂度</strong>：时间 $O(1)$，空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def isPowerOfFour(self, n: int) -> bool:
+        return n > 0 and (n & (n - 1)) == 0 and (n & 0x55555555) != 0
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 338. Counting Bits (比特位计数)</strong><br/><br/>
+      • <strong>题意</strong>：计算区间 $[0, n]$ 内所有整数二进制 1 的个数。<br/>
+      • <strong>套路</strong>：DP 递推 `dp[i] = dp[i & (i - 1)] + 1`，消除最低 1 后查表。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$（不计输出数组）。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def countBits(self, n: int) -> list[int]:
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i & (i - 1)] + 1
+        return dp
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 461. Hamming Distance (汉明距离)</strong><br/><br/>
+      • <strong>题意</strong>：计算两数二进制位不同的位置数量。<br/>
+      • <strong>套路</strong>：`x ^ y` 提取不同位，再用 Kernighan 统计 1 的数目。<br/>
+      • <strong>复杂度</strong>：时间 $O(k)$，空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def hammingDistance(self, x: int, y: int) -> int:
+        xor = x ^ y
+        res = 0
+        while xor:
+            xor &= xor - 1
+            res += 1
         return res
 ```
 
-两段代码完全等价。
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## 复杂度
+## 3. 模 K 状态机与逐位统计族 (Modulo K & Bit State Machine)
 
-两题都只扫描数组一次。
-
-```text
-Time:  O(n)
-Space: O(1)
-```
-
-这个 `O(1)` 是 XOR 做法的关键优势：不需要哈希表，不需要排序，也不需要额外数组。
-
----
-
-## 常见坑
-
-### 1. 把 XOR 理解成加法
-
-XOR 不是加法。
-
-```text
-1 ^ 1 = 0
-```
-
-而不是 `2`。
-
-XOR 是逐 bit 比较：
-
-```text
-same -> 0
-different -> 1
-```
-
-### 2. 担心负数不能用 XOR
-
-Python 的负数也可以做 XOR。
-
-LeetCode 这题不需要你手动处理二进制补码细节。只要题目保证其他数字都出现两次，`x ^ x = 0` 仍然成立。
-
-### 3. 不理解为什么顺序无所谓
-
-因为 XOR 满足交换律和结合律。
-
-数组原顺序是：
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-```
-
-但数学上可以看成：
-
-```text
-4 ^ (1 ^ 1) ^ (2 ^ 2)
-```
-
-这就是为什么一次线性扫描就够。
-
-### 4. Missing Number 忘记先 XOR `n`
-
-Missing Number 的数组索引只到 `n - 1`。
-
-如果初始化成：
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">题目与考点 (Problem & Pattern)</th>
+    <th>核心位运算实现 (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 137. Single Number II (只出现一次的数字 II)</strong><br/><br/>
+      • <strong>题意</strong>：其余所有元素均出现 3 次，恰好 1 个元素出现 1 次。<br/>
+      • <strong>套路</strong>：构建模 3 状态机（$00 \to 01 \to 10 \to 00$）。`ones` 与 `twos` 分别追踪位出现 1 次与 2 次的状态，满 3 次自动复位。<br/>
+      • <strong>复杂度</strong>：时间 $O(n)$，空间 $O(1)$。
+    </td>
+    <td>
 
 ```python
-res = 0
+class Solution:
+    def singleNumber(self, nums: list[int]) -> int:
+        ones = twos = 0
+        for x in nums:
+            ones = (ones ^ x) & ~twos
+            twos = (twos ^ x) & ~ones
+        return ones
 ```
 
-然后只遍历 `i` 和 `num`，完整集合里最后的 `n` 就没有被放进去。
-
-所以要写：
-
-```python
-res = len(nums)
-```
-
-### 5. 把 Missing Number 和 Single Number 混成同一个输入条件
-
-Single Number 是：
-
-```text
-一个数字出现一次，其他数字出现两次
-```
-
-Missing Number 是：
-
-```text
-数组长度为 n，数字来自 0..n，少一个数字
-```
-
-它们都用 XOR，但配对对象不同：
-
-```text
-Single Number: 数字和数字配对
-Missing Number: 完整索引集合和数组数字配对
-```
-
-### 6. Single Number 的输入条件变了不能直接套
-
-Single Number 的简单 XOR 代码只适用于：
-
-```text
-一个数字出现一次，其他数字都出现两次
-```
-
-如果题目变成：
-
-```text
-一个数字出现一次，其他数字都出现三次
-```
-
-就不能只用简单 XOR，需要统计每一位出现次数并对 `3` 取模。
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## 一句话记忆
+## 4. 位逆序与无加号算术 (Bit Reversal & Arithmetic)
 
-```text
-Single Number = 数组全部 XOR 一遍。
-成对数字 x ^ x = 0，
-0 ^ single = single。
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">题目与考点 (Problem & Pattern)</th>
+    <th>核心位运算实现 (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 190. Reverse Bits (颠倒二进制位)</strong><br/><br/>
+      • <strong>题意</strong>：颠倒 32 位无符号整数的所有二进制位。<br/>
+      • <strong>套路</strong>：固定 32 次循环，结果左移腾位后装入 `n & 1`，输入 `n` 右移。<br/>
+      • <strong>复杂度</strong>：时间 $O(1)$，空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def reverseBits(self, n: int) -> int:
+        res = 0
+        for _ in range(32):
+            res = (res << 1) | (n & 1)
+            n >>= 1
+        return res
 ```
 
-```text
-Missing Number = 完整集合 0..n 和 nums 全部 XOR。
-出现过的数字会两两抵消，
-最后剩下缺失值。
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 371. Sum of Two Integers (两整数之和)</strong><br/><br/>
+      • <strong>题意</strong>：不使用 `+` 和 `-` 计算两整数之和。<br/>
+      • <strong>套路</strong>：无进位和为 `a ^ b`，进位为 `(a & b) << 1`。Python 需加 `0xFFFFFFFF` 掩码限制在 32 位防止大数扩张。<br/>
+      • <strong>复杂度</strong>：时间 $O(1)$，空间 $O(1)$。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def getSum(self, a: int, b: int) -> int:
+        mask = 0xFFFFFFFF
+        max_int = 0x7FFFFFFF
+        while b != 0:
+            carry = ((a & b) << 1) & mask
+            a = (a ^ b) & mask
+            b = carry
+        return a if a <= max_int else ~(a ^ mask)
 ```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 5. 状态压缩与子集遍历 (Bitmask & Submask Enumeration)
+
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">题目与考点 (Problem & Pattern)</th>
+    <th>核心位运算实现 (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 78. Subsets (二进制掩码枚举子集)</strong><br/><br/>
+      • <strong>题意</strong>：生成不含重复元素的数组的所有子集（幂集）。<br/>
+      • <strong>套路</strong>：$0 \sim 2^n - 1$ 每个数值的第 $i$ 个 bit 代表是否选取 `nums[i]`。<br/>
+      • <strong>复杂度</strong>：时间 $O(n \cdot 2^n)$，空间 $O(1)$（不计输出）。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def subsets(self, nums: list[int]) -> list[list[int]]:
+        n = len(nums)
+        res = []
+        for mask in range(1 << n):
+            sub = [nums[i] for i in range(n) if (mask >> i) & 1]
+            res.append(sub)
+        return res
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>子掩码快速遍历模板 (Submask Enumeration Trick)</strong><br/><br/>
+      • <strong>模式</strong>：给定二进制状态 `mask`，在 $O(2^k)$ 内严格降序遍历所有非空子掩码。<br/>
+      • <strong>套路</strong>：`sub = (sub - 1) & mask`，借位减 1 配合与运算跳过无效状态。<br/>
+      • <strong>应用</strong>：状压 DP 转移（旅行商 TSP、划分型 DP）。
+    </td>
+    <td>
+
+```python
+class Solution:
+    def enumerateSubmasks(self, mask: int) -> list[int]:
+        submasks = []
+        sub = mask
+        while sub > 0:
+            submasks.append(sub)
+            sub = (sub - 1) & mask
+        submasks.append(0)  # 补充空集状态 0
+        return submasks
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 6. 位运算口诀速记卡
+
+| 核心模式 | 关键代码公式 | 典型题目 |
+|---|---|---|
+| **成对异或消除** | `res ^= x` | LC 136, LC 268, LC 389 |
+| **最低 1 位消除** | `n &= n - 1` | LC 191, LC 231, LC 338 |
+| **最低 1 位提取** | `lowbit = n & (-n)` | LC 260, 树状数组 (Fenwick) |
+| **模 3 状态机** | `ones = (ones ^ x) & ~twos; twos = (twos ^ x) & ~ones` | LC 137 |
+| **无加号进位加** | `carry = (a & b) << 1; a = a ^ b` | LC 371 |
+| **子掩码降序遍历** | `sub = (sub - 1) & mask` | 状压 DP |

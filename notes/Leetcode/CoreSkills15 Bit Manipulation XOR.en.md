@@ -1,528 +1,476 @@
-# Bit Manipulation: XOR / Single Number & Missing Number
+# Bit Manipulation: LeetCode & NeetCode Patterns Cheat Sheet
 
-The core of bit manipulation problems is not memorizing many symbols, but understanding exactly what each operation does at the binary-bit level.
-
-This page starts with the two most classic XOR examples:
-
-```text
-LeetCode 136: Single Number
-LeetCode 268: Missing Number
-```
-
-The first problem gives an array:
-
-- only one number appears once
-- all other numbers appear twice
-
-Return the number that appears only once.
-
-The second problem gives an array of length `n`, whose elements come from the range `[0, n]`, with exactly one number missing. You need to return the missing value.
+The core essence of bit manipulation: **Leverage bitwise parallelism to eliminate branching and loops, achieving $O(1)$ auxiliary space or optimal runtime bounds.**  
+This cheat sheet consolidates high-frequency bit manipulation patterns across LeetCode and NeetCode 150: the left column provides problem statements and core invariants; the right column provides idiomatic, minimal Python implementations.
 
 ---
 
-## Table of Contents
+## 0. Bit Manipulation Primitives (Quick Reference)
 
-1. [What XOR Is](#what-xor-is)
-2. [Single Number](#single-number)
-3. [Why XOR Can Cancel Out Duplicate Numbers](#why-xor-can-cancel-out-duplicate-numbers)
-4. [Visual Walkthrough](#visual-walkthrough)
-5. [Single Number Code](#single-number-code)
-6. [Missing Number](#missing-number)
-7. [Why Missing Number Can Also Use XOR](#why-missing-number-can-also-use-xor)
-8. [Missing Number Visual Walkthrough](#missing-number-visual-walkthrough)
-9. [Missing Number Code](#missing-number-code)
-10. [Complexity](#complexity)
-11. [Common Pitfalls](#common-pitfalls)
-12. [One-Sentence Memory Aid](#one-sentence-memory-aid)
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Pattern / Target Operation</th>
+    <th>Python Core Expression / Statement</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td><strong>Get Bit $i$</strong><br/>Extract the $i$-th bit of integer $n$ (0-indexed)</td>
+    <td>
+
+```python
+bit = (n >> i) & 1
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Set Bit $i$</strong><br/>Force the $i$-th bit to 1, leaving other bits untouched</td>
+    <td>
+
+```python
+n = n | (1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Clear Bit $i$</strong><br/>Force the $i$-th bit to 0, leaving other bits untouched</td>
+    <td>
+
+```python
+n = n & ~(1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Toggle Bit $i$</strong><br/>Flip the $i$-th bit: 0 becomes 1, 1 becomes 0</td>
+    <td>
+
+```python
+n = n ^ (1 << i)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Clear Lowest 1-Bit (Brian Kernighan)</strong><br/>Clears the rightmost set bit in binary representation</td>
+    <td>
+
+```python
+n = n & (n - 1)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Extract Lowest 1-Bit (lowbit)</strong><br/>Isolates the rightmost set bit, zeroing all others</td>
+    <td>
+
+```python
+lowbit = n & (-n)
+```
+
+</td>
+  </tr>
+  <tr>
+    <td><strong>Parity Check (Is Odd)</strong><br/>Evaluates whether the lowest bit is 1</td>
+    <td>
+
+```python
+is_odd = bool(n & 1)
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## What XOR Is
+## 1. XOR Cancellation Family
 
-XOR is written as `^`.
+Leveraging key XOR properties: $x \oplus x = 0$, $x \oplus 0 = x$, commutative and associative.
 
-Its rule is:
-
-```text
-same gives 0, different gives 1
-```
-
-| a | b | a ^ b |
-|---:|---:|---:|
-| 0 | 0 | 0 |
-| 0 | 1 | 1 |
-| 1 | 0 | 1 |
-| 1 | 1 | 0 |
-
-So:
-
-```text
-5 = 0101
-3 = 0011
----------
-5 ^ 3 = 0110 = 6
-```
-
-XOR has three most important properties:
-
-### 1. XOR with itself cancels out
-
-```text
-x ^ x = 0
-```
-
-Because every bit is the same.
-
-Example:
-
-```text
-7 ^ 7 = 0
-```
-
-### 2. XOR with 0 leaves the number unchanged
-
-```text
-x ^ 0 = x
-```
-
-Because `0` does not change any bit.
-
-Example:
-
-```text
-7 ^ 0 = 7
-```
-
-### 3. XOR satisfies commutativity and associativity
-
-```text
-a ^ b = b ^ a
-(a ^ b) ^ c = a ^ (b ^ c)
-```
-
-This means the order does not matter.
-
-So:
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-= 4 ^ (1 ^ 1) ^ (2 ^ 2)
-= 4 ^ 0 ^ 0
-= 4
-```
-
-That is the entire core of Single Number.
-
----
-
-## Single Number
-
-### Problem
-
-Given an integer array `nums`, in which exactly one element appears once and every other element appears twice.
-
-Return the element that appears only once.
-
-Example:
-
-```text
-Input: nums = [2, 2, 1]
-Output: 1
-```
-
-```text
-Input: nums = [4, 1, 2, 1, 2]
-Output: 4
-```
-
----
-
-## Why XOR Can Cancel Out Duplicate Numbers
-
-If you use a hash table, of course you can do:
-
-```text
-count the occurrences of each number
-return the number with count == 1
-```
-
-But this requires `O(n)` extra space.
-
-The XOR approach is more elegant:
-
-```text
-XOR all numbers together
-numbers that appear in pairs become 0
-the remaining value is the single number
-```
-
-For `[4, 1, 2, 1, 2]`:
-
-```text
-res = 0
-
-res = 0 ^ 4
-res = 4 ^ 1
-res = 4 ^ 1 ^ 2
-res = 4 ^ 1 ^ 2 ^ 1
-res = 4 ^ 1 ^ 2 ^ 1 ^ 2
-```
-
-Because XOR can be reordered:
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-= 4 ^ (1 ^ 1) ^ (2 ^ 2)
-= 4 ^ 0 ^ 0
-= 4
-```
-
-So the answer is `4`.
-
----
-
-## Visual Walkthrough
-
-Take:
-
-```text
-nums = [4, 1, 2, 1, 2]
-```
-
-as the example.
-
-| step | num | res before | res = res ^ num | Why |
-|---:|---:|---:|---:|---|
-| 0 | 4 | 0 | 4 | `0 ^ 4 = 4` |
-| 1 | 1 | 4 | 5 | temporarily mixed together |
-| 2 | 2 | 5 | 7 | continue accumulating bit information |
-| 3 | 1 | 7 | 6 | the second `1` cancels out the first `1` |
-| 4 | 2 | 6 | 4 | the second `2` cancels out the first `2` |
-
-Looking at the last two steps in binary makes it more intuitive:
-
-```text
-7 = 0111
-1 = 0001
----------
-6 = 0110
-```
-
-Here, the lowest bit of `1` is canceled out.
-
-Then XOR with `2`:
-
-```text
-6 = 0110
-2 = 0010
----------
-4 = 0100
-```
-
-The bit corresponding to `2` is also canceled out, leaving only `4` in the end.
-
----
-
-## Single Number Code
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Problem &amp; Pattern</th>
+    <th>Core Bit Manipulation Implementation (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 136. Single Number</strong><br/><br/>
+      • <strong>Problem</strong>: Every element appears twice except for one unique element.<br/>
+      • <strong>Pattern</strong>: XOR all numbers; duplicate pairs cancel via $x \oplus x = 0$.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$.
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def singleNumber(self, nums: List[int]) -> int:
+    def singleNumber(self, nums: list[int]) -> int:
         res = 0
-        for num in nums:
-            res = res ^ num
+        for x in nums:
+            res ^= x
         return res
 ```
 
-It can also be written as:
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 268. Missing Number</strong><br/><br/>
+      • <strong>Problem</strong>: Array of length $n$ containing $n$ distinct numbers from $[0, n]$. Find the one missing.<br/>
+      • <strong>Pattern</strong>: XOR the full range $[0..n]$ against all array elements; matching numbers cancel.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$.
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def singleNumber(self, nums: List[int]) -> int:
-        res = 0
-        for num in nums:
-            res ^= num
-        return res
-```
-
-`res ^= num` is equivalent to:
-
-```python
-res = res ^ num
-```
-
-## Missing Number
-
-### Problem
-
-Given an array `nums` of length `n`, containing `n` distinct numbers from the range `[0, n]`.
-
-Since `[0, n]` contains `n + 1` numbers in total while the array contains only `n` numbers, exactly one number is missing. Return that missing number.
-
-Example:
-
-```text
-Input: nums = [3, 0, 1]
-Output: 2
-```
-
-```text
-Input: nums = [0, 1]
-Output: 2
-```
-
----
-
-## Why Missing Number Can Also Use XOR
-
-The essence of Missing Number is also "pairwise cancellation."
-
-The complete set should be:
-
-```text
-0, 1, 2, ..., n
-```
-
-What actually appears in the array is:
-
-```text
-nums[0], nums[1], ..., nums[n - 1]
-```
-
-If we XOR the complete set and all numbers in the array together:
-
-```text
-0 ^ 1 ^ 2 ^ ... ^ n ^ nums[0] ^ nums[1] ^ ... ^ nums[n - 1]
-```
-
-The numbers that have appeared will each appear once on both sides, so they all cancel out:
-
-```text
-x ^ x = 0
-```
-
-In the end, only the number that does not appear in `nums` remains.
-
-In code, you do not need to literally construct `[0, 1, ..., n]` first. You can traverse once and XOR both the index `i` and the number `num` into the result:
-
-```text
-res = n
-for each i, num:
-  res = res ^ i ^ num
-```
-
-Why do we start with `res = n`?
-
-Because when traversing the array, the indices cover only:
-
-```text
-0, 1, ..., n - 1
-```
-
-The complete set is still missing the final boundary value `n`, so we put `n` into `res` first.
-
----
-
-## Missing Number Visual Walkthrough
-
-Take:
-
-```text
-nums = [3, 0, 1]
-n = 3
-```
-
-The complete set should be:
-
-```text
-0, 1, 2, 3
-```
-
-The array contains:
-
-```text
-3, 0, 1
-```
-
-The missing value is `2`.
-
-Using the scan method from the code:
-
-| step | i | num | res before | res = res ^ i ^ num | Cancellation relation |
-|---:|---:|---:|---:|---:|---|
-| init | - | - | - | 3 | put the boundary value `n` in first |
-| 0 | 0 | 3 | 3 | 0 | `3 ^ 3 = 0`, and `0` does not change the result |
-| 1 | 1 | 0 | 0 | 1 | add index `1`, and `0` does not change the result |
-| 2 | 2 | 1 | 1 | 2 | `1 ^ 1 = 0`, leaving `2` |
-
-Viewed as a whole:
-
-```text
-res = 3 ^ (0 ^ 3) ^ (1 ^ 0) ^ (2 ^ 1)
-    = (3 ^ 3) ^ (0 ^ 0) ^ (1 ^ 1) ^ 2
-    = 0 ^ 0 ^ 0 ^ 2
-    = 2
-```
-
-The key point of this form is not that "indices have some special magic," but that indices `0..n-1` plus the initial value `n` happen to form the complete set `0..n`.
-
----
-
-## Missing Number Code
-
-```python
-class Solution:
-    def missingNumber(self, nums: List[int]) -> int:
+    def missingNumber(self, nums: list[int]) -> int:
         res = len(nums)
-
-        for i, num in enumerate(nums):
-            res ^= i ^ num
-
+        for i, x in enumerate(nums):
+            res ^= i ^ x
         return res
 ```
 
-It can also be written in a more expanded form:
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 389. Find the Difference</strong><br/><br/>
+      • <strong>Problem</strong>: String $t$ is formed by shuffling $s$ and adding one random character. Find that character.<br/>
+      • <strong>Pattern</strong>: XOR ASCII character values over $s + t$; pairs cancel, leaving the extra char.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$.
+    </td>
+    <td>
 
 ```python
 class Solution:
-    def missingNumber(self, nums: List[int]) -> int:
-        n = len(nums)
-        res = n
+    def findTheDifference(self, s: str, t: str) -> str:
+        ch = 0
+        for c in s + t:
+            ch ^= ord(c)
+        return chr(ch)
+```
 
-        for i, num in enumerate(nums):
-            res = res ^ i
-            res = res ^ num
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 260. Single Number III</strong><br/><br/>
+      • <strong>Problem</strong>: Exactly two elements appear once; all other elements appear twice.<br/>
+      • <strong>Pattern</strong>: XOR all numbers to obtain $a \oplus b$. Extract `lowbit = diff & (-diff)` as a differentiating bit. Partition into two groups and XOR separately.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$.
+    </td>
+    <td>
 
+```python
+class Solution:
+    def singleNumber(self, nums: list[int]) -> list[int]:
+        diff = 0
+        for x in nums:
+            diff ^= x
+        # Extract lowest differentiating bit between a and b
+        lowbit = diff & (-diff)
+        a = b = 0
+        for x in nums:
+            if x & lowbit:
+                a ^= x
+            else:
+                b ^= x
+        return [a, b]
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 2. Lowest Set-Bit Clearing & Hamming Weight (Brian Kernighan & Lowbit)
+
+Using `n & (n - 1)` to clear the lowest 1-bit, looping strictly $k$ times ($k =$ count of set bits) instead of 32 iterations.
+
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Problem &amp; Pattern</th>
+    <th>Core Bit Manipulation Implementation (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 191. Number of 1 Bits (Hamming Weight)</strong><br/><br/>
+      • <strong>Problem</strong>: Return the number of set bits (Hamming weight) of an integer.<br/>
+      • <strong>Pattern</strong>: Repeat `n &= n - 1` to peel off the lowest 1 until zero.<br/>
+      • <strong>Complexity</strong>: Time $O(k)$ ($k \le 32$ is the number of 1-bits), Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def hammingWeight(self, n: int) -> int:
+        count = 0
+        while n:
+            n &= n - 1
+            count += 1
+        return count
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 231. Power of Two</strong><br/><br/>
+      • <strong>Problem</strong>: Determine if integer $n$ is a power of two.<br/>
+      • <strong>Pattern</strong>: Must be positive ($n > 0$) and contain exactly one set bit (`n & (n - 1) == 0`).<br/>
+      • <strong>Complexity</strong>: Time $O(1)$, Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def isPowerOfTwo(self, n: int) -> bool:
+        return n > 0 and (n & (n - 1)) == 0
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 342. Power of Four</strong><br/><br/>
+      • <strong>Problem</strong>: Determine if integer $n$ is a power of four.<br/>
+      • <strong>Pattern</strong>: Must be a power of two and its sole 1-bit must reside at an odd position (`n & 0x55555555 != 0`).<br/>
+      • <strong>Complexity</strong>: Time $O(1)$, Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def isPowerOfFour(self, n: int) -> bool:
+        return n > 0 and (n & (n - 1)) == 0 and (n & 0x55555555) != 0
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 338. Counting Bits</strong><br/><br/>
+      • <strong>Problem</strong>: Return an array of length $n + 1$ with set-bit counts for each $0 \le i \le n$.<br/>
+      • <strong>Pattern</strong>: DP relation `dp[i] = dp[i & (i - 1)] + 1`: bit count equals subproblem without lowest bit plus 1.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$ (excluding output array).
+    </td>
+    <td>
+
+```python
+class Solution:
+    def countBits(self, n: int) -> list[int]:
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i & (i - 1)] + 1
+        return dp
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 461. Hamming Distance</strong><br/><br/>
+      • <strong>Problem</strong>: Return the number of positions at which the corresponding bits are different.<br/>
+      • <strong>Pattern</strong>: `x ^ y` isolates differing bits, then apply Kernighan's trick.<br/>
+      • <strong>Complexity</strong>: Time $O(k)$, Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def hammingDistance(self, x: int, y: int) -> int:
+        xor = x ^ y
+        res = 0
+        while xor:
+            xor &= xor - 1
+            res += 1
         return res
 ```
 
-The two code blocks are completely equivalent.
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## Complexity
+## 3. Modulo-K State Machine & Bitwise Counting
 
-Both problems scan the array only once.
-
-```text
-Time:  O(n)
-Space: O(1)
-```
-
-This `O(1)` is the key advantage of the XOR approach: no hash table, no sorting, and no extra array are needed.
-
----
-
-## Common Pitfalls
-
-### 1. Treating XOR as addition
-
-XOR is not addition.
-
-```text
-1 ^ 1 = 0
-```
-
-not `2`.
-
-XOR compares bit by bit:
-
-```text
-same -> 0
-different -> 1
-```
-
-### 2. Worrying that negative numbers cannot use XOR
-
-Negative numbers in Python can also use XOR.
-
-This LeetCode problem does not require you to manually handle details of binary two's complement. As long as the problem guarantees that all other numbers appear twice, `x ^ x = 0` still holds.
-
-### 3. Not understanding why the order does not matter
-
-Because XOR satisfies commutativity and associativity.
-
-The original array order is:
-
-```text
-4 ^ 1 ^ 2 ^ 1 ^ 2
-```
-
-But mathematically it can be viewed as:
-
-```text
-4 ^ (1 ^ 1) ^ (2 ^ 2)
-```
-
-That is why a single linear scan is enough.
-
-### 4. Forgetting to XOR `n` first in Missing Number
-
-The array indices in Missing Number only go up to `n - 1`.
-
-If you initialize with:
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Problem &amp; Pattern</th>
+    <th>Core Bit Manipulation Implementation (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 137. Single Number II</strong><br/><br/>
+      • <strong>Problem</strong>: Every element appears 3 times except for one unique element appearing once.<br/>
+      • <strong>Pattern</strong>: Finite state machine modulo 3 ($00 \to 01 \to 10 \to 00$). `ones` and `twos` track bits appearing 1 and 2 times, resetting when reaching 3.<br/>
+      • <strong>Complexity</strong>: Time $O(n)$, Space $O(1)$.
+    </td>
+    <td>
 
 ```python
-res = 0
+class Solution:
+    def singleNumber(self, nums: list[int]) -> int:
+        ones = twos = 0
+        for x in nums:
+            ones = (ones ^ x) & ~twos
+            twos = (twos ^ x) & ~ones
+        return ones
 ```
 
-and then only traverse `i` and `num`, the final `n` in the complete set is never included.
-
-So you should write:
-
-```python
-res = len(nums)
-```
-
-### 5. Mixing up the input conditions of Missing Number and Single Number
-
-Single Number is:
-
-```text
-one number appears once, and all other numbers appear twice
-```
-
-Missing Number is:
-
-```text
-the array length is n, the numbers come from 0..n, and one number is missing
-```
-
-They both use XOR, but the pairing targets are different:
-
-```text
-Single Number: numbers are paired with numbers
-Missing Number: the complete index set is paired with array numbers
-```
-
-### 6. If Single Number changes its input condition, you cannot apply the same pattern directly
-
-The simple XOR code for Single Number only applies to:
-
-```text
-one number appears once, and all other numbers appear twice
-```
-
-If the problem changes to:
-
-```text
-one number appears once, and all other numbers appear three times
-```
-
-then simple XOR alone no longer works. You need to count the occurrences of each bit and take modulo `3`.
+</td>
+  </tr>
+</tbody>
+</table>
 
 ---
 
-## One-Sentence Memory Aid
+## 4. Bit Reversal & Arithmetic Without Addition Operators
 
-```text
-Single Number = XOR the entire array once.
-Paired numbers satisfy x ^ x = 0,
-and 0 ^ single = single.
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Problem &amp; Pattern</th>
+    <th>Core Bit Manipulation Implementation (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 190. Reverse Bits</strong><br/><br/>
+      • <strong>Problem</strong>: Reverse bits of a 32-bit unsigned integer.<br/>
+      • <strong>Pattern</strong>: Iterate 32 times: shift `res` left, insert `n & 1`, shift `n` right.<br/>
+      • <strong>Complexity</strong>: Time $O(1)$, Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def reverseBits(self, n: int) -> int:
+        res = 0
+        for _ in range(32):
+            res = (res << 1) | (n & 1)
+            n >>= 1
+        return res
 ```
 
-```text
-Missing Number = XOR the complete set 0..n and nums together.
-Numbers that appeared will cancel in pairs,
-and the missing value is what remains in the end.
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>LeetCode 371. Sum of Two Integers</strong><br/><br/>
+      • <strong>Problem</strong>: Add two integers without `+` or `-` operators.<br/>
+      • <strong>Pattern</strong>: Sum without carry is `a ^ b`; carry is `(a & b) << 1`. In Python, clamp to 32 bits using mask `0xFFFFFFFF` to avoid arbitrary-precision integer expansion.<br/>
+      • <strong>Complexity</strong>: Time $O(1)$, Space $O(1)$.
+    </td>
+    <td>
+
+```python
+class Solution:
+    def getSum(self, a: int, b: int) -> int:
+        mask = 0xFFFFFFFF
+        max_int = 0x7FFFFFFF
+        while b != 0:
+            carry = ((a & b) << 1) & mask
+            a = (a ^ b) & mask
+            b = carry
+        return a if a <= max_int else ~(a ^ mask)
 ```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 5. Bitmask State Compression & Submask Enumeration
+
+<table>
+<thead>
+  <tr>
+    <th style="width: 38%;">Problem &amp; Pattern</th>
+    <th>Core Bit Manipulation Implementation (Python)</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <strong>LeetCode 78. Subsets (Power Set via Bitmask)</strong><br/><br/>
+      • <strong>Problem</strong>: Return all subsets of an array of distinct integers.<br/>
+      • <strong>Pattern</strong>: Numbers $0 \sim 2^n - 1$ each represent a subset mask; the $i$-th bit indicates inclusion of `nums[i]`.<br/>
+      • <strong>Complexity</strong>: Time $O(n \cdot 2^n)$, Space $O(1)$ (excluding output).
+    </td>
+    <td>
+
+```python
+class Solution:
+    def subsets(self, nums: list[int]) -> list[list[int]]:
+        n = len(nums)
+        res = []
+        for mask in range(1 << n):
+            sub = [nums[i] for i in range(n) if (mask >> i) & 1]
+            res.append(sub)
+        return res
+```
+
+</td>
+  </tr>
+  <tr>
+    <td>
+      <strong>Submask Fast Enumeration Trick</strong><br/><br/>
+      • <strong>Pattern</strong>: Given a binary `mask`, enumerate all its non-empty submasks in strictly decreasing order in $O(2^k)$.<br/>
+      • <strong>Mechanism</strong>: `sub = (sub - 1) & mask`: subtracting 1 borrows bits while `& mask` filters out non-member bits.<br/>
+      • <strong>Application</strong>: Bitmask DP state transitions (TSP, partition DP).
+    </td>
+    <td>
+
+```python
+class Solution:
+    def enumerateSubmasks(self, mask: int) -> list[int]:
+        submasks = []
+        sub = mask
+        while sub > 0:
+            submasks.append(sub)
+            sub = (sub - 1) & mask
+        submasks.append(0)  # Append the empty subset mask 0
+        return submasks
+```
+
+</td>
+  </tr>
+</tbody>
+</table>
+
+---
+
+## 6. Quick-Recall Bit Manipulation Formula Card
+
+| Core Pattern | Canonical Expression | Representative Problems |
+|---|---|---|
+| **XOR Cancellation** | `res ^= x` | LC 136, LC 268, LC 389 |
+| **Clear Lowest 1-Bit** | `n &= n - 1` | LC 191, LC 231, LC 338 |
+| **Extract Lowest 1-Bit** | `lowbit = n & (-n)` | LC 260, Fenwick Tree |
+| **Modulo-3 State Machine** | `ones = (ones ^ x) & ~twos; twos = (twos ^ x) & ~ones` | LC 137 |
+| **Carryless Addition** | `carry = (a & b) << 1; a = a ^ b` | LC 371 |
+| **Submask Enumeration** | `sub = (sub - 1) & mask` | Bitmask DP |
