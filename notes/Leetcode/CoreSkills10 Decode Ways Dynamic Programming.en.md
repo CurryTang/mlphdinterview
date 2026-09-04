@@ -990,6 +990,28 @@ class Solution:
 ### 1. Deterministic Grid Sweep: Unique Paths
 
 - **Rule**: Only move down or right $\implies$ Dependency is purely top and left.
+- **State Definition**: $dp[i][j]$ represents the number of distinct paths from start $(0, 0)$ to cell $(i, j)$.
+- **Transition**: $dp[i][j] = dp[i-1][j] + dp[i][j-1]$.
+- **Base Case**: First row $dp[0][j] = 1$ (can only move right), first column $dp[i][0] = 1$ (can only move down).
+
+#### Before Space Compression: Standard 2D DP Grid
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        # Before space compression: standard 2D DP grid
+        dp = [[1] * n for _ in range(m)]
+        for i in range(1, m):
+            for j in range(1, n):
+                dp[i][j] = dp[i - 1][j] + dp[i][j - 1]
+        return dp[m - 1][n - 1]
+```
+
+- **Complexity**: Time $O(mn)$, Space $O(mn)$.
+
+#### After Space Compression: Single-Row Rolling Array Optimization
+
+Computing $dp[i][j]$ only requires the cell above (same column previous row unupdated value $dp[i-1][j]$) and the cell to the left (same row previous column newly updated value $dp[i][j-1]$). Across row iterations, state can be collapsed into a single array of size $n$.
 - **Transition**: $dp[j] = dp[j] + dp[j-1]$ (single rolling row).
 
 ```python
@@ -1003,6 +1025,7 @@ class Solution:
 ```
 
 - **Complexity**: Time $O(mn)$, Space $O(n)$.
+- **Edge cases**: When $m=1$ or $n=1$, loops do not execute and `dp[-1] = 1` is returned directly.
 
 ### 2. Arbitrary Grid & Implicit DAG: Longest Increasing Path in a Matrix
 
