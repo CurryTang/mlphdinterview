@@ -442,10 +442,35 @@ class Solution:
 
 ### 3. Dual-Source Feasibility: Interleaving String
 
-- **State**: $dp[i][j]$ = Whether `s1[:i]` and `s2[:j]` interleave to form `s3[:i+j]`.
-- **Transition**:
+#### Problem Context & Breakdown
 
-$$dp[i][j] = (dp[i-1][j] \land s1[i-1] == s3[i+j-1]) \lor (dp[i][j-1] \land s2[j-1] == s3[i+j-1])$$
+- **LeetCode 97 · Interleaving String**:
+  Given three strings $s_1, s_2, s_3$, determine whether $s_3$ can be formed by **interleaving** $s_1$ and $s_2$.
+- **Interleaving Rule**: The original internal relative order of characters within $s_1$ and $s_2$ must be **strictly preserved**.
+- **Length Conservation Invariant**: Every character of $s_3$ must originate from either $s_1$ or $s_2$. If $len(s_1) + len(s_2) \neq len(s_3)$, it is immediately invalid, returning `False`.
+
+#### Overall Thoughts & High-Yield Mental Models
+
+1. **Why Greedy Two-Pointers Fails (Interview Core Trap)**:
+   - Suppose $s_1 = \text{"aab"}, s_2 = \text{"aac"}, s_3 = \text{"aaabac"}$.
+   - At the first character `'a'`, both $s_1[0]$ and $s_2[0]$ match $s_3[0]$. This creates a **branching decision**: picking $s_1$ greedily may lead to a dead end, whereas picking $s_2$ leads to success.
+   - A greedy heuristic cannot anticipate future collisions and cannot backtrack. Therefore, we must rely on a search structure that explores all paths with memoization (Memoized DFS or DP).
+2. **Grid Pathfinding Metaphor (Physical Intuition)**:
+   - Map the problem to an $(m+1) \times (n+1)$ 2D grid where start is $(0, 0)$ and destination is $(m, n)$.
+   - **Step downward** $(i-1, j) \to (i, j)$: Consumes $s_1[i-1]$ to match $s_3[i+j-1]$;
+   - **Step rightward** $(i, j-1) \to (i, j)$: Consumes $s_2[j-1]$ to match $s_3[i+j-1]$;
+   - The problem is mathematically equivalent to: **Finding an unbroken connected path of valid steps from $(0, 0)$ to $(m, n)$**.
+3. **Index Invariance & Markovian Property**:
+   - Having consumed the prefix of length $i$ from $s_1$ and $j$ from $s_2$, exactly $i+j$ characters of $s_3$ have been used. The target character index is **strictly pinned to $i+j-1$**, eliminating the need for a 3rd tracking pointer.
+
+#### State Definition & Transition Equation
+
+- **State Definition**: $dp[i][j]$ indicates whether $s_1[:i]$ and $s_2[:j]$ can interleave into $s_3[:i+j]$.
+- **Transition**: Current character $s_3[i+j-1]$ can come from $s_1[i-1]$ (from above) or $s_2[j-1]$ (from the left):
+
+$$dp[i][j] = (dp[i-1][j] \land s_1[i-1] == s_3[i+j-1]) \lor (dp[i][j-1] \land s_2[j-1] == s_3[i+j-1])$$
+
+#### Before Space Compression: Standard 2D DP Grid
 
 ```python
 class Solution:
@@ -454,23 +479,62 @@ class Solution:
         if m + n != len(s3):
             return False
             
+        # Before space compression: standard (m+1) x (n+1) boolean grid
         dp = [[False] * (n + 1) for _ in range(m + 1)]
-        dp[0][0] = True
+        dp[0][0] = True  # Empty strings match empty s3
+        
+        # Column 0: purely consume s1 downwards
         for i in range(1, m + 1):
             dp[i][0] = dp[i - 1][0] and s1[i - 1] == s3[i - 1]
+            
+        # Row 0: purely consume s2 rightwards
         for j in range(1, n + 1):
             dp[0][j] = dp[0][j - 1] and s2[j - 1] == s3[j - 1]
             
+        # Fill grid checking both upper and left incoming paths
         for i in range(1, m + 1):
             for j in range(1, n + 1):
                 dp[i][j] = (
-                    (dp[i - 1][j] and s1[i - 1] == s3[i + j - 1])
-                    or (dp[i][j - 1] and s2[j - 1] == s3[i + j - 1])
+                    (dp[i - 1][j] and s1[i - 1] == s3[i + j - 1])  # From above
+                    or (dp[i][j - 1] and s2[j - 1] == s3[i + j - 1])  # From left
                 )
         return dp[m][n]
 ```
 
 - **Complexity**: Time $O(mn)$, Space $O(mn)$.
+
+#### After Space Compression: Single-Row Rolling Array
+
+Computing row $i$ only requires the previous row's cell above ($dp[i-1][j]$) and the current row's cell to the left ($dp[i][j-1]$). We can collapse space into a single 1D array of size $n+1$.
+
+```python
+class Solution:
+    def isInterleave(self, s1: str, s2: str, s3: str) -> bool:
+        m, n = len(s1), len(s2)
+        if m + n != len(s3):
+            return False
+            
+        # After space compression: single 1D rolling row (O(n) space)
+        dp = [False] * (n + 1)
+        dp[0] = True
+        
+        # Initialize row 0 (consuming only s2)
+        for j in range(1, n + 1):
+            dp[j] = dp[j - 1] and s2[j - 1] == s3[j - 1]
+            
+        for i in range(1, m + 1):
+            # Col 0 (j = 0) depends only on previous row's dp[0]
+            dp[0] = dp[0] and s1[i - 1] == s3[i - 1]
+            for j in range(1, n + 1):
+                # dp[j] (unupdated) represents the cell above; dp[j-1] represents cell to the left
+                from_top = dp[j] and s1[i - 1] == s3[i + j - 1]
+                from_left = dp[j - 1] and s2[j - 1] == s3[i + j - 1]
+                dp[j] = from_top or from_left
+                
+        return dp[n]
+```
+
+- **Complexity**: Time $O(mn)$, Space $O(n)$ (can be optimized to $O(\min(m, n))$ by swapping $s_1$ and $s_2$ if $m < n$).
 
 ---
 
