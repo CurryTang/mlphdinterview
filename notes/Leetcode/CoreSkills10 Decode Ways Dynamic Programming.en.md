@@ -1089,7 +1089,37 @@ When a stage can occupy one of several mutually exclusive named discrete states,
 - `sold`: Max profit selling stock today (cooldown next day) $\implies \text{sold} = \text{hold} + price$
 - `rest`: Max profit holding no stock & ready to buy $\implies \text{rest} = \max(\text{rest}, \text{sold})$
 
-#### Implementation (Avoiding Variable Dirty-Read Overwrite)
+#### Before Space Compression: Standard 2D DP Table
+
+Before space optimization, we allocate an $n \times 3$ matrix recording each state across each day:
+
+```python
+class Solution:
+    def maxProfit(self, prices: list[int]) -> int:
+        # Before space compression: explicit N x 3 2D DP table
+        if not prices:
+            return 0
+        n = len(prices)
+        # dp[i][0]: hold, dp[i][1]: sold (cooldown next day), dp[i][2]: rest (free cash)
+        dp = [[0] * 3 for _ in range(n)]
+        dp[0][0] = -prices[0]
+        dp[0][1] = float("-inf")
+        dp[0][2] = 0
+        
+        for i in range(1, n):
+            dp[i][0] = max(dp[i - 1][0], dp[i - 1][2] - prices[i])
+            dp[i][1] = dp[i - 1][0] + prices[i]
+            dp[i][2] = max(dp[i - 1][2], dp[i - 1][1])
+            
+        return max(dp[n - 1][1], dp[n - 1][2])
+```
+
+- **Complexity**: Time $O(n)$, Space $O(n)$.
+
+#### Space-Optimized Implementation (Avoiding Variable Dirty-Read Overwrite)
+
+Since day $i$ only depends on day $i-1$, we can collapse memory down to 3 scalar variables.
+**Caution**: Writing `hold = max(hold, rest - price)` directly before `sold = hold + price` causes a dirty read of the newly updated `hold`. Always stage via temporary variables or perform synchronous tuple assignment.
 
 ```python
 class Solution:
@@ -1109,6 +1139,27 @@ class Solution:
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
+
+---
+
+### Extension: Unified Framework for the LeetCode Stock Series
+
+The LeetCode Stock series is the ultimate testing ground for state-machine DP. The universal 3D DP formulation is:
+$$dp[i][k][0/1] \quad \text{(day $i$, at most $k$ completed transactions, currently holding $0$ or $1$ shares)}$$
+
+Every stock problem represents a specific constraint relaxation or specialization of this master framework:
+
+| Problem | Key Constraints | Recommended Solution & State Design | Space Complexity |
+|---|---|---|---|
+| **I (LC 121)** | At most 1 transaction | Greedy prefix minimum `min_price`, updating `price - min_price`. | $O(1)$ |
+| **II (LC 122)** | Infinite transactions | **Greedy**: accumulate every positive swing $\sum \max(0, p[i]-p[i-1])$; or 2-state DP (`hold`, `cash`). | $O(1)$ |
+| **III (LC 123)** | At most 2 transactions | Unroll into 4 named sequential states: `buy1, sell1, buy2, sell2`. | $O(1)$ |
+| **IV (LC 188)** | At most $k$ transactions | 2D table: $dp[k][0]$ (flat) and $dp[k][1]$ (holding). Degenerates to LC 122 when $k \ge n/2$. | $O(k)$ |
+| **Cooldown (LC 309)** | Mandatory 1-day cooldown after selling | This problem: 3 discrete states `hold, sold, rest`. | $O(1)$ |
+| **Transaction Fee (LC 714)** | Infinite trades, but pay $fee$ per sell | 2-state DP: deduct fee at sale: `cash = max(cash, hold + price - fee)`. | $O(1)$ |
+
+> **Interview Mental Rule of Thumb**:
+> 1 trade = track historical minimum; infinite trades = harvest all positive derivative slopes; fixed $k$ trades = pipeline of stages; cooldown = intermediate buffer state; fee = deduct once upon trade settlement.
 
 ---
 

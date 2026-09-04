@@ -1096,7 +1096,37 @@ class Solution:
 - `sold`: 当天刚卖出股票的最大利润（次日必须冷冻） $\implies \text{sold} = \text{hold} + price$
 - `rest`: 当天自由空仓（可随时买入）的最大利润 $\implies \text{rest} = \max(\text{rest}, \text{sold})$
 
+#### 空间压缩前：标准二维 DP 表（完整状态记录）
+
+在没有压缩空间前，我们开辟 $n \times 3$ 的二维表记录每一天各个状态的最优值：
+
+```python
+class Solution:
+    def maxProfit(self, prices: list[int]) -> int:
+        # 空间压缩前：显式 N x 3 二维 DP 状态表
+        if not prices:
+            return 0
+        n = len(prices)
+        # dp[i][0]: hold (持股), dp[i][1]: sold (刚卖冷冻), dp[i][2]: rest (自由空仓)
+        dp = [[0] * 3 for _ in range(n)]
+        dp[0][0] = -prices[0]
+        dp[0][1] = float("-inf")
+        dp[0][2] = 0
+        
+        for i in range(1, n):
+            dp[i][0] = max(dp[i - 1][0], dp[i - 1][2] - prices[i])
+            dp[i][1] = dp[i - 1][0] + prices[i]
+            dp[i][2] = max(dp[i - 1][2], dp[i - 1][1])
+            
+        return max(dp[n - 1][1], dp[n - 1][2])
+```
+
+- **复杂度**：时间 $O(n)$，空间 $O(n)$。
+
 #### 空间优化实现（避免变量覆盖陷阱）
+
+由于第 $i$ 天仅依赖第 $i-1$ 天的三个值，空间可压缩至 3 个滚动标量。
+**陷阱警示**：若直接写 `hold = max(hold, rest - price)`，紧接着算 `sold = hold + price` 时读到的已经是被修改后的**新 hold**！因此必须先暂存为 `next_*` 变量或利用 Python 的元组拆包实现**同步赋值**。
 
 ```python
 class Solution:
@@ -1116,6 +1146,27 @@ class Solution:
 ```
 
 - **复杂度**：时间 $O(n)$，空间 $O(1)$。
+
+---
+
+### 拓展延伸：LeetCode 买卖股票全系列（Stock Series）统一通关模型
+
+LeetCode 股票系列是状态机 DP 的绝佳试金石。其最底层的通用三维状态为：
+$$dp[i][k][0/1] \quad \text{(第 $i$ 天，最多已完成 $k$ 次交易，当前持仓 $0$ 或 $1$)}$$
+
+整套题目的演进逻辑就是**对交易次数约束 $k$、冷冻期与手续费的约束特化**：
+
+| 题目 | 核心约束特征 | 推荐核心解法与状态设计 | 空间复杂度 |
+|---|---|---|---|
+| **I (LC 121)** | 最多允许交易 1 次 | 贪心维护前缀最小值 `min_price`，单次遍历打擂台更新 `price - min_price`。 | $O(1)$ |
+| **II (LC 122)** | 交易次数无限制 | **贪心**：收集每一个正价格差 $\sum \max(0, p[i]-p[i-1])$；或 2 状态 DP（持有 `hold`、空仓 `cash`）。 | $O(1)$ |
+| **III (LC 123)** | 最多允许交易 2 次 | 特化为 4 个具名状态：`buy1, sell1, buy2, sell2`，单向流动更新。 | $O(1)$ |
+| **IV (LC 188)** | 最多允许交易 $k$ 次 | 二维状态机：$dp[k][0]$ (空仓) 与 $dp[k][1]$ (持仓)。当 $k \ge n/2$ 时退化为无限次交易（LC 122）。 | $O(k)$ |
+| **含冷冻期 (LC 309)** | 卖出后次日强制冷冻 1 天 | 本题模型：卖出无法直接转买入，拆为 3 状态 `hold, sold, rest`。 | $O(1)$ |
+| **含手续费 (LC 714)** | 交易无限制，但每次扣 $fee$ | 2 状态 DP：在卖出（或买入）时扣减手续费：`cash = max(cash, hold + price - fee)`。 | $O(1)$ |
+
+> **面试一句话记忆心法**：
+> 1 次看最低谷（贪心）；无限次吃所有正向斜率（波段累加）；固定有限次展开为阶段链（`buy1..sellk`）；冷冻期切出中间冷却缓冲态（3 状态）；手续费在交易结算点单点扣除。
 
 ---
 
