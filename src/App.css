@@ -1406,6 +1406,161 @@
   color: #87352e;
 }
 
+/* ── Reusable Review Flashcard Blocks ──────────────── */
+.markdown-body details.review-card {
+  margin: 1.25rem 0 1.6rem;
+  border: 1px solid rgba(22, 87, 110, 0.22);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 40, 55, 0.05);
+  overflow: hidden;
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.markdown-body details.review-card[open] {
+  box-shadow: 0 8px 24px rgba(16, 40, 55, 0.09);
+  border-color: rgba(13, 109, 143, 0.4);
+}
+
+.markdown-body details.review-card > summary.review-card-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1.15rem;
+  cursor: pointer;
+  list-style: none;
+  background: linear-gradient(90deg, #edf6f9 0%, #e6f1f5 100%);
+  border-bottom: 1px solid transparent;
+  user-select: none;
+  transition: background 180ms ease;
+}
+
+.markdown-body details.review-card[open] > summary.review-card-summary {
+  border-bottom-color: rgba(22, 87, 110, 0.16);
+}
+
+.markdown-body details.review-card > summary.review-card-summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-body details.review-card > summary.review-card-summary::before {
+  content: '▶';
+  font-size: 0.72em;
+  color: #0d6d8f;
+  transition: transform 180ms ease;
+  flex-shrink: 0;
+}
+
+.markdown-body details.review-card[open] > summary.review-card-summary::before {
+  transform: rotate(90deg);
+}
+
+.review-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  background: #0d6d8f;
+  color: #ffffff;
+  font: 700 0.75rem "IBM Plex Mono", monospace;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.review-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f2d3d;
+  flex: 1 1 auto;
+}
+
+.review-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(13, 109, 143, 0.1);
+  color: #0d6d8f;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.review-card-content {
+  padding: 1.1rem 1.25rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-block {
+  border: 1px solid rgba(22, 87, 110, 0.14);
+  border-radius: 8px;
+  background: #fbfdfe;
+  overflow: hidden;
+}
+
+.review-block-label {
+  padding: 0.48rem 0.85rem;
+  background: rgba(22, 87, 110, 0.06);
+  border-bottom: 1px solid rgba(22, 87, 110, 0.1);
+  font: 700 0.82rem "IBM Plex Mono", monospace;
+  color: #123d52;
+  letter-spacing: 0.02em;
+}
+
+.review-block-body {
+  padding: 0.85rem 0.95rem;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: #1c3542;
+}
+
+.review-block-body p {
+  margin: 0.35rem 0;
+}
+
+.review-block-body p:first-child {
+  margin-top: 0;
+}
+
+.review-block-body p:last-child {
+  margin-bottom: 0;
+}
+
+.complexity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.complexity-item {
+  border: 1px solid rgba(22, 87, 110, 0.12);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.complexity-item-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #53717e;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.complexity-item-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #0d465c;
+}
+
 /* ── Interval pattern visuals ────────────────────── */
 .interval-visual {
   margin: 1.35rem 0;
