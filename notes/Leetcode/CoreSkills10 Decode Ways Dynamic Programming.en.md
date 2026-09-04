@@ -679,10 +679,147 @@ class Solution:
 ### 2. Reverse Thinking of "Last Burst": Burst Balloons (LC 312)
 
 - **Problem Statement**: You are given $n$ balloons, indexed from $0$ to $n - 1$. Each balloon is painted with a number on it represented by an array `nums`. You are asked to burst all the balloons. If you burst the $i$-th balloon, you will get `nums[i - 1] * nums[i] * nums[i + 1]` coins. If $i - 1$ or $i + 1$ goes out of bounds of the array, then treat it as if there is a balloon with a `1` painted on it. Return the maximum coins you can collect by bursting the balloons wisely.
-- **Why "first burst" fails**: Popping $k$ first merges its left and right neighbors, dynamically entangling subproblem boundaries!
-- **Reverse Formulation**: Enumerate the **last balloon $k$ to burst** in open interval $(i, j)$. When $k$ is burst last, all balloons in $(i, k)$ and $(k, j)$ are already cleared, leaving $k$'s neighbors fixed as the boundary elements $a[i]$ and $a[j]$!
 
-$$dp[i][j] = \max_{i < k < j} \bigl(dp[i][k] + a[i] \cdot a[k] \cdot a[j] + dp[k][j]\bigr)$$
+#### 1. The Intuitive Trap: Why Forward Thinking ("Which to Burst First") Catastrophically Fails
+
+The natural first instinct when approaching this problem is greedy or forward divide-and-conquer recursion: *"Let us choose which balloon $k$ to burst first within the current range."*
+
+However, this immediately triggers a fatal **Dynamic Boundary Entanglement**:
+
+```text
+The Physical Collapse of Forward Thinking:
+Original Sequence:       [ ... A,  B,  k,  C,  D ... ]
+                               ↑   ↑       ↑
+Burst balloon k first:      Neighbor k  Neighbor
+Earns coins:                B * k * C
+
+State after balloon k evaporates:
+New Sequence:            [ ... A,  B ─────── C,  D ... ]
+                               └─────┬─────┘
+                     Originally distant balloons B and C
+                     instantly merge into new neighbors!
+```
+
+- **Dynamic Destruction of Subproblem Boundaries**: Once balloon $k$ is burst, the left subproblem (containing $B$) and the right subproblem (containing $C$) **collide and stick together physically**.
+- **Destruction of Optimal Substructure & Markov Property**: If you subsequently choose to burst $B$ in the left subproblem, its right neighbor penetrates into the right subproblem! Thus, the coins earned from bursting $B$ depend dynamically on **which balloons are still alive in the right subproblem**, and vice versa.
+- The two subproblems form a circular inter-dependency, making it impossible to divide into independent sub-ranges!
+
+---
+
+#### 2. The Algorithmic Breakthrough: Reverse Thinking · "Which Balloon is the Last to Burst?"
+
+Instead of asking *"who dies first?"*, which causes shifting dynamic boundaries, we invert the question completely:
+> **Among all balloons in the open interval $(i, j)$, which balloon $k$ is the ultimate survivor that is burst LAST?**
+
+Suppose balloon $k \in (i, j)$ is chosen as the **last balloon to burst** in open interval $(i, j)$. Examine the final standoff:
+
+```text
+Reverse Thinking: Time-Reversed Visual
+Stage 1 (Preceding): All balloons in open interval (i, k) have already been burst and cleared internally!
+Stage 2 (Preceding): All balloons in open interval (k, j) have already been burst and cleared internally!
+Stage 3 (Final Standoff): Open interval (i, j) is completely empty except for balloon k!
+
+       ┌──────────────┐                  ┌──────────────┐                  ┌──────────────┐
+       │ Outer Wall i │ <──────────────> │ Survivor   k │ <──────────────> │ Outer Wall j │
+       │     a[i]     │                  │     a[k]     │                  │     a[j]     │
+       └──────────────┘                  └──────────────┘                  └──────────────┘
+    (Fixed, Unburstable)                 (Last to burst)                 (Fixed, Unburstable)
+```
+
+- **Deterministic Invariant**:
+  1. Because all balloons in $(i, k)$ are **already dead**, looking left from $k$ skips all cleared balloons, and its immediate left neighbor is **guaranteed to be the fixed boundary $a[i]$**!
+  2. Because all balloons in $(k, j)$ are **already dead**, looking right from $k$ skips all cleared balloons, and its immediate right neighbor is **guaranteed to be the fixed boundary $a[j]$**!
+  3. Bursting this final balloon $k$ yields a completely deterministic, non-speculative payoff:
+     $$\text{Coins}_k = a[i] \times a[k] \times a[j]$$
+- **Total Decoupling & Subproblem Independence**:
+  - Before $k$ is burst, the left subproblem $(i, k)$ has fixed boundary walls $a[i]$ and $a[k]$;
+  - The right subproblem $(k, j)$ has fixed boundary walls $a[k]$ and $a[j]$;
+  - Balloon $k$ acts as an impassable fortress wall separating the left and right halves. Both subproblems are completely independent!
+
+---
+
+#### 3. Algebraic Abstraction: Open Interval $(i, j)$ & Virtual Sentinels
+
+To avoid out-of-bounds edge cases, we append virtual sentinels with value `1` on both ends:
+- Array $a = [1] + nums + [1]$ of length $N = n + 2$ (indices $0 \le i \le n + 1$).
+- **Why Open Interval $(i, j)$?**:
+  - $(i, j)$ means: *we burst all balloons strictly between $i$ and $j$, while boundary walls $a[i]$ and $a[j]$ are never burst in this step*.
+  - Goal: Burst all original balloons, corresponding to open interval $(0, n+1) \implies dp[0][n+1]$.
+
+##### State Definition & Recurrence Relation
+- **State**: $dp[i][j]$ = Maximum coins collected by bursting all balloons strictly inside open interval $(i, j)$.
+- **Transition**: Enumerate the **last balloon $k$ to burst** ($i < k < j$):
+
+$$dp[i][j] = \max_{i < k < j} \Bigl( \underbrace{dp[i][k]}_{\text{burst left open sub-interval}} + \underbrace{a[i] \cdot a[k] \cdot a[j]}_{\text{burst last balloon } k} + \underbrace{dp[k][j]}_{\text{burst right open sub-interval}} \Bigr)$$
+
+- **Base Cases**:
+  - When $j - i \le 1$ (e.g. $(0, 1)$ or $(i, i+1)$), there are zero balloons inside the open interval $\implies dp[i][i+1] = 0$.
+
+---
+
+#### 4. Step-by-Step Numerical Dry Run with `nums = [3, 1, 5, 8]`
+
+Given `nums = [3, 1, 5, 8]`, augmented array is:
+$$a = [1, 3, 1, 5, 8, 1], \quad N = 6 \quad (\text{indices } 0 \sim 5)$$
+Our target is $dp[0][5]$.
+
+##### Phase 1: Span Length $length = j - i = 2$ (Exactly 1 balloon inside)
+The single balloon inside is trivially the last (and only) one to burst:
+- $(0, 2) \to k=1$ (val 3): $dp[0][1] + a[0] \cdot a[1] \cdot a[2] + dp[1][2] = 0 + 1 \times 3 \times 1 + 0 = 3$
+- $(1, 3) \to k=2$ (val 1): $dp[1][2] + a[1] \cdot a[2] \cdot a[3] + dp[2][3] = 0 + 3 \times 1 \times 5 + 0 = 15$
+- $(2, 4) \to k=3$ (val 5): $dp[2][3] + a[2] \cdot a[3] \cdot a[4] + dp[3][4] = 0 + 1 \times 5 \times 8 + 0 = 40$
+- $(3, 5) \to k=4$ (val 8): $dp[3][4] + a[3] \cdot a[4] \cdot a[5] + dp[4][5] = 0 + 5 \times 8 \times 1 + 0 = 40$
+
+##### Phase 2: Span Length $length = j - i = 3$ (2 balloons inside, choose $k$)
+- **Interval $(0, 3)$** (contains balloons $\{1, 2\}$, values $3, 1$):
+  - If $k=1$ is last: $dp[0][1] + a[0] \cdot a[1] \cdot a[3] + dp[1][3] = 0 + 1 \times 3 \times 5 + 15 = 30$
+  - If $k=2$ is last: $dp[0][2] + a[0] \cdot a[2] \cdot a[3] + dp[2][3] = 3 + 1 \times 1 \times 5 + 0 = 8$
+  - $dp[0][3] = \max(30, 8) = 30$
+- **Interval $(1, 4)$** (contains balloons $\{2, 3\}$, values $1, 5$):
+  - If $k=2$ is last: $dp[1][2] + a[1] \cdot a[2] \cdot a[4] + dp[2][4] = 0 + 3 \times 1 \times 8 + 40 = 64$
+  - If $k=3$ is last: $dp[1][3] + a[1] \cdot a[3] \cdot a[4] + dp[3][4] = 15 + 3 \times 5 \times 8 + 0 = 135$
+  - $dp[1][4] = \max(64, 135) = 135$
+- **Interval $(2, 5)$** (contains balloons $\{3, 4\}$, values $5, 8$):
+  - If $k=3$ is last: $dp[2][3] + a[2] \cdot a[3] \cdot a[5] + dp[3][5] = 0 + 1 \times 5 \times 1 + 40 = 45$
+  - If $k=4$ is last: $dp[2][4] + a[2] \cdot a[4] \cdot a[5] + dp[4][5] = 40 + 1 \times 8 \times 1 + 0 = 48$
+  - $dp[2][5] = \max(45, 48) = 48$
+
+##### Subsequent Phases:
+- $length = 4$: computes $dp[0][4] = 159$ and $dp[1][5] = 164$;
+- $length = 5$ (global $dp[0][5]$):
+  - Enumerating $k \in \{1, 2, 3, 4\}$ yields maximum value $167$!
+
+---
+
+#### 5. Two Traversal Implementation Styles
+
+Computing $dp[i][j]$ depends on $dp[i][k]$ and $dp[k][j]$, both of which have strictly smaller span lengths ($(k - i) < (j - i)$ and $(j - k) < (j - i)$).
+
+##### Style 1: Increasing Span Length $length$ (Recommended for Clarity)
+
+```python
+class Solution:
+    def maxCoins(self, nums: list[int]) -> int:
+        # 1. Pad with virtual sentinels
+        a = [1] + nums + [1]
+        n = len(a)
+        dp = [[0] * n for _ in range(n)]
+        
+        # 2. Iterate by open interval span length (from 2 to n - 1)
+        for length in range(2, n):
+            for i in range(0, n - length):
+                j = i + length
+                # Enumerate the last balloon k to burst in (i, j)
+                for k in range(i + 1, j):
+                    dp[i][j] = max(
+                        dp[i][j],
+                        dp[i][k] + a[i] * a[k] * a[j] + dp[k][j]
+                    )
+                    
+        return dp[0][n - 1]
+```
+
+##### Style 2: Bottom-Up Decreasing $i$ (Row-Backward, Col-Forward)
 
 ```python
 class Solution:
@@ -691,18 +828,30 @@ class Solution:
         n = len(a)
         dp = [[0] * n for _ in range(n)]
         
-        for length in range(2, n):
-            for i in range(0, n - length):
-                j = i + length
+        # i sweeps bottom-up, j sweeps left-to-right
+        for i in range(n - 2, -1, -1):
+            for j in range(i + 2, n):
                 for k in range(i + 1, j):
                     dp[i][j] = max(
                         dp[i][j],
                         dp[i][k] + a[i] * a[k] * a[j] + dp[k][j]
                     )
+                    
         return dp[0][n - 1]
 ```
 
-- **Complexity**: Time $O(n^3)$, Space $O(n^2)$.
+- **Complexity**:
+  - **Time Complexity**: $O(n^3)$ — $O(n^2)$ states, each requiring an $O(n)$ search for the optimal last balloon $k$.
+  - **Space Complexity**: $O(n^2)$ — to store the $(n+2) \times (n+2)$ DP matrix.
+
+---
+
+#### 6. Whiteboard 30-Second Interview Takeaways
+
+> 💡 **Burst Balloons 3 Golden Rules**:
+> 1. **Pad with Sentinels**: Expand `[1] + nums + [1]` to convert edge cases into pure open intervals $(0, n+1)$.
+> 2. **Reverse to the Last**: Forward bursts dynamically shift neighbors (entangling subproblems); reverse burst fixes the last survivor's neighbors to the static outer walls $a[i] \cdot a[k] \cdot a[j]$!
+> 3. **Span-Length Order**: Fill from smaller sub-intervals to larger ones ($length: 2 \to n$).
 
 ---
 
