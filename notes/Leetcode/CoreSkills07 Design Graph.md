@@ -2303,17 +2303,7 @@ class Solution:
 
 ### 19. Alien Dictionary（Foreign Dictionary）
 
-Foreign Dictionary / Alien Dictionary 的关键不是字符串处理本身，而是从相邻单词里抽出字符之间的偏序关系。以 `words = ["hrn", "hrf", "er", "enn", "rfnn"]` 为例：
-
-这道题的本质流程是：
-
-1. 初始化所有出现过的字符，避免漏掉没有边的孤立节点。
-2. 只比较相邻单词，因为字典整体有序时，相邻对提供的是最小必要约束。
-3. 找到相邻单词的第一个不同字符 `a` 和 `b`，加入边 `a -> b`，然后停止比较这一对。
-4. 如果没有找到不同字符，但前一个单词更长，例如 `["abc", "ab"]`，这是非法输入，直接返回空字符串。
-5. 对字符图做拓扑排序；如果检测到环，也返回空字符串。
-
-题目给出一个外星语言的有序词典 `words`。这些单词仍由英文字母组成，但字母大小顺序未知。你需要返回一个合法的字母顺序；如果不存在合法顺序，返回空字符串。题目源：<https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
+题目给出一个外星语言的有序词典 `words`。这些单词仍由小写英文字母组成，但字母之间的大小顺序未知。你需要根据词典的排序推断并返回一个合法的字母表顺序；如果不存在合法顺序（例如逻辑成环矛盾，或前缀规则非法），返回空字符串 `""`。若存在多个合法拓扑序，返回任意一个即可。题目源：<https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
 
 ```topo-demo
 foreign-dictionary
@@ -2321,51 +2311,111 @@ foreign-dictionary
 
 | 项目 | 内容 |
 |---|---|
-| 组合技巧 | 从相邻单词对抽取字符偏序，Kahn 算法输出拓扑序 |
-| 关键不变量 | 相邻单词对里第一个不同字符提供的偏序，等价于整本词典蕴含的全部必要约束 |
-| 时间 / 空间 | 时间 `O(N + V + E)`（`N` 为单词总长度），空间 `O(V + E)` |
+| 组合技巧 | 从相邻单词对抽取字符偏序关系，Kahn 算法（BFS）或三色 DFS 输出拓扑序 |
+| 关键不变量 | 相邻单词对里**第一个不同字符**提供的偏序，等价于整本词典蕴含的全部必要拓扑约束 |
+| 时间 / 空间 | 时间 $\mathcal{O}(C + V + E)$（$C$ 为所有单词字符总长度），空间 $\mathcal{O}(V + E) = \mathcal{O}(1)$（字母集上限 26） |
 
-#### 建图规则
+#### 核心直觉与三条底层公理（Mental Model）
 
-对任意相邻单词 `word1` 和 `word2`：
+Foreign Dictionary 的关键不是字符串处理本身，而是**如何将词典序形式化为有向图的拓扑排序**：
 
+1. **唯一有效信息点（First Difference Only）**：
+   对于任意两个已排序单词，**只有第一个不相等的字符对**才能提供偏序关系（$c_1 < c_2$）。该位置之后的所有字符差异完全无法提供任何有效信息，绝不能用来建边（例如 `"cat"` 与 `"dog"` 只能说明 $c < d$，不能推导 $a$ 与 $o$ 或 $t$ 与 $g$ 的大小）。
+2. **传递性保证只需比较相邻对（Transitivity & Minimality）**：
+   若 $w_1 \le w_2 \le \dots \le w_k$ 全局有序，由偏序传递性，满足相邻 $(w_i, w_{i+1})$ 的偏序约束等价于满足全部两两对，比较次数从 $\mathcal{O}(K^2)$ 降低到线性的 $\mathcal{O}(K)$。
+3. **依赖关系即有向边（Directed Edge）**：
+   若 $c_1 < c_2$，即说明 $c_1$ 必须先于 $c_2$ 出现。这等价于一条有向边：$c_1 \to c_2$（入度 $\text{indegree}[c_2] + 1$）。全部字母排序即求解有向图的拓扑序；若成环则说明自相矛盾无解。
+
+#### 完整用例逐步推导：以 `words = ["hrn", "hrf", "er", "enn", "rfnn"]` 为例
+
+##### 1. 节点集合收集
+遍历所有单词字符，收集全体节点集合：
+$$V = \{'h', 'r', 'n', 'f', 'e'\} \quad (\text{共 5 个字符，防止孤立节点遗漏})$$
+
+##### 2. 逐对提取偏序边
+1. **第 1 对：`("hrn", "hrf")`**
+   - 索引 0: `'h' == 'h'`
+   - 索引 1: `'r' == 'r'`
+   - 索引 2: `'n' != 'f'` $\implies$ 记录边 **`n -> f`**（`n` 必须排在 `f` 前）。
+   - *立即终止当前对后续比较！*
+2. **第 2 对：`("hrf", "er")`**
+   - 索引 0: `'h' != 'e'` $\implies$ 记录边 **`h -> e`**（`h` 必须排在 `e` 前）。
+   - *立即终止！后续字符不再查看。*
+3. **第 3 对：`("er", "enn")`**
+   - 索引 0: `'e' == 'e'`
+   - 索引 1: `'r' != 'n'` $\implies$ 记录边 **`r -> n`**（`r` 必须排在 `n` 前）。
+   - *立即终止！*
+4. **第 4 对：`("enn", "rfnn")`**
+   - 索引 0: `'e' != 'r'` $\implies$ 记录边 **`e -> r`**（`e` 必须排在 `r` 前）。
+   - *立即终止！*
+
+##### 3. 综合拓扑结构与入度表
+提取出的 4 条有向边构成一条单向链状图：
 ```text
-word1 = h r n
-word2 = h r f
-             ^
-第一个不同字符是 n 和 f，所以 n 必须排在 f 前面，建边 n -> f
+h ──> e ──> r ──> n ──> f
 ```
 
-注意，只看第一个不同字符。后面的字符不能继续拿来建边，因为词典序在第一个差异处就已经决定了两个单词的大小。
+计算入度表：
+- `indegree['h'] = 0`（无先决依赖，可作为起点）
+- `indegree['e'] = 1`（由 `h` 指入）
+- `indegree['r'] = 1`（由 `e` 指入）
+- `indegree['n'] = 1`（由 `r` 指入）
+- `indegree['f'] = 1`（由 `n` 指入）
+
+##### 4. Kahn 算法（BFS）执行拓扑排序
+1. 初始入度为 0 的节点入队：`queue = deque(['h'])`，`order = []`。
+2. 弹出 `'h'` $\implies$ `order = ['h']`。松弛 `'e'`：`indegree['e']` 降为 0 $\implies$ 入队 `'e'`。
+3. 弹出 `'e'` $\implies$ `order = ['h', 'e']`。松弛 `'r'`：`indegree['r']` 降为 0 $\implies$ 入队 `'r'`。
+4. 弹出 `'r'` $\implies$ `order = ['h', 'e', 'r']`。松弛 `'n'`：`indegree['n']` 降为 0 $\implies$ 入队 `'n'`。
+5. 弹出 `'n'` $\implies$ `order = ['h', 'e', 'r', 'n']`。松弛 `'f'`：`indegree['f']` 降为 0 $\implies$ 入队 `'f'`。
+6. 弹出 `'f'` $\implies$ `order = ['h', 'e', 'r', 'n', 'f']`。队列为空。
+7. 完备性检验：`len(order) == 5 == len(graph)`，无环，返回 `"hernf"`。
+
+#### 四大面试致命陷阱（Corner Cases）
+
+| 陷阱类型 | 典型 Case | 错误原因与防御方案 |
+|---|---|---|
+| **1. 非法前缀陷阱 (Prefix Invalidity)** | `words = ["abc", "ab"]` | `"abc"` 比 `"ab"` 长且前缀完全相同，但在字典中较长的单词不可能排在较短前缀前面！**必须在比对字符前特判：`len(first) > len(second) and first.startswith(second)`，直接返回 `""`。** |
+| **2. 孤立字符丢失** | `words = ["z", "x", "z"]` 或单个单词 `["z"]` | 某些字符可能从未在差异位置出现（入度和出度皆为 0）。初始化图时**必须预先遍历全部单词中的每个字符注册节点**。 |
+| **3. 重复建边导致入度虚增** | `words = ["ab", "cd", "ab", "cd"]` | 多个不同单词对可能重复得出同一条边 `a -> c`。如果邻接表用 `list` 存储并直接 `indegree[c] += 1`，会导致入度被重复累加而无法降为 0！**邻接表必须用 `set` 存储，只有在新边插入时才累加度数。** |
+| **4. 存在环导致死锁** | `words = ["z", "x", "z"]` | 得到 `z -> x` 且 `x -> z`。Kahn 算法结束时，环内节点的入度永远无法清零，最终 `len(order) < len(graph)`，**据此直接判定并返回 `""`。** |
 
 #### Python 解法：Kahn BFS
 
 ```python
-from collections import defaultdict, deque
+from collections import deque
 from typing import List
 
 class Solution:
     def foreignDictionary(self, words: List[str]) -> str:
+        # 1. 初始化图与入度表：必须收集全部出现过的字符（防止孤立点遗漏）
         graph = {char: set() for word in words for char in word}
         indegree = {char: 0 for char in graph}
 
+        # 2. 遍历相邻单词对，提取偏序约束
         for first, second in zip(words, words[1:]):
             min_len = min(len(first), len(second))
 
+            # 陷阱 1：前缀非法情况，如 ["abc", "ab"]
             if len(first) > len(second) and first[:min_len] == second[:min_len]:
                 return ""
 
+            # 找到第一个不同字符并建边
             for i in range(min_len):
                 if first[i] != second[i]:
                     src, dst = first[i], second[i]
+                    # 陷阱 3：使用 set 防重，避免重复递增入度
                     if dst not in graph[src]:
                         graph[src].add(dst)
                         indegree[dst] += 1
+                    # 关键点：只看首个不同字符，后续字符不可再比较
                     break
 
+        # 3. Kahn 算法：初始将所有入度为 0 的节点入队
         queue = deque([char for char, degree in indegree.items() if degree == 0])
         order = []
 
+        # 4. BFS 逐步拓扑展开
         while queue:
             char = queue.popleft()
             order.append(char)
@@ -2375,29 +2425,17 @@ class Solution:
                 if indegree[nxt] == 0:
                     queue.append(nxt)
 
+        # 5. 陷阱 4：环检测（若处理出的字符数少于图中总字符数，说明存在环）
         if len(order) != len(indegree):
             return ""
 
         return "".join(order)
 ```
 
-时间复杂度是 `O(N + V + E)`，其中 `N` 是所有单词总长度，`V` 是不同字符数，`E` 是字符偏序边数。空间复杂度是 `O(V + E)`。
+#### 复杂度分析
 
-#### 为什么这段代码能过
-
-- `graph = {char: set() ...}` 先把所有字符注册成节点，保证答案包含孤立字符。
-- `if dst not in graph[src]` 防止重复边把入度加多次。
-- prefix invalid case 必须在比较字符前处理，否则 `["abc", "ab"]` 会被错误当成没有新约束。
-- `len(order) != len(indegree)` 是 Kahn 算法的环检测；如果有环，环内节点永远不会降到入度 `0`。
-
-### 常见坑
-
-- 边方向写反：如果 `word1` 在 `word2` 前面，且第一个不同字符是 `a/b`，应该建 `a -> b`。
-- 比较了非首个不同字符：词典序只由第一个不同字符决定。
-- 没有处理 prefix invalid：`["abc", "ab"]` 必须返回 `""`。
-- 用 list 存邻居但没有去重，导致入度被重复增加。
-- 忘记把所有字符放进图，导致答案缺字符。
-- 认为答案必须唯一；题目通常允许返回任意一个合法拓扑序。
+- **时间复杂度**：$\mathcal{O}(C + V + E)$，其中 $C = \sum |w_i|$ 为所有单词的字符总长度，建图扫描耗时 $\mathcal{O}(C)$；拓扑排序耗时 $\mathcal{O}(V + E)$。由于字符集规模受限（英文字母 $V \le 26, E \le \min(N - 1, 26^2)$），总时间复杂度为严格线性的 $\mathcal{O}(C)$。
+- **空间复杂度**：$\mathcal{O}(V + E) = \mathcal{O}(1)$，由于字母表大小为常数（最多 26 个小写字母），图和队列占用空间严格受常数上限限制。
 ---
 
 ## 模块十：图论终极决策图与面试自查清单

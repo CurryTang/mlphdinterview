@@ -2243,17 +2243,7 @@ class Solution:
 
 ### 19. Alien Dictionary (Foreign Dictionary)
 
-The key to Foreign Dictionary / Alien Dictionary is not string processing itself, but extracting partial-order relationships between characters from adjacent words. Take `words = ["hrn", "hrf", "er", "enn", "rfnn"]` as an example:
-
-The essential process of this problem is:
-
-1. Initialize all characters that appear, to avoid missing isolated nodes with no edges.
-2. Compare only adjacent words, because when the whole dictionary is sorted, each adjacent pair provides the minimum necessary constraint.
-3. Find the first different characters `a` and `b` in adjacent words, add the edge `a -> b`, and then stop comparing that pair.
-4. If no differing character is found but the previous word is longer, for example `["abc", "ab"]`, this is invalid input, so return an empty string directly.
-5. Perform topological sorting on the character graph; if a cycle is detected, also return an empty string.
-
-The problem gives an ordered dictionary `words` in an alien language. These words are still composed of English letters, but the relative order of the letters is unknown. Return one legal letter order; if no legal order exists, return an empty string. Problem source: <https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
+The problem gives a sorted dictionary `words` in an alien language. The words are composed of lowercase English letters, but the order of the alphabet is unknown. You need to infer and return a valid ordering of characters in the language. If no valid ordering exists (e.g., circular contradictions or invalid prefix order), return an empty string `""`. If multiple valid topological orders exist, returning any of them is acceptable. Problem source: <https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
 
 ```topo-demo
 foreign-dictionary
@@ -2261,51 +2251,111 @@ foreign-dictionary
 
 | Item | Detail |
 |---|---|
-| Technique combination | Extracting character partial order from adjacent word pairs, Kahn's algorithm producing the topological order |
-| Key invariant | The partial order provided by the first differing character in each adjacent word pair is equivalent to every necessary constraint implied by the whole dictionary |
-| Time / Space | Time `O(N + V + E)` (`N` is the total length of all words), space `O(V + E)` |
+| Technique combination | Extracting character partial order from adjacent word pairs, Kahn's algorithm (BFS) or 3-color DFS producing the topological order |
+| Key invariant | The partial order provided by the **first differing character** in each adjacent word pair is equivalent to every necessary topological constraint implied by the whole dictionary |
+| Time / Space | Time $\mathcal{O}(C + V + E)$ ($C$ is the total length of all characters across words), space $\mathcal{O}(V + E) = \mathcal{O}(1)$ (bounded by alphabet size $\le 26$) |
 
-#### Graph Construction Rule
+#### Core Mental Model & Three Foundational Axioms
 
-For any adjacent words `word1` and `word2`:
+The key to Foreign Dictionary / Alien Dictionary is not string processing itself, but **how to formulate lexicographical ordering as a topological sort on a directed graph**:
 
+1. **First Difference Only**:
+   Between any two sorted words, **only the first differing pair of characters** provides valid ordering information ($c_1 < c_2$). All subsequent character differences carry zero ordering information and must never be used to add edges (e.g., `"cat"` and `"dog"` only establish $c < d$, saying nothing about $a$ vs $o$ or $t$ vs $g$).
+2. **Transitivity & Minimality (Adjacent Comparisons Are Sufficient)**:
+   If $w_1 \le w_2 \le \dots \le w_k$ is globally sorted, transitivity guarantees that satisfying adjacent pairwise constraints $(w_i, w_{i+1})$ is mathematically equivalent to satisfying all $\mathcal{O}(K^2)$ pairs, reducing comparisons to linear $\mathcal{O}(K)$.
+3. **Precedence Is a Directed Edge**:
+   If $c_1 < c_2$, $c_1$ must appear before $c_2$, forming directed edge $c_1 \to c_2$ ($\text{indegree}[c_2] + 1$). The problem reduces directly to finding a **Topological Sort** of the DAG. Any cycle means logical contradiction, hence no valid alphabet order exists.
+
+#### Step-by-Step Walkthrough: `words = ["hrn", "hrf", "er", "enn", "rfnn"]`
+
+##### 1. Node Collection
+Scan all words to collect the full set of unique characters:
+$$V = \{'h', 'r', 'n', 'f', 'e'\} \quad (\text{5 nodes in total, ensuring isolated characters are retained})$$
+
+##### 2. Pairwise Edge Extraction
+1. **Pair 1: `("hrn", "hrf")`**
+   - Index 0: `'h' == 'h'`
+   - Index 1: `'r' == 'r'`
+   - Index 2: `'n' != 'f'` $\implies$ Record edge **`n -> f`** (`n` comes before `f`).
+   - *Immediately break and stop comparing this pair!*
+2. **Pair 2: `("hrf", "er")`**
+   - Index 0: `'h' != 'e'` $\implies$ Record edge **`h -> e`** (`h` comes before `e`).
+   - *Immediately break! Later characters are ignored.*
+3. **Pair 3: `("er", "enn")`**
+   - Index 0: `'e' == 'e'`
+   - Index 1: `'r' != 'n'` $\implies$ Record edge **`r -> n`** (`r` comes before `n`).
+   - *Immediately break!*
+4. **Pair 4: `("enn", "rfnn")`**
+   - Index 0: `'e' != 'r'` $\implies$ Record edge **`e -> r`** (`e` must come before `r`).
+   - *Immediately break!*
+
+##### 3. Graph Synthesis & In-degree Table
+The 4 directed edges form a clean single-path chain:
 ```text
-word1 = h r n
-word2 = h r f
-             ^
-the first different characters are n and f, so n must come before f; add edge n -> f
+h ──> e ──> r ──> n ──> f
 ```
 
-Note that you look only at the first different character. Later characters cannot be used to add more edges, because lexicographic order is determined at the first difference.
+In-degree calculation:
+- `indegree['h'] = 0` (no incoming prerequisite, starting candidate)
+- `indegree['e'] = 1` (from `h`)
+- `indegree['r'] = 1` (from `e`)
+- `indegree['n'] = 1` (from `r`)
+- `indegree['f'] = 1` (from `n`)
+
+##### 4. Kahn's Algorithm (BFS) Execution
+1. Enqueue in-degree 0 nodes: `queue = deque(['h'])`, `order = []`.
+2. Pop `'h'` $\implies$ `order = ['h']`. Relax `'e'`: `indegree['e']` drops to 0 $\implies$ enqueue `'e'`.
+3. Pop `'e'` $\implies$ `order = ['h', 'e']`. Relax `'r'`: `indegree['r']` drops to 0 $\implies$ enqueue `'r'`.
+4. Pop `'r'` $\implies$ `order = ['h', 'e', 'r']`. Relax `'n'`: `indegree['n']` drops to 0 $\implies$ enqueue `'n'`.
+5. Pop `'n'` $\implies$ `order = ['h', 'e', 'r', 'n']`. Relax `'f'`: `indegree['f']` drops to 0 $\implies$ enqueue `'f'`.
+6. Pop `'f'` $\implies$ `order = ['h', 'e', 'r', 'n', 'f']`. Queue is empty.
+7. Cycle check: `len(order) == 5 == len(graph)`, no cycle exists $\implies$ return `"hernf"`.
+
+#### Four Critical Interview Traps (Corner Cases)
+
+| Trap Category | Typical Case | Root Cause & Defense |
+|---|---|---|
+| **1. Prefix Invalidity** | `words = ["abc", "ab"]` | `"abc"` is longer than `"ab"` and shares the exact prefix, but in any valid dictionary a longer word cannot precede its prefix! **Must check upfront: `len(first) > len(second) and first.startswith(second)` $\to$ return `""`.** |
+| **2. Missing Isolated Characters** | `words = ["z", "x", "z"]` or `["z"]` | Some characters never appear at differing positions (in-degree and out-degree both 0). **Must register all characters from all words upfront when initializing the graph.** |
+| **3. Duplicate Edges Inflating In-degree** | `words = ["ab", "cd", "ab", "cd"]` | Multiple word pairs can produce the same edge `a -> c`. Storing neighbors in a `list` and naively doing `indegree[c] += 1` will duplicate counts. **Must use a `set` for adjacency and only increment in-degree when an edge is newly inserted.** |
+| **4. Cycles / Contradictions** | `words = ["z", "x", "z"]` | Yields `z -> x` and `x -> z`. Kahn's queue empties before all nodes are popped (`len(order) < len(graph)`), **directly identifying the contradiction to return `""`.** |
 
 #### Python Solution: Kahn BFS
 
 ```python
-from collections import defaultdict, deque
+from collections import deque
 from typing import List
 
 class Solution:
     def foreignDictionary(self, words: List[str]) -> str:
+        # 1. Initialize graph & in-degree table for all unique characters
         graph = {char: set() for word in words for char in word}
         indegree = {char: 0 for char in graph}
 
+        # 2. Extract partial-order constraints from adjacent word pairs
         for first, second in zip(words, words[1:]):
             min_len = min(len(first), len(second))
 
+            # Trap 1: Invalid prefix ordering, e.g. ["abc", "ab"]
             if len(first) > len(second) and first[:min_len] == second[:min_len]:
                 return ""
 
+            # Find the first differing character and add a directed edge
             for i in range(min_len):
                 if first[i] != second[i]:
                     src, dst = first[i], second[i]
+                    # Trap 3: Deduplicate with set before incrementing in-degree
                     if dst not in graph[src]:
                         graph[src].add(dst)
                         indegree[dst] += 1
+                    # Key: Only the first difference counts; break immediately
                     break
 
+        # 3. Kahn's algorithm: Seed queue with in-degree 0 nodes
         queue = deque([char for char, degree in indegree.items() if degree == 0])
         order = []
 
+        # 4. BFS relaxation
         while queue:
             char = queue.popleft()
             order.append(char)
@@ -2315,29 +2365,17 @@ class Solution:
                 if indegree[nxt] == 0:
                     queue.append(nxt)
 
+        # 5. Trap 4: Cycle check (if fewer nodes are ordered than in graph, a cycle exists)
         if len(order) != len(indegree):
             return ""
 
         return "".join(order)
 ```
 
-The time complexity is `O(N + V + E)`, where `N` is the total length of all words, `V` is the number of distinct characters, and `E` is the number of character partial-order edges. The space complexity is `O(V + E)`.
+#### Complexity Analysis
 
-#### Why This Code Passes
-
-- `graph = {char: set() ...}` registers every character as a node first, ensuring the answer includes isolated characters.
-- `if dst not in graph[src]` prevents duplicate edges from increasing indegree multiple times.
-- The prefix-invalid case must be handled before comparing characters; otherwise `["abc", "ab"]` would be incorrectly treated as adding no new constraint.
-- `len(order) != len(indegree)` is Kahn's cycle detection. If there is a cycle, nodes in the cycle can never drop to indegree `0`.
-
-### Common Pitfalls
-
-- Reversing the edge direction: if `word1` comes before `word2`, and the first differing characters are `a/b`, the edge should be `a -> b`.
-- Comparing characters beyond the first difference: lexicographic order is determined only by the first differing character.
-- Not handling the prefix-invalid case: `["abc", "ab"]` must return `""`.
-- Using a list to store neighbors without deduplication, causing indegree to be increased repeatedly.
-- Forgetting to put all characters into the graph, which causes missing characters in the answer.
-- Assuming the answer must be unique; the problem usually allows any valid topological order.
+- **Time Complexity**: $\mathcal{O}(C + V + E)$, where $C = \sum |w_i|$ is the total length of all words (graph building takes $\mathcal{O}(C)$) and topological sort takes $\mathcal{O}(V + E)$. Since the alphabet size is bounded ($V \le 26, E \le \min(N - 1, 26^2)$), the runtime is strictly linear $\mathcal{O}(C)$.
+- **Space Complexity**: $\mathcal{O}(V + E) = \mathcal{O}(1)$, as the alphabet size is at most 26 lowercase English letters.
 ## Module 10: Final Checklist Before an Interview
 
 1. Is this an implicit graph (a grid) or an explicit graph (an adjacency list or edge list)? An implicit graph needs no construction; adjacency comes directly from coordinate arithmetic.
