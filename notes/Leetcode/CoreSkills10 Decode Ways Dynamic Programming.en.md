@@ -146,7 +146,8 @@ class Solution:
 
 ### 2. Stair Climbing Family: Climbing Stairs & Min Cost Climbing Stairs
 
-#### Climbing Stairs
+#### Climbing Stairs (LC 70)
+- **Problem Statement**: You are climbing a staircase. It takes $n$ steps to reach the top. Each time you can either climb $1$ or $2$ steps. In how many distinct ways can you climb to the top?
 - **State**: $dp[i]$ = Number of ways to reach step $i$.
 - **Transition**: $dp[i] = dp[i-1] + dp[i-2]$ (Fibonacci isomorphism).
 - **Implementation**:
@@ -162,7 +163,8 @@ class Solution:
         return b
 ```
 
-#### Min Cost Climbing Stairs
+#### Min Cost Climbing Stairs (LC 746)
+- **Problem Statement**: You are given an integer array `cost` where `cost[i]` is the cost of $i$-th step on a staircase. Once you pay the cost, you can climb one or two steps. You can either start from the step with index $0$, or the step with index $1$. Return the minimum cost to reach the top of the floor.
 - **State**: $dp[i]$ = Minimum cumulative cost to reach step $i$ and pay `cost[i]` to step off.
 - **Top Floor Semantic**: The top floor has no cost, so the final answer is $\min(dp[n-1], dp[n-2])$.
 - **Transition**: $dp[i] = cost[i] + \min(dp[i-1], dp[i-2])$.
@@ -182,7 +184,8 @@ class Solution:
 
 ### 3. Robbery Family: House Robber & House Robber II
 
-#### House Robber I (Linear Street)
+#### House Robber I (Linear Street · LC 198)
+- **Problem Statement**: You are a professional robber planning to rob houses along a street. Each house has a certain amount of money stashed. The only constraint stopping you from robbing each of them is that adjacent houses have security systems connected and it will automatically contact the police if two adjacent houses were broken into on the same night. Given an integer array `nums` representing the amount of money of each house, return the maximum amount of money you can rob tonight without alerting the police.
 - **Constraint**: Cannot rob two adjacent houses on the same night.
 - **State**: $dp[i]$ = Max money robbed considering first $i$ houses.
 - **Transition**: $dp[i] = \max(dp[i-1], dp[i-2] + nums[i-1])$.
@@ -196,7 +199,8 @@ class Solution:
         return prev1
 ```
 
-#### House Robber II (Circular Street)
+#### House Robber II (Circular Street · LC 213)
+- **Problem Statement**: You are a professional robber planning to rob houses along a street, but this time all houses at this place are arranged in a circle. That means the first house is the neighbor of the last one. Meanwhile, adjacent houses have a security system connected, and it will automatically contact the police if two adjacent houses were broken into on the same night. Given an integer array `nums` representing the amount of money of each house, return the maximum amount of money you can rob tonight without alerting the police.
 - **Circular Constraint**: House $0$ and House $n-1$ are adjacent and cannot both be robbed.
 - **Dual Linear Subsegment Decomposition**:
   1. Case A: Skip last house $\implies$ Run linear Robber on `nums[0..n-2]`;
@@ -223,7 +227,9 @@ class Solution:
 
 ---
 
-### 4. String Prefix Partition: Word Break
+### 4. String Prefix Partition: Word Break (LC 139)
+
+- **Problem Statement**: Given a string $s$ and a dictionary of strings `wordDict`, return `true` if $s$ can be segmented into a space-separated sequence of one or more dictionary words. Note that the same word in the dictionary may be reused multiple times in the segmentation.
 
 #### Approach 1: Standard Set Hash Slice DP (Baseline)
 
@@ -320,8 +326,9 @@ class Solution:
 
 ---
 
-### 5. Historical Sweep: Longest Increasing Subsequence (LIS)
+### 5. Historical Sweep: Longest Increasing Subsequence (LIS · LC 300)
 
+- **Problem Statement**: Given an integer array `nums`, return the length of the longest strictly increasing subsequence. A subsequence is an array that can be derived from another array by deleting some or no elements without changing the order of the remaining elements.
 - **State**: $dp[i]$ = Length of longest strictly increasing subsequence **ending strictly at $nums[i]$**.
 - **Transition**: Scan all smaller predecessors $j < i$:
 
@@ -346,8 +353,9 @@ class Solution:
 
 ---
 
-### 6. Sign Flipping & Dual Extrema: Maximum Product Subarray
+### 6. Sign Flipping & Dual Extrema: Maximum Product Subarray (LC 152)
 
+- **Problem Statement**: Given an integer array `nums`, find a subarray that has the largest product, and return the product. The test cases are generated so that the answer will fit in a 32-bit integer.
 - **Core Challenge**: Multiplying negative numbers flips signs; a local minimum (most negative) flips into a global maximum upon meeting another negative number!
 - **Dual Extremum Tracking**: Maintain both `max_here` and `min_here` ending at index $i$:
 
@@ -384,8 +392,9 @@ Two-sequence DP handles alignment, edit operations, interleaving, and subsequenc
 
 ---
 
-### 1. Alignment & Common Subsequence: Longest Common Subsequence (LCS)
+#### 1. Alignment & Common Subsequence: Longest Common Subsequence (LCS · LC 1143)
 
+- **Problem Statement**: Given two strings `text1` and `text2`, return the length of their longest **common subsequence**. If there is no common subsequence, return `0`. A subsequence of a string is a new string generated from the original string with some characters (can be none) deleted without changing the relative order of the remaining characters (e.g., `"ace"` is a subsequence of `"abcde"` while `"aec"` is not).
 - **State**: $dp[i][j]$ = Length of LCS between `text1[:i]` and `text2[:j]`.
 - **Transition**:
 
@@ -410,8 +419,9 @@ class Solution:
 
 ---
 
-### 2. Tri-Directional Decision: Edit Distance
+### 2. Tri-Directional Decision: Edit Distance (LC 72)
 
+- **Problem Statement**: Given two strings `word1` and `word2`, return the minimum number of operations required to convert `word1` to `word2`. You have the following three operations permitted on a word: insert a character, delete a character, or replace a character.
 - **State**: $dp[i][j]$ = Minimum operations (insert, delete, replace) to convert `word1[:i]` to `word2[:j]`.
 - **Transition**:
 
@@ -538,8 +548,9 @@ class Solution:
 
 ---
 
-### 4. Subsequence Counting: Distinct Subsequences
+### 4. Subsequence Counting: Distinct Subsequences (LC 115)
 
+- **Problem Statement**: Given two strings `s` and `t`, return the number of distinct **subsequences** of `s` which equals `t`. The test cases are generated so that the answer fits on a 32-bit signed integer.
 - **State**: $dp[i][j]$ = Number of subsequences of `s[:i]` that equal `t[:j]`.
 - **Transition**:
 
@@ -566,8 +577,9 @@ class Solution:
 
 ---
 
-### 5. Wildcard Branches: Regular Expression Matching
+### 5. Wildcard Branches: Regular Expression Matching (LC 10)
 
+- **Problem Statement**: Given an input string `s` and a pattern `p`, implement regular expression matching with support for `'.'` and `'*'`. `'.'` matches any single character. `'*'` matches zero or more of the preceding element. The matching should cover the **entire** input string `s` (not partial).
 - **State**: $dp[i][j]$ = Whether `s[:i]` matches pattern `p[:j]`.
 - **Transition**:
   1. $p[j-1] \neq '*'$: If $p[j-1] == s[i-1] \lor p[j-1] == '.' \implies dp[i][j] = dp[i-1][j-1]$.
@@ -609,7 +621,11 @@ Interval DP states are defined over a closed interval $[i, j]$. Because larger i
 
 ---
 
-### 1. Palindrome Family: Longest Palindromic Substring & Palindromic Substrings
+### 1. Palindrome Family: Longest Palindromic Substring & Palindromic Substrings (LC 5 & LC 647)
+
+- **Problem Statement**:
+  - **Palindromic Substrings (LC 647)**: Given a string `s`, return the number of **palindromic substrings** in it. A string is a palindrome when it reads the same backward as forward. A substring is a contiguous sequence of characters within the string.
+  - **Longest Palindromic Substring (LC 5)**: Given a string `s`, return the longest palindromic substring in `s`.
 
 #### Recurrence & Onion Peeling Principle
 Define $dp[i][j]$ as whether substring $s[i..j]$ is a palindrome:
@@ -660,8 +676,9 @@ class Solution:
 
 ---
 
-### 2. Reverse Thinking of "Last Burst": Burst Balloons
+### 2. Reverse Thinking of "Last Burst": Burst Balloons (LC 312)
 
+- **Problem Statement**: You are given $n$ balloons, indexed from $0$ to $n - 1$. Each balloon is painted with a number on it represented by an array `nums`. You are asked to burst all the balloons. If you burst the $i$-th balloon, you will get `nums[i - 1] * nums[i] * nums[i + 1]` coins. If $i - 1$ or $i + 1$ goes out of bounds of the array, then treat it as if there is a balloon with a `1` painted on it. Return the maximum coins you can collect by bursting the balloons wisely.
 - **Why "first burst" fails**: Popping $k$ first merges its left and right neighbors, dynamically entangling subproblem boundaries!
 - **Reverse Formulation**: Enumerate the **last balloon $k$ to burst** in open interval $(i, j)$. When $k$ is burst last, all balloons in $(i, k)$ and $(k, j)$ are already cleared, leaving $k$'s neighbors fixed as the boundary elements $a[i]$ and $a[j]$!
 
@@ -882,8 +899,9 @@ for j in range(1, target + 1):          # Capacity Outer
 
 ---
 
-### 2. 0/1 Knapsack: Partition Equal Subset Sum (Feasibility)
+### 2. 0/1 Knapsack: Partition Equal Subset Sum (Feasibility · LC 416)
 
+- **Problem Statement**: Given an integer array `nums`, return `true` if you can partition the array into two subsets such that the sum of the elements in both subsets is equal or `false` otherwise.
 - **Reduction**: Determine if a subset can be chosen (each element at most once) summing to $target = \text{total} / 2$.
 - **Transition**: $dp[j] = dp[j] \lor dp[j - x]$ (traversed backward).
 
@@ -915,8 +933,9 @@ class Solution:
 
 ---
 
-### 3. 0/1 Knapsack: Target Sum (Algebraic Reduction & Counting)
+### 3. 0/1 Knapsack: Target Sum (Algebraic Reduction & Counting · LC 494)
 
+- **Problem Statement**: You are given an integer array `nums` and an integer `target`. You want to build an expression out of `nums` by adding one of the symbols `'+'` and `'-'` before each integer in `nums` and then concatenate all the integers. Return the number of different expressions that you can build, which evaluates to `target`.
 - **Algebraic Derivation**:
 
 $$P - N = target,\quad P + N = total \implies 2P = target + total \implies P = \frac{target + total}{2}$$
@@ -944,8 +963,9 @@ class Solution:
 
 ---
 
-### 4. Complete Knapsack: Coin Change (Min Coins)
+### 4. Complete Knapsack: Coin Change (Min Coins · LC 322)
 
+- **Problem Statement**: You are given an integer array `coins` representing coins of different denominations and an integer `amount` representing a total amount of money. Return the fewest number of coins that you need to make up that amount. If that amount of money cannot be made up by any combination of the coins, return `-1`. You may assume that you have an infinite number of each kind of coin.
 - **Semantic**: Each coin denomination is available in infinite supply. Find the **minimum total number of coins** to make up total `amount`.
 - **State**: $dp[a]$ = Minimum number of coins needed to make amount $a$.
 - **Transition**: For each coin $coin$:
@@ -986,8 +1006,9 @@ class Solution:
 
 ---
 
-### 5. Complete Knapsack: Coin Change II (Combinations vs Permutations)
+### 5. Complete Knapsack: Coin Change II (Combinations vs Permutations · LC 518)
 
+- **Problem Statement**: You are given an integer array `coins` representing coins of different denominations and an integer `amount` representing a total amount of money. Return the number of combinations that make up that amount. If that amount of money cannot be made up by any combination of the coins, return `0`. You may assume that you have an infinite number of each kind of coin.
 - **Combinations vs Permutations Loop Order**:
   - **Combinations (`{1, 2}` same as `{2, 1}`)**: **Items in outer loop, Capacity in inner loop**. Each coin type is processed once in fixed order.
   - **Permutations (`{1, 2}` different from `{2, 1}`)**: **Capacity in outer loop, Items in inner loop**.
@@ -1009,8 +1030,9 @@ class Solution:
 
 ---
 
-### 6. Multi-dimensional Cost 0/1 Knapsack: Ones and Zeroes
+### 6. Multi-dimensional Cost 0/1 Knapsack: Ones and Zeroes (LC 474)
 
+- **Problem Statement**: You are given an array of binary strings `strs` and two integers `m` and `n`. Return the size of the largest subset of `strs` such that there are **at most** `m` `'0'`s and `n` `'1'`s in the subset. A set `x` is a **subset** of a set `y` if all elements of `x` are also elements of `y`.
 - **Problem Characteristic**: Each string costs $zeros$ zeros and $ones$ ones. Choose the maximum number of strings under budget $\le m$ zeros and $\le n$ ones.
 - **Formulation**: 2D capacity state $dp[j][k]$, nested double backward loop!
 
@@ -1051,8 +1073,9 @@ class Solution:
 
 ## Module 6: Skeleton 5 · Grid & DAG Memoization
 
-### 1. Deterministic Grid Sweep: Unique Paths
+### 1. Deterministic Grid Sweep: Unique Paths (LC 62)
 
+- **Problem Statement**: There is a robot on an $m \times n$ grid. The robot is initially located at the top-left corner (`grid[0][0]`). The robot tries to move to the bottom-right corner (`grid[m - 1][n - 1]`). The robot can only move either down or right at any point in time. Given the two integers $m$ and $n$, return the number of possible unique paths that the robot can take to reach the bottom-right corner.
 - **Rule**: Only move down or right $\implies$ Dependency is purely top and left.
 - **State Definition**: $dp[i][j]$ represents the number of distinct paths from start $(0, 0)$ to cell $(i, j)$.
 - **Transition**: $dp[i][j] = dp[i-1][j] + dp[i][j-1]$.
@@ -1091,8 +1114,9 @@ class Solution:
 - **Complexity**: Time $O(mn)$, Space $O(n)$.
 - **Edge cases**: When $m=1$ or $n=1$, loops do not execute and `dp[-1] = 1` is returned directly.
 
-### 2. Arbitrary Grid & Implicit DAG: Longest Increasing Path in a Matrix
+### 2. Arbitrary Grid & Implicit DAG: Longest Increasing Path in a Matrix (LC 329)
 
+- **Problem Statement**: Given an $m \times n$ integers matrix `matrix`, return the length of the longest increasing path in `matrix`. From each cell, you can either move in four directions: left, right, up, or down. You may **not** move diagonally or move outside the boundary (i.e., wrap-around is not allowed).
 - **Why nested loops fail**: Values are arbitrarily distributed without a static geometric sweep order.
 - **DAG Property**: Strictly increasing paths form a Directed Acyclic Graph (DAG).
 - **Solution**: Memoized DFS computes topological DP over the DAG.
@@ -1127,7 +1151,9 @@ class Solution:
 
 When a stage can occupy one of several mutually exclusive named discrete states, State Machine DP decouples transition logic cleanly.
 
-### Classic: Best Time to Buy and Sell Stock with Cooldown
+### Classic: Best Time to Buy and Sell Stock with Cooldown (LC 309)
+
+- **Problem Statement**: You are given an array `prices` where `prices[i]` is the price of a given stock on the $i$-th day. Find the maximum profit you can achieve. You may complete as many transactions as you like (i.e., buy one and sell one share of the stock multiple times) with the following restrictions: After you sell your stock, you cannot buy stock on the next day (i.e., cooldown one day). Note: You may not engage in multiple transactions simultaneously (i.e., you must sell the stock before you buy again).
 
 ```text
 3-State Finite State Machine (FSM):
@@ -1233,8 +1259,9 @@ Many greedy algorithms are mathematically derived from **compressing full DP tab
 
 ---
 
-### 1. Kadane's Algorithm: Maximum Subarray
+### 1. Kadane's Algorithm: Maximum Subarray (LC 53)
 
+- **Problem Statement**: Given an integer array `nums`, find the subarray with the largest sum, and return its sum. A subarray is a contiguous non-empty sequence of elements within an array.
 - **DP Formulation**: $dp[i] = \max(nums[i], dp[i-1] + nums[i])$.
 - **Greedy Compression**: If $curSum < 0$, keeping it drags down all future extensions; thus reset $curSum = 0$ immediately!
 
@@ -1254,8 +1281,9 @@ class Solution:
 - **Complexity**: Time $O(n)$, Space $O(1)$.
 - **Pitfall**: In an all-negative array (e.g. `[-3, -1, -2]`), `max_sum` must initialize to `nums[0]`, not `0`.
 
-### 2. Jump Game: Leftmost Goal Compression
+### 2. Jump Game: Leftmost Goal Compression (LC 55)
 
+- **Problem Statement**: You are given an integer array `nums`. You are initially positioned at the array's **first index**, and each element in the array represents your maximum jump length at that position. Return `true` if you can reach the last index, or `false` otherwise.
 - **Full DP Formulation**: $dp[i] = \bigvee_{j=i+1}^{i+nums[i]} dp[j]$ in $O(n^2)$ time.
 - **Greedy Reduction**:
   - The left-most good position dominates all positions to its right (easier to reach from earlier indices).
