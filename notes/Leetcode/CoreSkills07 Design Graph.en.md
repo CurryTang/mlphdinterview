@@ -2093,37 +2093,132 @@ Given a directed graph `G = (V, E)`:
 
 It solves the problem of turning a **partial order into a linear order**. A partial order tells you only some precedence relationships, such as `h < e` and `e < r`, but it does not say that all characters can be compared directly. Topological sorting gives any legal linear answer without violating the known constraints.
 
-### Kahn's Algorithm: Start from Nodes with No Prerequisites
+##### Kahn's Algorithm: Principles, Workflow, and Rigorous Correctness Proof
 
-Kahn's algorithm is the most intuitive BFS formulation in interviews.
+Proposed by Arthur B. Kahn in his seminal 1962 *Communications of the ACM* paper *"Topological sorting of large networks"*, Kahn's algorithm is the standard, most intuitive industrial algorithm for **topological sorting** and **directed cycle detection** on directed graphs.
 
-1. Build the graph and count the indegree `indegree` of each node.
-2. Put all nodes with indegree `0` into a queue.
-3. Each time, pop a node `u` and add it to the answer.
-4. Traverse all successors `v` of `u` and do `indegree[v] -= 1`.
-5. If a successor's indegree drops to `0`, it means all of its prerequisites have been completed, so it can be enqueued.
-6. If the final answer length is smaller than the number of nodes, the graph contains a cycle.
+#### 1. Formal Definition & Physical Intuition
+
+For a directed graph $G = (V, E)$:
+- **In-degree**: $\text{indegree}[v] = |\{u \in V \mid (u, v) \in E\}|$, representing the number of **unsatisfied prerequisite dependencies** of node $v$.
+- **Topological Order**: A linear permutation $(v_1, v_2, \dots, v_n)$ of vertex set $V$ such that for every directed edge $(u, v) \in E$, $u$ strictly appears before $v$ in the sequence.
+- **Physical Intuition (Peeling Dependencies)**:
+  - $\text{indegree}[u] = 0$ means node $u$ has **zero prerequisites** (or all prerequisites have already been satisfied), making it safe to execute immediately;
+  - After executing $u$, we physically remove $u$ from the graph, decrementing the in-degree of all its downstream dependents $v$ by 1 ($\text{indegree}[v] \leftarrow \text{indegree}[v] - 1$);
+  - When any dependent's in-degree drops to 0, all of its prerequisites have been fulfilled, making it a newly "free" node ready for execution.
+
+#### 2. Standard Algorithmic Workflow
 
 ```text
-queue = all nodes with indegree 0
+1. Traverse all edges to compute the initial in-degree indegree[v] for every node.
+2. Enqueue all nodes with in-degree 0 into a queue (all ready-to-run starting points).
+3. Initialize an empty order list: order = [].
+4. While the queue is non-empty:
+   a. Pop front node u, append u to order;
+   b. For each successor neighbor v (edge u -> v):
+      - indegree[v] -= 1  (simulate removing edge u -> v)
+      - If indegree[v] == 0, enqueue v;
+5. Completeness Check:
+   - If len(order) == |V|: order is a valid topological ordering.
+   - If len(order) < |V|: the graph contains at least one directed cycle, so no topological ordering exists.
+```
+
+```python
+queue = deque([u for u in nodes if indegree[u] == 0])
 order = []
 
 while queue:
-  u = queue.pop_front()
-  order.append(u)
+    u = queue.popleft()
+    order.append(u)
 
-  for v in graph[u]:
-    indegree[v] -= 1
-    if indegree[v] == 0:
-      queue.push_back(v)
+    for v in graph[u]:
+        indegree[v] -= 1
+        if indegree[v] == 0:
+            queue.append(v)
 
 if len(order) != len(nodes):
-  there is a cycle
+    # Graph contains a directed cycle
+    return []
 else:
-  order is a valid topological ordering
+    return order
 ```
 
-The complexity is `O(V + E)`, because each node is enqueued and dequeued once, and each edge is processed only once.
+The time complexity is $\mathcal{O}(V + E)$, because each node enters and exits the queue exactly once, and each directed edge is examined and decremented exactly once.
+
+#### 3. Rigorous Mathematical Correctness Proof
+
+Many engineers memorize Kahn's algorithm template without being able to answer deep interview follow-ups: **"Why is a DAG guaranteed to have a starting node with in-degree 0? Why does the output sequence always satisfy topological constraints? Why does len(order) < |V| strictly imply a cycle?"**
+
+The following three theorems provide the mathematical foundation of Kahn's algorithm:
+
+---
+
+##### Theorem 1 (Existence of a Source Node): Every non-empty finite Directed Acyclic Graph (DAG) has at least one vertex with in-degree 0
+
+> **Proof (Pigeonhole Principle & Contradiction)**:
+> Suppose finite directed graph $G = (V, E)$ ($|V| = n \ge 1$) is a DAG, but **has no vertex with in-degree 0**.
+> This implies every vertex $v \in V$ has in-degree $\text{indegree}[v] \ge 1$.
+> 
+> Pick an arbitrary vertex $v_1$. Since $\text{indegree}[v_1] \ge 1$, there exists a predecessor $v_2 \in V$ such that $(v_2, v_1) \in E$;
+> Similarly, since $\text{indegree}[v_2] \ge 1$, there exists predecessor $v_3 \in V$ such that $(v_3, v_2) \in E$;
+> Continuing backwards, we can construct an infinite sequence of predecessors:
+> $$\dots \to v_{k+1} \to v_k \to \dots \to v_2 \to v_1$$
+> However, the set of vertices $V$ is finite ($|V| = n$). By the **Pigeonhole Principle**, traversing backward at most $n$ steps must encounter a previously visited vertex (i.e., there exist indices $i < j$ such that $v_i = v_j$).
+> The sub-path $v_i \to v_{i-1} \to \dots \to v_{j+1} \to v_j (= v_i)$ forms a **directed cycle**.
+> This directly contradicts the assumption that $G$ is a DAG!
+> Thus, the assumption is false: **every finite DAG must contain at least one vertex with in-degree 0** (and symmetrically, at least one vertex with out-degree 0). $\blacksquare$
+
+---
+
+##### Theorem 2 (Topological Validity): If graph $G$ is a DAG, Kahn's algorithm produces a valid topological ordering of $G$
+
+> **Proof (Strong Mathematical Induction)**:
+> Induct on the number of vertices $n = |V|$:
+> 
+> 1. **Base Case ($n = 1$)**:
+>    A single node with no self-loop has in-degree 0. It is enqueued and popped into `order`. The single-element ordering trivially satisfies topological ordering.
+> 2. **Inductive Hypothesis**:
+>    Assume Kahn's algorithm produces a valid topological ordering for all DAGs with fewer than $n$ vertices.
+> 3. **Inductive Step (size $n$)**:
+>    By Theorem 1, DAG $G$ contains at least one vertex $u$ with $\text{indegree}[u] = 0$.
+>    - Since $\text{indegree}[u] = 0$, $G$ contains **no incoming edges $(w, u) \in E$**. Placing $u$ as the very first element of the topological sequence **cannot violate any precedence constraints**.
+>    - Removing $u$ and all its outgoing edges $(u, v)$ yields sub-graph $G' = G \setminus \{u\}$.
+>    - Removing a vertex and edges from a DAG leaves $G'$ as **another DAG** (deleting edges cannot create a cycle).
+>    - $G'$ has $n - 1$ vertices. By the induction hypothesis, Kahn's algorithm running on $G'$ generates a valid topological ordering $\sigma'$ of $G'$.
+>    - Prepending $u$ to $\sigma'$ forms $(u, \sigma')$. For any edge $(x, y) \in E$:
+>      - If $x = u$, $y \in \sigma'$, so $u$ appears before $y$;
+>      - If $x \neq u$, edge $(x, y)$ belongs entirely to $G'$, where $x$ precedes $y$ by the induction hypothesis.
+>    - Hence, $(u, \sigma')$ is a valid topological ordering of $G$. $\blacksquare$
+
+---
+
+##### Theorem 3 (Cycle Detection Equivalence): Directed graph $G$ contains a cycle $\iff$ Kahn's output length $\text{len}(\text{order}) < |V|$
+
+> **Proof (Bidirectional Equivalence)**:
+> 
+> - **Sufficiency ($\text{Cycle exists} \implies \text{len}(\text{order}) < |V|$)**:
+>   Suppose $G$ contains a directed cycle $C = v_1 \to v_2 \to \dots \to v_k \to v_1$.
+>   Every node $v_i \in C$ has an incoming edge $(v_{i-1}, v_i)$ from within the cycle.
+>   For $v_i$'s in-degree to drop to 0, its predecessor $v_{i-1}$ must be popped and removed first.
+>   Because $C$ is a closed dependency loop, **no vertex in $C$ can ever be the first to reach in-degree 0**.
+>   Therefore, all vertices in $C$ are permanently locked out of the queue, and $\text{len}(\text{order}) \le |V| - k < |V|$.
+> 
+> - **Necessity ($\text{len}(\text{order}) < |V| \implies \text{Cycle exists}$)**:
+>   Suppose the algorithm terminates (queue is empty) with remaining unprocessed nodes $S = V \setminus \text{order}$, where $S \neq \emptyset$.
+>   Since the queue is empty, **no vertex currently in $S$ has an in-degree of 0**.
+>   All incoming edges from already processed nodes $V \setminus S$ have already been decremented and removed. Thus, all remaining in-degrees for nodes in $S$ originate **entirely from within $S$ itself**.
+>   Therefore, in the induced subgraph $G[S]$, every vertex has $\text{indegree}_{G[S]}[s] \ge 1$.
+>   By Theorem 1's corollary (any non-empty finite directed graph where all in-degrees $\ge 1$ must contain a cycle), subgraph $G[S]$ **must contain at least one directed cycle**. $\blacksquare$
+
+#### 4. Kahn's Algorithm (BFS) vs. 3-Color DFS Comparison
+
+| Dimension | Kahn's Algorithm (In-degree BFS) | Three-Color Marking (DFS Postorder Reverse) |
+|---|---|---|
+| **Traversal Direction** | **Forward**: Peels from source nodes (in-degree 0) toward sinks | **Backward**: Deep-dives to sink nodes (out-degree 0), appends in post-order and reverses |
+| **Sequence Generation** | Appends nodes **immediately upon queue pop** | Appends nodes after all successors finish, then **reverses entire list** |
+| **Cycle Detection** | **Global deadlock count**: checks if $\text{len}(\text{order}) == \|V\|$ | **Local path inspection**: detects back-edge to an active call-stack node (color 1 / `visiting`) |
+| **Parallelization** | **Naturally layer-parallel**: all nodes currently in queue have in-degree 0 and can be executed concurrently (e.g., Makefile/Bazel DAG build tasks) | Single-threaded recursion, difficult to extract concurrent independent execution layers directly |
+| **Space & Call Stack** | Uses explicit queue + in-degree array; zero risk of call stack overflow | Relies on function call stack; risks recursion depth overflow on deep graphs |
 
 ### DFS Formulation: Use Three Colors to Detect Cycles
 
