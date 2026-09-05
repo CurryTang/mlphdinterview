@@ -1,171 +1,73 @@
 # Review Flashcards: Core Fundamentals (Review 1)
 
-This module represents the first part of our algorithm interview review series: **Core Fundamentals (常考基础题)**.  
-Each flashcard is an isolated, collapsible card containing: **Problem Definition**, **Core Thought Process**, **Standard Python Implementation**, **Complexity & Invariants Card**, and an **Interactive Review MCQ** (answers and explanations remain fully hidden until the user selects an option).
+This module provides high-yield algorithm interview review flashcards: distilled **Problem Definitions**, **Core Mental Models**, **Minimal Core Implementations**, **Complexity Invariants**, and **Interactive Self-Check MCQs**. Click any card title to expand.
 
 ---
-
-## 🛠️ Reusable Flashcard HTML Block Specification
-
-Future flashcards can be constructed by copying the following template directly:
-
-```html
-<details class="review-card" open>
-<summary class="review-card-summary">
-  <span class="review-card-badge">Card ID</span>
-  <span class="review-card-title">Algorithm / Problem Title</span>
-  <span class="review-card-tag">Category Tag</span>
-</summary>
-<div class="review-card-content">
-
-<div class="review-block">
-<div class="review-block-label">📌 Problem Definition & Constraints</div>
-<div class="review-block-body">Problem summary, inputs, invariants...</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 Core Approach & Algorithm</div>
-<div class="review-block-body">Mental model, step-by-step reasoning...</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 Core Python Implementation</div>
-<div class="review-block-body">
-
-```python
-# Standard Python code
-```
-
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⚡ Complexity & Invariants</div>
-<div class="review-block-body">
-<div class="complexity-grid">
-  <div class="complexity-item"><span class="complexity-item-title">Best Time</span><span class="complexity-item-value">O(...)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Worst Time</span><span class="complexity-item-value">O(...)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Auxiliary Space</span><span class="complexity-item-value">O(...)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Stability</span><span class="complexity-item-value">Stable / Unstable</span></div>
-</div>
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">🎯 Interactive Review MCQ (Click an option to reveal answer)</div>
-<div class="review-block-body">
-
-```quiz
-title: Self Check · Key Concept
-question: Question description here?
-A. Option 1
-B. Option 2
-C. Option 3
-D. Option 4
-Answer: A
-Explanation: In-depth explanation of why option A is correct...
-```
-
-</div>
-</div>
-
-</div>
-</details>
-```
-
----
-
-## 📚 Core Fundamentals Review Flashcards
 
 ### 1. Merge Sort
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 01</span>
   <span class="review-card-title">Merge Sort</span>
-  <span class="review-card-tag">Divide &amp; Conquer · Recursion · Stable</span>
+  <span class="review-card-tag">Divide &amp; Conquer · Stable</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 Problem Definition &amp; Constraints</div>
-<div class="review-block-body">
-Given an unsorted integer array of length $n$, sort it in non-decreasing order. The worst-case time complexity must be strictly guaranteed to be $O(n \log n)$, and the relative order of duplicate elements must be preserved (stability).
-</div>
+<div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
+
+Sort an unsorted array of $n$ integers in non-decreasing order. Worst-case time complexity must be strictly guaranteed to be $O(n \log n)$, preserving the relative order of duplicate elements (stability).
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 Core Approach &amp; Algorithm</div>
-<div class="review-block-body">
-Merge Sort is a canonical realization of the **Divide and Conquer** paradigm:
-<ol>
-  <li><strong>Divide</strong>: Find the midpoint <code>mid = len(nums) // 2</code> to divide the array evenly into left and right halves.</li>
-  <li><strong>Conquer</strong>: Recursively invoke merge sort on both halves until subproblems reach base cases of length $\le 1$ (inherently sorted).</li>
-  <li><strong>Combine</strong>: Linearly merge the two sorted halves using two pointers, picking the smaller current item into the result; on ties, prefer the left half to preserve stability.</li>
-</ol>
-</div>
+<div class="review-block-label">💡 Core Approach &amp; Mental Model</div>
+
+Canonical Divide & Conquer three-step pipeline:
+1. **Divide**: Compute midpoint $mid = \lfloor (l + r) / 2 \rfloor$ to split into equal halves.
+2. **Conquer**: Recursively sort left and right halves until subsegments reach base case length $\le 1$.
+3. **Combine**: Linearly merge using two pointers; on ties, prefer left elements to guarantee stability.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💻 Core Python Implementation</div>
-<div class="review-block-body">
+<div class="review-block-label">💻 Core Python Implementation (Minimal)</div>
 
 ```python
-class Solution:
-    def sortArray(self, nums: list[int]) -> list[int]:
-        if len(nums) <= 1:
-            return nums
-
-        mid = len(nums) // 2
-        left = self.sortArray(nums[:mid])
-        right = self.sortArray(nums[mid:])
-
-        return self._merge(left, right)
-
-    def _merge(self, left: list[int], right: list[int]) -> list[int]:
-        res = []
-        i = j = 0
-
-        # Two pointers merge two sorted sublists
-        while i < len(left) and j < len(right):
-            if left[i] <= right[j]:  # <= ensures stable sorting
-                res.append(left[i])
-                i += 1
-            else:
-                res.append(right[j])
-                j += 1
-
-        res.extend(left[i:])
-        res.extend(right[j:])
-        return res
+def merge_sort(nums: list[int]) -> list[int]:
+    if len(nums) <= 1:
+        return nums
+    mid = len(nums) // 2
+    left, right = merge_sort(nums[:mid]), merge_sort(nums[mid:])
+    
+    # Core two-pointer merge (<= ensures stability)
+    res, i, j = [], 0, 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            res.append(left[i]); i += 1
+        else:
+            res.append(right[j]); j += 1
+    return res + left[i:] + right[j:]
 ```
 
 </div>
+
+<div class="review-block">
+<div class="review-block-label">⚡ Complexity &amp; Key Properties</div>
+
+- **Time Complexity**: Best $O(n \log n)$ / Worst $O(n \log n)$ / Average $O(n \log n)$ (Tree height $\log n$, level merge work fixed at $O(n)$)
+- **Auxiliary Space**: $O(n)$ (merge buffer) + $O(\log n)$ (call stack frames)
+- **Stability**: **Stable** (left-half precedence on ties)
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⚡ Complexity &amp; Invariants</div>
-<div class="review-block-body">
-<div class="complexity-grid">
-  <div class="complexity-item"><span class="complexity-item-title">Best Time</span><span class="complexity-item-value">O(n log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Worst Time</span><span class="complexity-item-value">O(n log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Average Time</span><span class="complexity-item-value">O(n log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Auxiliary Space</span><span class="complexity-item-value">O(n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Stability</span><span class="complexity-item-value">Stable</span></div>
-</div>
-<p style="margin-top: 0.5rem; font-size: 0.88rem; color: #466370;">
-<strong>Key Invariant</strong>: The recursion tree has strict height $\lceil \log_2 n \rceil$, and total work at each level across all merges is bounded by $O(n)$. Auxiliary space is $O(n)$ for buffer allocation plus $O(\log n)$ recursive stack frames.
-</p>
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">🎯 Interactive Review MCQ (Click an option to reveal answer)</div>
-<div class="review-block-body">
+<div class="review-block-label">🎯 Interactive Self-Check MCQ (Click to reveal explanation)</div>
 
 ```quiz
 title: Self Check · Merge Sort Space Complexity
-question: When performing merge sort on a singly linked list of n nodes using a bottom-up iterative approach, what is the optimal auxiliary space complexity (excluding constant pointers)?
+question: When performing merge sort on a singly linked list of n nodes using a bottom-up iterative approach, what is the optimal auxiliary space complexity?
 A. O(1)
 B. O(log n)
 C. O(n)
@@ -175,7 +77,6 @@ Explanation: Array merge sort requires an O(n) temporary buffer to avoid expensi
 ```
 
 </div>
-</div>
 
 </div>
 </details>
@@ -184,90 +85,63 @@ Explanation: Array merge sort requires an O(n) temporary buffer to avoid expensi
 
 ### 2. Quick Sort
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 02</span>
   <span class="review-card-title">Quick Sort</span>
-  <span class="review-card-tag">Divide &amp; Conquer · In-place Partition · Unstable</span>
+  <span class="review-card-tag">Partitioning · In-Place · Unstable</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 Problem Definition &amp; Constraints</div>
-<div class="review-block-body">
-Given an array of $n$ integers, sort it in non-decreasing order in-place. The average time complexity must achieve $O(n \log n)$, requiring minimal auxiliary space (no extra heap or dynamic data structures beyond call stack frames).
-</div>
+<div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
+
+Sort an unsorted array of $n$ integers in non-decreasing order in-place. Average time complexity must achieve $O(n \log n)$, requiring no auxiliary data structures beyond recursive stack frames.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 Core Approach &amp; Algorithm</div>
-<div class="review-block-body">
-Quick Sort works by performing **Partitioning before Recursion**:
-<ol>
-  <li><strong>Pivot Selection</strong>: Pick a pivot randomly (or median-of-three) to break adversarial pre-sorted order and eliminate $O(n^2)$ degradations.</li>
-  <li><strong>Partition</strong>: Rearrange the array such that all elements $\le pivot$ lie to the left, and elements $\ge pivot$ lie to the right, landing the pivot at its exact final sorted index <code>p_idx</code>.</li>
-  <li><strong>Recurse</strong>: Recursively sort the subsegments <code>[l, p_idx - 1]</code> and <code>[p_idx + 1, r]</code> independently.</li>
-</ol>
-</div>
+<div class="review-block-label">💡 Core Approach &amp; Mental Model</div>
+
+Key mechanism: **Partitioning before Recursion**:
+1. **Pivot**: Choose a pivot element (randomized or median-of-three to break adversarial inputs).
+2. **Partition**: Rearrange array elements such that all elements $\le pivot$ move left and $\ge pivot$ move right, placing the pivot at final index $i$.
+3. **Recurse**: Recursively sort left subarray $[l, i - 1]$ and right subarray $[i + 1, r]$.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💻 Core Python Implementation</div>
-<div class="review-block-body">
+<div class="review-block-label">💻 Core Python Implementation (Minimal)</div>
 
 ```python
-import random
+def quick_sort(nums: list[int], l: int, r: int) -> None:
+    if l >= r:
+        return
+    # Core Lomuto partition: i maintains boundary of elements <= pivot
+    pivot, i = nums[r], l
+    for j in range(l, r):
+        if nums[j] <= pivot:
+            nums[i], nums[j] = nums[j], nums[i]
+            i += 1
+    nums[i], nums[r] = nums[r], nums[i]
 
-class Solution:
-    def sortArray(self, nums: list[int]) -> list[int]:
-        self._quick_sort(nums, 0, len(nums) - 1)
-        return nums
-
-    def _quick_sort(self, nums: list[int], l: int, r: int) -> None:
-        if l >= r:
-            return
-
-        # Randomize pivot to eliminate worst-case pre-sorted inputs
-        pivot_idx = random.randint(l, r)
-        nums[pivot_idx], nums[r] = nums[r], nums[pivot_idx]
-
-        p_idx = self._partition(nums, l, r)
-        self._quick_sort(nums, l, p_idx - 1)
-        self._quick_sort(nums, p_idx + 1, r)
-
-    def _partition(self, nums: list[int], l: int, r: int) -> int:
-        pivot = nums[r]
-        i = l
-        for j in range(l, r):
-            if nums[j] <= pivot:
-                nums[i], nums[j] = nums[j], nums[i]
-                i += 1
-        nums[i], nums[r] = nums[r], nums[i]
-        return i
+    quick_sort(nums, l, i - 1)
+    quick_sort(nums, i + 1, r)
 ```
 
 </div>
+
+<div class="review-block">
+<div class="review-block-label">⚡ Complexity &amp; Key Properties</div>
+
+- **Time Complexity**: Best $O(n \log n)$ / Worst $O(n^2)$ (skewed partitions) / Average $O(n \log n)$
+- **Auxiliary Space**: $O(\log n)$ (stack frames, degrades to $O(n)$ in worst case)
+- **Stability**: **Unstable** (long-distance swaps disrupt relative order)
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⚡ Complexity &amp; Invariants</div>
-<div class="review-block-body">
-<div class="complexity-grid">
-  <div class="complexity-item"><span class="complexity-item-title">Best Time</span><span class="complexity-item-value">O(n log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Worst Time</span><span class="complexity-item-value">O(n²)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Average Time</span><span class="complexity-item-value">O(n log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Auxiliary Space</span><span class="complexity-item-value">O(log n) ~ O(n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Stability</span><span class="complexity-item-value">Unstable</span></div>
-</div>
-<p style="margin-top: 0.5rem; font-size: 0.88rem; color: #466370;">
-<strong>Key Invariant</strong>: If partitioning repeatedly creates highly skewed splits (e.g. 1 and $n-1$), the recursion tree reaches depth $n$, degenerating to $O(n^2)$. Space is strictly call stack depth ($O(\log n)$ expected, $O(n)$ worst-case). Long-range swaps can jump duplicate elements across one another, making it unstable.
-</p>
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">🎯 Interactive Review MCQ (Click an option to reveal answer)</div>
-<div class="review-block-body">
+<div class="review-block-label">🎯 Interactive Self-Check MCQ (Click to reveal explanation)</div>
 
 ```quiz
 title: Self Check · Quick Sort Duplicate Degradation
@@ -281,7 +155,6 @@ Explanation: In standard Lomuto partition, condition nums[j] <= pivot evaluates 
 ```
 
 </div>
-</div>
 
 </div>
 </details>
@@ -290,113 +163,73 @@ Explanation: In standard Lomuto partition, condition nums[j] <= pivot evaluates 
 
 ### 3. Dynamic Array Implementation
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 03</span>
   <span class="review-card-title">Dynamic Array Implementation</span>
-  <span class="review-card-tag">Data Structure Design · Amortized Analysis</span>
+  <span class="review-card-tag">Contiguous Memory · Geometric Doubling · Amortized</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 Problem Definition &amp; Constraints</div>
-<div class="review-block-body">
-Implement a resizable dynamic array from scratch (analogous to Python's <code>list</code> or C++'s <code>std::vector</code>) backed by a fixed-size contiguous buffer. Implement the following APIs:
-<ul>
-  <li><code>get(i)</code>: Read value at index $i$; raise exception on out-of-bounds.</li>
-  <li><code>set(i, val)</code>: Overwrite value at index $i$.</li>
-  <li><code>push_back(val)</code>: Append to end; automatically double capacity when buffer is exhausted.</li>
-  <li><code>pop_back()</code>: Remove and return terminal element.</li>
-  <li><code>resize()</code>: Double internal buffer capacity and migrate existing elements.</li>
-</ul>
-</div>
+<div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
+
+Implement a resizable dynamic array from scratch backed by a fixed-size contiguous buffer (analogous to Python `list` or C++ `std::vector`), supporting $O(1)$ random indexing, tail append `push_back`, tail pop `pop_back`, and automatic doubling expansion.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 Core Approach &amp; Algorithm</div>
-<div class="review-block-body">
-The core mental model of a dynamic array:
-<ol>
-  <li><strong>Contiguous Memory &amp; Twin Counters</strong>: Maintain fixed allocation <code>capacity</code> alongside active element count <code>size</code>.</li>
-  <li><strong>Geometric Doubling</strong>: When <code>size == capacity</code>, allocate a new contiguous chunk with double the capacity (<code>2 * capacity</code>), copy elements across, and release the old buffer.</li>
-  <li><strong>Amortized $O(1)$ Proof</strong>: A single resize requires $O(n)$ copies, but resize events occur exponentially less frequently. Expanding from 1 to $n$ copies $1 + 2 + 4 + \dots + n \le 2n$ elements total. Amortized across $n$ operations, the cost per append is strictly $O(1)$.</li>
-</ol>
-</div>
+<div class="review-block-label">💡 Core Approach &amp; Mental Model</div>
+
+Mental model and amortized constant time rationale:
+1. **Contiguous Buffer**: Maintain fixed capacity `cap` with active item count `size`.
+2. **Geometric Doubling**: When `size == cap`, allocate a new contiguous chunk of $2 \times cap$, copy elements across, and discard old buffer.
+3. **Amortized Analysis ($O(1)$)**: A single expansion copies $O(n)$ elements, but occurs exponentially less often. Sum of all copies $1 + 2 + 4 + \dots + n \le 2n$. Amortized over $n$ appends, cost is strictly $O(1)$.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💻 Core Python Implementation</div>
-<div class="review-block-body">
+<div class="review-block-label">💻 Core Python Implementation (Minimal)</div>
 
 ```python
 class DynamicArray:
     def __init__(self, capacity: int = 2):
-        self.capacity = max(1, capacity)
-        self.size = 0
-        self.array = [None] * self.capacity
-
-    def get(self, i: int) -> int:
-        if not (0 <= i < self.size):
-            raise IndexError("Index out of bounds")
-        return self.array[i]
-
-    def set(self, i: int, val: int) -> None:
-        if not (0 <= i < self.size):
-            raise IndexError("Index out of bounds")
-        self.array[i] = val
+        self.cap, self.size = capacity, 0
+        self.arr = [None] * self.cap
 
     def push_back(self, val: int) -> None:
-        # Trigger geometric doubling when buffer full
-        if self.size == self.capacity:
-            self._resize(self.capacity * 2)
-
-        self.array[self.size] = val
+        # Core: Geometric doubling when full, amortized O(1)
+        if self.size == self.cap:
+            self.cap *= 2
+            new_arr = [None] * self.cap
+            for i in range(self.size):
+                new_arr[i] = self.arr[i]
+            self.arr = new_arr
+        self.arr[self.size] = val
         self.size += 1
 
     def pop_back(self) -> int:
-        if self.size == 0:
-            raise IndexError("Cannot pop from empty array")
         self.size -= 1
-        val = self.array[self.size]
-        self.array[self.size] = None  # Prevent memory leak
-        return val
+        return self.arr[self.size]
 
-    def _resize(self, new_capacity: int) -> None:
-        new_array = [None] * new_capacity
-        for i in range(self.size):
-            new_array[i] = self.array[i]
-        self.array = new_array
-        self.capacity = new_capacity
-
-    def get_size(self) -> int:
-        return self.size
-
-    def get_capacity(self) -> int:
-        return self.capacity
+    def get(self, i: int) -> int:
+        return self.arr[i]
 ```
 
 </div>
+
+<div class="review-block">
+<div class="review-block-label">⚡ Complexity &amp; Key Properties</div>
+
+- **Random Indexing `get`/`set`**: $O(1)$ (direct memory address calculation $base + i \times size$)
+- **Tail Append `push_back`**: **Amortized $O(1)$** (Worst $O(n)$ during expansion)
+- **Tail Pop `pop_back`**: $O(1)$
+- **Space Utilization**: $\ge 50\%$
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⚡ Complexity &amp; Invariants</div>
-<div class="review-block-body">
-<div class="complexity-grid">
-  <div class="complexity-item"><span class="complexity-item-title">Random Access get/set</span><span class="complexity-item-value">O(1)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Append push_back</span><span class="complexity-item-value">Amortized O(1) (Worst O(n))</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Pop pop_back</span><span class="complexity-item-value">O(1)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Mid Insert/Delete</span><span class="complexity-item-value">O(n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Space Utilization</span><span class="complexity-item-value">≥ 50%</span></div>
-</div>
-<p style="margin-top: 0.5rem; font-size: 0.88rem; color: #466370;">
-<strong>Key Invariant</strong>: Direct indexing leverages pointer arithmetic <code>base + i * element_size</code> for $O(1)$ read/write. Append costs $O(n)$ only on the rare occasions resize triggers, amortizing to constant time. Arbitrary index insertion requires shifting subsequent elements, incurring $O(n)$ worst-case time.
-</p>
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">🎯 Interactive Review MCQ (Click an option to reveal answer)</div>
-<div class="review-block-body">
+<div class="review-block-label">🎯 Interactive Self-Check MCQ (Click to reveal explanation)</div>
 
 ```quiz
 title: Self Check · Dynamic Array Growth Strategy
@@ -410,7 +243,6 @@ Explanation: With constant step C = 1000, appending N items triggers N/C expansi
 ```
 
 </div>
-</div>
 
 </div>
 </details>
@@ -419,7 +251,7 @@ Explanation: With constant step C = 1000, appending N items triggers N/C expansi
 
 ### 4. Binary Search Boundary Template
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 04</span>
   <span class="review-card-title">Binary Search Boundary Template</span>
@@ -428,72 +260,54 @@ Explanation: With constant step C = 1000, appending N items triggers N/C expansi
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 Problem Definition &amp; Constraints</div>
-<div class="review-block-body">
-Given a non-decreasing sorted integer array, locate the **first occurrence (Lower Bound / leftmost index)** of <code>target</code>. If the target does not exist, return the index where it should be inserted to maintain order. Runtime must be $O(\log n)$ with absolute zero risk of infinite loops.
-</div>
+<div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
+
+Given a non-decreasing sorted integer array, locate the **first occurrence (Lower Bound)** of `target`. If absent, return the index where it should be inserted. Must run in $O(\log n)$ with zero danger of infinite loops.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 Core Approach &amp; Algorithm</div>
-<div class="review-block-body">
-Binary search depends entirely on **Loop Invariant maintenance**:
-<ol>
-  <li><strong>Interval Definition</strong>: Fixate on a **closed interval <code>[l, r]</code>**, initialized at <code>l = 0, r = len(nums) - 1</code>.</li>
-  <li><strong>Overflow-safe Midpoint</strong>: Use <code>mid = l + (r - l) // 2</code> to eliminate potential integer overflow.</li>
-  <li><strong>Left-boundary Shrinkage</strong>:
-    <ul>
-      <li>If <code>nums[mid] >= target</code>: Target could be <code>mid</code> or to the left; shrink right bound: <code>r = mid - 1</code>.</li>
-      <li>If <code>nums[mid] < target</code>: Target is strictly to the right; shrink left bound: <code>l = mid + 1</code>.</li>
-    </ul>
-  </li>
-  <li><strong>Convergence Guarantee</strong>: Loop runs while <code>l <= r</code>, terminating strictly at <code>l = r + 1</code>, with <code>l</code> landing on the first element $\ge target$.</li>
-</ol>
-</div>
+<div class="review-block-label">💡 Core Approach &amp; Mental Model</div>
+
+Rigid **Loop Invariant maintenance**:
+1. **Closed Interval**: Maintain a **closed range $[l, r]$**, initialized with $l = 0, r = len(nums) - 1$.
+2. **Overflow-safe Midpoint**: $mid = l + \lfloor (r - l) / 2 \rfloor$.
+3. **Shrinking Decision**:
+   - If $nums[mid] \ge target$: Target is at $mid$ or left; shrink right bound: $r = mid - 1$.
+   - If $nums[mid] < target$: Target is strictly right; shrink left bound: $l = mid + 1$.
+4. **Convergence**: Loop while $l \le r$. Terminates strictly when $l = r + 1$, where $l$ lands on the first item $\ge target$.
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💻 Core Python Implementation</div>
-<div class="review-block-body">
+<div class="review-block-label">💻 Core Python Implementation (Minimal)</div>
 
 ```python
-class Solution:
-    def searchLowerBound(self, nums: list[int], target: int) -> int:
-        l = 0
-        r = len(nums) - 1
-
-        # Maintain invariant over closed range [l, r]
-        while l <= r:
-            mid = l + (r - l) // 2
-            if nums[mid] >= target:
-                r = mid - 1  # Seek lower matching bound to the left
-            else:
-                l = mid + 1  # Seek rightward
-
-        # Upon termination l == r + 1; l is the first index >= target
-        return l
+def search_lower_bound(nums: list[int], target: int) -> int:
+    l, r = 0, len(nums) - 1
+    # Strictly maintain closed interval [l, r]
+    while l <= r:
+        mid = l + (r - l) // 2
+        if nums[mid] >= target:
+            r = mid - 1  # Seek lower index to the left
+        else:
+            l = mid + 1
+    return l  # Terminates with l as first index >= target
 ```
 
 </div>
+
+<div class="review-block">
+<div class="review-block-label">⚡ Complexity &amp; Key Properties</div>
+
+- **Time Complexity**: $O(\log n)$ (halves search space every iteration)
+- **Auxiliary Space**: $O(1)$ (iterative without stack frames)
+- **Termination Invariant**: Loop always terminates with $l = r + 1$
+
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⚡ Complexity &amp; Invariants</div>
-<div class="review-block-body">
-<div class="complexity-grid">
-  <div class="complexity-item"><span class="complexity-item-title">Time Complexity</span><span class="complexity-item-value">O(log n)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Auxiliary Space</span><span class="complexity-item-value">O(1)</span></div>
-  <div class="complexity-item"><span class="complexity-item-title">Search Space Reduction</span><span class="complexity-item-value">Halved each step (1/2)</span></div>
-</div>
-<p style="margin-top: 0.5rem; font-size: 0.88rem; color: #466370;">
-<strong>Key Invariant</strong>: Each iteration halves the candidate search space, guaranteeing at most $\lfloor \log_2 n \rfloor + 1$ comparisons. The iterative approach consumes strictly $O(1)$ auxiliary space.
-</p>
-</div>
-</div>
-
-<div class="review-block">
-<div class="review-block-label">🎯 Interactive Review MCQ (Click an option to reveal answer)</div>
-<div class="review-block-body">
+<div class="review-block-label">🎯 Interactive Self-Check MCQ (Click to reveal explanation)</div>
 
 ```quiz
 title: Self Check · Binary Search Infinite Loop Trap
@@ -506,7 +320,6 @@ Answer: A
 Explanation: When r = l + 1, integer division floors mid = l + (1) // 2 = l. If the l = mid branch is chosen, l is assigned its existing value, leaving the interval [l, r] completely unreduced. The loop runs forever. The fundamental rule to prevent this: whenever an l = mid branch exists, the midpoint must round up using mid = l + (r - l + 1) // 2.
 ```
 
-</div>
 </div>
 
 </div>

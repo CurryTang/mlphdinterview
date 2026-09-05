@@ -1510,6 +1510,30 @@
   letter-spacing: 0.02em;
 }
 
+.review-block > *:not(.review-block-label) {
+  margin-left: 0.95rem;
+  margin-right: 0.95rem;
+}
+
+.review-block > p,
+.review-block > ul,
+.review-block > ol {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: #1c3542;
+  margin-top: 0.55rem;
+  margin-bottom: 0.55rem;
+}
+
+.review-block > ul,
+.review-block > ol {
+  padding-left: 1.25rem;
+}
+
+.review-block > :last-child {
+  margin-bottom: 0.85rem;
+}
+
 .review-block-body {
   padding: 0.85rem 0.95rem;
   font-size: 0.94rem;
