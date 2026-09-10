@@ -22818,8 +22818,7 @@ button.overview-support-card.active {
 }
 
 .k8s-nest-stage {
-  min-height: 24rem;
-  padding: 1rem 1.15rem 1.15rem;
+  padding: 1rem 1.15rem 1.2rem;
   display: flex;
   justify-content: center;
 }
@@ -22827,56 +22826,56 @@ button.overview-support-card.active {
 .k8s-nest-layer {
   display: flex;
   flex-direction: column;
-  gap: 0.38rem;
+  gap: 0.32rem;
   width: 100%;
-  padding: 0.42rem 0.48rem 0.5rem;
-  border: 1.5px solid rgba(24, 49, 63, 0.22);
+  padding: 0.32rem 0.4rem 0.45rem;
+  border: 2px solid rgba(24, 49, 63, 0.2);
   border-radius: 12px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.55);
 }
 
 .k8s-nest-stage > .k8s-nest-layer {
-  max-width: 42rem;
-  min-height: 22rem;
+  max-width: 34rem;
 }
 
 .k8s-nest-layer > .k8s-nest-layer {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
 }
 
-.k8s-nest-layer > span {
-  color: #6c818a;
-  font: 700 0.58rem "IBM Plex Mono", "Courier New", monospace;
-  letter-spacing: 0.1em;
+.k8s-nest-band {
+  display: block;
+  color: #4d6570;
+  font: 700 0.62rem "IBM Plex Mono", "Courier New", monospace;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .k8s-nest-layer.current {
   border-color: var(--k8s-blue);
-  border-width: 2px;
-  box-shadow: inset 0 0 0 2px rgba(38, 123, 154, 0.22);
+  box-shadow: 0 0 0 3px rgba(38, 123, 154, 0.18);
 }
 
-.k8s-nest-layer.is-container { background: rgba(235, 247, 250, 0.96); }
-.k8s-nest-layer.is-pod { background: rgba(232, 244, 237, 0.94); }
-.k8s-nest-layer.is-replicaset { background: rgba(255, 246, 230, 0.94); }
-.k8s-nest-layer.is-deployment { background: rgba(237, 242, 255, 0.94); }
-.k8s-nest-layer.is-service { background: rgba(255, 239, 236, 0.95); }
-.k8s-nest-layer.is-namespace { background: rgba(243, 240, 255, 0.96); }
+.k8s-nest-layer.current > .k8s-nest-band {
+  color: var(--k8s-blue);
+}
+
+.k8s-nest-layer.is-container { background: #d8eef3; }
+.k8s-nest-layer.is-pod { background: #d5eadc; }
+.k8s-nest-layer.is-replicaset { background: #f6e6c4; }
+.k8s-nest-layer.is-deployment { background: #d9e0f6; }
+.k8s-nest-layer.is-service { background: #f6d9d2; }
+.k8s-nest-layer.is-namespace { background: #e3dcf6; }
 
 .k8s-nest-process {
-  flex: 1;
-  min-height: 3.6rem;
-  border-radius: 8px;
-  background: #17313f;
-  color: #f4f9f8;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.12rem;
-  padding: 0.7rem 0.8rem;
+  gap: 0.1rem;
+  margin: 0.15rem 0.1rem 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: #17313f;
+  color: #f4f9f8;
 }
 
 .k8s-nest-process b {

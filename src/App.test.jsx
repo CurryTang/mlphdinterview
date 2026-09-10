@@ -804,7 +804,10 @@ describe('App', () => {
 
     const hierarchy = await screen.findByRole('region', { name: 'Kubernetes 对象层级从容器到 Namespace' });
     expect(within(hierarchy).getByText('从容器一层层包到 Namespace')).toBeInTheDocument();
+    expect(within(hierarchy).getByText(/中间永远是同一个进程/)).toBeInTheDocument();
     expect(within(hierarchy).getByText('train.py')).toBeInTheDocument();
+    expect(within(hierarchy).getAllByText(/^Pod$/).length).toBeGreaterThan(0);
+    expect(within(hierarchy).getAllByText(/^Namespace$/).length).toBeGreaterThan(0);
 
     fireEvent.click(within(hierarchy).getByRole('tab', { name: /Namespace/i }));
     expect(within(hierarchy).getByText('虚拟集群边界')).toBeInTheDocument();

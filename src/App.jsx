@@ -6787,7 +6787,7 @@ const K8S_HIERARCHY_LAYERS = [
 function KubernetesHierarchyVisual() {
   const { isEnglish, t } = useUiCopy();
   const [active, setActive] = useState(K8S_HIERARCHY_LAYERS.length - 1);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const layer = K8S_HIERARCHY_LAYERS[active];
 
   useEffect(() => {
@@ -6800,13 +6800,18 @@ function KubernetesHierarchyVisual() {
     return () => window.clearInterval(timer);
   }, [playing]);
 
+  const selectLayer = (index) => {
+    setPlaying(false);
+    setActive(index);
+  };
+
   return (
     <section className="k8s-visual k8s-hierarchy" aria-label={t('Kubernetes 对象层级从容器到 Namespace', 'Kubernetes object hierarchy from container to Namespace')}>
       <header className="k8s-visual-header">
         <div>
           <p className="eyebrow">{t('对象模型', 'Object model')}</p>
           <h2>{t('从容器一层层包到 Namespace', 'Wrap a container out to a Namespace')}</h2>
-          <p>{t('六层始终套在一起。点外框或上方标签，看这一层负责什么。嵌套是记忆图；实现靠 label 和 ownerReference。', 'All six layers stay nested. Click a ring or a tab to see what that object owns. Nesting is a memory aid; the implementation is labels and ownerReferences.')}</p>
+          <p>{t('中间永远是同一个进程 train.py。往外每一圈是一个更大的 API 对象：Container ⊂ Pod ⊂ ReplicaSet ⊂ Deployment ⊂ Service ⊂ Namespace。点哪一圈，哪一圈亮。', 'The process in the middle is always train.py. Each ring outside it is a larger API object: Container ⊂ Pod ⊂ ReplicaSet ⊂ Deployment ⊂ Service ⊂ Namespace. The highlighted ring is the one described below.')}</p>
         </div>
         <div className="k8s-visual-controls">
           <button type="button" className={playing ? 'active' : ''} onClick={() => setPlaying((value) => !value)}>
@@ -6823,10 +6828,7 @@ function KubernetesHierarchyVisual() {
             role="tab"
             aria-selected={active === index}
             className={active === index ? 'active' : ''}
-            onClick={() => {
-              setPlaying(false);
-              setActive(index);
-            }}
+            onClick={() => selectLayer(index)}
           >
             <small>0{index + 1}</small>
             {item.tag}
@@ -6841,11 +6843,10 @@ function KubernetesHierarchyVisual() {
             className={`k8s-nest-layer is-${item.id} ${index === active ? 'current' : ''}`}
             onClick={(event) => {
               event.stopPropagation();
-              setPlaying(false);
-              setActive(index);
+              selectLayer(index);
             }}
           >
-            <span>{item.tag}</span>
+            <span className="k8s-nest-band">{item.tag}</span>
             {index === 0 ? (
               <div className="k8s-nest-process">
                 <b>train.py</b>
