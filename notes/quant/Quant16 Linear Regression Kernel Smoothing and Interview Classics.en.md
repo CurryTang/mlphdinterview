@@ -24,19 +24,51 @@ Core Theoretical Mental Models:
 ## Module 1: OLS Geometry and Algebra (ESL 3.2)
 
 ### 1. Simple Linear Regression Model and OLS Estimator
-Univariate linear regression formulation:
+
+#### Model Formulation & Notation Conventions (Rigorous Definitions)
+Suppose we observe $n$ independent paired samples $\{(X_i, Y_i)\}_{i=1}^n$:
+- **$X_i \in \mathbb{R}$**: Independent variable (explanatory variable / regressor / feature), the known input feature value;
+- **$Y_i \in \mathbb{R}$**: Dependent variable (response variable / ground truth / target), the observed outcome we seek to predict or explain;
+- **$\beta_0, \beta_1 \in \mathbb{R}$**: Unknown true population regression parameters ($\beta_0$ is population intercept, $\beta_1$ is population slope);
+- **$\varepsilon_i \in \mathbb{R}$**: Unobservable population random error term (disturbance / noise), representing omitted factors and stochastic noise.
+
+The true population data-generating process is:
 
 $$
 Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i \quad (i = 1, 2, \dots, n)
 $$
 
-Ordinary Least Squares (OLS) minimizes the residual sum of squares $\sum_{i=1}^n \hat\varepsilon_i^2$, yielding the closed-form estimator:
+#### Estimators, Predictions, and Residuals (Meaning of the "Hat" Symbol $\ \hat{}\ $)
+In standard statistical convention, a **"hat" ($\ \hat{}\ $) signifies a sample estimate or model prediction calculated from empirical data** (distinguishing it from the unobservable population parameter):
+- **$\hat\beta_0, \hat\beta_1$**: Sample estimates of the intercept and slope coefficients;
+- **$\hat{Y}_i$ (pronounced "Y-hat", Fitted Value / Prediction)**: The model's linear point prediction for sample $i$:
+  $$\hat{Y}_i = \hat\beta_0 + \hat\beta_1 X_i$$
+- **$\hat\varepsilon_i$ (pronounced "epsilon-hat", Sample Residual)**: The deviation between observed target $Y_i$ and fitted prediction $\hat{Y}_i$ (the empirical prediction error on sample $i$):
+  $$\hat\varepsilon_i = Y_i - \hat{Y}_i = Y_i - (\hat\beta_0 + \hat\beta_1 X_i)$$
+
+#### Sample Covariance & Variance Notations ($\widehat{\operatorname{Cov}}$ & $\widehat{\operatorname{Var}}$)
+Let $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$ and $\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$ denote the sample arithmetic means:
+- **$\widehat{\operatorname{Var}}(X)$ (Sample Variance)**: Measures the dispersion of predictor $X$ around its sample mean:
+  $$\widehat{\operatorname{Var}}(X) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$$
+- **$\widehat{\operatorname{Cov}}(X, Y)$ (Sample Covariance)**: Measures the co-movement between predictor $X$ and response $Y$:
+  $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+
+#### OLS Objective and Closed-Form Derivation
+Ordinary Least Squares (OLS) chooses estimates $(\hat\beta_0, \hat\beta_1)$ that globally minimize the Residual Sum of Squares ($RSS$):
 
 $$
-\hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)}, \quad \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}
+\min_{\hat\beta_0, \hat\beta_1} \sum_{i=1}^n \hat\varepsilon_i^2 = \min_{\hat\beta_0, \hat\beta_1} \sum_{i=1}^n \left( Y_i - \hat\beta_0 - \hat\beta_1 X_i \right)^2
 $$
 
-where $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$ and $\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$ denote sample means.
+Setting the first-order partial derivatives to zero (FOC):
+1. $\frac{\partial}{\partial \hat\beta_0} = -2\sum_{i=1}^n (Y_i - \hat\beta_0 - \hat\beta_1 X_i) = 0 \implies \sum_{i=1}^n \hat\varepsilon_i = 0 \implies \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}$;
+2. Substituting into the derivative with respect to $\hat\beta_1$: $\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y} - \hat\beta_1(X_i - \bar{X})) = 0$, yielding:
+
+$$
+\hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)}, \quad \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}
+$$
+
+The degree-of-freedom normalization factor $\frac{1}{n-1}$ cancels out identically. **The univariate OLS slope is precisely the ratio of the sample covariance $\widehat{\operatorname{Cov}}(X, Y)$ to the sample variance $\widehat{\operatorname{Var}}(X)$**.
 
 - **Center-of-Mass Pivot**: By $\bar{Y} = \hat\beta_0 + \hat\beta_1 \bar{X}$, the sample center of mass $(\bar{X}, \bar{Y})$ serves as a rigid rotational pivot. Regardless of how the slope varies, the fitted line is strictly constrained to pass through the centroid.
 - **Torque and Spring Equilibrium**: Minimizing $\sum \hat\varepsilon_i^2$ is physically equivalent to each data point pulling a rigid lever via a vertical spring (with potential energy $E_p \propto \Delta y^2$). At the static equilibrium state of minimum total potential energy, the net vertical force vanishes ($\sum \hat\varepsilon_i = 0$), and the net torque about the center of mass also vanishes ($\sum (X_i - \bar{X})\hat\varepsilon_i = 0$).
@@ -44,25 +76,49 @@ where $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$ and $\bar{Y} = \frac{1}{n}\sum_{i=
 ---
 
 ### 2. Coefficient of Determination $R^2$ and Variance Decomposition (ANOVA)
-$R^2$ quantifies the goodness of fit of the regression model, defined as:
+
+#### Scalar-to-Vector Mapping in Sample Space $\mathbb{R}^n$
+To view variance decomposition through high-dimensional Euclidean geometry, we stack sample observations into $n$-dimensional vectors:
+- **Observed Target Vector $Y \in \mathbb{R}^n$**: $Y = (Y_1, Y_2, \dots, Y_n)^\top$;
+- **Fitted Prediction Vector $\hat{Y} \in \mathbb{R}^n$**: $\hat{Y} = (\hat{Y}_1, \hat{Y}_2, \dots, \hat{Y}_n)^\top$;
+- **Sample Mean Baseline Vector $\bar{Y}\mathbf{1} \in \mathbb{R}^n$**: scalar mean $\bar{Y}$ multiplied by the all-ones vector $\mathbf{1} = (1, 1, \dots, 1)^\top$, representing the zero-predictor naive baseline;
+- **Residual Vector $\hat\varepsilon \in \mathbb{R}^n$**: $\hat\varepsilon = Y - \hat{Y} = (\hat\varepsilon_1, \hat\varepsilon_2, \dots, \hat\varepsilon_n)^\top$.
+
+#### Physical Definitions of the Three Sums of Squares
+$R^2$ quantifies the goodness of fit of the regression model relative to the naive mean baseline:
 
 $$
 R^2 = \frac{ESS}{TSS} = 1 - \frac{RSS}{TSS}
 $$
 
-where the sums of squares are:
+The three sums of squares correspond to squared Euclidean norms in $\mathbb{R}^n$:
+- **Total Sum of Squares ($TSS$)**:
+  $$TSS = \sum_{i=1}^n (Y_i - \bar{Y})^2 = \|Y - \bar{Y}\mathbf{1}\|_2^2$$
+  *Physical Meaning*: Total variation of observed responses around their mean baseline (the total squared prediction error incurred if one blindly predicts $\bar{Y}$ without features).
+- **Explained Sum of Squares ($ESS$)**:
+  $$ESS = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2 = \|\hat{Y} - \bar{Y}\mathbf{1}\|_2^2$$
+  *Physical Meaning*: Variation of fitted values around the mean baseline, representing the **variance successfully accounted for by features $X$**.
+- **Residual Sum of Squares ($RSS$)**:
+  $$RSS = \sum_{i=1}^n (Y_i - \hat{Y}_i)^2 = \sum_{i=1}^n \hat\varepsilon_i^2 = \hat\varepsilon^\top \hat\varepsilon = \|Y - \hat{Y}\|_2^2$$
+  *Physical Meaning*: Variation remaining in the residuals, representing **unexplained error variance**.
 
-$$
-TSS = \sum_{i=1}^n (Y_i - \bar{Y})^2, \quad RSS = \sum_{i=1}^n \hat\varepsilon_i^2 = \hat\varepsilon^\top \hat\varepsilon, \quad ESS = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2
-$$
-
-By residual orthogonality, the variance decomposition identity holds:
+#### Algebraic Proof of the ANOVA Identity
+Consider the identity splitting the total deviation for each sample:
+$$(Y_i - \bar{Y}) = (\hat{Y}_i - \bar{Y}) + (Y_i - \hat{Y}_i) = (\hat{Y}_i - \bar{Y}) + \hat\varepsilon_i$$
+Squaring both sides and summing over all $n$ observations:
+$$\sum_{i=1}^n (Y_i - \bar{Y})^2 = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2 + \sum_{i=1}^n \hat\varepsilon_i^2 + 2\sum_{i=1}^n (\hat{Y}_i - \bar{Y})\hat\varepsilon_i$$
+Expanding the cross term:
+$$\sum_{i=1}^n (\hat{Y}_i - \bar{Y})\hat\varepsilon_i = \sum_{i=1}^n \hat{Y}_i \hat\varepsilon_i - \bar{Y}\sum_{i=1}^n \hat\varepsilon_i$$
+1. By OLS first-order conditions, the residuals sum to zero: $\sum_{i=1}^n \hat\varepsilon_i = 0$;
+2. Substituting $\hat{Y}_i = \hat\beta_0 + \hat\beta_1 X_i$ into the first term:
+   $$\sum_{i=1}^n \hat{Y}_i \hat\varepsilon_i = \hat\beta_0 \sum_{i=1}^n \hat\varepsilon_i + \hat\beta_1 \sum_{i=1}^n X_i \hat\varepsilon_i = \hat\beta_0 \cdot 0 + \hat\beta_1 \cdot 0 = 0$$
+Both terms vanish identically! The cross term is strictly zero, establishing the **ANOVA Variance Decomposition Identity**:
 
 $$
 TSS = ESS + RSS
 $$
 
-- **High-Dimensional Pythagorean Theorem in $\mathbb{R}^n$**: In centered sample space, the centered observation vector $Y - \bar{Y}\mathbf{1}$ is the **hypotenuse** of a right triangle, the fitted vector $\hat{Y} - \bar{Y}\mathbf{1}$ is the **adjacent leg** lying in the feature subspace, and the residual vector $\hat\varepsilon$ is the **opposite leg** strictly perpendicular to the feature subspace. Since the two legs are strictly orthogonal, the squared hypotenuse length identically equals the sum of the squared lengths of the two legs.
+- **High-Dimensional Pythagorean Theorem in $\mathbb{R}^n$**: In the centered sample space $\mathbb{R}^n$, the vanishing cross product implies that vectors $(\hat{Y} - \bar{Y}\mathbf{1})$ and $(Y - \hat{Y})$ are strictly orthogonal: $(\hat{Y} - \bar{Y}\mathbf{1}) \perp \hat\varepsilon$. The total deviation vector $Y - \bar{Y}\mathbf{1}$ is the **hypotenuse**, the fitted deviation vector $\hat{Y} - \bar{Y}\mathbf{1}$ is the **adjacent leg** lying in the feature subspace, and the residual vector $\hat\varepsilon = Y - \hat{Y}$ is the **opposite leg** strictly perpendicular to the feature subspace. By the Pythagorean theorem, the squared hypotenuse length identically equals the sum of the squared leg lengths: $\|Y - \bar{Y}\mathbf{1}\|_2^2 = \|\hat{Y} - \bar{Y}\mathbf{1}\|_2^2 + \|\hat\varepsilon\|_2^2$.
 - **Squared Cosine of Subspace Angle**:
 
   $$

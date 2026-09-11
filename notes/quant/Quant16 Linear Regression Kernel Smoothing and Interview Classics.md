@@ -24,19 +24,51 @@
 ## 模块一：OLS 几何与代数（ESL 3.2）
 
 ### 1. 一元线性回归模型与 OLS 估计量
-一元线性回归模型表达式：
+
+#### 模型设定与符号定义（严格约定）
+设我们观测到 $n$ 组独立样本观测对 $\{(X_i, Y_i)\}_{i=1}^n$：
+- **$X_i \in \mathbb{R}$**：自变量（解释变量 / 输入特征 / Regressor），为给定的观测特征数值；
+- **$Y_i \in \mathbb{R}$**：因变量（被解释变量 / 真实响应值 / Ground Truth / Target），代表我们要预测或解释的客观观测值；
+- **$\beta_0, \beta_1 \in \mathbb{R}$**：未知的真实总体回归参数（$\beta_0$ 为总体截距，$\beta_1$ 为总体斜率）；
+- **$\varepsilon_i \in \mathbb{R}$**：不可观测的总体随机扰动项（Error Term / Noise），代表所有未被自变量捕捉的随机环境噪声。
+
+一元线性回归的总体真实数据生成过程为：
 
 $$
 Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i \quad (i = 1, 2, \dots, n)
 $$
 
-普通最小二乘法（OLS）通过最小化残差平方和 $\sum_{i=1}^n \hat\varepsilon_i^2$，求解得到闭式估计量：
+#### 估计量、拟合值与残差（“帽子”符号 $\ \hat{}\ $ 的严格含义）
+在统计学规范中，字母上方的**“帽子”（Hat, $\ \hat{}\ $）统一定义为“由样本数据计算得出的估计值或预测值”（Estimator / Prediction）**：
+- **$\hat\beta_0, \hat\beta_1$**：通过样本数据求解得出的截距与斜率估计值；
+- **$\hat{Y}_i$（读作 Y-hat，拟合值 / 预测值 Fitted Value）**：模型根据特征 $X_i$ 与估计参数给出的线性预测输出：
+  $$\hat{Y}_i = \hat\beta_0 + \hat\beta_1 X_i$$
+- **$\hat\varepsilon_i$（读作 epsilon-hat，样本残差 Residual）**：真实观测值 $Y_i$ 与模型拟合值 $\hat{Y}_i$ 之间的偏差（即模型在第 $i$ 个样本上的实际预测误差）：
+  $$\hat\varepsilon_i = Y_i - \hat{Y}_i = Y_i - (\hat\beta_0 + \hat\beta_1 X_i)$$
+
+#### 样本统计量符号 $\widehat{\operatorname{Cov}}$ 与 $\widehat{\operatorname{Var}}$ 的严格定义
+设样本算术均值为 $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$，$\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$：
+- **$\widehat{\operatorname{Var}}(X)$（样本方差 Sample Variance）**：度量自变量 $X$ 围绕其均值的离散程度：
+  $$\widehat{\operatorname{Var}}(X) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$$
+- **$\widehat{\operatorname{Cov}}(X, Y)$（样本协方差 Sample Covariance）**：度量自变量 $X$ 与因变量 $Y$ 之间的协同联动变化程度：
+  $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+
+#### OLS 目标函数与闭式估计量推导
+普通最小二乘法（OLS）的核心准则是：寻找使全样本残差平方和（Residual Sum of Squares, $RSS$）达到全局最小的参数 $(\hat\beta_0, \hat\beta_1)$：
 
 $$
-\hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)}, \quad \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}
+\min_{\hat\beta_0, \hat\beta_1} \sum_{i=1}^n \hat\varepsilon_i^2 = \min_{\hat\beta_0, \hat\beta_1} \sum_{i=1}^n \left( Y_i - \hat\beta_0 - \hat\beta_1 X_i \right)^2
 $$
 
-其中 $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$，$\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$ 为样本均值。
+分别对 $\hat\beta_0$ 与 $\hat\beta_1$ 求偏导并令其为 0（一阶驻点条件）：
+1. $\frac{\partial}{\partial \hat\beta_0} = -2\sum_{i=1}^n (Y_i - \hat\beta_0 - \hat\beta_1 X_i) = 0 \implies \sum_{i=1}^n \hat\varepsilon_i = 0 \implies \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}$；
+2. 代入对 $\hat\beta_1$ 的导数方程：$\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y} - \hat\beta_1(X_i - \bar{X})) = 0$，解得：
+
+$$
+\hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)}, \quad \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}
+$$
+
+分母与分子的样本容量归一化因子 $\frac{1}{n-1}$（或 $\frac{1}{n}$）完全抵消。**一元 OLS 的斜率本质上就是自变量与因变量的样本协方差除以自变量的样本方差**。
 
 - **几何质心定锚（Center-of-Mass Pivot）**：由 $\bar{Y} = \hat\beta_0 + \hat\beta_1 \bar{X}$ 可知，样本重心 $(\bar{X}, \bar{Y})$ 是拟合线的固定刚性支点（Pivot）。无论斜率如何变动，回归直线必强制穿过质心。
 - **物理力矩平衡（Torque & Spring Equilibrium）**：最小化 $\sum \hat\varepsilon_i^2$ 物理上等价于每个样本点通过一根垂直弹簧（弹性势能 $E_p \propto \Delta y^2$）拉拽一根刚性杠杆。当杠杆处于总弹性势能最低的静力学平衡态时，所有垂直拉力之和为零（$\sum \hat\varepsilon_i = 0$），绕质心的合力矩亦为零（$\sum (X_i - \bar{X})\hat\varepsilon_i = 0$）。
@@ -44,25 +76,49 @@ $$
 ---
 
 ### 2. 判定系数 $R^2$ 与方差分解（ANOVA）
-$R^2$ 衡量回归模型的拟合优度（Goodness of fit），定义为：
+
+#### 标量与 $n$ 维向量符号的严格对应
+为了从全局几何视角透彻审视方差分解，我们将全样本标量堆叠为 $n$ 维样本空间 $\mathbb{R}^n$ 中的列向量：
+- **真实观测向量 $Y \in \mathbb{R}^n$**：全样本真实目标值的列向量 $Y = (Y_1, Y_2, \dots, Y_n)^\top$；
+- **模型拟合向量 $\hat{Y} \in \mathbb{R}^n$**：全样本模型拟合值的列向量 $\hat{Y} = (\hat{Y}_1, \hat{Y}_2, \dots, \hat{Y}_n)^\top$；
+- **样本均值基线向量 $\bar{Y}\mathbf{1} \in \mathbb{R}^n$**：标量均值 $\bar{Y}$ 乘以全 1 向量 $\mathbf{1} = (1, 1, \dots, 1)^\top$，即 $\bar{Y}\mathbf{1} = (\bar{Y}, \bar{Y}, \dots, \bar{Y})^\top$。它代表完全不用任何特征自变量时的“盲猜常数基准”；
+- **残差向量 $\hat\varepsilon \in \mathbb{R}^n$**：全样本预测误差列向量 $\hat\varepsilon = Y - \hat{Y} = (\hat\varepsilon_1, \hat\varepsilon_2, \dots, \hat\varepsilon_n)^\top$。
+
+#### 三大平方和（TSS, ESS, RSS）的物理定义
+$R^2$ 衡量回归模型相对于朴素均值基线的拟合优度（Goodness of fit），定义为：
 
 $$
 R^2 = \frac{ESS}{TSS} = 1 - \frac{RSS}{TSS}
 $$
 
-其中各平方和定义为：
+其中三大平方和分别对应样本向量的欧氏范数平方：
+- **总离差平方和 $TSS$（Total Sum of Squares）**：
+  $$TSS = \sum_{i=1}^n (Y_i - \bar{Y})^2 = \|Y - \bar{Y}\mathbf{1}\|_2^2$$
+  *物理意义*：真实数据围绕其均值基线的总变异量（如果不看特征 $X$，盲猜平均值 $\bar{Y}$ 时犯下的总平方误差）。
+- **回归解释平方和 $ESS$（Explained Sum of Squares）**：
+  $$ESS = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2 = \|\hat{Y} - \bar{Y}\mathbf{1}\|_2^2$$
+  *物理意义*：模型拟合值围绕均值基线的波动，代表**自变量 $X$ 成功捕捉并解释出来的波动量**。
+- **残差平方和 $RSS$（Residual Sum of Squares）**：
+  $$RSS = \sum_{i=1}^n (Y_i - \hat{Y}_i)^2 = \sum_{i=1}^n \hat\varepsilon_i^2 = \hat\varepsilon^\top \hat\varepsilon = \|Y - \hat{Y}\|_2^2$$
+  *物理意义*：真实值与模型拟合值的偏离程度，代表**模型用尽了特征也无法解释的纯剩余误差**。
 
-$$
-TSS = \sum_{i=1}^n (Y_i - \bar{Y})^2, \quad RSS = \sum_{i=1}^n \hat\varepsilon_i^2 = \hat\varepsilon^\top \hat\varepsilon, \quad ESS = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2
-$$
-
-由残差正交性，立即成立方差分解恒等式：
+#### 方差分解恒等式（ANOVA）的严格代数证明
+考察样本点 $i$ 的总离差拆分恒等式：
+$$(Y_i - \bar{Y}) = (\hat{Y}_i - \bar{Y}) + (Y_i - \hat{Y}_i) = (\hat{Y}_i - \bar{Y}) + \hat\varepsilon_i$$
+对所有样本两边平方并求和：
+$$\sum_{i=1}^n (Y_i - \bar{Y})^2 = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2 + \sum_{i=1}^n \hat\varepsilon_i^2 + 2\sum_{i=1}^n (\hat{Y}_i - \bar{Y})\hat\varepsilon_i$$
+展开交叉项：
+$$\sum_{i=1}^n (\hat{Y}_i - \bar{Y})\hat\varepsilon_i = \sum_{i=1}^n \hat{Y}_i \hat\varepsilon_i - \bar{Y}\sum_{i=1}^n \hat\varepsilon_i$$
+1. 由一阶条件，残差和为零：$\sum_{i=1}^n \hat\varepsilon_i = 0$；
+2. 将 $\hat{Y}_i = \hat\beta_0 + \hat\beta_1 X_i$ 代入前项：
+   $$\sum_{i=1}^n \hat{Y}_i \hat\varepsilon_i = \hat\beta_0 \sum_{i=1}^n \hat\varepsilon_i + \hat\beta_1 \sum_{i=1}^n X_i \hat\varepsilon_i = \hat\beta_0 \cdot 0 + \hat\beta_1 \cdot 0 = 0$$
+两项均严格为零，交叉项完全消失！由此导出**方差分解恒等式**：
 
 $$
 TSS = ESS + RSS
 $$
 
-- **高维欧氏勾股定理（Pythagorean Theorem in $\mathbb{R}^n$）**：在去中心化样本空间中，观测向量 $Y - \bar{Y}\mathbf{1}$ 为**直角三角形斜边**，拟合向量 $\hat{Y} - \bar{Y}\mathbf{1}$ 为落在特征子空间上的**邻边**，残差向量 $\hat\varepsilon$ 为垂直于特征子空间的**对边**。两直角边严格正交，故斜边模长平方恒等于两直角边模长平方之和。
+- **高维欧氏勾股定理（Pythagorean Theorem in $\mathbb{R}^n$）**：在 $n$ 维去中心化样本空间中，交叉项为零在几何上等价于两向量正交垂直：$(\hat{Y} - \bar{Y}\mathbf{1}) \perp (Y - \hat{Y})$。观测向量 $Y - \bar{Y}\mathbf{1}$ 为**直角三角形斜边**，拟合向量 $\hat{Y} - \bar{Y}\mathbf{1}$ 为落在特征子空间上的**邻边**，残差向量 $\hat\varepsilon = Y - \hat{Y}$ 为垂直于特征子空间的**对边**。两直角边严格正交，故斜边模长平方恒等于两直角边模长平方之和（$\|Y - \bar{Y}\mathbf{1}\|_2^2 = \|\hat{Y} - \bar{Y}\mathbf{1}\|_2^2 + \|\hat\varepsilon\|_2^2$）。
 - **子空间夹角余弦平方（Squared Cosine of Subspace Angle）**：
 
   $$
