@@ -901,244 +901,189 @@ const draftNotes = draftNoteDefinitions.map((definition) => ({
 
 const quantNoteDefinitions = [
   createTutorialDefinition(
-    'Quant 1 · 期望与计数：指示变量、前缀极值与多项分布',
+    'Quant 01 · 期望、计数与递推',
     'Quant01 Expectation Counting Multinomial.md',
     'Quant01 Expectation Counting Multinomial.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 1 · Expectation & Counting: Indicator Variables & Multinomial',
-      category: 'Expectation & Counting',
+      titleEn: 'Quant 01 · Expectation, counting, and recursion',
+      category: '概率',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'Quant 2 · Markov Chains：状态压缩与期望时间',
+    'Quant 02 · Markov 链',
     'Quant02 Markov Chains Expected Time.md',
     'Quant02 Markov Chains Expected Time.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 2 · Markov Chains: State Compression & Expected Time',
-      category: 'Markov',
+      titleEn: 'Quant 02 · Markov chains',
+      category: '概率',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'Quant 3 · 连续分布：CDF、几何区域与变量变换',
+    'Quant 03 · 连续分布与顺序统计量',
     'Quant03 Continuous Distribution Geometry Transform.md',
     'Quant03 Continuous Distribution Geometry Transform.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 3 · Continuous Distributions: CDF, Geometry & Transformations',
-      category: 'Distribution',
+      titleEn: 'Quant 03 · Continuous distributions and order statistics',
+      category: '概率',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'Quant 4 · 协方差、相关系数与相关矩阵 PSD',
+    'Quant 04 · 协方差、正态与相关矩阵',
     'Quant04 Correlation Matrix PSD.md',
     'Quant04 Correlation Matrix PSD.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 4 · Covariance, Correlation & PSD Matrices',
-      category: 'Probability',
+      titleEn: 'Quant 04 · Covariance, Gaussians, and correlation matrices',
+      category: '概率',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'Quant 5 · 正态分布：二维正态、Cholesky 与符号相关',
-    'Quant05 Normal Sign Correlation.md',
-    'Quant05 Normal Sign Correlation.en.md',
-    {
-      directory: 'quant',
-      titleEn: 'Quant 5 · Normal Distributions: Bivariate, Cholesky & Sign Correlation',
-      category: 'Normal Distribution',
-      difficulty: 'Medium',
-    },
-  ),
-  createTutorialDefinition(
-    'Quant 6 · 高维积分：大数定律与控制收敛',
+    'Quant 05 · 高维积分',
     'Quant06 High Dimensional Integral Dominated Convergence.md',
     'Quant06 High Dimensional Integral Dominated Convergence.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 6 · High-Dimensional Integrals: LLN & Dominated Convergence',
-      category: 'Analysis & Probability',
+      titleEn: 'Quant 05 · High-dimensional integrals',
+      category: '概率',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 7 · 递推法：健忘乘客与状态压缩',
-    'Quant07 Recursion Absent-Minded Passenger.md',
-    'Quant07 Recursion Absent-Minded Passenger.en.md',
-    {
-      directory: 'quant',
-      titleEn: 'Quant 7 · Recursion: Absent-Minded Passenger & State Compression',
-      category: 'Recursion',
-      difficulty: 'Medium',
-    },
-  ),
-  createTutorialDefinition(
-    'Quant 8 · 顺序统计量：CDF 求导与条件截断',
-    'Quant08 Order Statistics Conditional Truncation.md',
-    'Quant08 Order Statistics Conditional Truncation.en.md',
-    {
-      directory: 'quant',
-      titleEn: 'Quant 8 · Order Statistics: CDF Derivatives & Conditional Truncation',
-      category: 'Order Statistics',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'Quant 9 · 假设检验与最大似然估计：方向、边界与偏差方差',
+    'Quant 06 · 假设检验与极大似然',
     'Quant09 Hypothesis Testing Maximum Likelihood.md',
     'Quant09 Hypothesis Testing Maximum Likelihood.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 9 · Hypothesis Testing & MLE: Boundaries & Bias-Variance',
-      category: 'Estimation & Testing',
+      titleEn: 'Quant 06 · Hypothesis tests and maximum likelihood',
+      category: '统计',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 10 · 风险中性定价与最优下注策略：鞅论、Problem of Points 与效用函数',
-    'Quant10 Betting Risk Neutral Pricing Martingales.md',
-    'Quant10 Betting Risk Neutral Pricing Martingales.en.md',
-    {
-      directory: 'quant',
-      titleEn: 'Quant 10 · Risk-Neutral Pricing & Optimal Betting: Martingales & Utility',
-      category: 'Martingales & Betting',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'Quant 11 · 鞅、停时与随机游走：Wald 等式、鞅构造与最优时停',
+    'Quant 07 · 鞅、停时与下注',
     'Quant11 Martingales Stopping Times Random Walks.md',
     'Quant11 Martingales Stopping Times Random Walks.en.md',
     {
       directory: 'quant',
-      titleEn: "Quant 11 · Martingales, Stopping Times & Random Walks: Wald's Identity, Martingale Construction & Optimal Stopping",
-      category: 'Martingales & Random Walks',
+      titleEn: 'Quant 07 · Martingales, stopping times, and betting',
+      category: '随机过程',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用',
+    'Quant 08 · 布朗运动、伊藤公式与测度变换',
     'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md',
     'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 12 · Brownian Motion, Itô Calculus, Stopping Times & Option Trading',
-      category: 'Stochastic Calculus & Trading',
+      titleEn: 'Quant 08 · Brownian motion, Itô calculus, and change of measure',
+      category: '随机过程',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 13 · 博弈论与策略性决策：纳什均衡、逆向归纳与华尔街量化经典',
+    'Quant 09 · 博弈论',
     'Quant13 Game Theory and Strategic Decision Making.md',
     'Quant13 Game Theory and Strategic Decision Making.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 13 · Game Theory & Strategic Decision Making: Nash Equilibrium, Backward Induction & Wall Street Classics',
-      category: 'Game Theory & Strategy',
+      titleEn: 'Quant 09 · Game theory',
+      category: '策略',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 14 · 金融市场微观结构、多资产类别、衍生品全景与现代投资组合理论',
+    'Quant 10 · 市场、资产与组合',
     'Quant14 Financial Markets Asset Classes and Portfolio Theory.md',
     'Quant14 Financial Markets Asset Classes and Portfolio Theory.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 14 · Financial Markets Microstructure, Asset Classes, Derivatives Masterclass & Modern Portfolio Theory',
-      category: 'Financial Markets & Derivatives',
+      titleEn: 'Quant 10 · Markets, assets, and portfolios',
+      category: '市场',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Quant 15 · 等价鞅测度、资产定价基本定理（FTAP）与吉尔萨诺夫测度变换',
-    'Quant15 Equivalent Martingale Measure Girsanov and FTAP.md',
-    'Quant15 Equivalent Martingale Measure Girsanov and FTAP.en.md',
-    {
-      directory: 'quant',
-      titleEn: 'Quant 15 · Equivalent Martingale Measure, FTAP & Girsanov Change of Measure',
-      category: 'Asset Pricing & Stochastic Calculus',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'Quant 16 · 线性回归、核平滑与面试经典题：OLS、Gauss–Markov、Ridge/Lasso',
+    'Quant 11 · 线性回归与核平滑',
     'Quant16 Linear Regression Kernel Smoothing and Interview Classics.md',
     'Quant16 Linear Regression Kernel Smoothing and Interview Classics.en.md',
     {
       directory: 'quant',
-      titleEn: 'Quant 16 · Linear Regression, Kernel Smoothing & Interview Classics: OLS, Gauss–Markov, Ridge/Lasso',
-      category: 'Statistics & ML',
+      titleEn: 'Quant 11 · Linear regression and kernel smoothing',
+      category: '统计',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 1 · 面向对象基础与类设计',
+    'C++ 1 · 面向对象与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 1 · OOP Fundamentals & Class Design',
-      category: 'C++ 面经',
+      titleEn: 'C++ 1 · OOP and class design',
+      category: 'C++',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 2 · 内存模型与指针陷阱',
+    'C++ 2 · 内存模型与指针',
     'QuantDevCPP02 Memory Model Pointers.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 2 · Memory Model & Pointer Pitfalls',
-      category: 'C++ 面经',
+      titleEn: 'C++ 2 · Memory model and pointers',
+      category: 'C++',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 3 · 多态、虚函数与关键字',
+    'C++ 3 · 多态与虚函数',
     'QuantDevCPP03 Polymorphism Virtual Functions Keywords.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 3 · Polymorphism, Virtual Functions & Keywords',
-      category: 'C++ 面经',
+      titleEn: 'C++ 3 · Polymorphism and virtual functions',
+      category: 'C++',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 4 · 现代 C++：移动语义与智能指针',
+    'C++ 4 · 移动语义与智能指针',
     'QuantDevCPP04 Move Semantics Smart Pointers.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 4 · Modern C++: Move Semantics & Smart Pointers',
-      category: 'C++ 面经',
+      titleEn: 'C++ 4 · Move semantics and smart pointers',
+      category: 'C++',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 5 · STL 容器与底层实现',
+    'C++ 5 · STL 容器',
     'QuantDevCPP05 STL Containers Internals.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 5 · STL Containers & Internals',
-      category: 'C++ 面经',
+      titleEn: 'C++ 5 · STL containers',
+      category: 'C++',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'C++ 面经 6 · 手撕代码与高级数据结构',
+    'C++ 6 · 数据结构练习',
     'QuantDevCPP06 Coding Practice Advanced Data Structures.md',
     null,
     {
       directory: 'quant',
-      titleEn: 'C++ Interview 6 · Coding Practice & Advanced Data Structures',
-      category: 'C++ 面经',
+      titleEn: 'C++ 6 · Data-structure exercises',
+      category: 'C++',
       difficulty: 'Hard',
     },
   ),
@@ -1149,7 +1094,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Perf Optimization 1 · Profiling Methodology & Toolchain',
-      category: '性能优化面经',
+      category: '性能',
       difficulty: 'Medium',
     },
   ),
@@ -1160,7 +1105,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Perf Optimization 2 · Multithreading & CPU Optimization',
-      category: '性能优化面经',
+      category: '性能',
       difficulty: 'Hard',
     },
   ),
@@ -1171,7 +1116,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Perf Optimization 3 · Memory Performance Optimization',
-      category: '性能优化面经',
+      category: '性能',
       difficulty: 'Hard',
     },
   ),
@@ -1182,7 +1127,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Perf Optimization 4 · Coredump Configuration & Analysis',
-      category: '性能优化面经',
+      category: '性能',
       difficulty: 'Medium',
     },
   ),
@@ -1193,7 +1138,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'OS 1 · Process & Thread Basics',
-      category: '操作系统面经',
+      category: '操作系统',
       difficulty: 'Medium',
     },
   ),
@@ -1204,7 +1149,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'OS 2 · Thread Synchronization & Deadlocks',
-      category: '操作系统面经',
+      category: '操作系统',
       difficulty: 'Hard',
     },
   ),
@@ -1215,7 +1160,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'OS 3 · Inter-Process Communication & Scheduling',
-      category: '操作系统面经',
+      category: '操作系统',
       difficulty: 'Medium',
     },
   ),
@@ -1226,7 +1171,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'OS 4 · Virtual Memory & Linking',
-      category: '操作系统面经',
+      category: '操作系统',
       difficulty: 'Hard',
     },
   ),
@@ -1237,7 +1182,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Computer Networks 1 · I/O Models & Multiplexing',
-      category: '计算机网络面经',
+      category: '网络',
       difficulty: 'Hard',
     },
   ),
@@ -1248,7 +1193,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Computer Networks 2 · Reactor, Proactor & Thread Pools',
-      category: '计算机网络面经',
+      category: '网络',
       difficulty: 'Hard',
     },
   ),
@@ -1259,7 +1204,7 @@ const quantNoteDefinitions = [
     {
       directory: 'quant',
       titleEn: 'Computer Networks 3 · Handwritten Socket Server',
-      category: '计算机网络面经',
+      category: '网络',
       difficulty: 'Medium',
     },
   ),
@@ -1777,7 +1722,7 @@ const noteSections = [
   {
     id: 'quant',
     title: 'Quant',
-    description: 'Probability, Markov chains, expectation, and interview math drills',
+    description: 'Probability, stochastic processes, markets, and C++ / systems notes',
     notes: quantNotes,
   },
   {
@@ -1905,7 +1850,7 @@ const homeSectionCopy = {
     },
     quant: {
       title: 'Quant',
-      description: '概率、马尔可夫链、期望与面试数学题',
+      description: '概率、随机过程、市场与 C++ / 系统笔记',
     },
     mlcoding: {
       title: 'ML Coding & 八股',
@@ -1935,7 +1880,7 @@ const homeSectionCopy = {
     },
     quant: {
       title: 'Quant',
-      description: 'Probability, Markov chains, expectation, and interview math',
+      description: 'Probability, stochastic processes, markets, and C++ / systems notes',
     },
     mlcoding: {
       title: 'ML Coding & Interview',
@@ -8303,7 +8248,7 @@ function GameTheoryVisual() {
     <section className="bm-card" aria-label={t('博弈论与策略性决策演示', 'Game Theory & Strategic Decision Making Demo')}>
       <div className="bm-card-header">
         <div>
-          <h3 className="bm-card-title">{t('量化博弈论与经典策略交互模拟器', 'Quant Game Theory & Strategic Decision Simulator')}</h3>
+          <h3 className="bm-card-title">{t('博弈论模拟器', 'Game theory simulator')}</h3>
           <p className="bm-card-subtitle">
             {t('动态逆向归纳 (SPE) · 纳什均衡 (NE) · 贝叶斯拍卖与胜者诅咒', 'Dynamic Backward Induction · Nash Equilibrium · Auctions & Winner\'s Curse')}
           </p>
@@ -8880,6 +8825,474 @@ function FWLGeometryVisual() {
             )}
           </p>
         )}
+      </div>
+    </section>
+  );
+}
+
+function ANOVAVarianceVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [r2, setR2] = useState(0.64);
+  const [viewMode, setViewMode] = useState('geom'); // 'geom' | 'scatter'
+  const [activeStep, setActiveStep] = useState('all'); // 'all' | 'tss' | 'ess' | 'rss'
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedPointIdx, setSelectedPointIdx] = useState(2); // 0..5
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setR2((prev) => {
+        let next = prev + 0.04;
+        if (next > 0.95) next = 0.15;
+        return parseFloat(next.toFixed(2));
+      });
+    }, 400);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  // Derived math for high-dim geometry (3D plane)
+  const TSS = 100;
+  const ESS = TSS * r2;
+  const RSS = TSS * (1 - r2);
+  const thetaRad = Math.acos(Math.sqrt(Math.max(0, Math.min(1, r2))));
+  const thetaDeg = (thetaRad * 180 / Math.PI).toFixed(1);
+
+  // Geometry dimensions in SVG (viewBox: 0 0 720 340)
+  const planeO = { x: 210, y: 250 }; // Origin of mean vector Ybar * 1
+  const planeRight = { x: 570, y: 220 }; // Direction vector along Col(X)
+
+  // Vector in plane: length scales with sqrt(ESS)
+  const maxModelLen = 290;
+  const modelLen = maxModelLen * Math.sqrt(r2);
+  const distPlane = Math.hypot(planeRight.x - planeO.x, planeRight.y - planeO.y);
+  const uPlane = {
+    x: (planeRight.x - planeO.x) / distPlane,
+    y: (planeRight.y - planeO.y) / distPlane,
+  };
+
+  // Fitted point Yhat on the plane
+  const yHatPos = {
+    x: planeO.x + modelLen * uPlane.x,
+    y: planeO.y + modelLen * uPlane.y,
+  };
+
+  // Residual height perpendicular (straight up in 2D projection)
+  const maxResHeight = 160;
+  const resHeight = maxResHeight * Math.sqrt(1 - r2);
+
+  // Ground truth observation point Y (floating above Yhat)
+  const yObsPos = {
+    x: yHatPos.x,
+    y: yHatPos.y - resHeight,
+  };
+
+  // Right angle marker at yHatPos:
+  const raSize = 13;
+  const raP1 = { x: yHatPos.x - raSize * uPlane.x, y: yHatPos.y - raSize * uPlane.y };
+  const raCorner = { x: raP1.x, y: raP1.y - raSize };
+  const raP2 = { x: yHatPos.x, y: yHatPos.y - raSize };
+  const rightAnglePath = `M ${raP1.x.toFixed(1)} ${raP1.y.toFixed(1)} L ${raCorner.x.toFixed(1)} ${raCorner.y.toFixed(1)} L ${raP2.x.toFixed(1)} ${raP2.y.toFixed(1)}`;
+
+  // Angle arc theta at planeO
+  const arcRadius = 46;
+  const arcTotalAngle = Math.atan2(yObsPos.y - planeO.y, yObsPos.x - planeO.x);
+  const arcPlaneAngle = Math.atan2(uPlane.y, uPlane.x);
+  const arcStart = {
+    x: planeO.x + arcRadius * Math.cos(arcPlaneAngle),
+    y: planeO.y + arcRadius * Math.sin(arcPlaneAngle),
+  };
+  const arcEnd = {
+    x: planeO.x + arcRadius * Math.cos(arcTotalAngle),
+    y: planeO.y + arcRadius * Math.sin(arcTotalAngle),
+  };
+  const arcPath = `M ${arcStart.x.toFixed(1)} ${arcStart.y.toFixed(1)} A ${arcRadius} ${arcRadius} 0 0 0 ${arcEnd.x.toFixed(1)} ${arcEnd.y.toFixed(1)}`;
+
+  // 2D Scatter points data
+  const rawPoints = [
+    { x: 1, base: 2.2, noise: -1.3 },
+    { x: 2, base: 3.6, noise: 1.4 },
+    { x: 3, base: 5.0, noise: -0.9 },
+    { x: 4, base: 6.4, noise: 1.7 },
+    { x: 5, base: 7.8, noise: -1.4 },
+    { x: 6, base: 9.2, noise: 0.9 },
+  ];
+  const meanY = 5.7;
+  const slope = 1.4;
+
+  const scatterPoints = rawPoints.map((pt, idx) => {
+    const yHat = 1.2 + slope * pt.x;
+    const yVal = yHat + pt.noise * Math.sqrt(1 - r2) * 1.5;
+    return {
+      id: idx,
+      x: pt.x,
+      y: yVal,
+      yHat: yHat,
+      yBar: meanY,
+      devTotal: yVal - meanY,
+      devExp: yHat - meanY,
+      res: yVal - yHat,
+    };
+  });
+
+  const curPt = scatterPoints[selectedPointIdx] || scatterPoints[2];
+  const scX = (x) => 130 + (x - 0.5) * 85;
+  const scY = (y) => 300 - y * 24;
+
+  const showTSS = activeStep === 'all' || activeStep === 'tss';
+  const showESS = activeStep === 'all' || activeStep === 'ess';
+  const showRSS = activeStep === 'all' || activeStep === 'rss';
+
+  return (
+    <section className="anova-demo-container" aria-label={t('ANOVA 方差分解与 R² 几何投影演示', 'ANOVA Variance Decomposition & R² Geometry Demo')}>
+      <header className="anova-demo-header">
+        <div>
+          <p className="eyebrow">{t('高维正交几何与方差分解实验室', 'High-Dim Orthogonal Geometry & ANOVA Lab')}</p>
+          <h2>{t('方差分解 (TSS = ESS + RSS) 与判定系数 R² = cos²(θ)', 'ANOVA Decomposition (TSS = ESS + RSS) & R² = cos²(θ)')}</h2>
+        </div>
+        <div className="anova-demo-controls">
+          <div className="anova-tab-group" role="tablist">
+            <button
+              type="button"
+              className={`anova-tab-btn ${viewMode === 'geom' ? 'active' : ''}`}
+              onClick={() => setViewMode('geom')}
+            >
+              {t('高维样本空间 (ℝⁿ 勾股定理)', 'High-Dim Space (ℝⁿ Pythagoras)')}
+            </button>
+            <button
+              type="button"
+              className={`anova-tab-btn ${viewMode === 'scatter' ? 'active' : ''}`}
+              onClick={() => setViewMode('scatter')}
+            >
+              {t('2D 样本散点与平方和分解', '2D Scatter & Sum of Squares')}
+            </button>
+          </div>
+
+          <div className="anova-slider-wrap">
+            <span>{t('判定系数 R²', 'R² Fit')}:</span>
+            <input
+              type="range"
+              min="0.05"
+              max="0.95"
+              step="0.01"
+              value={r2}
+              onChange={(e) => {
+                setR2(parseFloat(e.target.value));
+                setIsPlaying(false);
+              }}
+              style={{ width: '105px', accentColor: '#10b981' }}
+            />
+            <strong>{(r2 * 100).toFixed(0)}%</strong>
+          </div>
+
+          <button
+            type="button"
+            className="fwl-chip-btn"
+            onClick={() => setIsPlaying(!isPlaying)}
+          >
+            {isPlaying ? t('⏸ 暂停', '⏸ Pause') : t('▶ 动态演示', '▶ Play')}
+          </button>
+        </div>
+      </header>
+
+      {/* SVG Animation Area */}
+      <svg className="anova-demo-svg" viewBox="0 0 720 340" role="img" aria-label={t('方差分解几何图解', 'ANOVA Geometry Diagram')}>
+        <defs>
+          <linearGradient id="anova-plane-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#064e3b" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.8" />
+          </linearGradient>
+          <marker id="anova-arrow-tss" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#fb923c" />
+          </marker>
+          <marker id="anova-arrow-ess" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#10b981" />
+          </marker>
+          <marker id="anova-arrow-rss" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#38bdf8" />
+          </marker>
+        </defs>
+
+        {viewMode === 'geom' ? (
+          /* Perspective 1: High-Dimensional Sample Space (R^n) */
+          <g>
+            {/* 3D Hyperplane Col(X) */}
+            <polygon
+              points="90,175 560,175 660,295 190,295"
+              fill="url(#anova-plane-grad)"
+              stroke="#047857"
+              strokeWidth="1.5"
+              strokeDasharray="4 2"
+            />
+            <text x="110" y="198" fill="#34d399" fontSize="12" fontWeight="700" opacity="0.85">
+              {t('特征超平面 Col(X) ⊂ ℝⁿ (包含常数项 1)', 'Feature Hyperplane Col(X) ⊂ ℝⁿ (includes 1)')}
+            </text>
+
+            {/* Base Point: Ybar * 1 (Mean baseline) */}
+            <circle cx={planeO.x} cy={planeO.y} r="5.5" fill="#fbbf24" className="anova-pulse-node" />
+            <text x={planeO.x - 105} y={planeO.y + 22} fill="#fbbf24" fontSize="12" fontWeight="800">
+              {t('Ȳ1 (朴素均值基线)', 'Ȳ1 (Mean Baseline)')}
+            </text>
+
+            {/* Sub-vector 1: ESS (Yhat - Ybar*1), along the plane */}
+            {showESS && (
+              <g opacity={activeStep === 'ess' || activeStep === 'all' ? 1 : 0.25} style={{ transition: 'opacity 0.3s' }}>
+                <line
+                  x1={planeO.x}
+                  y1={planeO.y}
+                  x2={yHatPos.x}
+                  y2={yHatPos.y}
+                  stroke="#10b981"
+                  strokeWidth="3.5"
+                  markerEnd="url(#anova-arrow-ess)"
+                />
+                <text
+                  x={(planeO.x + yHatPos.x) / 2 - 20}
+                  y={(planeO.y + yHatPos.y) / 2 + 24}
+                  fill="#10b981"
+                  fontSize="12"
+                  fontWeight="800"
+                >
+                  {t('Ŷ - Ȳ1 (模型解释, ESS)', 'Ŷ - Ȳ1 (Explained, ESS)')}
+                </text>
+              </g>
+            )}
+
+            {/* Projection Point: Yhat = HY */}
+            <circle cx={yHatPos.x} cy={yHatPos.y} r="5.5" fill="#10b981" />
+            <text x={yHatPos.x + 12} y={yHatPos.y + 16} fill="#10b981" fontSize="12" fontWeight="800">
+              {t('Ŷ = HY (正交投影拟合点)', 'Ŷ = HY (Fitted Projection)')}
+            </text>
+
+            {/* Sub-vector 2: RSS (Y - Yhat = epsilon), strictly perpendicular to plane */}
+            {showRSS && (
+              <g opacity={activeStep === 'rss' || activeStep === 'all' ? 1 : 0.25} style={{ transition: 'opacity 0.3s' }}>
+                <line
+                  x1={yHatPos.x}
+                  y1={yHatPos.y}
+                  x2={yObsPos.x}
+                  y2={yObsPos.y}
+                  stroke="#38bdf8"
+                  strokeWidth="3.5"
+                  className="anova-beam-animated"
+                  markerEnd="url(#anova-arrow-rss)"
+                />
+                <path d={rightAnglePath} fill="none" stroke="#38bdf8" strokeWidth="1.6" />
+                <text x={yHatPos.x - 28} y={yHatPos.y - 10} fill="#38bdf8" fontSize="10" fontWeight="700">⟂ Col(X)</text>
+                <text x={yObsPos.x + 14} y={(yObsPos.y + yHatPos.y) / 2} fill="#38bdf8" fontSize="12" fontWeight="800">
+                  {t('Y - Ŷ = ε̂ (垂直残差, RSS)', 'Y - Ŷ = ε̂ (Residual, RSS)')}
+                </text>
+              </g>
+            )}
+
+            {/* Ground Truth Point: Y */}
+            <circle cx={yObsPos.x} cy={yObsPos.y} r="6" fill="#fb923c" className="anova-pulse-node" />
+            <text x={yObsPos.x - 12} y={yObsPos.y - 12} fill="#fb923c" fontSize="13" fontWeight="800">
+              {t('Y (真实观测向量)', 'Y (Ground Truth)')}
+            </text>
+
+            {/* Hypotenuse: TSS (Y - Ybar*1) */}
+            {showTSS && (
+              <g opacity={activeStep === 'tss' || activeStep === 'all' ? 1 : 0.25} style={{ transition: 'opacity 0.3s' }}>
+                <line
+                  x1={planeO.x}
+                  y1={planeO.y}
+                  x2={yObsPos.x}
+                  y2={yObsPos.y}
+                  stroke="#fb923c"
+                  strokeWidth="3.5"
+                  strokeDasharray="6 3"
+                  markerEnd="url(#anova-arrow-tss)"
+                />
+                <text
+                  x={(planeO.x + yObsPos.x) / 2 - 50}
+                  y={(planeO.y + yObsPos.y) / 2 - 14}
+                  fill="#fb923c"
+                  fontSize="12"
+                  fontWeight="800"
+                >
+                  {t('Y - Ȳ1 (总离差, TSS)', 'Y - Ȳ1 (Total Dev, TSS)')}
+                </text>
+              </g>
+            )}
+
+            {/* Angle Theta Arc */}
+            <path d={arcPath} fill="none" stroke="#fcd34d" strokeWidth="2" />
+            <text x={planeO.x + 55} y={planeO.y - 8} fill="#fcd34d" fontSize="12" fontWeight="800">
+              θ ({thetaDeg}°)
+            </text>
+            <text x={planeO.x + 55} y={planeO.y + 8} fill="#fcd34d" fontSize="10" fontWeight="600">
+              cos²(θ) = R² = {(r2 * 100).toFixed(0)}%
+            </text>
+          </g>
+        ) : (
+          /* Perspective 2: 2D Scatter Plot & Pointwise Deviations */
+          <g>
+            {/* Coordinate Grid Lines */}
+            <line x1="80" y1="300" x2="660" y2="300" stroke="#334155" strokeWidth="1.5" />
+            <line x1="80" y1="30" x2="80" y2="300" stroke="#334155" strokeWidth="1.5" />
+            <text x="650" y="320" fill="#94a3b8" fontSize="11" fontWeight="600">X</text>
+            <text x="60" y="45" fill="#94a3b8" fontSize="11" fontWeight="600">Y</text>
+
+            {/* Horizontal Mean Line: Ybar */}
+            <line
+              x1="80"
+              y1={scY(meanY)}
+              x2="660"
+              y2={scY(meanY)}
+              stroke="#fbbf24"
+              strokeWidth="2"
+              strokeDasharray="5 4"
+            />
+            <text x="605" y={scY(meanY) - 8} fill="#fbbf24" fontSize="11" fontWeight="700">
+              {t('均值线 Ȳ', 'Mean Line Ȳ')}
+            </text>
+
+            {/* OLS Regression Line: Yhat = beta0 + beta1 * X */}
+            <line
+              x1={scX(0.5)}
+              y1={scY(1.2 + slope * 0.5)}
+              x2={scX(6.5)}
+              y2={scY(1.2 + slope * 6.5)}
+              stroke="#10b981"
+              strokeWidth="2.5"
+            />
+            <text x={scX(6.2) - 40} y={scY(1.2 + slope * 6.2) - 14} fill="#10b981" fontSize="11" fontWeight="700">
+              {t('拟合线 Ŷ = Xβ̂', 'OLS Line Ŷ = Xβ̂')}
+            </text>
+
+            {/* Selected Point 3-Segment Decomposition */}
+            {(() => {
+              const px = scX(curPt.x);
+              const pyObs = scY(curPt.y);
+              const pyHat = scY(curPt.yHat);
+              const pyBar = scY(curPt.yBar);
+
+              return (
+                <g>
+                  {/* Total deviation segment: from y_i to yBar */}
+                  <line
+                    x1={px + 9}
+                    y1={pyObs}
+                    x2={px + 9}
+                    y2={pyBar}
+                    stroke="#fb923c"
+                    strokeWidth="2.5"
+                    strokeDasharray="4 2"
+                  />
+                  {/* Explained deviation segment: from yHat to yBar */}
+                  <line
+                    x1={px - 9}
+                    y1={pyHat}
+                    x2={px - 9}
+                    y2={pyBar}
+                    stroke="#10b981"
+                    strokeWidth="2.5"
+                    strokeDasharray="4 2"
+                  />
+                  {/* Residual segment: from y_i to yHat */}
+                  <line
+                    x1={px}
+                    y1={pyObs}
+                    x2={px}
+                    y2={pyHat}
+                    stroke="#38bdf8"
+                    strokeWidth="3.5"
+                  />
+                  {/* Text annotations next to highlighted point */}
+                  <text x={px + 18} y={(pyObs + pyBar) / 2} fill="#fb923c" fontSize="10" fontWeight="700">
+                    yᵢ - Ȳ
+                  </text>
+                  <text x={px - 58} y={(pyHat + pyBar) / 2} fill="#10b981" fontSize="10" fontWeight="700">
+                    ŷᵢ - Ȳ
+                  </text>
+                  <text x={px + 10} y={(pyObs + pyHat) / 2 + 3} fill="#38bdf8" fontSize="10" fontWeight="800">
+                    ε̂ᵢ = yᵢ - ŷᵢ
+                  </text>
+                </g>
+              );
+            })()}
+
+            {/* Scatter points */}
+            {scatterPoints.map((pt) => {
+              const isSelected = pt.id === selectedPointIdx;
+              return (
+                <g key={pt.id} onClick={() => setSelectedPointIdx(pt.id)} style={{ cursor: 'pointer' }}>
+                  <circle
+                    cx={scX(pt.x)}
+                    cy={scY(pt.y)}
+                    r={isSelected ? 6.5 : 4.5}
+                    fill={isSelected ? '#fb923c' : '#38bdf8'}
+                    stroke="#ffffff"
+                    strokeWidth={isSelected ? 2 : 1}
+                  />
+                  {/* Projection foot on regression line */}
+                  <circle cx={scX(pt.x)} cy={scY(pt.yHat)} r={3} fill="#10b981" />
+                </g>
+              );
+            })}
+            <text x="100" y="325" fill="#94a3b8" fontSize="11">
+              {t('💡 点击任意样本点观察该点 (yᵢ - Ȳ) = (ŷᵢ - Ȳ) + (yᵢ - ŷᵢ) 离差分解', '💡 Click any point to inspect its (yᵢ - Ȳ) = (ŷᵢ - Ȳ) + (yᵢ - ŷᵢ) decomposition')}
+            </text>
+          </g>
+        )}
+      </svg>
+
+      {/* Variance Breakdown Progress Bar (ANOVA identity) */}
+      <div className="anova-breakdown-card">
+        <div className="anova-breakdown-labels">
+          <span style={{ color: '#10b981', fontWeight: 700 }}>
+            {t('回归解释方差 ESS (已解释)', 'Explained ESS')}: {ESS.toFixed(1)} ({(r2 * 100).toFixed(1)}%)
+          </span>
+          <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+            {t('残差方差 RSS (未解释)', 'Residual RSS')}: {RSS.toFixed(1)} ({((1 - r2) * 100).toFixed(1)}%)
+          </span>
+          <span style={{ color: '#fb923c', fontWeight: 700 }}>
+            {t('总离差 TSS = 100.0', 'Total TSS = 100.0')}
+          </span>
+        </div>
+        <div className="anova-bar-track">
+          <div className="anova-bar-ess" style={{ width: `${r2 * 100}%` }}>
+            {r2 >= 0.18 ? `ESS = ${(r2 * 100).toFixed(1)}%` : ''}
+          </div>
+          <div className="anova-bar-rss" style={{ width: `${(1 - r2) * 100}%` }}>
+            {(1 - r2) >= 0.18 ? `RSS = ${((1 - r2) * 100).toFixed(1)}%` : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Real-time Math Metrics Grid */}
+      <div className="anova-metrics-grid">
+        <div className="anova-metric-card" style={{ borderLeft: '3px solid #10b981' }}>
+          <span>{t('判定系数 R² = ESS / TSS', 'R² = ESS / TSS')}</span>
+          <strong style={{ color: '#10b981' }}>{(r2 * 100).toFixed(1)}%</strong>
+        </div>
+        <div className="anova-metric-card" style={{ borderLeft: '3px solid #fcd34d' }}>
+          <span>{t('正交夹角 θ = arccos(√R²)', 'Angle θ')}</span>
+          <strong style={{ color: '#fcd34d' }}>{thetaDeg}°</strong>
+        </div>
+        <div className="anova-metric-card" style={{ borderLeft: '3px solid #10b981' }}>
+          <span>{t('解释平方和 ESS = ||Ŷ - Ȳ1||²', 'Explained ESS')}</span>
+          <strong style={{ color: '#10b981' }}>{ESS.toFixed(1)}</strong>
+        </div>
+        <div className="anova-metric-card" style={{ borderLeft: '3px solid #38bdf8' }}>
+          <span>{t('残差平方和 RSS = ||ε̂||²', 'Residual RSS')}</span>
+          <strong style={{ color: '#38bdf8' }}>{RSS.toFixed(1)}</strong>
+        </div>
+        <div className="anova-metric-card" style={{ borderLeft: '3px solid #fb923c' }}>
+          <span>{t('总离差平方和 TSS = ESS + RSS', 'Total TSS')}</span>
+          <strong style={{ color: '#fb923c' }}>{TSS.toFixed(1)}</strong>
+        </div>
+      </div>
+
+      {/* Contextual Intuition Box */}
+      <div className="anova-explanation-box">
+        <p style={{ margin: 0 }}>
+          <strong>{t('ANOVA 高维勾股定理的核心物理直觉', 'Core ANOVA Pythagorean Intuition')}</strong>：
+          {t(
+            '将数据总离差分解为模型解释向量 (Ŷ - Ȳ1) 与残差向量 (Y - Ŷ)。因为模型包含常数项，正规方程保证残差向量 ε̂ 与特征超平面 Col(X) 严格正交垂直（直角为 90°）。根据高维欧氏空间勾股定理，斜边平方恒等于两直角边平方之和：TSS = ESS + RSS。判定系数 R² 恰好是总离差向量与特征超平面夹角的方向余弦平方 cos²(θ)。',
+            'Total deviation splits into the model explained vector (Ŷ - Ȳ1) and the residual vector (Y - Ŷ). With an intercept, the normal equations ensure residual ε̂ is strictly orthogonal to the feature hyperplane Col(X). By high-dimensional Pythagoras, the squared hypotenuse strictly equals the sum of squared legs: TSS = ESS + RSS. The coefficient of determination R² is precisely the squared directional cosine cos²(θ) with the feature space.'
+          )}
+        </p>
       </div>
     </section>
   );
@@ -24111,7 +24524,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -24393,6 +24806,10 @@ function MarkdownPre({ children, ...props }) {
     return <FWLGeometryVisual />;
   }
 
+  if (match?.[1] === 'anova-variance-demo') {
+    return <ANOVAVarianceVisual />;
+  }
+
   if (match?.[1] === 'ml-metrics-demo') {
     return <MLMetricsInteractiveVisual />;
   }
@@ -24642,6 +25059,11 @@ const legacyRoutes = {
   'SystemDesign05 Reliability Replication.md': 'SystemDesign02 Database Paradigms.md',
   'SystemDesign06 Photo Sharing Feed.md': 'SystemDesign07 Photo Sharing Feed.md',
   'SystemDesign07 Async Messaging Systems.md': 'SystemDesign06 Async Messaging Systems.md',
+  'Quant05 Normal Sign Correlation.md': 'Quant04 Correlation Matrix PSD.md',
+  'Quant07 Recursion Absent-Minded Passenger.md': 'Quant01 Expectation Counting Multinomial.md',
+  'Quant08 Order Statistics Conditional Truncation.md': 'Quant03 Continuous Distribution Geometry Transform.md',
+  'Quant10 Betting Risk Neutral Pricing Martingales.md': 'Quant11 Martingales Stopping Times Random Walks.md',
+  'Quant15 Equivalent Martingale Measure Girsanov and FTAP.md': 'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md',
   'CoreSkills08 Design Segment Tree.md': 'CoreSkills08 Insertion Sort.md',
   'CoreSkills09 Design Segment Tree.md': 'CoreSkills08 Insertion Sort.md',
   'CoreSkills09 Insertion Sort.md': 'CoreSkills08 Insertion Sort.md',

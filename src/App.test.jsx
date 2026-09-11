@@ -954,7 +954,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 6 · 高维积分/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 05 · 高维积分/i }));
 
     expect(await screen.findByRole('region', { name: '高维积分动态三维可视化' })).toBeInTheDocument();
     expect(screen.getByText('积分 = 曲面的平均高度')).toBeInTheDocument();
@@ -981,7 +981,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 1 · 期望与计数/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 01 · 期望/i }));
 
     expect(await screen.findByRole('region', { name: '前缀最小值与最终队伍可视化' })).toBeInTheDocument();
     expect(screen.getByText('前缀最小值')).toBeInTheDocument();
@@ -1009,8 +1009,8 @@ describe('App', () => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('Quant07')
-          ? '# 递推法：健忘乘客登机\n\n答案是 $1/2$。'
+        text: async () => requestUrl.includes('Quant01')
+          ? '# Quant 01 · 期望、计数与递推\n\n## 健忘乘客\n\n答案是 $1/2$。'
           : '# Quant tutorial',
       };
     });
@@ -1020,10 +1020,10 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
     expect(screen.getByText(/本板块共 \d+ 篇笔记/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Quant 7 · 递推法/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 01 · 期望/i }));
 
-    expect(await screen.findByRole('heading', { name: /递推法：健忘乘客登机/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Quant07 Recursion Absent-Minded Passenger.md')).toHaveLength(2);
+    expect(await screen.findByRole('heading', { name: /健忘乘客/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Quant01 Expectation Counting Multinomial.md')).toHaveLength(2);
   });
 
   it('opens Effective Modern C++ 7 for C++17 and C++20 core features', async () => {
@@ -1055,7 +1055,7 @@ describe('App', () => {
       return {
         ok: true,
         text: async () => requestUrl.includes('Quant11')
-          ? '# Quant 11 · 鞅、停时与随机游走\n\n```martingale-rw-demo\n```\n\nWald 一阶与二阶等式。'
+          ? '# Quant 07 · 鞅、停时与下注\n\n```martingale-rw-demo\n```\n\nWald 一阶与二阶等式。'
           : '# Quant tutorial',
       };
     });
@@ -1063,9 +1063,9 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 11 · 鞅、停时与随机游走/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 07 · 鞅/i }));
 
-    expect(await screen.findByRole('heading', { name: /Quant 11 · 鞅、停时与随机游走/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 07 · 鞅、停时与下注/i })).toBeInTheDocument();
     expect(await screen.findByText('Wald 等式、1D 随机游走与最优决策')).toBeInTheDocument();
     expect(await screen.findByText('胜率 P(到达 +a)')).toBeInTheDocument();
     expect(screen.getByText('期望停止时间 E[T]')).toBeInTheDocument();
@@ -1088,7 +1088,7 @@ describe('App', () => {
       return {
         ok: true,
         text: async () => requestUrl.includes('Quant12')
-          ? '# Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用\n\n```brownian-motion-demo\n```\n\n```two-d-walk-demo\n```\n\n```ito-geometry-demo\n```\n\n```reflection-principle-demo\n```\n\n```delta-hedging-demo\n```'
+          ? '# Quant 08 · 布朗运动、伊藤公式与测度变换\n\n```brownian-motion-demo\n```\n\n```two-d-walk-demo\n```\n\n```ito-geometry-demo\n```\n\n```reflection-principle-demo\n```\n\n```delta-hedging-demo\n```'
           : '# Quant tutorial',
       };
     });
@@ -1096,9 +1096,9 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 12 · 布朗运动/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 08 · 布朗运动/i }));
 
-    expect(await screen.findByRole('heading', { name: /Quant 12 · 布朗运动、伊藤微积分、停时与期权交易应用/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 08 · 布朗运动、伊藤公式与测度变换/i })).toBeInTheDocument();
     expect(await screen.findByLabelText('布朗运动轨道与二次变差演示')).toBeInTheDocument();
     expect(screen.getByLabelText('2D 随机游走与布朗运动极限演示')).toBeInTheDocument();
     expect(screen.getByLabelText('伊藤几何与斯特拉托诺维奇积分对比演示')).toBeInTheDocument();
@@ -1112,7 +1112,7 @@ describe('App', () => {
       return {
         ok: true,
         text: async () => requestUrl.includes('Quant13')
-          ? '# Quant 13 · 博弈论与策略性决策：纳什均衡、逆向归纳与华尔街量化经典\n\n```game-theory-interactive-demo\n```'
+          ? '# Quant 09 · 博弈论\n\n```game-theory-interactive-demo\n```'
           : '# Quant tutorial',
       };
     });
@@ -1120,11 +1120,11 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 13 · 博弈论/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 09 · 博弈论/i }));
 
-    expect(await screen.findByRole('heading', { name: /Quant 13 · 博弈论与策略性决策/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 09 · 博弈论/i })).toBeInTheDocument();
     expect(await screen.findByLabelText('博弈论与策略性决策演示')).toBeInTheDocument();
-    expect(screen.getByText(/量化博弈论与经典策略交互模拟器/)).toBeInTheDocument();
+    expect(screen.getByText(/博弈论模拟器/)).toBeInTheDocument();
 
     // Switch tab to Truel
     fireEvent.click(screen.getByRole('button', { name: '三方决斗' }));
@@ -1142,10 +1142,10 @@ describe('App', () => {
         ok: true,
         text: async () => {
           if (requestUrl.includes('Quant14') && requestUrl.endsWith('.en.md')) {
-            return '# Quant 14 · Financial Markets Microstructure, Asset Classes, Derivatives Masterclass & Modern Portfolio Theory\n\nEnglish content for Quant 14.';
+            return '# Quant 10 · Markets, assets, and portfolios\n\nEnglish content for Quant 10.';
           }
           if (requestUrl.includes('Quant14')) {
-            return '# Quant 14 · 金融市场微观结构、多资产类别、衍生品全景与现代投资组合理论\n\n中文内容 for Quant 14.';
+            return '# Quant 10 · 市场、资产与组合\n\n中文内容 for Quant 10.';
           }
           return '# Default note';
         },
@@ -1155,55 +1155,39 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 14 · 金融市场微观结构/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 10 · 市场/i }));
 
-    expect(await screen.findByRole('heading', { name: /Quant 14 · 金融市场微观结构/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 10 · 市场、资产与组合/i })).toBeInTheDocument();
 
     // Toggle language to English
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /Quant 14 · Financial Markets Microstructure/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 10 · Markets, assets, and portfolios/i })).toBeInTheDocument();
   });
 
-  it('opens Quant 15 Equivalent Martingale Measure note and verifies content and language toggle', async () => {
-    globalThis.fetch.mockImplementation(async (input) => {
-      const requestUrl = decodeURIComponent(String(input));
-      return {
-        ok: true,
-        text: async () => {
-          if (requestUrl.includes('Quant15') && requestUrl.endsWith('.en.md')) {
-            return '# Quant 15 · Equivalent Martingale Measure, FTAP & Girsanov Change of Measure\n\nEnglish content for Quant 15.';
-          }
-          if (requestUrl.includes('Quant15')) {
-            return '# Quant 15 · 等价鞅测度、资产定价基本定理（FTAP）与吉尔萨诺夫测度变换\n\n中文内容 for Quant 15.';
-          }
-          return '# Default note';
-        },
-      };
-    });
+  it('redirects absorbed Quant notes to the surviving chapter', async () => {
+    window.history.replaceState(null, '', '/#Quant15%20Equivalent%20Martingale%20Measure%20Girsanov%20and%20FTAP.md');
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 15 · 等价鞅测度/i }));
+    expect(await screen.findByRole('heading', { name: /布朗运动/ })).toBeInTheDocument();
+    expect(screen.getAllByText('Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md')).toHaveLength(2);
 
-    expect(await screen.findByRole('heading', { name: /Quant 15 · 等价鞅测度/i })).toBeInTheDocument();
-
-    // Toggle language to English
-    fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /Quant 15 · Equivalent Martingale Measure/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#Quant12%20Brownian%20Motion%20Ito%20Calculus%20Stopping%20Times%20and%20Options.md');
+    });
   });
 
-  it('opens Quant 16 Linear Regression note and renders FWL interactive geometry visualizer', async () => {
+  it('opens Quant 11 Linear Regression note and renders FWL interactive geometry visualizer', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = decodeURIComponent(String(input));
       return {
         ok: true,
         text: async () => {
           if (requestUrl.includes('Quant16') && requestUrl.endsWith('.en.md')) {
-            return '# Quant 16 · Linear Regression, Kernel Smoothing & Interview Classics: OLS, Gauss–Markov, Ridge/Lasso\n\n```fwl-geometry-demo\n```';
+            return '# Quant 11 · Linear regression and kernel smoothing\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```';
           }
           if (requestUrl.includes('Quant16')) {
-            return '# Quant 16 · 线性回归、核平滑与面试经典题：OLS、Gauss–Markov、Ridge/Lasso\n\n```fwl-geometry-demo\n```';
+            return '# Quant 11 · 线性回归与核平滑\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```';
           }
           return '# Default note';
         },
@@ -1213,20 +1197,29 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
-    fireEvent.click(screen.getByRole('button', { name: /Quant 16 · 线性回归/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quant 11 · 线性回归/i }));
 
-    expect(await screen.findByRole('heading', { name: /Quant 16 · 线性回归/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 11 · 线性回归与核平滑/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/FWL 定理几何投影与两阶段残差回归演示/i)).toBeInTheDocument();
     expect(screen.getByText(/Frisch–Waugh–Lovell \(FWL\) 几何投影/i)).toBeInTheDocument();
 
-    // Verify interaction with step button
+    // Verify ANOVA demo rendering
+    expect(screen.getByLabelText(/ANOVA 方差分解与 R² 几何投影演示/i)).toBeInTheDocument();
+    expect(screen.getByText(/方差分解 \(TSS = ESS \+ RSS\) 与判定系数 R² = cos²\(θ\)/i)).toBeInTheDocument();
+
+    // Switch ANOVA tab to 2D scatter
+    fireEvent.click(screen.getByRole('button', { name: /2D 样本散点与平方和分解/i }));
+    expect(screen.getByText(/点击任意样本点观察该点/i)).toBeInTheDocument();
+
+    // Verify interaction with FWL step button
     fireEvent.click(screen.getByRole('button', { name: /步骤 2: X₂ 正交化得 X̃₂/i }));
     expect(screen.getByText(/FWL 核心正交化/i)).toBeInTheDocument();
 
     // Toggle language to English
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /Quant 16 · Linear Regression/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quant 11 · Linear regression/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/FWL Theorem Geometry & Two-Stage Regression Demo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/ANOVA Variance Decomposition & R² Geometry Demo/i)).toBeInTheDocument();
   });
 
   it('renders the Palindromic Substrings 2D DP matrix visual walkthrough and steps through states', async () => {
@@ -1609,12 +1602,12 @@ describe('App', () => {
   it('restores scroll position from sessionStorage when loading a note', async () => {
     const scrollToSpy = vi.fn();
     window.scrollTo = scrollToSpy;
-    sessionStorage.setItem('note_scroll_Quant15 Equivalent Martingale Measure Girsanov and FTAP.md', '1250');
+    sessionStorage.setItem('note_scroll_Quant01 Expectation Counting Multinomial.md', '1250');
 
-    window.location.hash = '#Quant15%20Equivalent%20Martingale%20Measure%20Girsanov%20and%20FTAP.md';
+    window.location.hash = '#Quant01%20Expectation%20Counting%20Multinomial.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /Quant 15/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /期望/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(scrollToSpy).toHaveBeenCalledWith({ top: 1250, behavior: 'instant' });

@@ -71,6 +71,9 @@ $$
 
   where $\theta$ is the geometric angle between the observation vector and the feature hyperplane. If $Y$ lies entirely in the feature subspace, $\theta = 0^\circ \implies R^2 = 1$ (perfect fit); if $Y$ is perpendicular to the feature subspace, $\theta = 90^\circ \implies R^2 = 0$ (no linear explanatory power).
 
+```anova-variance-demo
+```
+
 ---
 
 ### 3. Multivariate Linear Regression: Matrix Formulation and Normal Equations
