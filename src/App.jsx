@@ -2,7 +2,6 @@ import { createContext, Fragment, useContext, useEffect, useId, useMemo, useRef,
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import 'katex/dist/katex.min.css';
@@ -25900,7 +25899,7 @@ function App() {
                   <UiLanguageContext.Provider value={activeLanguage}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                    rehypePlugins={[rehypeKatex]}
                     components={{
                       a: ({ href, children, ...props }) => {
                         const resolvedHref = resolveMarkdownHref(href);
