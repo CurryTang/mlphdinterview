@@ -1,444 +1,305 @@
-# Quant 14 · The Global Financial Architecture: Market Structure, Asset Classes, Derivatives Ecosystem & Portfolio Foundations (Financial Markets, Asset Classes, Derivatives & Financial System Overview)
+# Quant 10 · Markets, assets and portfolios
 
-In technical interviews at premier quantitative hedge funds and proprietary trading firms (e.g., Jane Street, Citadel, Millennium, Two Sigma, Optiver, IMC, SIG, Jump Trading), candidates with purely mathematical or computer science backgrounds frequently stumble into a critical trap: **they can solve stochastic calculus equations and PDE boundary value problems on a whiteboard, but have virtually zero intuitive understanding of how the global financial ecosystem actually operates, who the players are, and why these markets exist in the first place**.
+Course: [[Quant13 Game Theory and Strategic Decision Making|09 Game Theory]] → This note → [[Quant16 Linear Regression Kernel Smoothing and Interview Classics|11 Regression]]
 
-In professional quantitative research and trading, mathematics and code are only tools. **A deep, structural understanding of the financial system, market incentives, and economic mechanisms is the true prerequisite for developing profitable strategies**. This guide dispenses with dry, pedantic mathematical proofs and instead constructs a clear, intuitive, and comprehensive mental model of modern finance: from market architecture and the buy-side/sell-side ecosystem, to the economic nature of equities, bonds, FX, and commodities, through an expansive breakdown of derivatives (forwards, futures, swaps, options, Greeks, and volatility surfaces), and finally into real-world portfolio allocation and quantitative investment philosophy.
+Understanding the mechanics of the financial system is a prerequisite for strategy implementation. The core of the financial system lies in intertemporal value exchange and risk reallocation. Asset pricing models, derivative analysis, and quantitative trading systems all operate on this foundational architecture.
+
+---
+
+## 1 · Market architecture and liquidity ecosystem
+
+### Primary and secondary markets
+
+The lifecycle of financial assets begins with capital formation and relies on continuous turnover for price discovery.
 
 ```text
-Core Mental Models of the Financial System:
-1. The Essence of Finance: Intertemporal value exchange (shifting capital across time) and risk reallocation (transferring risk from entities that cannot bear it to those that can price and manage it).
-2. Capital Structure Priority: In bankruptcy liquidation, claims follow a strict hierarchy: Senior Secured Debt > Senior Unsecured Debt > Subordinated Debt > Preferred Equity > Common Equity. Common stockholders hold the upside lottery ticket but sit in the first-loss absorption seat.
-3. Interest Rates as Financial Gravity: Interest rates represent the time value of money. Asset valuations are discounted future cash flows. When risk-free rates rise, discount rates rise, far-off cash flows shrink in present value, and asset prices face downward gravitational pull.
-4. Derivatives as Economic Shock Absorbers: Derivatives are not speculative gambling chips; they are essential commercial risk-transfer mechanisms. Without forwards and futures, farmers cannot plant crops and airlines cannot sell flights months in advance; options are commercial insurance policies where buyers pay premiums to cap downside and sellers collect rents while absorbing tail risk.
-5. Decomposing Return — Alpha vs. Beta: Broad market return is Beta (abundant, easily commoditized, and cheap). Return generated through skill that is independent of market direction is Alpha (extremely rare, un-correlated, and expensive). The core mission of quantitative funds is hedging out Beta to capture pristine, unadulterated Alpha.
+Primary market
+Core function: Capital formation and real-economy financing
+Participant behavior: Corporations and governments issue new securities; funds flow directly to issuers
+Typical scenarios: IPO, private placement, bond issuance
+
+Secondary market
+Core function: Stock circulation and price discovery
+Participant behavior: Investors trade among themselves; issuers do not participate directly
+Typical scenarios: Stock trading, derivative position closing
 ```
 
----
+The secondary market provides an immediate liquidation channel for investors. Liquidity premium is an important component of asset valuation.
 
-> 🧭 **Core Knowledge Architecture Map**
-> - **Market Structure & Participant Ecosystem**: Primary Markets (Capital Formation) vs Secondary (Liquidity/Pricing) \| Exchange-Traded (CME/NYSE) vs OTC Customized \| Buy-Side (Hedge Funds/Pensions) vs Sell-Side (Banks) vs Market Makers (Jane Street/Citadel)
-> - **Asset Classes Landscape**: Equities (Residual Claims & Short Selling Mechanics) \| Fixed Income (Treasuries, Credit Spreads, Yield Curve Inversion) \| ETFs (In-Kind Creation/Redemption AP Arbitrage) \| FX & Commodities (Global Liquidity & Backwardation/Contango)
-> - **Derivatives Ecosystem & Hedging**: Forwards & Futures (Agricultural Origins, Clearinghouse Novation, MTM) \| Swaps (\$500T Giant: IRS, CDS & 2008 Subprime Crisis) \| Options Foundations (Asymmetric Payoffs, Calls vs Puts, Parity) \| The Greeks Trading Language ($\Delta, \Gamma, \Theta, \mathcal{V}$) \| Volatility Surfaces (1987 Crash & Crashophobia Skew)
-> - **Asset Allocation & Quant Philosophy**: Diversification (The Only Free Lunch in Finance) \| The 60/40 Trap (Equities Dominating >90% Portfolio Risk) \| Bridgewater All Weather & Risk Parity (Balancing Risk Budgets)
+### Organizational forms of trading venues
 
----
+Markets are classified into three types based on standardization and clearing mechanisms:
 
-## Module 1: Market Architecture & Participant Ecosystem
+| Organizational form | Core features | Typical underlying assets |
+|---|---|---|
+| Exchange | Highly standardized contracts (uniform face value and maturity). Features a central counterparty (CCP) and daily mark-to-market settlement, eliminating bilateral default risk. Information is broadcasted via a central limit order book (CLOB). | Spot stocks, futures, listed options |
+| Over-the-counter (OTC) | Bilateral negotiation between buyers and sellers, with fully customized terms. Counterparty credit risk exists. Usually governed by ISDA agreements. | Interest rate swaps (IRS), credit default swaps (CDS), FX forwards |
+| Dark pool | Order sizes and expected prices are not publicly disclosed. Used for executing large block trades confidentially to reduce market impact costs. | Institutional block equity trades |
 
-### 1. Primary Market vs. Secondary Market
+### Limit order book (CLOB) matching mechanism
 
-```
-┌──────────────────────────────────────────────────────────┐
-│              The Life Cycle of Financial Assets          │
-├────────────────────────────┬─────────────────────────────┤
-│   Primary Market           │    Secondary Market         │
-├────────────────────────────┼─────────────────────────────┤
-│ • Core Role: Capital       │ • Core Role: Liquidity &    │
-│   formation and financing  │   continuous price discovery│
-│ • Assets: Newly issued     │ • Assets: Pre-existing,     │
-│   shares / bonds           │   circulating securities    │
-│ • Capital Flow: Directly to│ • Capital Flow: Transferred │
-│   issuers (companies, gov) │   between investors without │
-│                            │   involving the issuer      │
-│ • Examples: IPOs, bond     │ • Examples: Trading shares  │
-│   underwriting, private debt│  on NYSE, trading futures  │
-└────────────────────────────┴─────────────────────────────┘
-```
+In a central limit order book, all unexecuted resting orders are sorted by "price-time priority".
+- Bids are arranged from highest to lowest price; asks are arranged from lowest to highest price.
 
-- **Primary Market**: Corporations raise capital to build factories or governments fund public infrastructure by issuing new equity or debt. Investment banks act as underwriters, pricing the offering and distributing it to institutional buyers.
-- **Secondary Market**: If an investor who bought a bond had to wait 30 years until maturity to get their money back, no one would invest. The secondary market provides instantaneous liquidity, allowing anyone to convert securities into cash immediately. Through continuous trading among millions of participants, the secondary market generates efficient, real-time **price discovery**. **Quantitative researchers and market makers operate primarily in the secondary market**.
+- The difference between the highest bid and lowest ask is the bid-ask spread.
 
----
+- Market orders immediately match at the best available price, extracting liquidity and incurring slippage costs.
 
-### 2. Trading Venues: Exchanges vs. Over-the-Counter (OTC)
+- Limit orders rest in the order book to provide liquidity, waiting to be consumed by other market orders.
 
-- **Exchange-Traded (Lit Markets)**:
-  - **Venues**: NYSE, NASDAQ, CME, CBOE, Eurex, HKEX.
-  - **Standardization**: Contract sizes, expiration dates, tick sizes, and delivery terms are uniform and immutable.
-  - **Central Clearinghouse (CCP)**: The clearinghouse steps in as the buyer to every seller and seller to every buyer. By enforcing **Initial and Maintenance Margin** and daily **Mark-to-Market (MTM)** cash settlement, it eliminates bilateral counterparty credit risk.
-  - **Transparency**: Resting buy and sell orders are published in real time on the Central Limit Order Book (CLOB).
-- **Over-the-Counter (OTC)**:
-  - **Customization**: Two counterparties (typically global banks, hedge funds, or multinational corporations) negotiate bilateral agreements under ISDA master contracts to tailor maturities, notionals, and underlying assets.
-  - **Counterparty Risk**: If the counterparty goes bankrupt (as Lehman Brothers did in 2008), the contract may become worthless.
-  - **Staggering Scale**: Most foreign exchange, commodity forwards, interest rate swaps (IRS), and credit default swaps (CDS) trade over-the-counter.
-- **Dark Pools & Alternative Trading Systems (ATS)**:
-  - When an institutional fund needs to buy 5 million shares of Apple, posting it on a public order book would cause immediate price slippage as algorithms front-run the visible demand.
-  - Dark pools allow institutional buyers and sellers to cross large blocks anonymously at the prevailing midpoint without telegraphing their trading intentions to the broader market.
+Market makers continuously post limit orders to provide liquidity, while programmatic traders and institutional hedging algorithms use market orders to rapidly adjust positions.
+
+### Market participants breakdown
+
+Liquidity and price formation in financial markets are handled by three types of institutions:
+
+1. **Buy-side**
+   - Holds capital and decision-making authority.
+   - Includes asset owners providing long-term capital (pension funds, sovereign wealth funds), traditional asset managers pursuing relative benchmark returns, and hedge funds pursuing absolute returns.
+   - Hedge funds use leverage and long/short instruments to isolate systematic risk and capture independent risk premiums.
+
+2. **Sell-side**
+   - Provides execution channels and intermediary services.
+   - Investment banking divisions assist in primary market pricing and distribution.
+   - Prime brokerage businesses provide margin leverage, stock borrowing pools, clearing and custody, and direct market access (DMA).
+
+3. **Market maker**
+   - Core model: Does not engage in directional speculation. Earns the bid-ask spread by simultaneously quoting bids and asks on both sides of the order book.
+   - Core risks: Adverse selection (pricing lag when facing informed traders) and inventory risk (unbalanced one-sided position exposure).
+   - Market making algorithms dynamically adjust bilateral quotes at the microsecond level and transfer inventory exposure using highly correlated derivative instruments.
 
 ---
 
-### 3. The Wall Street Ecosystem
+## 2 · Spot assets: equities, fixed income and commodities
 
-To understand quantitative finance, one must recognize who owns the capital, who manages it, who routes it, and who takes the other side of trades:
+Across asset classes, different assets reflect different macroeconomic dimensions and cash flow characteristics.
 
-```
-                    ┌──────────────────────────────┐
-                    │        Asset Owners          │
-                    │  Pensions / Sovereign Wealth │
-                    │       Endowments (LPs)       │
-                    └──────────────┬───────────────┘
-                                   │ Capital Allocation
-                                   ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                          The Buy-Side                             │
-├─────────────────────────────────┬─────────────────────────────────┤
-│     Asset Managers (Long-Only)  │          Hedge Funds            │
-│  (BlackRock, Vanguard, Fidelity)│  (Citadel, Millennium, Point72, │
-│   • Low-cost Beta, index funds  │   Two Sigma, D.E. Shaw, RenTech)│
-│                                 │   • Uncorrelated Absolute Alpha │
-└─────────────────────────────────┴─────────────────────────────────┘
-                                   │
-                                   │ Trade Execution / Margin / Prime Brokerage
-                                   ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                          The Sell-Side                            │
-│           Investment Banks (Goldman, Morgan Stanley, JPM)         │
-├─────────────────────────────────┬─────────────────────────────────┤
-│   Investment Banking (IBD)      │     Prime Brokerage (PB)        │
-│   IPO underwriting, M&A advisory│     Securities lending, leverage│
-└─────────────────────────────────┴─────────────────────────────────┘
-                                   │
-                                   │ Direct Market Access / Clearing
-                                   ▼
-┌─────────────────────────────────┬─────────────────────────────────┐
-│        Trading Venues           │     Proprietary Market Makers   │
-│   (Exchanges, Dark Pools, ATS)  │  (Jane Street, Citadel Sec,     │
-│                                 │   Optiver, IMC, Jump Trading)   │
-└─────────────────────────────────┴─────────────────────────────────┘
+### Equities and short selling mechanisms
+
+Common stocks represent a residual claim on corporate assets and future free cash flows.
+
+In a bankruptcy liquidation scenario, the payout order in the capital structure is strictly as follows:
+
+```text
+Senior secured debt
+-> Senior unsecured debt
+-> Subordinated debt
+-> Preferred stock
+-> Common stock
 ```
 
-#### (1) The Buy-Side: Managing and Allocating Capital
-- **Asset Owners (LPs)**: Sovereign Wealth Funds (Norway GPFG, GIC, Temasek), Public Pensions (CalPERS, CPPIB), and University Endowments (Yale). They deploy multi-decade horizon capital.
-- **Asset Managers**: Institutional giants like BlackRock and Vanguard. They manage mutual funds and ETFs, generating fees as a fixed percentage of Assets Under Management (AUM), focused on passive benchmark tracking.
-- **Hedge Funds**: Private partnerships with unconstrained mandates (long, short, leverage, exotic derivatives) seeking **Absolute Return** regardless of macro direction.
-  - **Equity Long/Short**: Deep fundamental corporate research (buying undervalued winners, shorting structural losers);
-  - **Global Macro (e.g., Bridgewater)**: Cross-asset positioning across interest rates, sovereign bonds, currencies, and macro trends;
-  - **Multi-Strategy Pod Shops (Citadel, Millennium, Point72)**: Dozens of modular, specialized portfolio management teams ("pods") operating under strict drawdown limits and capital preservation mandates;
-  - **Quantitative Funds (RenTech, Two Sigma, D.E. Shaw)**: Statistical arbitrage, systematic factor models, and algorithmic execution across millions of data points.
+Common equity holders sit at the end of the payout chain, bearing the highest risk, and thus earn an equity risk premium over the long term.
 
-#### (2) The Sell-Side: Intermediaries and Investment Banks
-- **IBD (Underwriting & Advisory)**: Originating debt and equity offerings, managing IPOs and mergers for fee revenue;
-- **Sales & Trading (S&T)**: Facilitating client execution, structuring OTC derivatives, providing liquidity;
-- **Prime Brokerage (PB)**: The lifeblood of hedge funds, providing stock borrow for short selling, portfolio margin leverage, clearing, and custody.
+Short selling is the foundation of quantitative long/short strategies.
+- Borrowing cost: Before shorting, underlying stocks must be borrowed from a prime broker. Highly liquid blue-chip stocks have extremely low borrowing rates; small-cap or heavily shorted stocks become hard-to-borrow, with annualized borrowing costs potentially surging to extreme levels.
 
-#### (3) Proprietary Trading & Market Makers (The Quant Stronghold)
-- **Firms**: Jane Street, Citadel Securities, Optiver, IMC, Flow Traders, Virtu Financial.
-- **The Core Role**: They **do not make directional bets**. They post continuous two-sided quotes (Bid and Ask) across equities, ETFs, options, and futures, capturing the **Bid-Ask Spread**.
-- **Key Risks**:
-  1. **Adverse Selection**: Trading against informed flow (e.g., selling just before positive news breaks);
-  2. **Inventory Risk**: Holding unhedged directional inventory overnight. Market makers hedge continuously to maintain tight, near-zero directional exposure.
+- Short squeeze: If the underlying stock price rises sharply, the maintenance margin of the short account will be breached. Forced liquidation by brokers translates into passive market buy orders, causing the price to skyrocket in an exponential positive feedback loop.
 
----
+### Bonds and fixed income
 
-## Module 2: The Major Asset Classes Landscape
+Bond interest rates form the center of gravity for financial asset pricing. The fair value of any asset is the discounted sum of its expected future cash flows:
 
-### 1. Equities
+$$P = \sum_{t=1}^{T} \frac{CF_t}{(1 + r)^t}$$
 
-- **The Economic Reality**: Common stock represents a permanent **residual claim** on corporate assets and future free cash flows after all expenses and debt service.
-- **Capital Structure Hierarchy in Liquidation**:
-  $$\text{Senior Secured Debt} \to \text{Unsecured Senior Bonds} \to \text{Subordinated Debt} \to \text{Preferred Stock} \to \mathbf{Common\ Stock\ (Last)}$$
-- **Short Selling Mechanics & Pitfalls**:
-  - To short a stock, a trader borrows shares from their prime broker's lending pool and sells them in the open market;
-  - **Borrow Fee**: Large-cap, liquid stocks (General Collateral) cost ~0.25% annualized; distressed or heavily shorted stocks become **Hard-to-Borrow (HTB)**, with borrow rates soaring to 30%–100%+;
-  - **Short Squeeze**: When a heavily shorted stock surges, shorts face cascading margin calls. Brokers liquidate their positions by buying back shares in the open market, causing an explosive upward feedback loop (e.g., GameStop in 2021).
+An increase in the discount rate $r$ drastically shrinks the present value of forward cash flows.
 
----
+- **Yield curve**: A curve connecting the yields of government bonds with different maturities. Normally upward-sloping, reflecting the term premium. If short-term yields exceed long-term yields, an inversion occurs, often viewed as a leading indicator of monetary tightening and cyclical recession.
 
-### 2. Fixed Income: The Bedrock of Global Valuation
+- **Credit spread**: The yield of a corporate bond minus the yield of a risk-free government bond of the same maturity. The spread prices the default probability of the issuer. During liquidity contractions, credit spreads widen sharply.
 
-Global bond markets (over \$130 trillion) dwarf equity markets. The adage goes: *"Equity traders watch headlines; bond traders watch economic fundamentals."*
+- **Duration**: Measures the linear sensitivity of bond prices to parallel shifts in interest rates. The longer the duration, the more sensitive the asset is to discount rate changes. Long-duration assets face immense valuation pressure during rate-hiking cycles.
 
-- **The Gravitational Center of Asset Pricing**:
-  Every financial asset is valued as discounted expected future cash flows:
-  $$P = \sum \frac{\text{Cash Flow}_t}{(1 + r)^t}$$
-  The denominator $r$ is the risk-free rate plus a risk premium. When benchmark bond yields rise, the denominator increases, pulling down asset valuations everywhere.
-- **The Sovereign Yield Curve as an Economic Barometer**:
-  - **Normal Curve**: Upward-sloping; longer maturities demand higher yields to compensate for inflation uncertainty and term premium;
-  - **Inverted Yield Curve**: Short-term yields exceed long-term yields. This occurs when markets anticipate imminent recession, forcing central banks to aggressively slash interest rates in the future. Curve inversions have preceded every major US recession for over half a century.
-- **Credit Spreads**: Corporate yields minus equivalent Treasury yields. Spreads widen during economic distress (flight to safety) and compress in bull markets.
-- **Duration & Convexity Intuition**:
-  - **Duration**: Measures effective cash flow recovery time and percentage price sensitivity to interest rate moves. A bond with a duration of 10 years falls roughly 10% in price if yields rise by 100 bps;
-  - **Convexity**: The curvature of the bond price-yield curve. When yields drop, bond prices rise at an accelerating rate; when yields rise, prices fall at a decelerating rate. Convexity is a second-order protective cushion for bondholders.
+- **Convexity**: The second derivative of the price-yield relationship. When rates fall, bond prices accelerate upward; when rates rise, prices decelerate downward. Convexity provides a nonlinear cushion for bond longs.
+
+### ETF and physical arbitrage mechanisms
+
+ETFs maintain a tight peg between market price and underlying net asset value (NAV) through primary market creation/redemption mechanisms. Authorized Participants (APs) perform the cross-market arbitrage function.
+
+| Market state | AP arbitrage path | Market price feedback |
+|---|---|---|
+| Secondary market premium | Buy underlying constituent stocks in the equity market, physically create ETF shares with the fund company, and sell the ETF in the secondary market. | ETF supply increases, pushing the market price down toward NAV. |
+| Secondary market discount | Buy ETF shares at a low price in the secondary market, redeem them with the fund company for underlying constituent stocks, and sell them in the equity market. | ETF supply decreases, pulling the market price up toward NAV. |
+
+### Foreign exchange and commodities
+
+Foreign exchange is quoted continuously 24 hours a day by the global interbank network, making it the most liquid asset class.
+- Carry trade: Borrowing low-interest currencies to buy high-yielding currency assets to earn the interest rate differential. This strategy is prone to liquidation stampedes during macroeconomic turbulence, causing the funding currency to appreciate rapidly and wiping out accumulated interest gains.
+
+Commodity pricing is constrained by spot supply-demand dynamics and storage-transportation costs.
+- Contango: Forward prices are higher than near-term prices. Usually stems from spot oversupply; buyers must compensate sellers for storage and insurance costs.
+
+- Backwardation: Near-term prices are higher than forward prices. Stems from extreme spot shortages; physical industries are willing to pay a massive premium (convenience yield) to secure spot inventory.
 
 ---
 
-### 3. ETFs & The Passive Investing Revolution
+## 3 · Automated market maker (AMM) basics
 
-- **Why Do ETF Market Prices Never Severely Diverge from Net Asset Value (NAV)?**
-  Through the **In-Kind Creation and Redemption Mechanism** conducted by **Authorized Participants (APs)**:
+Decentralized finance, constrained by throughput and computational costs, typically employs liquidity pools and automated functions instead of order books.
 
-| Stage | Participant | Action | Pricing Arbitrage Feedback |
-| :--- | :--- | :--- | :--- |
-| **1. Premium Emerges** | Secondary Market Traders | Robust demand pushes ETF price to \$102, above underlying basket NAV (\$100) | Opens a \$2 / share risk-free arbitrage opportunity |
-| **2. Buy Stock Basket** | Authorized Participant (AP / MM) | AP buys the underlying index basket in cash equities for \$100 | Cash equity demand sees minor buying flow |
-| **3. In-Kind Creation** | ETF Issuer (BlackRock / Vanguard) | AP deposits stock basket with issuer in exchange for 1 new ETF share | Fund AUM grows, ETF total share supply expands |
-| **4. Secondary Sell-Off** | Secondary Market | AP dumps new ETF share into the market at \$102, pocketing \$2 profit | Secondary market ETF supply swells, driving price back down to \$100 |
+### Constant product market maker (CPMM)
 
-This structural arbitrage guarantees that ETFs remain liquid and pegged to their fair asset value throughout intraday trading.
+The liquidity pool maintains a constant product of the reserves of two tokens:
 
----
+$$x \cdot y = k$$
 
-### 4. Foreign Exchange & Commodities
+When a trader attempts to swap $\Delta x$ amount of token $X$ for token $Y$, the pool must satisfy the following post-trade condition:
 
-- **FX (The Liquidity Titan)**:
-  - Over \$7.5 trillion in daily turnover traded through an interbank OTC network 24 hours a day;
-  - **FX Carry Trade**: Borrowing low-interest currencies (JPY, CHF) to invest in high-interest currencies (AUD, MXN). During market panics, carry trades unwind violently as funds scramble to buy back funding currencies, triggering massive FX volatility spikes.
-- **Commodities**:
-  - **Contango**: Futures price > Spot price ($F > S$). Happens during physical surpluses where buyers pay storage, insurance, and financing costs. Rolling long futures contracts produces negative roll yield;
-  - **Backwardation**: Spot price > Futures price ($S > F$). Occurs during severe spot shortages where immediate physical possession provides high **Convenience Yield**. Rolling long contracts captures positive roll yield.
+$$(x + \Delta x)(y - \Delta y) = k$$
 
----
+Solving for the amount of $Y$ received:
 
-## Module 3: Decentralized Finance & Automated Market Makers (DeFi & AMM)
+$$\Delta y = \frac{y \Delta x}{x + \Delta x}$$
 
-In blockchain environments, transaction throughput limits and high gas costs prevent order books from running natively, giving rise to **Automated Market Makers (AMM)**.
+Under this curve, the larger the single trade size $\Delta x$ relative to the pool depth $x$, the more severe the marginal execution price deviation. This mechanism naturally creates nonlinear price slippage.
 
-### 1. Constant Product AMM (Uniswap v2)
+### Impermanent loss
 
-Liquidity pools preserve the invariant:
+Liquidity providers (LPs) bear the structural cost of passive asset ratio adjustments. When external market prices change, arbitrageurs withdraw the appreciating asset from the pool, leaving behind the depreciating asset.
+Assuming the initial prices of two assets are equal, and relative prices subsequently change. Compared to statically holding the assets from inception, the LP's capital change rate can be derived as:
 
-$$
-x \cdot y = k
-$$
+$$\text{IL}(k) = \frac{2\sqrt{k}}{1+k} - 1 \le 0$$
 
-- Liquidity Providers (LPs) deposit equal dollar values of tokens $X$ and $Y$ to collect swap fee yields;
-- The constant product enforces a non-linear bonding curve: larger trades relative to pool depth incur quadratically higher **price impact and slippage**.
+Here, $k$ is the multiplier of the external price change. Whether the price deviates upwards or downwards, $\text{IL}$ is always negative. This payoff profile is equivalent to shorting a straddle in traditional finance: earning transaction fees while bearing the negative gamma convexity loss of large price swings in the underlying asset.
 
 ---
 
-### 2. Impermanent Loss & The Short Gamma Reality
+## 4 · Derivative pricing and hedging systems
 
-- When the relative market price of token $X$ vs. $Y$ shifts by factor $k$, arbitrageurs drain the appreciated asset and dump the depreciated asset into the pool;
-- Compared to holding the initial tokens passively in a wallet (HODL), the LP's portfolio value always suffers an **Impermanent Loss**:
+The core economic function of derivatives is to strip risk from assets, enabling precise risk transfer between hedgers and risk bearers.
 
-$$
-\text{IL}(k) = \frac{2\sqrt{k}}{1+k} - 1 = -\frac{(\sqrt{k}-1)^2}{1+k} \le 0
-$$
+### Forward and futures pricing
 
-> **The Option Perspective**: AMM liquidity provision is economically identical to **selling a straddle (Short Gamma)**. LPs collect daily swap fees (Theta income) but suffer quadratic divergence losses if the underlying price breaks out violently in either direction.
+| Dimension | Forwards | Futures |
+|---|---|---|
+| Trading and customization | OTC trading, highly customizable maturity and size | Exchange-listed, strictly standardized specifications |
+| Credit risk | Bilateral default risk exists | Clearinghouse acts as central counterparty, no counterparty credit risk |
+| Settlement process | One-time cash or physical settlement at maturity | Initial margin required, daily mark-to-market settlement of floating PnL |
 
----
+Futures prices are determined by the cost of carry model.
+Assume the spot price is $S_0$, the risk-free rate is $r$, the underlying asset has a continuous dividend yield $q$, and the time to delivery is $T$. To preclude risk-free arbitrage, the theoretical futures price must satisfy:
 
-## Module 4: Derivatives Masterclass
+$$F = S_0 e^{(r - q)T}$$
 
-Derivatives are the crown jewel of quantitative finance.
+If the listed futures price is higher than this theoretical value, quantitative arbitrageurs will execute cash-and-carry arbitrage: borrow funds to buy the spot asset while simultaneously selling the futures contract. At maturity, they deliver the spot asset to repay principal and interest, locking in a risk-free spread. This arbitrage force rapidly compresses the market price back to theoretical levels.
 
----
+### Swaps
 
-### 1. Why Do Derivatives Exist? The Philosophy of Risk Transfer
+Swap contracts allow equal institutions to exchange cash flows with different attributes, and their notional principal size is massive.
 
-Derivatives are not gambling instruments; they are **commercial shock absorbers**.
-- **The Chicago Grain Crisis (1848 - Founding of the CBOT)**:
-  In springtime, farmers had no idea what autumn wheat prices would be. A bumper harvest could crash grain prices, bankrupting family farms. Meanwhile, flour millers feared grain shortages. Both parties needed an agreement signed in spring fixing autumn delivery at \$6 a bushel.
-- **The Essence of Risk Transfer**:
-  Derivatives unbundle risk from commercial operations, transferring it from commercial entities that cannot bear volatility (hedgers) to financial participants willing to price and absorb it (speculators and quant funds).
+- **Interest rate swap (IRS)**: Two parties exchange fixed-rate and floating-rate cash flows on the same notional principal. This is widely used for duration management and interest rate risk hedging on balance sheets, with no principal exchange occurring at any point.
 
----
+- **Credit default swap (CDS)**: A derivative insurance contract against the default risk of a specific debt issuer. The buyer makes periodic premium (spread) payments; upon a default event, the seller must compensate for the bond loss at par value. During the 2008 financial crisis, because institutions without underlying debt exposure were allowed to buy CDS speculatively, the payout chains triggered by defaults directly caused systemic liquidity exhaustion.
 
-### 2. Forwards vs. Futures
+### Options and risk asymmetry
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 Forwards vs. Futures Comparison             │
-├────────────────────────────┬────────────────────────────────┤
-│      Forward Contracts     │       Futures Contracts        │
-├────────────────────────────┼────────────────────────────────┤
-│ • Bilateral OTC contract   │ • Standardized on exchanges    │
-│ • Fully custom terms       │ • Standardized size, dates, etc│
-│ • Single settlement at end │ • Daily Mark-to-Market (MTM)   │
-│ • Counterparty credit risk │ • Clearinghouse guaranteed     │
-│ • Illiquid, hard to unwind │ • Hyper-liquid, easy to offset │
-└────────────────────────────┴────────────────────────────────┘
-```
+Options deconstruct linear rights and obligations. Buyers pay a premium to obtain the right to exercise, with maximum losses strictly capped; sellers collect the premium, bearing unconditional performance obligations and directional exposure.
 
-#### How Are Futures Prices Determined? Cost-of-Carry Model
-Futures prices are governed by no-arbitrage bounds:
+Anatomy of option value:
 
-$$
-F = S_0 \cdot e^{(r - q)T} \approx S_0 (1 + r - q)
-$$
+$$\text{Option price} = \text{Intrinsic value} + \text{Time value}$$
 
-If 1-year stock futures trade at \$110 while spot is \$100 and borrowing cost is 5%:
-Arbitrageurs borrow \$100, buy the stock, and sell the futures at \$110. In one year, they deliver the stock, collect \$110, repay \$105, and pocket **\$5 in riskless cash-and-carry profit**. This arbitrage instantly pulls futures prices back to fair value.
+- Intrinsic value: The theoretical profit that could be realized if the option were exercised immediately.
+
+- Time value: The portion of the option price exceeding intrinsic value, reflecting the expectation that further asset volatility before maturity will yield a more favorable outcome. When the spot price exactly equals the strike price (at-the-money), uncertainty is highest, and time value reaches its absolute peak.
+
+**Put-call parity**
+For European options on the same underlying asset with the identical strike price $K$ and time to maturity $T$, the static replication equation must strictly hold:
+
+$$C - P = S - K e^{-rT}$$
+
+Buying a call and selling a put creates a payoff perfectly equivalent to holding the spot asset and borrowing the present value of the strike. If market quotes deviate from this equation, market makers will immediately execute risk-free conversion or reversal arbitrage.
+
+**Early exercise logic**
+For American call options on non-dividend-paying stocks, early exercise should never occur. Early exercise only captures intrinsic value, whereas closing the position in the secondary market recovers the remaining time value, and delaying the strike payment saves interest costs.
 
 ---
 
-### 3. Swaps: The \$500 Trillion Invisible Giant
+## 5 · BSM model and the Greeks
 
-#### (1) Interest Rate Swaps (IRS): Exchanging Cash Flows
-- **The Problem**: A corporation takes out a floating-rate bank loan (SOFR + 1%). If the central bank hikes rates, interest payments explode.
-- **The Solution**: The company enters a 5-year swap with an investment bank, agreeing to pay a fixed 3.5% while the bank pays floating SOFR.
-- **Mechanism**: **No principal ever changes hands**. On each payment date, only the net interest difference is settled.
+The Black-Scholes-Merton framework demonstrates that option pricing is independent of subjective directional forecasts, transforming the pricing process into an objective replication cost calculation.
 
-#### (2) Credit Default Swaps (CDS) & The 2008 Financial Crisis
-- **Mechanism**: Buying CDS on a corporate bond is purchasing insurance against default. The buyer pays an annual fee (CDS spread). If the issuer defaults, the seller compensates the face value loss.
-- **The 2008 Distortion**: The market allowed investors to buy CDS without owning the underlying bonds ("naked CDS"). Hedge funds who foresaw the collapse of subprime mortgage bonds bought massive CDS protection from firms like AIG, generating multi-billion-dollar payouts when defaults cascaded.
+### Dynamic delta replication
 
----
+By holding an option and executing reverse hedging with the underlying spot asset, a portfolio can be immunized against minute fluctuations in the underlying asset over infinitesimally small time intervals. When a portfolio achieves completely non-directional risk, its expected return must equal the risk-free rate.
+The BSM partial differential equation derived from this serves as the analytical benchmark for derivative valuation. Key inputs in the pricing model include the spot price, strike price, risk-free rate, time to maturity, and expected volatility.
 
-### 4. Options: Asymmetric Payoffs & Non-Linear Risk
+### Implied volatility
 
-While futures and swaps impose symmetric obligations, **options provide asymmetric rights**.
+Since future realized volatility is unobservable, traders plug the actual traded market price of the option backwards into the BSM formula; the resulting volatility is called implied volatility (IV). It represents the market's consensus pricing of future asset volatility.
 
-#### (1) Rights vs. Obligations
-- **Option Buyer (Long)**: Pays an upfront non-refundable premium to acquire the **right, but not the obligation**, to buy (Call) or sell (Put) an asset at a predetermined strike price. Downside is strictly capped at the premium paid; upside is unlimited.
-- **Option Seller (Short)**: Collects the upfront premium but takes on **unconditional passive performance obligations**. Gains are capped at the premium; downside risk can be catastrophic during tail events.
+- **Volatility skew**: In equity index options, the implied volatility of out-of-the-money puts is significantly higher than that of at-the-money options. This reflects market participants' structural hedging demand against systemic tail risk (crashes), as well as the leverage effect where a stock price decline mechanically increases the firm's financial leverage.
 
-```
-Real-World Option Analogies:
-• Long Call Option: Similar to putting down a non-refundable real estate earnest deposit.
-  You pay $10,000 to lock in the right to buy a home for $500,000 in 6 months. If property surges to $800,000,
-  you exercise and make $290,000. If the market crashes to $300,000, you forfeit the deposit and walk away.
-• Long Put Option: Similar to an auto insurance policy.
-  You pay a $1,000 annual premium. If no accident occurs, the premium expires worthless.
-  If the car is totaled, the insurer pays the full replacement cost.
-```
+### The Greeks risk matrix
 
-#### (2) Intrinsic Value vs. Time Value
+Quantitative market making and portfolio management use the Greeks to measure non-linear exposures.
 
-$$
-\text{Option Price} = \text{Intrinsic Value} + \text{Time Value}
-$$
+| Risk dimension | Mathematical definition | Trading interpretation |
+|---|---|---|
+| **Delta ($\Delta$)** | $\frac{\partial V}{\partial S}$ | The linear sensitivity of option price to changes in the underlying asset price. Represents the equivalent spot position. |
+| **Gamma ($\Gamma$)** | $\frac{\partial^2 V}{\partial S^2}$ | The sensitivity (curvature) of Delta to underlying asset price changes. At-the-money options have the largest Gamma. |
+| **Theta ($\Theta$)** | $\frac{\partial V}{\partial t}$ | The decay rate of option value as time passes. Longs pay Theta, shorts collect Theta. |
+| **Vega ($
+u$)** | $\frac{\partial V}{\partial \sigma}$ | The sensitivity of option price to changes in implied volatility. |
+| **Rho ($ho$)** | $\frac{\partial V}{\partial r}$ | The sensitivity of option price to changes in the risk-free interest rate. |
 
-- **Intrinsic Value**: The immediate payoff if exercised right now ($\max(S - K, 0)$ for calls);
-- **Time Value**: The market premium paid for the possibility of favorable future volatility before expiry;
-- **Key Realization**: **Time value peaks at-the-money (ATM)**, where uncertainty regarding exercise is highest.
-
-#### (3) Put-Call Parity: The Fundamental Law of Options
-
-$$
-C - P = S - K e^{-rT}
-$$
-
-**The Intuition**: Buying a Call and selling a Put at identical strikes creates a synthetic payoff identical to owning the underlying stock outright funded by borrowing the present value of the strike. Any price divergence triggers instantaneous, automated conversion or reversal arbitrage by quant market makers.
-
-#### (4) American Call Early Exercise Rule
-- **Core Rule**: On an underlying stock that pays no dividends, **an American Call should never be exercised early** ($C_{\text{American}} \equiv C_{\text{European}}$).
-- **Reasoning**: Market price $C$ exceeds intrinsic value $S - K$. Exercising early forfeits the remaining time value and surrenders cash early, losing interest. Selling the option in the market is always strictly superior to exercising.
+Being long Gamma (holding long options) allows one to profit from violent swings in the underlying asset, but this must be paid for via daily Theta decay. This embodies the conservation of energy law in option pricing:
+$$\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma \approx 0$$
+If the actual realized volatility falls short of the priced implied volatility, the long position will face systemic net losses.
 
 ---
 
-### 5. Black-Scholes-Merton (BSM) & The Delta Hedging Breakthrough
+## 6 · Portfolios and return decomposition
 
-In 1973, Fischer Black, Myron Scholes, and Robert Merton unlocked the solution to option pricing:
+Modern portfolio theory utilizes incomplete correlation between assets to optimize the risk-return ratio.
 
-#### (1) The Revolutionary Insight
-Before BSM, economists believed option pricing required predicting whether an asset was more likely to go up or down (the subjective drift $\mu$).
-BSM proved that **the fair price of an option is completely independent of whether investors are bullish or bearish on the asset!**
+### Diversification and the Capital Asset Pricing Model
 
-#### (2) How It Works: The Dynamic Delta Replication Portfolio
-- If an option gains \$0.50 whenever the underlying stock gains \$1.00, its **Delta ($\Delta$) is 0.50**;
-- By holding a short option position and buying 0.50 shares of stock, any small upward or downward price fluctuation in the stock is instantaneously offset by the option;
-- Because directional risk is eliminated continuously, the portfolio becomes **risk-free**, meaning its return must equal the risk-free rate $r$;
-- Hence, an option's price equals the cost of creating this dynamic replicating portfolio.
+Combining multiple assets with correlation coefficients $ho < 1$ can reduce total portfolio variance without lowering expected returns.
+The Capital Asset Pricing Model (CAPM) decomposes the excess return of a portfolio into two orthogonal components:
 
-#### (3) What is Implied Volatility (IV)?
-In the BSM formula, all inputs (spot, strike, rate, time) are visible except one: future volatility $\sigma$.
-Traders input prevailing market prices into BSM to back out **Implied Volatility (IV)**. **IV represents the market's collective consensus forecast of future risk and uncertainty**. The VIX index is calculated from the implied volatilities of S&P 500 options.
+$$R_p = R_f + eta (R_m - R_f) + lpha$$
 
----
+- **Beta ($eta$)**: The asset's systematic risk exposure relative to broad market fluctuations.
 
-### 6. The Greeks: The Trader's Control Dashboard
+- **Alpha ($lpha$)**: The specific, idiosyncratic excess return generated by the asset itself, independent of systematic risk. Stripping away Beta to capture pure, robust Alpha is the core objective of quantitative strategies.
 
-Quant desks speak exclusively in Greeks:
+### Classic asset allocation schools and risk contribution
 
-| Greek | Role | Definition | Trading Meaning |
-| :--- | :--- | :--- | :--- |
-| **Delta ($\Delta$)** | **Speed** | $\frac{\partial V}{\partial S}$ | Directional exposure; equivalent share count |
-| **Gamma ($\Gamma$)** | **Acceleration** | $\frac{\partial^2 V}{\partial S^2}$ | Sensitivity of Delta to price moves; peaks at ATM |
-| **Theta ($\Theta$)** | **Rent / Parking Fee** | $\frac{\partial V}{\partial t}$ | Daily time decay of option premium (usually negative) |
-| **Vega ($\nu$)** | **Market Temperature** | $\frac{\partial V}{\partial \sigma}$ | Sensitivity to a 1% shift in implied volatility |
-| **Rho ($\rho$)** | **Borrowing Cost** | $\frac{\partial V}{\partial r}$ | Sensitivity to risk-free interest rates |
+The industry has evolved several representative asset allocation philosophies:
 
-> **The Trade-Off: Gamma vs. Theta**
-> Long Gamma provides convexity profits during violent price moves, but costs Theta (daily time decay) every day:
-> $$\Theta + \frac{1}{2} \sigma^2 S^2 \Gamma \approx 0$$
-> You can only make money from long Gamma if **realized volatility exceeds the implied volatility paid**.
+| School | Asset allocation pattern | Underlying logic |
+|---|---|---|
+| Classic 60/40 portfolio | 60% equities + 40% bonds | Equities capture economic growth returns, while bonds provide a defensive cushion during economic downturns and recessions. |
+| Risk parity | Introduces leverage to dynamically allocate equities, bonds, and commodities | Abandons fixed dollar allocation, ensuring each asset class contributes strictly equally to the total portfolio variance. |
+| Endowment model | Heavy allocation to private equity, real estate, and absolute return instruments | Sacrifices short-term liquidity to capture the excess risk premium of long-term illiquid assets. |
+
+In a traditional 60/40 portfolio, because equity volatility (approx. 16%) is far higher than bond volatility (approx. 5%), over 90% of the portfolio's variance is actually contributed entirely by the equity side. Capital allocation percentages absolutely do not equate to actual risk bearing percentages.
 
 ---
 
-### 7. Volatility Smiles and Skews
+## 7 · Quantitative financial analysis tools
 
-```
-     Implied Volatility (IV)
-         |       Equity Index "Skew" (Crashophobia)          FX "Smile" (Fat Tails)
-         |            \                                         \     /
-         |             \                                         \   /
-         |              \____                                     \_/
-         +───────────────────────────> Strike K       ────────────────> Strike K
-                      Deep OTM Puts (Crash Insurance)                ATM
-```
+The following Python scripts are used for option pricing analysis and portfolio risk decomposition.
 
-- **FX Volatility Smile**: Deep OTM Puts and Calls both trade at elevated IVs, reflecting heavy two-sided fat-tail jump risks;
-- **Equity Volatility Skew**: Deep out-of-the-money Puts trade at sky-high implied volatilities. Born out of the **1987 Black Monday crash**, institutional equity portfolios aggressively bid up OTM protective puts as insurance against market collapse (**Crashophobia**).
+### Option analytical pricer and Greeks calculation
 
----
-
-## Module 5: Portfolio Theory & Modern Asset Allocation
-
-### 1. Diversification: The Only Free Lunch
-
-Harry Markowitz proved in 1952 that:
-- **Whenever the correlation between two assets is less than 1 ($\rho < 1$), combining them reduces overall portfolio variance without reducing expected return!**
-
----
-
-### 2. Major Institutional Allocation Frameworks
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│              Comparison of Asset Allocation Models          │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│    Framework    │  Capital Weight │       Core Rationale    │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ Classic 60/40   │ 60% Equities    │ • Equities drive growth │
-│                 │ 40% Bonds       │ • Bonds cushion declines│
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ Risk Parity     │ Levered bonds,  │ • Allocates equal risk  │
-│ (All Weather)   │ equities, comms,│   budgets across macro  │
-│                 │ TIPS            │   regimes (growth/infl) │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ Endowment Model │ Heavy PE, VC,   │ • Harvests multi-decade │
-│ (Yale / Swensen)│ real estate, HF │   illiquidity premiums  │
-└─────────────────┴─────────────────┴─────────────────────────┘
-```
-
-- **The Hidden Trap of 60/40**: Because equities are roughly 3x as volatile as bonds, equities account for **over 90% of total 60/40 portfolio volatility**;
-- **Risk Parity (Ray Dalio / Bridgewater)**: Discards arbitrary capital percentages and equalizes **risk contributions**. By applying leverage to low-volatility sovereign bonds, the portfolio achieves true diversification across economic growth, recession, inflation, and deflation regimes.
-
----
-
-### 3. Alpha vs. Beta
-
-$$
-R_{\text{portfolio}} = R_f + \beta (R_{\text{market}} - R_f) + \alpha
-$$
-
-- **Beta ($\beta$)**: Return derived from riding market tides. Cheap and accessible via ultra-low-fee index ETFs;
-- **Alpha ($\alpha$)**: Pure, idiosyncratic excess return un-correlated with the market. Quant funds charge performance fees because genuine Alpha is the only true hedge against economic cycles.
-
----
-
-## Module 6: Python Quantitative Toolbox
-
-Lightweight, self-contained Python scripts for calculating option metrics and analyzing true portfolio risk allocations.
-
-### 1. Option Pricing & Greeks Calculator
+Computes European option prices and core sensitivity metrics using the BSM analytical solution.
 
 ```python
 import math
 from typing import Dict, Literal
 
-
 class BSMAnalytics:
-    """Lightweight Black-Scholes-Merton option analytics toolbox."""
+    """Option pricing and Greeks analysis tool"""
 
     @staticmethod
     def _phi(x: float) -> float:
+        """Standard normal probability density function"""
         return math.exp(-0.5 * x * x) / math.sqrt(2.0 * math.pi)
 
     @staticmethod
     def _cdf(x: float) -> float:
+        """Standard normal cumulative distribution function"""
         return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
     @classmethod
@@ -451,6 +312,7 @@ class BSMAnalytics:
         volatility: float,
         option_type: Literal["call", "put"] = "call",
     ) -> Dict[str, float]:
+        """Calculates theoretical option price and various Greeks"""
         s, k, t, r, sigma = spot, strike, time_to_maturity, risk_free_rate, volatility
 
         if t <= 0:
@@ -484,23 +346,21 @@ class BSMAnalytics:
             "delta": round(delta, 4),
             "gamma": round(gamma, 4),
             "theta_daily": round(theta / 365.0, 4),
-            "vega_1pct": round(vega / 100.0, 4),
-            "prob_exercise_Q": round(cdf_d2 if option_type == "call" else cls._cdf(-d2), 4),
+            "vega_1pct": round(vega / 100.0, 4)
         }
-
 
 if __name__ == "__main__":
     res = BSMAnalytics.price_and_greeks(
-        spot=100.0, strike=100.0, time_to_maturity=1.0, risk_free_rate=0.05, volatility=0.20, option_type="call"
+        spot=100.0, strike=100.0, time_to_maturity=1.0, 
+        risk_free_rate=0.05, volatility=0.20, option_type="call"
     )
-    print("ATM European Call Option Profile:")
-    for k, v in res.items():
-        print(f"  {k:18s}: {v}")
+    for key, value in res.items():
+        print(f"  {key:18s}: {value}")
 ```
 
----
+### Portfolio true risk contribution measurement
 
-### 2. Portfolio Risk Decomposition (The Truth Behind 60/40)
+Decomposes the marginal risk contribution of major asset classes to total portfolio volatility based on Euler's theorem.
 
 ```python
 def portfolio_risk_breakdown(
@@ -510,110 +370,44 @@ def portfolio_risk_breakdown(
     vol_bond: float = 0.06,
     corr: float = 0.0,
 ):
-    """Decomposes portfolio volatility into equity and bond risk contributions."""
+    """Calculates total portfolio variance and true risk contribution percentage of assets"""
     w_s, w_b = weight_stock, weight_bond
     sigma_s, sigma_b = vol_stock, vol_bond
 
-    var_total = (
+    # Total portfolio variance and volatility
+    variance_total = (
         (w_s * sigma_s) ** 2
         + (w_b * sigma_b) ** 2
         + 2 * w_s * w_b * sigma_s * sigma_b * corr
     )
-    vol_total = var_total**0.5
+    vol_total = variance_total**0.5
 
+    # Marginal risk contribution
     mrc_stock = (w_s * sigma_s**2 + w_b * sigma_s * sigma_b * corr) / vol_total
     mrc_bond = (w_b * sigma_b**2 + w_s * sigma_s * sigma_b * corr) / vol_total
 
+    # Total risk contribution
     trc_stock = w_s * mrc_stock
     trc_bond = w_b * mrc_bond
 
     pct_stock = (trc_stock / vol_total) * 100
     pct_bond = (trc_bond / vol_total) * 100
 
-    print(f"Capital Allocation: Equities {w_s*100:.0f}% / Bonds {w_b*100:.0f}%")
-    print(f"Portfolio Annual Volatility: {vol_total*100:.2f}%")
-    print(f"Actual Risk Share: Equities {pct_stock:.2f}% | Bonds {pct_bond:.2f}%\n")
+    print(f"Capital allocation: Stocks {w_s*100:.0f}% / Bonds {w_b*100:.0f}%")
+    print(f"Annualized portfolio volatility: {vol_total*100:.2f}%")
+    print(f"Actual risk bearing -> Stocks: {pct_stock:.2f}% | Bonds: {pct_bond:.2f}%\n")
 
 
 if __name__ == "__main__":
-    print("--- 60/40 Portfolio True Risk Allocation ---")
+    print("Classic 60/40 portfolio analysis:")
     portfolio_risk_breakdown(weight_stock=0.60, weight_bond=0.40)
-
-    print("--- Risk Parity Capital Allocation ---")
+    
+    print("Risk parity portfolio analysis:")
     portfolio_risk_breakdown(weight_stock=0.25, weight_bond=0.75)
 ```
 
 ---
 
-## Module 7: High-Frequency Wall Street Top Quant Interview Questions
+## References
 
----
-
-### Question 1: Convertible Bonds from Corporate & Hedge Fund Perspectives
-
-> **Question**:
-> Why do early-stage growth companies love issuing Convertible Bonds, and why do convertible arbitrage hedge funds love buying them?
-
-#### 【Model Interview Answer】
-A convertible bond is structurally a **straight corporate bond + an embedded out-of-the-money Call option on the company's equity**.
-1. **From the Corporate Issuer's View**:
-   - **Cheap Debt Financing**: Because the bond includes equity upside, the coupon rate is minimal (0% to 1%), conserving vital operating cash;
-   - **Delayed Equity Issuance at a Premium**: Conversion prices are set 20% to 30% above current stock prices, avoiding immediate share dilution.
-2. **From the Hedge Fund's View**:
-   - **Asymmetric Risk**: If the company fails, the fund holds bond claims for principal repayment; if the company explodes higher, they convert into equity;
-   - **Convertible Arbitrage**: Funds buy underpriced convertible bonds and short the underlying stock to establish Delta-neutral positions, cleanly harvesting undervalued volatility (Vega) and credit mispricings.
-
----
-
-### Question 2: Why Do Higher Interest Rates Pummel High-Growth Stocks Hardest?
-
-> **Question**:
-> When the Federal Reserve aggressively hikes rates, why do unprofitable high-growth tech stocks crash far harder than mature dividend stocks? Explain using bond duration.
-
-#### 【Model Interview Answer】
-All equity valuations reflect discounted future cash flows:
-- **Mature Value Stocks (e.g., Procter & Gamble)**: Generate robust near-term cash flows and dividends. Their **equity duration is short**, meaning their present value is relatively insensitive to discount rate changes;
-- **Speculative Growth Stocks (e.g., early SaaS/tech)**: Near-term cash flows are zero or negative; all valuation relies on projected profits 10 to 20 years away. Their **equity duration is extremely long** (analogous to a 30-year zero-coupon bond);
-- When discount rates rise from 1% to 5%, \$100 due in 15 years drops from \$86.10 to \$48.10 (a **44% drop**). The collapse in growth stocks is the mechanical repricing of long-duration cash flows.
-
----
-
-### Question 3: How Does an Airline Use a Zero-Cost Collar to Hedge Fuel Costs?
-
-> **Question**:
-> Delta Air Lines wants to protect against surging jet fuel prices without paying millions in cash premiums for Call options. What structure does a trading desk propose?
-
-#### 【Model Interview Answer】
-The desk structures a **Zero-Cost Collar**:
-1. **Long OTM Call (Capping Upside Risk)**: Delta buys a Call at strike \$80/barrel. If fuel spikes to \$120, its maximum cost is capped at \$80;
-2. **Short OTM Put (Funding the Premium)**: Simultaneously, Delta sells a Put at strike \$50/barrel. The premium collected from selling the Put exactly pays for the Call;
-3. **Trade-Off**: Delta gets free protection against catastrophic spikes, but forfeits the benefit of extreme price drops below \$50. This aligns with corporate budgeting objectives: eliminating existential tail risk in exchange for giving up windfall discounts.
-
----
-
-### Question 4: Why Did Lehman's Collapse Freeze Markets While Futures Exchanges Remained Solvent?
-
-> **Question**:
-> Why did Lehman Brothers trigger global financial gridlock in OTC markets, while central futures exchanges operated flawlessly?
-
-#### 【Model Interview Answer】
-1. **OTC Network Fragility**: OTC contracts are bilateral web networks (A owes B, B owes Lehman). When Lehman collapsed, counterparties suffered massive insolvencies and uncertainty froze the interbank market;
-2. **Exchange Clearinghouse Safeguards**:
-   - **Central Counterparty Clearing (CCP)**: The clearinghouse novates every trade, removing bilateral dependencies;
-   - **Initial Margin & Daily MTM**: Margin is collected upfront, and PnL is cash-settled every evening. Intraday losses trigger automated margin calls and immediate liquidation, preventing systemic default contagion.
-
----
-
-### Question 5: Why Do Retail Option Traders Blow Up While Market Makers Thrive?
-
-> **Question**:
-> Why do retail option buyers bleed out capital while retail option sellers risk catastrophic wipeout? How do professional desks manage this?
-
-#### 【Model Interview Answer】
-1. **Retail Flaws**:
-   - **Retail Buyers**: Buy cheap OTM options that expire worthless 85%+ of the time, dying from continuous Theta bleed;
-   - **Retail Sellers**: Sell naked OTM options for tiny premiums, maintaining high win rates until a single black swan move causes infinite losses.
-2. **Market Maker Discipline**:
-   - **Delta Neutrality**: Continuously hedging direction to avoid exposure to spot moves;
-   - **Defined Risk (Spreads)**: Never selling naked tail risk; always buying wings to cap worst-case loss;
-   - **Factory-Floor Extraction**: Quoting two-sided spreads and harvesting the gap between implied and realized volatility via dynamic Gamma scalping.
+- Hull, J. C. (2014). *Options, futures, and other derivatives*. Pearson.

@@ -1,433 +1,59 @@
-# Quant 3 · Continuous Distributions: CDF, Geometric Regions, and Variable Transformations
+# Quant 03 · Continuous distributions and order statistics
 
-These types of problems often look like this:
+Course: [[Quant02 Markov Chains Expected Time|02 Markov Chains]] → This note → [[Quant04 Correlation Matrix PSD|04 Correlation Matrix]]
 
-```text
-X, Y, Z are i.i.d. Given T = g(X, Y, Z), find the distribution of T.
-```
+There are three common tools for handling continuous random variables: writing the CDF, integrating geometric regions, and applying variable transformations. This note combines these tools with order statistics.
 
-Do not start by finding the density. Start by writing the CDF:
+---
+
+## 1 · From Density and CDF to Geometry
+
+When finding the distribution of $T=g(X,Y,Z)$, looking for the density directly is error-prone. The first step is always to write the CDF:
 
 $$
 F_T(t)=P(T\le t)
 $$
 
-The next step is to translate the event $T\le t$ into a region of the original variables, a conditional probability, or an integral.
+The next step is to translate the event $T\le t$ into regions, conditional probabilities, or integrals in terms of the original variables. Under a uniform distribution, the probability is directly equal to the area or volume of the geometric region satisfying the condition.
 
-This lecture combines three common techniques:
+### 1.1 Product of Uniforms
+
+Let $A, B \sim U[0,1]$ be independent. Find the CDF of $U=AB$:
+
+$$
+F_U(u) = P(AB \le u)
+$$
+
+Since $(A,B)$ is uniformly distributed over the unit square $[0,1]\times[0,1]$, this is equivalent to calculating the area to the left of the curve $a = u/b$. The integral must be split because the region is truncated by the boundary:
 
 ```text
-CDF:
-  To find a distribution, start by writing P(T <= t).
-
-geometry:
-  The probability of a uniform random point can be viewed as the area or volume of a region.
-
-transform:
-  Multiplication and powers on [0,1] are often simplified using -log.
-```
-
----
-
-## 0. Handling the Domain First
-
-If a problem is stated directly as:
-
-$$
-X,Y,Z\sim U[-1,1],\qquad T=(XY)^Z
-$$
-
-This expression is incomplete in the real number domain. The reason is that $XY$ might be negative, while $Z$ is a continuous real number. Non-integer powers of negative numbers are generally not real numbers.
-
-Therefore, in an interview, you should clarify:
-
-```text
-Does the problem intend to write |XY|^|Z|?
-Or should we only consider the conditional distribution where XY > 0?
-Or are complex values allowed?
-```
-
-Here, we adopt a version that is natural in the real domain:
-
-$$
-X,Y,Z\sim U[-1,1]\text{ i.i.d.},\qquad T=|XY|^{|Z|}
-$$
-
-Since $|X|,|Y|,|Z|$ all follow $U[0,1]$, this problem still retains the techniques the original question intended to test: multiplication, random exponents, CDF conditioning, and $-\ln$ transformations.
-
----
-
-## 1. Processing Order for Continuous Distribution Problems
-
-When you see $T=g(X,Y,Z)$, follow this order:
-
-```text
-1. Support:
-   What is the range of values for T?
-
-2. CDF:
-   F_T(t) = P(g(X,Y,Z) <= t)
-
-3. Condition:
-   Condition on the variable that makes the inequality difficult to handle.
-
-4. Transform:
-   For multiplication, division, or powers, prioritize using log.
-
-5. Boundary:
-   Finally, complete the cases where t is outside the support.
-```
-
-This step is more important than integration techniques. For many problems, once the CDF event is written correctly, the rest is just calculation.
-
----
-
-## 2. Example: $T=|XY|^{|Z|}$
-
-Problem:
-
-```text
-X, Y, Z are independent and follow U[-1,1].
-Let T = |XY|^{|Z|}.
-Find the CDF of T.
-```
-
-### 2.1 Determine the Range
-
-Because:
-
-$$
-|X|,|Y|,|Z|\in[0,1]
-$$
-
-Therefore:
-
-$$
-|XY|\in[0,1],\qquad |XY|^{|Z|}\in[0,1]
-$$
-
-Thus:
-
-$$
-F_T(t)=0,\quad t<0
-$$
-
-$$
-F_T(t)=1,\quad t\ge 1
-$$
-
-What we really need to calculate is $0<t<1$.
-
-### 2.2 Substitute the Absolute Value Variables
-
-Let:
-
-$$
-A=|X|,\qquad B=|Y|,\qquad C=|Z|
-$$
-
-If $X\sim U[-1,1]$, then $A=|X|\sim U[0,1]$. The proof is short:
-
-$$
-P(A\le a)=P(|X|\le a)=P(-a\le X\le a)=\frac{2a}{2}=a,\qquad 0\le a\le1
-$$
-
-So $A,B,C$ are independent and all follow $U[0,1]$. The problem becomes:
-
-$$
-T=(AB)^C
-$$
-
-### 2.3 Write the CDF and Condition on the Exponent
-
-For $0<t<1$:
-
-$$
-F_T(t)=P((AB)^C\le t)
-$$
-
-The random exponent $C$ makes the inequality inconvenient to handle, so we first fix $C=c$. When $c>0$:
-
-$$
-(AB)^c\le t
-$$
-
-is equivalent to:
-
-$$
-AB\le t^{1/c}
-$$
-
-Thus:
-
-$$
-F_T(t)=\int_0^1 P(AB\le t^{1/c})\,dc
-$$
-
-The point $c=0$ does not need to be handled separately because $P(C=0)=0$.
-
----
-
-## 3. First, Find the Distribution of the Product of Two Uniforms
-
-Let:
-
-$$
-U=AB
-$$
-
-where $A,B\sim U[0,1]$ are independent. To make the visualization easier, let $A$ be the horizontal axis $x$ and $B$ be the vertical axis $y$. For $0<u<1$:
-
-$$
-F_U(u)=P(AB\le u)
-$$
-
-which is:
-
-$$
-P(xy\le u)
-$$
-
-### 3.1 Geometric Meaning of the Double Integral
-
-Because $(A,B)$ is uniformly distributed over the unit square $[0,1]\times[0,1]$:
-
-```text
-Probability = Area satisfying the condition
-```
-
-To find $P(AB\le u)$, we need to find all points in the unit square that satisfy:
-
-$$
-xy\le u
-$$
-
-The boundary curve is:
-
-$$
-x=\frac{u}{y}
-$$
-
-You can visualize it like this:
-
-```text
-y
+b
 1 |█████████████████░░░░░░░░
   |███████████░░░░░░░░░░░░░░
   |████████░░░░░░░░░░░░░░░░░
 u |█████████████████████████
   |█████████████████████████
-0 +------------------------- x
-    0        u/y           1
+0 +------------------------- a
+    0        u/b           1
 
-█ = region where xy <= u
-░ = region where xy > u
+█ = region where ab <= u
 ```
 
-This diagram is not drawn to scale; it only represents the structure:
+Splitting the integral by $b$:
 
-- When $y$ is very small, $u/y\ge1$, the entire horizontal slice satisfies the condition.
-- When $y$ increases, $u/y<1$, only the part on the left with length $u/y$ satisfies the condition.
-
-### 3.2 Why Fix $y$?
-
-A 2D region is hard to calculate directly, so we slice it into many thin horizontal strips. After fixing $Y=y$, we only look at this horizontal line:
-
-```text
-Fix y:
-
-x: 0 ---------------- u/y ---------------- 1
-   [    satisfies xy <= u    ][    does not satisfy    ]
-
-Length contributed by this horizontal line = min(1, u/y)
-```
-
-Since the joint density is 1, the area of this thin horizontal strip is:
-
-$$
-\text{horizontal length}\times dy
-$$
-
-Therefore:
-
-$$
-P(AB\le u)
-=
-\int_0^1 \min\left( 1,\frac{u}{y} \right)\,dy
-$$
-
-This is the essence of a double integral. It is not a formula that appears out of thin air, but rather the result of slicing the region in the unit square into many horizontal lines and summing their lengths.
-
-### 3.3 Why Split the Integral into Two Parts?
-
-The critical dividing point is:
-
-$$
-\frac{u}{y}=1
-$$
-
-which is:
-
-$$
-y=u
-$$
-
-So we must split it into two cases:
-
-| Fixed $y$ | Condition on the horizontal line | Length of $x$ satisfying the condition |
+| Fixed $b$ | Condition on the horizontal line | Length of $a$ satisfying the condition |
 | --- | --- | --- |
-| $0<y\le u$ | $u/y\ge1$ | Entire segment $[0,1]$, length $1$ |
-| $u<y\le1$ | $u/y<1$ | $0\le x\le u/y$, length $u/y$ |
-
-Therefore:
+| $0<b\le u$ | $u/b\ge1$ | Entire segment $[0,1]$, length $1$ |
+| $u<b\le1$ | $u/b<1$ | $0\le a\le u/b$, length $u/b$ |
 
 $$
-F_U(u)=\int_0^u 1\,dy+\int_u^1 \frac{u}{y}\,dy
+F_U(u) = \int_0^u 1\,db + \int_u^1 \frac{u}{b}\,db = u - u\ln u, \qquad 0<u<1
 $$
 
-The first part is the "complete rectangle at the bottom," and the second part is the "region to the left of the curve at the top":
+### 1.2 Volume of a Simplex
 
-$$
-\underbrace{\int_0^u 1\,dy}_{y\le u,\ entire\ horizontal\ line\ counts}
-+
-\underbrace{\int_u^1 \frac{u}{y}\,dy}_{y>u,\ only\ count\ up\ to\ x=u/y}
-$$
-
-Calculating this gives:
-
-$$
-F_U(u)=u-u\ln u=u(1-\ln u),\qquad 0<u<1
-$$
-
-We will use this result repeatedly:
-
-$$
-P(AB\le u)=u(1-\ln u)
-$$
-
-```mermaid
-flowchart LR
-  A["unit square (a,b)"] --> B["region ab <= u"]
-  B --> C["b <= u: full vertical slice"]
-  B --> D["b > u: height u / b"]
-  C --> E["integral 0 to u of 1"]
-  D --> F["integral u to 1 of u / b"]
-```
-
----
-
-## 4. Probability and Volume: Why is $P(S_n<1) = 1/n!$?
-
-When calculating $P(AB\le u)$ above, we used the fact that if a random point falls uniformly in a unit square, the probability of an event is the area of the corresponding region. The same applies in higher dimensions.
-
-Let:
-
-$$
-r_1,\ldots,r_n \overset{i.i.d.}{\sim} U[0,1],
-\qquad
-S_n=r_1+\cdots+r_n
-$$
-
-We want to find:
-
-$$
-P(S_n<1)
-$$
-
-This involves two steps:
-
-```text
-1. Explain why this probability equals the volume of an n-dimensional region.
-2. Calculate why the volume of this region is 1 / n!.
-```
-
-### 4.1 Why Uniform Distribution Turns Probability into Volume
-
-The random vector:
-
-$$
-(r_1,\ldots,r_n)
-$$
-
-is uniformly distributed in the unit hypercube:
-
-$$
-[0,1]^n
-$$
-
-Its joint density is:
-
-$$
-f(x_1,\ldots,x_n)=1,\qquad (x_1,\ldots,x_n)\in[0,1]^n
-$$
-
-So the probability of any region $A\subseteq[0,1]^n$ is:
-
-$$
-P((r_1,\ldots,r_n)\in A)
-=
-\int_A f(x_1,\ldots,x_n)\,dx_1\cdots dx_n
-=
-\int_A 1\,dx_1\cdots dx_n
-$$
-
-This final integral is the volume of region $A$:
-
-$$
-P((r_1,\ldots,r_n)\in A)=\operatorname{Vol}(A)
-$$
-
-This is not a special trick, but the definition of a uniform distribution: the density of every small volume element in the entire large box is the same. The total volume of the unit box is 1, so the probability of a random point falling into a region is equal to the volume that the region occupies.
-
-The region here is:
-
-$$
-A_n=
-\{(x_1,\ldots,x_n)\in[0,1]^n:\ x_1+\cdots+x_n<1\}
-$$
-
-Therefore:
-
-$$
-P(S_n<1)=\operatorname{Vol}(A_n)
-$$
-
-### 4.2 Look at Low-Dimensional Images
-
-When $n=2$, the condition is:
-
-$$
-x_1+x_2<1
-$$
-
-It is a right triangle in the bottom-left corner of the unit square:
-
-```text
-x2
-1 |\
-  | \
-  |  \     x1 + x2 = 1
-  |██ \
-  |████\
-0 +----- x1
-  0     1
-
-█ = x1 + x2 < 1
-```
-
-The area is:
-
-$$
-\frac{1}{2}=\frac{1}{2!}
-$$
-
-When $n=3$, the condition is:
-
-$$
-x_1+x_2+x_3<1
-$$
-
-It is a tetrahedron in the corner of the unit cube. The intercepts on the three coordinate axes are all 1:
+If $X_1,\ldots,X_n \sim U[0,1]$ are independent, the inequality $\sum_{i=1}^n X_i < 1$ defines a standard simplex.
+Under a uniform distribution, the probability is simply the volume of the simplex:
 
 ```text
           x3
@@ -443,525 +69,368 @@ It is a tetrahedron in the corner of the unit cube. The intercepts on the three 
 x1 + x2 + x3 < 1
 ```
 
-The volume is:
+The volume can be proved by recursive slicing. Define $V_n(t)$ as the volume of the simplex $\sum_{i=1}^n x_i < t$. Fixing the last coordinate $x_n=s$, the available budget for the remaining $n-1$ coordinates is $t-s$:
 
 $$
-\frac{1}{6}=\frac{1}{3!}
+V_n(t) = \int_0^t V_{n-1}(t-s)\,ds
 $$
 
-In higher dimensions, it is the same shape, just impossible to draw directly. It is called a standard simplex.
-
-### 4.3 Proving the Volume via Slicing Recursion
-
-Define:
+Knowing $V_1(t)=t$, and assuming $V_{n-1}(u) = \frac{u^{n-1}}{(n-1)!}$:
 
 $$
-V_n(t)=\operatorname{Vol}\{(x_1,\ldots,x_n):x_i\ge0,\ x_1+\cdots+x_n<t\}
+V_n(t) = \int_0^t \frac{(t-s)^{n-1}}{(n-1)!}\,ds
 $$
 
-We ultimately want $V_n(1)$.
-
-First, fix the last coordinate:
+Substitute $u=t-s$:
 
 $$
-x_n=s
+V_n(t) = \int_0^t \frac{u^{n-1}}{(n-1)!}\,du = \frac{t^n}{n!}
 $$
 
-If the last coordinate has already used $s$, the total budget remaining for the first $n-1$ coordinates is:
+Therefore, the probability of the sum being less than $1$ is:
 
 $$
-t-s
-$$
-
-So the volume of this slice is:
-
-$$
-V_{n-1}(t-s)
-$$
-
-Sweeping $s$ from $0$ to $t$, we get:
-
-$$
-V_n(t)=\int_0^t V_{n-1}(t-s)\,ds
-$$
-
-This is the same idea as the double integral where we fixed $y$:
-
-```text
-Fix one coordinate
-  -> Calculate how large this slice is
-  -> Sum up all slices
-```
-
-Representing the recurrence relation with a diagram:
-
-```mermaid
-flowchart LR
-  A["Fix x_n = s"] --> B["Remaining budget t - s"]
-  B --> C["Slice volume V_{n-1}(t-s)"]
-  C --> D["Integrate s from 0 to t"]
-```
-
-Now, use induction. When $n=1$:
-
-$$
-V_1(t)=t
-$$
-
-Assume:
-
-$$
-V_{n-1}(u)=\frac{u^{n-1}}{(n-1)!}
-$$
-
-Then:
-
-$$
-V_n(t)
-=
-\int_0^t \frac{(t-s)^{n-1}}{(n-1)!}\,ds
-$$
-
-Let $u=t-s$, we get:
-
-$$
-V_n(t)
-=
-\frac{1}{(n-1)!}\int_0^t u^{n-1}\,du
-=
-\frac{t^n}{n!}
-$$
-
-So:
-
-$$
-V_n(1)=\frac{1}{n!}
-$$
-
-Finally:
-
-$$
-P(S_n<1)=\frac{1}{n!}
-$$
-
-This type of problem can be summarized in one sentence:
-
-```text
-When uniform random points fall into a unit box, the probability is the volume of the region;
-the volume of the standard simplex where sum xi < 1 is 1 / n!.
-```
-
----
-
-## 5. Back to $T=(AB)^C$
-
-Substitute back:
-
-$$
-F_T(t)=\int_0^1 F_U(t^{1/c})\,dc
-$$
-
-Because:
-
-$$
-F_U(u)=u(1-\ln u)
-$$
-
-So:
-
-$$
-F_T(t)=\int_0^1 t^{1/c}\left(1-\ln(t^{1/c}) \right)\,dc
-$$
-
-Let:
-
-$$
-a=-\ln t>0
-$$
-
-Then:
-
-$$
-t=e^{-a},\qquad t^{1/c}=e^{-a/c}
-$$
-
-And:
-
-$$
-1-\ln(t^{1/c})=1+\frac{a}{c}
-$$
-
-Thus:
-
-$$
-F_T(t)=\int_0^1 e^{-a/c}\left( 1+\frac{a}{c} \right)\,dc
-$$
-
-The derivative used here is:
-
-$$
-\frac{d}{dc}\left( c e^{-a/c} \right)
-=
-e^{-a/c}\left( 1+\frac{a}{c} \right)
-$$
-
-So:
-
-$$
-F_T(t)=\left[ c e^{-a/c} \right]_{0}^{1}
-$$
-
-The upper limit is:
-
-$$
-e^{-a}=t
-$$
-
-The lower limit is:
-
-$$
-\lim_{c\to0^+} c e^{-a/c}=0
-$$
-
-Therefore:
-
-$$
-F_T(t)=t,\qquad 0<t<1
-$$
-
-The complete CDF is:
-
-$$
-F_T(t)=
-\begin{cases}
-0, & t<0,\\
-t, & 0\le t\le 1,\\
-1, & t\ge 1.
-\end{cases}
-$$
-
-In other words:
-
-$$
-|XY|^{|Z|}\sim U[0,1]
+P\left(\sum_{i=1}^n X_i < 1\right) = V_n(1) = \frac{1}{n!}
 $$
 
 ---
 
-## 6. A More Structured Approach: Taking the Negative Logarithm
+## 2 · Variable Transformations and the Jacobian
 
-When you see multiplication and powers on $[0,1]$, consider:
-
-$$
--\ln(\cdot)
-$$
-
-The reason is that multiplication becomes addition:
+For a strictly monotonic univariate function $Y=g(X)$, differentiating the CDF gives the density transformation:
 
 $$
--\ln(AB)=(-\ln A)+(-\ln B)
+f_Y(y) = f_X(x) \left| \frac{dx}{dy} \right|
 $$
 
-If $A\sim U[0,1]$, then:
+For a multivariate bijective transformation $(U,V) = g(X,Y)$, conservation of probability mass requires the absolute value of the Jacobian determinant:
 
 $$
--\ln A\sim \mathrm{Exp}(1)
+f_{U,V}(u,v) = f_{X,Y}(x,y) |J|^{-1}
 $$
 
-Proof:
+where $J = \frac{\partial(u,v)}{\partial(x,y)}$. The Jacobian matrix maps irregular regions into more regular coordinate systems.
+
+### 2.1 Standard Transformation: Logarithms and Products
+
+When dealing with products or powers on $[0,1]$, taking the negative logarithm $-\ln$ is a standard monotonic transformation.
+If $X \sim U[0,1]$, let $R=-\ln X$, then:
 
 $$
-P(-\ln A\le s)=P(A\ge e^{-s})=1-e^{-s},\qquad s\ge0
+P(R \le r) = P(-\ln X \le r) = P(X \ge e^{-r}) = 1 - e^{-r}
 $$
 
-Now let:
+This is exactly the CDF of an $\mathrm{Exp}(1)$ distribution. Products turn into sums under logarithms:
 
 $$
-R=-\ln A,\qquad S=-\ln B
+-\ln(XY) = (-\ln X) + (-\ln Y)
 $$
 
-Then:
-
+If $X,Y \sim U[0,1]$ are independent, $-\ln(XY)$ is the sum of two independent $\mathrm{Exp}(1)$ variables, which follows a $\mathrm{Gamma}(2,1)$ distribution. Its density is:
 $$
-R,S\sim \mathrm{Exp}(1),\qquad R+S\sim \mathrm{Gamma}(2,1)
+f_G(g) = g e^{-g}, \quad g>0
 $$
+This algebraic trick drastically simplifies multiple integrals.
 
-Let:
+### 2.2 Comprehensive Transformation Example: $T=|XY|^{|Z|}$
 
-$$
-G=R+S=-\ln(AB)
-$$
+Let $X,Y,Z\sim U[-1,1]$ be independent. Find the CDF of $T=|XY|^{|Z|}$.
 
-So:
-
-$$
-AB=e^{-G}
-$$
-
-Original variable:
-
-$$
-T=(AB)^C
-$$
-
+Since $|X|, |Y|, |Z|$ all follow $U[0,1]$, the problem simplifies to $T=(AB)^C$, where $A,B,C \sim U[0,1]$.
 Take the negative logarithm:
 
 $$
--\ln T=-\ln((AB)^C)=C[-\ln(AB)]=CG
+-\ln T = C[-\ln(AB)] = C \cdot G
 $$
 
-where:
-
-$$
-G\sim \mathrm{Gamma}(2,1),\qquad f_G(g)=g e^{-g},\quad g>0
-$$
-
-For $0<t<1$, let $a=-\ln t$. The event $T\le t$ is equivalent to:
-
-$$
--\ln T\ge -\ln t
-$$
-
-which is:
-
-$$
-CG\ge a
-$$
-
-Fix $G=g$:
-
-```text
-If g < a:
-  CG <= g < a, impossible to satisfy.
-
-If g >= a:
-  CG >= a is equivalent to C >= a / g.
-```
-
-Because $C\sim U[0,1]$:
-
-$$
-P(C\ge a/g)=1-\frac{a}{g},\qquad g\ge a
-$$
-
-Therefore:
+where $C \sim U[0,1]$ and $G \sim \mathrm{Gamma}(2,1)$.
+For $0<t<1$, let $a=-\ln t$. The event $T\le t$ is equivalent to $CG \ge a$.
+Fix $G=g$. When $g \ge a$, the requirement $C \ge a/g$ has a probability of $1 - a/g$ under $U[0,1]$:
 
 $$
 P(CG\ge a)=\int_a^\infty \left( 1-\frac{a}{g} \right)g e^{-g}\,dg
 $$
 
-Simplify:
+Expand and integrate:
 
 $$
-\int_a^\infty (g-a)e^{-g}\,dg
+\int_a^\infty g e^{-g}\,dg = (a+1)e^{-a}
+$$
+$$
+\int_a^\infty a e^{-g}\,dg = a e^{-a}
 $$
 
-Calculate separately:
-
+Subtracting these gives:
 $$
-\int_a^\infty g e^{-g}\,dg=(a+1)e^{-a}
-$$
-
-$$
-\int_a^\infty a e^{-g}\,dg=a e^{-a}
+P(CG\ge a) = e^{-a} = t
 $$
 
-So:
+Therefore, $F_T(t) = t$, meaning $|XY|^{|Z|} \sim U[0,1]$.
 
+### 2.3 $T=\max(|XY|,|Z|)$ and $T=\min(|XY|,|Z|)$
+
+Transformations combining extremes and products are handled differently:
+
+For $T=\max(|XY|,|Z|)$:
 $$
-P(CG\ge a)=e^{-a}=t
+\max(|XY|,|Z|)\le t \iff |XY|\le t \text{ and } |Z|\le t
+$$
+Since the CDF of $A=|XY|$ is $t-t\ln t$:
+$$
+F_T(t) = (t-t\ln t) \cdot t = t^2(1-\ln t)
 $$
 
-We obtain the same result:
-
+For $T=\min(|XY|,|Z|)$, using the survival function is more direct:
 $$
-F_T(t)=t
+\min(|XY|,|Z|)>t \iff |XY|>t \text{ and } |Z|>t
+$$
+$$
+F_T(t) = 1 - [1-(t-t\ln t)][1-t]
 $$
 
-This method is more like a structural solution. In the future, when you see products of uniforms or powers of uniforms, think of $-\ln$.
+### 2.4 Other Similar Transformations
+
+**$T=|XYZ|$**
+Taking the negative logarithm results in the sum of three $\mathrm{Exp}(1)$ variables, giving $\mathrm{Gamma}(3,1)$:
+$$
+-\ln T = (-\ln |X|) + (-\ln |Y|) + (-\ln |Z|)
+$$
+Resulting in $F_T(t) = t\left(1-\ln t+\frac{(\ln t)^2}{2}\right)$.
+
+**$T=|X|^{|Y|}$**
+$$
+P(A^B \le t) = \int_0^1 P(A \le t^{1/b})\,db = \int_0^1 t^{1/b}\,db
+$$
+This integral usually does not need further expansion; writing this step is considered the correct CDF form in practice.
 
 ---
 
-## 7. Similar Transformations
+## 3 · Order Statistics: CDFs of Extremes
 
-For all the problems below, write the CDF first. Do not rush to find the density.
+Let $X_1,\ldots,X_n$ be independent and identically distributed, with density $f$ and CDF $F$. Sorting them in increasing order gives $X_{(1)}\le X_{(2)}\le\cdots\le X_{(n)}$.
 
-### 7.1 $T=|XY|$
-
-Let $X,Y\sim U[-1,1]$ be independent. Find:
+Finding the distribution of the maximum $X_{(n)}$ should start from the CDF to avoid combinatorial errors:
 
 $$
-T=|XY|
+F_{X_{(n)}}(x) = P(X_1 \le x, \ldots, X_n \le x) = F(x)^n
 $$
 
-Since $|X|,|Y|\sim U[0,1]$, this is the product of two $U[0,1]$ variables:
+Differentiating gives the density:
 
 $$
-F_T(t)=t(1-\ln t),\qquad 0<t<1
+f_{X_{(n)}}(x) = n f(x) F(x)^{n-1}
 $$
 
-### 7.2 $T=|XYZ|$
-
-Let $X,Y,Z\sim U[-1,1]$ be independent. Find:
+For the minimum $X_{(1)}$, start from the survival function:
 
 $$
-T=|XYZ|
+1-F_{X_{(1)}}(x) = P(X_1 > x, \ldots, X_n > x) = [1-F(x)]^n
 $$
 
-Take the negative logarithm:
-
 $$
--\ln T=(-\ln |X|)+(-\ln |Y|)+(-\ln |Z|)
+f_{X_{(1)}}(x) = n f(x) [1-F(x)]^{n-1}
 $$
 
-The right side is the sum of three independent $\mathrm{Exp}(1)$ variables, so it is $\mathrm{Gamma}(3,1)$. Result:
+### 3.1 Expected Extremes of $U[0,1]$
 
 $$
-F_T(t)=t\left(1-\ln t+\frac{(\ln t)^2}{2} \right),\qquad 0<t<1
+\mathbb{E}[X_{(n)}] = \int_0^1 x\cdot n x^{n-1}\,dx = \frac{n}{n+1}
 $$
 
-### 7.3 $T=|X|^{|Y|}$
-
-Let $X,Y\sim U[-1,1]$ be independent. Find:
-
 $$
-T=|X|^{|Y|}
+\mathbb{E}[X_{(1)}] = \int_0^1 x\cdot n(1-x)^{n-1}\,dx = \frac{1}{n+1}
 $$
 
-Let $A=|X|,B=|Y|$. For $0<t<1$:
+For $\mathbb{E}[X_{(1)}]$, symmetry offers a quick derivation: under a uniform distribution, $X_{(1)}$ and $1-X_{(n)}$ have the same distribution, so $\mathbb{E}[X_{(1)}] = 1 - \frac{n}{n+1} = \frac{1}{n+1}$.
+
+Second moments are important for covariance calculations:
 
 $$
-F_T(t)=P(A^B\le t)
+\mathbb{E}[X_{(n)}^2] = \int_0^1 x^2\cdot n x^{n-1}\,dx = \frac{n}{n+2}
 $$
 
-Fix $B=b$:
+---
+
+## 4 · Joint Distribution and Spacings
+
+The joint density of all order statistics introduces the permutation factor $n!$:
 
 $$
-A^b\le t
+f_{X_{(1)},\ldots,X_{(n)}}(x_1,\ldots,x_n) = n! \prod_{i=1}^n f(x_i), \qquad x_1 < \cdots < x_n
 $$
 
-is equivalent to:
+### 4.1 Marginal Distribution of $X_{(k)}$
+
+For the uniform distribution, integrating out the variables on both sides gives the marginal density of the intermediate point $X_{(k)}$:
 
 $$
-A\le t^{1/b}
+f_{X_{(k)}}(x) = \frac{n!}{(k-1)!(n-k)!} x^{k-1} (1-x)^{n-k}
 $$
 
-So:
+This is the $\mathrm{Beta}(k, n-k+1)$ distribution. Since the mean of a Beta distribution is $\frac{\alpha}{\alpha+\beta}$, its expectation is $\frac{k}{n+1}$.
+
+### 4.2 Exchangeability and Expectations of Spacings
+
+On the interval $[0,1]$, $n$ random points split the segment into $n+1$ spacings:
+$$Y_1=X_{(1)}, \quad Y_i=X_{(i)}-X_{(i-1)}, \quad Y_{n+1}=1-X_{(n)}$$
+
+These $n+1$ spacings are jointly uniform over the simplex $\sum Y_i = 1$, and they are completely symmetric (exchangeable). Thus, the expectation of every spacing is equal:
 
 $$
-F_T(t)=\int_0^1 t^{1/b}\,db
+\mathbb{E}[Y_i] = \frac{1}{n+1}
 $$
 
-This integral can serve as the correct answer. Further simplification would involve the exponential integral; in an interview, being able to write the correct CDF integral is the key.
-
-### 7.4 $T=|X|^{1/|Y|}$
-
-Let $X,Y\sim U[-1,1]$ be independent. Find:
+Using spacings, we can bypass multiple integrals. For the expected range:
 
 $$
-T=|X|^{1/|Y|}
+\mathbb{E}[X_{(n)} - X_{(1)}] = 1 - \mathbb{E}[Y_1] - \mathbb{E}[Y_{n+1}] = 1 - \frac{2}{n+1} = \frac{n-1}{n+1}
 $$
 
-Fix $B=|Y|=b$:
-
+Cross moments can also be found. Because $Y_i \sim \mathrm{Beta}(1,n)$, its mean is $1/(n+1)$ and variance is $n/((n+1)^2(n+2))$, meaning its second moment is:
 $$
-A^{1/b}\le t
-$$
-
-is equivalent to:
-
-$$
-A\le t^b
+\mathbb{E}[Y_i^2] = \frac{2}{(n+1)(n+2)}
 $$
 
-So:
+Since $\sum_{i=1}^{n+1} Y_i = 1$, squaring both sides and taking expectations:
 
 $$
-F_T(t)=\int_0^1 t^b\,db=\frac{t-1}{\ln t},\qquad 0<t<1
+(n+1)\mathbb{E}[Y_i^2] + (n+1)n\mathbb{E}[Y_i Y_j] = 1
 $$
 
-### 7.5 $T=\max(|XY|,|Z|)$
+Substituting the second moment directly solves for the expected product algebraically as $\mathbb{E}[Y_i Y_j] = \frac{1}{(n+1)(n+2)}$, avoiding integrating a joint distribution.
 
-Let $X,Y,Z\sim U[-1,1]$ be independent. Find:
+---
 
-$$
-T=\max(|XY|,|Z|)
-$$
+## 5 · Conditional Distributions and Truncation
 
-Use the CDF:
+After conditioning on an extreme value, the distributions of the remaining points are truncated. This is the most powerful structural tool for order statistics.
 
-$$
-\max(|XY|,|Z|)\le t
-$$
-
-is equivalent to:
+Dividing the joint density by the marginal density of the maximum:
 
 $$
-|XY|\le t,\qquad |Z|\le t
+f_{X_{(1)},\ldots,X_{(n-1)} \mid X_{(n)}=x}(x_1,\ldots,x_{n-1}) = \frac{n!\prod_{i=1}^n f(x_i)}{n f(x) F(x)^{n-1}} = (n-1)! \prod_{i=1}^{n-1} \frac{f(x_i)}{F(x)}
 $$
 
-So:
+This result holds for any continuous distribution:
+Given $X_{(n)}=x$, the remaining $n-1$ points can be treated as independent and identically distributed samples drawn from the original distribution truncated to $[0,x]$.
+
+More generally, given $X_{(m)}=a$ and $X_{(k)}=b$ (with $m<k$), the $k-m-1$ points strictly between them are iid draws from $F$ truncated to $[a,b]$.
+
+### 5.1 Applying Conditional Uniformity to Cross Moments
+
+When the original distribution is uniform, $f(t)/F(x) = 1/x$, and the truncated distribution on $[0,x]$ is still $\mathrm{Unif}[0,x]$. This closure property is unique to the uniform distribution.
+
+Combining this property with the tower property computes expectations like $\mathbb{E}[X_{(1)}X_{(n)}]$:
 
 $$
-F_T(t)=P(|XY|\le t)P(|Z|\le t)=t^2(1-\ln t),\qquad 0<t<1
+\mathbb{E}[X_{(1)}X_{(n)}] = \mathbb{E}[X_{(n)} \mathbb{E}[X_{(1)} \mid X_{(n)}]]
 $$
 
-### 7.6 $T=\min(|XY|,|Z|)$
-
-Let $X,Y,Z\sim U[-1,1]$ be independent. Find:
+Conditioned on $X_{(n)}$, the remaining $n-1$ points follow $\mathrm{Unif}[0,X_{(n)}]$. Their minimum is exactly $X_{(1)}$ for the entire sample. Therefore:
 
 $$
-T=\min(|XY|,|Z|)
+\mathbb{E}[X_{(1)} \mid X_{(n)}] = \frac{X_{(n)}}{(n-1)+1} = \frac{X_{(n)}}{n}
 $$
 
-For this type of problem, using survival is more direct:
+Substituting back into the outer expectation:
 
 $$
-F_T(t)=1-P(T>t)
+\mathbb{E}[X_{(1)}X_{(n)}] = \mathbb{E}\left[X_{(n)} \frac{X_{(n)}}{n}\right] = \frac{\mathbb{E}[X_{(n)}^2]}{n} = \frac{1}{n} \cdot \frac{n}{n+2} = \frac{1}{n+2}
 $$
 
-And:
+This is significantly faster than computing the double integral directly.
+
+### 5.2 Memorylessness and Spacings of Exponential Distributions
+
+The exponential distribution is invariant under left-truncation and shifting. The minimum of $n$ independent $\mathrm{Exp}(\lambda)$ is $\mathrm{Exp}(n\lambda)$.
+Given $X_{(k-1)}$, the portions of the remaining points that exceed it, shifted down by $X_{(k-1)}$, are again independent $\mathrm{Exp}(\lambda)$.
+Thus, the spacings between consecutive order statistics are mutually independent exponential distributions:
 
 $$
-\min(|XY|,|Z|)>t
+D_k = X_{(k)} - X_{(k-1)} \sim \mathrm{Exp}((n-k+1)\lambda)
 $$
 
-is equivalent to:
+This independence means the expected maximum $X_{(n)}$ can be written directly as the sum of expected spacings, introducing the harmonic number $H_n$:
 
 $$
-|XY|>t,\qquad |Z|>t
+\mathbb{E}[X_{(n)}] = \sum_{k=1}^n \frac{1}{(n-k+1)\lambda} = \frac{1}{\lambda} \sum_{j=1}^n \frac{1}{j} = \frac{H_n}{\lambda}
 $$
 
-Therefore:
+This asymmetry is a structural feature of the exponential distribution. The minimum is exponential, but the maximum is not.
+
+---
+
+## 6 · Indicator Variables and Linearity: Local Maxima and Records
+
+Complex discrete counting problems can be simplified by breaking them down into indicator variables. Indicator variables do not need to be mutually independent for the linearity of expectation to hold.
+
+### 6.1 Expected Number of Records in an IID Sequence
+
+Let $X_1,\ldots,X_n$ be continuous and iid. Let $I_k=1$ if the $k$-th value is the maximum of the first $k$ values (a "record").
+Since the first $k$ values are exchangeable, the probability that the maximum falls exactly in the last position is $1/k$:
 
 $$
-F_T(t)
-=
-1-\left[ 1-t(1-\ln t) \right](1-t),\qquad 0<t<1
+\mathbb{P}(I_k=1) = \frac{1}{k}
 $$
 
-### 7.7 $T=(|XYZ|)^{|W|}$
-
-Let $X,Y,Z,W\sim U[-1,1]$ be independent. Find:
+Even though future records depend on past states, the expected total is:
 
 $$
-T=(|XYZ|)^{|W|}
+\mathbb{E}[\text{records}] = \sum_{k=1}^n \mathbb{E}[I_k] = \sum_{k=1}^n \frac{1}{k} = H_n
 $$
 
-Let:
+### 6.2 Local Maxima in a Random Permutation
+
+In a random permutation from $1$ to $n$, whether a position is a local maximum depends only on its relative order with neighbors.
+For an interior position $i$, the probability of being greater than both left and right neighbors equals the probability that the maximum of three values lands in the middle:
 
 $$
-G=-\ln |XYZ|
+\mathbb{P}(I_i=1) = \frac{1}{3}
 $$
 
-Then $G\sim \mathrm{Gamma}(3,1)$. Using the same method as the main example:
+For the two endpoints, they only need to be greater than their single neighbor, with probability $1/2$.
+The total expected number of local maxima is:
 
 $$
-F_T(t)=P(|W|G\ge -\ln t)
+\mathbb{E}[\text{local maxima}] = 2\cdot\frac{1}{2} + (n-2)\cdot\frac{1}{3} = \frac{n+1}{3}
 $$
 
-The result is:
+---
+
+## 7 · Geometric Problems with Spacing Constraints
+
+The spacing model can solve probabilities for forming polygons.
+
+### 7.1 Probability That Three Segments Form a Triangle
+
+Randomly picking two cut points on $[0,1]$ forms three segments $Y_1,Y_2,Y_3$. They form a triangle if and only if no segment exceeds $1/2$.
+The event of failing to form a triangle means some segment $>1/2$. Since the total sum is $1$, it is impossible for two segments to simultaneously be $>1/2$. Thus, these events are mutually exclusive.
+For a single segment, both points must fall in an area of size $1/2$ avoiding the segment: $P(Y_i > 1/2) = (1/2)^2 = 1/4$.
 
 $$
-F_T(t)=t\left( 1-\frac{1}{2}\ln t \right),\qquad 0<t<1
+P(\text{cannot form}) = \sum_{i=1}^3 P(Y_i > 1/2) = 3 \times \frac{1}{4} = \frac{3}{4}
 $$
+
+$$
+P(\text{can form}) = 1 - \frac{3}{4} = \frac{1}{4}
+$$
+
+### 7.2 All Points on a Semicircle
+
+Placing $n$ points on a circle splits the circumference into $n$ arcs. All points falling in the same semicircle is equivalent to one arc length being $>1/2$.
+Similarly, due to mutual exclusivity:
+
+$$
+P(\text{common semicircle}) = n \left(\frac{1}{2}\right)^{n-1}
+$$
+
+Both problems utilize the principle that when the sum is fixed, events demanding more than half the total are mutually exclusive, greatly simplifying inclusion-exclusion. This allows us to complete the calculation without expanding complex intersection terms.
+
+---
+
+## Reference
+
+- Zhou, *A Practical Guide to Quantitative Finance Interviews*
+- Crack, *Heard on the Street*
+- [Order Statistic (Wikipedia)](https://en.wikipedia.org/wiki/Order_statistic)
+- [Jacobian matrix and determinant (Wikipedia)](https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant)

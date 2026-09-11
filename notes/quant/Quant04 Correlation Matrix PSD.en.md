@@ -1,53 +1,28 @@
-# Quant 4 · Covariance, Correlation, and Positive Semidefinite Correlation Matrices
+# Quant 04 · Covariance, Gaussians, and correlation matrices
 
-A common question asks:
+Course: [[Quant03 Continuous Distribution Geometry Transform|03 Continuous distribution]] → This note → [[Quant06 High Dimensional Integral Dominated Convergence|05 High-dimensional integral]]
 
-```text
-Given n random variables X1,...,Xn,
-what is the smallest possible sum of all pairwise correlations?
-```
-
-The shortest answer is:
-
-$$
-\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)\ge -\frac n2
-$$
-
-When $n=4$, the lower bound is:
-
-$$
--\frac42=-2
-$$
-
-This result does not come from guessing the correlations. It follows from one basic fact:
-
-```text
-The variance of a random variable cannot be negative.
-```
-
-A correlation matrix being positive semidefinite is the matrix form of this statement.
+Covariance quantifies the tendency of two random variables to move together. When normalized to remove unit dependence, it becomes correlation. A correlation matrix collects the pairwise correlations of multiple variables; its most important mathematical constraint is being positive semidefinite (PSD).
 
 ---
 
-## 1. What covariance measures
+## 1 · Covariance and correlation
 
-For two random variables $X,Y$, covariance is defined as:
+For two random variables $X$ and $Y$, covariance is defined as:
 
 $$
-\operatorname{Cov}(X,Y)
-=
-\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
+\operatorname{Cov}(X,Y) = \mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
 $$
 
-It measures whether the two variables tend to move in the same direction when they deviate from their means.
+It measures whether the two variables tend to deviate from their means in the same direction.
 
 | Situation | Intuition | Sign of covariance |
-| --- | --- | --- |
-| When $X$ is above its mean, $Y$ is also often above its mean | They rise and fall together | Positive |
-| When $X$ is above its mean, $Y$ is often below its mean | One rises while the other falls | Negative |
+|---|---|---|
+| When $X$ is above its mean, $Y$ is also often above its mean | Rise and fall together | Positive |
+| When $X$ is above its mean, $Y$ is often below its mean | Move in opposite directions | Negative |
 | No stable linear relationship | Weak linear comovement | Close to 0 |
 
-A simple picture to remember:
+A lightweight mental model:
 
 ```text
 positive covariance        negative covariance        near zero covariance
@@ -60,206 +35,144 @@ y                          y                          y
 +--------- x               +--------- x               +--------- x
 ```
 
-Covariance has one drawback: it depends on the units. Converting dollars to cents greatly increases the covariance. Interview problems therefore usually use correlation.
+Covariance has a flaw: it scales with units. Converting dollars to cents greatly increases the covariance. Handling numerical data requires standardization.
 
 ---
 
-## 2. Correlation is standardized covariance
+## 2 · Correlation is standardized covariance
 
 Correlation is defined as:
 
 $$
-\operatorname{corr}(X,Y)
-=
-\frac{\operatorname{Cov}(X,Y)}{\sigma_X\sigma_Y}
+\operatorname{corr}(X,Y) = \frac{\operatorname{Cov}(X,Y)}{\sigma_X\sigma_Y}
 $$
 
-where:
+where standard deviations are:
 
 $$
-\sigma_X=\sqrt{\operatorname{Var}(X)},\qquad
+\sigma_X=\sqrt{\operatorname{Var}(X)}
+$$
+
+$$
 \sigma_Y=\sqrt{\operatorname{Var}(Y)}
 $$
 
-We can instead standardize the variables first:
+Alternatively, the variables can be standardized first:
 
 $$
-Z_X=\frac{X-\mathbb{E}X}{\sigma_X},
-\qquad
+Z_X=\frac{X-\mathbb{E}X}{\sigma_X}
+$$
+
+$$
 Z_Y=\frac{Y-\mathbb{E}Y}{\sigma_Y}
 $$
 
-After standardization:
-
-$$
-\mathbb{E}Z_X=0,\qquad \operatorname{Var}(Z_X)=1
-$$
-
-Thus:
+After this step, the standardized variables have a mean of 0 and a variance of 1. Then:
 
 $$
 \operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
 $$
 
-Correlation can be viewed as the strength of linear comovement between two variables after removing their units.
+Correlation represents the pure strength of linear comovement between two variables after stripping away units.
 
-```mermaid
-flowchart LR
-  A["raw variable X"] --> B["center: X - E[X]"]
-  B --> C["scale: divide by sigma_X"]
-  C --> D["standardized Z_X"]
-  D --> E["Cov(Z_X, Z_Y) = corr(X,Y)"]
+```text
+raw variable X
+  -> center: X - E[X]
+  -> scale: divide by sigma_X
+  -> standardized Z_X
+  -> Cov(Z_X, Z_Y) = corr(X,Y)
 ```
 
----
+### Why correlation is always bounded in [-1, 1]
 
-## 3. Why correlation is always in [-1,1]
-
-After standardization, $\operatorname{Var}(Z_X)=\operatorname{Var}(Z_Y)=1$. For any real number $t$:
+After standardization, $\operatorname{Var}(Z_X)=\operatorname{Var}(Z_Y)=1$. 
+Consider any linear combination of them; the variance must be non-negative. For any real number $t$:
 
 $$
 \operatorname{Var}(Z_X-tZ_Y)\ge0
 $$
 
-Expanding:
+Expanding the variance formula:
 
 $$
-\operatorname{Var}(Z_X-tZ_Y)
-=
-1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2
+\operatorname{Var}(Z_X) - 2t\operatorname{Cov}(Z_X,Z_Y) + t^2\operatorname{Var}(Z_Y) \ge 0
 $$
 
-Let:
+Substitute the known values:
 
 $$
- ho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
+1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2 \ge 0
 $$
 
-Then:
+Let $ ho=\operatorname{Cov}(Z_X,Z_Y)$. This creates a quadratic polynomial in terms of $t$:
 
 $$
-t^2-2 ho t+1\ge0,\qquad \forall t
+t^2 - 2 ho t + 1 \ge 0
 $$
 
-This quadratic is nonnegative for every $t$, so its discriminant cannot be positive:
+Since it is greater than or equal to zero for all $t$, its discriminant must be less than or equal to zero:
 
 $$
-(-2 ho)^2-4\le0
+(-2 ho)^2 - 4 \le 0
 $$
 
-Therefore:
+Solving this yields:
 
 $$
- ho^2\le1
+ ho^2 \le 1
 $$
 
-That is:
+Which means:
 
 $$
--1\le \operatorname{corr}(X,Y)\le 1
+-1 \le \operatorname{corr}(X,Y) \le 1
 $$
 
-Note that $ ho=0$ means only that there is no linear correlation, not that the variables are independent. Independence implies zero covariance, but the converse does not always hold.
+Note that $ ho=0$ only implies the absence of a linear relationship; it is not equivalent to independence. Independence guarantees a covariance of 0, but a covariance of 0 does not guarantee independence.
 
 ---
 
-## 4. Covariance matrices and correlation matrices
+## 3 · Correlation matrices and positive semidefiniteness
 
-For random variables $X_1,\ldots,X_n$, the covariance matrix is:
-
-$$
-\Sigma_{ij}=\operatorname{Cov}(X_i,X_j)
-$$
-
-Its diagonal entries are variances:
+Given $n$ random variables $X_1,\ldots,X_n$, standardize them all to $Z_i$. The correlation matrix $R$ is the covariance matrix of these $Z_i$:
 
 $$
-\Sigma_{ii}=\operatorname{Var}(X_i)
+R_{ij} = \operatorname{corr}(X_i,X_j) = \operatorname{Cov}(Z_i,Z_j)
 $$
 
-If each variable is standardized first:
+The correlation matrix must satisfy three strict algebraic properties:
 
-$$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
-$$
-
-then the correlation matrix is the covariance matrix of the $Z_i$:
-
-$$
-R_{ij}
-=
-\operatorname{corr}(X_i,X_j)
-=
-\operatorname{Cov}(Z_i,Z_j)
-$$
-
-Therefore:
-
-$$
-R=
-\begin{pmatrix}
-1 &  ho_{12} & \cdots &  ho_{1n}\\
- ho_{21} & 1 & \cdots &  ho_{2n}\\
-\vdots & \vdots & \ddots & \vdots\\
- ho_{n1} &  ho_{n2} & \cdots & 1
-\end{pmatrix}
-$$
-
-A correlation matrix has three basic properties:
-
-| Property | Reason |
-| --- | --- |
+| Property | Source |
+|---|---|
 | Symmetric | $\operatorname{corr}(X_i,X_j)=\operatorname{corr}(X_j,X_i)$ |
-| Diagonal entries equal 1 | The correlation of each standardized variable with itself is 1 |
-| Positive semidefinite | The variance of every linear combination is nonnegative |
+| Diagonal is 1 | The correlation coefficient of a variable with itself is 1 |
+| Positive Semidefinite (PSD) | The variance of any linear combination of random variables is non-negative |
 
-The third property is the most important.
-
----
-
-## 5. Why a correlation matrix is always PSD
-
-Choose arbitrary real numbers $a_1,\ldots,a_n$ and consider:
+Positive Semidefiniteness (PSD) is the core mathematical constraint for multi-variable correlation. Choose arbitrary real weights $a_1,\ldots,a_n$ and form a new random variable:
 
 $$
-W=a_1Z_1+\cdots+a_nZ_n
+W = a_1Z_1 + \cdots + a_nZ_n
 $$
 
-This is a random variable, so:
+Its variance must be non-negative:
 
 $$
-\operatorname{Var}(W)\ge0
+\operatorname{Var}(W) = \operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right) \ge 0
 $$
 
-Expanding the variance:
+Expanding the double sum:
 
 $$
-\operatorname{Var}(W)
-=
-\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
-=
-\sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
+\operatorname{Var}(W) = \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j) = a^\top R a
 $$
 
-Since $\operatorname{Cov}(Z_i,Z_j)=R_{ij}$:
+This proves that for any arbitrary vector $a$, the quadratic form is:
 
 $$
-\operatorname{Var}(W)=a^\top R a
+a^\top R a \ge 0
 $$
 
-Thus, for every vector $a$:
-
-$$
-a^\top R a\ge0
-$$
-
-This is the definition of positive semidefiniteness:
-
-$$
-R\succeq0
-$$
-
-A diagram to remember:
+This is the exact definition of a positive semidefinite matrix.
 
 ```text
 choose weights a1,...,an
@@ -279,271 +192,267 @@ R is PSD
 
 ---
 
-## 6. Geometric interpretation: The correlation matrix is a Gram matrix
+## 4 · Equicorrelation lower bound
 
-Standardized random variables can be treated as vectors with inner product:
+Given $n$ variables, if all pairwise correlation coefficients are equal to $ ho$, what is the smallest possible value for $ ho$?
 
-$$
-\langle Z_i,Z_j angle=\operatorname{Cov}(Z_i,Z_j)
-$$
-
-Because:
+Construct an all-ones weight vector $a = (1, 1, \dots, 1)^\top$. The correlation matrix $R$ must satisfy the PSD constraint:
 
 $$
-\langle Z_i,Z_i angle=\operatorname{Var}(Z_i)=1
+a^\top R a = \sum_{i=1}^n \sum_{j=1}^n R_{ij} \ge 0
 $$
 
-each $Z_i$ behaves like a unit vector. The correlation is the cosine of the angle between two unit vectors:
+In the matrix $R$, there are $n$ ones on the diagonal and $n(n-1)$ entries of $ ho$ off the diagonal:
 
 $$
-\operatorname{corr}(X_i,X_j)=\cos\theta_{ij}
+a^\top R a = n + n(n-1) ho \ge 0
 $$
 
-The correlation matrix is the Gram matrix of all pairwise inner products:
+Simplifying this gives:
 
 $$
-R_{ij}=\langle Z_i,Z_j angle
+n(n-1) ho \ge -n
 $$
 
-A Gram matrix is always PSD because:
+Solving for the lower bound:
 
 $$
-a^\top R a
-=
-\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j ight angle
-=
-\left\|\sum_i a_iZ_i ight\|^2
-\ge0
+ ho \ge -\frac{1}{n-1}
 $$
 
-In probability language, variance is nonnegative. In geometric language, squared length is nonnegative.
+This provides a strict constraint for equicorrelation matrices. For example:
+- For $n=3$, the lower bound is $-1/2$.
+- For $n=4$, the lower bound is $-1/3$.
 
-```text
-probability view:
-  Var(sum ai Zi) >= 0
+As the number of variables increases, the lower bound approaches 0. When $n$ is large, it is impossible to construct a set of random variables that are all strongly negatively correlated with each other.
 
-geometry view:
-  ||sum ai vi||^2 >= 0
+If the goal is to find the minimum possible sum of all pairwise correlations, regardless of whether they are equal, the same inequality applies directly:
 
-same statement
-```
+$$
+\operatorname{Var}(Z_1 + \cdots + Z_n) = n + 2 \sum_{1\le i<j\le n} \operatorname{corr}(X_i,X_j) \ge 0
+$$
+
+Resulting in the lower bound:
+
+$$
+\sum_{1\le i<j\le n} \operatorname{corr}(X_i,X_j) \ge -\frac{n}{2}
+$$
 
 ---
 
-## 7. Example: Minimum sum of pairwise correlations among four variables
+## 5 · Three-variable correlation bounds
 
-The problem can be stated as:
+When partial correlation information is known, the PSD constraint can be used to derive limits for the remaining correlations. If the correlation between $X$ and $Y$ is $ ho_{12}$ and between $Y$ and $Z$ is $ ho_{23}$, how is the correlation between $X$ and $Z$, $ ho_{13}$, restricted?
 
-```text
-Given four random variables X1, X2, X3, X4,
-each with nonzero variance, find the smallest possible value of:
-
-corr(X1,X2)+corr(X1,X3)+corr(X1,X4)
-+ corr(X2,X3)+corr(X2,X4)+corr(X3,X4)
-```
-
-Let:
+Write out the $3 \times 3$ correlation matrix for these three variables:
 
 $$
- ho_{ij}=\operatorname{corr}(X_i,X_j)
+R = \begin{pmatrix} 1 &  ho_{12} &  ho_{13} \\  ho_{12} & 1 &  ho_{23} \\  ho_{13} &  ho_{23} & 1 \end{pmatrix}
 $$
 
-Standardize the variables:
+Since $R$ is PSD, all its principal minors must be non-negative. Specifically, the determinant of the entire matrix must be non-negative:
 
 $$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
+\det(R) \ge 0
 $$
 
-Then:
+Expanding the determinant:
 
 $$
-\operatorname{Var}(Z_i)=1,\qquad
-\operatorname{Cov}(Z_i,Z_j)= ho_{ij}
+1 + 2 ho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
 $$
 
-Now consider the sum of all standardized variables:
+Rearranging this into a quadratic inequality in terms of $ ho_{13}$:
 
 $$
-W=Z_1+Z_2+Z_3+Z_4
+ ho_{13}^2 - 2 ho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
 $$
 
-Its variance is nonnegative:
+This is a parabola opening upwards, constrained between its roots. Solving the quadratic equation yields a closed interval for $ ho_{13}$:
 
 $$
-\operatorname{Var}(W)\ge0
+ ho_{13} \in \left[  ho_{12} ho_{23} - \sqrt{(1- ho_{12}^2)(1- ho_{23}^2)},\  ho_{12} ho_{23} + \sqrt{(1- ho_{12}^2)(1- ho_{23}^2)} \right]
 $$
 
-Expanding:
+Geometrically, correlation coefficients can be interpreted as the cosine of the angle between random vectors in space. Knowing two angles naturally restricts the third due to triangle inequality limits in spatial geometry.
+
+---
+
+## 6 · Cholesky decomposition and correlated Gaussian simulation
+
+Given two independent standard normal variables $U, V \overset{i.i.d.}{\sim} N(0,1)$, how can we construct bivariate standard normals $(X,Y)$ with a correlation coefficient of $ ho$?
+
+This is done through a linear transformation using the Cholesky decomposition of the correlation matrix:
 
 $$
-\operatorname{Var}(Z_1+Z_2+Z_3+Z_4)
+\begin{pmatrix} X \\ Y \end{pmatrix}
 =
-\sum_{i=1}^4\operatorname{Var}(Z_i)
-+2\sum_{1\le i<j\le4}\operatorname{Cov}(Z_i,Z_j)
+\begin{pmatrix} 1 & 0 \\  ho & \sqrt{1- ho^2} \end{pmatrix}
+\begin{pmatrix} U \\ V \end{pmatrix}
 $$
 
-Since every $\operatorname{Var}(Z_i)=1$:
+Expanded form:
 
 $$
-\operatorname{Var}(W)
-=
-4+2\sum_{1\le i<j\le4} ho_{ij}
+X = U
 $$
 
-From $\operatorname{Var}(W)\ge0$:
+$$
+Y =  ho U + \sqrt{1- ho^2} V
+$$
+
+Check the means, variances, and covariances:
 
 $$
-4+2\sum_{1\le i<j\le4} ho_{ij}\ge0
+\mathbb{E}[X] = \mathbb{E}[U] = 0
+$$
+
+$$
+\mathbb{E}[Y] =  ho \mathbb{E}[U] + \sqrt{1- ho^2} \mathbb{E}[V] = 0
+$$
+
+$$
+\operatorname{Var}(X) = \operatorname{Var}(U) = 1
+$$
+
+$$
+\operatorname{Var}(Y) =  ho^2 \operatorname{Var}(U) + (1- ho^2) \operatorname{Var}(V) = 1
+$$
+
+$$
+\operatorname{Cov}(X,Y) = \operatorname{Cov}(U,  ho U + \sqrt{1- ho^2} V) =  ho \operatorname{Var}(U) =  ho
+$$
+
+Since the variances of both $X$ and $Y$ are 1, their covariance equals the correlation coefficient:
+
+$$
+\operatorname{corr}(X,Y) =  ho
+$$
+
+This transformation linearly stretches the independent, circularly symmetric distribution in the $(U,V)$ plane into an elliptical distribution with a specific tilt. Since it relies purely on a linear operator, it preserves joint normality.
+
+---
+
+## 7 · Expected sign correlation of bivariate normals
+
+Using the construction above, we can precisely calculate the expected value of the product of signs for bivariate standard normals:
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
+$$
+
+where $(X,Y)$ have a correlation of $ ho$. The probability of a continuous normal distribution taking exactly the value 0 is 0, so the product of signs must be either 1 or -1.
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 1 \cdot P(\text{same sign}) + (-1) \cdot P(\text{opposite sign}) = P(\text{same sign}) - P(\text{opposite sign})
+$$
+
+Using the law of total probability to replace the opposite sign probability:
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 2P(\text{same sign}) - 1
+$$
+
+Due to the bivariate normal distribution's symmetry around the origin, the probability of falling in the first quadrant equals the third quadrant:
+
+$$
+P(X>0, Y>0) = P(X<0, Y<0)
 $$
 
 Therefore:
 
 $$
-\sum_{1\le i<j\le4} ho_{ij}\ge -2
+P(\text{same sign}) = 2P(X>0, Y>0)
 $$
 
-The answer cannot be smaller than $-2$.
-
-### 7.1 Why the lower bound is attainable
-
-We must also show that $-2$ is not merely a loose lower bound. Construct the valid correlation matrix:
+Let $p = P(X>0, Y>0)$. The expectation simplifies to:
 
 $$
-R=
-\begin{pmatrix}
-1 & -1/3 & -1/3 & -1/3\\
--1/3 & 1 & -1/3 & -1/3\\
--1/3 & -1/3 & 1 & -1/3\\
--1/3 & -1/3 & -1/3 & 1
-\end{pmatrix}
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4p - 1
 $$
 
-All six off-diagonal correlations equal $-1/3$, so their sum is:
+### Calculating probability using sectors
+
+Substitute the Cholesky transform into the calculation for $p$:
 
 $$
-6\cdot\left( -\frac13 \right)=-2
+p = P(X>0, Y>0) = P\left(U>0,\  ho U + \sqrt{1- ho^2} V > 0\right)
 $$
 
-This matrix is PSD. Geometrically, it corresponds to the four vertex directions of a regular tetrahedron in three-dimensional space: four unit vectors point symmetrically in different directions, their center is the origin, and the dot product of every pair is $-1/3$.
-
-```text
-four standardized variables
-        |
-        v
-regular tetrahedron directions
-        |
-        v
-all pairwise correlations = -1/3
-        |
-        v
-sum of 6 correlations = -2
-```
-
-Algebraically, let:
+The calculation moves to the independent $(U,V)$ plane. Because $U,V$ are independent standard normals, their joint density function is:
 
 $$
-R=\frac{4}{3}I-\frac{1}{3}J
+f(u,v) = \frac{1}{2\pi} e^{-(u^2+v^2)/2}
 $$
 
-where $J$ is the all-ones matrix. The vector $\mathbf{1}=(1,1,1,1)$ has eigenvalue:
+This density is perfectly circularly symmetric; it depends strictly on distance from the origin and not on the angle. For any sector region starting from the origin, its probability mass strictly equals the ratio of its angle to the full circle, $\theta / 2\pi$.
+
+The two inequalities define two half-planes:
+
+1. $U > 0$: The boundary is $U=0$ (the $V$-axis), keeping the right half-plane.
+2. $ ho U + \sqrt{1- ho^2} V > 0$: The boundary line is $V = -\frac{ ho}{\sqrt{1- ho^2}} U$.
+
+Let $\alpha = \arcsin ho$. The boundary line $V = -\tan(\alpha) U$ makes an angle of $-\alpha$ with the positive $U$-axis. The first boundary line $U=0$ corresponds to an angle of $\pi/2$.
+
+The intersection of these two half-planes forms a sector with an angle of:
 
 $$
-\frac43-\frac13\cdot4=0
+\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \arcsin ho
 $$
 
-Every direction orthogonal to $\mathbf{1}$ has eigenvalue:
+So the probability $p$ is:
 
 $$
-\frac43
+p = \frac{\frac{\pi}{2} + \arcsin ho}{2\pi} = \frac{1}{4} + \frac{\arcsin ho}{2\pi}
 $$
 
-Thus, the eigenvalues of $R$ are:
+### Final expectation result
+
+Substitute the expression for $p$ back into the expectation formula:
 
 $$
-0,\frac43,\frac43,\frac43
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\arcsin ho}{2\pi}\right) - 1
 $$
 
-They are all nonnegative, so $R$ is a valid correlation matrix. A four-dimensional normal random vector with mean 0 and covariance matrix $R$ provides random variables that attain the lower bound.
-
-The final answer is:
+Simplifying gives the final result:
 
 $$
-\boxed{-2}
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \arcsin ho
 $$
+
+This result relies heavily on the rotational invariance (circular symmetry) of independent Gaussians and does not arbitrarily translate to other non-normal distributions that happen to share a correlation of $ ho$.
 
 ---
 
-## 8. Generalization: The answer for $n$ variables is $-n/2$
+## 8 · Fast review
 
-The same derivation works for $n$ variables.
+```text
+Covariance
+= E[(X - E[X])(Y - E[Y])]
 
-Standardize:
+Correlation
+= Cov(X, Y) / (sigma_X * sigma_Y)
 
-$$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
-$$
+Correlation Matrix R
+= symmetric, diagonals are 1, and PSD (Positive Semidefinite)
 
-Consider:
+PSD Meaning
+= variance of any linear combination is non-negative
+= a^T R a >= 0 for all vectors a
 
-$$
-W=Z_1+\cdots+Z_n
-$$
+Equicorrelation Lower Bound
+= rho >= -1 / (n - 1)
 
-Since:
+Cholesky for Bivariate Normal
+X = U
+Y = rho U + sqrt(1 - rho^2) V
 
-$$
-\operatorname{Var}(W)\ge0
-$$
+Normal Sign Correlation Expectation
+E[sgn(X)sgn(Y)] = (2/pi) arcsin(rho)
+```
 
-expanding gives:
+---
 
-$$
-\operatorname{Var}(W)
-=
-n+2\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)
-$$
+## 一手资料
 
-Therefore:
-
-$$
-\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)
-\ge
--\frac n2
-$$
-
-This lower bound is also attainable. Set all off-diagonal correlations equal to:
-
-$$
- ho_{ij}=-\frac{1}{n-1},\qquad i\ne j
-$$
-
-Then their sum is:
-
-$$
-\binom n2\left( -\frac{1}{n-1} \right)
-=
-\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
-=
--\frac n2
-$$
-
-The corresponding correlation matrix is:
-
-$$
-R=
-\frac{n}{n-1}I-\frac{1}{n-1}J
-$$
-
-Its eigenvalues are:
-
-$$
-0,\frac{n}{n-1},\ldots,\frac{n}{n-1}
-$$
-
-so it is PSD and therefore a valid correlation matrix.
-
-Geometrically, these are the $n$ vertex directions of a regular simplex in $(n-1)$-dimensional space. Every direction is a unit vector, all vectors sum to 0, and each pair has dot product:
-
-$$
--\frac{1}{n-1}
-$$
+- Zhou, *A Practical Guide to Quantitative Finance Interviews*

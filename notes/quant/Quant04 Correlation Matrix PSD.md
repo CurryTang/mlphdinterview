@@ -1,48 +1,23 @@
-# Quant 4 · 协方差、相关系数与相关矩阵 PSD
+# Quant 04 · 协方差、正态与相关矩阵
 
-这类题经常问：
+课程位置：[[Quant03 Continuous Distribution Geometry Transform|03 连续分布]] → 本篇 → [[Quant06 High Dimensional Integral Dominated Convergence|05 高维积分]]
 
-```text
-给 n 个随机变量 X1,...,Xn。
-所有两两相关系数之和最小可能是多少？
-```
-
-最短答案是：
-
-$$
-\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)\ge -\frac n2
-$$
-
-当 $n=4$ 时，下界是：
-
-$$
--\frac42=-2
-$$
-
-这个结论不是靠猜相关系数。它来自一个基本事实：
-
-```text
-任何随机变量的方差都不能为负。
-```
-
-相关矩阵半正定，就是这句话的矩阵版本。
+协方差量化了两个随机变量的线性同动趋势。去掉单位影响后，它就是相关系数。相关矩阵是多个变量之间相关系数的集合，它最重要的数学约束是半正定（Positive Semidefinite, PSD）。
 
 ---
 
-## 1. 协方差在量什么
+## 1 · 协方差在量什么
 
-设 $X,Y$ 是两个随机变量。协方差定义为：
+设 $X, Y$ 是两个随机变量。协方差定义为：
 
 $$
-\operatorname{Cov}(X,Y)
-=
-\mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
+\operatorname{Cov}(X,Y) = \mathbb{E}\left[ (X-\mathbb{E}X)(Y-\mathbb{E}Y) \right]
 $$
 
-它看的是两个变量偏离均值时，是不是经常同向变化。
+它衡量两个变量偏离均值时，是否经常同向变化。
 
 | 情况 | 直觉 | 协方差符号 |
-| --- | --- | --- |
+|---|---|---|
 | $X$ 大于均值时，$Y$ 也常大于均值 | 同涨同跌 | 正 |
 | $X$ 大于均值时，$Y$ 常小于均值 | 一个涨一个跌 | 负 |
 | 没有稳定线性关系 | 线性同动弱 | 接近 0 |
@@ -60,206 +35,144 @@ y                          y                          y
 +--------- x               +--------- x               +--------- x
 ```
 
-协方差有一个缺点：它受单位影响。把美元换成美分，协方差会放大很多。所以面试题通常用相关系数。
+协方差有一个缺点：它受单位影响。把美元换成美分，协方差会放大很多。处理数值问题时，通常需要将其标准化。
 
 ---
 
-## 2. 相关系数是标准化后的协方差
+## 2 · 相关系数是标准化后的协方差
 
 相关系数定义为：
 
 $$
-\operatorname{corr}(X,Y)
-=
-\frac{\operatorname{Cov}(X,Y)}{\sigma_X\sigma_Y}
+\operatorname{corr}(X,Y) = \frac{\operatorname{Cov}(X,Y)}{\sigma_X\sigma_Y}
 $$
 
-其中：
+其中，标准差表示为：
 
 $$
-\sigma_X=\sqrt{\operatorname{Var}(X)},\qquad
+\sigma_X=\sqrt{\operatorname{Var}(X)}
+$$
+
+$$
 \sigma_Y=\sqrt{\operatorname{Var}(Y)}
 $$
 
-也可以先把变量标准化：
+也可以先把变量本身进行标准化处理：
 
 $$
-Z_X=\frac{X-\mathbb{E}X}{\sigma_X},
-\qquad
+Z_X=\frac{X-\mathbb{E}X}{\sigma_X}
+$$
+
+$$
 Z_Y=\frac{Y-\mathbb{E}Y}{\sigma_Y}
 $$
 
-标准化以后：
-
-$$
-\mathbb{E}Z_X=0,\qquad \operatorname{Var}(Z_X)=1
-$$
-
-于是：
+经过这一步，标准化变量的均值为 0，方差为 1。此时：
 
 $$
 \operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
 $$
 
-可以把相关系数看成“去掉单位以后，两个变量的线性同动强度”。
+相关系数可以看作“去掉度量单位以后，两个变量线性同动的纯粹强度”。
 
-```mermaid
-flowchart LR
-  A["raw variable X"] --> B["center: X - E[X]"]
-  B --> C["scale: divide by sigma_X"]
-  C --> D["standardized Z_X"]
-  D --> E["Cov(Z_X, Z_Y) = corr(X,Y)"]
+```text
+raw variable X
+  -> center: X - E[X]
+  -> scale: divide by sigma_X
+  -> standardized Z_X
+  -> Cov(Z_X, Z_Y) = corr(X,Y)
 ```
 
----
+### 为什么相关系数一定在 [-1, 1]
 
-## 3. 为什么相关系数一定在 [-1,1]
-
-标准化后，$\operatorname{Var}(Z_X)=\operatorname{Var}(Z_Y)=1$。对任意实数 $t$：
+标准化后，$\operatorname{Var}(Z_X)=\operatorname{Var}(Z_Y)=1$。
+考虑它们的任意线性组合，方差必须非负。对任意实数 $t$：
 
 $$
 \operatorname{Var}(Z_X-tZ_Y)\ge0
 $$
 
-展开：
+展开方差公式：
 
 $$
-\operatorname{Var}(Z_X-tZ_Y)
-=
-1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2
+\operatorname{Var}(Z_X) - 2t\operatorname{Cov}(Z_X,Z_Y) + t^2\operatorname{Var}(Z_Y) \ge 0
 $$
 
-记：
+代入已知值：
 
 $$
- ho=\operatorname{corr}(X,Y)=\operatorname{Cov}(Z_X,Z_Y)
+1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2 \ge 0
 $$
 
-则：
+记 $ ho=\operatorname{Cov}(Z_X,Z_Y)$。这是一个关于 $t$ 的二次多项式：
 
 $$
-t^2-2 ho t+1\ge0,\qquad \forall t
+t^2 - 2 ho t + 1 \ge 0
 $$
 
-这个二次函数对所有 $t$ 都非负，所以判别式不能为正：
+既然它对所有 $t$ 都大于等于零，其判别式必须小于等于零：
 
 $$
-(-2 ho)^2-4\le0
+(-2 ho)^2 - 4 \le 0
 $$
 
-因此：
+解得：
 
 $$
- ho^2\le1
+ ho^2 \le 1
 $$
 
 也就是：
 
 $$
--1\le \operatorname{corr}(X,Y)\le 1
+-1 \le \operatorname{corr}(X,Y) \le 1
 $$
 
-注意：$ ho=0$ 只表示没有线性相关，不等于独立。独立会推出协方差为 0，但反过来不一定成立。
+注意 $ ho=0$ 只表示没有线性相关关系，并不等同于两个变量独立。独立一定意味着协方差为 0，但协方差为 0 推不出独立。
 
 ---
 
-## 4. 协方差矩阵和相关矩阵
+## 3 · 相关矩阵与半正定约束
 
-给随机变量 $X_1,\ldots,X_n$，协方差矩阵是：
-
-$$
-\Sigma_{ij}=\operatorname{Cov}(X_i,X_j)
-$$
-
-对角线是方差：
+当有 $n$ 个随机变量 $X_1,\ldots,X_n$ 时，可以把它们全部标准化为 $Z_i$。相关矩阵 $R$ 就是这些 $Z_i$ 的协方差矩阵：
 
 $$
-\Sigma_{ii}=\operatorname{Var}(X_i)
+R_{ij} = \operatorname{corr}(X_i,X_j) = \operatorname{Cov}(Z_i,Z_j)
 $$
 
-如果每个变量先标准化：
+相关矩阵必须满足三条严格的代数性质：
 
-$$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
-$$
-
-那么相关矩阵就是这些 $Z_i$ 的协方差矩阵：
-
-$$
-R_{ij}
-=
-\operatorname{corr}(X_i,X_j)
-=
-\operatorname{Cov}(Z_i,Z_j)
-$$
-
-所以：
-
-$$
-R=
-\begin{pmatrix}
-1 &  ho_{12} & \cdots &  ho_{1n}\\
- ho_{21} & 1 & \cdots &  ho_{2n}\\
-\vdots & \vdots & \ddots & \vdots\\
- ho_{n1} &  ho_{n2} & \cdots & 1
-\end{pmatrix}
-$$
-
-相关矩阵有三个基本性质：
-
-| 性质 | 原因 |
-| --- | --- |
+| 性质 | 来源 |
+|---|---|
 | 对称 | $\operatorname{corr}(X_i,X_j)=\operatorname{corr}(X_j,X_i)$ |
-| 对角线为 1 | 每个标准化变量和自己的相关系数是 1 |
-| 半正定 | 任意线性组合的方差非负 |
+| 对角线为 1 | 每个变量与自身的相关系数是 1 |
+| 半正定 (PSD) | 任意随机变量的线性组合方差非负 |
 
-第三条最重要。
-
----
-
-## 5. 为什么相关矩阵一定 PSD
-
-取任意实数 $a_1,\ldots,a_n$，考虑：
+半正定（PSD）是多变量相关性最核心的约束。取任意实数权重 $a_1,\ldots,a_n$，构成一个新的随机变量：
 
 $$
-W=a_1Z_1+\cdots+a_nZ_n
+W = a_1Z_1 + \cdots + a_nZ_n
 $$
 
-这是一个随机变量，所以：
+方差必须非负：
 
 $$
-\operatorname{Var}(W)\ge0
+\operatorname{Var}(W) = \operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right) \ge 0
 $$
 
-展开方差：
+展开双重求和：
 
 $$
-\operatorname{Var}(W)
-=
-\operatorname{Var}\left( \sum_{i=1}^n a_iZ_i \right)
-=
-\sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j)
+\operatorname{Var}(W) = \sum_{i=1}^n\sum_{j=1}^n a_i a_j \operatorname{Cov}(Z_i,Z_j) = a^\top R a
 $$
 
-而 $\operatorname{Cov}(Z_i,Z_j)=R_{ij}$，所以：
+这证明了，对任意向量 $a$，二次型都有：
 
 $$
-\operatorname{Var}(W)=a^\top R a
+a^\top R a \ge 0
 $$
 
-于是对任意向量 $a$：
-
-$$
-a^\top R a\ge0
-$$
-
-这就是半正定的定义：
-
-$$
-R\succeq0
-$$
-
-记忆图：
+这就是矩阵半正定的严格定义。
 
 ```text
 choose weights a1,...,an
@@ -279,272 +192,267 @@ R is PSD
 
 ---
 
-## 6. 几何理解：相关矩阵是 Gram matrix
+## 4 · 极值推论：等相关下界
 
-可以把标准化随机变量看成向量，内积定义为：
+给定 $n$ 个变量，如果它们两两之间的相关系数全都相等，设为 $ ho$，那么 $ ho$ 最小能是多少？
 
-$$
-\langle Z_i,Z_j angle=\operatorname{Cov}(Z_i,Z_j)
-$$
-
-因为：
+构造一个全 1 的权重向量 $a = (1, 1, \dots, 1)^\top$。相关矩阵 $R$ 必须满足半正定条件：
 
 $$
-\langle Z_i,Z_i angle=\operatorname{Var}(Z_i)=1
+a^\top R a = \sum_{i=1}^n \sum_{j=1}^n R_{ij} \ge 0
 $$
 
-每个 $Z_i$ 都像一个单位向量。相关系数就是两个单位向量的夹角余弦：
+矩阵 $R$ 中，对角线上有 $n$ 个 1，非对角线上有 $n(n-1)$ 个 $ ho$：
 
 $$
-\operatorname{corr}(X_i,X_j)=\cos\theta_{ij}
+a^\top R a = n + n(n-1) ho \ge 0
 $$
 
-相关矩阵就是这些向量两两内积组成的 Gram matrix：
+化简得：
 
 $$
-R_{ij}=\langle Z_i,Z_j angle
+n(n-1) ho \ge -n
 $$
 
-Gram matrix 一定 PSD，因为：
+解出下界：
 
 $$
-a^\top R a
-=
-\left\langle \sum_i a_iZ_i,\sum_j a_jZ_j ight angle
-=
-\left\|\sum_i a_iZ_i ight\|^2
-\ge0
+ ho \ge -\frac{1}{n-1}
 $$
 
-概率语言里，这是方差非负；几何语言里，这是长度平方非负。
+这给出了等相关矩阵的严格约束。例如：
+- $n=3$ 时，下界是 $-1/2$。
+- $n=4$ 时，下界是 $-1/3$。
 
-```text
-probability view:
-  Var(sum ai Zi) >= 0
+随着变量数量增加，下界逐渐趋向于 0。当 $n$ 很大时，不可能构造出一组两两呈现强负相关的随机变量。
 
-geometry view:
-  ||sum ai vi||^2 >= 0
-
-same statement
-```
-
----
-
-## 7. 例题：四个变量两两相关系数之和的最小值
-
-题目可以写成：
-
-```text
-给四个随机变量 X1, X2, X3, X4。
-假设每个变量方差非零。
-求所有两两相关系数之和的最小可能值：
-
-corr(X1,X2)+corr(X1,X3)+corr(X1,X4)
-+ corr(X2,X3)+corr(X2,X4)+corr(X3,X4)
-```
-
-记：
+如果问题是求“所有两两相关系数之和的最小值”，不论相关系数是否相等，都可以直接应用同一不等式：
 
 $$
- ho_{ij}=\operatorname{corr}(X_i,X_j)
+\operatorname{Var}(Z_1 + \cdots + Z_n) = n + 2 \sum_{1\le i<j\le n} \operatorname{corr}(X_i,X_j) \ge 0
 $$
 
-把变量标准化：
+由此得到下界：
 
 $$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
-$$
-
-那么：
-
-$$
-\operatorname{Var}(Z_i)=1,\qquad
-\operatorname{Cov}(Z_i,Z_j)= ho_{ij}
-$$
-
-现在考虑所有标准化变量之和：
-
-$$
-W=Z_1+Z_2+Z_3+Z_4
-$$
-
-方差非负：
-
-$$
-\operatorname{Var}(W)\ge0
-$$
-
-展开：
-
-$$
-\operatorname{Var}(Z_1+Z_2+Z_3+Z_4)
-=
-\sum_{i=1}^4\operatorname{Var}(Z_i)
-+2\sum_{1\le i<j\le4}\operatorname{Cov}(Z_i,Z_j)
-$$
-
-因为每个 $\operatorname{Var}(Z_i)=1$，所以：
-
-$$
-\operatorname{Var}(W)
-=
-4+2\sum_{1\le i<j\le4} ho_{ij}
-$$
-
-由 $\operatorname{Var}(W)\ge0$ 得：
-
-$$
-4+2\sum_{1\le i<j\le4} ho_{ij}\ge0
-$$
-
-所以：
-
-$$
-\sum_{1\le i<j\le4} ho_{ij}\ge -2
-$$
-
-这说明答案不可能小于 $-2$。
-
-### 7.1 为什么这个下界真的能达到
-
-还要证明 $-2$ 不是只由不等式给出的假下界。我们构造一个合法相关矩阵：
-
-$$
-R=
-\begin{pmatrix}
-1 & -1/3 & -1/3 & -1/3\\
--1/3 & 1 & -1/3 & -1/3\\
--1/3 & -1/3 & 1 & -1/3\\
--1/3 & -1/3 & -1/3 & 1
-\end{pmatrix}
-$$
-
-它的六个非对角相关系数都等于 $-1/3$，所以两两相关系数之和是：
-
-$$
-6\cdot\left( -\frac13 \right)=-2
-$$
-
-这个矩阵是 PSD。直观上，它对应三维空间里正四面体的四个顶点方向：四个单位向量对称地指向不同方向，中心在原点，任意两条方向的点积都是 $-1/3$。
-
-```text
-four standardized variables
-        |
-        v
-regular tetrahedron directions
-        |
-        v
-all pairwise correlations = -1/3
-        |
-        v
-sum of 6 correlations = -2
-```
-
-更代数一点，取：
-
-$$
-R=\frac{4}{3}I-\frac{1}{3}J
-$$
-
-其中 $J$ 是全 1 矩阵。向量 $\mathbf{1}=(1,1,1,1)$ 对应特征值：
-
-$$
-\frac43-\frac13\cdot4=0
-$$
-
-任何与 $\mathbf{1}$ 正交的方向，对应特征值：
-
-$$
-\frac43
-$$
-
-所以 $R$ 的特征值是：
-
-$$
-0,\frac43,\frac43,\frac43
-$$
-
-全部非负，因此它是合法相关矩阵。可以取一个均值为 0、协方差为 $R$ 的四维正态随机向量，这就构造出了达到下界的随机变量。
-
-最终答案：
-
-$$
-\boxed{-2}
+\sum_{1\le i<j\le n} \operatorname{corr}(X_i,X_j) \ge -\frac{n}{2}
 $$
 
 ---
 
-## 8. 一般化：$n$ 个变量的答案是 $-n/2$
+## 5 · 三变量相关系数边界
 
-同样的推导对 $n$ 个变量成立。
+如果已知变量之间的部分相关关系，可以用 PSD 约束推导未知的相关系数。已知 $X$ 与 $Y$ 的相关系数为 $ ho_{12}$，$Y$ 与 $Z$ 的相关系数为 $ ho_{23}$，如何限制 $X$ 与 $Z$ 的相关系数 $ ho_{13}$？
 
-标准化：
-
-$$
-Z_i=\frac{X_i-\mathbb{E}X_i}{\sigma_i}
-$$
-
-考虑：
+写出这三个变量的 $3 \times 3$ 相关矩阵：
 
 $$
-W=Z_1+\cdots+Z_n
+R = \begin{pmatrix} 1 &  ho_{12} &  ho_{13} \\  ho_{12} & 1 &  ho_{23} \\  ho_{13} &  ho_{23} & 1 \end{pmatrix}
 $$
 
-因为：
+既然 $R$ 是 PSD，它的所有主子式都必须非负。特别是整个矩阵的行列式必须非负：
 
 $$
-\operatorname{Var}(W)\ge0
+\det(R) \ge 0
 $$
 
-展开：
+展开行列式：
 
 $$
-\operatorname{Var}(W)
+1 + 2 ho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
+$$
+
+将其整理为关于 $ ho_{13}$ 的二次不等式：
+
+$$
+ ho_{13}^2 - 2 ho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
+$$
+
+这是一个开口向上的抛物线，要在零点之间取值。解二次方程，得到 $ ho_{13}$ 的闭区间范围：
+
+$$
+ ho_{13} \in \left[  ho_{12} ho_{23} - \sqrt{(1- ho_{12}^2)(1- ho_{23}^2)},\  ho_{12} ho_{23} + \sqrt{(1- ho_{12}^2)(1- ho_{23}^2)} \right]
+$$
+
+几何上，相关系数可以看作随机向量在空间中的夹角余弦。已知两个夹角，第三个夹角自然会受到空间几何的三角不等式限制。
+
+---
+
+## 6 · Cholesky 分解与相关正态模拟
+
+给定两个独立的标准正态变量 $U, V \overset{i.i.d.}{\sim} N(0,1)$，如何构造出相关系数为 $ ho$ 的二维正态变量 $(X,Y)$？
+
+可以直接使用相关矩阵的 Cholesky 分解进行线性变换：
+
+$$
+\begin{pmatrix} X \\ Y \end{pmatrix}
 =
-n+2\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)
+\begin{pmatrix} 1 & 0 \\  ho & \sqrt{1- ho^2} \end{pmatrix}
+\begin{pmatrix} U \\ V \end{pmatrix}
 $$
 
-所以：
+展开形式为：
 
 $$
-\sum_{1\le i<j\le n}\operatorname{corr}(X_i,X_j)
-\ge
--\frac n2
+X = U
 $$
 
-这个下界也能达到。令所有非对角相关系数都相等：
-
 $$
- ho_{ij}=-\frac{1}{n-1},\qquad i\ne j
+Y =  ho U + \sqrt{1- ho^2} V
 $$
 
-那么两两之和是：
+检验均值、方差和协方差：
 
 $$
-\binom n2\left( -\frac{1}{n-1} \right)
-=
-\frac{n(n-1)}{2}\left( -\frac{1}{n-1} \right)
-=
--\frac n2
+\mathbb{E}[X] = \mathbb{E}[U] = 0
 $$
 
-对应相关矩阵是：
-
 $$
-R=
-\frac{n}{n-1}I-\frac{1}{n-1}J
+\mathbb{E}[Y] =  ho \mathbb{E}[U] + \sqrt{1- ho^2} \mathbb{E}[V] = 0
 $$
 
-它的特征值是：
-
 $$
-0,\frac{n}{n-1},\ldots,\frac{n}{n-1}
+\operatorname{Var}(X) = \operatorname{Var}(U) = 1
 $$
 
-所以它是 PSD，也就是合法相关矩阵。
-
-几何上，这是 $n-1$ 维空间里正 simplex 的 $n$ 个顶点方向。每个方向都是单位向量，所有向量加起来为 0，任意两两点积都是：
+$$
+\operatorname{Var}(Y) =  ho^2 \operatorname{Var}(U) + (1- ho^2) \operatorname{Var}(V) = 1
+$$
 
 $$
--\frac{1}{n-1}
+\operatorname{Cov}(X,Y) = \operatorname{Cov}(U,  ho U + \sqrt{1- ho^2} V) =  ho \operatorname{Var}(U) =  ho
 $$
+
+因为 $X, Y$ 的方差都为 1，它们的协方差等于相关系数：
+
+$$
+\operatorname{corr}(X,Y) =  ho
+$$
+
+这个变换把 $(U,V)$ 平面上独立的圆对称分布，线性拉伸成了具有特定倾斜方向的椭圆分布。由于使用的是线性算子，它保持了联合正态性（joint normality）。
+
+---
+
+## 7 · 二维正态的符号相关期望
+
+利用上述构造，可以精确计算二维标准正态的符号乘积期望：
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
+$$
+
+其中 $(X,Y)$ 的相关系数为 $ ho$。连续正态分布取值为 0 的概率为 0，所以符号乘积必定是 1 或 -1。
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 1 \cdot P(\text{同号}) + (-1) \cdot P(\text{异号}) = P(\text{同号}) - P(\text{异号})
+$$
+
+利用全概率公式，将异号概率替换掉：
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 2P(\text{同号}) - 1
+$$
+
+根据二维正态分布关于原点的对称性，$X,Y$ 落在第一象限和第三象限的概率相等：
+
+$$
+P(X>0, Y>0) = P(X<0, Y<0)
+$$
+
+因此：
+
+$$
+P(\text{同号}) = 2P(X>0, Y>0)
+$$
+
+记 $p = P(X>0, Y>0)$，则期望化简为：
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4p - 1
+$$
+
+### 在独立平面中计算概率
+
+将 Cholesky 变换代入 $p$ 的计算：
+
+$$
+p = P(X>0, Y>0) = P\left(U>0,\  ho U + \sqrt{1- ho^2} V > 0\right)
+$$
+
+现在问题转移到了 $(U,V)$ 平面。$U,V$ 是独立标准正态，其联合密度函数为：
+
+$$
+f(u,v) = \frac{1}{2\pi} e^{-(u^2+v^2)/2}
+$$
+
+这个密度在几何上是完美的圆对称形式，只依赖于到原点的距离。对于任何过原点的扇形区域，其概率质量严格等于扇形角度占完整圆周的比例，也就是 $\theta / 2\pi$。
+
+不等式系统定义了两个半平面：
+
+1. $U > 0$：边界线为 $U=0$（即 $V$ 轴）。它保留了右半平面。
+2. $ ho U + \sqrt{1- ho^2} V > 0$：边界线为 $V = -\frac{ ho}{\sqrt{1- ho^2}} U$。
+
+令 $\alpha = \arcsin ho$。经过原点的边界线 $V = -\tan(\alpha) U$ 与 $U$ 轴正半轴的夹角正好是 $-\alpha$。而第一条边界线 $U=0$ 对应正向的 $\pi/2$。
+
+这两个半平面的交集构成了一个扇形，其开角为：
+
+$$
+\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \arcsin ho
+$$
+
+于是概率值为：
+
+$$
+p = \frac{\frac{\pi}{2} + \arcsin ho}{2\pi} = \frac{1}{4} + \frac{\arcsin ho}{2\pi}
+$$
+
+### 代回期望公式
+
+将 $p$ 的表达式代回期望公式：
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\arcsin ho}{2\pi}\right) - 1
+$$
+
+得到干净的最终结论：
+
+$$
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \arcsin ho
+$$
+
+这个结果重度依赖独立高斯分布的旋转不变性（圆对称），并不适用于相关系数同为 $ ho$ 的任意分布。
+
+---
+
+## 8 · 快速复习
+
+```text
+Covariance
+= E[(X - E[X])(Y - E[Y])]
+
+Correlation
+= Cov(X, Y) / (sigma_X * sigma_Y)
+
+Correlation Matrix R
+= symmetric, diagonals are 1, and PSD (Positive Semidefinite)
+
+PSD Meaning
+= variance of any linear combination is non-negative
+= a^T R a >= 0 for all vectors a
+
+Equicorrelation Lower Bound
+= rho >= -1 / (n - 1)
+
+Cholesky for Bivariate Normal
+X = U
+Y = rho U + sqrt(1 - rho^2) V
+
+Normal Sign Correlation Expectation
+E[sgn(X)sgn(Y)] = (2/pi) arcsin(rho)
+```
+
+---
+
+## 一手资料
+
+- Zhou, *A Practical Guide to Quantitative Finance Interviews*

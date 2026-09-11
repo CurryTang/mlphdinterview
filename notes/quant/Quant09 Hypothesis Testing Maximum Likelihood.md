@@ -1,148 +1,108 @@
-# Quant 9 · 假设检验与最大似然估计：方向、边界与偏差方差
+# Quant 06 · 假设检验与似然：方向、边界与偏差方差
 
-这一讲把假设检验和参数估计放在一起处理，覆盖 p 值与检验方向、最大似然估计（包括似然的支撑集依赖参数、求导失效只能靠边界论证的情形）、似然比与充分统计量、矩估计，最后对比最大似然估计和矩估计的偏差与方差。处理顺序统一是：先写出似然函数（或者检验统计量），再判断该走求导找驻点这条路还是似然在边界取得最大值这条路，最后再读出估计量的偏差和方差。部分题目会用到顺序统计量的分布，读过上一讲（顺序统计量：CDF 求导与条件截断）会更顺手，这里也会把用到的结论简要重述一遍，不假设那一讲的推导细节还摆在眼前。
+课程位置：[[Quant06 High Dimensional Integral Dominated Convergence|05 高维积分与大数定律]] → 本篇 → [[Quant11 Martingales Stopping Times Random Walks|07 鞅、停时与下注]]
+
+处理参数估计与检验的一般顺序：
 
 ```text
-1. p 值：先看观测值相对原假设下期望值的方向，再决定检验往哪一侧算尾部概率。
-2. 似然函数：写出 L(theta)，检查支撑集是否依赖参数。不依赖就对 ln L 求导找驻点；依赖就检查似然作为参数的函数是否单调，从边界读出最大值点。
-3. 似然比：化简比值，找出和样本相关的部分能不能合并成一个统计量；比值是这个统计量的单调函数，这个统计量就是充分统计量。
-4. 矩估计：把总体矩写成参数的函数，用样本矩替换总体矩，解出参数。
-5. 比较估计量：算偏差、方差，再用均方误差 = 偏差平方 + 方差 做最终比较。
+1. p 值：看观测值相对原假设期望的方向，决定检验侧。
+2. 似然函数：写出 L(theta)。支撑集不依赖参数则求导找驻点；依赖则看单调性找边界最大值。
+3. 似然比：化简比值，合并样本统计量找充分统计量。
+4. 矩估计：总体矩表述为参数，用样本矩替换求解。
+5. 比较估计量：均方误差 = 偏差平方 + 方差。
 ```
 
 ---
 
-## 模块一：p 值与检验方向
+## 1 · p 值与检验方向
 
-### 1. 10 次抛掷硬币中观测到 8 次正面的 p 值
+### 10 次掷硬币中观测到 8 次正面
 
-**思路**：先确定原假设下的期望，观测值相对期望偏大还是偏小决定检验往哪一侧的尾部积分；本题原假设下期望是 5，观测值 8 明显偏大，因此走右尾检验。
+设 $X$ 为 10 次独立公平硬币的正面向上面数，原假设 $H_0:p=\frac12$，$\mathbb E[X]=10\times\frac12=5$。观测值 $X=8$ 明显大于期望，因此走右尾检验。
 
-**推导**：设 $X$ 为 10 次独立公平掷硬币中正面的次数，原假设 $H_0:p=\frac12$，则 $\mathbb E[X]=10\times\frac12=5$。观测到 $X=8$ 远大于 5，检验方向是右尾。
-
-p 值定义为原假设下观测到当前结果或更极端结果的概率，这里"更极端"指的是正面次数不少于 8：
+p 值为原假设下观测到当前或更极端结果的概率：
 
 $$
 p=\mathbb P(X\ge 8)=\frac{\binom{10}{8}+\binom{10}{9}+\binom{10}{10}}{2^{10}}=\frac{45+10+1}{1024}=\frac{56}{1024}\approx0.0547
 $$
 
-**要点**：检验方向由观测值相对原假设下期望值的偏离方向决定，不由题目描述的措辞决定。
+### 检验方向的原则
 
-> p 值的定义是"在原假设下，观测到当前结果或更极端结果的概率"；判断检验方向（单尾还是双尾、往哪个方向算尾部）要先看观测值相对原假设下的期望值是偏大还是偏小，最常见的错误是漏掉等号（应该用 $\ge$ 而不是 $>$）或者把单尾错写成双尾。
+由备择假设 $H_1$ 决定使用哪侧尾部。观测值本身只用于判断偏离方向，公式选择完全取决于 $H_1$：
 
-### 检验方向的选择与三种公式
+- $H_1:\theta>\theta_0$：右尾检验，$p=\mathbb P(T\ge t_{\text{obs}}\mid H_0)$
+- $H_1:\theta<\theta_0$：左尾检验，$p=\mathbb P(T\le t_{\text{obs}}\mid H_0)$
+- $H_1:\theta\ne\theta_0$：双尾检验，$p=2\min\big(\mathbb P(T\ge t_{\text{obs}}),\mathbb P(T\le t_{\text{obs}})\big)$
 
-给定检验统计量 $T$（离散计数场景下常常直接是计数 $X$），设原假设 $H_0$ 下 $T$ 的分布已知，观测值是 $t_{\text{obs}}$。用哪一种尾部由备择假设 $H_1$ 的方向决定：
+双尾公式中的“乘二”在分布关于均值对称时精确。分布不对称时，更严格的定义是把似然不超过观测值似然的所有结果计入。
 
-- $H_1:\theta>\theta_0$（参数比原假设声称的大）：右尾检验，$p=\mathbb P(T\ge t_{\text{obs}}\mid H_0)$
-- $H_1:\theta<\theta_0$（参数比原假设声称的小）：左尾检验，$p=\mathbb P(T\le t_{\text{obs}}\mid H_0)$
-- $H_1:\theta\ne\theta_0$（参数不等于原假设声称的值，不预设方向）：双尾检验，$p=2\min\big(\mathbb P(T\ge t_{\text{obs}}\mid H_0),\ \mathbb P(T\le t_{\text{obs}}\mid H_0)\big)$（结果超过 1 时截断为 1）
+### 非 1/2 概率的右尾检验
 
-三个公式的选择只由 $H_1$ 的方向决定，和观测值本身无关；观测值只用来判断相对 $H_0$ 下期望值是偏大还是偏小，从而确定往哪一侧积分。题目没有明确给出 $H_1$ 方向、只说"检验参数是否等于某个值"时，按双尾处理。
+54 张牌（含 2 张大小王）放回抽取 5 次，观测到 3 张大小王。原假设每次抽到大小王概率 $p_0=\frac{2}{54}=\frac{1}{27}$。$X\sim\mathrm{Binomial}(5,\frac1{27})$，$\mathbb E[X]=5\times\frac1{27}\approx0.185$。
 
-双尾公式里的"乘二"，在 $T$ 的原假设分布关于均值对称时（例如 $\mathrm{Binomial}(n,\frac12)$、正态分布）是精确的，两侧尾部概率相等，乘二等于两侧尾部概率之和。分布不对称时（例如下面第 2 题的 $p=\frac1{27}$ 二项分布），"乘二"是一种常见的近似写法，更严格的定义是把似然不超过观测值似然的所有结果都计入双尾概率；面试里说明清楚用的是哪种约定即可。
-
-### 2. 54 张牌中大小王比例的右尾检验
-
-**思路**：这道题的原假设不是 $p=\frac12$，而是任意给定比例，用来说明右尾公式对任意二项分布都适用，不依赖 $p=\frac12$ 这个特殊情形。
-
-**推导**：一副 54 张牌（含 2 张大小王）放回抽取 5 次，观测到 3 张大小王、2 张普通牌。原假设是牌堆里恰好有 2 张大小王，即每次抽到大小王的概率 $p_0=\dfrac2{54}=\dfrac1{27}$。设 $X$ 为 5 次抽取里大小王的次数，$X\sim\mathrm{Binomial}(5,\frac1{27})$，$\mathbb E[X]=5\times\frac1{27}=\frac5{27}\approx0.185$。
-
-观测到 $X=3$ 远大于期望的 $0.185$，备择假设是 $H_1:p>\frac1{27}$（真实大小王比例更高），走右尾检验：
+观测 $X=3$ 远大于期望。备择假设 $H_1:p>\frac1{27}$，走右尾检验：
 
 $$
 p\text{-value}=\mathbb P(X\ge3)=\sum_{k=3}^5\binom5k\left( \frac1{27} \right)^k\left( \frac{26}{27} \right)^{5-k}=\frac{6891}{14348907}\approx0.00048
 $$
 
-**要点**：右尾公式 $\mathbb P(T\ge t_{\text{obs}})$ 不要求原假设下的成功概率是 $\frac12$；只要写出正确的 $H_0$ 下分布（这里是 $\mathrm{Binomial}(5,\frac1{27})$），公式本身照搬不变。
+### 左尾与双尾
 
-### 3. 检验硬币正面概率是否显著偏低
-
-**思路**：备择假设换成"参数比声称的小"，直接把右尾公式换成左尾公式；沿用问题 1 完全相同的 $n=10,p_0=\frac12$ 设置，只是观测值换到分布的另一侧，便于对照。
-
-**推导**：设 $X$ 为 10 次独立掷硬币中正面的次数，原假设 $H_0:p=\frac12$，$\mathbb E[X]=5$。这次观测到 $X=2$，明显小于 5，备择假设 $H_1:p<\frac12$，走左尾检验：
+如果观测到 $X=2$（$n=10, p_0=\frac12$），小于期望 5，备择假设 $H_1:p<\frac12$，走左尾检验：
 
 $$
-p\text{-value}=\mathbb P(X\le2)=\frac{\binom{10}{0}+\binom{10}{1}+\binom{10}{2}}{2^{10}}=\frac{1+10+45}{1024}=\frac{56}{1024}\approx0.0547
+p\text{-value}=\mathbb P(X\le2)=\frac{\binom{10}{0}+\binom{10}{1}+\binom{10}{2}}{2^{10}}=\frac{56}{1024}\approx0.0547
 $$
 
-这个数值和问题 1 的右尾 p 值完全相等，原因是 $\mathrm{Binomial}(10,\frac12)$ 关于 $5$ 对称，$X=2$ 和 $X=8$ 是对称的两个位置，$\mathbb P(X\le2)=\mathbb P(X\ge8)$。
-
-**要点**：左尾公式把右尾公式的不等号方向反过来，用 $\mathbb P(T\le t_{\text{obs}})$ 替换 $\mathbb P(T\ge t_{\text{obs}})$；在对称分布下，观测值离均值同样远的两个方向会给出相同的单尾 p 值。
-
-### 4. 检验硬币是否公平（双尾）
-
-**思路**：数据和问题 1 完全一样（$n=10$，观测到 8 次正面），但备择假设从"正面概率偏高"换成"正面概率不等于 $\frac12$"，不预设方向；同一组数据在不同假设下给出不同的 p 值，检验方向由假设决定。
-
-**推导**：$X\sim\mathrm{Binomial}(10,\frac12)$，观测 $X=8$。备择假设是 $H_1:p\ne\frac12$，走双尾检验。$\mathrm{Binomial}(10,\frac12)$ 关于均值对称，两侧尾部概率相等，把问题 1 算出的单尾概率乘二：
+这个数值和右尾 p 值相等，因为二项分布在此处对称。若不预设方向，$H_1:p\ne\frac12$，走双尾检验：
 
 $$
-p\text{-value}=2\times\mathbb P(X\ge8)=2\times\frac{56}{1024}=\frac{112}{1024}\approx0.1094
+p\text{-value}=2\times\mathbb P(X\ge8)=2\times\frac{56}{1024}\approx0.1094
 $$
-
-等价地，也可以直接写成两侧尾部概率之和：$\mathbb P(X\ge8)+\mathbb P(X\le2)=\dfrac{56}{1024}+\dfrac{56}{1024}=\dfrac{112}{1024}$。
-
-**要点**：
-
-> 同一组观测数据，右尾检验给出 $p\approx0.0547$，双尾检验给出 $p\approx0.1094$，恰好差一倍。检验方向由备择假设的表述决定；写检验之前要先确认题目问的是"是否偏高/偏低"还是"是否不等于"。
 
 ---
 
-## 模块二：似然函数与最大似然估计
+## 2 · 似然函数与最大似然估计
 
-### 5. 均值参数化下指数分布的最大似然估计
+### 均值参数化的指数分布
 
-**思路**：这里用均值 $\beta$ 参数化指数分布（而不是更常见的速率 $\lambda=1/\beta$）。支撑集 $[0,\infty)$ 不依赖 $\beta$，属于标准情形：对数似然求导置零，再用二阶导数确认是最大值。
-
-**推导**：设 $x_1,\ldots,x_n$ 是来自均值为 $\beta$ 的指数分布的独立同分布样本，密度 $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$（$x\ge0$），求 $\beta$ 的最大似然估计 $\hat\beta$。似然函数：
+设 $x_1,\ldots,x_n$ 独立同分布于均值为 $\beta$ 的指数分布，密度 $f(x\mid\beta)=\frac1\beta e^{-x/\beta}$。支撑集 $[0,\infty)$ 不依赖 $\beta$。似然函数：
 
 $$
 L(\beta)=\prod_{i=1}^n\frac1\beta e^{-x_i/\beta}=\beta^{-n}e^{-\sum_i x_i/\beta}
 $$
 
-取对数：
+对数似然：
 
 $$
 \ell(\beta)=-n\ln\beta-\frac{\sum_i x_i}{\beta}
 $$
 
-对 $\beta$ 求导并置零：
+求导置零：
 
 $$
-\ell'(\beta)=-\frac n\beta+\frac{\sum_i x_i}{\beta^2}=0\quad\Longrightarrow\quad \hat\beta=\frac{\sum_i x_i}{n}=\bar X
+\ell'(\beta)=-\frac n\beta+\frac{\sum_i x_i}{\beta^2}=0\quad\Longrightarrow\quad \hat\beta=\bar X
 $$
 
-代入 $\hat\beta=\bar X$ 计算二阶导数：
+二阶导数 $\ell''(\bar X)<0$，确认为最大值。使用均值参数化时 MLE 直接是 $\bar X$，如果是速率参数化则为 $1/\bar X$。
 
-$$
-\ell''(\beta)=\frac n{\beta^2}-\frac{2\sum_i x_i}{\beta^3},\qquad \ell''(\bar X)=\frac n{\bar X^2}-\frac{2n\bar X}{\bar X^3}=-\frac n{\bar X^2}<0
-$$
+### 边界上的 MLE：$\mathrm{Unif}[\theta,2\theta]$
 
-确认这是最大值。
+设 $x_1,\ldots,x_n \overset{i.i.d.}{\sim} \mathrm{Unif}[\theta,2\theta]$，求 $\theta$ 的 MLE 及偏差与方差。
 
-**要点**：均值参数化下最大似然估计直接是样本均值 $\hat\beta=\bar X$，比速率参数化下的 $\hat\lambda=1/\bar X$ 少一步取倒数；两者描述同一个分布，参数化方式不同，估计量的具体形式也随之不同。
-
-### 6. $\mathrm{Unif}[\theta,2\theta]$ 的最大似然估计：偏差、方差与无偏修正
-
-**思路**：这里的支撑集 $[\theta,2\theta]$ 上下两端都依赖参数 $\theta$，比只有一端依赖参数的情形多一层：需要同时写出两个约束条件，再判断哪一个约束是紧的（binding）。似然仍然是 $\theta$ 的严格递减函数，推导思路和单端点情形一致。
-
-**推导**：设 $x_1,\ldots,x_n$ 独立同分布于 $\mathrm{Unif}[\theta,2\theta]$，密度 $f(x\mid\theta)=\frac1\theta\mathbf 1\{\theta\le x\le2\theta\}$，求 $\theta$ 的最大似然估计 $\hat\theta$，并求出它的偏差和方差。似然函数：
+似然函数包含两个指示函数：
 
 $$
 L(\theta)=\theta^{-n}\mathbf 1\{\theta\le X_{(1)}\}\mathbf 1\{2\theta\ge X_{(n)}\}
 $$
 
-两个指示函数给出 $\theta$ 的合法范围：$\theta\le X_{(1)}$（每个观测值都不能小于下端点）和 $\theta\ge X_{(n)}/2$（每个观测值都不能超过上端点 $2\theta$）。合法定义域是 $\theta\in\left[ \dfrac{X_{(n)}}2,\,X_{(1)} \right]$（对真实样本这个区间非空）。
-
-在这个区间上 $\theta^{-n}$ 严格递减，似然最大的位置是区间左端点：
+合法定义域为 $\theta\in\left[ \frac{X_{(n)}}2,\,X_{(1)} \right]$。在此区间上，$\theta^{-n}$ 严格递减，似然在左端点最大：
 
 $$
 \boxed{\hat\theta=\frac{X_{(n)}}2}
 $$
 
-$X_{(1)}$ 的约束只用来确认定义域非空，并不改变最大值点的位置，最大值完全由上端点约束 $X_{(n)}/2$ 决定。
-
-求 $\hat\theta$ 的偏差和方差需要 $X_{(n)}$ 的分布。令 $U_i=X_i/\theta-1$，由 $X_i\in[\theta,2\theta]$ 知 $U_i\in[0,1]$，且 $U_i\sim\mathrm{Unif}[0,1]$，于是 $X_{(n)}=\theta(1+U_{(n)})$，其中 $U_{(n)}$ 是 $n$ 个独立 $\mathrm{Unif}[0,1]$ 的最大值。沿用上一讲关于均匀分布最大值的标准结论：
+求偏差与方差：利用 $X_{(n)}=\theta(1+U_{(n)})$，其中 $U_{(n)}$ 为 $n$ 个独立 $\mathrm{Unif}[0,1]$ 的最大值。
 
 $$
 \mathbb E[U_{(n)}]=\frac n{n+1},\qquad \mathrm{Var}(U_{(n)})=\frac n{(n+1)^2(n+2)}
@@ -151,161 +111,113 @@ $$
 一阶矩：
 
 $$
-\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \right)=\theta\cdot\frac{2n+1}{n+1},\qquad \mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
+\mathbb E[X_{(n)}]=\theta\left( 1+\frac n{n+1} \right)=\theta\cdot\frac{2n+1}{n+1}
 $$
 
 $$
-\mathrm{Bias}(\hat\theta)=\theta\cdot\frac{2n+1}{2(n+1)}-\theta=\theta\cdot\frac{2n+1-2(n+1)}{2(n+1)}=-\frac{\theta}{2(n+1)}
+\mathbb E[\hat\theta]=\frac12\mathbb E[X_{(n)}]=\theta\cdot\frac{2n+1}{2(n+1)}
+$$
+
+$$
+\mathrm{Bias}(\hat\theta)=-\frac{\theta}{2(n+1)}
 $$
 
 方差不受平移影响，只由缩放系数决定：
 
 $$
-\mathrm{Var}(X_{(n)})=\theta^2\,\mathrm{Var}(U_{(n)})=\frac{n\,\theta^2}{(n+1)^2(n+2)},\qquad \mathrm{Var}(\hat\theta)=\frac14\mathrm{Var}(X_{(n)})=\frac{n\,\theta^2}{4(n+1)^2(n+2)}
+\mathrm{Var}(\hat\theta)=\frac14\mathrm{Var}(X_{(n)})=\frac{n\,\theta^2}{4(n+1)^2(n+2)}
 $$
 
-无偏修正：按偏差的比例放大 $\hat\theta$：
-
-$$
-\tilde\theta=\frac{2(n+1)}{2n+1}\hat\theta=\frac{(n+1)X_{(n)}}{2n+1},\qquad \mathbb E[\tilde\theta]=\theta
-$$
-
-**要点**：支撑集两端都依赖参数时，先把每个约束分别写出来，再判断哪一个约束是紧的；本题两个约束里只有上端点约束决定了最大值的位置，下端点约束只保证定义域非空。
-
-> 似然函数的支撑集依赖参数时，不论是单端点还是双端点依赖，似然通常在参数定义域的边界上取到最大值，而不是在导数为零的驻点；双端点依赖时先分别写出每个约束给出的合法范围，再观察似然在交集上的单调性，从而判断哪一侧边界起作用。
+无偏修正：$\tilde\theta=\frac{2(n+1)}{2n+1}\hat\theta=\frac{(n+1)X_{(n)}}{2n+1}$。
 
 ---
 
-## 模块三：似然比与充分统计量
+## 3 · 似然比与充分统计量
 
-### 7. $N(0,\sigma^2)$ 对 $N(\mu,\sigma^2)$ 的似然比统计量与充分统计量的识别
+比较 $N(0,\sigma^2)$ 和 $N(\mu,\sigma^2)$，方差已知，原假设 $H_0:\mu=0$，备择假设 $H_1:\mu>0$。
 
-**思路**：似然比检验的统计量是两个似然的比值；这里把方差保留为已知常数 $\sigma^2$（不固定成 1），说明结论不依赖 $\sigma^2$ 取什么具体值。把比值化简成指数形式后，通常能看出它是某个样本统计量的单调函数，这个统计量就是充分统计量。
-
-**推导**：设 $x_1,\ldots,x_n$ 独立同分布于方差已知为 $\sigma^2$ 的正态分布，原假设 $H_0:\mu=0$，备择假设 $H_1:\mu=\mu_0>0$（记号简化为 $\mu$），目标是化简似然比统计量，找出决定拒绝域的充分统计量。两个似然之比：
+似然比：
 
 $$
-T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\dfrac{(x_i-\mu)^2}{2\sigma^2} \right)}{\exp\left( -\dfrac{x_i^2}{2\sigma^2} \right)}
+T=\frac{L_1}{L_0}=\prod_{i=1}^n\frac{\exp\left(-\frac{(x_i-\mu)^2}{2\sigma^2} \right)}{\exp\left( -\frac{x_i^2}{2\sigma^2} \right)}
 $$
 
-对每一项的指数部分展开并相减：
+指数展开相减：
 
 $$
--\frac{(x_i-\mu)^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=-\frac{x_i^2-2\mu x_i+\mu^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}
+-\frac{(x_i-\mu)^2}{2\sigma^2}+\frac{x_i^2}{2\sigma^2}=\frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2}
 $$
 
-对 $i$ 求和后取指数：
-
 $$
-T=\exp\left( \sum_{i=1}^n\left[ \frac{\mu x_i}{\sigma^2}-\frac{\mu^2}{2\sigma^2} \right] \right)=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \right)
+T=\exp\left( \frac{\mu}{\sigma^2}\sum_{i=1}^n x_i-\frac{n\mu^2}{2\sigma^2} \right)
 $$
 
-当 $\mu>0$ 时，系数 $\mu/\sigma^2>0$，$T$ 是 $\sum_i x_i$ 的严格递增函数，指数中的 $-n\mu^2/(2\sigma^2)$ 是不依赖数据的常数。于是事件"$T>c$"等价于"$\sum_i x_i>c''$"，也等价于"$\bar X>c'$"（对某个阈值 $c'$）。似然比检验的拒绝域完全由样本均值 $\bar X$ 决定，和 $\sigma^2$ 的具体取值无关；样本携带的、用于区分 $\mu=0$ 和 $\mu>0$ 的全部信息都包含在 $\bar X$ 这一个统计量里，$\bar X$ 是这个检验问题的充分统计量。
+由于 $\mu/\sigma^2>0$，$T$ 是 $\sum_i x_i$（或 $\bar X$）的严格递增函数。事件 "$T>c$" 等价于 "$\bar X>c'$"。拒绝域由 $\bar X$ 决定，$\bar X$ 是充分统计量。
 
-一个相关但更复杂的变体值得提一句：如果备择假设改成"$N$ 组独立测量中恰好有一组（不知道是哪一组）均值被平移了 $A$"，由于具体是哪一组被平移未知，$H_1$ 下的似然是对 $N$ 个等可能选择做的混合：
+### 混合备择假设
+
+如果备择假设改成 “N 组独立测量中恰好有一组（未知哪组）均值平移了 $A$”，由于具体组别未知，$H_1$ 的似然是对 $N$ 个选择求全概率混合：
 
 $$
 L_1=\frac1N\sum_{j=1}^N\prod_{i=1}^N f\big(x_i-A\cdot\mathbf 1\{i=j\}\big)
 $$
 
-把公共因子 $\prod_i f(x_i)$ 提出来之后，剩下的是逐项似然比 $\dfrac{f(x_j-A)}{f(x_j)}$ 按 $1/N$ 加权求和；这个逐项比值和上面主推导里的代数完全一样，只是对"哪一组可能被平移"这个未知量按全概率公式做了求和：
-
-$$
-\frac{f(x_j-A)}{f(x_j)}=\exp\left[ \frac{A(x_j-\mu)}{\sigma^2}-\frac{A^2}{2\sigma^2} \right]
-$$
-
-**要点**：似然比化简后如果能写成某个统计量的单调函数，这个统计量就是充分统计量，且这个结论不依赖 $\sigma^2$ 的具体取值；混合备择假设不改变单个观测的似然比代数，只是在外层多套一层对未知类别的全概率求和。
-
-> 正态分布（或大多数指数族分布）的似然比，展开平方项之后，和样本相关的部分几乎总能合并成样本均值或样本和的函数，系数里保留一般的 $\sigma^2$ 也不影响这个结论；似然比是这个统计量的单调函数，就说明这个统计量是充分统计量。
+提取公共因子 $\prod_i f(x_i)$，剩余部分是逐项似然比 $\frac{f(x_j-A)}{f(x_j)}$ 的加权求和，其代数结构与前面完全一致。
 
 ---
 
-## 模块四：矩估计
+## 4 · 偏差与方差对比：MLE vs 矩估计
 
-### 8. $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$（$0\le x\le\theta$）的矩估计
+对于密度 $f(x\mid\theta)=\frac{3x^2}{\theta^3}$（$0\le x\le\theta$），分别求矩估计与 MLE，并比较。
 
-**思路**：矩估计的路径固定：算出总体矩关于参数的表达式，把总体矩替换成对应的样本矩，解出参数。
+### 矩估计
 
-**推导**：设 $x_1,\ldots,x_n$ 是来自密度 $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$（$0\le x\le\theta$）的独立同分布样本，求 $\theta$ 的矩估计 $\hat\theta_C$。先确认这是一个合法密度：
-
-$$
-\int_0^\theta\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^3}3=1
-$$
-
-一阶矩：
+先确认密度合法：积分 $\int_0^\theta 3x^2/\theta^3 dx = 1$。一阶总体矩：
 
 $$
-\mathbb E[X]=\int_0^\theta x\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^4}4=\frac{3\theta}4
+\mathbb E[X]=\int_0^\theta x\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3\theta}4
 $$
 
-令样本均值等于这个总体矩，解出 $\theta$：
+令样本均值等于总体矩：
 
 $$
 \bar X=\frac{3\theta}4\quad\Longrightarrow\quad \hat\theta_C=\frac43\bar X
 $$
 
-这个估计量是无偏的：
-
-$$
-\mathbb E[\hat\theta_C]=\frac43\cdot\frac{3\theta}4=\theta
-$$
-
 后面对比方差还需要 $X$ 的方差。二阶矩：
 
 $$
-\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3}{\theta^3}\cdot\frac{\theta^5}5=\frac{3\theta^2}5
+\mathbb E[X^2]=\int_0^\theta x^2\cdot\frac{3x^2}{\theta^3}\,dx=\frac{3\theta^2}5
 $$
 
 $$
-\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{48\theta^2-45\theta^2}{80}=\frac{3\theta^2}{80}
+\mathrm{Var}(X)=\frac{3\theta^2}5-\left( \frac{3\theta}4 \right)^2=\frac{3\theta^2}5-\frac{9\theta^2}{16}=\frac{3\theta^2}{80}
 $$
 
-$\hat\theta_C=\frac43\bar X$ 是样本均值的线性变换，方差按线性变换的规则缩放：
+$\hat\theta_C$ 是样本均值的线性变换，方差按平方缩放：
 
 $$
 \mathrm{Var}(\hat\theta_C)=\left( \frac43 \right)^2\cdot\frac{\mathrm{Var}(X)}n=\frac{16}9\cdot\frac{3\theta^2}{80n}=\frac{\theta^2}{15n}
 $$
 
-**要点**：矩估计的求解顺序固定不变：写出总体矩、令其等于样本矩、解出参数；方差的计算同样先算单个观测的方差，再按估计量对样本均值的线性系数缩放。
+### MLE
 
----
-
-## 模块五：例题：MLE 与矩估计的偏差与方差对比
-
-### 9. 比较 MLE 与矩估计：以 $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$ 为例
-
-**思路**：模块四已经得到这个密度的矩估计 $\hat\theta_C$。现在对同一个密度做和问题 6 相同的单调性论证求最大似然估计 $\hat\theta_A$（这里的支撑集只有上端点依赖参数，只需要一个约束，比问题 6 的双端点情形更简单），再把两个估计量的偏差、方差、均方误差放在一起比较。
-
-**推导**：设 $x_1,\ldots,x_n$ 是来自密度 $f(x\mid\theta)=\dfrac{3x^2}{\theta^3}$（$0\le x\le\theta$）的独立同分布样本，求最大似然估计 $\hat\theta_A$，并与模块四得到的矩估计 $\hat\theta_C$ 比较偏差、方差与均方误差。
-
-第一步，最大似然估计。似然函数：
+似然函数在定义域 $\theta\ge X_{(n)}$ 上递减：
 
 $$
-L(\theta)=\prod_{i=1}^n\frac{3x_i^2}{\theta^3}\mathbf 1\{\theta\ge x_i\}=\frac{3^n\prod_i x_i^2}{\theta^{3n}}\mathbf 1\{\theta\ge X_{(n)}\}
+L(\theta)=\frac{3^n\prod x_i^2}{\theta^{3n}}\mathbf 1\{\theta\ge X_{(n)}\}
 $$
 
-这在合法定义域 $\theta\ge X_{(n)}$ 上是 $\theta$ 的严格递减函数，最大值在定义域左端点取到：
+最大值在左端点：$\hat\theta_A=X_{(n)}$。
+
+求分布与矩：
 
 $$
-\hat\theta_A=X_{(n)}
+F(x)=\left( \frac x\theta \right)^3 \Longrightarrow f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
 $$
 
-第二步，求 $X_{(n)}$ 在这个密度下的分布。单个观测的 CDF：
-
 $$
-F(x)=\int_0^x\frac{3t^2}{\theta^3}\,dt=\left( \frac x\theta \right)^3
-$$
-
-所以：
-
-$$
-F_{X_{(n)}}(t)=\left( \frac t\theta \right)^{3n},\qquad f_{X_{(n)}}(t)=\frac{3n\,t^{3n-1}}{\theta^{3n}}
-$$
-
-第三步，矩和偏差：
-
-$$
-\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{3n+1}\approx-\frac{\theta}{3n}\ (n\text{ 较大时})
+\mathbb E[X_{(n)}]=\int_0^\theta t\cdot\frac{3n\,t^{3n-1}}{\theta^{3n}}\,dt=\frac{3n}{3n+1}\theta,\qquad \mathrm{Bias}(\hat\theta_A)=-\frac{\theta}{3n+1}\approx-\frac{\theta}{3n}
 $$
 
 $$
@@ -316,41 +228,37 @@ $$
 \mathrm{Var}(\hat\theta_A)=\frac{3n}{3n+2}\theta^2-\left( \frac{3n}{3n+1} \right)^2\theta^2
 $$
 
-令 $m=3n$，把括号部分通分到 $(m+2)(m+1)^2$：
+令 $m=3n$，通分：
 
 $$
-\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m\left[ (m+1)^2-m(m+2) \right]}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
+\frac{m}{m+2}-\frac{m^2}{(m+1)^2}=\frac{m(m+1)^2-m^2(m+2)}{(m+2)(m+1)^2}=\frac{m}{(m+2)(m+1)^2}
 $$
 
-因为 $(m+1)^2-m(m+2)=m^2+2m+1-m^2-2m=1$。代入 $m=3n$：
+代入 $m=3n$：
 
 $$
-\mathrm{Var}(\hat\theta_A)=\frac{3n\,\theta^2}{(3n+2)(3n+1)^2}\approx\frac{\theta^2}{9n^2}\ (n\text{ 较大时})
+\mathrm{Var}(\hat\theta_A)=\frac{3n\,\theta^2}{(3n+2)(3n+1)^2}\approx\frac{\theta^2}{9n^2}
 $$
 
-第四步，对比两个估计量：
+### 比较结论
 
-| 估计量 | 偏差 | 方差 | 均方误差（$n$ 较大时近似） |
+| 估计量 | 偏差 | 方差 | 均方误差 ($n$ 较大) |
 |---|---|---|---|
-| $\hat\theta_A$（MLE，$=X_{(n)}$） | $-\dfrac{\theta}{3n+1}\approx-\dfrac\theta{3n}$ | $\dfrac{3n\theta^2}{(3n+2)(3n+1)^2}\approx\dfrac{\theta^2}{9n^2}$ | $\approx\dfrac{2\theta^2}{9n^2}$ |
-| $\hat\theta_C$（矩估计，$=\frac43\bar X$） | $0$ | $\dfrac{\theta^2}{15n}$ | $\dfrac{\theta^2}{15n}$ |
+| MLE ($X_{(n)}$) | $\approx-\frac{\theta}{3n}$ | $\approx\frac{\theta^2}{9n^2}$ | $\approx\frac{2\theta^2}{9n^2}$ |
+| 矩估计 ($\frac43\bar X$) | $0$ | $\frac{\theta^2}{15n}$ | $\frac{\theta^2}{15n}$ |
 
-MLE 的偏差量级是 $O(1/n)$，随样本量增大趋于零；它的方差量级是 $O(1/n^2)$，比矩估计 $O(1/n)$ 的方差低一个数量级。当 $n$ 足够大时，$O(1/n^2)$ 的均方误差远小于 $O(1/n)$，MLE 尽管有偏，均方误差意义下明显优于无偏的矩估计。
-
-**要点**：比较两个估计量优劣不能只看有偏还是无偏，要落到均方误差；有偏但方差极小的估计量，在大样本下常常整体表现更好。
-
-> 最大似然估计即使有偏，偏差通常是 $O(1/n)$ 量级，会随样本量增大而趋于零（渐近无偏）；而它的方差常常是 $O(1/n^2)$ 量级，比矩估计典型的 $O(1/n)$ 方差小一个数量级。在均方误差（MSE = 偏差平方 + 方差）的意义下，MLE 即使有偏，也经常显著优于无偏但方差更大的矩估计。
+MLE 虽有偏，但方差为 $O(1/n^2)$。大样本下，其均方误差远小于无偏但方差为 $O(1/n)$ 的矩估计。
 
 ---
 
-## 模块六：面试前最后检查
+## 5 · 估计与检验核心检查单
 
-1. 支撑集依赖参数吗？依赖就不要求导，直接判断似然作为参数的函数的单调性，从边界读出最大值；不依赖就走标准路径，对数似然求导置零，二阶导数确认是最大值。
-2. p 值的方向判断对不对？先看观测值相对原假设下期望值是偏大还是偏小，再决定往哪一侧算尾部；不等号有没有取等（$\ge$ 还是 $>$）、是单尾还是双尾，都要在写公式前确认。
-3. 似然比化简完之后，是不是某个样本统计量（样本均值、样本和）的单调函数？如果是，这个统计量就是充分统计量，拒绝域完全由它决定。
-4. 矩估计的步骤有没有走完整：总体矩表达式、样本矩替换、解出参数；如果要比较方差，别忘了先求单个观测的方差再按线性系数缩放。
-5. 比较两个估计量时，只看偏差还是无偏就下结论了吗？完整的比较标准是均方误差 = 偏差平方 + 方差，有偏估计量方差足够小时经常整体更优。
+1. **支撑集是否依赖参数**：依赖就不要求导，直接判断似然作为参数函数的单调性，从边界读出最大值；不依赖就走标准路径，对数似然求导置零，二阶导数确认最大值。
+2. **p 值的方向判断**：先看观测值相对原假设下期望值是偏大还是偏小，再决定往哪一侧算尾部。不等号是否取等（$\ge$ 还是 $>$）、单尾还是双尾，要在写公式前确认。
+3. **似然比的充分统计量**：化简后的似然比是否是某个样本统计量（如均值、和）的单调函数？如果是，该统计量即为充分统计量，拒绝域完全由它决定。
+4. **矩估计的标准流程**：写出总体矩表达式，用样本矩替换，最后解出参数。比较方差时，别忘了先求单观测的方差再按线性系数缩放。
+5. **比较估计量的完整标准**：只看无偏性是片面的。完整的比较标准是“均方误差 = 偏差平方 + 方差”。有偏估计量若方差足够小，在大样本下经常整体更优。
 
-最后只记一句：
+一句话概括核心：
 
-> 似然函数的形状先于似然函数的导数：支撑集依赖参数时先看单调性、后看边界，不依赖参数时才轮到求导找驻点；无论走哪条路，最终的判断标准都是均方误差，而不是有偏还是无偏这一个标签。
+> 似然函数的形状先于似然函数的导数。支撑集依赖参数时先看单调性后看边界；不依赖参数时才轮到求导。无论走哪条路，最终评价估计量优劣的标准始终是均方误差，而不是单一片面的无偏标签。
