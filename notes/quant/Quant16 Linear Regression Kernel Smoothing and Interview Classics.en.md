@@ -352,11 +352,68 @@ $$
 ```fwl-geometry-demo
 ```
 
-#### (5) Canonical Quantitative Finance Mappings
-1. **CAPM Asset Beta**: $\beta_i = \frac{\operatorname{Cov}(R_i, R_m)}{\operatorname{Var}(R_m)}$;
-2. **Variance-Minimizing Optimal Hedge Ratio**: $\min_h \operatorname{Var}(\Delta S - h\Delta F) \implies h^* = \frac{\operatorname{Cov}(\Delta S, \Delta F)}{\operatorname{Var}(\Delta F)} \equiv \beta_{\Delta S \sim \Delta F}$;
-3. **Omitted Variable Bias (OVB)**: If the true model is $Y = \beta_1 X_1 + \beta_2 X_2 + \varepsilon$, omitting $X_2$ in a short regression yields $E(\hat\beta_1^{\text{short}} \mid X) = \beta_1 + \beta_2 \frac{\operatorname{Cov}(X_1, X_2)}{\operatorname{Var}(X_1)}$;
-4. **Barra Factor Risk Neutralization**: $F_{\text{raw}} = X_{\text{risk}} \gamma + F_{\text{neutral}}$, using orthogonal projection $F_{\text{neutral}} \perp X_{\text{risk}}$ to neutralize industry and style risk exposures.
+#### (5) Canonical Quantitative Finance Mappings (In-Depth Derivations & Mechanics)
+
+The projection geometry and covariance decompositions of linear regression form the mathematical bedrock of modern quantitative asset pricing and portfolio theory. The following sections provide rigorous mathematical derivations, geometric intuitions, and production trading mechanics for four canonical paradigms:
+
+##### 1. CAPM Asset Beta & Idiosyncratic Risk Decomposition
+- **Time-Series Regression Specification**:
+  Let $R_{i, t} - R_{f, t}$ denote the excess return of asset $i$ and $R_{m, t} - R_{f, t}$ denote the excess return of the market benchmark. The univariate market model regression is:
+  $$ (R_{i, t} - R_{f, t}) = \alpha_i + \beta_i (R_{m, t} - R_{f, t}) + \varepsilon_{i, t}, \quad \mathbb{E}[\varepsilon_{i, t} \mid R_m] = 0 $$
+  By the univariate OLS closed-form solution, the systematic risk exposure (Beta) is strictly the covariance of excess returns divided by market variance:
+  $$ \beta_i = \frac{\operatorname{Cov}(R_i, R_m)}{\operatorname{Var}(R_m)} = \rho_{i, m} \frac{\sigma_i}{\sigma_m} $$
+- **Orthogonal Variance Decomposition & Idiosyncratic Risk**:
+  By OLS residual orthogonality, total asset variance decomposes into two strictly perpendicular components:
+  $$ \sigma_i^2 = \underbrace{\beta_i^2 \sigma_m^2}_{\text{Systematic Risk}} + \underbrace{\sigma_{\varepsilon, i}^2}_{\text{Idiosyncratic Risk}} = R^2 \sigma_i^2 + (1 - R^2)\sigma_i^2 $$
+- **Quantitative Portfolio Implementation (Alpha Separation & Beta Hedging)**:
+  By the Law of Large Numbers, holding an equally weighted cross-sectional portfolio of $N$ assets with uncorrelated residuals drives portfolio idiosyncratic variance to zero: $\frac{1}{N}\sum \sigma_{\varepsilon, i}^2 \to 0$. However, systematic market risk $\beta_P = \frac{1}{N}\sum \beta_i$ cannot be diversified away. Equity market-neutral (EMN) quantitative funds must short $\beta_P$ units of index futures to neutralize market exposure, isolating stable, pure stock-picking alpha $\alpha_i$.
+
+##### 2. Variance-Minimizing Optimal Hedge Ratio
+- **Hedging Optimization Setup**:
+  Consider an institution holding a spot asset position $S$ that hedges price volatility using futures contracts $F$. With price movements denoted by $\Delta S$ and $\Delta F$, the net change in portfolio value is $\Delta \Pi = \Delta S - h \Delta F$, where $h$ is the hedge ratio (units of short futures per unit of long spot).
+- **Objective Function & First-Order Condition**:
+  The risk-minimizing objective seeks the hedge ratio $h^*$ that minimizes the total portfolio variance:
+  $$ \min_h \operatorname{Var}(\Delta \Pi) = \min_h \left[ \sigma_S^2 + h^2 \sigma_F^2 - 2h \operatorname{Cov}(\Delta S, \Delta F) \right] $$
+  This objective is strictly convex quadratic in $h$. Setting the first-order partial derivative to zero:
+  $$ \frac{\partial \operatorname{Var}(\Delta \Pi)}{\partial h} = 2h \sigma_F^2 - 2\operatorname{Cov}(\Delta S, \Delta F) = 0 \implies h^* = \frac{\operatorname{Cov}(\Delta S, \Delta F)}{\operatorname{Var}(\Delta F)} = \rho \frac{\sigma_S}{\sigma_F} $$
+- **Geometric Duality with OLS**:
+  **The optimal hedge ratio $h^*$ is mathematically identical to the univariate OLS regression slope $\beta_{\Delta S \sim \Delta F}$ regressing spot returns $\Delta S$ onto futures returns $\Delta F$**!
+- **Hedging Effectiveness (HE) & Basis Risk**:
+  Substituting $h^*$ back into the variance equation gives the minimized residual portfolio risk:
+  $$ \operatorname{Var}(\Delta \Pi^*) = \sigma_S^2 - \frac{\operatorname{Cov}^2(\Delta S, \Delta F)}{\sigma_F^2} = \sigma_S^2 (1 - \rho^2) = (1 - R^2)\sigma_S^2 $$
+  Hedging effectiveness is measured by $HE = 1 - \frac{\operatorname{Var}(\Delta \Pi^*)}{\sigma_S^2} = R^2$. Geometrically, the irreducible basis risk is the squared norm of the spot return vector projected onto the orthogonal complement of the futures subspace.
+
+##### 3. Omitted Variable Bias (OVB) and Spurious Multi-Factor Significance
+- **Long vs. Short Regression Derivation**:
+  Suppose the true data-generating process for asset excess returns is driven by two factors (Long Regression):
+  $$ Y = X_1 \beta_1 + X_2 \beta_2 + \varepsilon, \quad \mathbb{E}[\varepsilon \mid X_1, X_2] = 0 $$
+  If a quantitative researcher omits factor $X_2$ and runs a univariate Short Regression on $X_1$ alone ($Y = X_1 \tilde\beta_1 + u$), the OLS estimator expands as:
+  $$ \hat\beta_1^{\text{short}} = (X_1^\top X_1)^{-1} X_1^\top (X_1 \beta_1 + X_2 \beta_2 + \varepsilon) = \beta_1 + (X_1^\top X_1)^{-1}X_1^\top X_2 \beta_2 + (X_1^\top X_1)^{-1}X_1^\top \varepsilon $$
+  Taking expectations conditional on $X$ yields the canonical **OVB Identity**:
+  $$ \mathbb{E}[\hat\beta_1^{\text{short}} \mid X] = \beta_1 + \beta_2 \cdot \frac{\operatorname{Cov}(X_1, X_2)}{\operatorname{Var}(X_1)} = \beta_1 + \beta_2 \cdot \gamma_{21} $$
+  where $\gamma_{21}$ is the auxiliary regression slope of omitted factor $X_2$ regressed onto included factor $X_1$.
+- **Quantitative Pitfall (Pseudo-Alpha Trap)**:
+  Suppose a researcher discovers a high-Sharpe momentum signal $X_1$ that cross-sectionally correlates with small-cap stocks ($\gamma_{21} = \frac{\operatorname{Cov}(X_1, \text{Size})}{\operatorname{Var}(X_1)} > 0$). Because small caps earn a structural liquidity risk premium ($\beta_2 > 0$):
+  - The short regression slope absorbs a massive upward bias $\beta_2 \gamma_{21}$, creating the illusion of extraordinary stock-picking alpha;
+  - In production trading, the strategy merely piggybacks on small-cap beta; when small caps underperform or turnover costs are deducted, performance collapses.
+  - **Unbiasedness Condition**: The single-factor test is unbiased if and only if $\beta_2 = 0$ (omitted factor has zero true premium) or $\gamma_{21} = 0$ (the candidate alpha is strictly orthogonal to known risk factors).
+
+##### 4. Barra Structural Risk Models & Cross-Sectional Factor Neutralization
+- **Multi-Factor Cross-Sectional Framework**:
+  In Barra-type risk architectures, asset returns are decomposed across industry and style risk factors:
+  $$ r = X_{\text{ind}} f_{\text{ind}} + X_{\text{style}} f_{\text{style}} + u $$
+  Raw candidate alpha signals (e.g., analyst revisions, short interest, order-flow imbalance) naturally carry structural exposures to sector concentrations and size/value tilts (e.g., financial stocks cluster in low PE multiples, tech stocks cluster in high valuations).
+- **FWL Orthogonal Neutralization Operator**:
+  Let $F_{\text{raw}} \in \mathbb{R}^N$ denote the cross-sectional raw factor vector across $N$ stocks, and let $X_{\text{risk}} \in \mathbb{R}^{N \times K}$ denote the benchmark risk matrix (industry dummies and standardized style factor exposures).
+  Define the weighted annihilator projection matrix:
+  $$ M_{\text{risk}} = I_N - X_{\text{risk}} (X_{\text{risk}}^\top W X_{\text{risk}})^{-1} X_{\text{risk}}^\top W $$
+  (where $W = \operatorname{diag}(\sqrt{\text{MarketCap}})$ corrects for size heteroskedasticity).
+  The purified, neutralized alpha signal is:
+  $$ F_{\text{neutral}} = M_{\text{risk}} F_{\text{raw}} $$
+- **Production Value**:
+  By the algebraic properties of the FWL annihilator matrix, $X_{\text{risk}}^\top W F_{\text{neutral}} = \mathbf{0}$:
+  1. The resulting alpha factor has exactly zero net exposure to macro, industry, and style factors;
+  2. Portfolio return attribution is strictly confined to idiosyncratic stock-picking ability, preventing portfolios from experiencing devastating drawdowns during violent macro sector rotations.
 
 ---
 
