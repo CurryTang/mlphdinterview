@@ -186,27 +186,51 @@ $$
 ---
 
 ### 4. Residual Orthogonality and Projection Operators
-Define the fitted vector $\hat{Y} = X\hat\beta$ and the sample residual vector $\hat\varepsilon = Y - \hat{Y} = Y - X\hat\beta$.
 
-- **Hat Matrix $H$ (Orthogonal Projection Operator)**:
+#### (1) Geometric Essence of Orthogonal Projection & Residuals: An $n$-Dimensional Sample Space Perspective
+To truly comprehend linear regression, one must transition from the low-dimensional feature space ("fitting a line through scatter points") to the **$n$-dimensional sample space $\mathbb{R}^n$**:
+- **Space Formulation**: The dataset comprises $n$ independent observations. The full response vector is a single, fixed point suspended in $n$-dimensional Euclidean space: $Y = (Y_1, \dots, Y_n)^\top \in \mathbb{R}^n$;
+- **Feature Hyperplane $\operatorname{Col}(X)$ (The "Floor")**: The $k$ column vectors of the regressor matrix $X \in \mathbb{R}^{n \times k}$ serve as basis vectors in $\mathbb{R}^n$. All linear combinations of these $k$ columns span a flat $k$-dimensional subspace $\operatorname{Col}(X) = \{X\beta \mid \beta \in \mathbb{R}^k\} \subset \mathbb{R}^n$ (since typically $n \gg k$, this is a flat "floor" embedded in the vast $n$-dimensional universe);
+- **Physical Limitation of Model Capacity**: A linear model is fundamentally constrained—it can only produce predictions lying strictly on the floor: $\hat{Y} = X\beta$;
+- **Why Must It Be an Orthogonal Projection?**: Which point $\hat{Y}$ on the floor minimizes the Residual Sum of Squares $RSS = \sum (Y_i - \hat{Y}_i)^2 = \|Y - \hat{Y}\|_2^2$?
+  By the fundamental axiom of Euclidean geometry: **The shortest line segment dropped from an external point to a flat subspace is the perpendicular segment (the orthogonal foot minimizes distance)**!
+  Therefore, the optimal fitted vector $\hat{Y}$ is uniquely the **orthogonal projection (foot)** of $Y$ onto $\operatorname{Col}(X)$;
+- **Geometric Role of the Residual Vector**: The residual vector $\hat\varepsilon = Y - \hat{Y}$ is the **perpendicular line segment** connecting the suspended point $Y$ to the projection foot $\hat{Y}$. It must be strictly perpendicular to **every basis vector $X_j$ lying on the floor** ($X_j \perp \hat\varepsilon \iff X_j^\top \hat\varepsilon = 0$), which geometrically produces the normal equations $X^\top \hat\varepsilon = \mathbf{0}$;
+- **High-Dimensional Pythagorean Theorem**: Because $\hat{Y} \in \operatorname{Col}(X)$ and $\hat\varepsilon \in \operatorname{Col}(X)^\perp$, they form a canonical right triangle:
+  $$\|Y\|_2^2 = \|\hat{Y}\|_2^2 + \|\hat\varepsilon\|_2^2$$
+  Centered, this yields the ANOVA identity $TSS = ESS + RSS$. **The Residual Sum of Squares $RSS$ is simply the squared Euclidean length of this perpendicular dropped segment**.
 
-  $$
-  H = X(X^\top X)^{-1} X^\top
-  $$
+#### (2) Why Do We Construct and Use Projection Matrices ($H$ and $M$)?
+In linear algebra and quantitative implementations, we define:
+- **Hat Matrix (Orthogonal Projector)**: $H = X(X^\top X)^{-1} X^\top$, satisfying $\hat{Y} = HY$;
+- **Annihilator Matrix (Residual Projector)**: $M = I - H = I - X(X^\top X)^{-1} X^\top$, satisfying $\hat\varepsilon = MY$.
 
-  - **Geometric Intuition (Vertical Spotlight)**: Projects any vector in space orthogonally onto the feature hyperplane $\operatorname{Col}(X)$, such that $HY = \hat{Y}$. Symmetry and idempotence ($H^2 = H, H^\top = H$) imply that a point already on the floor does not move under repeated projection.
-  - **Trace and Geometric Dimension**: $\operatorname{tr}(H) = \operatorname{tr}(X(X^\top X)^{-1} X^\top) = \operatorname{tr}((X^\top X)^{-1} X^\top X) = \operatorname{tr}(I_k) = k$. The geometric dimension (degrees of freedom) of the feature subspace is exactly $k$.
+Why construct $H$ and $M$ instead of just computing $\hat\beta$? Five indispensable mathematical and systemic reasons justify this formulation:
 
-- **Annihilator Matrix $M$ (Residual Projection Operator)**:
+1. **Decoupling Regressor Geometry from Target Data (Structural Invariance)**:
+   $H$ and $M$ depend exclusively on the design matrix $X$ and contain zero information about $Y$. Once $X$ is specified, the spatial orientation of the feature hyperplane is **frozen into a geometric projection apparatus**. Any future response $Y$ (asset returns, volume, volatility) can be projected onto the subspace with a single matrix multiplication ($HY$).
+2. **Strict Axiomatic Alignment: Symmetry (Self-Adjointness) and Idempotence**:
+   A linear operator is an orthogonal projector if and only if it satisfies two axioms:
+   - **Idempotence ($H^2 = H, M^2 = M$)**: Shining a vertical spotlight projects an object onto the floor (creating shadow $\hat{Y}$). Shining the spotlight on the shadow a second time cannot move it: $H^2 = X(X^\top X)^{-1} X^\top X(X^\top X)^{-1} X^\top = H$;
+   - **Symmetry ($H^\top = H, M^\top = M$)**: Symmetry guarantees that the projection rays are strictly perpendicular to the target subspace. Non-symmetric projectors perform oblique projections, violating orthogonality.
+3. **Orthogonal Direct Sum Decomposition & Subspace Annihilation**:
+   Sample space decomposes into orthogonal direct sums: $\mathbb{R}^n = \operatorname{Col}(X) \oplus \operatorname{Col}(X)^\perp$, with $H + M = I$ and $HM = \mathbf{0}$.
+   $M$ is termed the **Annihilator Matrix** because it annihilates all signals lying inside $\operatorname{Col}(X)$:
+   $$M X = (I - H)X = X - X(X^\top X)^{-1}X^\top X = X - X = \mathbf{0}$$
+   In the FWL theorem, fixed-effect demeaning, time-series de-trending, and Barra sector neutralization, $M$ acts as the universal algebraic purifier that purges confounding baseline signals.
+4. **Natural Equivalence Between Trace and Subspace Dimension**:
+   The geometric dimension (degrees of freedom) of each subspace equals the trace of its projector: $\operatorname{tr}(H) = \operatorname{rank}(H) = k$, and $\operatorname{tr}(M) = \operatorname{rank}(M) = n - k$.
+   This yields an effortless proof of unbiased error variance estimation:
+   $$\mathbb{E}[\|\hat\varepsilon\|_2^2 \mid X] = \mathbb{E}[\varepsilon^\top M \varepsilon \mid X] = \operatorname{tr}(M \mathbb{E}[\varepsilon\varepsilon^\top \mid X]) = \sigma^2 \operatorname{tr}(M) = \sigma^2 (n - k) \implies \hat\sigma^2 = \frac{\hat\varepsilon^\top \hat\varepsilon}{n - k}$$
+   Without the trace algebra of $M$, deriving degrees-of-freedom corrections is cumbersome.
+5. **Statistical Leverage and Closed-Form Leave-One-Out Cross-Validation ($O(1)$ LOOCV)**:
+   The diagonal elements $h_{ii} = [H]_{ii} = X_i^\top (X^\top X)^{-1} X_i$ measure the **statistical leverage** of observation $i$.
+   Since $\hat{Y}_i = \sum_{j=1}^n h_{ij} Y_j$, the partial derivative $\frac{\partial \hat{Y}_i}{\partial Y_i} = h_{ii} \in [0, 1]$ directly measures observation $i$'s pull on its own fitted prediction. Leveraging $H$, the leave-one-out prediction error is computed instantly without retraining $n$ separate models:
+   $$\hat\varepsilon_{(-i)} = Y_i - \hat{Y}_{(-i)} = \frac{\hat\varepsilon_i}{1 - h_{ii}}$$
+   This identity is foundational to regression diagnostics, Cook's distance, and bandwidth selection in local kernel smoothing.
 
-  $$
-  M = I - H
-  $$
-
-  - **Geometric Intuition (Vertical Component Extractor)**: Projects any vector onto the orthogonal complement subspace $\operatorname{Col}(X)^\perp$, filtering out all components parallel to the floor and extracting only the pure vertical residual $MY = \hat\varepsilon$.
-  - **Orthogonal Complementarity**: $H + M = I, HM = \mathbf{0}$, and $\operatorname{tr}(M) = n - k$ (the geometric dimension of the orthogonal complement subspace).
-
-#### Five Fundamental Algebraic and Geometric Properties of Residual Orthogonality
+#### (3) Five Fundamental Algebraic and Geometric Properties of Residual Orthogonality
+Define the fitted vector $\hat{Y} = X\hat\beta$ and the sample residual vector $\hat\varepsilon = Y - \hat{Y} = Y - X\hat\beta$:
 
 1. **Residuals are Orthogonal to Every Regressor ($X^\top \hat\varepsilon = \mathbf{0}$)**:
    Follows directly from the normal equations: $X^\top (Y - X\hat\beta) = \mathbf{0} \implies X^\top \hat\varepsilon = \mathbf{0}$.
