@@ -4,7 +4,7 @@
 
 ```text
 核心理论心智模型（Core Mental Models）：
-1. 单变量 OLS 关键恒等式：\hat\beta = \rho (\sigma_y / \sigma_x) 以及 R^2 = \rho^2。
+1. 单变量 OLS 关键恒等式：样本估计量 \hat\beta_1 = \hat\rho_{XY} (s_Y / s_X)（总体形式 \beta_1 = \rho (\sigma_Y / \sigma_X)）以及 R^2 = \hat\rho^2。
 2. 回归的不可逆性：y 对 x 的回归斜率与 x 对 y 的回归斜率乘积为 \rho^2 \le 1，不可直接取倒数。
 3. 几何正交投影：将 OLS 视作 y 在 X 列空间上的正交投影（Orthogonal Projection）。正交性是推导残差性质的核心。
 4. BLUE 不依赖正态性：Gauss-Markov 定理证明 OLS 是最佳线性无偏估计量时不包含正态性假设。正态性仅用于精确的小样本 t/F 检验。
@@ -46,12 +46,28 @@ $$
 - **$\hat\varepsilon_i$（读作 epsilon-hat，样本残差 Residual）**：真实观测值 $Y_i$ 与模型拟合值 $\hat{Y}_i$ 之间的偏差（即模型在第 $i$ 个样本上的实际预测误差）：
   $$\hat\varepsilon_i = Y_i - \hat{Y}_i = Y_i - (\hat\beta_0 + \hat\beta_1 X_i)$$
 
-#### 样本统计量符号 $\widehat{\operatorname{Cov}}$ 与 $\widehat{\operatorname{Var}}$ 的严格定义
-设样本算术均值为 $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$，$\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$：
-- **$\widehat{\operatorname{Var}}(X)$（样本方差 Sample Variance）**：度量自变量 $X$ 围绕其均值的离散程度：
-  $$\widehat{\operatorname{Var}}(X) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$$
-- **$\widehat{\operatorname{Cov}}(X, Y)$（样本协方差 Sample Covariance）**：度量自变量 $X$ 与因变量 $Y$ 之间的协同联动变化程度：
-  $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+#### 样本与总体统计量符号（$s_X, s_Y, \sigma_X, \sigma_Y, \rho$）的严格约定
+在统计建模与量化推导中，严格遵循“**拉丁字母表示有限样本统计量，希腊字母表示数据生成过程（DGP）底层真实总体参数**”的规范约定：
+
+1. **样本统计量（由 $n$ 组有限样本观测值计算得到，为样本空间中的随机变量）**：
+   设样本算术均值为 $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$，$\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$：
+   - **样本方差 $s_X^2 = \widehat{\operatorname{Var}}(X)$ 与 $s_Y^2 = \widehat{\operatorname{Var}}(Y)$**：
+     $$s_X^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2, \quad s_Y^2 = \frac{1}{n-1}\sum_{i=1}^n (Y_i - \bar{Y})^2$$
+   - **样本标准差 $s_X$ 与 $s_Y$**（亦常记为小写 $s_x, s_y$）：
+     $$s_X = \sqrt{s_X^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2}, \quad s_Y = \sqrt{s_Y^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^n (Y_i - \bar{Y})^2}$$
+     *物理含义*：度量样本数据点围绕均值的物理离散尺度，与原始变量具有完全相同的物理量纲（单位）。
+   - **样本协方差 $\widehat{\operatorname{Cov}}(X, Y)$**：
+     $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+   - **样本 Pearson 相关系数 $\hat\rho_{XY}$**（亦常记为 $r_{XY}$ 或 $r$）：
+     $$\hat\rho_{XY} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{s_X s_Y} = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sqrt{\sum_{i=1}^n (X_i - \bar{X})^2}\sqrt{\sum_{i=1}^n (Y_i - \bar{Y})^2}} \in [-1, 1]$$
+     *物理含义*：消除自变量与因变量各自的物理量纲后，度量两者纯粹的无量纲协同线性相关程度。
+
+2. **总体理论参数（客观数据生成过程 DGP 的固有静态特征，不存在样本抽样波动）**：
+   - **总体方差 $\sigma_X^2 = \operatorname{Var}(X)$ 与 $\sigma_Y^2 = \operatorname{Var}(Y)$**：$\sigma_X^2 = \mathbb{E}[(X - \mathbb{E}[X])^2]$，$\sigma_Y^2 = \mathbb{E}[(Y - \mathbb{E}[Y])^2]$。
+   - **总体标准差 $\sigma_X$ 与 $\sigma_Y$**（亦常记为小写 $\sigma_x, \sigma_y$）：总体分布的真实波动率，$\sigma_X = \sqrt{\operatorname{Var}(X)}$，$\sigma_Y = \sqrt{\operatorname{Var}(Y)}$。
+   - **总体协方差与相关系数**：$\operatorname{Cov}(X, Y) = \mathbb{E}[(X - \mathbb{E}[X])(Y - \mathbb{E}[Y])]$，$\rho = \frac{\operatorname{Cov}(X, Y)}{\sigma_X \sigma_Y} \in [-1, 1]$。
+   - **扰动项总体方差 $\sigma^2$**（亦记为 $\sigma_\varepsilon^2$）：回归未观测物理白噪声的真实方差，$\operatorname{Var}(\varepsilon_i \mid X) = \sigma^2$。
+   - **渐近收敛性**：由弱大数定律（WLLN），当样本量 $n \to \infty$ 时，样本统计量依概率收敛于总体参数：$s_X \xrightarrow{p} \sigma_X$，$s_Y \xrightarrow{p} \sigma_Y$，$\hat\rho_{XY} \xrightarrow{p} \rho$。
 
 #### OLS 目标函数与闭式估计量推导
 普通最小二乘法（OLS）的核心准则是：寻找使全样本残差平方和（Residual Sum of Squares, $RSS$）达到全局最小的参数 $(\hat\beta_0, \hat\beta_1)$：
@@ -243,6 +259,8 @@ $$
 
 #### （1）单变量回归：协方差与自变量方差之商
 
+在有限样本 OLS 估计层面，参数解析解为：
+
 $$
 \hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)} = \hat\rho_{XY} \frac{s_Y}{s_X}
 $$
@@ -251,16 +269,24 @@ $$
 \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}, \quad R^2 = \hat\rho_{XY}^2
 $$
 
-- **物理含义**：相关系数 $\rho \in [-1, 1]$ 衡量纯粹的无量纲关联紧密性；$\frac{s_Y}{s_X}$ 提供物理量纲转换。$\beta_1$ 是带有真实量纲 $[Y]/[X]$ 的物理边际变动响应率。
-- **标准化数据**：当 $s_X = s_Y = 1$ 时，斜率与相关系数完全重合：$\hat\beta_1 = \hat\rho_{XY}$。
+在理论总体分布（总体最佳线性预测 BLP）层面，对应参数关系为：
+
+$$
+\beta_1 = \frac{\operatorname{Cov}(X, Y)}{\operatorname{Var}(X)} = \rho \frac{\sigma_Y}{\sigma_X}
+$$
+
+- **物理含义与量纲分析**：相关系数 $\hat\rho_{XY} \in [-1, 1]$（或总体 $\rho$）度量纯粹的无量纲线性关联紧密性；而标准差之比 $\frac{s_Y}{s_X}$（或总体 $\frac{\sigma_Y}{\sigma_X}$）提供物理量纲转换因子。回归斜率 $\beta_1$ 带有确切的物理单位 $[Y]/[X]$，表示自变量每变动一个单位时因变量的边际变动响应率。
+- **标准化数据**：当特征与目标被标准化处理（即样本 $s_X = s_Y = 1$ 或总体 $\sigma_X = \sigma_Y = 1$）时，标准差之比退化为 1，回归斜率与相关系数严格重合：$\hat\beta_1 = \hat\rho_{XY}$（总体 $\beta_1 = \rho$）。
 
 #### （2）回归的非对称性与均值回归（Regression to the Mean）
+分别考察总体理论分布与有限样本估计量下的双向回归关系：
 
-$$
-\hat\beta_{Y \sim X} = \rho \frac{\sigma_Y}{\sigma_X}, \quad \hat\beta_{X \sim Y} = \rho \frac{\sigma_X}{\sigma_Y} \implies \hat\beta_{Y \sim X} \times \hat\beta_{X \sim Y} = \rho^2 \le 1
-$$
+- **总体理论关系**：
+  $$\beta_{Y \sim X} = \rho \frac{\sigma_Y}{\sigma_X}, \quad \beta_{X \sim Y} = \rho \frac{\sigma_X}{\sigma_Y} \implies \beta_{Y \sim X} \times \beta_{X \sim Y} = \rho^2 \le 1$$
+- **有限样本估计关系**：
+  $$\hat\beta_{Y \sim X} = \hat\rho_{XY} \frac{s_Y}{s_X}, \quad \hat\beta_{X \sim Y} = \hat\rho_{XY} \frac{s_X}{s_Y} \implies \hat\beta_{Y \sim X} \times \hat\beta_{X \sim Y} = \hat\rho_{XY}^2 \le 1$$
 
-- **物理直观（噪声稀释效应）**：反向回归斜率不是正向斜率的倒数，而是 $\hat\beta_{X \sim Y} = \frac{\rho^2}{\hat\beta_{Y \sim X}} < \frac{1}{\hat\beta_{Y \sim X}}$（当存在噪声 $|\rho| < 1$ 时）。测量中不可避免的随机噪声稀释了确定性信号，使得从任意一侧预测另一侧时，预测值都会被系统性向中心均值拉拢。
+- **物理直观（噪声稀释效应与均值收缩）**：反向回归斜率绝不是正向斜率的简单倒数，而是 $\beta_{X \sim Y} = \frac{\rho^2}{\beta_{Y \sim X}} < \frac{1}{\beta_{Y \sim X}}$（当且仅当数据存在不可预测的噪声导致 $|\rho| < 1$ 时）。测量与数据生成中客观存在的随机波动稀释了确定性因果信号；因此从任意一侧反推另一侧时，极值观测的期望预测均被系统性拉向总体中心均值（高个子父母的子女倾向于矮于父母，极端收益率资产倾向于回归平均）。
 
 #### （3）多元回归的协方差表达：线性白化去相关
 

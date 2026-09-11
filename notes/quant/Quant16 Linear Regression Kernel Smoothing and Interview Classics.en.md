@@ -4,7 +4,7 @@ Linear regression forms the foundational bedrock of quantitative research and st
 
 ```text
 Core Theoretical Mental Models:
-1. Univariate OLS Fundamental Identities: \hat\beta = \rho (\sigma_y / \sigma_x) and R^2 = \rho^2.
+1. Univariate OLS Fundamental Identities: Sample estimator \hat\beta_1 = \hat\rho_{XY} (s_Y / s_X) (population form \beta_1 = \rho (\sigma_Y / \sigma_X)) and R^2 = \hat\rho^2.
 2. Regression Asymmetry: The product of the forward slope of y on x and the reverse slope of x on y is \rho^2 \le 1; never invert directly.
 3. Geometric Orthogonal Projection: View OLS as the orthogonal projection of y onto the column space of X. Orthogonality is the algebraic bedrock of residual properties.
 4. BLUE Does Not Require Normality: The Gauss-Markov theorem proves OLS is BLUE under moment assumptions alone without assuming normal errors. Normality is required only for exact finite-sample t and F tests.
@@ -46,12 +46,28 @@ In standard statistical convention, a **"hat" ($\ \hat{}\ $) signifies a sample 
 - **$\hat\varepsilon_i$ (pronounced "epsilon-hat", Sample Residual)**: The deviation between observed target $Y_i$ and fitted prediction $\hat{Y}_i$ (the empirical prediction error on sample $i$):
   $$\hat\varepsilon_i = Y_i - \hat{Y}_i = Y_i - (\hat\beta_0 + \hat\beta_1 X_i)$$
 
-#### Sample Covariance & Variance Notations ($\widehat{\operatorname{Cov}}$ & $\widehat{\operatorname{Var}}$)
-Let $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$ and $\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$ denote the sample arithmetic means:
-- **$\widehat{\operatorname{Var}}(X)$ (Sample Variance)**: Measures the dispersion of predictor $X$ around its sample mean:
-  $$\widehat{\operatorname{Var}}(X) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$$
-- **$\widehat{\operatorname{Cov}}(X, Y)$ (Sample Covariance)**: Measures the co-movement between predictor $X$ and response $Y$:
-  $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+#### Formal Conventions for Sample Statistics vs. Population Parameters ($s_X, s_Y, \sigma_X, \sigma_Y, \rho$)
+In statistical modeling and quantitative analysis, mathematical rigor requires adhering to the universal convention: **Latin letters denote finite-sample estimators (sample statistics computed from observed data), while Greek letters denote the unobserved, true parameters of the underlying data-generating process (DGP)**:
+
+1. **Finite-Sample Statistics (Computed from $n$ sample pairs; random variables subject to sampling variation)**:
+   Let $\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i$ and $\bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i$ denote sample arithmetic means:
+   - **Sample Variances $s_X^2 = \widehat{\operatorname{Var}}(X)$ and $s_Y^2 = \widehat{\operatorname{Var}}(Y)$**:
+     $$s_X^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2, \quad s_Y^2 = \frac{1}{n-1}\sum_{i=1}^n (Y_i - \bar{Y})^2$$
+   - **Sample Standard Deviations $s_X$ and $s_Y$** (often written in lowercase $s_x, s_y$):
+     $$s_X = \sqrt{s_X^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2}, \quad s_Y = \sqrt{s_Y^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^n (Y_i - \bar{Y})^2}$$
+     *Physical Meaning*: The characteristic dispersion scale of observed sample points around their mean, possessing the identical physical units/dimension as the raw variable.
+   - **Sample Covariance $\widehat{\operatorname{Cov}}(X, Y)$**:
+     $$\widehat{\operatorname{Cov}}(X, Y) = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})$$
+   - **Sample Pearson Correlation Coefficient $\hat\rho_{XY}$** (commonly denoted $r_{XY}$ or $r$):
+     $$\hat\rho_{XY} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{s_X s_Y} = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sqrt{\sum_{i=1}^n (X_i - \bar{X})^2}\sqrt{\sum_{i=1}^n (Y_i - \bar{Y})^2}} \in [-1, 1]$$
+     *Physical Meaning*: A dimensionless scalar measuring the pure linear co-dependence between $X$ and $Y$ isolated from physical scale.
+
+2. **Population Parameters (Inherent theoretical properties of the DGP; constant and free from sampling noise)**:
+   - **Population Variances $\sigma_X^2 = \operatorname{Var}(X)$ and $\sigma_Y^2 = \operatorname{Var}(Y)$**: $\sigma_X^2 = \mathbb{E}[(X - \mathbb{E}[X])^2]$, $\sigma_Y^2 = \mathbb{E}[(Y - \mathbb{E}[Y])^2]$.
+   - **Population Standard Deviations $\sigma_X$ and $\sigma_Y$** (often written in lowercase $\sigma_x, \sigma_y$): $\sigma_X = \sqrt{\operatorname{Var}(X)}$, $\sigma_Y = \sqrt{\operatorname{Var}(Y)}$.
+   - **Population Covariance & Correlation**: $\operatorname{Cov}(X, Y) = \mathbb{E}[(X - \mathbb{E}[X])(Y - \mathbb{E}[Y])]$, $\rho = \frac{\operatorname{Cov}(X, Y)}{\sigma_X \sigma_Y} \in [-1, 1]$.
+   - **Population Noise Variance $\sigma^2$** (or $\sigma_\varepsilon^2$): The intrinsic physical white noise variance of the unobserved disturbance, $\operatorname{Var}(\varepsilon_i \mid X) = \sigma^2$.
+   - **Asymptotic Convergence**: By the Weak Law of Large Numbers (WLLN), as sample size $n \to \infty$, sample statistics converge in probability to population parameters: $s_X \xrightarrow{p} \sigma_X$, $s_Y \xrightarrow{p} \sigma_Y$, $\hat\rho_{XY} \xrightarrow{p} \rho$.
 
 #### OLS Objective and Closed-Form Derivation
 Ordinary Least Squares (OLS) chooses estimates $(\hat\beta_0, \hat\beta_1)$ that globally minimize the Residual Sum of Squares ($RSS$):
@@ -243,6 +259,8 @@ Define the fitted vector $\hat{Y} = X\hat\beta$ and the sample residual vector $
 
 #### (1) Univariate Regression: Ratio of Covariance to Regressor Variance
 
+At the finite-sample OLS estimation level, the closed-form analytical solutions are:
+
 $$
 \hat\beta_1 = \frac{\sum_{i=1}^n (X_i - \bar{X})(Y_i - \bar{Y})}{\sum_{i=1}^n (X_i - \bar{X})^2} = \frac{\widehat{\operatorname{Cov}}(X, Y)}{\widehat{\operatorname{Var}}(X)} = \hat\rho_{XY} \frac{s_Y}{s_X}
 $$
@@ -251,16 +269,24 @@ $$
 \hat\beta_0 = \bar{Y} - \hat\beta_1 \bar{X}, \quad R^2 = \hat\rho_{XY}^2
 $$
 
-- **Physical Meaning**: The correlation coefficient $\rho \in [-1, 1]$ captures pure dimensionless linear association; $\frac{s_Y}{s_X}$ provides physical dimensional conversion. $\beta_1$ represents the physical marginal rate of change with dimensional units $[Y]/[X]$.
-- **Standardized Data**: When $s_X = s_Y = 1$, the slope and correlation coincide: $\hat\beta_1 = \hat\rho_{XY}$.
+At the theoretical population level (Population Best Linear Predictor, BLP), the structural parameter relationship is:
+
+$$
+\beta_1 = \frac{\operatorname{Cov}(X, Y)}{\operatorname{Var}(X)} = \rho \frac{\sigma_Y}{\sigma_X}
+$$
+
+- **Physical Meaning & Dimensional Analysis**: The correlation coefficient $\hat\rho_{XY} \in [-1, 1]$ (or population $\rho$) quantifies pure dimensionless linear association; the standard deviation ratio $\frac{s_Y}{s_X}$ (or population $\frac{\sigma_Y}{\sigma_X}$) provides the physical dimensional conversion factor. The regression slope $\beta_1$ carries exact physical units $[Y]/[X]$, representing the marginal response rate in $Y$ per unit displacement in $X$.
+- **Standardized Data**: When features and targets are normalized ($s_X = s_Y = 1$ in sample, or $\sigma_X = \sigma_Y = 1$ in population), the dispersion scale ratio collapses to 1, and the regression slope strictly coincides with the correlation coefficient: $\hat\beta_1 = \hat\rho_{XY}$ (population $\beta_1 = \rho$).
 
 #### (2) Asymmetry of Regression and Regression to the Mean
+Examining bidirectional regressions at both the population theoretical level and the finite-sample estimation level:
 
-$$
-\hat\beta_{Y \sim X} = \rho \frac{\sigma_Y}{\sigma_X}, \quad \hat\beta_{X \sim Y} = \rho \frac{\sigma_X}{\sigma_Y} \implies \hat\beta_{Y \sim X} \times \hat\beta_{X \sim Y} = \rho^2 \le 1
-$$
+- **Population Theoretical Relation**:
+  $$\beta_{Y \sim X} = \rho \frac{\sigma_Y}{\sigma_X}, \quad \beta_{X \sim Y} = \rho \frac{\sigma_X}{\sigma_Y} \implies \beta_{Y \sim X} \times \beta_{X \sim Y} = \rho^2 \le 1$$
+- **Finite-Sample Estimation Relation**:
+  $$\hat\beta_{Y \sim X} = \hat\rho_{XY} \frac{s_Y}{s_X}, \quad \hat\beta_{X \sim Y} = \hat\rho_{XY} \frac{s_X}{s_Y} \implies \hat\beta_{Y \sim X} \times \hat\beta_{X \sim Y} = \hat\rho_{XY}^2 \le 1$$
 
-- **Physical Intuition (Noise Dilution Effect)**: The reverse regression slope is not the reciprocal of the forward slope, but rather $\hat\beta_{X \sim Y} = \frac{\rho^2}{\hat\beta_{Y \sim X}} < \frac{1}{\hat\beta_{Y \sim X}}$ whenever noise exists ($|\rho| < 1$). Inevitable random measurement noise dilutes the deterministic signal, systematically pulling predictions toward the unconditional mean from either direction.
+- **Physical Intuition (Noise Dilution Effect & Mean Contraction)**: The reverse regression slope is never the algebraic reciprocal of the forward slope; rather, $\beta_{X \sim Y} = \frac{\rho^2}{\beta_{Y \sim X}} < \frac{1}{\beta_{Y \sim X}}$ whenever noise exists ($|\rho| < 1$). Random fluctuations dilute deterministic signals; predicting either variable from the other systematically contracts extreme values toward the unconditional center mean (e.g., tall parents' children tend to be shorter, extreme return assets tend to revert to the cross-sectional mean).
 
 #### (3) Multivariate Regression Covariance Formulation: Linear Whitening Decorrelation
 
