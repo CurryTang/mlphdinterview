@@ -300,22 +300,57 @@ $$
 
 #### (4) Partial Covariance and the Frisch–Waugh–Lovell (FWL) Theorem
 
-The coefficient of a single feature $X_j$ in multivariate regression satisfies:
+##### 1. Core Theoretical Motivation (Why Do We Need Partial Covariance & the FWL Theorem?)
+In empirical statistics, quantitative finance, and causal inference, partial covariance and the FWL theorem were developed to resolve four fundamental pain points:
+1. **Pain Point 1: Confounder Collinearity and the Mathematical Realization of "Ceteris Paribus" (All Else Equal)**:
+   Observed features in real-world data are almost never orthogonal (e.g., tenure and education, market capitalization and turnover are deeply intertwined). In a simple univariate regression $Y \sim X_j$, the ordinary covariance $\operatorname{Cov}(X_j, Y)$ conflates $X_j$'s direct marginal contribution with all indirect, channeled influences from correlated confounders (omitted variable bias, OVB).
+   - *Motivation*: Formulate a rigorous algebraic mechanism to purge the confounding influences of all other features $X_{-j}$, quantifying the pure, ceteris paribus marginal impact of $X_j$ on $Y$.
+2. **Pain Point 2: Computational Inversion Bottlenecks (Frisch & Waugh's 1933 Historical Dilemma)**:
+   In 1933, econometric pioneers Ragnar Frisch and Frederick Waugh analyzed agricultural supply-demand series with extensive polynomial time trends and seasonal dummies. In the pre-computer era, inverting an $(X^\top X)$ matrix with dozens of control columns was a prohibitive $O(p^3)$ manual chore.
+   - *Motivation*: Is it possible to avoid inverting the massive full design matrix and isolate the parameter of primary interest (e.g., price elasticity) by stripping out nuisance trends and fixed effects? The FWL theorem proved that residualizing both target and primary regressor against nuisance variables yields the identical coefficient and standard error in a univariate regression.
+3. **Pain Point 3: High-Dimensional Fixed Effects Absorption (Panel & Clustered Data)**:
+   Microeconometric panel datasets and cross-sectional equity universes often feature thousands of entity fixed effects (e.g., 5,000 equity dummy columns). Direct inversion crashes memory and compute.
+   - *Motivation*: The FWL projection operator $M_{\text{FE}} = I - D(D^\top D)^{-1}D^\top$ proves that high-dimensional fixed effects are mathematically equivalent to simple within-group demeaning (the Within Transformation), absorbing thousands of nuisance parameters without explicitly inverting them.
+4. **Pain Point 4: Foundation of Modern Causal Inference and Double/Debiased Machine Learning (DML)**:
+   Chernozhukov et al. (2018) established Double Machine Learning by generalizing FWL orthogonalization from linear subspaces to arbitrary non-parametric ML models (residualizing treatment $D$ and outcome $Y$ via complex ML on high-dimensional confounders $W$, followed by Neyman-orthogonal regression to eliminate regularization bias and recover $\sqrt{N}$ asymptotic normality).
+
+##### 2. Theorem Statement and Formal Definition of Partial Covariance
+Partition the design matrix as $X = [X_1, X_2]$ in the linear model $Y = X_1 \beta_1 + X_2 \beta_2 + \varepsilon$:
+- Define the **orthogonal projection matrix** onto $\operatorname{Col}(X_1)$ as $P_1 = X_1 (X_1^\top X_1)^{-1} X_1^\top$;
+- Define the **annihilator matrix (orthogonal complement projector)** as $M_1 = I - P_1$ (symmetric and idempotent: $M_1^\top = M_1$, $M_1^2 = M_1$, $M_1 X_1 = \mathbf{0}$).
+
+Applying $M_1$ to both $Y$ and $X_2$ isolates the **purified orthogonal increment residuals**:
+$$\tilde{Y} = M_1 Y, \quad \tilde{X}_2 = M_1 X_2$$
+
+The **Frisch–Waugh–Lovell (FWL) Theorem** establishes that the multivariate OLS estimator $\hat\beta_2$ is strictly identical to the univariate regression of residual $\tilde{Y}$ on residual $\tilde{X}_2$:
 
 $$
-\hat\beta_j = \frac{\operatorname{Cov}(\tilde{X}_j, Y)}{\operatorname{Var}(\tilde{X}_j)} = \frac{\operatorname{Cov}(\tilde{X}_j, \tilde{Y})}{\operatorname{Var}(\tilde{X}_j)}
+\hat\beta_2 = (X_2^\top M_1 X_2)^{-1} X_2^\top M_1 Y = \frac{\widehat{\operatorname{Cov}}(\tilde{X}_2, \tilde{Y})}{\widehat{\operatorname{Var}}(\tilde{X}_2)} = \frac{\widehat{\operatorname{Cov}}(\tilde{X}_2, Y)}{\widehat{\operatorname{Var}}(\tilde{X}_2)}
 $$
 
-where $\tilde{X}_j$ is the residual from regressing $X_j$ on all other features $X_{-j}$, and $\tilde{Y}$ is the residual from regressing $Y$ on $X_{-j}$.
+- **Partial Covariance**: $\widehat{\operatorname{Cov}}(\tilde{X}_2, \tilde{Y})$ defines the sample partial covariance between $X_2$ and $Y$ conditional on $X_1$. It captures the pure co-movement between the remaining unexplained components after exhausting $X_1$'s linear predictive power.
+- **One-Sided Projection Invariance**: By the symmetry and idempotence of $M_1$:
+  $$\tilde{X}_2^\top \tilde{Y} = (M_1 X_2)^\top (M_1 Y) = X_2^\top M_1^2 Y = X_2^\top M_1 Y = \tilde{X}_2^\top Y$$
+  The numerator inner product is identical whether or not $Y$ is pre-projected; however, the denominator regressor **must be strictly orthogonalized** ($\|\tilde{X}_2\|_2^2 \ne \|X_2\|_2^2$).
 
-- **Geometric Intuition (Subspace De-aliasing)**: To isolate the pure marginal effect of $X_j$ on $Y$, one must first project out and remove the subspace spanned by the confounding features $X_{-j}$ from both $X_j$ and $Y$, and then run a simple univariate regression on the purified orthogonal components.
-- **Variance Inflation Factor (VIF)**:
+##### 3. Three Core Practical Utilities of the FWL Theorem
+1. **High-Dimensional Regression Visualization: Added Variable Plots (Partial Residual Plots)**:
+   When $p > 2$, multivariate regression cannot be directly visualized. Using FWL, plot $(\tilde{X}_{j, i}, \tilde{Y}_i)$ on a 2D scatter plot:
+   - The univariate OLS slope of this scatter plot **identically equals the multivariate partial regression coefficient $\hat\beta_j$**;
+   - Non-linear curvature, heteroskedastic fan shapes, and influential high-leverage outliers conditional on all other covariates become immediately apparent.
+2. **Geometric Origin of Multicollinearity: Variance Inflation Factor (VIF)**:
+   Expanding the sampling variance of the FWL estimator:
+   $$
+   \operatorname{Var}(\hat\beta_j \mid X) = \frac{\sigma^2}{\|\tilde{X}_j\|_2^2} = \frac{\sigma^2}{(n-1)\operatorname{Var}(X_j)} \cdot \underbrace{\frac{1}{1 - R_{j \mid -j}^2}}_{\mathrm{VIF}_j}
+   $$
+   - **Geometric Intuition (Collapsed Lever Arm Amplifies Jitter)**: $1 - R_{j \mid -j}^2 = \sin^2(\theta_j)$, where $\theta_j$ is the angle between $X_j$ and the hyperplane spanned by remaining features. Under extreme multicollinearity ($R_{j \mid -j}^2 \to 1$), $\theta_j \to 0$, shrinking the orthogonal lever arm $\tilde{X}_j$ toward zero. Balancing output responses with an infinitesimal lever arm violently amplifies minor perturbations, driving parameter estimation variance to infinity.
+3. **Two-Sided Factor Neutralization in Quantitative Alpha Modeling**:
+   When evaluating whether candidate alpha signal $X_2$ delivers incremental return beyond benchmark risk factors $X_1$ (e.g., industry, size):
+   - **Correct Method (FWL Stream)**: Both asset return $Y$ and candidate factor $X_2$ **must be simultaneously orthogonalized against $X_1$** (two-sided neutralization);
+   - **The Single-Sided Trap**: If one only neutralizes returns $Y$ to obtain residual $\varepsilon$ but regresses directly onto raw factor $X_2$, the measured factor return is systematically compressed by $(1 - \rho^2)$ ($\frac{\beta_{\text{naive}}}{\beta_{\text{FWL}}} = 1 - \rho^2$), severely penalizing and misdiagnosing promising alpha signals!
 
-  $$
-  \operatorname{Var}(\hat\beta_j \mid X) = \frac{\sigma^2}{(n-1)\operatorname{Var}(X_j)} \cdot \underbrace{\frac{1}{1 - R_{j \mid -j}^2}}_{\mathrm{VIF}_j}
-  $$
-
-  - **Geometric Intuition (Collapsed Lever Arm Amplifies Jitter)**: $1 - R_{j \mid -j}^2 = \sin^2(\theta_j)$, where $\theta_j$ is the spatial angle between $X_j$ and the hyperplane spanned by the remaining features. Under extreme multicollinearity, $\theta_j \to 0$, causing the perpendicular lever arm $\tilde{X}_j$ to collapse toward zero length. Using an infinitesimal lever arm to balance output responses causes tiny perturbations in data to violently wobble the regression hyperplane along that axis, driving estimation variance to infinity.
+```fwl-geometry-demo
+```
 
 #### (5) Canonical Quantitative Finance Mappings
 1. **CAPM Asset Beta**: $\beta_i = \frac{\operatorname{Cov}(R_i, R_m)}{\operatorname{Var}(R_m)}$;
