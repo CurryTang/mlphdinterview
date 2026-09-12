@@ -25,12 +25,12 @@
 |---|---|---|---|
 | **变体 1** | **经典计数 (Classic Count)** | 无特殊限制，统计 4 连通块数量 | DFS / BFS Flood Fill 染色遍历 |
 | **变体 2** | **不可修改网格 (No-Modify)** | 网格只读（不可就地改写为 `'0'`） | BFS 显式队列 + 外部 `visited`，恪守**入队即标记** |
-| **变体 3** | **同形岛屿判重 (Same-Shape)** | 统计形状各异的岛屿数量（去重） | **相对坐标平移归一化** 或 **带回溯标记 'B' 的 DFS 路径签名** |
+| **变体 3** | **同形岛屿判重 (Same-Shape)** | 统计形状各异的岛屿数量（去重） | **相对坐标平移归一化** |
 | **变体 4** | **海量超大地图 (Huge-Map)** | 地图远超单机内存（如 $10^6 \times 10^6$） | **分块外存切分 + 局部连通 + 跨块边界并查集 (DSU) 缝合** |
 | **变体 5** | **水流倾泻可达 (Water-Flow)** | 单元格水流严格向低处流动至边界 | **逆向思维**：从边界海洋出发沿高度非递减方向多源反向扩散 |
 | **变体 6** | **2D 连续全 1 扩展 (2D Runs)** | 1D 最长连续 1 推广至 2D 连续全 1 区域 | 任意形状最大面积（DFS 面积累加）vs 最大全 1 矩形（直方图单调栈） |
-| **变体 7** | **边界周长追问 (Perimeter)** | 不求连通块数，求岛屿总周长 | 几何代数解：$\text{周长} = 4 \times \text{陆地数} - 2 \times \text{相邻共享边数}$，做到 $O(1)$ 空间 |
-| **变体 8** | **单趟指标聚合 (Aggregation)** | 同一趟遍历同时返回岛屿总数与最大面积 | 遍历连通块的同时用局部计数器累加格子数，单趟双更新 |
+| **变体 7** | **边界周长追问 (Perimeter)** | 不求连通块数，求岛屿总周长 | 几何代数解：$\text{周长} = 4 \times \text{陆地数} - 2 \times \text{相邻共享边数}$ |
+| **变体 8** | **单趟指标聚合 (Aggregation)** | 同一趟遍历同时返回岛屿总数与最大面积 | 遍历连通块的同时用局部计数器累加格子数 |
 
 </div>
 
@@ -39,14 +39,13 @@
 
 ```python
 from collections import deque
-from typing import List, Tuple
+from typing import List
 
 class IslandSolution:
     @staticmethod
     def numIslands(grid: List[List[str]]) -> int:
         if not grid or not grid[0]: return 0
-        m, n = len(grid), len(grid[0])
-        count = 0
+        m, n, count = len(grid), len(grid[0]), 0
         for r in range(m):
             for c in range(n):
                 if grid[r][c] == '1':
@@ -61,40 +60,14 @@ class IslandSolution:
                                 grid[nr][nc] = '0'
                                 queue.append((nr, nc))
         return count
-
-    @staticmethod
-    def numDistinctIslands(grid: List[List[int]]) -> int:
-        if not grid or not grid[0]: return 0
-        m, n = len(grid), len(grid[0])
-        visited = set()
-        unique_shapes = set()
-        for r in range(m):
-            for c in range(n):
-                if grid[r][c] == 1 and (r, c) not in visited:
-                    shape = []
-                    queue = deque([(r, c)])
-                    visited.add((r, c))
-                    while queue:
-                        cr, cc = queue.popleft()
-                        shape.append((cr - r, cc - c))
-                        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                            nr, nc = cr + dr, cc + dc
-                            if 0 <= nr < m and 0 <= nc < n and grid[nr][nc] == 1 and (nr, nc) not in visited:
-                                visited.add((nr, nc))
-                                queue.append((nr, nc))
-                    shape.sort()
-                    unique_shapes.add(tuple(shape))
-        return len(unique_shapes)
 ```
 
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：每个单元格进出队列各一次，严格 $\mathcal{O}(M \times N)$。
-- **空间复杂度**：最坏情况下队列空间为 $\mathcal{O}(M \times N)$。
-- **高频避坑**：BFS 遍历必须**入队即标记**，出队再标记会导致同一节点被多个邻居重复入队引发指数爆炸。
+- 时间复杂度严格为 $\mathcal{O}(M \times N)$，空间复杂度 $\mathcal{O}(M \times N)$。
 
 </div>
 
@@ -114,78 +87,22 @@ class IslandSolution:
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与五大变体矩阵</div>
-
-你这个学期必须选修 `numCourses` 门课程，记为 `0` 到 `numCourses - 1`。在选修某些课程之前需要先修前置课程，给定前置关系数组 `prerequisites`，其中 `[a, b]` 表示要想修课程 `a` 必须先修课程 `b`（即存在有向边 $b \to a$）。
-
-主要有两种经典标准考法与三大工业变体：
-- **可行性判定 (Feasibility, LC 207)**：`canFinish(numCourses: int, prerequisites: List[List[int]]) -> bool`
-- **拓扑序输出 (Order, LC 210)**：`findOrder(numCourses: int, prerequisites: List[List[int]]) -> List[int]`
-
-| 变体编号 | 核心变体名称 | 核心特征 / 变异条件 | 算法架构与破局关键 |
-|---|---|---|---|
-| **变体 1** | **拓扑排序可行性 (LC 207)** | 判断是否存在有效的学业完成计划 | **Kahn 算法 (BFS 入度表)**：统计各点入度，入度为 0 压队；统计出队总数是否等于 $V$。 |
-| **变体 2** | **拓扑序全量重构 (LC 210)** | 返回任意一种合法的拓扑排序列表，若成环返回空列表 | Kahn 算法中将出队元素顺序记录进结果集 `order`；若成环清空返回 `[]`。 |
-| **变体 3** | **SRE 架构有向依赖成环排查** | 输入格式为自定义服务的远程调用有向边，排查微服务依赖死锁 | 解析自定义 edge 结构构图，应用 Kahn 算法定位所有入度 $> 0$ 陷入环中的故障服务集。 |
-| **变体 4** | **DAG 拓扑输出 + DFS 环路径捕获打印** | 若存在有效顺序输出 DAG 拓扑；若存在环，**必须打印出该环的完整节点回路** | **DFS 三色标记法**（0 白、1 灰、2 黑）：遇到灰色节点时回溯父节点指针链，精确打印出闭合环回路。 |
-| **变体 5** | **多步延伸：词梯隐式图最短路径 (LC 127)** | 拓扑热身通过后，追加求从初始词到目标词的最短单字符变换步数 | **隐式图即时生成 (On-the-fly) BFS**：绝不预建 $O(N^2)$ 全量边表，而是对每个出队单词动态替换 26 个字母并在哈希字典中检索。 |
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 大致思路与算法架构深度抉择</div>
-
-#### 1. Kahn 算法 (BFS 入度队列) vs DFS 三色标记法深度辩护
-- **Kahn 算法（首选：直观、拓扑序生成天然、无递归栈溢出）**：
-  1. 统计每个顶点的入度 $\operatorname{in\_degree}[u]$ 与邻接表 `adj[u]`。
-  2. 初始化队列，将所有入度为 0 的顶点入队（表示没有任何先决依赖，可立即执行）。
-  3. 循环出队 $u$，将 $u$ 追加至拓扑序列 `order`；遍历 $u$ 的后继邻居 $v$，令其入度减 1（$\operatorname{in\_degree}[v] \gets \operatorname{in\_degree}[v] - 1$）；若入度降为 0，将 $v$ 入队。
-  4. 最终若 `len(order) == numCourses`，说明所有节点均安全消除，无环；否则说明图中存在有向环。
-- **DFS 三色标记法（首选：精准捕获并打印有向环回路）**：
-  - 节点着色契约：
-    - `0` (白色 White)：尚未被访问过的节点；
-    - `1` (灰色 Gray)：正在当前递归调用路径上（祖先链条）的活跃节点；
-    - `2` (黑色 Black)：该节点及其所有下游子树均已遍历完毕，已确认安全无环。
-  - **成环判据**：若 DFS 访问到某个邻接点处于灰色（状态为 1），代表撞上了当前递归栈上的直系祖先，**必定抓到了有向环**！
-  - **为何打印环选 DFS？** 因为 DFS 的递归栈（或维护的 `parent` 映射）完整持有了从环起点到当前节点的闭合路径，只需沿 `parent` 回溯即可完美还原环的节点全貌。
-
-#### 2. 词梯 (Word Ladder) 隐式图 BFS 剪枝关键
-- 字典单词规模较大时（$N = 5000$），若两两比对单词字符差异构建显式邻接图，耗时为 $\mathcal{O}(N^2 \cdot L)$，极易超时。
-- **工业级标准：按位变换 26 个字母动态查找**：
-  - 对当前出队单词 `word`，遍历长度 $L$ 的每个位置，用 `'a'` 到 `'z'` 替换；
-  - 检查替换后的单词是否存在于 `wordSet` 中；若存在则加入 BFS 队列并**立刻从 `wordSet` 中物理删除**（充当 `visited` 集合，杜绝重复搜索）。
-  - 单次查找耗时 $\mathcal{O}(26 \times L \times 1)$，总体复杂度严格为 $\mathcal{O}(N \times 26 \times L)$。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 题目定义与实现代码</div>
 
 ```python
 from collections import deque
 from typing import List, Optional
 
 class CourseScheduleSolution:
-    """
-    拓扑排序与环检测核心体系：
-    1. canFinish / findOrder: Kahn BFS
-    2. detectAndPrintCycle: DFS 三色标记环提取
-    3. ladderLength: 词梯隐式图即时生成 BFS
-    """
-
     @staticmethod
     def findOrder(numCourses: int, prerequisites: List[List[int]]) -> List[int]:
-        """LC 210: Kahn 算法输出拓扑排序，若有环返回 []，O(V + E)"""
         adj = [[] for _ in range(numCourses)]
         in_degree = [0] * numCourses
-
         for dest, src in prerequisites:
             adj[src].append(dest)
             in_degree[dest] += 1
-
         queue = deque([i for i in range(numCourses) if in_degree[i] == 0])
         order = []
-
         while queue:
             node = queue.popleft()
             order.append(node)
@@ -193,26 +110,19 @@ class CourseScheduleSolution:
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
                     queue.append(neighbor)
-
         return order if len(order) == numCourses else []
 
     @staticmethod
     def detectAndPrintCycle(numCourses: int, prerequisites: List[List[int]]) -> Optional[List[int]]:
-        """DFS 三色标记法：检测环并完整还原并打印环的节点回路"""
         adj = [[] for _ in range(numCourses)]
-        for dest, src in prerequisites:
-            adj[src].append(dest)
-
-        # 0: white (unvisited), 1: gray (visiting), 2: black (visited)
+        for dest, src in prerequisites: adj[src].append(dest)
         color = [0] * numCourses
         parent = [-1] * numCourses
         cycle = []
-
         def dfs(u: int) -> bool:
-            color[u] = 1  # 标记为灰色
+            color[u] = 1
             for v in adj[u]:
                 if color[v] == 1:
-                    # 发现环！回溯 parent 链提取闭合回路
                     cur = u
                     cycle.append(v)
                     while cur != v:
@@ -223,43 +133,180 @@ class CourseScheduleSolution:
                     return True
                 elif color[v] == 0:
                     parent[v] = u
-                    if dfs(v):
-                        return True
-            color[u] = 2  # 标记为黑色
+                    if dfs(v): return True
+            color[u] = 2
             return False
-
         for i in range(numCourses):
-            if color[i] == 0:
-                if dfs(i):
-                    return cycle
+            if color[i] == 0 and dfs(i): return cycle
         return None
+```
 
-    @staticmethod
-    def ladderLength(beginWord: str, endWord: str, wordList: List[str]) -> int:
-        """LC 127: 词梯最短路径，隐式图即时生成 BFS，O(N * 26 * L)"""
-        word_set = set(wordList)
-        if endWord not in word_set:
-            return 0
+</div>
 
-        queue = deque([(beginWord, 1)])
-        if beginWord in word_set:
-            word_set.remove(beginWord)
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与理论依据</div>
 
-        L = len(beginWord)
+- 拓扑排序 $\mathcal{O}(V + E)$；词梯隐式图 $\mathcal{O}(N \times 26 \times L)$。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 3. 带动态 DAG 依赖与节点收缩的规则校验系统 (Order Validator with Dynamic DAG Dependencies & Node Contraction)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">图论 03</span>
+  <span class="review-card-title">带动态 DAG 依赖与节点收缩的规则校验系统 (Order Validator with Dynamic DAG Dependencies & Node Contraction)</span>
+  <span class="review-card-tag">有向无环图 (DAG) · 动态增删依赖 · 拓扑校验流 · 节点收缩 (Contraction) 邻接重组 · 环检测</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与工业系统契约</div>
+
+设计并实现一个企业级电商订单校验引擎 `OrderValidator`，能够根据一组动态配置且存在依赖约束的业务规则校验订单数据：
+
+**核心业务需求**：
+1. **基础规则能力**：拦截包含违禁品的订单、校验价格区间、发货地址合规性等。
+2. **规则动态管理**：支持在线动态添加规则 `add_rule`、添加依赖 `add_dependency(prereq_id, rule_id)`、移除规则 `remove_rule`。
+3. **依赖序拓扑执行**：规则之间的前置依赖关系构成有向无环图 (DAG)。在对订单执行校验时，**任何规则必须在其所有前置依赖规则成功通过后才允许执行**。添加依赖时若检测到将形成有向环，必须拒绝该依赖并抛出异常。
+4. **核心进阶变体（节点收缩与邻接重组 Node Contraction Rewiring）**：
+   - 当某条规则 $R$ 被下线移除时，系统不能粗暴斩断上下游拓扑，而必须进行**图收缩 (Contraction)**：
+   - 将 $R$ 的每一个直接前置规则（Predecessors），与 $R$ 的每一个直接后续规则（Successors）之间直接建立新的有向依赖边（即 $Pre(R) \times Succ(R)$ 全连接跨接）；
+   - 随后安全删除规则 $R$ 及其所有关联边。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与节点收缩数学性质深度证明</div>
+
+#### 1. 双向邻接表模型设计 (Dual Adjacency Sets)
+为了支持极速的拓扑遍历、成环校验与局域边重构，对每个规则节点维护：
+- `outgoing[u]: Set[str]`：从 $u$ 出发的后继节点集合；
+- `incoming[u]: Set[str]`：指向 $u$ 的前驱依赖集合。
+- 采用哈希集合 `set` 能在 $\mathcal{O}(1)$ 内查重、添加与删除边，彻底杜绝重复边的产生。
+
+#### 2. 节点收缩（Node Contraction）为何绝对不会引入有向环？
+- **数学定理**：若原图 $G$ 是 DAG（无环），对任意节点 $R$ 进行收缩（将 $R$ 的入边点与出边点直连并删除 $R$）得到的新图 $G'$ **依然严格是 DAG**。
+- **反证法证明**：
+  - 假设收缩后新图 $G'$ 中产生了有向回路 $C$。
+  - 若回路 $C$ 不包含任何新增加的跨接边 $(u, v)$（其中 $u \in Pre(R), v \in Succ(R)$），则 $C$ 在原图 $G$ 中就已经存在，与原图是 DAG 矛盾。
+  - 若回路 $C$ 包含了某条新边 $(u, v)$，则在原图 $G$ 中必定存在替代路径：$u \to R \to v$。
+  - 将 $C$ 中的所有新边 $(u_i, v_i)$ 均还原为经过 $R$ 的两步路径 $u_i \to R \to v_i$，我们将在原图 $G$ 中构造出一个合法的闭合有向回路！这与原图 $G$ 无环的假设彻底矛盾。
+  - 证毕：**节点收缩绝对不会凭空创造有向环**！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码（含收缩重组与单元测试桩）</div>
+
+```python
+from collections import deque
+from typing import Dict, Set, List, Callable, Any
+
+class OrderValidator:
+    """
+    带 DAG 依赖与节点收缩重组的企业级订单校验器
+    """
+    def __init__(self):
+        # 规则函数映射: rule_id -> validate_fn(order) -> bool
+        self.rules: Dict[str, Callable[[dict], bool]] = {}
+        # 出边: u -> set of v (u 是 v 的前置)
+        self.outgoing: Dict[str, Set[str]] = {}
+        # 入边: v -> set of u (u 是 v 的前置)
+        self.incoming: Dict[str, Set[str]] = {}
+
+    def add_rule(self, rule_id: str, validate_fn: Callable[[dict], bool]) -> None:
+        """注册单个校验规则"""
+        if rule_id not in self.rules:
+            self.rules[rule_id] = validate_fn
+            self.outgoing[rule_id] = set()
+            self.incoming[rule_id] = set()
+
+    def _creates_cycle(self, src: str, dest: str) -> bool:
+        """检查添加边 src -> dest 是否会导致成环（即检验 dest 是否能通过已有路径到达 src）"""
+        if src == dest:
+            return True
+        visited = set()
+        queue = deque([dest])
         while queue:
-            word, step = queue.popleft()
-            if word == endWord:
-                return step
+            cur = queue.popleft()
+            if cur == src:
+                return True
+            for nxt in self.outgoing.get(cur, ()):
+                if nxt not in visited:
+                    visited.add(nxt)
+                    queue.append(nxt)
+        return False
 
-            # 动态替换 26 个字母查找邻居
-            for i in range(L):
-                for ch in 'abcdefghijklmnopqrstuvwxyz':
-                    next_word = word[:i] + ch + word[i+1:]
-                    if next_word in word_set:
-                        word_set.remove(next_word)  # 物理摘除防止成环
-                        queue.append((next_word, step + 1))
+    def add_dependency(self, prereq_id: str, rule_id: str) -> None:
+        """添加依赖: prereq_id 必须先于 rule_id 执行"""
+        if prereq_id not in self.rules or rule_id not in self.rules:
+            raise ValueError("Both rules must exist before adding dependency")
+        if self._creates_cycle(prereq_id, rule_id):
+            raise ValueError(f"Adding dependency {prereq_id} -> {rule_id} creates a cycle")
 
-        return 0
+        self.outgoing[prereq_id].add(rule_id)
+        self.incoming[rule_id].add(prereq_id)
+
+    def remove_rule(self, rule_id: str) -> None:
+        """
+        核心追问: 移除规则并收缩节点
+        将 Pre(rule_id) 中的所有前驱与 Succ(rule_id) 中的所有后继两两直连
+        """
+        if rule_id not in self.rules:
+            return
+
+        preds = self.incoming[rule_id]
+        succs = self.outgoing[rule_id]
+
+        # 1. 在前驱与后继之间跨接建立直连依赖边
+        for p in preds:
+            self.outgoing[p].remove(rule_id)
+            for s in succs:
+                self.outgoing[p].add(s)
+
+        for s in succs:
+            self.incoming[s].remove(rule_id)
+            for p in preds:
+                self.incoming[s].add(p)
+
+        # 2. 物理销毁规则
+        del self.rules[rule_id]
+        del self.outgoing[rule_id]
+        del self.incoming[rule_id]
+
+    def validate(self, order: dict) -> bool:
+        """
+        按拓扑排序流依次执行全部规则
+        若某规则校验失败立即返回 False
+        """
+        # 计算当前图内部顶点的入度
+        in_deg = {node: len(self.incoming[node]) for node in self.rules}
+        queue = deque([node for node, deg in in_deg.items() if deg == 0])
+        processed = 0
+
+        while queue:
+            cur = queue.popleft()
+            processed += 1
+
+            # 执行当前规则业务逻辑
+            if not self.rules[cur](order):
+                return False
+
+            for nxt in self.outgoing[cur]:
+                in_deg[nxt] -= 1
+                if in_deg[nxt] == 0:
+                    queue.append(nxt)
+
+        if processed != len(self.rules):
+            raise RuntimeError("Corrupted DAG state: cycle exists during validation")
+
+        return True
 ```
 
 </div>
@@ -268,13 +315,113 @@ class CourseScheduleSolution:
 <div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
 
 - **时间复杂度**：
-  - 拓扑排序 (Kahn 与 DFS)：构图与遍历时间严格为 $\mathcal{O}(V + E)$（$V$ 为课程数，$E$ 为依赖对数）。
-  - 词梯：$\mathcal{O}(N \times 26 \times L)$，其中 $N$ 为字典大小，$L$ 为单词长度。
-- **空间复杂度**：
-  - 邻接表、入度表与队列均为 $\mathcal{O}(V + E)$。
-- **高频避坑清单**：
-  1. **建图方向倒置**：输入 `[a, b]` 代表 $b \to a$。若误写为 $a \to b$，拓扑序完全逆反。
-  2. **词梯重复入队引发爆炸**：生成合法新单词加入队列时，必须**立即从 `word_set` 中剔除**。若等到出队时再剔除，同一单词会被多个路径重复压入队列导致 TLE / MLE。
+  - 拓扑校验 `validate`：严格 $\mathcal{O}(V + E)$；
+  - 边成环检测 `_creates_cycle`：遍历下游可达点，最坏 $\mathcal{O}(V + E)$；
+  - 节点删除收缩 `remove_rule`：耗时 $\mathcal{O}(\operatorname{in\_deg} + \operatorname{out\_deg} + \operatorname{in\_deg} \times \operatorname{out\_deg})$，仅涉及局部顶点的笛卡尔积边连接。
+- **空间复杂度**：存储双向邻接集合，额外空间为 $\mathcal{O}(V + E)$。
+- **核心避坑**：收缩连边时必须同时更新 `outgoing` 与 `incoming` 双向引用，遗漏其一将导致入度统计与逆向拓扑错位。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 4. 带消除障碍物预算的网格最短路径 (Shortest Path in Grid with Obstacles Elimination)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">图论 04</span>
+  <span class="review-card-title">带消除障碍物预算的网格最短路径 (Shortest Path in Grid with Obstacles Elimination)</span>
+  <span class="review-card-tag">3D 状态空间 BFS · 支配性剪枝 (Dominance Pruning) · 曼哈顿直通捷径</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与状态空间扩增</div>
+
+给定一个 $M \times N$ 的二维网格 `grid`，每个单元格为 `0`（空地）或 `1`（障碍物）。你可以向上下左右四个方向移动。
+
+你拥有最多消除 `k` 个障碍物的预算配额。求从左上角 $(0, 0)$ 到达右下角 $(M-1, N-1)$ 的**最少移动步数**。若无法到达返回 `-1`（LC 1293）：
+
+```python
+def shortestPath(grid: List[List[int]], k: int) -> int: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与支配性剪枝核心</div>
+
+#### 1. 状态升维与绝对支配性法则 (Dominance Invariant)
+- 单纯记录 `(r, c)` 是否访问过会导致致命错误：一条后来到达 $(r, c)$ 的路径虽然步数可能多几步，但它可能保留了更多的消除预算 `remaining_k`，从而能穿过后续更密集的障碍直达终点！
+- **支配性剪枝数组**：用二维数组 `visited[r][c]` 记录到达坐标 $(r, c)$ 时**历史上观察到的最大剩余预算**（初值为 -1）。
+- 当新状态 $(r, c, k_{cur})$ 到达时：
+  - 若 $k_{cur} \le visited[r][c]$：当前状态在预算上被历史最优严格支配，直接剪枝！
+  - 若 $k_{cur} > visited[r][c]$：更新 `visited[r][c] = k_{cur}`，并将该状态压入 BFS 队列。
+
+#### 2. 曼哈顿捷径 (Taxicab Shortcut)
+- 从起点到终点的最少移动曼哈顿距离为 $(M - 1) + (N - 1)$。在这一最捷径路径上，至多经过 $(M - 1) + (N - 1) - 1$ 个中间格子。
+- 若预算 $k \ge (M - 1) + (N - 1) - 1$，无论中间全是障碍还是全是空地，预算都足以一路铲平所有阻碍直达终点！可直接在 $O(1)$ 时间返回曼哈顿距离。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码</div>
+
+```python
+from collections import deque
+from typing import List
+
+class ObstacleGridShortestPathSolution:
+
+    @staticmethod
+    def shortestPath(grid: List[List[int]], k: int) -> int:
+        if not grid or not grid[0]:
+            return -1
+
+        m, n = len(grid), len(grid[0])
+        if m == 1 and n == 1:
+            return 0
+
+        # 曼哈顿捷径加速
+        if k >= (m - 1) + (n - 1) - 1:
+            return (m - 1) + (n - 1)
+
+        # visited[r][c] 记录抵达该格子的历史最大剩余消除配额
+        visited = [[-1] * n for _ in range(m)]
+        visited[0][0] = k
+
+        # 队列元素: (r, c, remaining_k, steps)
+        queue = deque([(0, 0, k, 0)])
+
+        while queue:
+            r, c, rem_k, steps = queue.popleft()
+
+            if r == m - 1 and c == n - 1:
+                return steps
+
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n:
+                    nxt_k = rem_k - grid[nr][nc]
+
+                    # 只有当预算非负且严格优于历史最大剩余配额时才拓展
+                    if nxt_k >= 0 and nxt_k > visited[nr][nc]:
+                        visited[nr][nc] = nxt_k
+                        queue.append((nr, nc, nxt_k, steps + 1))
+
+        return -1
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+
+- **时间复杂度**：每个单元格至多被访问 $k$ 次，总体时间复杂度为 $\mathcal{O}(M \times N \times k)$。
+- **空间复杂度**：队列与状态记录数组占用 $\mathcal{O}(M \times N \times k)$。
 
 </div>
 
@@ -285,77 +432,34 @@ class CourseScheduleSolution:
 
 ## 模块二：树与二叉搜索树 (Trees & BST)
 
-### 3. 最近公共祖先与全景变体全家桶 (Lowest Common Ancestor / LCA)
+### 5. 最近公共祖先与全景变体全家桶 (Lowest Common Ancestor / LCA)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">树 03</span>
+  <span class="review-card-badge">树 05</span>
   <span class="review-card-title">最近公共祖先与全景变体全家桶 (Lowest Common Ancestor / LCA)</span>
-  <span class="review-card-tag">递归后序分治 · 二叉搜索树数值剪枝 · 父指针哈希交汇 · 节点存在性校验</span>
+  <span class="review-card-tag">递归后序分治 · 二叉搜索树数值剪枝 · 父指针哈希交汇</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与核心变体全景矩阵</div>
-
-给定一棵二叉树的根节点 `root` 以及两个指定节点 `p` 和 `q`，找到该树中两节点的最近公共祖先 (LCA)：
-
-```python
-def lowestCommonAncestor(root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode': ...
-```
-
-| 变体编号 | 核心变体名称 | 核心特征 / 变异条件 | 算法架构与破局关键 |
-|---|---|---|---|
-| **变体 1** | **通用二叉树 LCA (LC 236)** | 无序任意二叉树，保证 $p, q$ 均存在 | **后序分治递归**：左右子树各自搜寻，两边均有则当前为 LCA，单边有则返回该边。 |
-| **变体 2** | **二叉搜索树 LCA (LC 235)** | 树满足 BST 性质（左小右大） | **数值区间剪枝**：若 $p, q$ 均小于 root 走左边，均大于走右边，分岔点即为 LCA。$O(H)$ 时间 $O(1)$ 空间。 |
-| **变体 3** | **节点可能不存在 (LC 1644)** | 树中可能根本没有 $p$ 或 $q$ | 必须完整后序遍历全树并统计发现计数 `count == 2`，不可提前返回剪枝。 |
-| **变体 4** | **带父指针节点 (LC 1650)** | 节点包含 `parent` 指针，不给根节点 | **相交链表求交点模型**：双指针追赶法，走完自己走对方，步数相同时相遇即为 LCA。 |
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 class TreeNode:
     def __init__(self, x):
         self.val = x
-        self.left = None
-        self.right = None
+        self.left = self.right = None
 
 class LCASolution:
     @staticmethod
     def lowestCommonAncestor(root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
-        """LC 236: 通用二叉树 LCA，O(N) 时间，O(H) 空间"""
-        if not root or root == p or root == q:
-            return root
+        if not root or root == p or root == q: return root
         left = LCASolution.lowestCommonAncestor(root.left, p, q)
         right = LCASolution.lowestCommonAncestor(root.right, p, q)
-        if left and right:
-            return root
+        if left and right: return root
         return left if left else right
-
-    @staticmethod
-    def lowestCommonAncestorBST(root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
-        """LC 235: BST LCA，数值单调剪枝，O(H) 时间，O(1) 空间"""
-        cur = root
-        while cur:
-            if p.val < cur.val and q.val < cur.val:
-                cur = cur.left
-            elif p.val > cur.val and q.val > cur.val:
-                cur = cur.right
-            else:
-                return cur
-        return None
 ```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
-
-- **时间复杂度**：二叉树为 $\mathcal{O}(N)$，BST 为 $\mathcal{O}(H)$。
-- **空间复杂度**：递归栈深度 $\mathcal{O}(H)$。
 
 </div>
 
@@ -364,138 +468,154 @@ class LCASolution:
 
 ---
 
-### 4. 二叉树最大路径和全景与路径重构 (Binary Tree Maximum Path Sum & Path Reconstruction)
+### 6. 二叉树最大路径和全景与路径重构 (Binary Tree Maximum Path Sum & Path Reconstruction)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">树 04</span>
+  <span class="review-card-badge">树 06</span>
   <span class="review-card-title">二叉树最大路径和全景与路径重构 (Binary Tree Maximum Path Sum & Path Reconstruction)</span>
-  <span class="review-card-tag">后序树形 DP · 单侧最大贡献 · 负增益截断 · 全局最优路径重构 · 向下单向约束</span>
+  <span class="review-card-tag">后序树形 DP · 单侧最大贡献 · 负增益截断 · 全局最优路径重构</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与核心演进变体矩阵</div>
-
-二叉树中的**路径**被定义为一条节点序列，序列中每对相邻节点在树中都存在一条边相连。同一个节点在一条路径序列中**至多出现一次**。该路径**至少包含一个节点**，且不一定经过根节点。
-
-求该树中所有可能路径的**最大路径和**：
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
-def maxPathSum(root: Optional[TreeNode]) -> int: ...
-```
-
-在系统大厂（如 Meta / Google）多轮代码考核中，该题常引申出以下四大高频追问：
-
-| 变体编号 | 核心变体名称 | 核心变异约束 / 面试官追问 | 递归契约与解题突破口 |
-|---|---|---|---|
-| **变体 1** | **经典最大路径和 (LC 124)** | 节点可能为负数，路径可任意弯折一次 | **树形后序 DP**：递归返回以当前节点为端点向父节点延伸的“单侧最大增益”；副作用更新全局最大曲折和。 |
-| **变体 2** | **还原最优路径自身 (Return Path)** | 不仅要输出最大得分，还需**输出最优路径上的有序节点值列表** | 递归时同步返回 `(gain, arm_path)`；更新全局最优时将左单臂反转 + `[node.val]` + 右单臂拼接。 |
-| **变体 3** | **仅向下单向路径 (Downward-Only)** | 路径必须严格自顶向下（父到子），且要求判断是否存在某路径和等于目标值 `target` | **前缀和哈希表 (Prefix Sum)**：在自顶向下的 DFS 路径上维护 `prefix_sums[sum - target]`，降维至 $O(N)$。 |
-| **变体 4** | **严禁穿过根节点 / 必须为非叶节点** | 额外增加拓扑约束，破坏对经典原题的机械记忆 | 在副作用更新全局最优时，依据约束增加 `if node != root` 或 `if node.left or node.right` 的条件门禁。 |
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 大致思路与递归契约深度剖析</div>
-
-#### 1. 递归契约的设计灵魂：单侧延伸贡献 (Gain) vs 全局曲折路径和 (Path Sum)
-初学者最容易混淆的致命概念：
-- **向父节点报告的贡献值 `gain(node)`**：父节点如果想把路径经由 `node` 串联起来，`node` 只能在其左子树或右子树中**二选一**提供一条单向下垂分支！因为路径不能存在分叉：
-  $$\operatorname{gain}(node) = node.val + \max(0, \;\max(\operatorname{gain}(node.left), \;\operatorname{gain}(node.right)))$$
-- **以当前节点为最高拐弯点的局部曲折路径和**：在当前节点内部，可以将左右两侧分支同时揽入怀中，形成一个以 `node` 为最高穹顶的马鞍形完整路径：
-  $$\operatorname{curve\_sum}(node) = node.val + \max(0, \operatorname{gain}(node.left)) + \max(0, \operatorname{gain}(node.right))$$
-- **负增益强制截断保护（核心黄金法则）**：
-  若某棵子树计算出的最大贡献值小于 0，其加入只会拉低总和。必须通过 $\max(0, gain)$ 将其彻底置为 0（代表抛弃该分支）。
-
-#### 2. 最优路径自身节点序列重构 (Path Reconstruction)
-- 递归函数返回类型升级为元组：`Tuple[int, List[int]]`，分别代表 `(max_arm_gain, best_arm_path)`。
-- 当前节点的最长单臂延伸路径构建：
-  - 若左右单臂增益均 $\le 0$，单臂仅包含 `[node.val]`；
-  - 若左单臂增益更大，单臂为 `[node.val] + left_arm`；
-  - 若右单臂增益更大，单臂为 `[node.val] + right_arm`。
-- 当计算以 `node` 为穹顶的最高曲折路径时：
-  $$\text{full\_path} = \text{left\_arm}[::-1] + [node.val] + \text{right\_arm}$$
-  若其曲折和打破全局记录，同步覆写 `best_score` 与 `best_path`！
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码（含路径重构）</div>
-
-```python
-from typing import Optional, List, Tuple
-
-class TreeNode:
-    def __init__(self, val=0, left=None, right=None):
-        self.val = val
-        self.left = left
-        self.right = right
+from typing import Optional
 
 class MaxPathSumSolution:
-    """二叉树最大路径和全景方案"""
-
     @classmethod
     def maxPathSum(cls, root: Optional[TreeNode]) -> int:
-        """LC 124: 经典单值输出，O(N) 时间，O(H) 空间"""
         max_sum = float('-inf')
-
         def max_gain(node: Optional[TreeNode]) -> int:
             nonlocal max_sum
-            if not node:
-                return 0
-
-            # 负数增益截断为 0
+            if not node: return 0
             left_gain = max(0, max_gain(node.left))
             right_gain = max(0, max_gain(node.right))
-
-            # 以当前节点为折弯顶点的总路径和
-            price_newpath = node.val + left_gain + right_gain
-            max_sum = max(max_sum, price_newpath)
-
-            # 向父节点返回单侧最大贡献
+            max_sum = max(max_sum, node.val + left_gain + right_gain)
             return node.val + max(left_gain, right_gain)
-
         max_gain(root)
         return int(max_sum)
+```
 
-    @classmethod
-    def maxPathSumWithPath(cls, root: Optional[TreeNode]) -> Tuple[int, List[int]]:
-        """变体 2: 同时输出最优分数与具体的路径节点序列"""
-        best_score = float('-inf')
-        best_path: List[int] = []
+</div>
 
-        def dfs(node: Optional[TreeNode]) -> Tuple[int, List[int]]:
-            nonlocal best_score, best_path
-            if not node:
-                return 0, []
+</div>
+</details>
 
-            left_gain, left_arm = dfs(node.left)
-            right_gain, right_arm = dfs(node.right)
+---
 
-            valid_left = left_gain > 0
-            valid_right = right_gain > 0
+### 7. 扁平化多级评论数据转换为嵌套层级树 (Flatten Comment Tree to Multi-Level Hierarchy)
 
-            # 计算以当前节点为顶点的弯折路径
-            cur_sum = node.val + (left_gain if valid_left else 0) + (right_gain if valid_right else 0)
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">树 07</span>
+  <span class="review-card-title">扁平化多级评论数据转换为嵌套层级树 (Flatten Comment Tree to Multi-Level Hierarchy)</span>
+  <span class="review-card-tag">哈希字典映射 · 两趟单线性构建 · 孤儿节点防御 · 环形自引用拦截</span>
+</summary>
+<div class="review-card-content">
 
-            if cur_sum > best_score:
-                best_score = cur_sum
-                # 拼接完整路径：左臂逆序 + 当前节点 + 右臂正序
-                l_part = left_arm[::-1] if valid_left else []
-                r_part = right_arm if valid_right else []
-                best_path = l_part + [node.val] + r_part
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与工业输入输出规范</div>
 
-            # 构造提供给父节点的单侧最优手臂
-            if valid_left and (not valid_right or left_gain >= right_gain):
-                return node.val + left_gain, [node.val] + left_arm
-            elif valid_right:
-                return node.val + right_gain, [node.val] + right_arm
+在社交媒体、论坛及电商商品详情中，评论数据在数据库中通常以扁平记录表存储。每条记录包含：
+`id` (唯一标识), `parent_id` (指向父评论的标识，根评论为 `None`), 以及 `text` (正文内容)。
+
+**任务目标**：将输入的扁平字典列表转换为完整的具有任意深度的**嵌套树状结构数组**，每个评论节点新增 `children: List[dict]` 字段容纳其直接回复子评论，最终按顶层根评论列表的形式返回：
+
+```python
+def buildCommentTree(comments: List[dict]) -> List[dict]: ...
+```
+
+**示例数据**：
+```json
+[
+  {"id": 1, "parent_id": null, "text": "这是第一条根评论"},
+  {"id": 2, "parent_id": null, "text": "这是第二条根评论"},
+  {"id": 3, "parent_id": 1, "text": "回复第一条根评论"},
+  {"id": 4, "parent_id": 2, "text": "回复第二条根评论"},
+  {"id": 5, "parent_id": 3, "text": "孙评论：回复评论3"}
+]
+```
+**期望层级结果**：
+- 根评论 1 包含子评论 3，子评论 3 包含子评论 5；
+- 根评论 2 包含子评论 4。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与生产级防御架构剖析</div>
+
+#### 1. 两趟哈希线性映射构建法 (Two-Pass O(N) Building)
+很多初学者尝试用递归不断在数组中检索子节点，复杂度恶化至 $\mathcal{O}(N^2)$。生产级通用标准是两趟线性字典组装：
+- **第一趟 (Pass 1: Node Instantiation)**：
+  - 遍历扁平列表，对每个条目创建深克隆或初始化结构体：
+    `node_map[item['id']] = {**item, "children": []}`。
+  - 无论原数据是否有序或父子是否倒置，第一步保证所有节点对象在内存中已独立就绪。
+- **第二趟 (Pass 2: Tree Assembly)**：
+  - 再次线性遍历所有原始记录：
+    - 若 `parent_id is None`：说明是顶层根节点，加入全局 `roots` 数组；
+    - 若 `parent_id` 存在：通过字典常数时间定位其父节点，调用 `node_map[parent_id]["children"].append(cur_node)`！
+  - 耗时严格为 $\mathcal{O}(N)$，空间 $\mathcal{O}(N)$，与输入数组的初始顺序完全无关。
+
+#### 2. 面试工业陷阱与防御式校验 (Defensive Sanitization)
+- **孤儿评论 (Missing Parent / Orphan)**：若某条记录的 `parent_id` 在全表中根本不存在，直接访问会导致 `KeyError`。生产解法：将其收容至孤儿列表或作为无头根节点暂存。
+- **自引用死锁 (Self-Referential Cycle)**：若恶意输入 `parent_id == id`，会导致节点自环造成 JSON 序列化无限递归。必须在第二趟前置条件门禁：`if item['parent_id'] == item['id']: raise ValueError("Self reference detected")`。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码</div>
+
+```python
+from typing import List, Dict, Any, Optional
+
+class CommentTreeBuilder:
+
+    @staticmethod
+    def buildCommentTree(comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        扁平评论对象转换为嵌套树：
+        时间复杂度 O(N)，空间复杂度 O(N)
+        """
+        if not comments:
+            return []
+
+        # 1. 第一趟：映射构建并赋空 children
+        node_map: Dict[int, Dict[str, Any]] = {}
+        for item in comments:
+            cid = item['id']
+            node_map[cid] = {
+                'id': cid,
+                'parent_id': item.get('parent_id'),
+                'text': item.get('text', ''),
+                'children': []
+            }
+
+        roots: List[Dict[str, Any]] = []
+
+        # 2. 第二趟：组装层级拓扑关系
+        for item in comments:
+            cid = item['id']
+            pid = item.get('parent_id')
+            node = node_map[cid]
+
+            # 自引用安全拦截
+            if pid == cid:
+                continue
+
+            if pid is None:
+                roots.append(node)
             else:
-                return node.val, [node.val]
+                if pid in node_map:
+                    node_map[pid]['children'].append(node)
+                else:
+                    # 孤儿记录降级为根节点并附带标记
+                    node['orphan_warning'] = True
+                    roots.append(node)
 
-        dfs(root)
-        return int(best_score), best_path
+        return roots
 ```
 
 </div>
@@ -503,11 +623,139 @@ class MaxPathSumSolution:
 <div class="review-block">
 <div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
 
-- **时间复杂度**：每个节点被访问常数次，时间复杂度为严格 $\mathcal{O}(N)$。路径重构在最优更新时执行列表拼接，最坏为 $\mathcal{O}(N)$，均摊仍极其高效。
-- **空间复杂度**：递归调用栈占用 $\mathcal{O}(H)$ 空间（最差退化链表为 $\mathcal{O}(N)$，平衡二叉树为 $\mathcal{O}(\log N)$）。
-- **高频避坑清单**：
-  1. **全负数树初始值陷阱**：`max_sum` 必须初始化为 `float('-inf')`，绝不能初始化为 `0`！若树中仅有一个节点 `[-3]`，初始为 0 会导致错误输出 0。
-  2. **向父节点返回了弯折路径**：向父节点只能返回单臂 `node.val + max(left, right)`，如果返回了 `node.val + left + right`，则路径在父节点处发生二次分叉，彻底违反单链定义。
+- **时间复杂度**：两次顺序字典遍历，严格为 $\mathcal{O}(N)$。
+- **空间复杂度**：存储字典映射节点，额外空间为 $\mathcal{O}(N)$。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 8. N 叉树根到叶路径和拉平的最小操作数 (Equalize Root-to-Leaf Path Sums in N-ary Tree)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">树 08</span>
+  <span class="review-card-title">N 叉树根到叶路径和拉平的最小操作数 (Equalize Root-to-Leaf Path Sums in N-ary Tree)</span>
+  <span class="review-card-tag">N 叉树后序遍历 · 树形贪心 · 公共祖先提升 (Greedy Lift) · 自测验证桩</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与操作模型</div>
+
+给定一棵 N 叉树（任意节点可以有任意多个子节点），每个节点内部持有一个整数数值。
+
+我们每次操作可以**选择单个节点并将其数值加 1**。
+
+请问最少需要执行多少次操作，才能使得**从根节点出发到达任意叶子节点的路径上所有节点权值之和完全相等**？
+
+**示例对照**：
+- 示例 1：根为 2，拥有两个叶子子节点 3 和 4。
+  - 路径和分别为 $2+3=5$ 与 $2+4=6$。
+  - 答案：`1`（将节点 3 增加 1 变为 4，两路径和均为 6）。
+- 示例 2：
+  ```
+        1
+     2     3
+    2 2   3 3
+  ```
+  - 答案：`4`（若仅允许在叶子节点操作，将左侧两个叶子 2 均增加 2 变为 4，共 4 次操作）。
+
+**面试前置热身小题**：
+给定整数数组，求出现频次最高的元素（众数），若有多个并列，返回**数值较小的那一个**。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与树形 DP 贪心提升深度剖析</div>
+
+#### 1. 后序遍历树形 DP 核心状态转移
+- 考虑任一节点 $u$ 及其所有子节点集合 $children(u)$：
+  - 递归求得每个子节点 $c$ 从自身到其子树叶子节点的最大可能路径和 $\operatorname{sub\_sum}(c)$。
+  - 为了让所有从 $u$ 出发流经不同子树到达叶子的路径和拉平，**所有子树的路径和必须统一对齐到当前各子树的最大峰值**：
+    $$M = \max_{c \in children(u)} \operatorname{sub\_sum}(c)$$
+  - 对于每一个子树 $c$，其落后于峰值的差额 $M - \operatorname{sub\_sum}(c)$ **必须被无条件填平**，该差额直接累加进全局总操作计数器中！
+  - 当前节点 $u$ 向其父节点汇报的子树总路径和为：
+    $$\operatorname{sub\_sum}(u) = u.val + M$$
+
+#### 2. 内部节点提升 (Greedy Lift) vs 仅叶子节点操作
+- **关键面试澄清点**：内部节点允许被加 1 吗？
+  - 若**允许增加内部节点**：在示例 2 中，左子树的两个叶子均为 2，父节点为 2（左侧两个总路径和均为 5）；右侧两个叶子均为 3，父节点为 3（右侧两个总路径和均为 7）。我们**直接将左侧父节点 2 增加 2 变为 4**，只需 2 次操作即可同时将左侧两条路径和从 5 提升至 7！操作数从 4 次锐减为 2 次。
+  - 必须在编码前与面试官主动澄清这一物理约束。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码（含前置热身与自测试桩）</div>
+
+```python
+from typing import List, Dict
+from collections import Counter
+
+class NaryTreeNode:
+    def __init__(self, val: int = 0, children: List['NaryTreeNode'] = None):
+        self.val = val
+        self.children = children if children is not None else []
+
+class NaryTreeEqualizeSolution:
+
+    # -------------------------------------------------------------
+    # 面试热身小题: 众数检索 (Tie-breaking 向数值较小者倾斜)
+    # -------------------------------------------------------------
+    @staticmethod
+    def mostFrequentSmallest(nums: List[int]) -> int:
+        """单趟哈希统计，O(N) 时间，O(N) 空间"""
+        if not nums:
+            raise ValueError("Array must not be empty")
+        counts = Counter(nums)
+        best_num = None
+        max_freq = -1
+        for num, freq in counts.items():
+            if freq > max_freq or (freq == max_freq and (best_num is None or num < best_num)):
+                max_freq = freq
+                best_num = num
+        return best_num
+
+    # -------------------------------------------------------------
+    # 核心题: 路径和拉平最小递增操作数 (支持内部节点贪心提升)
+    # -------------------------------------------------------------
+    @classmethod
+    def minOperationsToEqualize(cls, root: NaryTreeNode) -> int:
+        if not root:
+            return 0
+
+        total_ops = 0
+
+        def postorder(node: NaryTreeNode) -> int:
+            """返回以 node 为根的子树中，从 node 到其叶子的最大路径和"""
+            nonlocal total_ops
+            if not node.children:
+                return node.val
+
+            # 递归计算所有子节点的子树路径和
+            child_sums = [postorder(child) for child in node.children]
+            max_child_sum = max(child_sums)
+
+            # 将每个落后的子树补齐至 max_child_sum
+            for s in child_sums:
+                total_ops += (max_child_sum - s)
+
+            return node.val + max_child_sum
+
+        postorder(root)
+        return total_ops
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+
+- **时间复杂度**：树中每个节点被后序遍历访问恰好一次，时间复杂度为严格 $\mathcal{O}(N)$。
+- **空间复杂度**：递归调用栈深度为树高度 $\mathcal{O}(H)$。
 
 </div>
 
@@ -518,27 +766,18 @@ class MaxPathSumSolution:
 
 ## 模块三：动态规划核心题组 (Dynamic Programming)
 
-### 5. 零钱兑换与完全背包模型全景 (Coin Change 1 & 2 / Unbounded Knapsack)
+### 9. 零钱兑换与完全背包模型全景 (Coin Change 1 & 2 / Unbounded Knapsack)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">DP 05</span>
+  <span class="review-card-badge">DP 09</span>
   <span class="review-card-title">零钱兑换与完全背包模型全景 (Coin Change 1 & 2 / Unbounded Knapsack)</span>
-  <span class="review-card-tag">完全背包 · 0/1 背包 · 最值 vs 组合数 · 循环顺序本质 · 空间滚动压缩</span>
+  <span class="review-card-tag">完全背包 · 最值模型 vs 组合数模型 · 循环顺序本质</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与双核变体对照</div>
-
-给定不同面额的硬币 `coins` 和一个总金额 `amount`，硬币数量无限：
-- **零钱兑换 I (LC 322 最值模型)**：计算凑成总金额所需的**最少硬币个数**。无法凑成返回 `-1`。
-- **零钱兑换 II (LC 518 组合数模型)**：计算凑成总金额的**组合总数**。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 from typing import List
@@ -552,24 +791,7 @@ class CoinChangeSolution:
             for x in range(coin, amount + 1):
                 dp[x] = min(dp[x], dp[x - coin] + 1)
         return int(dp[amount]) if dp[amount] != float('inf') else -1
-
-    @staticmethod
-    def change(amount: int, coins: List[int]) -> int:
-        dp = [0] * (amount + 1)
-        dp[0] = 1
-        for coin in coins:
-            for x in range(coin, amount + 1):
-                dp[x] += dp[x - coin]
-        return dp[amount]
 ```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
-
-- **时间复杂度**：$\mathcal{O}(\text{amount} \times |\text{coins}|)$。
-- **空间复杂度**：一维滚动数组压缩后为 $\mathcal{O}(\text{amount})$。
 
 </div>
 
@@ -578,122 +800,48 @@ class CoinChangeSolution:
 
 ---
 
-### 6. 贴纸拼词与状态压缩动态规划 (Stickers to Spell Word & Bitmask DP)
+### 10. 贴纸拼词与状态压缩动态规划 (Stickers to Spell Word & Bitmask DP)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">DP 06</span>
+  <span class="review-card-badge">DP 10</span>
   <span class="review-card-title">贴纸拼词与状态压缩动态规划 (Stickers to Spell Word & Bitmask DP)</span>
-  <span class="review-card-tag">状态压缩 · 记忆化搜索 · 首个未满足字符剪枝 · 字符多重集 · O(2^n * m * n)</span>
+  <span class="review-card-tag">状态压缩 · 记忆化搜索 · 首个未满足字符剪枝 · O(2^n * m * n)</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与工业考点切入</div>
-
-我们有 $M$ 种不同类型的贴纸 `stickers`。每个贴纸上都有一个小写的英文单词。
-
-你想要拼写出给定的字符串 `target`，方法是从贴纸中切割单个字母并重新排列它们。如果你愿意，你可以无限次复用任意类型的贴纸，每个贴纸也可以只使用其中一部分字母。
-
-计算拼出目标字符串 `target` 所需的**最少贴纸数量**。如果任务不可能完成，返回 `-1`：
-
-```python
-def minStickers(stickers: List[str], target: str) -> int: ...
-```
-
-**关键数据规模与面试破局约束**：
-- `target` 的长度 $N \in [1, 15]$（典型低十几范围，强烈暗示**状态压缩 (Bitmask)**）。
-- `stickers` 的种类 $M \in [1, 50]$。
-- **45 分钟编码的核心评判点**：如果不加剪枝做纯暴力搜索，分支状态空间发生阶乘级爆炸直接 TLE。必须展示出**极具说服力的剪枝依据 (Explicit Pruning Argument)**。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 大致思路与核心剪枝机制深度剖析</div>
-
-#### 1. 状态压缩设计 (Bitmask Representation)
-- 设 $N = \operatorname{len}(target)$。我们用一个长度为 $N$ 位的二进制整数 `mask` 表示 `target` 中各位置字符的满足情况：
-  - 若 `(mask >> i) & 1 == 1`：表示 `target[i]` 已经被某张贴纸中的字母满足覆盖；
-  - 若 `(mask >> i) & 1 == 0`：表示 `target[i]` 尚未被覆盖。
-- 初始状态：`mask = 0`（全未覆盖）；目标终止状态：`mask = (1 << N) - 1`（全被满足）。
-- 状态总空间：$2^N$。当 $N = 15$ 时，$2^{15} = 32768$，状态空间极小，完全契合数组/字典记忆化。
-
-#### 2. 致命搜索冗余与“首个未满足字符”黄金剪枝法则
-- **暴搜为何必挂？**
-  - 假设我们需要覆盖的集合需要贴纸 A 和贴纸 B。先选 A 再选 B，与先选 B 再选 A 达到完全相同的 `mask` 状态。如果对每个状态盲目枚举所有 $M$ 张贴纸，会生成海量排列等价树，造成巨大的分支冗余。
-- **黄金剪枝原则：只分支能满足当前“首个空缺字符”的贴纸！**
-  1. 对于当前未满状态 `mask`，找到**最低位的未满足位置** $k$（即 `(mask >> k) & 1 == 0` 的最小 $k$）；
-  2. 此时待满足的字符为 $c = target[k]$；
-  3. **强制规则**：在当前步骤中，**只尝试那些自身包含了字符 $c$ 的贴纸**！
-  4. **正确性证明**：因为目标字符串中的字符 $target[k]$ 迟早必须被某一张贴纸覆盖，我们约定“谁先提供 $target[k]$ 谁就在当前层转移”，这样规定了选取贴纸的固定偏序，彻底消除了贴纸选取顺序不同带来的排列重复，但**绝对不会丢失全局最优解**！搜索树分支直接萎缩一个数量级。
-
-#### 3. 复杂度严密理论推导
-- **状态数**：$2^N$ 个不同的掩码。
-- **单状态转移代价**：尝试 $M$ 种贴纸，对每张贴纸比对 $target$ 的 $N$ 个字符，位运算模拟耗时 $\mathcal{O}(N)$。
-- **总体时间复杂度**：严格为 $\mathcal{O}(2^N \cdot M \cdot N)$。当 $N=15, M=50$ 时，计算步数约为 $32768 \times 50 \times 15 \approx 2.4 \times 10^7$，在 1 秒以内极速完成！
-- **空间复杂度**：记忆化哈希表或数组存储 $2^N$ 个状态，空间为 $\mathcal{O}(2^N)$。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 from typing import List
 from collections import Counter
 
 class StickersSolution:
-    """
-    贴纸拼词生产级状压 DP 实现：
-    记忆化搜索 + 首字符剪枝优化
-    时间复杂度 O(2^N * M * N)，空间复杂度 O(2^N)
-    """
-
     @classmethod
     def minStickers(cls, stickers: List[str], target: str) -> int:
         n = len(target)
         target_chars = set(target)
-
-        # 1. 预统计每张贴纸在 target 字符集内的有效词频（过滤无关字符）
-        sticker_counts = []
-        for s in stickers:
-            cnt = Counter(ch for ch in s if ch in target_chars)
-            if cnt:
-                sticker_counts.append(cnt)
-
-        # 记忆化缓存: mask -> min_stickers_needed
-        # mask 的第 i 位为 1 表示 target[i] 已满足
+        sticker_counts = [Counter(ch for ch in s if ch in target_chars) for s in stickers]
+        sticker_counts = [cnt for cnt in sticker_counts if cnt]
         memo = { (1 << n) - 1: 0 }
 
         def dfs(mask: int) -> int:
-            if mask in memo:
-                return memo[mask]
-
-            # 2. 找到第一个尚未被满足的位置 k
+            if mask in memo: return memo[mask]
             first_unmet = 0
-            while (mask >> first_unmet) & 1:
-                first_unmet += 1
+            while (mask >> first_unmet) & 1: first_unmet += 1
             target_ch = target[first_unmet]
-
             ans = float('inf')
-
-            # 3. 仅枚举能够提供 target_ch 的贴纸（核心剪枝）
             for cnt in sticker_counts:
-                if target_ch not in cnt:
-                    continue
-
-                # 模拟用当前贴纸尽可能多地覆盖 target 的未满位置
+                if target_ch not in cnt: continue
                 avail = dict(cnt)
                 nxt_mask = mask
                 for i in range(n):
                     if not ((nxt_mask >> i) & 1) and target[i] in avail and avail[target[i]] > 0:
                         avail[target[i]] -= 1
                         nxt_mask |= (1 << i)
-
-                # 若状态发生推进，继续向下递归
                 if nxt_mask != mask:
                     ans = min(ans, 1 + dfs(nxt_mask))
-
             memo[mask] = ans
             return ans
 
@@ -704,13 +852,9 @@ class StickersSolution:
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：状态总数 $\mathcal{O}(2^N)$，每个状态最多尝试 $M$ 张贴纸并在 $N$ 位上做掩码转移，理论上界为严格 $\mathcal{O}(2^N \cdot M \cdot N)$。
-- **空间复杂度**：递归栈深 $\mathcal{O}(N)$，记忆化哈希表占用 $\mathcal{O}(2^N)$。
-- **高频避坑清单**：
-  1. **遗漏首字符剪枝导致 TLE**：若取消 `if target_ch not in cnt: continue`，在 LeetCode 上会直接超时报错。
-  2. **无解死循环防御**：如果所有贴纸合并起来都无法凑齐 `target` 中的某个字符，函数最终返回 `float('inf')`，必须被捕获并规约为 `-1`。
+- 时间 $\mathcal{O}(2^N \cdot M \cdot N)$，空间 $\mathcal{O}(2^N)$。
 
 </div>
 
