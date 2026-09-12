@@ -22572,6 +22572,180 @@ button.overview-support-card.active {
   color: #e2e8f0;
 }
 
+/* Local Linear Regression & Automatic Kernel Carpentry Demo */
+.llc-demo-container {
+  margin: 1.5rem auto;
+  max-width: min(100%, 880px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  background: #090e1a;
+  color: #f1f5f9;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  padding: 1.35rem;
+}
+
+.llc-demo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.llc-demo-header .eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.llc-demo-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: #f8fafc;
+}
+
+.llc-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.llc-tab-group {
+  display: flex;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.llc-tab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.llc-tab-btn:hover {
+  color: #f1f5f9;
+}
+
+.llc-tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.llc-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.llc-slider-wrap strong {
+  font-family: "IBM Plex Mono", monospace;
+  color: #38bdf8;
+  min-width: 34px;
+}
+
+.llc-chip-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.74rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.llc-chip-btn:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.llc-chip-btn.active {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.llc-demo-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #0b1329;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  margin-bottom: 0.9rem;
+}
+
+.llc-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+
+.llc-metric-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.llc-metric-card span {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.llc-metric-card strong {
+  font-size: 1.1rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+}
+
+.llc-explanation-box {
+  background: rgba(30, 41, 59, 0.6);
+  border-left: 4px solid #38bdf8;
+  border-radius: 0 8px 8px 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+@keyframes llcPulse {
+  0%, 100% {
+    r: 6px;
+    opacity: 0.9;
+  }
+  50% {
+    r: 9px;
+    opacity: 1;
+    filter: drop-shadow(0 0 8px #38bdf8);
+  }
+}
+
+.llc-pulse-beacon {
+  animation: llcPulse 1.8s ease-in-out infinite;
+}
 
 /* ML Metrics Interactive Visual Lab */
 .ml-metrics-container {

@@ -9936,6 +9936,720 @@ function NadarayaWatsonVisual() {
   );
 }
 
+const LLC_DATA_POINTS = [
+  { id: 1, x: 0.5, y: 1.4 },
+  { id: 2, x: 1.2, y: 2.2 },
+  { id: 3, x: 2.0, y: 3.5 },
+  { id: 4, x: 2.8, y: 4.6 },
+  { id: 5, x: 3.6, y: 5.2 },
+  { id: 6, x: 4.4, y: 5.0 },
+  { id: 7, x: 5.2, y: 4.2 },
+  { id: 8, x: 6.0, y: 3.8 },
+  { id: 9, x: 6.8, y: 4.4 },
+  { id: 10, x: 7.6, y: 5.8 },
+  { id: 11, x: 8.4, y: 7.2 },
+  { id: 12, x: 9.0, y: 8.5 },
+  { id: 13, x: 9.5, y: 9.6 },
+];
+
+function LocalLinearCarpentryVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [x0, setX0] = useState(0.8);
+  const [bandwidth, setBandwidth] = useState(1.2);
+  const [fitMode, setFitMode] = useState('compare'); // 'compare' | 'linear' | 'constant'
+  const [activeTab, setActiveTab] = useState('carpentry'); // 'carpentry' | 'df_loocv'
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setX0((prev) => {
+        let next = prev + 0.12;
+        if (next > 9.4) next = 0.6;
+        return parseFloat(next.toFixed(2));
+      });
+    }, 90);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const svgWidth = 800;
+  const svgHeight = 360;
+  const padLeft = 60;
+  const padRight = 35;
+  const padTop = 30;
+  const padBottom = 45;
+  const plotW = svgWidth - padLeft - padRight;
+  const plotH = svgHeight - padTop - padBottom;
+
+  const toSvgX = (x) => padLeft + ((x - 0) / 10) * plotW;
+  const toSvgY = (y) => padTop + plotH - ((y - 0) / 11) * plotH;
+  const fromSvgX = (sx) => {
+    const val = ((sx - padLeft) / plotW) * 10;
+    return Math.max(0.5, Math.min(9.5, val));
+  };
+
+  const evalKernel = (u) => Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+
+  const computeLocalFit = (qx, h) => {
+    let s0 = 0;
+    let s1 = 0;
+    let s2 = 0;
+    let t0 = 0;
+    let t1 = 0;
+
+    const rawWeights = LLC_DATA_POINTS.map((p) => {
+      const u = (p.x - qx) / h;
+      const k = evalKernel(u);
+      const dx = p.x - qx;
+      s0 += k;
+      s1 += k * dx;
+      s2 += k * dx * dx;
+      t0 += k * p.y;
+      t1 += k * dx * p.y;
+      return { k, dx, y: p.y };
+    });
+
+    const yConstant = s0 > 1e-9 ? t0 / s0 : 0;
+    const nwWeights = rawWeights.map((rw) => (s0 > 1e-9 ? rw.k / s0 : 0));
+
+    const det = s0 * s2 - s1 * s1;
+    let yLinear = yConstant;
+    let slopeLinear = 0;
+    let eqWeights = [];
+
+    if (Math.abs(det) > 1e-9) {
+      yLinear = (s2 * t0 - s1 * t1) / det;
+      slopeLinear = (s0 * t1 - s1 * t0) / det;
+      eqWeights = rawWeights.map((rw) => (rw.k * (s2 - s1 * rw.dx)) / det);
+    } else {
+      eqWeights = nwWeights;
+    }
+
+    return {
+      yLinear,
+      slopeLinear,
+      yConstant,
+      eqWeights,
+      nwWeights,
+      s1,
+    };
+  };
+
+  const currentFit = useMemo(() => computeLocalFit(x0, bandwidth), [x0, bandwidth]);
+
+  const smootherStats = useMemo(() => {
+    const N = LLC_DATA_POINTS.length;
+    let traceS = 0;
+    const leverages = [];
+    const fittedY = [];
+
+    for (let i = 0; i < N; i++) {
+      const pi = LLC_DATA_POINTS[i];
+      const fitI = computeLocalFit(pi.x, bandwidth);
+      const lev = fitI.eqWeights[i] || 0;
+      leverages.push(lev);
+      traceS += lev;
+      fittedY.push(fitI.yLinear);
+    }
+
+    let loocvSum = 0;
+    for (let i = 0; i < N; i++) {
+      const lev = Math.min(0.95, leverages[i]);
+      const res = (LLC_DATA_POINTS[i].y - fittedY[i]) / (1 - lev);
+      loocvSum += res * res;
+    }
+    const loocv = loocvSum / N;
+
+    return { traceS, leverages, loocv };
+  }, [bandwidth]);
+
+  const curvePoints = useMemo(() => {
+    const steps = 75;
+    const linearPts = [];
+    const constPts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = 0.5 + (i / steps) * 9.0;
+      const fit = computeLocalFit(x, bandwidth);
+      linearPts.push({ x, y: fit.yLinear });
+      constPts.push({ x, y: fit.yConstant });
+    }
+    return { linearPts, constPts };
+  }, [bandwidth]);
+
+  const linearPathString = useMemo(() => {
+    return curvePoints.linearPts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`)
+      .join(' ');
+  }, [curvePoints]);
+
+  const constPathString = useMemo(() => {
+    return curvePoints.constPts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`)
+      .join(' ');
+  }, [curvePoints]);
+
+  const tangentSegment = useMemo(() => {
+    const span = Math.min(1.4, bandwidth * 1.2);
+    const xL = Math.max(0.2, x0 - span);
+    const xR = Math.min(9.8, x0 + span);
+    const yL = currentFit.yLinear + currentFit.slopeLinear * (xL - x0);
+    const yR = currentFit.yLinear + currentFit.slopeLinear * (xR - x0);
+    return { xL, xR, yL, yR };
+  }, [x0, currentFit, bandwidth]);
+
+  const handleSvgClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const scale = svgWidth / rect.width;
+    const newX0 = fromSvgX(clickX * scale);
+    setX0(parseFloat(newX0.toFixed(2)));
+  };
+
+  const isBoundary = x0 <= 1.5 || x0 >= 8.5;
+  const boundaryBias = Math.abs(currentFit.yConstant - currentFit.yLinear);
+
+  return (
+    <section className="llc-demo-container" aria-label="局部线性回归与自动核修缮交互实验室">
+      <header className="llc-demo-header">
+        <div>
+          <div className="eyebrow">{t('ESL 6.1.1 & 6.2 · 局部多项式与有效自由度交互实验室', 'ESL 6.1.1 & 6.2 · Local Polynomial & Effective df Visual Lab')}</div>
+          <h2>{t('局部线性回归与“自动核修缮”：消除边界偏差与自由度调控', 'Local Linear Regression & Kernel Carpentry: Boundary Bias & Effective df')}</h2>
+        </div>
+
+        <div className="llc-controls">
+          <div className="llc-tab-group">
+            <button
+              className={`llc-tab-btn ${activeTab === 'carpentry' ? 'active' : ''}`}
+              onClick={() => setActiveTab('carpentry')}
+            >
+              {t('边界偏差与木工修缮', 'Boundary Bias & Carpentry')}
+            </button>
+            <button
+              className={`llc-tab-btn ${activeTab === 'df_loocv' ? 'active' : ''}`}
+              onClick={() => setActiveTab('df_loocv')}
+            >
+              {t('有效自由度 tr(S) 与 LOOCV', 'Effective df & LOOCV')}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              className={`llc-chip-btn ${fitMode === 'compare' ? 'active' : ''}`}
+              onClick={() => setFitMode('compare')}
+            >
+              {t('双线对比 (Compare)', 'Compare')}
+            </button>
+            <button
+              className={`llc-chip-btn ${fitMode === 'linear' ? 'active' : ''}`}
+              onClick={() => setFitMode('linear')}
+            >
+              {t('局部线性 (Linear)', 'Local Linear')}
+            </button>
+            <button
+              className={`llc-chip-btn ${fitMode === 'constant' ? 'active' : ''}`}
+              onClick={() => setFitMode('constant')}
+            >
+              {t('局部常数 (NW)', 'Local Constant')}
+            </button>
+          </div>
+
+          <button
+            className={`llc-chip-btn ${isPlaying ? 'active' : ''}`}
+            onClick={() => setIsPlaying(!isPlaying)}
+            style={{ borderColor: '#38bdf8', color: isPlaying ? '#fff' : '#38bdf8' }}
+          >
+            {isPlaying ? t('⏸ 暂停扫描', '⏸ Pause') : t('▶ 扫描至边界', '▶ Scan to Boundary')}
+          </button>
+        </div>
+      </header>
+
+      {/* Interactive Sliders */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', background: '#0f172a', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '0.9rem', border: '1px solid #1e293b' }}>
+        <div className="llc-slider-wrap">
+          <span>{t('待估点 (Query Point)', 'Query Point')} <strong>x₀ = {x0.toFixed(2)}</strong>:</span>
+          <input
+            type="range"
+            min="0.5"
+            max="9.5"
+            step="0.05"
+            value={x0}
+            onChange={(e) => setX0(parseFloat(e.target.value))}
+            style={{ flex: 1, accentColor: '#38bdf8' }}
+          />
+          {isBoundary && (
+            <span style={{ fontSize: '0.72rem', color: '#f43f5e', fontWeight: 'bold' }}>
+              {t('⚠️ 处于边界区', '⚠️ Boundary Zone')}
+            </span>
+          )}
+        </div>
+
+        <div className="llc-slider-wrap">
+          <span>{t('平滑带宽 (Bandwidth)', 'Bandwidth')} <strong>h = {bandwidth.toFixed(2)}</strong>:</span>
+          <input
+            type="range"
+            min="0.4"
+            max="3.0"
+            step="0.05"
+            value={bandwidth}
+            onChange={(e) => setBandwidth(parseFloat(e.target.value))}
+            style={{ flex: 1, accentColor: '#10b981' }}
+          />
+          <span style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
+            {t(`有效自由度 df = ${smootherStats.traceS.toFixed(1)}`, `df = ${smootherStats.traceS.toFixed(1)}`)}
+          </span>
+        </div>
+      </div>
+
+      {/* Real-time Math Metrics Bar */}
+      <div className="llc-metrics-grid">
+        <div className="llc-metric-card" style={{ borderLeft: '3px solid #38bdf8' }}>
+          <span>{t('局部线性预测 f̂_Linear', 'Local Linear f̂_Linear')}</span>
+          <strong style={{ color: '#38bdf8' }}>{currentFit.yLinear.toFixed(2)}</strong>
+        </div>
+        <div className="llc-metric-card" style={{ borderLeft: '3px solid #f43f5e' }}>
+          <span>{t('局部常数预测 f̂_NW', 'Local Constant f̂_NW')}</span>
+          <strong style={{ color: '#f43f5e' }}>{currentFit.yConstant.toFixed(2)}</strong>
+        </div>
+        <div className="llc-metric-card" style={{ borderLeft: '3px solid #fbbf24' }}>
+          <span>{t('边界偏差断层 Δ(NW - Linear)', 'Boundary Bias Gap')}</span>
+          <strong style={{ color: boundaryBias > 0.5 ? '#f43f5e' : '#fbbf24' }}>
+            {boundaryBias.toFixed(2)} {boundaryBias > 0.6 ? '(严重坍塌)' : '(平衡)'}
+          </strong>
+        </div>
+        <div className="llc-metric-card" style={{ borderLeft: '3px solid #10b981' }}>
+          <span>{t('有效自由度 df = tr(S)', 'Effective df = tr(S)')}</span>
+          <strong style={{ color: '#10b981' }}>{smootherStats.traceS.toFixed(1)} / 13</strong>
+        </div>
+        <div className="llc-metric-card" style={{ borderLeft: '3px solid #a855f7' }}>
+          <span>{t('LOOCV 留一交叉验证误差', 'LOOCV Score')}</span>
+          <strong style={{ color: '#c084fc' }}>{smootherStats.loocv.toFixed(3)}</strong>
+        </div>
+      </div>
+
+      {/* Main SVG Visualization */}
+      {activeTab === 'carpentry' ? (
+        <svg
+          className="llc-demo-svg"
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          onClick={handleSvgClick}
+          style={{ cursor: 'crosshair' }}
+        >
+          {/* Background Gridlines */}
+          {[2, 4, 6, 8].map((gx) => (
+            <line
+              key={`llc-gx-${gx}`}
+              x1={toSvgX(gx)}
+              y1={padTop}
+              x2={toSvgX(gx)}
+              y2={svgHeight - padBottom}
+              stroke="#1e293b"
+              strokeDasharray="2 2"
+            />
+          ))}
+          {[2, 4, 6, 8, 10].map((gy) => (
+            <line
+              key={`llc-gy-${gy}`}
+              x1={padLeft}
+              y1={toSvgY(gy)}
+              x2={svgWidth - padRight}
+              y2={toSvgY(gy)}
+              stroke="#1e293b"
+              strokeDasharray="2 2"
+            />
+          ))}
+
+          {/* Shaded Boundary Danger Zones */}
+          <rect
+            x={toSvgX(0)}
+            y={padTop}
+            width={toSvgX(1.5) - toSvgX(0)}
+            height={svgHeight - padTop - padBottom}
+            fill="rgba(244, 63, 94, 0.08)"
+          />
+          <text
+            x={toSvgX(0.75)}
+            y={padTop + 16}
+            fill="#f43f5e"
+            fontSize="10"
+            textAnchor="middle"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {t('左边界区 (一阶偏差暴露)', 'Left Boundary Zone')}
+          </text>
+
+          <rect
+            x={toSvgX(8.5)}
+            y={padTop}
+            width={toSvgX(10) - toSvgX(8.5)}
+            height={svgHeight - padTop - padBottom}
+            fill="rgba(244, 63, 94, 0.08)"
+          />
+          <text
+            x={toSvgX(9.25)}
+            y={padTop + 16}
+            fill="#f43f5e"
+            fontSize="10"
+            textAnchor="middle"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {t('右边界区', 'Right Boundary')}
+          </text>
+
+          {/* Local Constant NW Curve (Coral) */}
+          {(fitMode === 'constant' || fitMode === 'compare') && (
+            <path
+              d={constPathString}
+              fill="none"
+              stroke="#f43f5e"
+              strokeWidth="2.5"
+              strokeDasharray="5 3"
+            />
+          )}
+
+          {/* Local Linear Smooth Curve (Sky Blue) */}
+          {(fitMode === 'linear' || fitMode === 'compare') && (
+            <path
+              d={linearPathString}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth="3"
+              style={{ filter: 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.4))' }}
+            />
+          )}
+
+          {/* Local Tangent Line Segment at x0 (Hinged Ruler) */}
+          {(fitMode === 'linear' || fitMode === 'compare') && (
+            <g>
+              <line
+                x1={toSvgX(tangentSegment.xL)}
+                y1={toSvgY(tangentSegment.yL)}
+                x2={toSvgX(tangentSegment.xR)}
+                y2={toSvgY(tangentSegment.yR)}
+                stroke="#38bdf8"
+                strokeWidth="3"
+              />
+              <line
+                x1={toSvgX(tangentSegment.xL)}
+                y1={toSvgY(tangentSegment.yL)}
+                x2={toSvgX(tangentSegment.xR)}
+                y2={toSvgY(tangentSegment.yR)}
+                stroke="#ffffff"
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
+              />
+            </g>
+          )}
+
+          {/* Local Constant Horizontal Bar at x0 */}
+          {(fitMode === 'constant' || fitMode === 'compare') && (
+            <line
+              x1={toSvgX(tangentSegment.xL)}
+              y1={toSvgY(currentFit.yConstant)}
+              x2={toSvgX(tangentSegment.xR)}
+              y2={toSvgY(currentFit.yConstant)}
+              stroke="#f43f5e"
+              strokeWidth="2.5"
+              strokeDasharray="4 2"
+            />
+          )}
+
+          {/* Boundary Bias Error Gap Line */}
+          {fitMode === 'compare' && boundaryBias > 0.25 && (
+            <g>
+              <line
+                x1={toSvgX(x0)}
+                y1={toSvgY(currentFit.yLinear)}
+                x2={toSvgX(x0)}
+                y2={toSvgY(currentFit.yConstant)}
+                stroke="#fbbf24"
+                strokeWidth="2"
+                strokeDasharray="2 2"
+              />
+              <text
+                x={toSvgX(x0) + 8}
+                y={(toSvgY(currentFit.yLinear) + toSvgY(currentFit.yConstant)) / 2 + 3}
+                fill="#fbbf24"
+                fontSize="10"
+                fontFamily="IBM Plex Mono, monospace"
+                fontWeight="bold"
+              >
+                Δ = {boundaryBias.toFixed(2)}
+              </text>
+            </g>
+          )}
+
+          {/* Vertical Scan Line at x0 */}
+          <line
+            x1={toSvgX(x0)}
+            y1={padTop}
+            x2={toSvgX(x0)}
+            y2={svgHeight - padBottom}
+            stroke="#94a3b8"
+            strokeWidth="1.5"
+            strokeDasharray="2 2"
+          />
+
+          {/* Data Points */}
+          {LLC_DATA_POINTS.map((p, idx) => {
+            const eqW = currentFit.eqWeights[idx] || 0;
+            const px = toSvgX(p.x);
+            const py = toSvgY(p.y);
+            const isNegative = eqW < -0.01;
+
+            return (
+              <g key={`llc-p-${p.id}`}>
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={isNegative ? 6 : Math.max(4, 4 + Math.abs(eqW) * 12)}
+                  fill={isNegative ? '#f43f5e' : '#38bdf8'}
+                  stroke="#090e1a"
+                  strokeWidth="2"
+                  style={{
+                    filter: isNegative ? 'drop-shadow(0 0 6px #f43f5e)' : 'none',
+                  }}
+                />
+                <text
+                  x={px}
+                  y={py - 8}
+                  fill={isNegative ? '#f43f5e' : '#cbd5e1'}
+                  fontSize="9"
+                  textAnchor="middle"
+                  fontFamily="IBM Plex Mono, monospace"
+                  fontWeight={isNegative ? 'bold' : 'normal'}
+                >
+                  {(eqW * 100).toFixed(0)}%
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Prediction Point Markers */}
+          {(fitMode === 'linear' || fitMode === 'compare') && (
+            <circle
+              cx={toSvgX(x0)}
+              cy={toSvgY(currentFit.yLinear)}
+              r="6"
+              fill="#38bdf8"
+              className="llc-pulse-beacon"
+            />
+          )}
+
+          {(fitMode === 'constant' || fitMode === 'compare') && (
+            <circle
+              cx={toSvgX(x0)}
+              cy={toSvgY(currentFit.yConstant)}
+              r="5"
+              fill="#f43f5e"
+            />
+          )}
+
+          {/* Axes */}
+          <line
+            x1={padLeft}
+            y1={svgHeight - padBottom}
+            x2={svgWidth - padRight}
+            y2={svgHeight - padBottom}
+            stroke="#475569"
+            strokeWidth="1.5"
+          />
+          <line
+            x1={padLeft}
+            y1={padTop}
+            x2={padLeft}
+            y2={svgHeight - padBottom}
+            stroke="#475569"
+            strokeWidth="1.5"
+          />
+
+          {/* X Axis Labels */}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((xVal) => (
+            <text
+              key={`llc-x-${xVal}`}
+              x={toSvgX(xVal)}
+              y={svgHeight - padBottom + 18}
+              fill="#94a3b8"
+              fontSize="10"
+              textAnchor="middle"
+              fontFamily="IBM Plex Mono, monospace"
+            >
+              {xVal}
+            </text>
+          ))}
+          <text
+            x={toSvgX(10)}
+            y={svgHeight - padBottom + 32}
+            fill="#94a3b8"
+            fontSize="11"
+            textAnchor="end"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {t('特征输入 x', 'Feature x')}
+          </text>
+
+          {/* Y Axis Labels */}
+          {[0, 2, 4, 6, 8, 10].map((yVal) => (
+            <text
+              key={`llc-y-${yVal}`}
+              x={padLeft - 10}
+              y={toSvgY(yVal) + 3}
+              fill="#94a3b8"
+              fontSize="10"
+              textAnchor="end"
+              fontFamily="IBM Plex Mono, monospace"
+            >
+              {yVal}
+            </text>
+          ))}
+
+          {/* Legend */}
+          <g transform={`translate(${padLeft + 15}, ${padTop + 10})`}>
+            <line x1="0" y1="0" x2="20" y2="0" stroke="#38bdf8" strokeWidth="3" />
+            <text x="26" y="4" fill="#38bdf8" fontSize="10" fontFamily="IBM Plex Mono, monospace">
+              {t('局部线性拟合 (自动消除 O(h) 偏差)', 'Local Linear (Eliminates O(h) Bias)')}
+            </text>
+
+            <g transform="translate(240, 0)">
+              <line x1="0" y1="0" x2="20" y2="0" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="5 3" />
+              <text x="26" y="4" fill="#f43f5e" fontSize="10" fontFamily="IBM Plex Mono, monospace">
+                {t('局部常数 NW (边界塌陷偏差)', 'Local Constant NW (Severe Boundary Bias)')}
+              </text>
+            </g>
+          </g>
+        </svg>
+      ) : (
+        /* Tab 2: Effective Degrees of Freedom & Leverage Bar Chart */
+        <svg
+          className="llc-demo-svg"
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        >
+          <text
+            x={svgWidth / 2}
+            y={padTop + 10}
+            fill="#f1f5f9"
+            fontSize="12"
+            textAnchor="middle"
+            fontFamily="IBM Plex Mono, monospace"
+            fontWeight="bold"
+          >
+            {t(`样本杠杆值与自我影响力 S_ii (总有效自由度 df = ∑ S_ii = ${smootherStats.traceS.toFixed(2)})`, `Sample Leverage & Self-Influence S_ii (Total df = ∑ S_ii = ${smootherStats.traceS.toFixed(2)})`)}
+          </text>
+
+          {/* Axes for Bar Chart */}
+          <line
+            x1={padLeft}
+            y1={svgHeight - padBottom}
+            x2={svgWidth - padRight}
+            y2={svgHeight - padBottom}
+            stroke="#475569"
+            strokeWidth="1.5"
+          />
+          <line
+            x1={padLeft}
+            y1={padTop + 30}
+            x2={padLeft}
+            y2={svgHeight - padBottom}
+            stroke="#475569"
+            strokeWidth="1.5"
+          />
+
+          {/* Y Axis: Leverage 0 to 1 */}
+          {[0, 0.25, 0.5, 0.75, 1.0].map((lv) => {
+            const barH = svgHeight - padBottom - padTop - 40;
+            const yPos = svgHeight - padBottom - lv * barH;
+            return (
+              <g key={`lev-tick-${lv}`}>
+                <line x1={padLeft} y1={yPos} x2={svgWidth - padRight} y2={yPos} stroke="#1e293b" strokeDasharray="2 2" />
+                <text x={padLeft - 8} y={yPos + 3} fill="#94a3b8" fontSize="10" textAnchor="end" fontFamily="IBM Plex Mono, monospace">
+                  {lv.toFixed(2)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Bars for Each Sample's Leverage S_ii */}
+          {LLC_DATA_POINTS.map((p, idx) => {
+            const lev = Math.max(0, smootherStats.leverages[idx] || 0);
+            const barPlotH = svgHeight - padBottom - padTop - 40;
+            const bH = lev * barPlotH;
+            const bx = toSvgX(p.x) - 14;
+            const by = svgHeight - padBottom - bH;
+
+            return (
+              <g key={`bar-${p.id}`}>
+                <rect
+                  x={bx}
+                  y={by}
+                  width="28"
+                  height={bH}
+                  rx="3"
+                  fill="url(#levGrad)"
+                  stroke="#38bdf8"
+                  strokeWidth="1"
+                />
+                <text
+                  x={bx + 14}
+                  y={by - 5}
+                  fill="#38bdf8"
+                  fontSize="9"
+                  textAnchor="middle"
+                  fontFamily="IBM Plex Mono, monospace"
+                  fontWeight="bold"
+                >
+                  {lev.toFixed(2)}
+                </text>
+                <text
+                  x={bx + 14}
+                  y={svgHeight - padBottom + 16}
+                  fill="#94a3b8"
+                  fontSize="10"
+                  textAnchor="middle"
+                  fontFamily="IBM Plex Mono, monospace"
+                >
+                  #{p.id}
+                </text>
+              </g>
+            );
+          })}
+
+          <defs>
+            <linearGradient id="levGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.25" />
+            </linearGradient>
+          </defs>
+
+          {/* Context Note in Tab 2 */}
+          <text
+            x={svgWidth / 2}
+            y={svgHeight - 12}
+            fill="#64748b"
+            fontSize="11"
+            textAnchor="middle"
+          >
+            {t('带宽 h 越大，单点杠杆值 S_ii 越小，总自由度向 2 (全局直线) 收敛；带宽越小，S_ii 趋近 1 (死记硬背每个点)', 'Larger h spreads influence (S_ii drops, total df → 2); smaller h makes S_ii → 1 (overfitting df → N)')}
+          </text>
+        </svg>
+      )}
+
+      {/* Contextual Intuition Box */}
+      <div className="llc-explanation-box">
+        <p style={{ margin: 0 }}>
+          <strong>{t('通俗直觉：为什么叫“自动核修缮（Automatic Kernel Carpentry）”？', 'Intuitive Metaphor: What is "Automatic Kernel Carpentry"?')}</strong>：
+          {t(
+            '① 木工直觉（平放木板 vs 可倾斜直尺）：Nadaraya–Watson（局部常数）就像一个拿着“死板水平木板”的工人。走到山坡边界时，右侧样本全在半山腰，水平木板被强行吊在空中，造成严重的 O(h) 边界高估；而局部线性回归给木板装上了“旋转铰链（斜率 β）”，使尺子能顺着山坡倾角精准贴合，中心触点不偏不倚刚好落在真实曲线上！' +
+            '② 为什么叫“自动修缮”？因为你根本不需要写任何 if/else 边界特殊规则。正规方程 BᵀW l(x₀) = [1, 0]ᵀ 保证一阶矩 ∑ lᵢ(xᵢ - x₀) 处处严格等于 0。在边界处，等价核会自动“变形”：近端权重暴涨，远端甚至自发削出“负权重”（用减法抵消上坡效应），像老木匠一样把核函数自动打磨出最佳形状！' +
+            '③ 有效自由度 df = tr(S)：核平滑没有显式参数 β，它的自由度就是所有数据点“自我影响力 S_ii”的总和。S_ii 衡量“如果我把 yᵢ 向上拽 1 厘米，曲线在 xᵢ 处会被拉上去多少”。h 极小时每个点 100% 决定自己（S_ii = 1，df = N，过拟合）；h 极大时退化为全局直线（df = 2）。留一交叉验证（LOOCV）借此一步出结果，无需重训 N 次！',
+            '① The Carpenter Metaphor (Horizontal Board vs Hinged Ruler): Local constant (NW) behaves like a worker holding a rigid horizontal board. At the boundary slope, all points lie higher up, forcing the flat board to levitate above the ground (O(h) boundary bias). Local linear regression attaches a "rotational hinge (slope β)" that pivots along the terrain, landing precisely on the true curve!' +
+            '② Why "Automatic Carpentry"? Normal equations BᵀW l(x₀) = [1, 0]ᵀ mathematically enforce the first moment to vanish (∑ lᵢ(xᵢ - x₀) = 0). Near boundaries, the equivalent kernel automatically warps itself: near-side weights expand, and far-side weights turn negative to cancel slope error, planing the kernel like a master woodcrafter!' +
+            '③ Effective df = tr(S): Lacking explicit parameters, degrees of freedom equals the sum of self-influences S_ii (how much yᵢ pulls its own prediction). As h → 0, S_ii → 1 (df = N, overfitting); as h → ∞, df → 2 (global line). LOOCV shortcuts evaluate all folds instantly via (yᵢ - ŷᵢ)/(1 - S_ii) without refitting N times!'
+          )}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 const CART_DEMO_POINTS = [
   // R1: X1 in [0, 5], X2 in [0, 4.5] -> Mean = 8.5
   { id: 1, x1: 1.5, x2: 1.5, y: 7.0 },
@@ -25162,7 +25876,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -25450,6 +26164,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'nadaraya-watson-demo') {
     return <NadarayaWatsonVisual />;
+  }
+
+  if (match?.[1] === 'local-linear-carpentry-demo') {
+    return <LocalLinearCarpentryVisual />;
   }
 
   if (match?.[1] === 'ml-metrics-demo') {

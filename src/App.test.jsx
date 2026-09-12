@@ -1184,10 +1184,10 @@ describe('App', () => {
         ok: true,
         text: async () => {
           if (requestUrl.includes('Quant16') && requestUrl.endsWith('.en.md')) {
-            return '# Quant 11 · Linear regression and kernel smoothing\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```';
+            return '# Quant 11 · Linear regression and kernel smoothing\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```\n\n```local-linear-carpentry-demo\n```';
           }
           if (requestUrl.includes('Quant16')) {
-            return '# Quant 11 · 线性回归与核平滑\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```';
+            return '# Quant 11 · 线性回归与核平滑\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```\n\n```local-linear-carpentry-demo\n```';
           }
           return '# Default note';
         },
@@ -1222,6 +1222,15 @@ describe('App', () => {
     // Switch Kernel to Epanechnikov
     fireEvent.click(screen.getByRole('button', { name: /埃帕内奇尼科夫核 \(Epanechnikov\)/i }));
 
+    // Verify Local Linear Carpentry demo rendering
+    expect(screen.getByLabelText(/局部线性回归与自动核修缮交互实验室/i)).toBeInTheDocument();
+    expect(screen.getByText(/局部线性回归与“自动核修缮”：消除边界偏差与自由度调控/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/有效自由度 df = tr\(S\)/i).length).toBeGreaterThanOrEqual(1);
+
+    // Switch Carpentry tab to df & LOOCV
+    fireEvent.click(screen.getByRole('button', { name: /有效自由度 tr\(S\) 与 LOOCV/i }));
+    expect(screen.getByText(/样本杠杆值与自我影响力 S_ii/i)).toBeInTheDocument();
+
     // Verify interaction with FWL step button
     fireEvent.click(screen.getByRole('button', { name: /步骤 2: X₂ 正交化得 X̃₂/i }));
     expect(screen.getByText(/FWL 核心正交化/i)).toBeInTheDocument();
@@ -1232,6 +1241,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/FWL Theorem Geometry & Two-Stage Regression Demo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/ANOVA Variance Decomposition & R² Geometry Demo/i)).toBeInTheDocument();
     expect(screen.getByText(/Nadaraya–Watson Kernel: Continuous Soft Distance-Weighted KNN/i)).toBeInTheDocument();
+    expect(screen.getByText(/Local Linear Regression & Kernel Carpentry: Boundary Bias & Effective df/i)).toBeInTheDocument();
   });
 
   it('renders the Palindromic Substrings 2D DP matrix visual walkthrough and steps through states', async () => {

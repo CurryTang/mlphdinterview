@@ -1008,63 +1008,80 @@ Why is the Nadaraya–Watson estimator often rejected as an inadequate baseline 
   - **Boundary Region**: One-sided support leaves $\sum l_i(x_0)(x_i - x_0) = O(h) \ne 0$. The boundary bias degrades to **$O(h) f'(x_0)$**—an entire order of magnitude worse in convergence speed!
 
 ### 4. Local Linear Regression & "Automatic Kernel Carpentry" (ESL 6.1.1)
-To eliminate the $O(h)$ boundary bias, local linear regression upgrades the model from a local constant to a local tangent line at every query point $x_0$.
 
-- **Weighted Least Squares (WLS) Formulation**:
-  At query point $x_0$, solve:
-  $$
-  \min_{\alpha(x_0), \beta(x_0)} \sum_{i=1}^N K_\lambda(x_0, x_i) \left[ y_i - \alpha(x_0) - \beta(x_0)(x_i - x_0) \right]^2
-  $$
-  Because regressors are centered at $(x_i - x_0)$, the evaluated prediction at $x = x_0$ is simply the intercept: $\hat{f}(x_0) = \hat{\alpha}(x_0)$.
+#### (1) Intuitive Physical Metaphor: From a "Rigid Horizontal Board" to a "Hinged Ruler"
+To intuitively grasp why local linear regression is indispensable, consider the **"Woodworker on a Hill"** metaphor:
+- **The Rigidity of Local Constant (Nadaraya–Watson)**:
+  Nadaraya–Watson is like a worker holding a **rigid horizontal board**. In the interior where terrain rises and falls symmetrically, the horizontal board balances smoothly.
+  However, at the **foot of a hill (boundary $x_0 = 0$)**, there is no data to the left; all neighbors sit higher up on the slope to the right. Because the board cannot tilt, the high right-hand points pull the horizontal board **high into the empty air**! The prediction severely overshoots the ground truth (the notorious $O(h)$ boundary bias).
+- **The Local Linear Breakthrough: Adding a "Rotational Hinge (Slope $\beta$)"**:
+  Local linear regression upgrades the estimator to a local line: $y = \alpha(x_0) + \beta(x_0)(x - x_0)$.
+  This equips the board with a **rotational hinge**! At the foot of the hill, the ruler tilts naturally along the slope of the terrain. When we evaluate the prediction at the central pivot ($x = x_0$, intercept $\alpha$), the ruler's contact point lands **dead-center on the true ground curve**!
 
-- **Matrix Solution & The Equivalent Kernel**:
-  Let basis vector $b(x) = (1, x - x_0)^\top$, and let design matrix $\mathbf{B}_{N \times 2}$ have row $i$ as $(1, x_i - x_0)$. Let weight diagonal matrix $\mathbf{W}(x_0) = \operatorname{diag}(K_\lambda(x_0, x_1), \dots, K_\lambda(x_0, x_N))$.
-  From standard weighted normal equations:
-  $$
-  \begin{pmatrix} \hat{\alpha}(x_0) \\ \hat{\beta}(x_0) \end{pmatrix} = \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{y}
-  $$
-  The point prediction is linear in $y$:
-  $$
-  \hat{f}(x_0) = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{y} = \sum_{i=1}^N l_i(x_0) y_i
-  $$
-  where row vector $l(x_0)^\top = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0)$ is the **equivalent kernel**.
+```local-linear-carpentry-demo
+```
 
-- **Why is it called "Automatic Kernel Carpentry"?**
-  By the matrix identity $\left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right) \cdot \left[ \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} e_1 \right] = e_1$:
-  $$
-  \mathbf{B}^\top \mathbf{W}(x_0) l(x_0) = \begin{pmatrix} 1 \\ 0 \end{pmatrix}
-  $$
-  Writing out the two rows explicitly:
-  1. Row 1 (Zeroth Moment): $\sum_{i=1}^N l_i(x_0) = 1$ (preserves level unbiasedness)
-  2. Row 2 (First Moment): $\sum_{i=1}^N l_i(x_0)(x_i - x_0) = 0$ (**the first-order moment is strictly zero everywhere, even on asymmetric boundaries!**)
-  
-  Substituting this back into the Taylor bias formula, the term $f'(x_0) \sum l_i(x_0)(x_i - x_0) \equiv 0$ **vanishes identically**!
-  At boundary points, the equivalent kernel $l_i(x_0)$ automatically adapts its shape (increasing weights on near points and dipping slightly negative on distant points) to cancel the first-order slope bias, reducing boundary bias from $O(h)$ to $O(h^2)$ with zero manual tuning.
+#### (2) Mathematical Mechanics: Why Is It Called "Automatic Kernel Carpentry"?
+At query point $x_0$, solve:
+$$
+\min_{\alpha(x_0), \beta(x_0)} \sum_{i=1}^N K_\lambda(x_0, x_i) \left[ y_i - \alpha(x_0) - \beta(x_0)(x_i - x_0) \right]^2
+$$
+The evaluated prediction remains a linear smoother $\hat{f}(x_0) = \sum_{i=1}^N l_i(x_0) y_i$, where the weight vector $l(x_0)$ is the **equivalent kernel**:
+$$
+l(x_0)^\top = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0)
+$$
+By the fundamental property of normal equations, the equivalent kernel satisfies:
+$$
+\mathbf{B}^\top \mathbf{W}(x_0) l(x_0) = \begin{pmatrix} 1 \\ 0 \end{pmatrix} \iff \begin{cases} \sum_{i=1}^N l_i(x_0) = 1 & \text{(Zeroth Moment: Level Unbiasedness)} \\ \sum_{i=1}^N l_i(x_0)(x_i - x_0) = 0 & \text{(First Moment: Slope Moment Vanishes Everywhere!)} \end{cases}
+$$
 
-- **Polynomial Degree Tradeoffs (ESL 6.1.2)**:
-  - **Local Quadratic ($d=2$)**: In regions of high interior curvature ($|f''(x)| \gg 0$), local linear fits exhibit "trimming hills and filling valleys" bias. Local quadratic fits remove this curvature bias (bias becomes $O(h^4)$), but increase variance considerably at boundaries.
-  - **Odd-Degree Dominance**: Asymptotic MSE is dominated by boundary behavior. Moving from degree 0 to degree 1 drastically reduces boundary bias with negligible variance penalty. Moving from degree 1 to degree 2 does not improve boundary bias order while inflating boundary variance.
-  - $\implies$ **Industry Rule of Thumb: Default to local linear ($d=1$)**.
+**Why "Carpentry"?**
+- In symmetric interior zones, $x_i - x_0$ cancels naturally, and $l_i(x_0)$ is a standard symmetric bell-shaped kernel;
+- At boundaries with one-sided observations ($x_i - x_0 > 0$), to enforce $\sum l_i (x_i - x_0) = 0$, the weighted normal equations act like a **master woodcrafter**: with zero manual `if/else` edge-patching, the math **automatically planes down one side of the kernel, expands weights near the pivot, and creates slight negative weights on distant points**!
+- These negative weights subtract the upward pulling force of distant points, pulling boundary bias down from $O(h)$ to the interior rate of $O(h^2)$ automatically.
+
+#### (3) Degree Selection: Odd-Degree Dominance (ESL 6.1.2)
+- **Local Quadratic ($d=2$)**: In regions of severe interior curvature ($|f''(x)| \gg 0$), linear fits suffer "trimming hills and filling valleys" bias. Quadratic fits eliminate this (bias drops to $O(h^4)$), but inflate boundary variance.
+- **Odd-Degree Dominance**:
+  - Moving from $d=0$ (constant) to $d=1$ (linear): boundary bias drops from $O(h)$ to $O(h^2)$ with virtually no variance inflation (a rare free lunch!).
+  - Moving from $d=1$ to $d=2$ (quadratic): boundary bias order remains $O(h^2)$ while variance explodes.
+  $\implies$ **Production Golden Rule: Default to local linear regression ($d=1$) in practice**.
+
+---
 
 ### 5. Bandwidth Selection & Effective Degrees of Freedom (ESL 6.2 / Ch.7)
-- **Linear Smoother & Smoother Matrix**:
-  Predictions across all training points form a linear mapping: $\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$, where row $i$ of $\mathbf{S}_\lambda$ is $l(x_i)^\top$.
-- **Effective Degrees of Freedom**:
-  Paralleling the projection hat matrix in OLS where $\operatorname{df} = \operatorname{tr}(H) = p+1$, the effective degrees of freedom for a kernel smoother is:
+
+#### (1) Intuitive Reality: How Does a Nonparametric Model Have "Degrees of Freedom"?
+In linear regression with $p$ predictors, model complexity is determined by the $p$ parameter knobs ($\operatorname{df} = p+1$).
+In kernel smoothing, there are no global $\beta$ parameters. Where are the knobs?
+**The knobs are the $N$ sample observations themselves!**
+
+- **The Smoother Matrix and Self-Influence (Leverage)**:
+  Predictions are written as $\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$, where $\mathbf{S}_\lambda$ is the $N \times N$ smoother matrix.
+  The diagonal entry $S_{ii} = \frac{\partial \hat{y}_i}{\partial y_i}$ measures the **self-influence (leverage)** of observation $i$:
+  > *"If I yank observation $y_i$ upward by 1 unit, how much does the fitted curve at $x_i$ follow it?"*
+- **The Physical Meaning of Effective Degrees of Freedom**:
+  Effective degrees of freedom is defined as the trace:
   $$
-  \operatorname{df}_\lambda = \operatorname{tr}(\mathbf{S}_\lambda)
+  \operatorname{df}_\lambda \equiv \operatorname{tr}(\mathbf{S}_\lambda) = \sum_{i=1}^N S_{ii}
   $$
-  - As $\lambda \to 0$, $\mathbf{S}_\lambda \to \mathbf{I}_N \implies \operatorname{df}_\lambda = N$ (full interpolation, maximal overfitting).
-  - As $\lambda \to \infty$, local linear regression converges to global OLS $\implies \operatorname{df}_\lambda = 2$ (intercept + slope).
-- **Leave-One-Out Cross-Validation (LOOCV) Shortcut**:
-  For any linear smoother, LOOCV requires no expensive retraining loops:
-  $$
-  \operatorname{CV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{\lambda, ii}} \right)^2
-  $$
-  Or via Generalized Cross-Validation (GCV):
-  $$
-  \operatorname{GCV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - \operatorname{tr}(\mathbf{S}_\lambda)/N} \right)^2
-  $$
+  - **When bandwidth is tiny ($\lambda \to 0$)**: $\mathbf{S}_\lambda \to \mathbf{I}_N$, each point 100% dictates its own prediction ($S_{ii} = 1$), and $\operatorname{df}_\lambda = N$. The model burns all $N$ degrees of freedom memorizing noise (overfitting).
+  - **When bandwidth is huge ($\lambda \to \infty$)**: Weights flatten globally, local linear collapses into a single global OLS line, and $\operatorname{df}_\lambda = 2$ (intercept + slope).
+  - **For intermediate bandwidths**: $\operatorname{df}_\lambda \in (2, N)$ tells you: **this flexible elastic curve currently behaves with the complexity equivalent to a model with this many independent parameters!**
+
+#### (2) The Leave-One-Out Cross-Validation (LOOCV) Shortcut
+Normally, evaluating LOOCV requires splitting data $N$ times and retraining $N$ separate models.
+Because kernel smoothers are linear operators ($\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$), an exact mathematical shortcut exists:
+$$
+y_i - \hat{f}_\lambda^{(-i)}(x_i) = \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{ii}}
+$$
+where $\hat{f}_\lambda^{(-i)}(x_i)$ is the prediction at $x_i$ from a model trained without observation $i$.
+Fitting the model once on the full dataset and dividing each residual by $(1 - S_{ii})$ **recovers exact LOOCV error in a single closed-form step**:
+$$
+\operatorname{CV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{ii}} \right)^2
+$$
+- If an outlier has $S_{ii} \approx 1$, denominator $1 - S_{ii} \to 0$ severely penalizes the score, preventing overfitting.
+- Scanning across $\lambda$ yields a $U$-shaped $\operatorname{CV}(\lambda)$ curve plotted against effective $\operatorname{df}$, rapidly locating the **optimal bandwidth $\lambda^*$**.
 
 ### 6. Multidimensional Smoothing & Escaping the Curse of Dimensionality (ESL 6.3–6.4)
 - **Multivariate Local Linear Regression in $\mathbb{R}^p$**:

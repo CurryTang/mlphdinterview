@@ -1005,64 +1005,82 @@ $$
   - **边界不对称区域**：单侧样本导致一阶矩 $\sum l_i(x_0)(x_i - x_0) = O(h) \ne 0$，偏差急剧恶化为 **$O(h) f'(x_0)$**！收敛速度比内部慢整整一个数量级。
 
 ### 4. 局部线性回归与“自动核修缮”（Local Linear Regression & Automatic Kernel Carpentry，ESL 6.1.1）
-为消除 $O(h)$ 边界偏差，局部线性回归（Local Linear Regression）不再局限于局部常数，而是在每个点 $x_0$ 拟合一条局部切线。
 
-- **加权最小二乘目标（WLS）**：
-  在查询点 $x_0$ 处求解：
-  $$
-  \min_{\alpha(x_0), \beta(x_0)} \sum_{i=1}^N K_\lambda(x_0, x_i) \left[ y_i - \alpha(x_0) - \beta(x_0)(x_i - x_0) \right]^2
-  $$
-  注意：由于自变量采用了中心化 $(x_i - x_0)$，在 $x = x_0$ 处的拟合值恰好就是截距：$\hat{f}(x_0) = \hat{\alpha}(x_0)$。
+#### （1）通俗直觉：从“水平木板”到“装上旋转铰链的直尺”
+要理解为什么需要局部线性回归，最直观的物理比喻是**“木工贴坡”**：
+- **局部常数（Nadaraya–Watson）的死板**：
+  NW 就像一个手里只拿着**水平木板**的学徒。如果你让他在山坡中间做平滑，左右两边的坡道高低相抵，水平木板正好贴合山体。
+  但如果走到**山脚边缘（$x_0 = 0$）**，左边空无一物，所有近邻样本全在右侧山坡上。因为木板不能倾斜，右侧高高在上的数据点会硬生生把这块水平木板**吊在半空中**！学徒无论怎么算加权平均，算出的预测值都严重悬空（这便是致命的 $O(h)$ 边界偏差）。
+- **局部线性的破局：装上“旋转铰链（斜率 $\beta$）”**：
+  局部线性回归不再死守常数，而是在每个点 $x_0$ 拟合一条带有斜率的**局部切线**：$y = \alpha(x_0) + \beta(x_0)(x - x_0)$。
+  这相当于给木板装上了一个**旋转铰链**！当走到山脚时，直尺能够顺着山坡的坡度自由倾斜，稳稳地贴住地面山体。由于我们预测时取的是中心触点（截距 $\alpha$），这个点不偏不倚**正好落在真实的地面曲线上**！
 
-- **矩阵封闭解与等价核（Equivalent Kernel）**：
-  定义基向量 $b(x) = (1, x - x_0)^\top$，设计矩阵 $\mathbf{B}_{N \times 2}$ 的第 $i$ 行为 $(1, x_i - x_0)$。令对角权重阵 $\mathbf{W}(x_0) = \operatorname{diag}(K_\lambda(x_0, x_1), \dots, K_\lambda(x_0, x_N))$。
-  根据加权最小二乘正规方程：
-  $$
-  \begin{pmatrix} \hat{\alpha}(x_0) \\ \hat{\beta}(x_0) \end{pmatrix} = \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{y}
-  $$
-  因此，拟合值依然是 $y$ 的线性组合：
-  $$
-  \hat{f}(x_0) = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{y} = \sum_{i=1}^N l_i(x_0) y_i
-  $$
-  其中行向量 $l(x_0)^\top = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0)$ 被称为**等价核（Equivalent Kernel）**。
+```local-linear-carpentry-demo
+```
 
-- **为什么被称为“自动核修缮”（Automatic Kernel Carpentry）？**
-  由矩阵正规方程基本性质 $\left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right) \cdot \left[ \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} e_1 \right] = e_1$，即：
-  $$
-  \mathbf{B}^\top \mathbf{W}(x_0) l(x_0) = \begin{pmatrix} 1 \\ 0 \end{pmatrix}
-  $$
-  将 $\mathbf{B}$ 代入展开两行：
-  1. 第 1 行（零阶矩）：$\sum_{i=1}^N l_i(x_0) = 1$（保持无偏水平）
-  2. 第 2 行（一阶矩）：$\sum_{i=1}^N l_i(x_0)(x_i - x_0) = 0$（**一阶矩在任何位置、包括边界，严格恒等于 0！**）
-  
-  代回泰勒展开偏差公式，一阶项 $f'(x_0) \sum l_i(x_0)(x_i - x_0) \equiv 0$ 被**精确消除**！
-  在边界处，等价核 $l_i(x_0)$ 会自动自适应变形（靠近边界侧权重升高，甚至在远端产生微小负权进行外推修正），**使边界偏差自动从 $O(h)$ 降至与内部同阶的 $O(h^2)$**。这一完美性质完全由 WLS 机制自动实现，不需要研究者手动做复杂的边界截断修剪。
+#### （2）数学机理：为什么叫“自动核修缮（Automatic Kernel Carpentry）”？
+很多教材把加权最小二乘推导写得很长，其实它的代数核心极其优美：
+在查询点 $x_0$ 处求解：
+$$
+\min_{\alpha(x_0), \beta(x_0)} \sum_{i=1}^N K_\lambda(x_0, x_i) \left[ y_i - \alpha(x_0) - \beta(x_0)(x_i - x_0) \right]^2
+$$
+其拟合值依然是 $y$ 的线性加权组合 $\hat{f}(x_0) = \sum_{i=1}^N l_i(x_0) y_i$。权重向量 $l(x_0)$ 被称为**等价核（Equivalent Kernel）**：
+$$
+l(x_0)^\top = e_1^\top \left( \mathbf{B}^\top \mathbf{W}(x_0) \mathbf{B} \right)^{-1} \mathbf{B}^\top \mathbf{W}(x_0)
+$$
+根据矩阵正规方程的基本性质，该等价核天然满足正交矩条件：
+$$
+\mathbf{B}^\top \mathbf{W}(x_0) l(x_0) = \begin{pmatrix} 1 \\ 0 \end{pmatrix} \iff \begin{cases} \sum_{i=1}^N l_i(x_0) = 1 & \text{（零阶矩：无偏水平约束）} \\ \sum_{i=1}^N l_i(x_0)(x_i - x_0) = 0 & \text{（一阶矩：斜率矩处处恒等于 0！）} \end{cases}
+$$
 
-- **局部多项式阶数 $d$ 的权衡法则（ESL 6.1.2）**：
-  - **局部二次回归（$d=2$）**：若在内部区域真实函数曲率很大（$f''(x)$ 剧烈弯曲），局部线性会出现“削平峰顶、填平谷底（trimming hills and filling valleys）”的曲率偏差。局部二次拟合能消除二阶曲率偏差（偏差降为 $O(h^4)$），但在边界处方差增大显著。
-  - **奇数阶占优准则（Odd vs. Even Degree）**：
-    渐近理论证明，**奇数阶多项式在均方误差（MSE）上严格占优于相邻的偶数阶**。例如：从 $d=0$（常数）升级到 $d=1$（线性），边界偏差大幅消除且方差几乎不增加；但从 $d=1$ 到 $d=2$（二次），边界偏差阶数并未提升，方差却急剧增大。
-    $\implies$ **工程准则：绝大多数场景首选局部线性拟合（$d=1$）**。
+**为什么叫“木工修缮（Carpentry）”？**
+- 在数据内部对称区域，邻居左右对称，$x_i - x_0$ 自动相互抵消，等价核 $l_i(x_0)$ 就是对称的标准钟形核；
+- 一旦走到单侧缺失的边界区，右侧样本全是正偏移（$x_i - x_0 > 0$）。为了强行让一阶矩 $\sum l_i (x_i - x_0) = 0$，加权正规方程就像一位**手法精湛的老木匠**，无须任何手工条件判断代码，**自动把核函数的一侧打薄削尖，甚至在较远处的样本上削出“微弱的负权重”**！
+- 正是这些聪明的负权重，把远处高位样本向上的拖拽力用“减法”巧妙抵消，从而使边界偏差直接从 $O(h)$ 降至与内部相同的 $O(h^2)$！
+
+#### （3）局部多项式阶数选择：奇数阶占优准则（ESL 6.1.2）
+- **局部二次回归（$d=2$）**：若内部函数弯曲极大（二阶导 $f''(x)$ 剧烈），线性拟合会出现“削平山峰、填平山谷”的曲率截断。此时拟合二次抛物线可消除二阶偏差（降至 $O(h^4)$），但在边界处方差增大显著。
+- **奇数阶占优（Odd vs. Even Degree Rule）**：
+  理论证明，**奇数阶多项式在均方误差（MSE）上严格占优于相邻的偶数阶**：
+  - 从 $d=0$（常数）升级到 $d=1$（线性）：边界偏差从 $O(h)$ 暴降至 $O(h^2)$，而估计方差几乎不增加（免费的午餐！）；
+  - 从 $d=1$ 升级到 $d=2$（二次）：边界偏差阶数依然是 $O(h^2)$ 没有本质提升，方差却大幅膨胀。
+  $\implies$ **量化工业界的默认黄金法则：绝大多数场景首选局部线性回归（$d=1$）**。
+
+---
 
 ### 5. 核带宽选择与有效自由度（ESL 6.2 / Ch.7）
-- **线性平滑算子（Linear Smoother）与平滑矩阵**：
-  所有 $N$ 个训练样本点的预测值可写为矩阵形式：$\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$，其中平滑矩阵第 $i$ 行为 $l(x_i)^\top$。
-- **有效自由度（Effective Degrees of Freedom）**：
-  类比线性回归帽子矩阵的自由度 $p+1 = \operatorname{tr}(H)$，核平滑的有效模型复杂度定义为：
+
+#### （1）通俗直觉：非参数模型没有参数 $\beta$，何来“自由度”？
+普通多元线性回归有 $p$ 个特征变量，就像控制台上拥有 $p$ 个旋钮，有效自由度就是 $p+1$。
+但核回归根本没有显式的全局回归系数 $\beta$，它的“旋钮”藏在哪里？
+**答案：它的旋钮就是每一个训练样本点自身！**
+
+- **平滑矩阵与自我拉扯力（Leverage / 杠杆值）**：
+  预测公式可统一写成矩阵形式：$\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$，其中 $\mathbf{S}_\lambda$ 是 $N \times N$ 的平滑矩阵（Smoother Matrix）。
+  对角线元素 $S_{ii}$ 代表了第 $i$ 个样本点的**自我影响力（Self-Influence / Leverage）**：
+  > “如果我把第 $i$ 个数据点的目标值 $y_i$ 向上硬拽 1 个单位，拟合出的曲线在 $x_i$ 处会被连带拉上去多少？”
+- **有效自由度的物理图景**：
+  有效自由度定义为平滑矩阵的迹（Trace）：
   $$
-  \operatorname{df}_\lambda = \operatorname{tr}(\mathbf{S}_\lambda)
+  \operatorname{df}_\lambda \equiv \operatorname{tr}(\mathbf{S}_\lambda) = \sum_{i=1}^N S_{ii}
   $$
-  - 当 $\lambda \to 0$ 时，$\mathbf{S}_\lambda \to \mathbf{I}_N \implies \operatorname{df}_\lambda = N$（每个样本自成参数，完全过拟合）；
-  - 当 $\lambda \to \infty$ 时，局部线性回归退化为全局 OLS 回归 $\implies \operatorname{df}_\lambda = 2$（截距 + 斜率）。
-- **留一交叉验证（LOOCV）解析捷径**：
-  对于线性平滑算子，无需真正循环训练 $N$ 次模型，利用平滑矩阵主对角线元素 $S_{\lambda, ii}$ 即可一步得出严格的留一误差：
-  $$
-  \operatorname{CV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{\lambda, ii}} \right)^2
-  $$
-  若计算全部对角线过慢，可采用广义交叉验证（GCV）：
-  $$
-  \operatorname{GCV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - \operatorname{tr}(\mathbf{S}_\lambda)/N} \right)^2
-  $$
+  - **当带宽极窄（$\lambda \to 0$）**：$\mathbf{S}_\lambda \to \mathbf{I}_N$，每个样本点 100% 决定自己的预测值（$S_{ii} = 1$），$\operatorname{df}_\lambda = N$。这说明模型耗尽了 $N$ 个自由度去“死记硬背”所有样本，完全过拟合；
+  - **当带宽极大（$\lambda \to \infty$）**：核加权全域拉平，局部线性回归退化为全局一条 OLS 直线，$\operatorname{df}_\lambda = 2$（仅剩全局截距和全局斜率两个旋钮）；
+  - **当带宽介于中间**：有效自由度 $\operatorname{df}_\lambda \in (2, N)$ 告诉我们：**这根被局部加权牵扯得弯弯曲曲的弹性软尺，其模型复杂度当前等价于一个拥有多少个独立自由参数的模型！**
+
+#### （2）留一交叉验证（LOOCV）的神奇解析捷径
+通常要评估泛化能力做留一交叉验证，需要把数据切成 $N$ 份、训练 $N$ 次模型，计算开销极其巨大。
+但因为核平滑器是**线性算子（$\hat{\mathbf{y}} = \mathbf{S}_\lambda \mathbf{y}$）**，数学上存在一条惊人的解析捷径：
+$$
+y_i - \hat{f}_\lambda^{(-i)}(x_i) = \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{ii}}
+$$
+其中 $\hat{f}_\lambda^{(-i)}(x_i)$ 是**在训练集中完全剔除第 $i$ 个样本后重训模型、在 $x_i$ 处的预测值**！
+我们只需要用全部样本跑一次模型，把原始残差除以 $(1 - S_{ii})$，便**一步精确还原出严格的留一误差**：
+$$
+\operatorname{CV}(\lambda) = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{f}_\lambda(x_i)}{1 - S_{ii}} \right)^2
+$$
+- 若某个样本 $S_{ii} \approx 1$（如孤立离群点），分母 $1 - S_{ii} \to 0$，留一误差会给出极大的惩罚，阻止模型过度迎合孤立噪点；
+- 通过在网格上扫描带宽 $\lambda$，绘制出以有效自由度为横轴的 $\operatorname{CV}(\lambda)$ 曲线，即可极速锁定**理论最优带宽 $\lambda^*$**。
 
 ### 6. 高维推广、维数灾难与结构化破局（ESL 6.3–6.4）
 - **多元局部回归在 $\mathbb{R}^p$**：
