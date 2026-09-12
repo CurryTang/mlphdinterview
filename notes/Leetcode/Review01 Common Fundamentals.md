@@ -949,3 +949,247 @@ def longest_consecutive(nums: list[int]) -> int:
 
 
 
+### 15. 有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">卡片 15</span>
+  <span class="review-card-title">有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)</span>
+  <span class="review-card-tag">有序数组 · 鸽巢原理 · 探针锚定 · 二分左右边界 · O(log N) 亚线性</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与工业场景需求</div>
+
+给定一个**已按升序排列**的整数数组 `nums`（长度 $n \ge 3$），找出所有在数组中出现频次严格大于 $\lfloor n / 3 \rfloor$ 次的元素：
+
+```python
+def findMajorityElementsSorted(nums: List[int]) -> List[int]: ...
+```
+
+**输入输出示例**：
+- `nums = [1, 2, 3]` $\implies$ `[]`
+- `nums = [1, 1, 2, 3, 4]` $\implies$ `[1]`
+- `nums = [1, 1, 2, 4, 4]` $\implies$ `[1, 4]`
+- `nums = [1, 2, 3, 4, 5, 6, 7]` $\implies$ `[]`
+
+**核心追问 (Sublinear Follow-up)**：
+- 线性扫描基线：单趟遍历计数相同连续区段耗时 $\mathcal{O}(n)$。
+- **进阶要求**：充分利用数组**已经有序**的先验数学性质，在**严格低于线性时间（$\mathcal{O}(\log n)$）的亚线性时间复杂度内**求解！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与对数探针定位机制</div>
+
+#### 1. 鸽巢原理与候选值锁定 (Candidate Reduction)
+- 根据鸽巢原理（Pigeonhole Principle）：在一个长度为 $n$ 的数组中，出现次数严格大于 $n / 3$ 的不同元素**最多只能有 2 个**（因为 $3 \times (\lfloor n/3 \rfloor + 1) > n$）。
+- 由于数组已经完全有序，任何连续出现次数 $> n / 3$ 的数字，其在数组中跨越的区间长度必然大于 $n / 3$。
+- **神圣探针定理**：
+  若某数值 $x$ 的频次 $> n/3$，它在有序数组中的连续覆盖区间**必定至少跨过以下两个探针采样点之一**：
+  $$idx_1 = \left\lfloor \frac{n}{3} \right\rfloor, \qquad idx_2 = \left\lfloor \frac{2n}{3} \right\rfloor$$
+  因此，全数组中唯一的潜在合格候选人，只可能是候选集合 $\{nums[idx_1], nums[idx_2]\}$ 中的元素！候选空间瞬间从 $n$ 种缩小至最多 2 种。
+
+#### 2. 二分查找边界快速验真 (Binary Search Verification)
+- 对候选值 $v \in \{nums[idx_1], nums[idx_2]\}$（注意去重）：
+  - 使用两次二分查找分别定位 $v$ 在有序数组中的最左端下标 `bisect_left` 与最右端下标 `bisect_right`；
+  - $v$ 的精确物理出现次数为：
+    $$\operatorname{count}(v) = \operatorname{bisect\_right}(nums, v) - \operatorname{bisect\_left}(nums, v)$$
+  - 若 $\operatorname{count}(v) > \lfloor n / 3 \rfloor$，则 $v$ 确凿合法，加入结果集。
+- 两次二分查找耗时为 $\mathcal{O}(\log n)$。总运行时间严格为亚线性的 $\mathcal{O}(\log n)$！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码</div>
+
+```python
+from bisect import bisect_left, bisect_right
+from typing import List
+
+class SortedMajoritySolution:
+
+    @staticmethod
+    def findMajorityElementsSorted(nums: List[int]) -> List[int]:
+        """
+        有序数组 > n/3 众数对数查找
+        时间复杂度 O(log N)，空间复杂度 O(1)
+        """
+        n = len(nums)
+        if n < 3:
+            threshold = n // 3
+            return [x for x in set(nums) if nums.count(x) > threshold]
+
+        threshold = n // 3
+        # 依据鸽巢原理提取两个关键探针位置的值
+        probe_indices = [n // 3, (2 * n) // 3]
+        candidates = set(nums[i] for i in probe_indices)
+
+        res = []
+        for cand in sorted(list(candidates)):
+            # 利用二分查找左右边界精确统计出现次数
+            left = bisect_left(nums, cand)
+            right = bisect_right(nums, cand)
+            freq = right - left
+            if freq > threshold:
+                res.append(cand)
+
+        return res
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+
+- **时间复杂度**：提取采样点 $\mathcal{O}(1)$；对至多 2 个候选数执行二分搜索，每次 $\mathcal{O}(\log n)$，整体时间复杂度为严格 $\mathcal{O}(\log n)$。
+- **空间复杂度**：存储候选人与输出，额外空间复杂度严格为 $\mathcal{O}(1)$。
+- **高频避坑清单**：
+  1. **探针命中同一连续段**：若数组前半部分全是同一个数，`idx_1` 和 `idx_2` 探测出的候选值相同。必须对候选集合使用 `set` 去重，防止同一个数被重复二分并输出两次。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 16. 单词反转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place Semantics)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">卡片 16</span>
+  <span class="review-card-title">单词反转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place Semantics)</span>
+  <span class="review-card-tag">双指针 · 局部对称翻转 · 空格间距序列精准回填 · 原地 O(1) 空间</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与工业变体矩阵</div>
+
+给你一个字符串 `s`，颠倒字符串中**单词**的相对顺序。单词是由非空格字符组成的极大连续子串：
+
+```python
+def reverseWords(s: str) -> str: ...
+```
+
+在系统大厂面试（如 C++ 架构与内核开发组）中，该题常引申出以下三大高频变体：
+
+| 变体编号 | 核心变体名称 | 核心特征 / 变异约束 | 核心算法与数据结构 |
+|---|---|---|---|
+| **变体 1** | **经典规整翻转 (LC 151)** | 消除多余前后置空格，单词间仅保留单个空格 | 双反转法（全串翻转 + 单词各自翻转）或快慢双指针就地压缩。 |
+| **变体 2** | **空格排版精确保留 (Preserve Spacing)** | **严禁消除空格**：单词位置逆转，但单词之间的**原始空格数量及排版间隙必须 100% 精确保留**！ | **词槽与间隙分离提取**：解析出单词序列 `words` 与空格块长度序列 `spaces`，逆序 `words` 后与原 `spaces` 交织重组。 |
+| **变体 3** | **严格 O(1) 额外空间原地翻转** | 针对可变字符数组（如 C++ `std::string` 或 `vector<char>`），严禁开辟新数组 | `std::reverse(s.begin(), s.end())`，随后用双指针定位各个单词首尾并就地局部翻转。 |
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与算法架构深度剖析</div>
+
+#### 1. 变体 2：空格排版精确保留（Preserve Exact Spacing）算法
+- 观察输入字符串：其本质是由“空格串”与“非空格单词串”交替构成的拓扑序列。
+  例如 `s = "  hello   world  "`：
+  - 单词列表：`["hello", "world"]`，逆转后为 `["world", "hello"]`；
+  - 空格槽序列：`["  ", "   ", "  "]`（首部 2 个空格，中间 3 个空格，尾部 2 个空格）。
+- 关键重组：**空格槽的数量与位置保持绝对静止，只将逆转后的单词依次填入各个非空词槽中**！
+- 耗时严格为单趟扫描 $\mathcal{O}(n)$，空间 $\mathcal{O}(n)$。
+
+#### 2. 变体 3：C++ 级原地 O(1) 经典两趟对称翻转原理
+1. **全局逆序**：反转整个字符数组。此时所有单词的位置已经完成逆转，但每个单词内部的字母次序也随之逆序了。
+2. **单词局部二次翻转**：使用双指针扫描数组，识别出每个由空格隔开的独立单词区间 $[start, end]$，就地反转该单词内部字符。负负得正，单词恢复正序！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码（含空格保留版）</div>
+
+```python
+from typing import List
+
+class ReverseWordsSolution:
+
+    @staticmethod
+    def reverseWordsPreserveSpacing(s: str) -> str:
+        """
+        变体 2: 单词倒序但 100% 精确保留原有空格拓扑与间距
+        时间复杂度 O(N)，空间复杂度 O(N)
+        """
+        words: List[str] = []
+        tokens: List[str] = [] # 记录完整的分词流（包含独立的空格块与单词）
+        
+        i = 0
+        n = len(s)
+        while i < n:
+            if s[i] == ' ':
+                j = i
+                while j < n and s[j] == ' ':
+                    j += 1
+                tokens.append(s[i:j])
+                i = j
+            else:
+                j = i
+                while j < n and s[j] != ' ':
+                    j += 1
+                word = s[i:j]
+                tokens.append(word)
+                words.append(word)
+                i = j
+
+        # 将单词列表逆序
+        words.reverse()
+
+        # 将逆序后的单词重新回填到原 tokens 对应的非空格插槽中
+        word_idx = 0
+        result = []
+        for token in tokens:
+            if token.startswith(' '):
+                result.append(token)
+            else:
+                result.append(words[word_idx])
+                word_idx += 1
+
+        return "".join(result)
+
+    @staticmethod
+    def reverseWordsInPlace(chars: List[str]) -> None:
+        """
+        变体 3: 可变字符数组严格 O(1) 空间原地翻转
+        """
+        def reverse_sub(l: int, r: int):
+            while l < r:
+                chars[l], chars[r] = chars[r], chars[l]
+                l += 1
+                r -= 1
+
+        n = len(chars)
+        # 1. 全局逆序
+        reverse_sub(0, n - 1)
+
+        # 2. 各单词局部二次逆序
+        start = 0
+        while start < n:
+            if chars[start] == ' ':
+                start += 1
+                continue
+            end = start
+            while end < n and chars[end] != ' ':
+                end += 1
+            reverse_sub(start, end - 1)
+            start = end
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+
+- **时间复杂度**：单趟线性扫描与局部反转，整体时间复杂度为严格 $\mathcal{O}(N)$。
+- **空间复杂度**：空格保留版提取词元为 $\mathcal{O}(N)$；字符数组原地修改为严格 $\mathcal{O}(1)$。
+- **高频避坑清单**：
+  1. **首尾空格被静默裁剪**：在空格保留变体中，切勿调用 `s.strip()`，否则首尾连续空格信息永久丢失。
+
+</div>
+
+</div>
+</details>

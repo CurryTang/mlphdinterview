@@ -635,3 +635,585 @@ class StickersSolution:
 
 </div>
 </details>
+
+---
+
+### 11. Longest Alternating Zigzag Path in 2D Grid
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 11</span>
+  <span class="review-card-title">Longest Alternating Zigzag Path in 2D Grid</span>
+  <span class="review-card-tag">2D Grid · Memoized Search · State-Machine DP · O(M * N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class LongestZigzagPathSolution:
+    @classmethod
+    def longestZigzag(cls, grid: List[List[int]]) -> int:
+        """
+        Computes the length (number of cells) of the longest alternating
+        strictly-increasing / strictly-decreasing path in a 2D integer grid.
+        
+        State representation:
+        (r, c, expect_greater)
+        - expect_greater = True: next step must be strictly greater (grid[nr][nc] > grid[r][c])
+        - expect_greater = False: next step must be strictly smaller (grid[nr][nc] < grid[r][c])
+        """
+        if not grid or not grid[0]:
+            return 0
+        
+        m, n = len(grid), len(grid[0])
+        memo = {}
+        visiting = set()
+
+        def dfs(r: int, c: int, expect_greater: bool) -> int:
+            state = (r, c, expect_greater)
+            if state in memo:
+                return memo[state]
+            if state in visiting:
+                # Loop guard (for cyclic state detection in alternating graph paths)
+                return 1
+            
+            visiting.add(state)
+            best_len = 1  # Base length including the current cell
+            
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n:
+                    if expect_greater and grid[nr][nc] > grid[r][c]:
+                        best_len = max(best_len, 1 + dfs(nr, nc, False))
+                    elif (not expect_greater) and grid[nr][nc] < grid[r][c]:
+                        best_len = max(best_len, 1 + dfs(nr, nc, True))
+            
+            visiting.remove(state)
+            memo[state] = best_len
+            return best_len
+
+        max_path = 0
+        for r in range(m):
+            for c in range(n):
+                # Any cell can be the origin, starting with either increasing or decreasing step
+                max_path = max(max_path, dfs(r, c, True), dfs(r, c, False))
+        
+        return max_path
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **State Space & Binary Alternator**:
+  Every cell $(r, c)$ in the path has two directional expectations: "expecting an increase" vs "expecting a decrease". Thus the search space is bounded by $\mathcal{S} = \{ (r, c, d) \mid 0 \le r < m, 0 \le c < n, d \in \{0, 1\} \}$, totaling $2MN$ states.
+- **Strict Inequality Guard**:
+  Equal neighbor values ($grid[nr][nc] == grid[r][c]$) break the alternating constraint and cannot be traversed.
+- **Memoization vs Exponential Backtracking**:
+  Without memoization, the branching factor leads to $\mathcal{O}(4^L)$ time complexity. Memoizing on $(r, c, d)$ converts the traversal into finding the longest path on a state graph, with each state evaluated amortized once.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(M \cdot N)$. Exactly $2MN$ states, each checking 4 orthogonal directions.
+- **Space Complexity**: $\mathcal{O}(M \cdot N)$ for memoization table and recursion call stack.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 12. N-ary Tree Downward Target Path Sum via Prefix Sum
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 12</span>
+  <span class="review-card-title">N-ary Tree Downward Target Path Sum via Prefix Sum</span>
+  <span class="review-card-tag">N-ary Tree · Running Prefix Sum · Backtracking Scope Cleanup · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List, Optional
+from collections import defaultdict
+
+class NaryTreeNode:
+    def __init__(self, val: int = 0, children: Optional[List['NaryTreeNode']] = None):
+        self.val = val
+        self.children = children if children is not None else []
+
+class NaryPathSumSolution:
+    @classmethod
+    def pathSum(cls, root: Optional[NaryTreeNode], target: int) -> int:
+        """
+        Counts downward parent-to-child paths whose node values sum to target.
+        Runs in O(N) time using a root-to-current prefix sum hash map.
+        """
+        prefix_counts = defaultdict(int)
+        prefix_counts[0] = 1  # Base prefix: exact prefix sum matches target
+        total_valid_paths = 0
+
+        def dfs(node: Optional[NaryTreeNode], current_prefix_sum: int) -> None:
+            nonlocal total_valid_paths
+            if not node:
+                return
+
+            current_prefix_sum += node.val
+            # Condition: current_prefix_sum - ancestor_prefix_sum = target
+            # => ancestor_prefix_sum = current_prefix_sum - target
+            total_valid_paths += prefix_counts[current_prefix_sum - target]
+
+            # Register current prefix sum
+            prefix_counts[current_prefix_sum] += 1
+
+            for child in node.children:
+                dfs(child, current_prefix_sum)
+
+            # Backtracking: remove current node's prefix sum before exiting subtree
+            prefix_counts[current_prefix_sum] -= 1
+
+        dfs(root, 0)
+        return total_valid_paths
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Prefix Sum Difference Property**:
+  A downward path from ancestor $u$ to current node $v$ sums to $target$ iff:
+  $$\sum_{w \in 	ext{path}(u 	o v)} 	ext{val}(w) = S(v) - S(	ext{parent}(u)) = target \implies S(	ext{parent}(u)) = S(v) - target$$
+  Checking the frequency of $S(v) - target$ in the ancestor prefix map directly yields the count of valid downward paths ending at $v$.
+- **Why Sliding Window Fails**:
+  Node values can be negative or zero (violating prefix monotonicity), and tree branches diverge into non-linear paths.
+- **Backtracking Scope Invariant**:
+  `prefix_counts` must strictly reflect only nodes along the current path from root to node. Decrementing before returning preserves subtree isolation.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(V)$. Every tree node is visited exactly once with $\mathcal{O}(1)$ amortized map operations.
+- **Space Complexity**: $\mathcal{O}(H)$, where $H$ is the maximum tree depth ($\mathcal{O}(\log V)$ balanced, $\mathcal{O}(V)$ degenerate).
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 13. Word Search II with Trie & Backtracking Pruning
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 13</span>
+  <span class="review-card-title">Word Search II with Trie & Backtracking Pruning</span>
+  <span class="review-card-tag">Trie · Grid Backtracking · Dynamic Leaf Pruning · In-Place Visited Sentinel</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List, Dict, Any
+
+class WordSearchIISolution:
+    @classmethod
+    def findWords(cls, board: List[List[str]], words: List[str]) -> List[str]:
+        """
+        Finds all dictionary words constructible on a 2D character board.
+        Uses Trie prefix tree with dynamic on-the-fly leaf pruning.
+        """
+        if not board or not board[0] or not words:
+            return []
+
+        # 1. Build Trie
+        root: Dict[str, Any] = {}
+        for word in words:
+            curr = root
+            for ch in word:
+                curr = curr.setdefault(ch, {})
+            curr['$'] = word  # Terminal sentinel storing full word
+
+        m, n = len(board), len(board[0])
+        result = []
+
+        # 2. Backtracking DFS with dynamic leaf node pruning
+        def dfs(r: int, c: int, parent_node: Dict[str, Any]) -> None:
+            ch = board[r][c]
+            curr_node = parent_node[ch]
+
+            # Match found
+            matched_word = curr_node.pop('$', None)
+            if matched_word is not None:
+                result.append(matched_word)
+
+            # In-place sentinel to prevent revisiting on current path
+            board[r][c] = '#'
+
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and board[nr][nc] in curr_node:
+                    dfs(nr, nc, curr_node)
+
+            # Restore original character
+            board[r][c] = ch
+
+            # Dynamic pruning: if current Trie branch becomes empty, unlink from parent
+            if not curr_node:
+                parent_node.pop(ch)
+
+        for r in range(m):
+            for c in range(n):
+                if board[r][c] in root:
+                    dfs(r, c, root)
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Prefix Sharing via Trie**:
+  Searching words individually yields $\mathcal{O}(W \cdot M \cdot N \cdot 4^L)$. Packing $W$ words into a Trie amortizes prefix traversals so shared prefixes are explored simultaneously.
+- **On-the-fly Leaf Pruning**:
+  Popping `$` prevents duplicates. If a Trie node subsequently has no child branches, removing it via `parent_node.pop(ch)` permanently terminates redundant branch exploration in subsequent board scans.
+- **In-Place Board Sentinel**:
+  Overwriting `board[r][c] = '#'` eliminates `visited` set allocation and hashing overheads.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(\sum |W_i|)$ for Trie construction. Grid DFS worst case $\mathcal{O}(M \cdot N \cdot 4 \cdot 3^{L-1})$ ($L$ = max word length), but dynamic leaf pruning collapses runtime close to linear in practice.
+- **Space Complexity**: $\mathcal{O}(\sum |W_i|)$ for the Trie structure.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 14. Grid Shortest Path with Fuel Tank & Recharge Stations
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 14</span>
+  <span class="review-card-title">Grid Shortest Path with Fuel Tank & Recharge Stations</span>
+  <span class="review-card-tag">State Expansion · Dijkstra Shortest Path · Recharge State Collapse · Large-K Supergraph</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+import heapq
+from typing import List
+
+class FuelGridShortestPathSolution:
+    @classmethod
+    def minCost(
+        cls,
+        grid_cost: List[List[int]],
+        blocked: List[List[bool]],
+        recharge: List[List[bool]],
+        K: int
+    ) -> int:
+        """
+        Finds the minimum entry cost to reach (m-1, n-1) from (0, 0) with a fuel cap K.
+        
+        State: (cost, r, c, fuel)
+        Entering a recharge cell immediately resets fuel to K.
+        """
+        m, n = len(grid_cost), len(grid_cost[0])
+        if blocked[0][0] or blocked[m - 1][n - 1]:
+            return -1
+
+        start_cost = grid_cost[0][0]
+        start_fuel = K
+        
+        # dist[(r, c, fuel)] tracks minimum recorded cost to reach state
+        dist = {}
+        dist[(0, 0, start_fuel)] = start_cost
+        
+        pq = [(start_cost, 0, 0, start_fuel)]
+
+        while pq:
+            cost, r, c, fuel = heapq.heappop(pq)
+
+            if r == m - 1 and c == n - 1:
+                return cost
+
+            if cost > dist.get((r, c, fuel), float('inf')):
+                continue
+
+            if fuel == 0:
+                continue
+
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and not blocked[nr][nc]:
+                    next_fuel = K if recharge[nr][nc] else fuel - 1
+                    next_cost = cost + grid_cost[nr][nc]
+
+                    if next_cost < dist.get((nr, nc, next_fuel), float('inf')):
+                        dist[(nr, nc, next_fuel)] = next_cost
+                        heapq.heappush(pq, (next_cost, nr, nc, next_fuel))
+
+        return -1
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Layered Graph / State Space Expansion**:
+  Fuel remaining dictates future reachability. The state space is expanded to $(r, c, 	ext{fuel})$, with directed edges weighted by destination `grid_cost[nr][nc]`.
+- **Recharge State Collapse**:
+  At any cell with `recharge[nr][nc] == True`, fuel resets to $K$, collapsing all arriving fuel states into $(nr, nc, K)$.
+- **Large-K Optimization & Supergraph Condensation**:
+  1. If $K \ge m + n - 2$, fuel never bounds the optimal path, reducing to 2D grid Dijkstra in $\mathcal{O}(MN \log(MN))$.
+  2. For sparse recharge cells ($R \ll MN$), construct a **Recharge Supergraph** with vertices $\{	ext{Start}, 	ext{Goal}\} \cup \{	ext{Recharge Stations}\}$. Run pair-wise fuel-constrained shortest paths between stations, then execute Dijkstra over the condensed $\mathcal{O}(R)$-node graph.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(M \cdot N \cdot K \log(M \cdot N \cdot K))$. At most $\mathcal{O}(MNK)$ states pushed into the priority queue.
+- **Space Complexity**: $\mathcal{O}(M \cdot N \cdot K)$ for distance dictionary and priority queue.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 15. Photo Similarity Groups via Union-Find
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 15</span>
+  <span class="review-card-title">Photo Similarity Groups via Union-Find</span>
+  <span class="review-card-tag">Disjoint Set Union · Connected Components · Upper-Triangle Scan · O(N^2 * α(N))</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class PhotoSimilarityGroupsSolution:
+    @classmethod
+    def findGroups(cls, isSimilar: List[List[int]]) -> int:
+        """
+        Computes the number of connected similarity components among N photos.
+        """
+        if not isSimilar:
+            return 0
+
+        n = len(isSimilar)
+        parent = list(range(n))
+        rank = [0] * n
+        components_count = n
+
+        def find(i: int) -> int:
+            if parent[i] != i:
+                parent[i] = find(parent[i])
+            return parent[i]
+
+        def union(i: int, j: int) -> bool:
+            nonlocal components_count
+            root_i, root_j = find(i), find(j)
+            if root_i == root_j:
+                return False
+            
+            if rank[root_i] < rank[root_j]:
+                parent[root_i] = root_j
+            elif rank[root_i] > rank[root_j]:
+                parent[root_j] = root_i
+            else:
+                parent[root_j] = root_i
+                rank[root_i] += 1
+
+            components_count -= 1
+            return True
+
+        # Scan strictly upper triangle (j > i) using symmetric relation
+        for i in range(n):
+            for j in range(i + 1, n):
+                if isSimilar[i][j] == 1:
+                    union(i, j)
+
+        return components_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Equivalence Relation & Connected Components**:
+  Symmetry and transitivity form an equivalence relation. Counting similarity groups is isomorphic to finding connected components in an undirected graph $G = (V, E)$.
+- **Strict Upper-Triangle Scan**:
+  Since $isSimilar[i][j] == isSimilar[j][i]$ and the diagonal is reflexive, scanning $j \in [i+1, n-1]$ halves the iterations to $rac{N(N-1)}{2}$.
+- **Streaming Adaptability**:
+  While BFS and DSU both run in $\mathcal{O}(N^2)$ on dense matrices, DSU supports online streaming updates in $\mathcal{O}(lpha(N))$ per new edge without re-traversing.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N^2 \cdot lpha(N))$, dominated by matrix scanning with near-constant DSU operations.
+- **Space Complexity**: $\mathcal{O}(N)$ for parent and rank arrays.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 16. Binary Tree Right Side View with Custom Tree Scaffolding
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 16</span>
+  <span class="review-card-title">Binary Tree Right Side View with Custom Tree Scaffolding</span>
+  <span class="review-card-tag">Binary Tree · Level-Order BFS · Right-First DFS · Test Scaffolding</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List, Optional
+from collections import deque
+
+class TreeNode:
+    """Production-grade binary tree node definition."""
+    def __init__(self, val: int = 0, left: Optional['TreeNode'] = None, right: Optional['TreeNode'] = None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class BinaryTreeScaffolding:
+    """Helper to reconstruct binary trees from level-order arrays with None placeholders."""
+    @classmethod
+    def build_tree(cls, values: List[Optional[int]]) -> Optional[TreeNode]:
+        if not values or values[0] is None:
+            return None
+        
+        root = TreeNode(values[0])
+        queue = deque([root])
+        idx = 1
+        n = len(values)
+
+        while queue and idx < n:
+            curr = queue.popleft()
+            
+            if idx < n and values[idx] is not None:
+                curr.left = TreeNode(values[idx])
+                queue.append(curr.left)
+            idx += 1
+            
+            if idx < n and values[idx] is not None:
+                curr.right = TreeNode(values[idx])
+                queue.append(curr.right)
+            idx += 1
+
+        return root
+
+class RightSideViewSolution:
+    @classmethod
+    def rightSideViewBFS(cls, root: Optional[TreeNode]) -> List[int]:
+        """Approach 1: BFS level-order traversal taking the last node per layer."""
+        if not root:
+            return []
+        
+        result = []
+        queue = deque([root])
+
+        while queue:
+            level_size = len(queue)
+            for i in range(level_size):
+                node = queue.popleft()
+                if i == level_size - 1:
+                    result.append(node.val)
+                if node.left:
+                    queue.append(node.left)
+                if node.right:
+                    queue.append(node.right)
+
+        return result
+
+    @classmethod
+    def rightSideViewDFS(cls, root: Optional[TreeNode]) -> List[int]:
+        """Approach 2: Right-first DFS (root -> right -> left) recording first visit per depth."""
+        result = []
+
+        def dfs(node: Optional[TreeNode], depth: int) -> None:
+            if not node:
+                return
+            if depth == len(result):
+                result.append(node.val)
+            dfs(node.right, depth + 1)
+            dfs(node.left, depth + 1)
+
+        dfs(root, 0)
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **BFS vs Right-First DFS Trade-offs**:
+  - **BFS Queue**: Natural per-level grouping; the final node in each level queue is directly the rightmost visible node. Space scales with max layer width $W$.
+  - **Right-First DFS**: Order `Root -> Right -> Left`. Condition `depth == len(result)` guarantees that the first node reaching any new depth is the rightmost node. Space scales with tree height $H$.
+- **Right Side View vs Rightmost Branch**:
+  The right side view is NOT just the branch of right children. If the right subtree terminates early, deeper nodes from the left subtree become visible from the right.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ for both approaches, visiting each node once.
+- **Space Complexity**:
+  - BFS: $\mathcal{O}(W)$ where $W$ is the maximum tree level width ($\mathcal{O}(N)$ for full binary tree).
+  - DFS: $\mathcal{O}(H)$ where $H$ is the maximum tree depth ($\mathcal{O}(\log N)$ balanced, $\mathcal{O}(N)$ skewed).
+
+</div>
+
+</div>
+</details>
+

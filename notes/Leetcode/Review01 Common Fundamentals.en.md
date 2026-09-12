@@ -951,3 +951,171 @@ def longest_consecutive(nums: list[int]) -> int:
 
 
 
+### 15. Majority Element in Sorted Array via Sublinear Binary Search Probe
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">Card 15</span>
+  <span class="review-card-title">Majority Element in Sorted Array via Sublinear Binary Search Probe</span>
+  <span class="review-card-tag">Sorted Array · Pigeonhole Principle · Probe Sampling · Binary Search Boundaries · O(log N) Sublinear</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Definition & Requirements</div>
+
+Given a **sorted array** `nums` with length $n \ge 3$, return all numbers that appear strictly more than $\lfloor n / 3 \rfloor$ times:
+
+```python
+def findMajorityElementsSorted(nums: List[int]) -> List[int]: ...
+```
+
+- **Linear baseline**: Scan adjacent runs in $\mathcal{O}(n)$.
+- **Sublinear follow-up**: Exploit the sorted property to achieve strictly sublinear **$\mathcal{O}(\log n)$ time complexity**.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Intuition & Logarithmic Probe Invariants</div>
+
+#### 1. Pigeonhole Principle & Candidate Reduction
+- By the Pigeonhole Principle, at most 2 distinct elements can appear $> n/3$ times in any array.
+- In a sorted array, any run of length $> n/3$ must span across at least one of the two probe coordinates:
+  $$idx_1 = \lfloor n / 3 \rfloor, \qquad idx_2 = \lfloor 2n / 3 \rfloor$$
+- Candidate set is reduced to $\{nums[idx_1], nums[idx_2]\}$ (at most 2 candidates).
+
+#### 2. Exact Frequency via Binary Search
+- For each unique candidate $v$:
+  - Find first and last occurrences via `bisect_left` and `bisect_right`.
+  - $\operatorname{freq}(v) = \operatorname{bisect\_right} - \operatorname{bisect\_left}$.
+  - Verification takes $2 \times \mathcal{O}(\log n)$. Total time is strictly $\mathcal{O}(\log n)$!
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 Production-Grade Implementations</div>
+
+```python
+from bisect import bisect_left, bisect_right
+from typing import List
+
+class SortedMajoritySolution:
+
+    @staticmethod
+    def findMajorityElementsSorted(nums: List[int]) -> List[int]:
+        n = len(nums)
+        if n < 3:
+            threshold = n // 3
+            return [x for x in set(nums) if nums.count(x) > threshold]
+
+        threshold = n // 3
+        probe_indices = [n // 3, (2 * n) // 3]
+        candidates = set(nums[i] for i in probe_indices)
+
+        res = []
+        for cand in sorted(list(candidates)):
+            left = bisect_left(nums, cand)
+            right = bisect_right(nums, cand)
+            if right - left > threshold:
+                res.append(cand)
+
+        return res
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Common Pitfalls</div>
+
+- **Time Complexity**: $\mathcal{O}(\log n)$.
+- **Space Complexity**: $\mathcal{O}(1)$.
+- **Critical Pitfalls**: Forgetting to deduplicate candidate set when both probe points hit the same long sequence.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 16. Reverse Words with Exact Spacing Preservation & In-Place Semantics
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">Card 16</span>
+  <span class="review-card-title">Reverse Words with Exact Spacing Preservation & In-Place Semantics</span>
+  <span class="review-card-tag">Two Pointers · In-Place Dual Reversal · Exact Whitespace Preservation · O(1) Auxiliary</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Definition & Follow-ups</div>
+
+Given a string `s`, reverse the order of words:
+- **Variant 1 (LC 151)**: Trim multiple spaces down to single space.
+- **Variant 2 (Preserve Spacing)**: **Exact spacing preservation**: Reverses word order while keeping the original space runs intact between word positions.
+- **Variant 3 (In-place C++)**: Strictly $\mathcal{O}(1)$ extra space on mutable character arrays.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Intuition & Two-Pointer Mechanics</div>
+
+- **Preserve Spacing**: Separate string into alternating tokens of space-blocks and word-blocks. Reverse the word list, then interleave back into the static space positions.
+- **In-Place Dual Reversal**: Reverse entire string array in-place, then reverse each word in-place.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 Production-Grade Implementations</div>
+
+```python
+from typing import List
+
+class ReverseWordsSolution:
+
+    @staticmethod
+    def reverseWordsPreserveSpacing(s: str) -> str:
+        words = []
+        tokens = []
+        i, n = 0, len(s)
+
+        while i < n:
+            if s[i] == ' ':
+                j = i
+                while j < n and s[j] == ' ': j += 1
+                tokens.append(s[i:j])
+                i = j
+            else:
+                j = i
+                while j < n and s[j] != ' ': j += 1
+                word = s[i:j]
+                tokens.append(word)
+                words.append(word)
+                i = j
+
+        words.reverse()
+        word_idx = 0
+        res = []
+        for token in tokens:
+            if token.startswith(' '):
+                res.append(token)
+            else:
+                res.append(words[word_idx])
+                word_idx += 1
+
+        return "".join(res)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Common Pitfalls</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$.
+- **Space Complexity**: $\mathcal{O}(N)$ for string preservation; $\mathcal{O}(1)$ for mutable array in-place reversal.
+
+</div>
+
+</div>
+</details>

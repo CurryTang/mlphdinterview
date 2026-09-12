@@ -860,3 +860,596 @@ class StickersSolution:
 
 </div>
 </details>
+
+---
+
+### 11. 网格最长交替折线路径 (Longest Alternating Zigzag Path in 2D Grid)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 11</span>
+  <span class="review-card-title">网格最长交替折线路径 (Longest Alternating Zigzag Path in 2D Grid)</span>
+  <span class="review-card-tag">二维网格 · 记忆化搜索 · 状态机DP · O(M * N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class LongestZigzagPathSolution:
+    @classmethod
+    def longestZigzag(cls, grid: List[List[int]]) -> int:
+        """
+        计算二维网格中数值交替严格递增与递减的最长路径节点数。
+        
+        状态设计：
+        (r, c, expect_greater)
+        - expect_greater = True: 下一步必须移动到数值严格更大的邻居 (grid[nr][nc] > grid[r][c])
+        - expect_greater = False: 下一步必须移动到数值严格更小的邻居 (grid[nr][nc] < grid[r][c])
+        """
+        if not grid or not grid[0]:
+            return 0
+        
+        m, n = len(grid), len(grid[0])
+        memo = {}
+        visiting = set()
+
+        def dfs(r: int, c: int, expect_greater: bool) -> int:
+            state = (r, c, expect_greater)
+            if state in memo:
+                return memo[state]
+            if state in visiting:
+                # 环路保护 (针对一般图回溯防护，网格交替状态图拓扑基底)
+                return 1
+            
+            visiting.add(state)
+            best_len = 1  # 至少包含当前单元格自身
+            
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n:
+                    if expect_greater and grid[nr][nc] > grid[r][c]:
+                        best_len = max(best_len, 1 + dfs(nr, nc, False))
+                    elif (not expect_greater) and grid[nr][nc] < grid[r][c]:
+                        best_len = max(best_len, 1 + dfs(nr, nc, True))
+            
+            visiting.remove(state)
+            memo[state] = best_len
+            return best_len
+
+        max_path = 0
+        for r in range(m):
+            for c in range(n):
+                # 任何格子都可以作为起点，首步既可尝试递增起步，亦可尝试递减起步
+                max_path = max(max_path, dfs(r, c, True), dfs(r, c, False))
+        
+        return max_path
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **状态空间与二元交替机**：
+  每一个单元格 $(r, c)$ 在路径上具有两种入轨意图——“要求下一跳变大”或“要求下一跳变小”。因此整个搜索空间被规范为有界离散状态集合 $\mathcal{S} = \{ (r, c, d) \mid 0 \le r < m, 0 \le c < n, d \in \{0, 1\} \}$，总状态数为 $2MN$。
+- **严格不等与等值阻断**：
+  当相邻格子数值相等时（$grid[nr][nc] == grid[r][c]$），交替关系破裂，不可作为后继延伸。
+- **记忆化 vs 递归回溯**：
+  若不进行状态记忆，最坏情况下路径分支将发生指数级退化 $\mathcal{O}(4^L)$；通过对 $(r, c, d)$ 建立记忆表，将问题转化为状态图上的最长路求解，平摊每个状态仅深度遍历一次。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(M \cdot N)$。总共有 $2MN$ 个离散状态，每个状态仅被精确求值一次，遍历 4 个正交方向分支。
+- **空间复杂度**：$\mathcal{O}(M \cdot N)$。记忆化哈希表与递归调用栈开销均为 $\mathcal{O}(M \cdot N)$。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 12. 多叉树垂直自顶向下目标路径和 (N-ary Tree Downward Target Path Sum)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 12</span>
+  <span class="review-card-title">多叉树垂直自顶向下目标路径和 (N-ary Tree Downward Target Path Sum)</span>
+  <span class="review-card-tag">多叉树 · 前缀和哈希表 · 回溯作用域清理 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List, Optional
+from collections import defaultdict
+
+class NaryTreeNode:
+    def __init__(self, val: int = 0, children: Optional[List['NaryTreeNode']] = None):
+        self.val = val
+        self.children = children if children is not None else []
+
+class NaryPathSumSolution:
+    @classmethod
+    def pathSum(cls, root: Optional[NaryTreeNode], target: int) -> int:
+        """
+        统计 N 叉树中所有自顶向下连续路径，使得节点值之和等于 target。
+        利用根到节点的前缀和哈希表在 O(N) 时间内完成计数。
+        """
+        prefix_counts = defaultdict(int)
+        prefix_counts[0] = 1  # 基准前缀和：若某前缀和刚好等于 target，其差值为 0
+        total_valid_paths = 0
+
+        def dfs(node: Optional[NaryTreeNode], current_prefix_sum: int) -> None:
+            nonlocal total_valid_paths
+            if not node:
+                return
+
+            current_prefix_sum += node.val
+            # 满足: current_prefix_sum - ancestor_prefix_sum = target
+            # 即: ancestor_prefix_sum = current_prefix_sum - target
+            total_valid_paths += prefix_counts[current_prefix_sum - target]
+
+            # 将当前前缀和注册入哈希表
+            prefix_counts[current_prefix_sum] += 1
+
+            # 深入遍历所有子节点分支
+            for child in node.children:
+                dfs(child, current_prefix_sum)
+
+            # 回溯关键：离开当前节点子树时，撤销当前节点前缀和，严格保持祖先路径作用域
+            prefix_counts[current_prefix_sum] -= 1
+
+        dfs(root, 0)
+        return total_valid_paths
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **前缀和差分原语**：
+  若存在祖先节点 $u$ 到当前节点 $v$ 的路径和等于 $target$，根据前缀和定义：
+  $$\sum_{w \in 	ext{path}(u 	o v)} 	ext{val}(w) = S(v) - S(	ext{parent}(u)) = target \implies S(	ext{parent}(u)) = S(v) - target$$
+  只需在进入 $v$ 时查询当前作用域内值为 $S(v) - target$ 的祖先节点个数即可。
+- **为何双指针/滑动窗口彻底失效**：
+  1. 树节点数值可能包含负数与零，前缀和序列失去了单调递增性；
+  2. 多叉树具有树状分支分叉，不能沿一维双指针进行首尾收缩。
+- **回溯作用域单调性（Backtracking Scope Cleanliness）**：
+  哈希表 `prefix_counts` 仅反映**当前遍历路径中各祖先节点**的前缀和。递归返回前必须执行 `prefix_counts[current_prefix_sum] -= 1`，避免跨分支产生脏数据污染。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(V)$。每个树节点恰好被访问一次，哈希表的查询与插入均为平摊 $\mathcal{O}(1)$。
+- **空间复杂度**：$\mathcal{O}(H)$。递归调用栈与哈希表存储的有效祖先节点数量受限于树的最大深度 $H$（最坏退化链表为 $\mathcal{O}(V)$，平衡树为 $\mathcal{O}(\log V)$）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 13. 字典树加速网格单词搜寻 (Word Search II with Trie & Backtracking Pruning)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 13</span>
+  <span class="review-card-title">字典树加速网格单词搜寻 (Word Search II with Trie & Backtracking Pruning)</span>
+  <span class="review-card-tag">Trie 前缀树 · 网格回溯 · 动态叶节点剪枝 · 原地状态置换</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List, Dict, Any
+
+class WordSearchIISolution:
+    @classmethod
+    def findWords(cls, board: List[List[str]], words: List[str]) -> List[str]:
+        """
+        在字符网格中查找给定词表的所有合法拼写单词。
+        结合 Trie 前缀树与动态叶节点剔除剪枝。
+        """
+        if not board or not board[0] or not words:
+            return []
+
+        # 1. 建立 Trie
+        root: Dict[str, Any] = {}
+        for word in words:
+            curr = root
+            for ch in word:
+                curr = curr.setdefault(ch, {})
+            curr['$'] = word  # 终端标识直接存储完整单词，避免字符串累加开销
+
+        m, n = len(board), len(board[0])
+        result = []
+
+        # 2. 网格深度优先回溯与动态 Trie 剪枝
+        def dfs(r: int, c: int, parent_node: Dict[str, Any]) -> None:
+            ch = board[r][c]
+            curr_node = parent_node[ch]
+
+            # 命中有完整单词
+            matched_word = curr_node.pop('$', None)
+            if matched_word is not None:
+                result.append(matched_word)
+
+            # 原地标记访问，避免二次使用
+            board[r][c] = '#'
+
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and board[nr][nc] in curr_node:
+                    dfs(nr, nc, curr_node)
+
+            # 恢复现场
+            board[r][c] = ch
+
+            # 动态剪枝：若当前节点成为无分支叶子节点，从父节点中移除，杜绝后续多余搜索
+            if not curr_node:
+                parent_node.pop(ch)
+
+        for r in range(m):
+            for c in range(n):
+                if board[r][c] in root:
+                    dfs(r, c, root)
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **全局共享前缀加速**：
+  若对每个单词分别在网格中执行 DFS，时间复杂度为 $\mathcal{O}(W \cdot M \cdot N \cdot 4^L)$，将引发超时。将 $W$ 个单词合并构造成 Trie，所有前缀重叠部分仅在网格中走一次。
+- **终端叶节点实时卸载（On-the-fly Trie Leaf Removal）**：
+  当一个单词被找到后，首先通过 `curr_node.pop('$', None)` 防止同词重复加入结果集；随后若该字典树节点没有任何其余子字符分支，直接在父节点调用 `parent_node.pop(ch)` 彻底将其摘除。这使得已被消耗完毕的单词分支在后续扫描中以 $\mathcal{O}(1)$ 阻断，显著收敛搜索分支。
+- **原地修改标记与零额外空间**：
+  借由将当前单元格设为 `'#'` 并在返回时复原，免除了创建和维护庞大 `visited` 哈希集合的昂贵开销。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：建树开销 $\mathcal{O}(\sum |W_i|)$。网格回溯最坏上界为 $\mathcal{O}(M \cdot N \cdot 4 \cdot 3^{L-1})$（$L$ 为词表中单词的最大长度），但在动态修剪下实际速度逼近 $\mathcal{O}(M \cdot N + \sum |W_i|)$。
+- **空间复杂度**：$\mathcal{O}(\sum |W_i|)$，用于存储字典树树形节点字典。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 14. 带油箱与充能站的网格最短路径 (Grid Shortest Path with Fuel Tank & Recharge Stations)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 14</span>
+  <span class="review-card-title">带油箱与充能站的网格最短路径 (Grid Shortest Path with Fuel Tank & Recharge Stations)</span>
+  <span class="review-card-tag">状态空间扩展 · Dijkstra 最短路 · 充能状态坍缩 · 充能超图优化</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+import heapq
+from typing import List
+
+class FuelGridShortestPathSolution:
+    @classmethod
+    def minCost(
+        cls,
+        grid_cost: List[List[int]],
+        blocked: List[List[bool]],
+        recharge: List[List[bool]],
+        K: int
+    ) -> int:
+        """
+        在带障碍物、异构单元格进入代价和充能站的网格中，求解抵达右下角的最小花费。
+        
+        状态设计: (cost, r, c, fuel)
+        到达 (r, c) 时剩余油量为 fuel，若该格为充能站，fuel 立即强制重置为 K。
+        """
+        m, n = len(grid_cost), len(grid_cost[0])
+        if blocked[0][0] or blocked[m - 1][n - 1]:
+            return -1
+
+        start_cost = grid_cost[0][0]
+        start_fuel = K
+        
+        # dist[(r, c, fuel)] 记录到达该扩展状态的最小已付代价
+        dist = {}
+        dist[(0, 0, start_fuel)] = start_cost
+        
+        # 优先队列维护 (cost, r, c, fuel)
+        pq = [(start_cost, 0, 0, start_fuel)]
+
+        while pq:
+            cost, r, c, fuel = heapq.heappop(pq)
+
+            # 目标检测：由于 Dijkstra 单调出队性质，首次弹出终点即为最小代价
+            if r == m - 1 and c == n - 1:
+                return cost
+
+            if cost > dist.get((r, c, fuel), float('inf')):
+                continue
+
+            # 若油量耗尽，且当前格子非终点，则无法继续下一步移动
+            if fuel == 0:
+                continue
+
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and not blocked[nr][nc]:
+                    # 状态转移：进入充能站则充满至 K，否则油量减 1
+                    next_fuel = K if recharge[nr][nc] else fuel - 1
+                    next_cost = cost + grid_cost[nr][nc]
+
+                    if next_cost < dist.get((nr, nc, next_fuel), float('inf')):
+                        dist[(nr, nc, next_fuel)] = next_cost
+                        heapq.heappush(pq, (next_cost, nr, nc, next_fuel))
+
+        return -1
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **分层图（Layered Graph / State Expansion）建模**：
+  普通的网格最短路状态仅包含 $(r, c)$，但在带油量约束时，同一个坐标在持有不同油量下的后续可达性存在本质区别。因此将物理坐标扩展为三维状态 $(r, c, 	ext{fuel})$，边权为目标格子的 `grid_cost[nr][nc]`。
+- **充能状态坍缩（State Space Collapse）**：
+  若某一非障碍格子是充能站（`recharge[nr][nc] == True`），进入后剩余油量无条件补满至 $K$。此时所有流入该格子的前驱状态，在出格转移时均统一坍缩为 $(nr, nc, K)$ 唯一状态。
+- **极端大 $K$ 场景优化策略（Large-K Supergraph Reduction）**：
+  1. 若 $K \ge m + n - 2$：油量无法对路径构成任何约束，状态第三维 $	ext{fuel}$ 可直接舍弃，退化为经典二维网格 Dijkstra，复杂度降为 $\mathcal{O}(MN \log(MN))$。
+  2. 若充能站数量稀疏（$R \ll MN$）且 $K$ 较大：可构造**充能站超图（Recharge Supergraph）**。顶点集合为 $\{	ext{Start}, 	ext{Goal}\} \cup \{	ext{All Recharge Stations}\}$。利用网格 BFS/Dijkstra 预处理各顶点在 $K$ 步以内的成对最短可达距离，在仅含 $\mathcal{O}(R)$ 顶点的紧凑超图上执行最短路搜索。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(M \cdot N \cdot K \log(M \cdot N \cdot K))$。扩展状态空间节点数为 $\mathcal{O}(MNK)$，每条转移边至多入堆一次。
+- **空间复杂度**：$\mathcal{O}(M \cdot N \cdot K)$。距离表与优先队列最大容纳的状态数。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 15. 图片相似度聚类与并查集连通分量 (Photo Similarity Groups via Union-Find)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 15</span>
+  <span class="review-card-title">图片相似度聚类与并查集连通分量 (Photo Similarity Groups via Union-Find)</span>
+  <span class="review-card-tag">并查集 (DSU) · 连通分量计数 · 上三角矩阵遍历 · O(N^2 * α(N))</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class PhotoSimilarityGroupsSolution:
+    @classmethod
+    def findGroups(cls, isSimilar: List[List[int]]) -> int:
+        """
+        计算 N 张图片通过直接/间接相似关系形成的独立图片组（连通分量）数量。
+        """
+        if not isSimilar:
+            return 0
+
+        n = len(isSimilar)
+        parent = list(range(n))
+        rank = [0] * n
+        components_count = n
+
+        def find(i: int) -> int:
+            # 路径压缩 (Path Compression)
+            if parent[i] != i:
+                parent[i] = find(parent[i])
+            return parent[i]
+
+        def union(i: int, j: int) -> bool:
+            nonlocal components_count
+            root_i, root_j = find(i), find(j)
+            if root_i == root_j:
+                return False
+            
+            # 按秩合并 (Union by Rank)
+            if rank[root_i] < rank[root_j]:
+                parent[root_i] = root_j
+            elif rank[root_i] > rank[root_j]:
+                parent[root_j] = root_i
+            else:
+                parent[root_j] = root_i
+                rank[root_i] += 1
+
+            components_count -= 1
+            return True
+
+        # 仅需遍历严格上三角矩阵，利用对称性降低常数开销
+        for i in range(n):
+            for j in range(i + 1, n):
+                if isSimilar[i][j] == 1:
+                    union(i, j)
+
+        return components_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **无向图连通分支的代数同构**：
+  矩阵的对称性与相似的传递性构成了标准的等价关系。求解相似组数等价于无向图 $G = (V, E)$ 中独立极大连通子图（Connected Components）的数量。
+- **严格上三角遍历**：
+  由于相似关系具有对称性（$isSimilar[i][j] == isSimilar[j][i]$），且对角线元素自反恒为 1，只需检查 $j > i$ 的上三角区域，有效循环次数由 $N^2$ 减半为 $rac{N(N-1)}{2}$。
+- **并查集 vs 广度优先搜索 (BFS/DFS)**：
+  - 在密集邻接矩阵输入下，无论采用 DSU 还是 BFS 均受限于 $\mathcal{O}(N^2)$ 的矩阵元素扫描下界；
+  - 但并查集具有优良的**流式（Streaming/Online）扩展性**：若后续动态新增相似图片对，并查集仅需 $\mathcal{O}(lpha(N))$ 即可增量合并，无需重新遍历整图。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N^2 \cdot lpha(N))$，其中 $lpha$ 为反阿克曼函数。由上三角扫描主导，整体在常数上优于全矩阵扫描。
+- **空间复杂度**：$\mathcal{O}(N)$，维护长度为 $N$ 的父指针与秩数组。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 16. 二叉树右视图与自建树脚手架 (Binary Tree Right Side View with Custom Tree Scaffolding)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 16</span>
+  <span class="review-card-title">二叉树右视图与自建树脚手架 (Binary Tree Right Side View with Custom Tree Scaffolding)</span>
+  <span class="review-card-tag">二叉树 · 层序遍历 BFS · 逆先序 DFS · 测试树自动构建</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List, Optional
+from collections import deque
+
+class TreeNode:
+    """工程规范二叉树节点定义"""
+    def __init__(self, val: int = 0, left: Optional['TreeNode'] = None, right: Optional['TreeNode'] = None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class BinaryTreeScaffolding:
+    """自建树脚手架：从层序数组（包含 None）构建标准二叉树"""
+    @classmethod
+    def build_tree(cls, values: List[Optional[int]]) -> Optional[TreeNode]:
+        if not values or values[0] is None:
+            return None
+        
+        root = TreeNode(values[0])
+        queue = deque([root])
+        idx = 1
+        n = len(values)
+
+        while queue and idx < n:
+            curr = queue.popleft()
+            
+            # 挂载左子节点
+            if idx < n and values[idx] is not None:
+                curr.left = TreeNode(values[idx])
+                queue.append(curr.left)
+            idx += 1
+            
+            # 挂载右子节点
+            if idx < n and values[idx] is not None:
+                curr.right = TreeNode(values[idx])
+                queue.append(curr.right)
+            idx += 1
+
+        return root
+
+class RightSideViewSolution:
+    @classmethod
+    def rightSideViewBFS(cls, root: Optional[TreeNode]) -> List[int]:
+        """解法一：BFS 层序遍历，每层记录最后一个出队元素"""
+        if not root:
+            return []
+        
+        result = []
+        queue = deque([root])
+
+        while queue:
+            level_size = len(queue)
+            for i in range(level_size):
+                node = queue.popleft()
+                if i == level_size - 1:
+                    result.append(node.val)
+                if node.left:
+                    queue.append(node.left)
+                if node.right:
+                    queue.append(node.right)
+
+        return result
+
+    @classmethod
+    def rightSideViewDFS(cls, root: Optional[TreeNode]) -> List[int]:
+        """解法二：逆先序 DFS (根 -> 右 -> 左)，按深度首次命中记录"""
+        result = []
+
+        def dfs(node: Optional[TreeNode], depth: int) -> None:
+            if not node:
+                return
+            # 当当前深度等于当前结果集长度时，说明该深度首次被访问（即为该层最右节点）
+            if depth == len(result):
+                result.append(node.val)
+            dfs(node.right, depth + 1)
+            dfs(node.left, depth + 1)
+
+        dfs(root, 0)
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **解法对比（BFS vs 逆先序 DFS）**：
+  - **BFS 队列法**：直接按物理层推进，天然隔离各深度，每层最后一个访问的节点即为右侧视线落点。直观且不易出错，空间复杂度取决于最大层宽 $W$。
+  - **逆先序 DFS**：遍历顺序固定为 `根 -> 右孩子 -> 左孩子`。通过 `depth == len(result)` 条件判定当前层是否已落库，空间复杂度由树高 $H$ 决定（平衡树下仅需 $\mathcal{O}(\log N)$）。
+- **右视图语义纠偏**：
+  右视图绝不等于“从根节点一直向 `right` 走的叶节点分支”。当右子树在某一层缺失而左子树存在更深节点时，左子树的边缘节点仍会在该深度对右视线可见。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：两种方法均为 $\mathcal{O}(N)$，每个节点遍历一次。
+- **空间复杂度**：
+  - BFS：$\mathcal{O}(W)$，其中 $W$ 为二叉树单层最大节点数（满二叉树叶层为 $\mathcal{O}(N)$）。
+  - DFS：$\mathcal{O}(H)$，其中 $H$ 为树的高度（平衡树为 $\mathcal{O}(\log N)$，退化链表为 $\mathcal{O}(N)$）。
+
+</div>
+
+</div>
+</details>
+

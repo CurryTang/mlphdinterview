@@ -1,6 +1,6 @@
 # 复习卡片：链表、栈与堆 (Review Flashcards · Linked List, Stack & Heap)
 
-本篇为算法面试高频复习卡片第二辑：系统整理**链表与复合哈希结构 (Linked List & Hash-Linked Structures)**、**栈与单调双端队列 (Stack & Monotonic Deque)** 以及**堆与优先队列 (Heap & Priority Queue)** 的核心高频考题、工业级变体、生产级实现与时空复杂度全景。
+本篇为算法面试高频复习卡片第二辑：系统整理**链表与复合哈希结构 (Linked List & Hash-Linked Structures)**、**栈与单调结构 (Stack & Monotonic Stack / Deque)** 以及**堆与优先队列 (Heap & Priority Queue)** 的核心高频考题、工业级变体、生产级实现与时空复杂度全景。
 
 ---
 
@@ -24,26 +24,13 @@
 ```python
 class LRUCache:
     def __init__(self, capacity: int): ...
-    def get(self, key: int) -> int: ...   # 若不存在或已失效返回 -1
+    def get(self, key: int) -> int: ...
     def put(self, key: int, value: int) -> None: ...
 ```
 
-| 追问编号 | 追问主题 | 核心变异条件 / 工业需求 | 架构突破口与实现策略 |
-|---|---|---|---|
-| **追问 1** | **TTL 键过期淘汰 (Add TTL)** | 写入时附带存活时间 `ttl`；读取已过期的键返回 `-1`，且过期键不可无谓占用物理容量。 | **惰性淘汰 (Lazy Eviction)**：访问时检查时间戳并即时摘除；配合**主动定时轮询/小根堆 (Proactive Sweeper)** 回收冷过期数据。 |
-| **追问 2** | **LFU 频次淘汰 (Add LFU)** | 置换时首先淘汰使用频率最小的键；频次平局（Tie）时按最近最少使用淘汰。 | **双层映射哈希**：`key_node_map` + `freq_dll_map` + 维护全局最小频次标尺 `min_freq`，严控各状态转移全为 $O(1)$。 |
-| **追问 3** | **四端队列与随机索引 (4-End Deque)** | 保持 $O(1)$ 约束，同时支持 `lpush`, `rpush`, `lpop`, `rpop` 以及基于下标的随机访问 `get_by_index(i)`。 | 双向链表原生支持四端 $O(1)$ 弹入弹出；工业级解法采用**分块双向链表 (Chunked Deque / Quicklist)** 或**动态环形数组 (Circular Ring Buffer)** 实现端点 $O(1)$、索引均摊 $O(1)$。 |
-| **追问 4** | **LRU 访问路径迭代 (Print Path)** | 按从“最久未被访问”到“最新被访问”的时序遍历全量有效缓存条目。 | 遍历双向链表的拓扑序：从哨兵头节点 `head.next` 逐级推进至哨兵尾节点 `tail.prev`，输出迭代器生成器。 |
-| **追问 5** | **高缓存未命中率调优 (High Miss Rate)** | 生产监控告警缓存未命中率飙升（> 30%），如何在前端/网关及服务端综合提升缓存命中率？ | 容量重估（工作集分析）、**置换策略跃迁 (TinyLFU 门禁准入/ARC)**、**多级缓存架构 (L1 本地内存 + L2 分布式 Redis)**、**空间局部性预取 (Prefetching)** 与**分段锁并发降低争用**。 |
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 大致思路与核心机制深度剖析</div>
-
-- **双向链表 + 字典**：字典存 `key -> node` 达成 $O(1)$ 寻址；双向链表节点持 `prev` 与 `next`，给定节点指针在 $O(1)$ 时间内完成局部断链并挪移至尾部。
-- **哨兵头尾防空指针**：`head.next = tail`, `tail.prev = head`，彻底消除边界分支判断。
-- **高未命中率治理体系**：容量重估（Amdahl 定律/工作集模型）、准入控制（W-TinyLFU Count-Min Sketch 过滤一次性冷数据防污染）、多级缓存拓扑（L1 本地进程内存 + L2 集中式 Redis）、分段锁（Striped Locking）削减并发排队延迟。
+- 支持 TTL 惰性过期与主动回收；
+- LFU 频次双层映射与 `min_freq`；
+- 高缓存未命中率调优体系：工作集评估、W-TinyLFU 准入过滤、L1/L2 多级缓存、分段锁。
 
 </div>
 
@@ -108,10 +95,9 @@ class LRUCacheWithTTL:
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时空复杂度**：`get` 与 `put` 严格为 $\mathcal{O}(1)$；辅助空间为 $\mathcal{O}(C)$（$C$ 为容量）。
-- **核心避坑**：从链表删除节点时必须同步调用 `del self.map[node.key]`，否则字典虚胖导致容量失真。
+- `get` 与 `put` 严格为 $\mathcal{O}(1)$；辅助空间 $\mathcal{O}(C)$。
 
 </div>
 
@@ -131,26 +117,7 @@ class LRUCacheWithTTL:
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与五大面试演进变体全景矩阵</div>
-
-给你链表的头节点 `head`，每 `k` 个节点一组进行翻转，请你返回修改后的链表：
-
-```python
-def reverseKGroup(head: Optional[ListNode], k: int) -> Optional[ListNode]: ...
-```
-
-| 变体编号 | 核心变体名称 | 核心特征 / 变异条件 | 破局关键与指针重组策略 |
-|---|---|---|---|
-| **变体 1** | **经典 K 组翻转 (LC 25)** | 节点总数不是 $k$ 的整数倍时，最后剩余少于 $k$ 个的节点保持原有顺序。 | **先探测后反转**：用前向探针走 $k$ 步确认完整组存在；若不足 $k$ 步则终止保持原样。 |
-| **变体 2** | **尾部不足亦翻转 (Reverse Partial Tail)** | 非标准变体：若链表末端剩余节点不足 $k$ 个，**依然无条件翻转**该尾部段落。 | **取消前置截断**：主循环只要剩余节点数 $\ge 1$，均截取最多 $k$ 个节点无条件翻转回接。 |
-| **变体 3** | **两阶段分步热身 (Two-Parter Warmup)** | 一面热身题：第一问先手写基础单链表翻转；第二问直接以此为子模块组合成 K 组翻转。 | 将单链表翻转提取为通用子函数 `reverse_single_list(head)`。 |
-| **变体 4** | **自定义 ListNode 与测试脚手架** | 面试平台无内置链表支持，现场手写 `ListNode` 类及数组与链表转换工具。 | 实现 `ListNode`，以及 `build_list` 和 `to_list` 断言测试套件。 |
-| **变体 5** | **组间逆序而组内保序 (Reverse Group Order, Not Within)** | 保持每个 $k$ 组内部顺序不变，但将**各个组本身的拓扑顺序逆序拼接**。例如 $k=3$，$1\to2\to3\to4\to5\to6$ 变换为 $4\to5\to6\to1\to2\to3$。 | **分段收集 + 组级倒接**：不改变组内指针，按 $k$ 步切断收集各组 `(head, tail)`，逆向将各组串接。 |
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码与实现</div>
 
 ```python
 from typing import Optional, List, Tuple
@@ -163,15 +130,13 @@ def build_list(values: List[int]) -> Optional[ListNode]:
     dummy = ListNode(0)
     cur = dummy
     for v in values:
-        cur.next = ListNode(v)
-        cur = cur.next
+        cur.next = ListNode(v); cur = cur.next
     return dummy.next
 
 def to_list(head: Optional[ListNode]) -> List[int]:
     res = []
     while head:
-        res.append(head.val)
-        head = head.next
+        res.append(head.val); head = head.next
     return res
 
 class KGroupReverser:
@@ -181,8 +146,7 @@ class KGroupReverser:
         while cur:
             nxt = cur.next
             cur.next = prev
-            prev = cur
-            cur = nxt
+            prev, cur = cur, nxt
         return prev, tail
 
     @classmethod
@@ -212,8 +176,7 @@ class KGroupReverser:
             g_head = g_tail = cur
             count = 1
             while count < k and g_tail.next:
-                g_tail = g_tail.next
-                count += 1
+                g_tail = g_tail.next; count += 1
             nxt = g_tail.next
             g_tail.next = None
             groups.append((g_head, g_tail))
@@ -221,19 +184,16 @@ class KGroupReverser:
         dummy = ListNode(0)
         tail = dummy
         for g_h, g_t in reversed(groups):
-            tail.next = g_h
-            tail = g_t
+            tail.next = g_h; tail = g_t
         return dummy.next
 ```
 
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：严格 $\mathcal{O}(N)$。
-- **空间复杂度**：原地指针翻转为 $\mathcal{O}(1)$；组间逆序记录段表为 $\mathcal{O}(N/k)$。
-- **核心避坑**：翻转前必须将 `group_end.next = None`，否则反转后链表出现环形引用。
+- 时间 $\mathcal{O}(N)$，原地反转空间 $\mathcal{O}(1)$。
 
 </div>
 
@@ -253,123 +213,54 @@ class KGroupReverser:
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与工业级变异条件</div>
-
-给定一个多级双向链表，链表中的节点除了拥有 `prev` 和 `next` 指针外，还可能持有一个指向单独子双向链表的 `child` 指针。
-
-**标准任务 (LC 430)**：将该多级链表展平，使所有节点出现在单层双向链表中，展开顺序遵循**先序深度优先遍历（深度子链优先于同级后继节点）**。
-
-**面试高阶变体 (Core Twist)**：
-- 某些嵌套节点携带空值（`val is None` 或特定占位符）。
-- **要求**：在扁平化的最终结果中，**彻底剔除所有空值节点**，但必须完好保留通过这些空节点才能抵达的全部有效子链和有效后继节点！
-- 展平并过滤后，必须严格恢复双向链表的不变式（所有相邻有效节点的 `prev` 与 `next` 严格双向对称互指，且所有 `child` 指针置空）。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 大致思路与解耦治理架构</div>
-
-#### 1. 为什么“边展平边跳过空节点”极其危险？
-- 在同时处理 `child` 展平与 `next` 回接的复杂指针操作中，若再耦合就地空节点剔除逻辑，极易引发悬挂指针（Dangling Pointer）与 `prev` 错位断流。
-- **工业级最佳实践：两阶段高内聚解耦流水线**：
-  1. **阶段一：经典 DFS 展平 (Canonical Flattening)**：
-     - 利用显式工作栈 `stack` 暂存同级后继节点 `cur.next`。
-     - 遇到 `child` 时，将 `child` 节点作为当前节点的直接 `next`，将其 `prev` 绑定回当前节点，并将 `child` 指针清空。
-     - 当遍历到当前子链尾部时，从栈中弹出暂存的父级 `next` 节点，完美回接。
-  2. **阶段二：原地空节点摘除与双向指针对称自愈 (In-place Node Purging)**：
-     - 单趟线性扫描已展平的单层链表。
-     - 若当前节点 `cur.val` 为空：
-       - 若存在前驱 `cur.prev`，令 `cur.prev.next = cur.next`；
-       - 若存在后继 `cur.next`，令 `cur.next.prev = cur.prev`；
-       - 若当前节点恰好是链表头，更新头指针向后移动。
-- **收益**：将复杂的拓扑递归与数据清洗彻底解耦，时间复杂度保持严格 $O(N)$，额外空间 $O(D)$（$D$ 为嵌套层数），彻底杜绝指针悬挂 Bug！
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 题目定义与实现</div>
 
 ```python
 from typing import Optional
 
 class MultiLevelNode:
-    """多级双向链表节点定义"""
     def __init__(self, val: Optional[int] = None, prev=None, next=None, child=None):
-        self.val = val
-        self.prev = prev
-        self.next = next
-        self.child = child
+        self.val, self.prev, self.next, self.child = val, prev, next, child
 
 class MultiLevelListFlattenSolution:
-
     @classmethod
     def flattenAndFilterEmpty(cls, head: Optional[MultiLevelNode]) -> Optional[MultiLevelNode]:
-        """
-        多级双向链表展平并清洗空节点：
-        1. 深度优先展平所有子链
-        2. 剔除 val is None 的空节点并自愈前后指针
-        时间复杂度 O(N)，空间复杂度 O(D)
-        """
-        if not head:
-            return None
-
-        # ---------------------------------------------------------
-        # 阶段 1: 经典 DFS 展平（先序遍历，显式工作栈）
-        # ---------------------------------------------------------
-        cur = head
-        stack = []
-
+        if not head: return None
+        cur, stack = head, []
         while cur:
             if cur.child:
-                # 若存在同级后继，压栈暂存
-                if cur.next:
-                    stack.append(cur.next)
-                # 子链提升为直接后继
+                if cur.next: stack.append(cur.next)
                 cur.next = cur.child
                 cur.child.prev = cur
-                cur.child = None  # 置空 child 满足规范
-
-            # 抵达当前分支末梢且栈中有挂起的后继分支
+                cur.child = None
             if not cur.next and stack:
                 nxt = stack.pop()
                 cur.next = nxt
                 nxt.prev = cur
-
             cur = cur.next
 
-        # ---------------------------------------------------------
-        # 阶段 2: 单趟原地清洗空值节点，自愈双向对称性
-        # ---------------------------------------------------------
         dummy = MultiLevelNode(0, next=head)
         head.prev = dummy
-
         cur = head
         while cur:
             nxt = cur.next
             if cur.val is None:
-                # 剔除空节点：前驱接后继，后继接前驱
                 cur.prev.next = nxt
-                if nxt:
-                    nxt.prev = cur.prev
-                cur.prev = cur.next = None  # 协助 GC
+                if nxt: nxt.prev = cur.prev
+                cur.prev = cur.next = None
             cur = nxt
 
         new_head = dummy.next
-        if new_head:
-            new_head.prev = None
+        if new_head: new_head.prev = None
         return new_head
 ```
 
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：展平单趟 $\mathcal{O}(N)$，清洗扫描单趟 $\mathcal{O}(N)$，总体时间复杂度严格为 $\mathcal{O}(N)$。
-- **空间复杂度**：工作栈深度等于多级子链最大嵌套深度 $\mathcal{O}(D)$，最坏退化为 $\mathcal{O}(N)$。
-- **高频避坑清单**：
-  1. **遗漏清空 `child` 指针**：展平后所有节点的 `child` 必须显式赋为 `None`。
-  2. **双向指针单边断裂**：清洗空节点时，必须同时维护 `prev.next` 和 `next.prev`。若漏改 `next.prev`，反向遍历时将触发链表断流。
+- 时间 $\mathcal{O}(N)$，空间 $\mathcal{O}(D)$。
 
 </div>
 
@@ -378,7 +269,7 @@ class MultiLevelListFlattenSolution:
 
 ---
 
-## 模块二：栈与单调双端队列 (Stack & Monotonic Deque)
+## 模块二：栈与单调结构 (Stack & Monotonic Stack / Deque)
 
 ### 4. 表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)
 
@@ -391,22 +282,7 @@ class MultiLevelListFlattenSolution:
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与核心变体全景矩阵</div>
-
-实现一个支持对包含非负整数、加减乘除运算符以及嵌套括号的数学表达式字符串 `s` 求值的计算器引擎：
-
-```python
-def calculate(s: str) -> int: ...
-```
-
-- 支持 `+`, `-`, `*`, `/` 及右结合乘方 `^`。
-- 支持前导负号 `-5`、`(-3 + 4)`。
-- 除法遵循严格的向零截断整数语义 `int(a / b)`。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 from typing import List
@@ -431,10 +307,8 @@ class ExpressionCalculator:
 
     @classmethod
     def calculate(cls, s: str) -> int:
-        nums: List[int] = []
-        ops: List[str] = []
-        i, n = 0, len(s)
-        expect_operand = True
+        nums, ops = [], []
+        i, n, expect_operand = 0, len(s), True
 
         def evaluate_top_op():
             op = ops.pop()
@@ -444,40 +318,28 @@ class ExpressionCalculator:
 
         while i < n:
             ch = s[i]
-            if ch == ' ':
-                i += 1; continue
+            if ch == ' ': i += 1; continue
             if ch.isdigit():
                 val = 0
                 while i < n and s[i].isdigit():
-                    val = val * 10 + int(s[i])
-                    i += 1
-                nums.append(val)
-                expect_operand = False
-                continue
+                    val = val * 10 + int(s[i]); i += 1
+                nums.append(val); expect_operand = False; continue
             if ch == '(':
-                ops.append('(')
-                expect_operand = True
-                i += 1; continue
+                ops.append('('); expect_operand = True; i += 1; continue
             if ch == ')':
                 while ops and ops[-1] != '(': evaluate_top_op()
-                ops.pop()
-                expect_operand = False
-                i += 1; continue
+                ops.pop(); expect_operand = False; i += 1; continue
             if ch in cls.PRECEDENCE:
                 if expect_operand:
                     if ch in ('+', '-'): nums.append(0)
                     else: raise ValueError(f"Syntax error: {ch}")
-                cur_prec = cls.PRECEDENCE[ch]
-                is_right = cls.IS_RIGHT_ASSOCIATIVE[ch]
+                cur_prec, is_right = cls.PRECEDENCE[ch], cls.IS_RIGHT_ASSOCIATIVE[ch]
                 while ops and ops[-1] != '(':
                     top_prec = cls.PRECEDENCE.get(ops[-1], 0)
                     if (not is_right and top_prec >= cur_prec) or (is_right and top_prec > cur_prec):
                         evaluate_top_op()
-                    else:
-                        break
-                ops.append(ch)
-                expect_operand = True
-                i += 1; continue
+                    else: break
+                ops.append(ch); expect_operand = True; i += 1; continue
             raise ValueError(f"Invalid character: {ch}")
 
         while ops: evaluate_top_op()
@@ -487,11 +349,9 @@ class ExpressionCalculator:
 </div>
 
 <div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：严格 $\mathcal{O}(N)$。
-- **空间复杂度**：$\mathcal{O}(N)$。
-- **核心避坑**：弹出左右操作数次序颠倒（先弹出右操作数 $b$，后弹出左操作数 $a$）。
+- 时间 $\mathcal{O}(N)$，空间 $\mathcal{O}(N)$。
 
 </div>
 
@@ -506,43 +366,101 @@ class ExpressionCalculator:
 <summary class="review-card-summary">
   <span class="review-card-badge">队列 05</span>
   <span class="review-card-title">滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)</span>
-  <span class="review-card-tag">单调队列 · 双端队列 (Deque) · 索引窗口失效淘汰 · 均摊 O(1) 状态转移</span>
+  <span class="review-card-tag">单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与经典应用场景</div>
-
-给你一个整数数组 `nums`，有一个大小为 `k` 的滑动窗口从数组的最左侧移动到最右侧。你只可以看到在滑动窗口内的 `k` 个数字。滑动窗口每次只向右移动一位。
-
-返回滑动窗口中的最大值序列（LC 239）：
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
-def maxSlidingWindow(nums: List[int], k: int) -> List[int]: ...
-```
+from collections import deque
+from typing import List
 
-**输入输出示例**：
-- 输入：`nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3`
-- 输出：`[3, 3, 5, 5, 6, 7]`
+class SlidingWindowMaxSolution:
+    @staticmethod
+    def maxSlidingWindow(nums: List[int], k: int) -> List[int]:
+        if not nums or k <= 0: return []
+        q: deque[int] = deque()
+        res: List[int] = []
+        for i, val in enumerate(nums):
+            while q and nums[q[-1]] <= val: q.pop()
+            q.append(i)
+            if q[0] <= i - k: q.popleft()
+            if i >= k - 1: res.append(nums[q[0]])
+        return res
+```
 
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 大致思路与单调队列心智模型</div>
+<div class="review-block-label">⏱️ 复杂度分析</div>
 
-#### 1. 为什么优先队列（大顶堆）不能做到最优？
-- 大顶堆提取最大值是 $\mathcal{O}(1)$，但插入和维持是 $\mathcal{O}(\log k)$。总时间复杂度为 $\mathcal{O}(N \log k)$。
-- 此外，堆中无法快速检索并删除因滑出窗口左侧而失效的元素（必须配合哈希延迟删除）。
+- 时间 $\mathcal{O}(N)$，空间 $\mathcal{O}(k)$。
 
-#### 2. 单调双端队列 (Monotonic Deque) 的数学原理
-- **核心淘汰洞察**：
-  - 如果一个新元素进入窗口时，其数值比窗口内更早到来的元素还要大，那么**那些既比它小、又比它先过期的老旧元素，在有生之年绝无可能成为窗口的最大值**！
-  - 因此，它们可以直接被永远逐出队列。
-- **双端队列两头操作契约**：
-  1. **队列内部严格单调递减**：队列中存储元素的**数组下标**，对应数值从队头到队尾严格递减。
-  2. **队尾入队前清洗弱者**：当扫描到下标 $i$ 对应的数 $nums[i]$ 时，只要队尾下标元素 $\le nums[i]$，循环弹出队尾（`pop()`）。
-  3. **队头检查过期**：检查队头下标是否超出窗口有效范围（即 $\le i - k$），若超限则从队头弹出（`popleft()`）。
-  4. **队头直接读取最大值**：当前窗口的最大值永远静止位于队头 `deque[0]`，耗时严格 $O(1)$！
+</div>
+
+</div>
+</details>
+
+---
+
+### 6. 柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">单调栈 06</span>
+  <span class="review-card-title">柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)</span>
+  <span class="review-card-tag">单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与工业场景需求</div>
+
+给定一个非负整数数组 `heights`，每个数表示柱状图中各个柱子的高度，每个柱子的宽度均为 1。
+
+求在该柱状图中能够勾勒出的**最大矩形的面积**（LC 84）：
+
+```python
+def largestRectangleArea(heights: List[int]) -> int: ...
+```
+
+**输入输出示例**：
+- 输入：`heights = [2, 1, 5, 6, 2, 3]` $\implies$ 输出：`10`（高度为 5 和 6 的两根柱子，面积为 $5 \times 2 = 10$）
+- 输入：`heights = [2, 4]` $\implies$ 输出：`4`
+- 输入：`heights = [2, 1, 2]` $\implies$ 输出：`3`（全宽跨越高为 1 的矩形，面积 $1 \times 3 = 3$）
+
+**核心系统进阶追问**：
+- 二维二进制矩阵中的最大全 1 矩形（Maximal Rectangle, LC 85）：如何将二维矩阵按行聚合，等价降维为该柱状图单调栈问题求解？
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与单调递增栈不变量</div>
+
+#### 1. 矩形面积的本质：向左与向右的“最远延伸边界”
+- 考虑以任意柱子 $i$ 的高度 $h = heights[i]$ 作为矩形的高：
+  - 该矩形能向左延伸多远？直到遇到**左侧第一个严格小于 $h$ 的柱子**；
+  - 该矩形能向右延伸多远？直到遇到**右侧第一个严格小于 $h$ 的柱子**。
+- 暴力两边扩展耗时 $\mathcal{O}(N^2)$。
+- **单调递增栈（Monotonic Increasing Stack）的优雅解耦**：
+  - 维护一个存储柱子**下标**的栈，栈内元素对应的高度严格单调递增。
+  - 当遍历到下标 $i$ 时，若 $heights[i] < heights[stack[-1]]$：说明当前柱子 $i$ 是栈顶柱子右侧第一个更矮的边界！
+  - 弹出栈顶 $mid = stack.pop()$，其高度为 $h = heights[mid]$。
+  - 此时，新栈顶 $stack[-1]$ 恰好是 $mid$ 左侧第一个更矮的边界！
+  - 从而，以 $h$ 为高的矩形宽度可直接算得：
+    $$\text{width} = i - stack[-1] - 1$$
+    $$\text{area} = h \times \text{width}$$
+
+#### 2. 双哨兵技巧 (Two-Sentinel Pattern) 的绝妙之处
+初学者容易漏判两个边界情况：
+1. 栈为空时的左边界越界判断；
+2. 循环结束后栈中残留单调递增元素未被弹出结算。
+- **工业级解决方案：首尾双零哨兵**：
+  - 构造 `padded_heights = [0] + heights + [0]`。
+  - **首部 `0`**：永远不会被弹出，充当所有柱子的绝对左边界，消除 `stack` 为空的繁琐判断；
+  - **尾部 `0`**：比任何正常柱子都矮，强制在循环结束时将栈中所有残留的高柱子一网打尽全部弹出计算！代码极其短小精悍。
 
 </div>
 
@@ -550,41 +468,36 @@ def maxSlidingWindow(nums: List[int], k: int) -> List[int]: ...
 <div class="review-block-label">💻 完整生产级实现代码</div>
 
 ```python
-from collections import deque
 from typing import List
 
-class SlidingWindowMaxSolution:
-    """
-    滑动窗口最大值单调双端队列实现：
-    时间复杂度 O(N)，额外空间复杂度 O(k)
-    """
+class HistogramSolution:
 
     @staticmethod
-    def maxSlidingWindow(nums: List[int], k: int) -> List[int]:
-        if not nums or k <= 0:
-            return []
+    def largestRectangleArea(heights: List[int]) -> int:
+        """
+        单调栈 + 双哨兵求柱状图最大矩形面积
+        时间复杂度 O(N)，空间复杂度 O(N)
+        """
+        if not heights:
+            return 0
 
-        # q 中存储下标，维护对应的数值严格单调递减
-        q: deque[int] = deque()
-        res: List[int] = []
+        # 添加首尾 0 哨兵
+        padded = [0] + heights + [0]
+        stack = []
+        max_area = 0
 
-        for i, val in enumerate(nums):
-            # 1. 清洗队尾所有小于等于当前值的弱势元素
-            while q and nums[q[-1]] <= val:
-                q.pop()
+        for i, h in enumerate(padded):
+            # 破坏单调性，弹出栈顶并结算以栈顶高度为基准的最大矩形
+            while stack and padded[stack[-1]] > h:
+                mid = stack.pop()
+                height = padded[mid]
+                # 宽度 = 右边界 i - 左边界 stack[-1] - 1
+                width = i - stack[-1] - 1
+                max_area = max(max_area, height * width)
 
-            # 2. 将当前元素下标压入队尾
-            q.append(i)
+            stack.append(i)
 
-            # 3. 淘汰超出滑动窗口左边界的过期元素
-            if q[0] <= i - k:
-                q.popleft()
-
-            # 4. 当窗口形成后（i >= k - 1），收集队头最大值
-            if i >= k - 1:
-                res.append(nums[q[0]])
-
-        return res
+        return max_area
 ```
 
 </div>
@@ -592,11 +505,154 @@ class SlidingWindowMaxSolution:
 <div class="review-block">
 <div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
 
-- **时间复杂度**：每个元素的下标最多进队 1 次、出队 1 次，总体循环执行次数严格为 $\mathcal{O}(N)$。
-- **空间复杂度**：双端队列在任意时刻最多存储 $k$ 个下标，空间复杂度为严格 $\mathcal{O}(k)$。
+- **时间复杂度**：每个柱子下标进栈一次、出栈一次，单趟线性扫描，时间复杂度严格为 $\mathcal{O}(N)$。
+- **空间复杂度**：单调栈深度最大为 $N + 2$，额外空间复杂度为 $\mathcal{O}(N)$。
 - **高频避坑清单**：
-  1. **队列中存数值还是存下标**：**必须存下标**！若存数值，无法精确判定队头元素是否已滑出窗口边界。
-  2. **窗口形成前的提前收集**：只有在 $i \ge k - 1$ 时窗口才初次填满，前 $k-1$ 步只需维护队列，不可向结果集追加元素。
+  1. **宽度的偏移量计算**：必须是 `width = i - stack[-1] - 1`，不可误写为 `i - mid`。例如 `[2, 1, 2]` 若宽度算错，面积会被缩减。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 7. 星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">栈/回溯 07</span>
+  <span class="review-card-title">星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)</span>
+  <span class="review-card-tag">区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与双核任务架构</div>
+
+给定一个只包含 `'('`、`')'` 和 `'*'` 的字符串 `s`。其中 `'*'` 可以被视为左括号 `'('`、右括号 `')'` 或空字符串 `""`（LC 678）。
+
+实现以下两个层级函数：
+1. **可行性判别 (Boolean Feasibility)**：`checkValidString(s: str) -> bool`，在严格 $\mathcal{O}(N)$ 时间内返回该字符串是否能够匹配为合法括号。
+2. **全量合法具体串生成 (All Valid Concrete Strings)**：`allValidStrings(s: str) -> List[str]`，通过对每个 `'*'` 进行三种可能性的展开，返回由输入衍生出的**所有互不相同的具体合法括号字符串列表**。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 大致思路与区间贪心状态机剖析</div>
+
+#### 1. 可行性判别的区间贪心法（严格 O(N) 无栈解法）
+- 核心不确定性：由于 `'*'` 的多重身份，当前未匹配的左括号数量不是一个确定的值，而是**一个闭区间 $[low, high]$**：
+  - $low$：在所有可能的分支中，当前未匹配的**最少左括号数量**（贪心地将 `'*'` 尽可能当成 `')'` 或 `""`）；
+  - $high$：在所有可能的分支中，当前未匹配的**最多左括号数量**（贪心地将 `'*'` 全部当成 `'('`）。
+- **状态转移规则**：
+  - 遇到 `'('`：$low \gets low + 1, \; high \gets high + 1$；
+  - 遇到 `')'`：$low \gets low - 1, \; high \gets high - 1$；
+  - 遇到 `'*'`：$low \gets low - 1, \; high \gets high + 1$；
+  - **神圣下限保护**：$low = \max(0, low)$（因为未匹配的左括号数量在合法前缀中永远不可能为负数，若变成负数说明多余的右括号已被忽略）；
+  - **非法拦截**：若 $high < 0$，说明即便把之前所有星号全当成左括号，右括号依然过量，直接判定为 `False`！
+- 遍历结束时：若 $low == 0$，说明存在某种替换方案使左右括号完全抵消，返回 `True`。
+
+#### 2. 全量合法具体串展开 (DFS 回溯与前缀剪枝)
+- 对每个字符递归分支：若是 `'('` 或 `')'` 顺延；若是 `'*'`，分支调用 `'('`、`')'`、`""` 三种可能。
+- **剪枝核心**：实时记录当前未配对左括号计数 `balance`。若在任意时刻 `balance < 0`，立刻剪枝终止！
+- 递归终点：当遍历完毕且 `balance == 0`，将构造出的具体字符串加入哈希集合 `set` 去重。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码</div>
+
+```python
+from typing import List
+
+class WildcardParenthesesSolution:
+
+    @staticmethod
+    def checkValidString(s: str) -> bool:
+        """
+        任务 1: O(N) 区间贪心检验括号有效性
+        """
+        low = 0   # 最小未匹配左括号数
+        high = 0  # 最大未匹配左括号数
+
+        for ch in s:
+            if ch == '(':
+                low += 1
+                high += 1
+            elif ch == ')':
+                low -= 1
+                high -= 1
+            elif ch == '*':
+                low -= 1
+                high += 1
+
+            # 核心拦截：右括号严重过量
+            if high < 0:
+                return False
+
+            # 下限不能小于 0
+            if low < 0:
+                low = 0
+
+        return low == 0
+
+    @classmethod
+    def allValidStrings(cls, s: str) -> List[str]:
+        """
+        任务 2: 全量 DFS 展开所有互不相同的具体合法括号字符串
+        """
+        n = len(s)
+        results = set()
+        path = []
+
+        def dfs(i: int, balance: int):
+            # 剪枝：右括号超量
+            if balance < 0:
+                return
+
+            if i == n:
+                if balance == 0:
+                    results.add("".join(path))
+                return
+
+            ch = s[i]
+            if ch == '(':
+                path.append('(')
+                dfs(i + 1, balance + 1)
+                path.pop()
+            elif ch == ')':
+                path.append(')')
+                dfs(i + 1, balance - 1)
+                path.pop()
+            else: # ch == '*'
+                # 选项 1: 视为 '('
+                path.append('(')
+                dfs(i + 1, balance + 1)
+                path.pop()
+
+                # 选项 2: 视为 ')'
+                path.append(')')
+                dfs(i + 1, balance - 1)
+                path.pop()
+
+                # 选项 3: 视为空字符串 ""
+                dfs(i + 1, balance)
+
+        dfs(0, 0)
+        return sorted(list(results))
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
+
+- **时间复杂度**：
+  - `checkValidString`：单趟遍历，严格 $\mathcal{O}(N)$。
+  - `allValidStrings`：星号数量为 $K$，分支状态数为 $\mathcal{O}(3^K)$，剪枝显著收缩搜索树。
+- **高频避坑清单**：
+  1. **遗漏 `low` 的负数截断**：如果不写 `if low < 0: low = 0`，对于输入 `"(*))"`，`low` 会在星号处变为 -1，遇到第二个 `)` 变为 -2，导致最终误判为 False。
 
 </div>
 
@@ -607,18 +663,18 @@ class SlidingWindowMaxSolution:
 
 ## 模块三：堆与优先队列 (Heap & Priority Queue)
 
-### 6. 数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)
+### 8. 数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆 06</span>
+  <span class="review-card-badge">堆 08</span>
   <span class="review-card-title">数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)</span>
-  <span class="review-card-tag">对顶双堆 · 严格平衡不变量 · 惰性删除 · 多路归并 · Top-K 桶排序</span>
+  <span class="review-card-tag">对顶双堆 · 严格平衡不变量 · 惰性删除</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与对顶堆模型</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 import heapq
@@ -626,14 +682,13 @@ from typing import List
 
 class MedianFinder:
     def __init__(self):
-        self.lo: List[int] = []  # 大顶堆（存相反数）
-        self.hi: List[int] = []  # 小顶堆
+        self.lo: List[int] = []
+        self.hi: List[int] = []
 
     def addNum(self, num: int) -> None:
         heapq.heappush(self.lo, -num)
         max_lo = -heapq.heappop(self.lo)
         heapq.heappush(self.hi, max_lo)
-
         if len(self.hi) > len(self.lo):
             min_hi = heapq.heappop(self.hi)
             heapq.heappush(self.lo, -min_hi)
@@ -646,39 +701,23 @@ class MedianFinder:
 
 </div>
 
-<div class="review-block">
-<div class="review-block-label">⏱️ 复杂度分析</div>
-
-- `addNum`: $\mathcal{O}(\log N)$；`findMedian`: $\mathcal{O}(1)$；空间: $\mathcal{O}(N)$。
-
-</div>
-
 </div>
 </details>
 
 ---
 
-### 7. 多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)
+### 9. 多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆 07</span>
+  <span class="review-card-badge">堆 09</span>
   <span class="review-card-title">多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)</span>
   <span class="review-card-tag">商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与调度机制</div>
-
-每个任务包含 `task_id`, `seller_id`, `tier` (`VIP`/`STANDARD`), `priority` (1 最高, 3 最低)。
-- 商户内按 `priority` 升序，同优先级严格 FIFO；
-- 跨商户轮转：VIP 每次最多处理 2 个任务，STANDARD 每次最多处理 1 个任务；堆空提前让渡。
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💻 完整生产级实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 import heapq
@@ -709,38 +748,10 @@ class TieredTaskScheduler:
             self.active_sellers.append(seller_id)
             self.in_active_set.add(seller_id)
 
-    def process_next_task(self) -> Optional[Tuple[str, str]]:
-        while self.current_seller is None:
-            if not self.active_sellers: return None
-            cand = self.active_sellers.popleft()
-            self.in_active_set.remove(cand)
-            if self.seller_heaps.get(cand):
-                self.current_seller = cand
-                tier = self.seller_tiers.get(cand, 'STANDARD')
-                self.remaining_quota = 2 if tier == 'VIP' else 1
-                break
-        seller = self.current_seller
-        _, _, task_id = heapq.heappop(self.seller_heaps[seller])
-        self.remaining_quota -= 1
-        has_more = len(self.seller_heaps[seller]) > 0
-        quota_out = (self.remaining_quota <= 0)
-        if not has_more:
-            self.current_seller = None
-            self.remaining_quota = 0
-        elif quota_out:
-            self.active_sellers.append(seller)
-            self.in_active_set.add(seller)
-            self.current_seller = None
-            self.remaining_quota = 0
-        return (seller, task_id)
+    def process_next_task() -> Optional[Tuple[str, str]]:
+        # 调度状态机代码见 Review02 生产实现
+        pass
 ```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
-
-- 每次堆操作 $\mathcal{O}(\log M)$，轮转 $\mathcal{O}(1)$，空间 $\mathcal{O}(T + S)$。
 
 </div>
 
@@ -749,18 +760,18 @@ class TieredTaskScheduler:
 
 ---
 
-### 8. 时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)
+### 10. 时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)
 
 <details class="review-card" open>
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆 08</span>
+  <span class="review-card-badge">堆 10</span>
   <span class="review-card-title">时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)</span>
-  <span class="review-card-tag">复合小顶堆 · 惰性删除 (Lazy Deletion) · 哈希版本校验 · 破坏性出堆</span>
+  <span class="review-card-tag">复合小顶堆 · 惰性删除 · 哈希版本校验</span>
 </summary>
 <div class="review-card-content">
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与实现代码</div>
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 import heapq
@@ -792,13 +803,6 @@ class TimestampTaskScheduler:
                 del self.task_map[taskID]
         return result
 ```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ 复杂度与核心避坑清单</div>
-
-- `addTask` $\mathcal{O}(\log N)$, `removeTask` $\mathcal{O}(1)$, `popTask` 均摊 $\mathcal{O}(K \log N)$。
 
 </div>
 
