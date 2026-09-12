@@ -1481,39 +1481,35 @@ $$ \boxed{\frac{\beta_1}{\beta_2} = 1 - \rho^2} $$
 
 #### 2. Geometric & Frisch–Waugh–Lovell (FWL) Theorem Perspective
 
-This problem illuminates the subtle, fundamental geometric distinction at the heart of the **Frisch–Waugh–Lovell (FWL) Theorem**:
+> 💡 **Interactive Geometry Reference**: For an interactive 3D/2D step-by-step demonstration of vector orthogonalization, lever-arm dilation, and the $(1 - \rho^2)$ attenuation mechanism, see the lab in [Module 1 · (4) Partial Covariance & Frisch–Waugh–Lovell (FWL) Theorem](#4-partial-covariance--frischwaughlovell-fwl-theorem). This section focuses on demystifying the interview trap.
 
-- **True FWL Procedure**:
-  The FWL theorem proves that the multivariate regression slope $\beta_2$ represents the projection of $Y$ onto $X_2$ **after purging both variables of the linear influence of $X_1$**:
-  $$ \beta_2 = \frac{\operatorname{Cov}(\varepsilon, \tilde{X}_2)}{\operatorname{Var}(\tilde{X}_2)} $$
-  where $\tilde{X}_2 = X_2 - \operatorname{Proj}_{X_1}(X_2) = M_1 X_2$ is the net innovation in $X_2$ orthogonal to $X_1$.
-- **The Naive Two-Stage Trap**:
-  In the question, the researcher orthogonalized $Y$ (producing $\varepsilon$), but **forgot to orthogonalize $X_2$**, mistakenly regressing $\varepsilon$ onto raw $X_2$:
-  $$ \beta_1 = \frac{\operatorname{Cov}(\varepsilon, X_2)}{\operatorname{Var}(X_2)} $$
-- **Why Do They Differ by Exactly $(1 - \rho^2)$?**
-  1. **Numerator Inner Products are Identical**:
-     Since $\varepsilon \perp X_1$ and $X_2 = \operatorname{Proj}_{X_1}(X_2) + \tilde{X}_2$:
-     $$ \operatorname{Cov}(\varepsilon, X_2) = \underbrace{\operatorname{Cov}(\varepsilon, \operatorname{Proj}_{X_1}(X_2))}_{= 0} + \operatorname{Cov}(\varepsilon, \tilde{X}_2) = \operatorname{Cov}(\varepsilon, \tilde{X}_2) $$
-     The numerator dot product is geometrically identical!
-  2. **Denominator Variances Differ**:
-     True FWL divides by the net variance $\operatorname{Var}(\tilde{X}_2) = \operatorname{Var}(X_2)(1 - R_{X_2 \sim X_1}^2) = \operatorname{Var}(X_2)(1 - \rho^2)$;
-     Naive regression divides by the full variance $\operatorname{Var}(X_2)$, which is inflated by redundant collinear variance shared with $X_1$.
-     Therefore, the ratio strictly equals the variance retention fraction:
-     $$ \frac{\beta_1}{\beta_2} = \frac{\operatorname{Var}(\tilde{X}_2)}{\operatorname{Var}(X_2)} = 1 - R_{X_2 \sim X_1}^2 = 1 - \rho^2 $$
+Many candidates mistakenly assume $\beta_1 = \beta_2$, reasoning that "since $Y$ was already purged of $X_1$ ($\varepsilon \perp X_1$), regressing $\varepsilon$ onto $X_2$ must isolate the net marginal contribution of $X_2$." This intuition commits the fatal error of **single-sided orthogonalization while neglecting the geometric scale of the regressor**:
 
-```fwl-geometry-demo
-```
+- **Geometric Comparison (True FWL vs. Naive Two-Stage)**:
+  - **True FWL Slope (Double-Sided Orthogonalization)**: Purges both $Y$ and $X_2$ against $X_1$, projecting onto $\tilde{X}_2 = M_1 X_2$:
+    $$ \beta_2 = \frac{\langle \varepsilon, \tilde{X}_2 \rangle}{\|\tilde{X}_2\|_2^2} = \frac{\operatorname{Cov}(\varepsilon, \tilde{X}_2)}{\operatorname{Var}(\tilde{X}_2)} $$
+  - **Naive Two-Stage Slope (Single-Sided Orthogonalization)**: Purges only $Y$, projecting $\varepsilon$ onto raw, unpurged $X_2$:
+    $$ \beta_1 = \frac{\langle \varepsilon, X_2 \rangle}{\|X_2\|_2^2} = \frac{\operatorname{Cov}(\varepsilon, X_2)}{\operatorname{Var}(X_2)} $$
+
+- **Geometric Decomposition of the Attenuation Factor $(1 - \rho^2)$**:
+  1. **Numerator Dot Products are Identical (Orthogonal Invariance)**:
+     Decompose $X_2 = \operatorname{Proj}_{X_1}(X_2) + \tilde{X}_2$. Because stage one enforced $\varepsilon \perp X_1$:
+     $$ \langle \varepsilon, X_2 \rangle = \underbrace{\langle \varepsilon, \operatorname{Proj}_{X_1}(X_2) \rangle}_{= 0} + \langle \varepsilon, \tilde{X}_2 \rangle = \langle \varepsilon, \tilde{X}_2 \rangle $$
+     The numerator projection inner products are strictly identical!
+  2. **Denominator Lever Arm is Collinearly Diluted**:
+     - True FWL divides by the squared length of the net orthogonal feature: $\|\tilde{X}_2\|_2^2 = \|X_2\|_2^2 \sin^2\theta = \|X_2\|_2^2 (1 - \rho^2)$;
+     - Naive regression divides by the full squared length of raw $X_2$: $\|X_2\|_2^2$;
+     - By inflating the denominator with redundant collinear variance shared with $X_1$, the estimated slope is systematically diluted (attenuated):
+     $$ \frac{\beta_1}{\beta_2} = \frac{\|\tilde{X}_2\|_2^2}{\|X_2\|_2^2} = \sin^2\theta_{X_1, X_2} = 1 - \rho^2 $$
 
 ---
 
 #### 3. Practical Implications in Quantitative Multi-Factor Modeling
 
-1. **Both Sides Must be Neutralized**:
-   In factor research, researchers often want to test a new factor $X_2$ controlling for risk factors $X_1$ (e.g., industry and size):
-   - **Correct (FWL)**: Regress returns on industry dummies to get residual return $\varepsilon$, AND regress $X_2$ on industry dummies to get net factor $\tilde{X}_2$. Then test the slope of $\varepsilon$ on $\tilde{X}_2$.
-   - **Incorrect**: Regressing residual return $\varepsilon$ on raw factor $X_2$. If $X_2$ correlates with industry ($\rho \ne 0$), the measured factor return slope is artificially attenuated by $(1 - \rho^2)$, underestimating true factor efficacy!
-2. **Incremental Alpha Testing**:
-   To establish whether a proposed alpha signal $X_{\text{new}}$ contains non-redundant predictive power beyond a library of existing factors $X_{\text{base}}$, one must project $X_{\text{new}}$ onto $X_{\text{base}}^\perp$ ($\tilde{X}_{\text{new}} = M_{\text{base}} X_{\text{new}}$) and evaluate the significance of the residual signal.
+1. **Preventing Alpha Underestimation from Single-Sided Neutralization**:
+   In cross-sectional equity modeling, if a researcher purges stock returns of industry/style risks ($Y \to \varepsilon$) but tests raw candidate signals $X_2$ without industry neutralization, the measured factor premium and IC are shrunk by $(1 - \rho^2)$. For signals correlated with industry benchmarks ($\rho = 0.6$), the measured return drops by $36\%$, causing viable alpha to be discarded.
+2. **Strict Incremental Alpha Criterion**:
+   When evaluating a new candidate alpha $X_{\text{new}}$ against an existing factor library $X_{\text{base}}$, one must apply the residual projection operator $M_{\text{base}} = I - X_{\text{base}}(X_{\text{base}}^\top X_{\text{base}})^{-1}X_{\text{base}}^\top$ to extract $\tilde{X}_{\text{new}} = M_{\text{base}} X_{\text{new}}$. Only a statistically significant $t$-statistic on $\tilde{X}_{\text{new}}$ confirms genuine, non-redundant orthogonal alpha capacity.
 
 ---
 

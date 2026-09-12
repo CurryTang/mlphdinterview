@@ -1558,39 +1558,35 @@ $$ \boxed{\frac{\beta_1}{\beta_2} = 1 - \rho^2} $$
 
 #### 2. 几何与 Frisch–Waugh–Lovell (FWL) 定理视角
 
-这本质上是 **Frisch–Waugh–Lovell (FWL) 定理**最经典的高频变体与几何陷阱：
+> 💡 **交互几何演示说明**：关于特征向量正交化、投影力臂收缩与斜率压缩 $(1 - \rho^2)$ 的动态 3D/2D 分步几何演示，请参阅本章 [模块一 · （4）偏协方差与 Frisch–Waugh–Lovell (FWL) 定理](#4偏协方差与-frischwaughlovell-fwl-定理) 交互实验视窗。此处专注剖析该面试陷阱的代数与几何本源。
 
-- **真 FWL 定理的核心操作**：
-  FWL 定理指出，多元回归系数 $\beta_2$ 对应将 $Y$ 投影到 $X_2$ **剔除 $X_1$ 后的净残差空间**上：
-  $$ \beta_2 = \frac{\operatorname{Cov}(\varepsilon, \tilde{X}_2)}{\operatorname{Var}(\tilde{X}_2)} $$
-  其中 $\tilde{X}_2 = X_2 - \operatorname{Proj}_{X_1}(X_2) = M_1 X_2$ 是自变量 $X_2$ 剥离掉与 $X_1$ 线性共线性后的纯净特征增量。
-- **题目中两阶段回归的致命疏漏**：
-  题目里的 $\beta_1$ 仅仅将因变量 $Y$ 做了正交化（得到残差 $\varepsilon$），但**忘记了将自变量 $X_2$ 也做正交化**，直接将 $\varepsilon$ 投在了未净化的原变量 $X_2$ 上：
-  $$ \beta_1 = \frac{\operatorname{Cov}(\varepsilon, X_2)}{\operatorname{Var}(X_2)} $$
-- **为什么两者差了一个因子 $(1 - \rho^2)$？**
-  1. **分子内积恒等**：因为 $\varepsilon \perp X_1$ 且 $X_2 = \operatorname{Proj}_{X_1}(X_2) + \tilde{X}_2$：
-     $$ \operatorname{Cov}(\varepsilon, X_2) = \underbrace{\operatorname{Cov}(\varepsilon, \operatorname{Proj}_{X_1}(X_2))}_{= 0} + \operatorname{Cov}(\varepsilon, \tilde{X}_2) = \operatorname{Cov}(\varepsilon, \tilde{X}_2) $$
-     分子内积在几何上绝对相同！
-  2. **分母方差缩减比例**：
-     $\beta_2$ 的分母是净特征方差 $\operatorname{Var}(\tilde{X}_2) = \operatorname{Var}(X_2)(1 - R_{X_2 \sim X_1}^2) = \operatorname{Var}(X_2)(1 - \rho^2)$；
-     而 $\beta_1$ 的分母错误地使用了包含大量冗余共线信息的全方差 $\operatorname{Var}(X_2)$。
-     因此两者之比恰好等于方差缩减比例：
-     $$ \frac{\beta_1}{\beta_2} = \frac{\operatorname{Var}(\tilde{X}_2)}{\operatorname{Var}(X_2)} = 1 - R_{X_2 \sim X_1}^2 = 1 - \rho^2 $$
+很多人凭直觉误以为 $\beta_1 = \beta_2$，原因在于认为“因变量 $Y$ 已经剥离了 $X_1$ 的影响（残差 $\varepsilon \perp X_1$），用 $\varepsilon$ 对 $X_2$ 回归就自然代表 $X_2$ 的净边际效应”。这一直觉的致命破绽在于**只做了单端正交，忽略了自变量端的几何投影尺度**：
 
-```fwl-geometry-demo
-```
+- **正交分解对比（真 FWL vs 两阶段错误回归）**：
+  - **真 FWL 斜率（双端正交）**：将自变量 $X_2$ 也投影到 $X_1^\perp$ 空间得到纯净增量 $\tilde{X}_2 = M_1 X_2$：
+    $$ \beta_2 = \frac{\langle \varepsilon, \tilde{X}_2 \rangle}{\|\tilde{X}_2\|_2^2} = \frac{\operatorname{Cov}(\varepsilon, \tilde{X}_2)}{\operatorname{Var}(\tilde{X}_2)} $$
+  - **两阶段回归斜率（单端正交）**：直接把 $\varepsilon$ 投在未经净化的原始向量 $X_2$ 上：
+    $$ \beta_1 = \frac{\langle \varepsilon, X_2 \rangle}{\|X_2\|_2^2} = \frac{\operatorname{Cov}(\varepsilon, X_2)}{\operatorname{Var}(X_2)} $$
+
+- **衰减压缩因子 $(1 - \rho^2)$ 的纯几何解构**：
+  1. **分子内积恒等（垂直分量吸收）**：
+     将 $X_2$ 正交分解为平行于 $X_1$ 的投影分量与垂直分量 $X_2 = \operatorname{Proj}_{X_1}(X_2) + \tilde{X}_2$。由于一阶段回归保证了 $\varepsilon \perp X_1$：
+     $$ \langle \varepsilon, X_2 \rangle = \underbrace{\langle \varepsilon, \operatorname{Proj}_{X_1}(X_2) \rangle}_{= 0} + \langle \varepsilon, \tilde{X}_2 \rangle = \langle \varepsilon, \tilde{X}_2 \rangle $$
+     两者的分子内积在几何数值上绝对相同！
+  2. **分母几何力臂被虚假拉长（Attenuated Slope）**：
+     - 真 FWL 使用的是垂直于 $X_1$ 的净特征向量模长平方：$\|\tilde{X}_2\|_2^2 = \|X_2\|_2^2 \sin^2\theta = \|X_2\|_2^2 (1 - \rho^2)$；
+     - 错误两阶段回归使用的则是斜向全长向量模长平方：$\|X_2\|_2^2$；
+     - 由于分母力臂混入了与 $X_1$ 共线的冗余长度，分母被不必要地放大了 $\frac{1}{1 - \rho^2}$ 倍，导致估计斜率被系统性稀释压缩：
+     $$ \frac{\beta_1}{\beta_2} = \frac{\|\tilde{X}_2\|_2^2}{\|X_2\|_2^2} = \sin^2\theta_{X_1, X_2} = 1 - \rho^2 $$
 
 ---
 
 #### 3. 量化投资多因子实战启示
 
-1. **行业与风格中性化（Neutralization）必须“两端正交”**：
-   在多因子 Alpha 模型中，有两种做法：
-   - **正确做法（FWL 标准流）**：不仅将收益率 $Y$ 对行业/风格风险因子 $X_1$ 做截面回归取残差 $\varepsilon$，**还必须将原始候选因子 $X_2$ 也对 $X_1$ 做截面回归取残差 $\tilde{X}_2$**，再求因子收益率斜率；
-   - **错误做法**：只对收益率剔除行业影响，却直接用未中性化的原始因子去测 IC 或回归。由于行业敞口 $\rho \ne 0$，测得的纯净因子收益率将被虚假压缩 $(1 - \rho^2)$ 倍，导致优秀增量因子被系统性低估甚至误杀！
-2. **增量因子有效性检验（Incremental Alpha Test）**：
-   当要验证一个新的 Alpha 因子 $X_{\text{new}}$ 在既有数百个基准因子库 $X_{\text{base}}$ 之外是否具有纯净增量贡献时：
-   必须先将 $X_{\text{new}}$ 对整个矩阵 $X_{\text{base}}$ 做投影消去（$\tilde{X}_{\text{new}} = M_{\text{base}} X_{\text{new}}$），再测试净残差的统计显著性。
+1. **规避单端中性化导致的“优质因子误杀”**：
+   量化回测中若仅对股票未来收益率做行业/风格中性化（$Y \to \varepsilon$），却直接以未中性化的原始因子 $X_2$ 计算因子收益或 IC，测得的因子表现将被系统性乘以 $(1 - \rho^2)$。当因子与传统风格敞口相关度较高（如 $\rho = 0.6$）时，真实因子溢价被凭空折损近 $36\%$，导致有价值的增量 Alpha 被策略检验误判淘汰。
+2. **正交增量因子准入标准（Incremental Factor Criterion）**：
+   检验候选因子 $X_{\text{new}}$ 是否具备真增量时，必须施加残差投影算子 $M_{\text{base}} = I - X_{\text{base}}(X_{\text{base}}^\top X_{\text{base}})^{-1}X_{\text{base}}^\top$ 获得纯净正交残差 $\tilde{X}_{\text{new}} = M_{\text{base}} X_{\text{new}}$。只有 $\tilde{X}_{\text{new}}$ 在截面回归中的 $t$ 检验依然显著，才能证明该因子带来了基准库无法合成的正交信息增益。
 
 ---
 
