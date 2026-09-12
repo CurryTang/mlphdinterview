@@ -460,6 +460,22 @@ class Solution:
 
 </details>
 
+#### 面试高频追问与八大变体全家桶（Interview Follow-ups & Master Variant Atlas）
+
+在技术面试中，面试官常以本题为地基展开层层追问：
+
+1. **只读不可修改网格 (No-Modify BFS)**：强制网格只读时，必须用外部 `visited`，且必须恪守**入队即标记（Mark on Enqueue）**不变式，否则相邻节点会重复将相同单元格入队，导致队列多项式级爆炸退化为 $O((MN)^2)$。
+2. **同形岛屿去重 (Same-Shape / Distinct Islands，LC 694/711)**：通过**相对坐标平移归一化** $(r - r_0, c - c_0)$ 排序哈希，或在 DFS 路径中**追加回溯标记 `'B'`** 生成括号结构签名；高阶可应用二面体群 $D_4$ 的 8 向旋转镜像归一化。
+3. **超大地图外存切块缝合 (Huge-Map / Out-of-Core Partitioning)**：地图达 $10^6 \times 10^6$ 无法单机全量加载时，采用 Map-Reduce 架构：分块局部运行 BFS 标记连通块，纯内陆岛即时归档，仅将 1 像素外边界坐标及局部编号汇报给中心节点，利用跨块边界并查集（DSU）缝合物理相邻陆地。
+4. **水流倾泻可达 (Water-Flow Reachability，LC 417)**：正向从每格顺流搜索会导致 $O((MN)^2)$ TLE；必须**逆向思维**，从边界海洋出发沿高度非递减方向多源逆流而上，取双洋连通集合的交集，严格保证 $O(MN)$ 线性复杂度。
+5. **2D 连续全 1 扩展**：1D 最长连续 1 子数组推广至 2D，分为任意连通拓扑（Max Area of Island，DFS 累加）与实心全 1 矩形（Maximal Rectangle，逐行高度直方图压缩 + 单调递增栈 $O(MN)$ 最优解）。
+6. **岛屿周长几何解 (Island Perimeter，LC 463)**：利用公式 $\text{周长} = 4 \times \text{陆地数} - 2 \times \text{相邻共享边数}$，单次无状态线性扫描达成严格 $O(1)$ 辅助空间。
+7. **单趟指标双聚合 (Single-Pass Aggregation)**：单次扫描中在 BFS 弹出节点时动态累加连通块大小，单趟同时产出岛屿总数与最大面积。
+
+> 💡 **生产级代码与详细推导**：各变体完整 Python 实现、极端边界防护与复杂度速记表已收录至 [Review 1 · 常考基础题 (Flashcards) · 模块三第 15 题](Review01%20Common%20Fundamentals.md#15-岛屿数量与全景变体全家桶-number-of-islands--master-variant-atlas)。
+
+---
+
 ### 2. Max Area of Island
 
 [NeetCode 题目链接](https://neetcode.io/problems/max-area-of-island/question?list=neetcode150)

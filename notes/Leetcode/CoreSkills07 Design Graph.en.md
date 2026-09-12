@@ -455,6 +455,22 @@ On `grid = [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["
 
 </details>
 
+#### Interview Follow-ups & Master Variant Atlas
+
+In technical interviews across rounds, interviewers frequently expand this foundational problem into eight core variants:
+
+1. **Immutable Grid (No-Modify BFS)**: When mutating the input is forbidden, an external `visited` array is required and must enforce the **Mark on Enqueue** invariant, preventing duplicate enqueuing that causes $O((MN)^2)$ polynomial explosion.
+2. **Distinct Islands (Same-Shape, LC 694/711)**: Detect identical topologies using **relative coordinate normalization** $(r - r_0, c - c_0)$ sorting or **DFS path signatures with backtrack tokens `'B'`**; high-level variants apply dihedral group $D_4$ 8-way rotations and reflections.
+3. **Huge-Map Out-of-Core Partitioning**: When a $10^6 \times 10^6$ grid exceeds single-node memory, employ Map-Reduce: partition into tiles, compute local components, archive enclosed interior islands, and pass only 1-pixel border perimeters to a central coordinator using boundary Disjoint Set Union (DSU) stitching.
+4. **Water-Flow Reachability (Pacific Atlantic, LC 417)**: Downstream searches trigger $O((MN)^2)$ TLE; invert the problem by launching multi-source **uphill reverse infiltration** from oceanic borders, intersecting reachable sets in $O(MN)$ time.
+5. **2D All-Ones Runs**: Generalizing 1D longest runs to 2D splits into arbitrary shapes (Max Area of Island via DFS aggregation) and solid rectangular submatrices (Maximal Rectangle via row height histograms + monotonic stack in $O(MN)$).
+6. **Island Perimeter (LC 463)**: An algebraic shortcut computes $\text{Perimeter} = 4 \times \text{lands} - 2 \times \text{adjacent neighbors}$, achieving strictly $O(1)$ auxiliary space in a single stateless scan.
+7. **Single-Pass Aggregation**: Accumulate individual component sizes during queue extraction, dynamically updating total island count and running maximum area in a single pass.
+
+> 💡 **Production Code & Full Derivations**: Complete Python implementations, edge-case defenses, and complexity tables are documented in [Review 1 · Core Fundamentals (Flashcards) · Module 3 Card 15](Review01%20Common%20Fundamentals.en.md#15-number-of-islands--master-variant-atlas).
+
+---
+
 ### 2. Max Area of Island
 
 [NeetCode problem link](https://neetcode.io/problems/max-area-of-island/question?list=neetcode150)
