@@ -12,9 +12,13 @@
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 01</span>
   <span class="review-card-title">LRU 缓存与其系统级演进全家桶 (LRU Cache & System-Level Extensions)</span>
-  <span class="review-card-tag">[LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) · [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) · 双向链表 · 哈希映射 · TTL 过期 · LFU 频次置换 · 4 端双端队列 · 缓存未命中调优</span>
+  <span class="review-card-tag">哈希表 + 双向链表 · 复合哈希双向链表 · O(1) 淘汰</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) — `https://leetcode.com/problems/lru-cache/`
+> - [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) — `https://leetcode.com/problems/lfu-cache/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与五大工业级追问全景矩阵</div>
@@ -123,9 +127,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 02</span>
   <span class="review-card-title">K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)</span>
-  <span class="review-card-tag">[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) · 哨兵虚拟节点 · 局部反转双指针 · 尾部不足也翻转 · 组间反转组内保序 · 自定义脚手架</span>
+  <span class="review-card-tag">虚拟头节点 · K 长度探测 · 局部反转接回 · 空间 O(1)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) — `https://leetcode.com/problems/reverse-nodes-in-k-group/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码与实现</div>
@@ -236,9 +242,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 03</span>
   <span class="review-card-title">扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)</span>
-  <span class="review-card-tag">[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) · 多级双向链表 · 子链优先递归/栈 · 空值节点清洗 · 双向指针自愈缝合</span>
+  <span class="review-card-tag">双向指针修复 · DFS 展开 · 尾节点回溯接回 · 原地操作</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与实现</div>
@@ -322,9 +330,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">栈 04</span>
   <span class="review-card-title">表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)</span>
-  <span class="review-card-tag">[LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) · [LeetCode 227](https://leetcode.com/problems/basic-calculator-ii/) · [LeetCode 772](https://leetcode.com/problems/basic-calculator-iii/) · 单栈即时归约 · 括号状态暂存 · 负号/一元负数预处理 · 幂运算右结合 · Dijkstra 双栈调度场</span>
+  <span class="review-card-tag">符号栈 · 递归下降 · 乘除即时结合 · 括号递归分治</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) — `https://leetcode.com/problems/basic-calculator/`
+> - [LeetCode 227 · Basic Calculator II](https://leetcode.com/problems/basic-calculator-ii/) — `https://leetcode.com/problems/basic-calculator-ii/`
+> - [LeetCode 772 · Basic Calculator III](https://leetcode.com/problems/basic-calculator-iii/) — `https://leetcode.com/problems/basic-calculator-iii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -422,9 +435,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">队列 05</span>
   <span class="review-card-title">滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)</span>
-  <span class="review-card-tag">[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) · 单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
+  <span class="review-card-tag">单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) — `https://leetcode.com/problems/sliding-window-maximum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -475,9 +490,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">单调栈 06</span>
   <span class="review-card-title">柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)</span>
-  <span class="review-card-tag">[LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) · [LeetCode 85](https://leetcode.com/problems/maximal-rectangle/) · 单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
+  <span class="review-card-tag">单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) — `https://leetcode.com/problems/largest-rectangle-in-histogram/`
+> - [LeetCode 85 · Maximal Rectangle](https://leetcode.com/problems/maximal-rectangle/) — `https://leetcode.com/problems/maximal-rectangle/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业场景需求</div>
@@ -594,9 +613,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">栈/回溯 07</span>
   <span class="review-card-title">星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)</span>
-  <span class="review-card-tag">[LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) · 区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
+  <span class="review-card-tag">区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) — `https://leetcode.com/problems/valid-parenthesis-string/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与双核任务架构</div>
@@ -749,9 +770,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">堆 08</span>
   <span class="review-card-title">数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)</span>
-  <span class="review-card-tag">[LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) · [LeetCode 23](https://leetcode.com/problems/merge-k-sorted-lists/) · 对顶双堆 · 严格平衡不变量 · 惰性删除</span>
+  <span class="review-card-tag">对顶双堆 · 严格平衡不变量 · 惰性删除</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) — `https://leetcode.com/problems/find-median-from-data-stream/`
+> - [LeetCode 23 · Merge k Sorted Lists](https://leetcode.com/problems/merge-k-sorted-lists/) — `https://leetcode.com/problems/merge-k-sorted-lists/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -801,9 +826,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">堆 09</span>
   <span class="review-card-title">多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)</span>
-  <span class="review-card-tag">Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · 商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
+  <span class="review-card-tag">商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 621 · Task Scheduler](https://leetcode.com/problems/task-scheduler/) — `https://leetcode.com/problems/task-scheduler/` (系统级分级轮转调度扩展)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -896,9 +923,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">堆 13</span>
   <span class="review-card-title">时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)</span>
-  <span class="review-card-tag">Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · 复合小顶堆 · 惰性删除 · 哈希版本校验</span>
+  <span class="review-card-tag">复合小顶堆 · 惰性删除 · 哈希版本校验</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 1834 · Single-Threaded CPU](https://leetcode.com/problems/single-threaded-cpu/) — `https://leetcode.com/problems/single-threaded-cpu/` (时间戳调度与堆懒删除)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -957,9 +986,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">LIST 08</span>
   <span class="review-card-title">链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)</span>
-  <span class="review-card-tag">[LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) · [LeetCode 92](https://leetcode.com/problems/reverse-linked-list-ii/) · 三指针滑动 · 前驱后继保护 · 原地反转 · O(1) 空间</span>
+  <span class="review-card-tag">三指针滑动 · 前驱后继保护 · 原地反转 · O(1) 空间</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) — `https://leetcode.com/problems/reverse-linked-list/`
+> - [LeetCode 92 · Reverse Linked List II](https://leetcode.com/problems/reverse-linked-list-ii/) — `https://leetcode.com/problems/reverse-linked-list-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1056,9 +1089,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STACK 09</span>
   <span class="review-card-title">单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)</span>
-  <span class="review-card-tag">[LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) · [LeetCode 1081](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) · 单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
+  <span class="review-card-tag">单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) — `https://leetcode.com/problems/remove-duplicate-letters/`
+> - [LeetCode 1081 · Smallest Subsequence of Distinct Characters](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) — `https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1131,9 +1168,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">HEAP 10</span>
   <span class="review-card-title">双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)</span>
-  <span class="review-card-tag">[LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) · [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) · [LeetCode 295](https://leetcode.com/problems/find-median-from-data-stream/) · 对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
+  <span class="review-card-tag">对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) — `https://leetcode.com/problems/min-stack/`
+> - [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) — `https://leetcode.com/problems/max-stack/`
+> - [LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) — `https://leetcode.com/problems/find-median-from-data-stream/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

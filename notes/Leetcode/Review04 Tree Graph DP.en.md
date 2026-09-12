@@ -12,9 +12,13 @@ This note is the fourth volume of the high-frequency algorithmic interview revie
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 01</span>
   <span class="review-card-title">Number of Islands & All Canonical Variants</span>
-  <span class="review-card-tag">[LeetCode 200 · Number of Islands](https://leetcode.com/problems/number-of-islands/) · [LeetCode 694](https://leetcode.com/problems/number-of-distinct-islands/) · Grid Implicit Graph · BFS/DFS · Relative Coordinate Normalization</span>
+  <span class="review-card-tag">Grid Implicit Graph · BFS/DFS · Relative Coordinate Normalization</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 200 · Number of Islands](https://leetcode.com/problems/number-of-islands/) — `https://leetcode.com/problems/number-of-islands/`
+> - [LeetCode 694 · Number of Distinct Islands](https://leetcode.com/problems/number-of-distinct-islands/) — `https://leetcode.com/problems/number-of-distinct-islands/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -81,9 +85,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 02</span>
   <span class="review-card-title">Course Schedule & Topological Sort</span>
-  <span class="review-card-tag">[LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) · [LeetCode 210](https://leetcode.com/problems/course-schedule-ii/) · Kahn BFS In-degree · DFS Three-Color Mark · Cycle Reconstruction</span>
+  <span class="review-card-tag">Kahn BFS In-degree · DFS Three-Color Mark · Cycle Reconstruction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/`
+> - [LeetCode 210 · Course Schedule II](https://leetcode.com/problems/course-schedule-ii/) — `https://leetcode.com/problems/course-schedule-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -131,9 +139,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 03</span>
   <span class="review-card-title">Order Validator with Dynamic DAG Dependencies & Node Contraction</span>
-  <span class="review-card-tag">DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · Directed Acyclic Graph · Dynamic Dependencies · Topological Validation · Node Contraction Rewiring</span>
+  <span class="review-card-tag">Directed Acyclic Graph · Dynamic Dependencies · Topological Validation · Node Contraction Rewiring</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/` (Production Dynamic DAG & Dependency Validation)
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Architectural Contract</div>
@@ -265,9 +275,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 04</span>
   <span class="review-card-title">Shortest Path in Grid with Obstacles Elimination</span>
-  <span class="review-card-tag">[LeetCode 1293 · Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) · 3D State BFS · Dominance Pruning · Manhattan Distance Shortcut</span>
+  <span class="review-card-tag">3D State BFS · Dominance Pruning · Manhattan Distance Shortcut</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 1293 · Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) — `https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Dominance Invariant</div>
@@ -345,9 +357,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 05</span>
   <span class="review-card-title">Lowest Common Ancestor (LCA)</span>
-  <span class="review-card-tag">[LeetCode 236 · Lowest Common Ancestor](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/) · [LeetCode 235](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) · Postorder Divide-and-Conquer</span>
+  <span class="review-card-tag">Postorder Divide-and-Conquer · BST Value Pruning · Parent Pointer Intersection</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 236 · Lowest Common Ancestor of a Binary Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/) — `https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/`
+> - [LeetCode 235 · Lowest Common Ancestor of a Binary Search Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) — `https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -390,9 +406,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 06</span>
   <span class="review-card-title">Binary Tree Maximum Path Sum & Path Reconstruction</span>
-  <span class="review-card-tag">[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) · Postorder Tree DP · Negative Gain Clamping</span>
+  <span class="review-card-tag">Postorder Tree DP · Negative Gain Clamping · Optimal Path Reconstruction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -441,9 +459,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 07</span>
   <span class="review-card-title">Flatten Comment Tree to Multi-Level Hierarchy</span>
-  <span class="review-card-tag">Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · Two-Pass Hash Assembly · Arbitrary Depth · Orphan Safety · Self-Reference Guard</span>
+  <span class="review-card-tag">Two-Pass Hash Assembly · Arbitrary Depth · Orphan Safety · Self-Reference Guard</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/` (Hierarchical Nested Tree Assembly)
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Examples</div>
@@ -543,9 +563,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 08</span>
   <span class="review-card-title">Equalize Root-to-Leaf Path Sums in N-ary Tree</span>
-  <span class="review-card-tag">Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · N-ary Tree Postorder · Tree Greedy Lift · Majority Element Warmup</span>
+  <span class="review-card-tag">N-ary Tree Postorder · Tree Greedy Lift · Majority Element Warmup</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/` (Postorder Greedy Tree Lift Variant)
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Greedy Lift Mechanics</div>
@@ -635,9 +657,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 09</span>
   <span class="review-card-title">Coin Change 1 & 2 / Unbounded Knapsack</span>
-  <span class="review-card-tag">[LeetCode 322 · Coin Change](https://leetcode.com/problems/coin-change/) · [LeetCode 518](https://leetcode.com/problems/coin-change-ii/) · Unbounded Knapsack</span>
+  <span class="review-card-tag">Unbounded Knapsack · Min Coins vs Total Combinations · Inner Loop Direction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 322 · Coin Change](https://leetcode.com/problems/coin-change/) — `https://leetcode.com/problems/coin-change/`
+> - [LeetCode 518 · Coin Change II](https://leetcode.com/problems/coin-change-ii/) — `https://leetcode.com/problems/coin-change-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -675,9 +701,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 10</span>
   <span class="review-card-title">Stickers to Spell Word & Bitmask DP</span>
-  <span class="review-card-tag">[LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) · Bitmask DP · First Unmet Pruning · O(2^n * m * n)</span>
+  <span class="review-card-tag">Bitmask DP · First Unmet Pruning · O(2^n * m * n)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) — `https://leetcode.com/problems/stickers-to-spell-word/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -743,9 +771,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 11</span>
   <span class="review-card-title">Longest Alternating Zigzag Path in 2D Grid</span>
-  <span class="review-card-tag">Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · 2D Grid · Memoized Search · State-Machine DP · O(M * N)</span>
+  <span class="review-card-tag">2D Grid · Memoized Search · State-Machine DP · O(M * N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 329 · Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/) — `https://leetcode.com/problems/longest-increasing-path-in-a-matrix/` (Grid Memoized Search Alternating Path)
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -847,9 +877,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 12</span>
   <span class="review-card-title">N-ary Tree Downward Target Path Sum via Prefix Sum</span>
-  <span class="review-card-tag">[LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) · N-ary Tree Downward Target Path Sum · N-ary Tree · Running Prefix Sum · Backtracking Scope Cleanup · O(N)</span>
+  <span class="review-card-tag">N-ary Tree · Running Prefix Sum · Backtracking Scope Cleanup · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) — `https://leetcode.com/problems/path-sum-iii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -941,9 +973,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 13</span>
   <span class="review-card-title">Word Search II with Trie & Backtracking Pruning</span>
-  <span class="review-card-tag">[LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) · Trie · Grid Backtracking · Dynamic Leaf Pruning · In-Place Visited Sentinel</span>
+  <span class="review-card-tag">Trie · Grid Backtracking · Dynamic Leaf Pruning · In-Place Visited Sentinel</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) — `https://leetcode.com/problems/word-search-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1044,9 +1078,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 14</span>
   <span class="review-card-title">Grid Shortest Path with Fuel Tank & Recharge Stations</span>
-  <span class="review-card-tag">[LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) · Fuel Tank & Recharge Stations · State Expansion · Dijkstra Shortest Path · Recharge State Collapse · Large-K Supergraph</span>
+  <span class="review-card-tag">State Expansion · Dijkstra Shortest Path · Recharge State Collapse · Large-K Supergraph</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) — `https://leetcode.com/problems/shortest-path-to-get-all-keys/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1150,9 +1186,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 15</span>
   <span class="review-card-title">Photo Similarity Groups via Union-Find</span>
-  <span class="review-card-tag">[LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) · Photo Similarity Groups via Union-Find · Disjoint Set Union · Connected Components · Upper-Triangle Scan · O(N^2 * α(N))</span>
+  <span class="review-card-tag">Disjoint Set Union · Connected Components · Upper-Triangle Scan · O(N^2 * α(N))</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) — `https://leetcode.com/problems/number-of-provinces/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1248,9 +1286,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 16</span>
   <span class="review-card-title">Binary Tree Right Side View with Custom Tree Scaffolding</span>
-  <span class="review-card-tag">[LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) · Binary Tree · Level-Order BFS · Right-First DFS · Test Scaffolding</span>
+  <span class="review-card-tag">Binary Tree · Level-Order BFS · Right-First DFS · Test Scaffolding</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) — `https://leetcode.com/problems/binary-tree-right-side-view/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1373,9 +1413,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 17</span>
   <span class="review-card-title">Construct Binary Tree from Preorder and Postorder Traversal</span>
-  <span class="review-card-tag">[LeetCode 889 · Construct Binary Tree from Pre/Postorder](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) · Recursive Reconstruction · Postorder Index Map · Subtree Size Partitioning · O(N)</span>
+  <span class="review-card-tag">Recursive Reconstruction · Postorder Index Map · Subtree Size Partitioning · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 889 · Construct Binary Tree from Preorder and Postorder Traversal](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) — `https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1468,9 +1510,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 18</span>
   <span class="review-card-title">Construct Binary Tree from Descriptions via Child Set Deduction</span>
-  <span class="review-card-tag">[LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) · Node Registry · Child Set Set-Difference · Topological Root · O(N)</span>
+  <span class="review-card-tag">Node Registry · Child Set Set-Difference · Topological Root · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) — `https://leetcode.com/problems/create-binary-tree-from-descriptions/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1553,9 +1597,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BT 19</span>
   <span class="review-card-title">Restore IP Addresses & Generalized K-Segment Partition</span>
-  <span class="review-card-tag">[LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) · Backtracking · Boundary Validation · Leading Zero Guard · Pigeonhole Pruning · O(1)</span>
+  <span class="review-card-tag">Backtracking · Boundary Validation · Leading Zero Guard · Pigeonhole Pruning · O(1)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) — `https://leetcode.com/problems/restore-ip-addresses/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1648,9 +1694,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 20</span>
   <span class="review-card-title">Alien Dictionary via Directed Graph Topological Sort</span>
-  <span class="review-card-tag">[LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) · Directed Graph Topological Sort · Kahn's BFS · Prefix Trap Defense · O(C)</span>
+  <span class="review-card-tag">Directed Graph Topological Sort · Kahn's BFS · Prefix Trap Defense · O(C)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) — `https://leetcode.com/problems/alien-dictionary/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

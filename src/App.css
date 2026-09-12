@@ -2029,6 +2029,42 @@
   gap: 1rem;
 }
 
+.review-card-content > blockquote {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  font-size: 0.92rem;
+  border-left: 4px solid #0d6d8f;
+  background: rgba(13, 109, 143, 0.08);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.review-card-content > blockquote a {
+  font-weight: 600;
+  color: #0d6d8f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.review-card-content > blockquote code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85em;
+  padding: 0.15rem 0.4rem;
+  background: rgba(22, 87, 110, 0.1);
+  color: #0d4b63;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.review-card-content > blockquote ul {
+  margin: 0.35rem 0 0.2rem;
+  padding-left: 1.3rem;
+}
+
+.review-card-content > blockquote li {
+  margin: 0.25rem 0;
+}
+
 .review-block {
   border: 1px solid rgba(22, 87, 110, 0.14);
   border-radius: 8px;

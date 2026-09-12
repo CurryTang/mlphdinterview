@@ -12,9 +12,11 @@
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 01</span>
   <span class="review-card-title">归并排序 (Merge Sort)</span>
-  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) · 分治 · 递归 · 稳定</span>
+  <span class="review-card-tag">分治 · 递归 · 稳定</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) — `https://leetcode.com/problems/sort-an-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -82,9 +84,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 02</span>
   <span class="review-card-title">快速排序 (Quick Sort)</span>
-  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) / [LeetCode 215](https://leetcode.com/problems/kth-largest-element-in-an-array/) · 分治 · 原地划分 · 不稳定</span>
+  <span class="review-card-tag">分治 · 原地划分 · 不稳定</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) — `https://leetcode.com/problems/sort-an-array/`
+> - [LeetCode 215 · Kth Largest Element in an Array](https://leetcode.com/problems/kth-largest-element-in-an-array/) — `https://leetcode.com/problems/kth-largest-element-in-an-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -162,9 +168,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 03</span>
   <span class="review-card-title">动态数组实现 (Dynamic Array)</span>
-  <span class="review-card-tag">[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) / Design Vector · 连续内存 · 几何倍增 · 均摊分析</span>
+  <span class="review-card-tag">连续内存 · 几何倍增 · 均摊分析</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) — `https://leetcode.com/problems/concatenation-of-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -246,9 +254,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 04</span>
   <span class="review-card-title">二分查找边界模板 (Binary Search Bounds)</span>
-  <span class="review-card-tag">[LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) / [LeetCode 34](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) · 有序检索 · 开闭区间不变量 · 边界收敛</span>
+  <span class="review-card-tag">有序检索 · 开闭区间不变量 · 边界收敛</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) — `https://leetcode.com/problems/binary-search/`
+> - [LeetCode 34 · Find First and Last Position of Element in Sorted Array](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) — `https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -317,9 +329,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 05</span>
   <span class="review-card-title">拒绝采样：用 Rand7 实现 Rand10 (Rejection Sampling)</span>
-  <span class="review-card-tag">[LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) · 二维展平 · 能除尽的最大前缀 · 期望调用 2.45 次</span>
+  <span class="review-card-tag">二维展平 · 能除尽的最大前缀 · 期望调用 2.45 次</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) — `https://leetcode.com/problems/implement-rand10-using-rand7/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -392,9 +406,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 01</span>
   <span class="review-card-title">存在重复元素 (Contains Duplicate)</span>
-  <span class="review-card-tag">[LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) · 哈希集合 · 早期退出 · 一次遍历</span>
+  <span class="review-card-tag">哈希集合 · 早期退出 · 一次遍历</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) — `https://leetcode.com/problems/contains-duplicate/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -456,9 +472,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 02</span>
   <span class="review-card-title">有效的字母异位词 (Valid Anagram)</span>
-  <span class="review-card-tag">[LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) · 频次数组 · ASCII 差值 · 长度剪枝</span>
+  <span class="review-card-tag">频次数组 · ASCII 差值 · 长度剪枝</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) — `https://leetcode.com/problems/valid-anagram/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -520,9 +538,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 03</span>
   <span class="review-card-title">两数之和 (Two Sum)</span>
-  <span class="review-card-tag">[LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) · 哈希查找 · 差值补数 · 前缀存储</span>
+  <span class="review-card-tag">哈希查找 · 差值补数 · 前缀存储</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) — `https://leetcode.com/problems/two-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -586,9 +606,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 04</span>
   <span class="review-card-title">字母异位词分组 (Group Anagrams)</span>
-  <span class="review-card-tag">[LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) · 频次元组 · 典范哈希键 · 字典聚合</span>
+  <span class="review-card-tag">频次元组 · 典范哈希键 · 字典聚合</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) — `https://leetcode.com/problems/group-anagrams/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -657,9 +679,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 05</span>
   <span class="review-card-title">前 K 个高频元素 (Top K Frequent Elements)</span>
-  <span class="review-card-tag">[LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) · 桶排序 · 频次倒排 · 线性时间</span>
+  <span class="review-card-tag">桶排序 · 频次倒排 · 线性时间</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) — `https://leetcode.com/problems/top-k-frequent-elements/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -736,9 +760,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 06</span>
   <span class="review-card-title">字符串的编码与解码 (Encode and Decode Strings)</span>
-  <span class="review-card-tag">[LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) · 长度前缀 · 字符流分块 · 无歧义边界</span>
+  <span class="review-card-tag">长度前缀 · 字符流分块 · 无歧义边界</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) — `https://leetcode.com/problems/encode-and-decode-strings/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -824,9 +850,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 07</span>
   <span class="review-card-title">除自身以外数组的乘积 (Product of Array Except Self)</span>
-  <span class="review-card-tag">[LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) · 前后缀积分解 · 两次扫描 · 常数空间</span>
+  <span class="review-card-tag">前后缀积分解 · 两次扫描 · 常数空间</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) — `https://leetcode.com/problems/product-of-array-except-self/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -902,9 +930,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 08</span>
   <span class="review-card-title">有效的数独 (Valid Sudoku)</span>
-  <span class="review-card-tag">[LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) · 行/列/宫格 · 坐标展平 · 并行判重</span>
+  <span class="review-card-tag">行/列/宫格 · 坐标展平 · 并行判重</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) — `https://leetcode.com/problems/valid-sudoku/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -997,9 +1027,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 09</span>
   <span class="review-card-title">最长连续序列 (Longest Consecutive Sequence)</span>
-  <span class="review-card-tag">[LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) · 哈希集合 · 前驱探测 · 严格线性</span>
+  <span class="review-card-tag">哈希集合 · 前驱探测 · 严格线性</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) — `https://leetcode.com/problems/longest-consecutive-sequence/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1077,9 +1109,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">卡片 15</span>
   <span class="review-card-title">有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)</span>
-  <span class="review-card-tag">[LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) / [LeetCode 1150](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) · 有序数组 · 鸽巢原理 · 探针锚定 · 二分左右边界 · O(log N) 亚线性</span>
+  <span class="review-card-tag">有序数组 · 鸽巢原理 · 探针锚定 · 二分左右边界 · O(log N) 亚线性</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) — `https://leetcode.com/problems/majority-element-ii/`
+> - [LeetCode 1150 · Check If a Number Is Majority Element in a Sorted Array](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) — `https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业场景需求</div>
@@ -1190,9 +1226,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">卡片 16</span>
   <span class="review-card-title">单词反转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place Semantics)</span>
-  <span class="review-card-tag">[LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) / [LeetCode 186](https://leetcode.com/problems/reverse-words-in-a-string-ii/) · 双指针 · 局部对称翻转 · 空格间距序列精准回填 · 原地 O(1) 空间</span>
+  <span class="review-card-tag">双指针 · 局部对称翻转 · 空格间距序列精准回填 · 原地 O(1) 空间</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) — `https://leetcode.com/problems/reverse-words-in-a-string/`
+> - [LeetCode 186 · Reverse Words in a String II](https://leetcode.com/problems/reverse-words-in-a-string-ii/) — `https://leetcode.com/problems/reverse-words-in-a-string-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业变体矩阵</div>
@@ -1339,9 +1379,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 17</span>
   <span class="review-card-title">数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)</span>
-  <span class="review-card-tag">Stream Signal Processing / Local Peak Detection · Stream Signal Processing / Local Peak Detection · 双向单调性校验 · 边界自适应退化 · 滑动邻域 · O(N * K)</span>
+  <span class="review-card-tag">局部极值 · 严格单调邻域 · 边界自适应退化 · O(N) 单趟扫描</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (工业界手撕题 / 局部极值变体)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1434,9 +1476,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 18</span>
   <span class="review-card-title">子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)</span>
-  <span class="review-card-tag">Contiguous Subarray Mathematical Reduction · Contiguous Subarray Mathematical Reduction · 数学规约 · 局部对偶 · 相邻对扫描 · O(N)</span>
+  <span class="review-card-tag">连续子数组 · 极值和最大化 · 相邻对偶性数学规约 · O(N) 线性最优</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (量化面试高频数学归约手撕真题)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1511,9 +1555,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 19</span>
   <span class="review-card-title">和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)</span>
-  <span class="review-card-tag">[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) · 前缀和差分 · 频次哈希表 · 负数鲁棒性 · O(N)</span>
+  <span class="review-card-tag">前缀和差分 · 频次哈希表 · 负数鲁棒性 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) — `https://leetcode.com/problems/subarray-sum-equals-k/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1590,9 +1636,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 20</span>
   <span class="review-card-title">无重复字符的最长子串与最新索引滑动窗口 (Longest Substring Without Repeating Characters)</span>
-  <span class="review-card-tag">[LeetCode 3 powers · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · 滑动窗口 · 字符最新下标表 · 左边界单调跳跃 · O(N)</span>
+  <span class="review-card-tag">滑动窗口 · 字符最新下标表 · 左边界单调跳跃 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1661,9 +1709,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DESIGN 21</span>
   <span class="review-card-title">8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)</span>
-  <span class="review-card-tag">[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) · 底层仿真 · 8 字节对齐步进 · 唯一 ID 标记 · O(N / 8 * X)</span>
+  <span class="review-card-tag">底层仿真 · 8 字节对齐步进 · 唯一 ID 标记 · O(N / 8 * X)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1768,9 +1818,13 @@ ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathca
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 22</span>
   <span class="review-card-title">奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)</span>
-  <span class="review-card-tag">[LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) / [LeetCode 978](https://leetcode.com/problems/longest-turbulent-subarray/) · 动态连击增量 · 奇偶模数检验 · 单调推进 · O(N) 时间</span>
+  <span class="review-card-tag">动态连击增量 · 奇偶模数检验 · 单调推进 · O(N) 时间</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) — `https://leetcode.com/problems/longest-alternating-subarray/`
+> - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1842,9 +1896,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 23</span>
   <span class="review-card-title">双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)</span>
-  <span class="review-card-tag">[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) · 贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
+  <span class="review-card-tag">贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1952,9 +2008,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 24</span>
   <span class="review-card-title">最长回文子串与马拉车算法 (Longest Palindromic Substring: Center vs Manacher)</span>
-  <span class="review-card-tag">[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) · 中心扩散法 · 马拉车 (Manacher) · 回文半径对称映射 · 严格 O(N)</span>
+  <span class="review-card-tag">中心扩散法 · 马拉车 (Manacher) · 回文半径对称映射 · 严格 O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

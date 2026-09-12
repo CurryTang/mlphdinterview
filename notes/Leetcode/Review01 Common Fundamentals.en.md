@@ -12,9 +12,11 @@ This module provides high-yield algorithm interview review flashcards: distilled
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 01</span>
   <span class="review-card-title">Merge Sort</span>
-  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) · Divide &amp; Conquer · Stable</span>
+  <span class="review-card-tag">Divide and Conquer · Recursion · Stable Sort</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) — `https://leetcode.com/problems/sort-an-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -82,9 +84,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 02</span>
   <span class="review-card-title">Quick Sort</span>
-  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) / [LeetCode 215](https://leetcode.com/problems/kth-largest-element-in-an-array/) · Partitioning · In-Place · Unstable</span>
+  <span class="review-card-tag">Divide and Conquer · In-Place Partitioning · Unstable</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) — `https://leetcode.com/problems/sort-an-array/`
+> - [LeetCode 215 · Kth Largest Element in an Array](https://leetcode.com/problems/kth-largest-element-in-an-array/) — `https://leetcode.com/problems/kth-largest-element-in-an-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -162,9 +168,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 03</span>
   <span class="review-card-title">Dynamic Array Implementation</span>
-  <span class="review-card-tag">[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) / Design Vector · Contiguous Memory · Geometric Doubling · Amortized</span>
+  <span class="review-card-tag">Contiguous Memory · Geometric Resizing · Amortized Analysis</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) — `https://leetcode.com/problems/concatenation-of-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -246,9 +254,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 04</span>
   <span class="review-card-title">Binary Search Boundary Template</span>
-  <span class="review-card-tag">[LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) / [LeetCode 34](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) · Monotonic Search · Interval Invariant</span>
+  <span class="review-card-tag">Ordered Search · Half-Open Interval Invariant · Boundary Convergence</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) — `https://leetcode.com/problems/binary-search/`
+> - [LeetCode 34 · Find First and Last Position of Element in Sorted Array](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) — `https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -317,9 +329,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 05</span>
   <span class="review-card-title">Rejection Sampling (Rand7 to Rand10)</span>
-  <span class="review-card-tag">[LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) · Grid Flattening · Divisible Prefix · Expected 2.45 Calls</span>
+  <span class="review-card-tag">2D Flattening · Maximal Divisible Prefix · 2.45 Expected Calls</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) — `https://leetcode.com/problems/implement-rand10-using-rand7/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -392,9 +406,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 01</span>
   <span class="review-card-title">Contains Duplicate</span>
-  <span class="review-card-tag">[LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) · Hash Set · Early Exit · Single Pass</span>
+  <span class="review-card-tag">Hash Set · Early Exit · Single Pass</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) — `https://leetcode.com/problems/contains-duplicate/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -456,9 +472,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 02</span>
   <span class="review-card-title">Valid Anagram</span>
-  <span class="review-card-tag">[LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) · Frequency Array · ASCII Delta · Length Pruning</span>
+  <span class="review-card-tag">Frequency Array · ASCII Difference · Length Pruning</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) — `https://leetcode.com/problems/valid-anagram/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -520,9 +538,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 03</span>
   <span class="review-card-title">Two Sum</span>
-  <span class="review-card-tag">[LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) · Hash Map · Complement Matching · Single Pass</span>
+  <span class="review-card-tag">Hash Lookup · Complement · Prefix Storage</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) — `https://leetcode.com/problems/two-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -586,9 +606,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 04</span>
   <span class="review-card-title">Group Anagrams</span>
-  <span class="review-card-tag">[LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) · Frequency Tuple · Canonical Hash Key · Grouping</span>
+  <span class="review-card-tag">Frequency Tuple · Canonical Hash Key · Dictionary Aggregation</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) — `https://leetcode.com/problems/group-anagrams/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -657,9 +679,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 05</span>
   <span class="review-card-title">Top K Frequent Elements</span>
-  <span class="review-card-tag">[LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) · Bucket Sort · Inverted Index · Linear Time</span>
+  <span class="review-card-tag">Bucket Sort · Frequency Inverted Index · Linear Time</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) — `https://leetcode.com/problems/top-k-frequent-elements/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -736,9 +760,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 06</span>
   <span class="review-card-title">Encode and Decode Strings</span>
-  <span class="review-card-tag">[LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) · Length Prefix Protocol · Chunked Stream · Delimiter Independence</span>
+  <span class="review-card-tag">Length Prefix · Chunked Stream · Ambiguity-Free Framing</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) — `https://leetcode.com/problems/encode-and-decode-strings/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -825,9 +851,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 07</span>
   <span class="review-card-title">Product of Array Except Self</span>
-  <span class="review-card-tag">[LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) · Prefix &amp; Suffix Decomposition · Two-Pass In-Place · O(1) Auxiliary Space</span>
+  <span class="review-card-tag">Prefix-Suffix Decomposition · Two-Pass Scan · Constant Space</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) — `https://leetcode.com/problems/product-of-array-except-self/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -903,9 +931,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 08</span>
   <span class="review-card-title">Valid Sudoku</span>
-  <span class="review-card-tag">[LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) · Row/Col/Box Validation · Grid Coordinate Flattening · O(1) Bound</span>
+  <span class="review-card-tag">Row/Col/Box Invariants · Coordinate Flattening · Bitmask Deduplication</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) — `https://leetcode.com/problems/valid-sudoku/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -998,9 +1028,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 09</span>
   <span class="review-card-title">Longest Consecutive Sequence</span>
-  <span class="review-card-tag">[LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) · Hash Set · Predecessor Probing · Strict O(n)</span>
+  <span class="review-card-tag">Hash Set · Predecessor Check · Strict Linear Time</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) — `https://leetcode.com/problems/longest-consecutive-sequence/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -1079,9 +1111,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Card 15</span>
   <span class="review-card-title">Majority Element in Sorted Array via Sublinear Binary Search Probe</span>
-  <span class="review-card-tag">[LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) / [LeetCode 1150](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) · Sorted Array · Pigeonhole Principle · Probe Sampling · Binary Search Boundaries · O(log N) Sublinear</span>
+  <span class="review-card-tag">Sorted Array · Pigeonhole Principle · Probe Anchoring · Binary Search · O(log N) Sublinear</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) — `https://leetcode.com/problems/majority-element-ii/`
+> - [LeetCode 1150 · Check If a Number Is Majority Element in a Sorted Array](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) — `https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Requirements</div>
@@ -1173,9 +1209,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Card 16</span>
   <span class="review-card-title">Reverse Words with Exact Spacing Preservation & In-Place Semantics</span>
-  <span class="review-card-tag">[LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) / [LeetCode 186](https://leetcode.com/problems/reverse-words-in-a-string-ii/) · Two Pointers · In-Place Dual Reversal · Exact Whitespace Preservation · O(1) Auxiliary</span>
+  <span class="review-card-tag">Two Pointers · Symmetric Reversal · Exact Space Invariant · In-Place O(1) Space</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) — `https://leetcode.com/problems/reverse-words-in-a-string/`
+> - [LeetCode 186 · Reverse Words in a String II](https://leetcode.com/problems/reverse-words-in-a-string-ii/) — `https://leetcode.com/problems/reverse-words-in-a-string-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Follow-ups</div>
@@ -1286,9 +1326,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 17</span>
   <span class="review-card-title">Local Maximum on a 1-D Stream with Boundary Degradation</span>
-  <span class="review-card-tag">Stream Signal Processing / Local Peak Detection · Stream Signal Processing / Local Peak Detection · Bidirectional Monotonicity · Boundary Fallback · Sliding Neighborhood · O(N * K)</span>
+  <span class="review-card-tag">Local Extremum · Strict Monotonic Window · Adaptive Boundary · O(N) Scan</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (Industry Custom OA / Peak Element Variant)
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1377,9 +1419,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 18</span>
   <span class="review-card-title">Largest Min+Max in Subarray via Adjacent Pair Reduction</span>
-  <span class="review-card-tag">Contiguous Subarray Mathematical Reduction · Contiguous Subarray Mathematical Reduction · Mathematical Reduction · Local Dominance · Adjacent Pair Scan · O(N)</span>
+  <span class="review-card-tag">Contiguous Subarray · Extremum Sum · Adjacent Pair Reduction · O(N) Optimal</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (Quant Interview Mathematical Reduction OA)
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1453,9 +1497,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 19</span>
   <span class="review-card-title">Subarray Sum Equals K via Prefix Sum Hash Map</span>
-  <span class="review-card-tag">[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) · Prefix Sum Difference · Frequency Hash Map · Negative-Value Robustness · O(N)</span>
+  <span class="review-card-tag">Prefix Sum Difference · Frequency Hash Map · Negative Integer Robustness · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) — `https://leetcode.com/problems/subarray-sum-equals-k/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1529,9 +1575,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 20</span>
   <span class="review-card-title">Longest Substring Without Repeating Characters</span>
-  <span class="review-card-tag">[LeetCode 3 powers · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · Sliding Window · Last Seen Index Map · Monotonic Left Jump · O(N)</span>
+  <span class="review-card-tag">Sliding Window · Last Seen Index Table · Left Pointer Skip · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1598,9 +1646,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DESIGN 21</span>
   <span class="review-card-title">8-Byte Aligned Memory Allocator Simulation</span>
-  <span class="review-card-tag">[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) · Systems Emulation · 8-Byte Alignment Stride · Unique Block ID · O(N/8 * X)</span>
+  <span class="review-card-tag">Hardware Simulation · 8-Byte Alignment Stride · Unique Tagged Free · O(N / 8 * X)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1701,9 +1751,13 @@ ceil$.
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 22</span>
   <span class="review-card-title">Zigzag Alternating-Parity Subarrays</span>
-  <span class="review-card-tag">[LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) / [LeetCode 978](https://leetcode.com/problems/longest-turbulent-subarray/) · Running Streak · Parity Disparity · Single Pass · O(N) Time</span>
+  <span class="review-card-tag">Consecutive Run Accumulation · Parity Modulo Check · Single-Pass · O(N) Time</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) — `https://leetcode.com/problems/longest-alternating-subarray/`
+> - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1773,9 +1827,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 23</span>
   <span class="review-card-title">Two-Direction Justified Newspaper Layout</span>
-  <span class="review-card-tag">[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) · Greedy Word Packing · Dual Alignment Padding · Asterisk Framing · O(Total Words)</span>
+  <span class="review-card-tag">Greedy Word Bin-Packing · Round-Robin Space Distribution · Frame Rendering · O(Total Words)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1878,9 +1934,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 24</span>
   <span class="review-card-title">Longest Palindromic Substring: Center vs Manacher</span>
-  <span class="review-card-tag">[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) · Center Expansion · Manacher's Algorithm · Symmetry Radius Mapping · Strict O(N)</span>
+  <span class="review-card-tag">Center Expansion · Manacher Algorithm · Palindromic Radius Symmetry · Strict O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

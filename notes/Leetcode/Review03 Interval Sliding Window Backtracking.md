@@ -12,9 +12,13 @@
 <summary class="review-card-summary">
   <span class="review-card-badge">区间 01</span>
   <span class="review-card-title">合并区间与其工业级拓扑变体全家桶 (Merge Intervals & Interval Topology Variants)</span>
-  <span class="review-card-tag">[LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) · [LeetCode 57](https://leetcode.com/problems/insert-interval/) · 闭区间语义 · 预排序加速 · 嵌套覆盖 · 插入区间 · 无重叠区间贪心 · 会议室扫描线</span>
+  <span class="review-card-tag">闭区间语义 · 预排序加速 · 嵌套覆盖 · 插入区间 · 无重叠区间贪心 · 会议室扫描线</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) — `https://leetcode.com/problems/merge-intervals/`
+> - [LeetCode 57 · Insert Interval](https://leetcode.com/problems/insert-interval/) — `https://leetcode.com/problems/insert-interval/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与核心变体全景矩阵</div>
@@ -99,9 +103,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">双指针 02</span>
   <span class="review-card-title">勾股数三元组判定与多重集保留 (Pythagorean Triplet & Multiplicity 2-Pointer Search)</span>
-  <span class="review-card-tag">[LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) · Pythagorean Triplet · 平方映射 · 元素多重集保留 · 3SUM 规约 · 双指针相向夹逼 · O(N^2) 最优性证明</span>
+  <span class="review-card-tag">Pythagorean Triplet · 平方映射 · 元素多重集保留 · 3SUM 规约 · 双指针相向夹逼 · O(N^2) 最优性证明</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) — `https://leetcode.com/problems/3sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与测试矩阵</div>
@@ -162,9 +168,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 03</span>
   <span class="review-card-title">最小覆盖子串与多最优解候选集 (Minimum Window Substring & Multi-Candidate Expansion)</span>
-  <span class="review-card-tag">[LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) · 变长滑窗 · O(|S| + |T|) 复杂度推导 · k 倍频次扩展 · 全量平局最短子串 · 定长数组常数优化</span>
+  <span class="review-card-tag">变长滑窗 · O(|S| + |T|) 复杂度推导 · k 倍频次扩展 · 全量平局最短子串 · 定长数组常数优化</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) — `https://leetcode.com/problems/minimum-window-substring/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业面试核心追问</div>
@@ -306,9 +314,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 04</span>
   <span class="review-card-title">替换后的最长重复字符与滑窗最频计数维持 (Longest Repeating Character Replacement & Max-Frequency Invariant)</span>
-  <span class="review-card-tag">[LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) · 变长滑动窗口 · 最频字符不变式 · 窗口非递减贪心 · O(N) 单趟线性</span>
+  <span class="review-card-tag">变长滑动窗口 · 最频字符不变式 · 窗口非递减贪心 · O(N) 单趟线性</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) — `https://leetcode.com/problems/longest-repeating-character-replacement/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与经典模型</div>
@@ -400,9 +410,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 05</span>
   <span class="review-card-title">变长与定长滑动窗口经典范式 (Variable & Fixed Sliding Window Patterns)</span>
-  <span class="review-card-tag">[LeetCode 3 · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · 无重复字符最长子串 · 哈希跳跃加速 · 字符频次差分机</span>
+  <span class="review-card-tag">无重复字符最长子串 · 哈希跳跃加速 · 字符频次差分机</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码与跳跃优化</div>
@@ -449,9 +461,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">回溯 06</span>
   <span class="review-card-title">子集、排列与组合通用回溯范式 (Subsets, Permutations & Combinations)</span>
-  <span class="review-card-tag">[LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) · [LeetCode 46](https://leetcode.com/problems/permutations/) · [LeetCode 39](https://leetcode.com/problems/combination-sum/) · 树形状态空间 · 树层剪枝去重 · 元素复用控制</span>
+  <span class="review-card-tag">树形状态空间 · 树层剪枝去重 · 元素复用控制</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) — `https://leetcode.com/problems/subsets-ii/`
+> - [LeetCode 46 · Permutations](https://leetcode.com/problems/permutations/) — `https://leetcode.com/problems/permutations/`
+> - [LeetCode 39 · Combination Sum](https://leetcode.com/problems/combination-sum/) — `https://leetcode.com/problems/combination-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心模板代码</div>
@@ -500,9 +517,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">数位 07</span>
   <span class="review-card-title">用指定数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A / Digit Greedy Backtracking)</span>
-  <span class="review-card-tag">Digit Greedy Construction · Largest Number Smaller Than N · 数位回溯 · 贪心前缀匹配 · 降级后缀全最大填充 · 长度回退退化</span>
+  <span class="review-card-tag">数位回溯 · 贪心前缀匹配 · 降级后缀全最大填充 · 长度回退退化</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 902 · Numbers At Most N Given Digit Set](https://leetcode.com/problems/numbers-at-most-n-given-digit-set/) — `https://leetcode.com/problems/numbers-at-most-n-given-digit-set/` (大厂高频数位贪心手撕真题)
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业场景需求</div>
@@ -644,9 +663,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GREEDY 06</span>
   <span class="review-card-title">无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)</span>
-  <span class="review-card-tag">[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) · 贪心区间调度 · 最早截止时间优先 · 端点排序 · O(N log N)</span>
+  <span class="review-card-tag">贪心区间调度 · 最早截止时间优先 · 端点排序 · O(N log N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) — `https://leetcode.com/problems/non-overlapping-intervals/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -718,9 +739,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 07</span>
   <span class="review-card-title">时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)</span>
-  <span class="review-card-tag">[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) · 二分查找 (bisect) · 时间序列多版本存储 · 有序数组 · O(log N)</span>
+  <span class="review-card-tag">二分查找 (bisect) · 时间序列多版本存储 · 有序数组 · O(log N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) — `https://leetcode.com/problems/time-based-key-value-store/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -798,9 +821,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TP 08</span>
   <span class="review-card-title">区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)</span>
-  <span class="review-card-tag">[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) · 双指针 · 闭区间相交判准 · 较早结束者平移 · O(M + N)</span>
+  <span class="review-card-tag">双指针 · 闭区间相交判准 · 较早结束者平移 · O(M + N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) — `https://leetcode.com/problems/interval-list-intersections/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -877,9 +902,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">SLIDE 09</span>
   <span class="review-card-title">至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)</span>
-  <span class="review-card-tag">[LeetCode 340 · Longest Substring with At Most K Distinct](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) · [LeetCode 159](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) · 可变滑动窗口 · 字符频次哈希 · 零频物理剔除 · O(N)</span>
+  <span class="review-card-tag">可变滑动窗口 · 字符频次哈希 · 零频物理剔除 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 340 · Longest Substring with At Most K Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/`
+> - [LeetCode 159 · Longest Substring with At Most Two Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -954,9 +983,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 10</span>
   <span class="review-card-title">旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)</span>
-  <span class="review-card-tag">[LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) · [LeetCode 81](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) · 对偶半区保序性 · 重复元素二义性 · 边界线性收缩 · O(log N) -> O(N)</span>
+  <span class="review-card-tag">对偶半区保序性 · 重复元素二义性 · 边界线性收缩 · O(log N) -> O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) — `https://leetcode.com/problems/search-in-rotated-sorted-array/`
+> - [LeetCode 81 · Search in Rotated Sorted Array II](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) — `https://leetcode.com/problems/search-in-rotated-sorted-array-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1066,6 +1099,8 @@ if __name__ == "__main__":
   <span class="review-card-tag">贪心模拟 · 中继站二分/双指针 · 前向跳跃更新 · O(M log M + M)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 45 · Jump Game II](https://leetcode.com/problems/jump-game-ii/) — `https://leetcode.com/problems/jump-game-ii/` (贪心中继推进与跳跃最小化)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

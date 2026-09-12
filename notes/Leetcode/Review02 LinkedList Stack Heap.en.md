@@ -12,9 +12,13 @@ This note is the second volume of the high-frequency algorithmic interview revie
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 01</span>
   <span class="review-card-title">LRU Cache & System-Level Extensions</span>
-  <span class="review-card-tag">[LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) · [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) · Doubly Linked List · Hash Map · TTL Expiration · LFU Replacement · Miss-Rate Tuning</span>
+  <span class="review-card-tag">Hash Map + Doubly Linked List · Frequency Buckets · O(1) Eviction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) — `https://leetcode.com/problems/lru-cache/`
+> - [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) — `https://leetcode.com/problems/lfu-cache/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -98,9 +102,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 02</span>
   <span class="review-card-title">Reverse Nodes in k-Group & Structural Group Inversion</span>
-  <span class="review-card-tag">[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) · Dummy Sentinel · Local Pointer Reversal · Invert Group Order</span>
+  <span class="review-card-tag">Dummy Head · Lookahead K-Check · Sub-List Inversion · O(1) Space</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) — `https://leetcode.com/problems/reverse-nodes-in-k-group/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -171,9 +177,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 03</span>
   <span class="review-card-title">Flatten Multilevel Doubly Linked List with Empty-Node Filtering</span>
-  <span class="review-card-tag">[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) · Multilevel DLL · DFS Flattening · Empty Node Cleansing · Pointer Healing</span>
+  <span class="review-card-tag">Pointer Relinking · DFS Traversal · Tail Backtracking · In-Place Flattening</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -250,9 +258,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 04</span>
   <span class="review-card-title">Basic Calculator & Operator Precedence Hierarchy</span>
-  <span class="review-card-tag">[LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) · [LeetCode 227](https://leetcode.com/problems/basic-calculator-ii/) · [LeetCode 772](https://leetcode.com/problems/basic-calculator-iii/) · Single-Stack Accumulation · Parentheses State Stashing · Right-Associative Exponent</span>
+  <span class="review-card-tag">Operator Precedence · Recursive Descent · Stack Evaluation · Parentheses Scoping</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) — `https://leetcode.com/problems/basic-calculator/`
+> - [LeetCode 227 · Basic Calculator II](https://leetcode.com/problems/basic-calculator-ii/) — `https://leetcode.com/problems/basic-calculator-ii/`
+> - [LeetCode 772 · Basic Calculator III](https://leetcode.com/problems/basic-calculator-iii/) — `https://leetcode.com/problems/basic-calculator-iii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -343,9 +356,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Queue 05</span>
   <span class="review-card-title">Sliding Window Maximum & Monotonic Deque Pattern</span>
-  <span class="review-card-tag">[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) · Monotonic Deque · Index Expiration Eviction · Amortized O(1) Transition</span>
+  <span class="review-card-tag">Monotonic Deque · Index Expiry Eviction · Amortized O(1) Transition</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) — `https://leetcode.com/problems/sliding-window-maximum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -389,9 +404,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 06</span>
   <span class="review-card-title">Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern</span>
-  <span class="review-card-tag">[LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) · [LeetCode 85](https://leetcode.com/problems/maximal-rectangle/) · Monotonic Increasing Stack · Two-Sentinel Pattern · Dynamic Width · Maximal Rectangle Matrix</span>
+  <span class="review-card-tag">Monotonic Stack · Dual Sentinels · Width Calculation · 2D Reduction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) — `https://leetcode.com/problems/largest-rectangle-in-histogram/`
+> - [LeetCode 85 · Maximal Rectangle](https://leetcode.com/problems/maximal-rectangle/) — `https://leetcode.com/problems/maximal-rectangle/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Requirements</div>
@@ -474,9 +493,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 07</span>
   <span class="review-card-title">Valid Parenthesis String with Wildcard & Concrete String Enumeration</span>
-  <span class="review-card-tag">[LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) · Interval Greedy · O(N) Two-Counter · Low Bound Clamping · DFS Branch Enumeration</span>
+  <span class="review-card-tag">Interval Greedy · O(N) Dual Bounds · Branch-and-Bound DFS</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) — `https://leetcode.com/problems/valid-parenthesis-string/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Dual Tasks</div>
@@ -582,9 +603,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Heap 08</span>
   <span class="review-card-title">Find Median from Data Stream & K-Way Merge</span>
-  <span class="review-card-tag">[LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) · [LeetCode 23](https://leetcode.com/problems/merge-k-sorted-lists/) · Dual-Heap Balance · Invariant Maintenance</span>
+  <span class="review-card-tag">Dual Heaps · Balance Invariant · Lazy Eviction</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) — `https://leetcode.com/problems/find-median-from-data-stream/`
+> - [LeetCode 23 · Merge k Sorted Lists](https://leetcode.com/problems/merge-k-sorted-lists/) — `https://leetcode.com/problems/merge-k-sorted-lists/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -634,9 +659,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Heap 09</span>
   <span class="review-card-title">Tiered Priority Task Scheduler</span>
-  <span class="review-card-tag">Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Per-Seller Min-Heap · Active Deque Round-Robin</span>
+  <span class="review-card-tag">Merchant Min-Heap · FIFO Timestamp Queues · Active Round-Robin · VIP Weighted Allocation</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 621 · Task Scheduler](https://leetcode.com/problems/task-scheduler/) — `https://leetcode.com/problems/task-scheduler/` (Tiered Round-Robin Task Scheduler Extension)
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -729,9 +756,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Heap 13</span>
   <span class="review-card-title">Timestamp Task Scheduler with Direct ID Removal</span>
-  <span class="review-card-tag">Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Composite Min-Heap · Lazy Deletion · Hash Timestamp Verification</span>
+  <span class="review-card-tag">Composite Min-Heap · Lazy Eviction · Hash Version Validation</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 1834 · Single-Threaded CPU](https://leetcode.com/problems/single-threaded-cpu/) — `https://leetcode.com/problems/single-threaded-cpu/` (Timestamp Scheduler & Lazy Deletion Heap)
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -790,9 +819,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">LIST 08</span>
   <span class="review-card-title">Reverse Linked List In-Place via Three Pointers</span>
-  <span class="review-card-tag">[LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) · [LeetCode 92](https://leetcode.com/problems/reverse-linked-list-ii/) · Three-Pointer Iteration · Predecessor Shielding · In-Place · O(1) Space</span>
+  <span class="review-card-tag">Three Pointers · In-Place Reversal · Subsegment Inversion · O(1) Space</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) — `https://leetcode.com/problems/reverse-linked-list/`
+> - [LeetCode 92 · Reverse Linked List II](https://leetcode.com/problems/reverse-linked-list-ii/) — `https://leetcode.com/problems/reverse-linked-list-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -886,9 +919,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">STACK 09</span>
   <span class="review-card-title">Remove Duplicate Letters via Monotonic Stack</span>
-  <span class="review-card-tag">[LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) · [LeetCode 1081](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) · Monotonic Increasing Stack · Last Seen Index Map · In-Stack Set · O(N)</span>
+  <span class="review-card-tag">Monotonic Stack · Last Occurrence Map · Visited Bitset · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) — `https://leetcode.com/problems/remove-duplicate-letters/`
+> - [LeetCode 1081 · Smallest Subsequence of Distinct Characters](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) — `https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -958,9 +995,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">HEAP 13</span>
   <span class="review-card-title">MinStack, MaxStack, Streaming Median & System Extensions</span>
-  <span class="review-card-tag">[LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) · [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) · [LeetCode 295](https://leetcode.com/problems/find-median-from-data-stream/) · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Two-Heap Dynamic Median · O(1) Extremum Stack · Lazy Deletion · Concurrency</span>
+  <span class="review-card-tag">Dual Heaps · O(1) Extremum Stack · Lazy Eviction · Streaming Extensions</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) — `https://leetcode.com/problems/min-stack/`
+> - [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) — `https://leetcode.com/problems/max-stack/`
+> - [LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) — `https://leetcode.com/problems/find-median-from-data-stream/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

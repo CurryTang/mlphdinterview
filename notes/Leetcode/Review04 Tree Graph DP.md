@@ -12,9 +12,13 @@
 <summary class="review-card-summary">
   <span class="review-card-badge">图论 01</span>
   <span class="review-card-title">岛屿数量与全景变体全家桶 (Number of Islands & All Canonical Variants)</span>
-  <span class="review-card-tag">[LeetCode 200 · Number of Islands](https://leetcode.com/problems/number-of-islands/) · [LeetCode 694](https://leetcode.com/problems/number-of-distinct-islands/) · 网格隐式图 · BFS/DFS · 并查集 · 相对坐标归一化 · 外存分块</span>
+  <span class="review-card-tag">网格隐式图 · BFS/DFS · 并查集 · 相对坐标归一化 · 外存分块</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 200 · Number of Islands](https://leetcode.com/problems/number-of-islands/) — `https://leetcode.com/problems/number-of-islands/`
+> - [LeetCode 694 · Number of Distinct Islands](https://leetcode.com/problems/number-of-distinct-islands/) — `https://leetcode.com/problems/number-of-distinct-islands/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与八大变体全景矩阵</div>
@@ -99,9 +103,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">图论 02</span>
   <span class="review-card-title">课程表与拓扑排序全家桶 (Course Schedule & Topological Sort)</span>
-  <span class="review-card-tag">[LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) · [LeetCode 210](https://leetcode.com/problems/course-schedule-ii/) · Kahn 入度队列 · DFS 三色标记 · 有向环路径提取 · SRE 依赖排查 · 词梯隐式图 BFS</span>
+  <span class="review-card-tag">Kahn 入度队列 · DFS 三色标记 · 有向环路径提取 · SRE 依赖排查 · 词梯隐式图 BFS</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/`
+> - [LeetCode 210 · Course Schedule II](https://leetcode.com/problems/course-schedule-ii/) — `https://leetcode.com/problems/course-schedule-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与实现代码</div>
@@ -184,9 +192,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">图论 03</span>
   <span class="review-card-title">带动态 DAG 依赖与节点收缩的规则校验系统 (Order Validator with Dynamic DAG Dependencies & Node Contraction)</span>
-  <span class="review-card-tag">DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · 有向无环图 (DAG) · 动态增删依赖 · 拓扑校验流 · 节点收缩 (Contraction) 邻接重组 · 环检测</span>
+  <span class="review-card-tag">有向无环图 (DAG) · 动态增删依赖 · 拓扑校验流 · 节点收缩 (Contraction) 邻接重组 · 环检测</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/` (工业级动态 DAG 依赖与拓扑排序)
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业系统契约</div>
@@ -374,9 +384,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">图论 04</span>
   <span class="review-card-title">带消除障碍物预算的网格最短路径 (Shortest Path in Grid with Obstacles Elimination)</span>
-  <span class="review-card-tag">[LeetCode 1293 · Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) · 3D 状态空间 BFS · 支配性剪枝 (Dominance Pruning) · 曼哈顿直通捷径</span>
+  <span class="review-card-tag">3D 状态空间 BFS · 支配性剪枝 (Dominance Pruning) · 曼哈顿直通捷径</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 1293 · Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) — `https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/`
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与状态空间扩增</div>
@@ -484,9 +496,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">树 05</span>
   <span class="review-card-title">最近公共祖先与全景变体全家桶 (Lowest Common Ancestor / LCA)</span>
-  <span class="review-card-tag">[LeetCode 236 · Lowest Common Ancestor](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/) · [LeetCode 235](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) · 递归后序分治 · 二叉搜索树数值剪枝 · 父指针哈希交汇</span>
+  <span class="review-card-tag">递归后序分治 · 二叉搜索树数值剪枝 · 父指针哈希交汇</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 236 · Lowest Common Ancestor of a Binary Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/) — `https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/`
+> - [LeetCode 235 · Lowest Common Ancestor of a Binary Search Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) — `https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -530,9 +546,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">树 06</span>
   <span class="review-card-title">二叉树最大路径和全景与路径重构 (Binary Tree Maximum Path Sum & Path Reconstruction)</span>
-  <span class="review-card-tag">[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) · 后序树形 DP · 单侧最大贡献 · 负增益截断 · 全局最优路径重构</span>
+  <span class="review-card-tag">后序树形 DP · 单侧最大贡献 · 负增益截断 · 全局最优路径重构</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -581,9 +599,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">树 07</span>
   <span class="review-card-title">扁平化多级评论数据转换为嵌套层级树 (Flatten Comment Tree to Multi-Level Hierarchy)</span>
-  <span class="review-card-tag">Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · 哈希字典映射 · 两趟单线性构建 · 孤儿节点防御 · 环形自引用拦截</span>
+  <span class="review-card-tag">哈希字典映射 · 两趟单线性构建 · 孤儿节点防御 · 环形自引用拦截</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/` (系统级层级评论树重构)
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业输入输出规范</div>
@@ -720,9 +740,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">树 08</span>
   <span class="review-card-title">N 叉树根到叶路径和拉平的最小操作数 (Equalize Root-to-Leaf Path Sums in N-ary Tree)</span>
-  <span class="review-card-tag">Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · N 叉树后序遍历 · 树形贪心 · 公共祖先提升 (Greedy Lift) · 自测验证桩</span>
+  <span class="review-card-tag">N 叉树后序遍历 · 树形贪心 · 公共祖先提升 (Greedy Lift) · 自测验证桩</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/` (树形后序贪心提升变体)
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与操作模型</div>
@@ -860,9 +882,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 09</span>
   <span class="review-card-title">零钱兑换与完全背包模型全景 (Coin Change 1 & 2 / Unbounded Knapsack)</span>
-  <span class="review-card-tag">[LeetCode 322 · Coin Change](https://leetcode.com/problems/coin-change/) · [LeetCode 518](https://leetcode.com/problems/coin-change-ii/) · 完全背包 · 最值模型 vs 组合数模型 · 循环顺序本质</span>
+  <span class="review-card-tag">完全背包 · 最值模型 vs 组合数模型 · 循环顺序本质</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 322 · Coin Change](https://leetcode.com/problems/coin-change/) — `https://leetcode.com/problems/coin-change/`
+> - [LeetCode 518 · Coin Change II](https://leetcode.com/problems/coin-change-ii/) — `https://leetcode.com/problems/coin-change-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -900,9 +926,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 10</span>
   <span class="review-card-title">贴纸拼词与状态压缩动态规划 (Stickers to Spell Word & Bitmask DP)</span>
-  <span class="review-card-tag">[LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) · 状态压缩 · 记忆化搜索 · 首个未满足字符剪枝 · O(2^n * m * n)</span>
+  <span class="review-card-tag">状态压缩 · 记忆化搜索 · 首个未满足字符剪枝 · O(2^n * m * n)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) — `https://leetcode.com/problems/stickers-to-spell-word/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -968,9 +996,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 11</span>
   <span class="review-card-title">网格最长交替折线路径 (Longest Alternating Zigzag Path in 2D Grid)</span>
-  <span class="review-card-tag">Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · 二维网格 · 记忆化搜索 · 状态机DP · O(M * N)</span>
+  <span class="review-card-tag">二维网格 · 记忆化搜索 · 状态机DP · O(M * N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **相关 LeetCode**：[LeetCode 329 · Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/) — `https://leetcode.com/problems/longest-increasing-path-in-a-matrix/` (网格记忆化搜索交替路径)
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1071,9 +1101,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 12</span>
   <span class="review-card-title">多叉树垂直自顶向下目标路径和 (N-ary Tree Downward Target Path Sum)</span>
-  <span class="review-card-tag">[LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) · N-ary Tree Downward Target Path Sum · 多叉树 · 前缀和哈希表 · 回溯作用域清理 · O(N)</span>
+  <span class="review-card-tag">多叉树 · 前缀和哈希表 · 回溯作用域清理 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) — `https://leetcode.com/problems/path-sum-iii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1167,9 +1199,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 13</span>
   <span class="review-card-title">字典树加速网格单词搜寻 (Word Search II with Trie & Backtracking Pruning)</span>
-  <span class="review-card-tag">[LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) · Trie 前缀树 · 网格回溯 · 动态叶节点剪枝 · 原地状态置换</span>
+  <span class="review-card-tag">Trie 前缀树 · 网格回溯 · 动态叶节点剪枝 · 原地状态置换</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) — `https://leetcode.com/problems/word-search-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1270,9 +1304,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 14</span>
   <span class="review-card-title">带油箱与充能站的网格最短路径 (Grid Shortest Path with Fuel Tank & Recharge Stations)</span>
-  <span class="review-card-tag">[LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) · Fuel Tank & Recharge Stations · 状态空间扩展 · Dijkstra 最短路 · 充能状态坍缩 · 充能超图优化</span>
+  <span class="review-card-tag">状态空间扩展 · Dijkstra 最短路 · 充能状态坍缩 · 充能超图优化</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) — `https://leetcode.com/problems/shortest-path-to-get-all-keys/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1380,9 +1416,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 15</span>
   <span class="review-card-title">图片相似度聚类与并查集连通分量 (Photo Similarity Groups via Union-Find)</span>
-  <span class="review-card-tag">[LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) · Photo Similarity Groups via Union-Find · 并查集 (DSU) · 连通分量计数 · 上三角矩阵遍历 · O(N^2 * α(N))</span>
+  <span class="review-card-tag">并查集 (DSU) · 连通分量计数 · 上三角矩阵遍历 · O(N^2 * α(N))</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) — `https://leetcode.com/problems/number-of-provinces/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1481,9 +1519,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 16</span>
   <span class="review-card-title">二叉树右视图与自建树脚手架 (Binary Tree Right Side View with Custom Tree Scaffolding)</span>
-  <span class="review-card-tag">[LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) · 二叉树 · 层序遍历 BFS · 逆先序 DFS · 测试树自动构建</span>
+  <span class="review-card-tag">二叉树 · 层序遍历 BFS · 逆先序 DFS · 测试树自动构建</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) — `https://leetcode.com/problems/binary-tree-right-side-view/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1609,9 +1649,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 17</span>
   <span class="review-card-title">前序与后序遍历序列重构二叉树 (Construct Binary Tree from Preorder and Postorder Traversal)</span>
-  <span class="review-card-tag">[LeetCode 889 · Construct Binary Tree from Pre/Postorder](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) · 递归重构 · 后序索引哈希 · 子树规模定位 · O(N)</span>
+  <span class="review-card-tag">递归重构 · 后序索引哈希 · 子树规模定位 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 889 · Construct Binary Tree from Preorder and Postorder Traversal](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) — `https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1707,9 +1749,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 18</span>
   <span class="review-card-title">关系描述数组重构二叉树与孤立根定位 (Construct Binary Tree from Descriptions)</span>
-  <span class="review-card-tag">[LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) · 节点哈希表 · 子节点集合差集 · 拓扑根定位 · O(N)</span>
+  <span class="review-card-tag">节点哈希表 · 子节点集合差集 · 拓扑根定位 · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) — `https://leetcode.com/problems/create-binary-tree-from-descriptions/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1797,9 +1841,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BT 19</span>
   <span class="review-card-title">复原 IP 地址与泛化 K 段数字划分 (Restore IP Addresses & Generalized K-Segment Partition)</span>
-  <span class="review-card-tag">[LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) · 回溯搜索 · 数值边界校验 · 前导零防护 · 剩余长度剪枝 · O(1)</span>
+  <span class="review-card-tag">回溯搜索 · 数值边界校验 · 前导零防护 · 剩余长度剪枝 · O(1)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) — `https://leetcode.com/problems/restore-ip-addresses/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1903,9 +1949,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 20</span>
   <span class="review-card-title">外星人词典拓扑排序与边界防御 (Alien Dictionary via Directed Graph Topological Sort)</span>
-  <span class="review-card-tag">[LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) · 有向图拓扑排序 · Kahn 算法 · 前缀非法校验 · 孤立字符收集 · O(C)</span>
+  <span class="review-card-tag">有向图拓扑排序 · Kahn 算法 · 前缀非法校验 · 孤立字符收集 · O(C)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) — `https://leetcode.com/problems/alien-dictionary/`
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

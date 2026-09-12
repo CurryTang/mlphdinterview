@@ -12,9 +12,13 @@ This note is the third volume of the high-frequency algorithmic interview review
 <summary class="review-card-summary">
   <span class="review-card-badge">Interval 01</span>
   <span class="review-card-title">Merge Intervals & Interval Topology Variants</span>
-  <span class="review-card-tag">[LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) · [LeetCode 57](https://leetcode.com/problems/insert-interval/) · Closed Interval Semantics · Presorted Acceleration · Nested Absorption · Insert Interval · Non-Overlapping Greedy · Meeting Rooms Sweep Line</span>
+  <span class="review-card-tag">Closed Interval Semantics · Presort Acceleration · Nested Coverage · Insert Interval · Scanline</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) — `https://leetcode.com/problems/merge-intervals/`
+> - [LeetCode 57 · Insert Interval](https://leetcode.com/problems/insert-interval/) — `https://leetcode.com/problems/insert-interval/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -82,9 +86,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Two Pointers 02</span>
   <span class="review-card-title">Pythagorean Triplet & Multiplicity 2-Pointer Search</span>
-  <span class="review-card-tag">[LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) · Pythagorean Triplet · Square Mapping · Multiplicity Preservation · 3SUM Reduction · Two Pointers Convergence · O(N^2) Optimality Proof</span>
+  <span class="review-card-tag">Pythagorean Triplet · Square Mapping · Multiset Retention · 3SUM Reduction · Two Pointers · O(N^2) Proof</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) — `https://leetcode.com/problems/3sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -137,9 +143,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 03</span>
   <span class="review-card-title">Minimum Window Substring & Multi-Candidate Expansion</span>
-  <span class="review-card-tag">[LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) · Variable Window · O(|S| + |T|) Rigorous Proof · k-Factor Frequency · All Tied Minimum Windows · Fixed-Size Array Constant Bound</span>
+  <span class="review-card-tag">Variable Sliding Window · O(|S| + |T|) Derivation · Multi-k Multiplicity · All Minimum Ties · Array Counter</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) — `https://leetcode.com/problems/minimum-window-substring/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Follow-ups</div>
@@ -248,9 +256,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 04</span>
   <span class="review-card-title">Longest Repeating Character Replacement & Max-Frequency Invariant</span>
-  <span class="review-card-tag">[LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) · Sliding Window · Max-Frequency Invariant · Non-Decreasing Window Size · O(N) Single-Pass</span>
+  <span class="review-card-tag">Variable Sliding Window · Max-Frequency Invariant · Non-Shrinking Greedy · O(N) Single-Pass</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) — `https://leetcode.com/problems/longest-repeating-character-replacement/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Examples</div>
@@ -320,9 +330,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 05</span>
   <span class="review-card-title">Variable & Fixed Sliding Window Patterns</span>
-  <span class="review-card-tag">[LeetCode 3 · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · Longest Substring Without Repeating Characters · Hash Jump Optimization</span>
+  <span class="review-card-tag">Longest Substring Without Repeating · Hash Skip · Difference Array Counter</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -362,9 +374,14 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Backtrack 06</span>
   <span class="review-card-title">Subsets, Permutations & Combinations</span>
-  <span class="review-card-tag">[LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) · [LeetCode 46](https://leetcode.com/problems/permutations/) · [LeetCode 39](https://leetcode.com/problems/combination-sum/) · State-Space Tree · Pruning Deduplication</span>
+  <span class="review-card-tag">Tree State Space · Level Pruning · Element Reuse Semantics</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) — `https://leetcode.com/problems/subsets-ii/`
+> - [LeetCode 46 · Permutations](https://leetcode.com/problems/permutations/) — `https://leetcode.com/problems/permutations/`
+> - [LeetCode 39 · Combination Sum](https://leetcode.com/problems/combination-sum/) — `https://leetcode.com/problems/combination-sum/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Implementation</div>
@@ -406,9 +423,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">Digit 07</span>
   <span class="review-card-title">Largest Number Smaller than N from Digits A (Digit Greedy Backtracking)</span>
-  <span class="review-card-tag">Digit Greedy Construction · Largest Number Smaller Than N · Digit Backtracking · Greedy Prefix Match · Downgrade Suffix Max Fill · Shorter Length Fallback</span>
+  <span class="review-card-tag">Digit Backtracking · Greedy Prefix Matching · Max Fallback Fill · Length Truncation</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 902 · Numbers At Most N Given Digit Set](https://leetcode.com/problems/numbers-at-most-n-given-digit-set/) — `https://leetcode.com/problems/numbers-at-most-n-given-digit-set/` (Digit Greedy Backtracking OA)
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Examples</div>
@@ -515,9 +534,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">GREEDY 08</span>
   <span class="review-card-title">Non-overlapping Intervals via Earliest Deadline First</span>
-  <span class="review-card-tag">[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) · Greedy Interval Scheduling · Earliest Deadline First · O(N log N)</span>
+  <span class="review-card-tag">Greedy Interval Scheduling · Earliest Deadline First · O(N log N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) — `https://leetcode.com/problems/non-overlapping-intervals/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -587,9 +608,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 09</span>
   <span class="review-card-title">Time-Based Key-Value Store via Binary Search</span>
-  <span class="review-card-tag">[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) · Binary Search (bisect) · Time Series Multiversion Storage · O(log N)</span>
+  <span class="review-card-tag">Binary Search (bisect) · Time Series Multiversion Storage · O(log N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) — `https://leetcode.com/problems/time-based-key-value-store/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -662,9 +685,11 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">TP 10</span>
   <span class="review-card-title">Interval List Intersections via Two-Pointer Scan</span>
-  <span class="review-card-tag">[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) · Two Pointers · Closed Interval Intersection · Earliest End Advance · O(M + N)</span>
+  <span class="review-card-tag">Two Pointers · Closed Interval Intersection · Earliest End Advance · O(M + N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) — `https://leetcode.com/problems/interval-list-intersections/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -739,9 +764,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">SLIDE 11</span>
   <span class="review-card-title">Longest Substring with At Most K Distinct Characters</span>
-  <span class="review-card-tag">[LeetCode 340 · Longest Substring with At Most K Distinct](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) · [LeetCode 159](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) · Sliding Window · Frequency Map · Key Eviction · O(N)</span>
+  <span class="review-card-tag">Sliding Window · Frequency Map · Key Eviction · O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 340 · Longest Substring with At Most K Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/`
+> - [LeetCode 159 · Longest Substring with At Most Two Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -815,9 +844,13 @@ if __name__ == "__main__":
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 12</span>
   <span class="review-card-title">Search in Rotated Sorted Array: Distinct vs Duplicates</span>
-  <span class="review-card-tag">[LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) · [LeetCode 81](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) · Half-Sorted Partitioning · Duplicate Ambiguity · Boundary Shrinkage · O(log N) -> O(N)</span>
+  <span class="review-card-tag">Half-Sorted Partitioning · Duplicate Ambiguity · Boundary Shrinkage · O(log N) -> O(N)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) — `https://leetcode.com/problems/search-in-rotated-sorted-array/`
+> - [LeetCode 81 · Search in Rotated Sorted Array II](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) — `https://leetcode.com/problems/search-in-rotated-sorted-array-ii/`
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -920,6 +953,8 @@ if __name__ == "__main__":
   <span class="review-card-tag">Greedy Simulation · Relay Pointer · Forward Leap Update · O(M log M + M)</span>
 </summary>
 <div class="review-card-content">
+
+> 🔗 **Related LeetCode**: [LeetCode 45 · Jump Game II](https://leetcode.com/problems/jump-game-ii/) — `https://leetcode.com/problems/jump-game-ii/` (Greedy Forward Progression Relay)
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
