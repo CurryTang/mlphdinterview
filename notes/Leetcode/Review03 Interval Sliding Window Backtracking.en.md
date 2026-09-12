@@ -21,7 +21,25 @@ This note is the third volume of the high-frequency algorithmic interview review
 > - [LeetCode 57 · Insert Interval](https://leetcode.com/problems/insert-interval/) — `https://leetcode.com/problems/insert-interval/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Merge Intervals & Topology Variants (LeetCode 56 / 57 / 435 / 252 / 253)**:
+> Given an array of intervals where `intervals[i] = [start_i, end_i]`, merge all overlapping closed intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.
+>
+> **Variants**:
+> - Insert Interval (LC 57): insert a new interval into sorted non-overlapping intervals and merge.
+> - Meeting Rooms I & II (LC 252 / 253): check conference room conflicts and find minimum rooms via scanline/min-heap.
+
+**Function Signature**:
+```python
+def merge(intervals: List[List[int]]) -> List[List[int]]: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from typing import List
@@ -93,7 +111,23 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) — `https://leetcode.com/problems/3sum/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Pythagorean Triplet & Multiplicity 2-Pointer Search**:
+> Given an array of integers `nums`, determine whether there exist three elements $a, b, c$ such that $a^2 + b^2 = c^2$.
+> Negative integers are allowed; identical numerical values can only be reused if sufficient physical duplicates exist in the input multiset.
+> Prove that without value range constraints, this 3SUM-equivalent problem has a conditional lower bound of $\mathcal{O}(N^2)$.
+
+**Function Signature**:
+```python
+def findPythagoreanTriplet(nums: List[int]) -> Optional[Tuple[int, int, int]]: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from typing import List
@@ -337,7 +371,30 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Variable & Fixed Sliding Window Patterns (LeetCode 3 / 209 / 438)**:
+> Solve fundamental sliding window models:
+> 1. Variable window: find the length of the longest substring without repeating characters in string `s` (LeetCode 3).
+> 2. Contraction rule: advance right pointer to expand; contract left pointer when invariant is violated.
+
+**Function Signature**:
+```python
+class SlidingWindowSolution:
+    @staticmethod
+    def lengthOfLongestSubstring(s: str) -> int: ...
+```
+
+**Examples**:
+- `s = "abcabcbb"` $\implies$ `3`
+- `s = "bbbbb"` $\implies$ `1`
+- `s = "pwwkew"` $\implies$ `3`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 class SlidingWindowSolution:
@@ -384,7 +441,33 @@ if __name__ == "__main__":
 > - [LeetCode 39 · Combination Sum](https://leetcode.com/problems/combination-sum/) — `https://leetcode.com/problems/combination-sum/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Subsets, Permutations & Combinations (LeetCode 90 / 46 / 39)**:
+> Given an integer array `nums` that may contain duplicates, return all possible subsets (the power set).
+> The solution set must not contain duplicate subsets.
+>
+> **Core Follow-ups**:
+> 1. Level-wise deduplication for subsets with duplicates (`nums[i] == nums[i-1]` pruning).
+> 2. Permutations of distinct elements (LC 46).
+> 3. Combination sum with candidate reuse (LC 39).
+
+**Function Signature**:
+```python
+class BacktrackSolution:
+    @staticmethod
+    def subsetsWithDup(nums: List[int]) -> List[List[int]]: ...
+```
+
+**Examples**:
+- `nums = [1, 2, 2]` $\implies$ `[[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]`
+- `nums = [0]` $\implies$ `[[], [0]]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from typing import List
@@ -541,6 +624,31 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) — `https://leetcode.com/problems/non-overlapping-intervals/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Non-overlapping Intervals (LeetCode 435)**:
+> Given an array of intervals `intervals` where `intervals[i] = [start_i, end_i]`, return the minimum number of intervals you need to remove to make the rest of the intervals non-overlapping.
+> Note that intervals touching at a point are non-overlapping (e.g. `[1, 2]` and `[2, 3]`).
+
+**Function Signature**:
+```python
+class NonOverlappingIntervalsSolution:
+    @classmethod
+    def eraseOverlapIntervals(cls, intervals: List[List[int]]) -> int: ...
+```
+
+**Examples**:
+- `intervals = [[1,2],[2,3],[3,4],[1,3]]` $\implies$ `1` (remove `[1,3]`)
+- `intervals = [[1,2],[1,2],[1,2]]` $\implies$ `2`
+- `intervals = [[1,2],[2,3]]` $\implies$ `0`
+
+**Greedy Invariant (Earliest Deadline First)**:
+- Sort intervals by end time in ascending order. Greedily select the interval that ends earliest to maximize room for subsequent intervals in $\mathcal{O}(n \log n)$ time.
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -613,6 +721,32 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) — `https://leetcode.com/problems/time-based-key-value-store/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Time Based Key-Value Store (LeetCode 981)**:
+> Design a time-based key-value data structure that can store multiple values for the same key at different time stamps and retrieve the key's value at a certain timestamp.
+> Implement `TimeMap`:
+> - `TimeMap()` initializes object.
+> - `set(key, value, timestamp)` stores with timestamp (strictly increasing).
+> - `get(key, timestamp)` returns value with largest `timestamp_prev <= timestamp`, or `""` if none.
+
+**Interface Definition**:
+```python
+class TimeMap:
+    def __init__(self): ...
+    def set(self, key: str, value: str, timestamp: int) -> None: ...
+    def get(self, key: str, timestamp: int) -> str: ...
+```
+
+**Examples**:
+- `timeMap.set("foo", "bar", 1)`
+- `timeMap.get("foo", 1)` $\implies$ `"bar"`
+- `timeMap.get("foo", 3)` $\implies$ `"bar"`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -690,6 +824,27 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) — `https://leetcode.com/problems/interval-list-intersections/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Interval List Intersections (LeetCode 986)**:
+> You are given two lists of closed intervals, `firstList` and `secondList`, where `firstList[i] = [start_i, end_i]` and `secondList[j] = [start_j, end_j]`. Each list of intervals is pairwise disjoint and in sorted order.
+> Return the intersection of these two interval lists.
+
+**Function Signature**:
+```python
+class IntervalIntersectionSolution:
+    @staticmethod
+    def intervalIntersection(firstList: List[List[int]], secondList: List[List[int]]) -> List[List[int]]: ...
+```
+
+**Examples**:
+- `firstList = [[0,2],[5,10],[13,23],[24,25]], secondList = [[1,5],[8,12],[15,24],[25,26]]`
+  $\implies$ `[[1,2],[5,5],[8,10],[15,23],[24,24],[25,25]]`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -773,6 +928,30 @@ if __name__ == "__main__":
 > - [LeetCode 159 · Longest Substring with At Most Two Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Longest Substring with At Most K Distinct Characters (LeetCode 340 / 159)**:
+> Given a string `s` and an integer `k`, return the length of the longest substring of `s` that contains at most $k$ distinct characters.
+
+**Function Signature**:
+```python
+class LongestSubstringKDistinctSolution:
+    @classmethod
+    def lengthOfLongestSubstringKDistinct(cls, s: str, k: int) -> int: ...
+```
+
+**Examples**:
+- `s = "eceba", k = 2` $\implies$ `3` (substring `"ece"`)
+- `s = "aa", k = 1` $\implies$ `2`
+- `s = "a", k = 0` $\implies$ `0`
+
+**Sliding Window Invariant**:
+- Expand right boundary while tracking character frequencies in a hash map. While `len(map) > k`, contract left boundary and `del` keys whose count reaches zero, maintaining at most $k$ distinct keys in $\mathcal{O}(n)$ time.
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -851,6 +1030,31 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Links**:
 > - [LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) — `https://leetcode.com/problems/search-in-rotated-sorted-array/`
 > - [LeetCode 81 · Search in Rotated Sorted Array II](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) — `https://leetcode.com/problems/search-in-rotated-sorted-array-ii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Search in Rotated Sorted Array: Distinct vs Duplicates (LeetCode 33 / 81)**:
+> There is an integer array `nums` sorted in ascending order rotated at an unknown pivot index.
+> 1. **Distinct Elements (LC 33)**: return index of `target`, or -1 if not found. Must run in $\mathcal{O}(\log n)$ time.
+> 2. **Duplicate Elements (LC 81)**: return `True` if `target` is in `nums`, else `False`. Handle ambiguous boundary `nums[left] == nums[mid] == nums[right]` via boundary shrinkage.
+
+**Function Signature**:
+```python
+class SearchRotatedArraySolution:
+    @classmethod
+    def searchDistinct(cls, nums: List[int], target: int) -> int: ...
+    @classmethod
+    def searchDuplicates(cls, nums: List[int], target: int) -> bool: ...
+```
+
+**Examples**:
+- `nums = [4,5,6,7,0,1,2], target = 0` $\implies$ `4`
+- `nums = [2,5,6,0,0,1,2], target = 0` $\implies$ `True`
+- `nums = [2,5,6,0,0,1,2], target = 3` $\implies$ `False`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -955,6 +1159,27 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **Related LeetCode**: [LeetCode 45 · Jump Game II](https://leetcode.com/problems/jump-game-ii/) — `https://leetcode.com/problems/jump-game-ii/` (Greedy Forward Progression Relay)
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Drone Relay to Target via Greedy Forward Progression**:
+> Starting at position 0 toward integer `target`. At certain relay positions given in a sorted array `relays`, you may drop a package onto a drone that flies it forward exactly 10 units.
+> You walk to the next available relay point, pay cost equal to distance walked, then jump forward 10 units via the drone.
+> Return the minimum total walking distance until you reach or pass `target`.
+
+**Function Signature**:
+```python
+class DroneRelaySolution:
+    @classmethod
+    def minWalkingDistance(cls, target: int, relays: List[int]) -> int: ...
+```
+
+**Examples**:
+- `target = 25, relays = [2, 5, 14, 18]` $\implies$ `total_walk = 7`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

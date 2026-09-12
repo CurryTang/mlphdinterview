@@ -417,6 +417,29 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：[LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Variable & Fixed Sliding Window Patterns (LeetCode 3 / 209 / 438)**:
+> Solve fundamental sliding window models:
+> 1. Variable window: find the length of the longest substring without repeating characters in string `s` (LeetCode 3).
+> 2. Contraction rule: advance right pointer to expand; when window condition is violated, advance left pointer until valid again.
+
+**函数签名**：
+```python
+class SlidingWindowSolution:
+    @staticmethod
+    def lengthOfLongestSubstring(s: str) -> int: ...
+```
+
+**输入输出示例**：
+- `s = "abcabcbb"` $\implies$ `3`
+- `s = "bbbbb"` $\implies$ `1`
+- `s = "pwwkew"` $\implies$ `3`
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码与跳跃优化</div>
 
 ```python
@@ -469,6 +492,32 @@ if __name__ == "__main__":
 > - [LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) — `https://leetcode.com/problems/subsets-ii/`
 > - [LeetCode 46 · Permutations](https://leetcode.com/problems/permutations/) — `https://leetcode.com/problems/permutations/`
 > - [LeetCode 39 · Combination Sum](https://leetcode.com/problems/combination-sum/) — `https://leetcode.com/problems/combination-sum/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Subsets, Permutations & Combinations (LeetCode 90 / 46 / 39)**:
+> Given an integer array `nums` that may contain duplicates, return all possible subsets (the power set).
+> The solution set must not contain duplicate subsets. Return the solution in any order.
+>
+> **Core Follow-ups**:
+> 1. Level-wise deduplication for subsets with duplicates (`nums[i] == nums[i-1]` prune).
+> 2. Permutations of distinct elements (LC 46).
+> 3. Combination sum with unlimited candidate reuse (LC 39).
+
+**函数签名**：
+```python
+class BacktrackSolution:
+    @staticmethod
+    def subsetsWithDup(nums: List[int]) -> List[List[int]]: ...
+```
+
+**输入输出示例**：
+- `nums = [1, 2, 2]` $\implies$ `[[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]`
+- `nums = [0]` $\implies$ `[[], [0]]`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心模板代码</div>
@@ -670,6 +719,31 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) — `https://leetcode.com/problems/non-overlapping-intervals/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Non-overlapping Intervals (LeetCode 435)**:
+> Given an array of intervals `intervals` where `intervals[i] = [start_i, end_i]`, return the minimum number of intervals you need to remove to make the rest of the intervals non-overlapping.
+> Note that intervals which touch at a point are non-overlapping (e.g. `[1, 2]` and `[2, 3]` do not overlap).
+
+**函数签名**：
+```python
+class NonOverlappingIntervalsSolution:
+    @classmethod
+    def eraseOverlapIntervals(cls, intervals: List[List[int]]) -> int: ...
+```
+
+**输入输出示例**：
+- `intervals = [[1,2],[2,3],[3,4],[1,3]]` $\implies$ `1`（移除 `[1,3]` 即可消除所有重叠）
+- `intervals = [[1,2],[1,2],[1,2]]` $\implies$ `2`
+- `intervals = [[1,2],[2,3]]` $\implies$ `0`
+
+**核心贪心定理 (Earliest Deadline First)**：
+- 按区间**右端点（结束时间）升序排序**。优先保留最早结束的区间，给后续区间留出最多的时间空间，从而最大化保留不相交区间的数量。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -744,6 +818,35 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) — `https://leetcode.com/problems/time-based-key-value-store/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Time Based Key-Value Store (LeetCode 981)**:
+> Design a time-based key-value data structure that can store multiple values for the same key at different time stamps and retrieve the key's value at a certain timestamp.
+> Implement the `TimeMap` class:
+> - `TimeMap()` initializes the object.
+> - `void set(String key, String value, int timestamp)` stores key-value with given timestamp. Timestamps are strictly increasing.
+> - `String get(String key, int timestamp)` returns value associated with largest `timestamp_prev <= timestamp`. Returns `""` if no such value exists.
+
+**接口定义**：
+```python
+class TimeMap:
+    def __init__(self): ...
+    def set(self, key: str, value: str, timestamp: int) -> None: ...
+    def get(self, key: str, timestamp: int) -> str: ...
+```
+
+**输入输出示例**：
+- `timeMap.set("foo", "bar", 1)`
+- `timeMap.get("foo", 1)` $\implies$ `"bar"`
+- `timeMap.get("foo", 3)` $\implies$ `"bar"`
+- `timeMap.set("foo", "bar2", 4)`
+- `timeMap.get("foo", 4)` $\implies$ `"bar2"`
+- `timeMap.get("foo", 5)` $\implies$ `"bar2"`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -826,6 +929,28 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) — `https://leetcode.com/problems/interval-list-intersections/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Interval List Intersections (LeetCode 986)**:
+> You are given two lists of closed intervals, `firstList` and `secondList`, where `firstList[i] = [start_i, end_i]` and `secondList[j] = [start_j, end_j]`. Each list of intervals is pairwise disjoint and in sorted order.
+> Return the intersection of these two interval lists.
+> A closed interval `[a, b]` (with $a \le b$) denotes the set of real numbers $x$ with $a \le x \le b$. The intersection of two closed intervals is a set of real numbers that is either empty, or can be represented as a closed interval.
+
+**函数签名**：
+```python
+class IntervalIntersectionSolution:
+    @staticmethod
+    def intervalIntersection(firstList: List[List[int]], secondList: List[List[int]]) -> List[List[int]]: ...
+```
+
+**输入输出示例**：
+- `firstList = [[0,2],[5,10],[13,23],[24,25]], secondList = [[1,5],[8,12],[15,24],[25,26]]`
+  $\implies$ `[[1,2],[5,5],[8,10],[15,23],[24,24],[25,25]]`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -911,6 +1036,30 @@ if __name__ == "__main__":
 > - [LeetCode 159 · Longest Substring with At Most Two Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) — `https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Longest Substring with At Most K Distinct Characters (LeetCode 340 / 159)**:
+> Given a string `s` and an integer `k`, return the length of the longest substring of `s` that contains at most $k$ distinct characters.
+
+**函数签名**：
+```python
+class LongestSubstringKDistinctSolution:
+    @classmethod
+    def lengthOfLongestSubstringKDistinct(cls, s: str, k: int) -> int: ...
+```
+
+**输入输出示例**：
+- `s = "eceba", k = 2` $\implies$ `3`（子串 `"ece"` 包含 2 个不同字符）
+- `s = "aa", k = 1` $\implies$ `2`
+- `s = "a", k = 0` $\implies$ `0`
+
+**核心不变量**：
+- 变长滑动窗口：右指针扩增引入新字符，记录频次；当字典键数量 $> k$ 时，左指针持续收缩并将频次归零的字符从字典中彻底 `del` 移除，保证字典长度严格维持 $\le k$。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -990,6 +1139,31 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：
 > - [LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) — `https://leetcode.com/problems/search-in-rotated-sorted-array/`
 > - [LeetCode 81 · Search in Rotated Sorted Array II](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) — `https://leetcode.com/problems/search-in-rotated-sorted-array-ii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Search in Rotated Sorted Array: Distinct vs Duplicates (LeetCode 33 / 81)**:
+> There is an integer array `nums` sorted in ascending order that is rotated at an unknown pivot.
+> 1. **Distinct Elements (LC 33)**: return index of `target`, or -1 if not found. Must run in $\mathcal{O}(\log n)$ time.
+> 2. **Duplicate Elements (LC 81)**: return `True` if `target` exists in `nums`, `False` otherwise. Handle ambiguity when `nums[left] == nums[mid] == nums[right]` by boundary shrinkage.
+
+**函数签名**：
+```python
+class SearchRotatedArraySolution:
+    @classmethod
+    def searchDistinct(cls, nums: List[int], target: int) -> int: ...
+    @classmethod
+    def searchDuplicates(cls, nums: List[int], target: int) -> bool: ...
+```
+
+**输入输出示例**：
+- `nums = [4,5,6,7,0,1,2], target = 0` $\implies$ `4`
+- `nums = [2,5,6,0,0,1,2], target = 0` $\implies$ `True`
+- `nums = [2,5,6,0,0,1,2], target = 3` $\implies$ `False`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1101,6 +1275,30 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **相关 LeetCode**：[LeetCode 45 · Jump Game II](https://leetcode.com/problems/jump-game-ii/) — `https://leetcode.com/problems/jump-game-ii/` (贪心中继推进与跳跃最小化)
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Drone Relay to Target via Greedy Forward Progression**:
+> Starting at position 0 toward integer `target`. At certain relay positions given in a sorted array `relays`, you may drop a package onto a drone that flies it forward exactly 10 units.
+> You walk to the next available relay point, pay the cost equal to the distance walked, then jump forward 10 units via the drone.
+> Return the minimum total walking distance until you reach or pass `target`.
+
+**函数签名**：
+```python
+class DroneRelaySolution:
+    @classmethod
+    def minWalkingDistance(cls, target: int, relays: List[int]) -> int: ...
+```
+
+**输入输出示例**：
+- `target = 25, relays = [2, 5, 14, 18]` $\implies$ `total_walk = 7`
+  - 从 0 步行到 2（步行 2），无人机跳跃至 12；
+  - 从 12 步行到 14（步行 2），无人机跳跃至 24；
+  - 从 24 步行到 25 越过终点（步行 1）。
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

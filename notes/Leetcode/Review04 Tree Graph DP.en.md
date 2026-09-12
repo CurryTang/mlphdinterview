@@ -21,7 +21,28 @@ This note is the fourth volume of the high-frequency algorithmic interview revie
 > - [LeetCode 694 · Number of Distinct Islands](https://leetcode.com/problems/number-of-distinct-islands/) — `https://leetcode.com/problems/number-of-distinct-islands/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Number of Islands & Canonical Variants (LeetCode 200 / 694 / 695 / 827)**:
+> Given an $m \times n$ 2D binary grid `grid` which represents a map of `'1'`s (land) and `'0'`s (water), return the number of islands.
+> An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.
+>
+> **Variants Matrix**:
+> - Read-only grid (no mutation allowed, requires external visited set);
+> - Distinct islands (LC 694, requires relative coordinate normalization);
+> - Max area of island (LC 695);
+> - Large out-of-core grid chunking.
+
+**Function Signature**:
+```python
+def numIslands(grid: List[List[str]]) -> int: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from collections import deque
@@ -94,7 +115,32 @@ if __name__ == "__main__":
 > - [LeetCode 210 · Course Schedule II](https://leetcode.com/problems/course-schedule-ii/) — `https://leetcode.com/problems/course-schedule-ii/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Course Schedule & Topological Sort (LeetCode 207 / 210)**:
+> There are a total of `numCourses` courses you have to take, labeled from 0 to `numCourses - 1`. You are given an array `prerequisites` where `prerequisites[i] = [a_i, b_i]` indicates that you must take course $b_i$ before $a_i$ ($b_i \to a_i$).
+> - **Feasibility (LC 207)**: return whether a valid topological ordering exists.
+> - **Order Generation (LC 210)**: return any valid completion order, or `[]` if impossible.
+> - **SRE Follow-up**: detect and reconstruct exact circular dependency cycle path using three-color DFS.
+
+**Function Signature**:
+```python
+class CourseScheduleSolution:
+    @staticmethod
+    def findOrder(numCourses: int, prerequisites: List[List[int]]) -> List[int]: ...
+    @staticmethod
+    def detectAndPrintCycle(numCourses: int, prerequisites: List[List[int]]) -> Optional[List[int]]: ...
+```
+
+**Examples**:
+- `numCourses = 2, prerequisites = [[1, 0]]` $\implies$ `[0, 1]`
+- `numCourses = 2, prerequisites = [[1, 0], [0, 1]]` $\implies$ `[]` (cycle detected)
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from collections import deque
@@ -366,7 +412,28 @@ if __name__ == "__main__":
 > - [LeetCode 235 · Lowest Common Ancestor of a Binary Search Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) — `https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Lowest Common Ancestor (LeetCode 236 / 235)**:
+> Given a binary tree (or BST), find the lowest common ancestor (LCA) of two given nodes `p` and `q`.
+> The lowest common ancestor is the lowest node in $T$ that has both $p$ and $q$ as descendants (allowing a node to be a descendant of itself).
+
+**Function Signature**:
+```python
+class LCASolution:
+    @staticmethod
+    def lowestCommonAncestor(root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode': ...
+```
+
+**Examples**:
+- `root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 1` $\implies$ `3`
+- `root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4` $\implies$ `5`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 class TreeNode:
@@ -413,7 +480,28 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Binary Tree Maximum Path Sum & Path Reconstruction (LeetCode 124)**:
+> A path in a binary tree is a sequence of nodes where each pair of adjacent nodes has an edge connecting them. The path does not need to pass through the root.
+> Return the maximum path sum of any non-empty path.
+
+**Function Signature**:
+```python
+class MaxPathSumSolution:
+    @staticmethod
+    def maxPathSum(root: Optional[TreeNode]) -> int: ...
+```
+
+**Examples**:
+- `root = [1, 2, 3]` $\implies$ `6` (`2 + 1 + 3`)
+- `root = [-10, 9, 20, null, null, 15, 7]` $\implies$ `42` (`15 + 20 + 7`)
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 class TreeNode:
@@ -666,7 +754,29 @@ if __name__ == "__main__":
 > - [LeetCode 518 · Coin Change II](https://leetcode.com/problems/coin-change-ii/) — `https://leetcode.com/problems/coin-change-ii/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Coin Change & Unbounded Knapsack (LeetCode 322 / 518)**:
+> You are given an integer array `coins` and an integer `amount`:
+> 1. **Coin Change (LC 322)**: return fewest number of coins needed to make up amount, or -1 if impossible.
+> 2. **Coin Change II (LC 518)**: return number of combinations that make up amount.
+
+**Function Signature**:
+```python
+class CoinChangeSolution:
+    @staticmethod
+    def coinChange(coins: List[int], amount: int) -> int: ...
+```
+
+**Examples**:
+- `coins = [1, 2, 5], amount = 11` $\implies$ `3` (`5 + 5 + 1`)
+- `coins = [2], amount = 3` $\implies$ `-1`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from typing import List
@@ -708,7 +818,29 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) — `https://leetcode.com/problems/stickers-to-spell-word/`
 
 <div class="review-block">
-<div class="review-block-label">📌 Implementation</div>
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Stickers to Spell Word (LeetCode 691)**:
+> We are given $n$ different types of `stickers`. Each sticker has a lowercase word on it.
+> You would like to spell out `target` by cutting individual letters from stickers. You have infinite quantities of each sticker.
+> Return the minimum number of stickers needed to spell out `target`, or -1 if impossible.
+
+**Function Signature**:
+```python
+class StickersSolution:
+    @classmethod
+    def minStickers(cls, stickers: List[str], target: str) -> int: ...
+```
+
+**Examples**:
+- `stickers = ["with","example","science"], target = "thehat"` $\implies$ `3`
+- `stickers = ["notice","possible"], target = "basic"` $\implies$ `-1`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
 
 ```python
 from typing import List
@@ -776,6 +908,30 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **Related LeetCode**: [LeetCode 329 · Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/) — `https://leetcode.com/problems/longest-increasing-path-in-a-matrix/` (Grid Memoized Search Alternating Path)
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Longest Alternating Zigzag Path in 2-D Grid**:
+> Given a 2-D grid of integers, find the length of the longest zigzag path.
+> Start from any cell; each step moves to a 4-directionally adjacent cell whose value strictly alternates between greater-than and less-than the current cell.
+>
+> **Industrial Follow-ups**:
+> 1. What if diagonal moves are allowed?
+> 2. Reconstruct the actual path sequence.
+
+**Function Signature**:
+```python
+class LongestZigzagPathSolution:
+    @classmethod
+    def longestZigzag(cls, grid: List[List[int]]) -> int: ...
+```
+
+**Examples**:
+- `grid = [[1, 2, 1], [2, 1, 2], [1, 2, 1]]` $\implies$ `9`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -884,6 +1040,23 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) — `https://leetcode.com/problems/path-sum-iii/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **N-ary Tree Downward Target Path Sum (LeetCode 437 Variant)**:
+> Given root of an N-ary tree and an integer `targetSum`, return the number of downward paths summing to `targetSum`.
+> Must clean up backtracking scope in $\mathcal{O}(n)$ time via prefix sum hash map.
+
+**Function Signature**:
+```python
+class NaryPathSumSolution:
+    @classmethod
+    def pathSum(cls, root: Optional[NaryTreeNode], targetSum: int) -> int: ...
+```
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -978,6 +1151,24 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) — `https://leetcode.com/problems/word-search-ii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Word Search II with Trie & Backtracking Pruning (LeetCode 212)**:
+> Given an $m \times n$ `board` of characters and a list of strings `words`, return all words on the board.
+> Each word must be constructed from letters of sequentially adjacent cells (4-directionally).
+> Must optimize with Trie dynamic leaf pruning and in-place visited sentinel.
+
+**Function Signature**:
+```python
+class WordSearchIISolution:
+    @classmethod
+    def findWords(cls, board: List[List[str]], words: List[str]) -> List[str]: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1083,6 +1274,24 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) — `https://leetcode.com/problems/shortest-path-to-get-all-keys/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Grid Shortest Path with Fuel Tank & Recharge Stations (LeetCode 864 Variant)**:
+> Find shortest path from start to target on a grid where a vehicle has a limited fuel tank capacity $C$.
+> Moving to an adjacent cell consumes 1 unit of fuel. Recharge stations replenish fuel to $C$.
+> Return minimum steps to destination, or -1 if unreachable.
+
+**Function Signature**:
+```python
+class FuelGridShortestPathSolution:
+    @classmethod
+    def shortestPathWithFuel(cls, grid: List[List[str]], capacity: int) -> int: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1193,6 +1402,23 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) — `https://leetcode.com/problems/number-of-provinces/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Photo Similarity Groups via Union-Find (LeetCode 547 Variant)**:
+> Given $N$ photos and an adjacency similarity matrix `is_connected`, group photos that are directly or transitively similar into connected clusters using Disjoint Set Union (DSU).
+> Return the number of unique similarity groups.
+
+**Function Signature**:
+```python
+class PhotoSimilarityGroupsSolution:
+    @classmethod
+    def findGroups(cls, n: int, is_connected: List[List[int]]) -> int: ...
+```
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1291,6 +1517,25 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) — `https://leetcode.com/problems/binary-tree-right-side-view/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Binary Tree Right Side View (LeetCode 199)**:
+> Given `root` of a binary tree, imagine yourself standing on the right side of it, return the values of the nodes you can see ordered from top to bottom.
+> Includes self-contained scaffolding for tree reconstruction.
+
+**Function Signature**:
+```python
+class BinaryTreeScaffolding:
+    @staticmethod
+    def rightSideViewBFS(root: Optional[TreeNode]) -> List[int]: ...
+    @staticmethod
+    def rightSideViewDFS(root: Optional[TreeNode]) -> List[int]: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1420,6 +1665,23 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 889 · Construct Binary Tree from Preorder and Postorder Traversal](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) — `https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Construct Binary Tree from Preorder and Postorder Traversal (LeetCode 889)**:
+> Given two integer arrays, `preorder` and `postorder` of a binary tree of distinct values, reconstruct and return the binary tree.
+> If multiple answers exist, return any of them.
+
+**Function Signature**:
+```python
+class ConstructFromPrePostSolution:
+    @classmethod
+    def constructFromPrePost(cls, preorder: List[int], postorder: List[int]) -> Optional[TreeNode]: ...
+```
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1517,6 +1779,24 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) — `https://leetcode.com/problems/create-binary-tree-from-descriptions/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Create Binary Tree From Descriptions (LeetCode 2196)**:
+> You are given a 2D integer array `descriptions` where `descriptions[i] = [parent_i, child_i, isLeft_i]`.
+> - `isLeft_i == 1`: left child; `isLeft_i == 0`: right child.
+> Construct the binary tree and return its root.
+
+**Function Signature**:
+```python
+class ConstructTreeFromDescriptionsSolution:
+    @classmethod
+    def createBinaryTree(cls, descriptions: List[List[int]]) -> Optional[TreeNode]: ...
+```
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1602,6 +1882,25 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) — `https://leetcode.com/problems/restore-ip-addresses/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Restore IP Addresses & Generalized K-Segment Partition (LeetCode 93)**:
+> A valid IP address consists of exactly four integers, each between 0 and 255, separated by single dots and without leading zeros.
+> Given a string `s` containing only digits, return all possible valid IP addresses.
+>
+> **Industrial Follow-up**: Generalize to arbitrary $K$-segment partitioning.
+
+**Function Signature**:
+```python
+class RestoreIPSolution:
+    @classmethod
+    def restoreIpAddresses(cls, s: str) -> List[str]: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1699,6 +1998,23 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) — `https://leetcode.com/problems/alien-dictionary/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Alien Dictionary via Directed Graph Topological Sort (LeetCode 269)**:
+> Given a list of strings `words` from the alien dictionary, sorted lexicographically by the rules of this new language, derive the order of letters in this language.
+> Return `""` if the order is invalid (cycle or invalid prefix order such as `["abc", "ab"]`).
+
+**Function Signature**:
+```python
+class AlienDictionarySolution:
+    @classmethod
+    def alienOrder(cls, words: List[str]) -> str: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

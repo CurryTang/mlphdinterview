@@ -1386,6 +1386,33 @@ if __name__ == "__main__":
 > 🔗 **相关 LeetCode**：[LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (工业界手撕题 / 局部极值变体)
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Local maximum on a 1-D stream**:
+> Given a 1-D numerical stream array `rawData` and an integer `localArea`, return every index $i$ where the `localArea` neighbors on each side form strictly decreasing subsequences radiating outwards from $i$.
+> If fewer than `localArea` neighbors exist on a side (e.g., near array boundaries), use whatever neighbors are available.
+
+**函数签名**：
+```python
+def findLocalMaxima(rawData: List[float], localArea: int) -> List[int]: ...
+```
+
+**形式化约束与边界规则**：
+对于下标 $i$（数组长度为 $n$）：
+- **左侧有效步长**：$L = \min(i, \text{localArea})$，需满足 $rawData[i - j + 1] > rawData[i - j]$ 对所有 $j \in [1, L]$ 恒成立（即从 $i$ 向左严格递减，由外向内严格递增）；
+- **右侧有效步长**：$R = \min(n - 1 - i, \text{localArea})$，需满足 $rawData[i + j - 1] > rawData[i + j]$ 对所有 $j \in [1, R]$ 恒成立（即从 $i$ 向右严格递减）；
+- **边界自适应退化**：若某侧邻居数不足 `localArea`（如 $i=0$ 时左侧无邻居），仅检验该侧实际存在的所有邻居；若该侧邻居数为 0，该侧单调性平凡满足（Vacuously True）；
+- **平顶过滤**：任何相邻相等数值（$rawData[a] = rawData[a+1]$）破坏严格单调性，直接剔除。
+
+**输入输出示例**：
+- `rawData = [1, 3, 5, 4, 2, 6, 2, 1], localArea = 2` $\implies$ `[2]`
+- `rawData = [10], localArea = 3` $\implies$ `[0]`
+- `rawData = [2, 4, 4, 1], localArea = 1` $\implies$ `[]`
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -1483,6 +1510,29 @@ if __name__ == "__main__":
 > 🔗 **相关 LeetCode**：[LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (量化面试高频数学归约手撕真题)
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Largest Min + Max Sum in Subarray**:
+> Given an array of $n$ positive integers, find a contiguous subarray containing more than one number with the largest $\min + \max$. Return that sum.
+
+**函数签名**：
+```python
+def largestMinMaxSum(nums: List[int]) -> int: ...
+```
+
+**输入输出示例**：
+- `Input: [5, 12, 9, 6, 4]` $\implies$ `Output: 21`（子数组 `[12, 9]`，$\min=9, \max=12, 9+12=21$）
+- `Input: [1, 2]` $\implies$ `Output: 3`（子数组 `[1, 2]`，$\min=1, \max=2, 1+2=3$）
+- `Input: [10, 1, 10, 1]` $\implies$ `Output: 11`（子数组 `[10, 1]`，$\min=1, \max=10, 1+10=11$）
+
+**核心数学约束与工业思考**：
+- 子数组长度必须严格 $\ge 2$；
+- 向长度 $\ge 2$ 的子数组扩展新元素只会使 $\min$ 单调非增、$\max$ 最多只能与新元素匹配，因此全局最优解必然在某个长度为 2 的相邻对上取到：$\max_{i}(nums[i] + nums[i+1])$，可在 $\mathcal{O}(n)$ 时间单趟解决。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -1560,6 +1610,29 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) — `https://leetcode.com/problems/subarray-sum-equals-k/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Subarray Sum Equals K (LeetCode 560)**:
+> Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals to `k`.
+> A subarray is a contiguous non-empty sequence of elements within an array.
+
+**函数签名**：
+```python
+def subarraySum(nums: List[int], k: int) -> int: ...
+```
+
+**输入输出示例**：
+- `nums = [1, 1, 1], k = 2` $\implies$ `2`（子数组为 `nums[0..1]` 和 `nums[1..2]`）
+- `nums = [1, 2, 3], k = 3` $\implies$ `2`（子数组为 `nums[0..1]` 和 `nums[2..2]`）
+- `nums = [1, -1, 0], k = 0` $\implies$ `3`（子数组为 `[1, -1]`, `[0]`, `[1, -1, 0]`）
+
+**核心约束与陷阱**：
+- 数组元素可为负数、零或正数，前缀和不再具有单调性，因此双指针/滑动窗口完全失效，必须采用前缀和差分 + 哈希表频次统计在 $\mathcal{O}(n)$ 内求解。
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1643,6 +1716,30 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：[LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Longest Substring Without Repeating Characters (LeetCode 3)**:
+> Given a string `s`, find the length of the longest substring without duplicate characters.
+
+**函数签名**：
+```python
+def lengthOfLongestSubstring(s: str) -> int: ...
+```
+
+**输入输出示例**：
+- `s = "abcabcbb"` $\implies$ `3`（无重复最长子串为 `"abc"`）
+- `s = "bbbbb"` $\implies$ `1`（最长子串为 `"b"`）
+- `s = "pwwkew"` $\implies$ `3`（最长子串为 `"wke"`）
+- `s = ""` $\implies$ `0`
+
+**核心约束与跳跃优化**：
+- 子串必须严格连续；
+- 采用哈希表记录字符最近出现的绝对索引，当发现重复字符时，左指针可直接跳跃至 `max(left, last_pos[c] + 1)`，避免双指针逐格滑动，实现单趟严格 $\mathcal{O}(n)$ 扫描。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -1714,6 +1811,31 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Memory Allocator Simulation with 8-Byte Alignment**:
+> Given a binary memory array of fixed size $N$ (0 = free, 1 = occupied) with 8-byte alignment constraints, implement two operations:
+> - `alloc x`: find the leftmost slot whose start index is a multiple of 8 (`start % 8 == 0`) with at least $x$ consecutive free cells. Mark them occupied with a fresh auto-incrementing integer ID (starting from 1) and return the start index. Return -1 if no suitable contiguous slot fits.
+> - `erase id`: free every cell currently tagged with `id` (reset to 0), and return the total count of cells cleared.
+
+**接口定义**：
+```python
+class AlignedMemoryAllocator:
+    def __init__(self, size: int): ...
+    def alloc(self, x: int) -> int: ...
+    def erase(self, id: int) -> int: ...
+```
+
+**输入输出示例**：
+- `allocator = AlignedMemoryAllocator(32)`
+- `allocator.alloc(10)` $\implies$ `0`（占据下标 `0..9`，分配 ID 1）
+- `allocator.alloc(5)` $\implies$ `16`（下一个对齐候选为 8，但 `8..9` 被占用；候选 16 可用，占据 `16..20`，分配 ID 2）
+- `allocator.erase(1)` $\implies$ `10`（释放 `0..9`，清空 10 个单元）
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1827,6 +1949,29 @@ ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathca
 > - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Zigzag (Alternating-Parity) Subarrays**:
+> Given an integer array `nums`, count every contiguous subarray whose adjacent elements have differing parity (odd/even alternating: odd followed by even, or even followed by odd).
+> Single elements count as length-1 zigzag sequences.
+
+**函数签名**：
+```python
+def countAlternatingSubarrays(nums: List[int]) -> int: ...
+```
+
+**输入输出示例**：
+- `nums = [1, 2, 3]` $\implies$ `6`（单元素 `[1],[2],[3]`，长度 2 的 `[1,2],[2,3]`，长度 3 的 `[1,2,3]`）
+- `nums = [2, 4, 6]` $\implies$ `3`（仅 3 个单元素满足，任意相邻元素同为偶数）
+- `nums = [1, 3, 2, 5]` $\implies$ `7`（单元素 4 个，交替子数组 `[3,2]`, `[2,5]`, `[3,2,5]`）
+
+**核心机制与动态连击**：
+- 维护以当前下标 $i$ 结尾的最长奇偶交替子数组长度 $L_{cur}$：若 $nums[i] \pmod 2 \ne nums[i-1] \pmod 2$，则 $L_{cur} = L_{prev} + 1$，否则重置为 1。累加各位置贡献即可在 $\mathcal{O}(n)$ 时间与 $\mathcal{O}(1)$ 空间内完成计数。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -1901,6 +2046,28 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Two-Direction Justified Newspaper Layout (LeetCode 68 Variant)**:
+> Given an array of strings `words` and an integer `maxWidth`, format the text into lines justified to both left and right margins with `maxWidth` characters per text line, then frame the entire article with a border of asterisks (`'*'`).
+> - Pack as many words as possible per line in greedy fashion;
+> - Spaces on fully justified lines must be distributed as evenly as possible. Extra slots are assigned to the leftmost space gaps;
+> - The final line must be left-justified with single spaces between words and padded to `maxWidth`;
+> - Surround the formatted text with a frame of `*`: top and bottom border of length `maxWidth + 2`, and each text line enclosed as `*line*`.
+
+**函数签名**：
+```python
+def formatNewspaper(words: List[str], maxWidth: int) -> List[str]: ...
+```
+
+**输入输出示例**：
+- `words = ["This", "is", "an", "example", "of", "text", "justification."], maxWidth = 16`
+- 顶底行渲染为 `******************`（长 18），中间各行带星号左右包裹。
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -2013,6 +2180,30 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Longest Palindromic Substring (LeetCode 5)**:
+> Given a string `s`, return the longest palindromic substring in `s`.
+> Compare standard Center Expansion ($\mathcal{O}(n^2)$) with Manacher's Linear Algorithm ($\mathcal{O}(n)$).
+
+**函数签名**：
+```python
+def longestPalindrome(s: str) -> str: ...
+```
+
+**输入输出示例**：
+- `s = "babad"` $\implies$ `"bab"`（或 `"aba"`）
+- `s = "cbbd"` $\implies$ `"bb"`
+- `s = "a"` $\implies$ `"a"`
+
+**核心机制与算法对比**：
+- **中心扩散法**：遍历每个字符及字符间隙作为中心向两侧对称扩散，时间 $\mathcal{O}(n^2)$，空间 $\mathcal{O}(1)$；
+- **马拉车 (Manacher) 算法**：插入虚拟分隔符 `#` 统一奇偶回文，维护最右回文边界 $R$ 与对称中心 $C$。利用镜像点 $i' = 2C - i$ 的回文半径信息快速初始化当前点回文半径，实现严格 $\mathcal{O}(n)$ 线性时间。
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>

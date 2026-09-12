@@ -1333,6 +1333,33 @@ if __name__ == "__main__":
 > 🔗 **Related LeetCode**: [LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (Industry Custom OA / Peak Element Variant)
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Local maximum on a 1-D stream**:
+> Given a 1-D numerical stream array `rawData` and an integer `localArea`, return every index $i$ where the `localArea` neighbors on each side form strictly decreasing subsequences radiating outwards from $i$.
+> If fewer than `localArea` neighbors exist on a side (e.g., near array boundaries), use whatever neighbors are available.
+
+**Function Signature**:
+```python
+def findLocalMaxima(rawData: List[float], localArea: int) -> List[int]: ...
+```
+
+**Formal Constraints & Boundary Rules**:
+For each index $i$ in `rawData` of length $n$:
+- **Left Neighborhood**: Effective window length $L = \min(i, \text{localArea})$, requires $rawData[i - j + 1] > rawData[i - j]$ for all $j \in [1, L]$ (strictly decreasing away from $i$);
+- **Right Neighborhood**: Effective window length $R = \min(n - 1 - i, \text{localArea})$, requires $rawData[i + j - 1] > rawData[i + j]$ for all $j \in [1, R]$ (strictly decreasing away from $i$);
+- **Adaptive Boundary Degradation**: If fewer than `localArea` neighbors exist on either side, check all available neighbors on that side. If a side has 0 neighbors (e.g. $i=0$ on the left), the condition is vacuously true;
+- **Plateau Exclusion**: Any equal adjacent elements violate strict monotonicity and are excluded.
+
+**Examples**:
+- `rawData = [1, 3, 5, 4, 2, 6, 2, 1], localArea = 2` $\implies$ `[2]`
+- `rawData = [10], localArea = 3` $\implies$ `[0]`
+- `rawData = [2, 4, 4, 1], localArea = 1` $\implies$ `[]`
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1426,6 +1453,29 @@ if __name__ == "__main__":
 > 🔗 **Related LeetCode**: [LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (Quant Interview Mathematical Reduction OA)
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Largest Min + Max Sum in Subarray**:
+> Given an array of $n$ positive integers, find a contiguous subarray containing more than one number with the largest $\min + \max$. Return that sum.
+
+**Function Signature**:
+```python
+def largestMinMaxSum(nums: List[int]) -> int: ...
+```
+
+**Examples**:
+- `Input: [5, 12, 9, 6, 4]` $\implies$ `Output: 21` (subarray `[12, 9]`, $\min=9, \max=12, 9+12=21$)
+- `Input: [1, 2]` $\implies$ `Output: 3` (subarray `[1, 2]`, $\min=1, \max=2, 1+2=3$)
+- `Input: [10, 1, 10, 1]` $\implies$ `Output: 11` (subarray `[10, 1]`, $\min=1, \max=10, 1+10=11$)
+
+**Mathematical Constraints & Insights**:
+- Subarray length must be strictly $\ge 2$;
+- Extending any valid subarray can only decrease $\min$ and cannot increase $\max$ beyond pairing directly with the new maximum. Therefore, the optimal value always collapses to an adjacent pair $\max_{i}(nums[i] + nums[i+1])$ solvable in $\mathcal{O}(n)$ time.
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1502,6 +1552,29 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) — `https://leetcode.com/problems/subarray-sum-equals-k/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Subarray Sum Equals K (LeetCode 560)**:
+> Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals to `k`.
+> A subarray is a contiguous non-empty sequence of elements within an array.
+
+**Function Signature**:
+```python
+def subarraySum(nums: List[int], k: int) -> int: ...
+```
+
+**Examples**:
+- `nums = [1, 1, 1], k = 2` $\implies$ `2` (subarrays `nums[0..1]` and `nums[1..2]`)
+- `nums = [1, 2, 3], k = 3` $\implies$ `2` (subarrays `nums[0..1]` and `nums[2..2]`)
+- `nums = [1, -1, 0], k = 0` $\implies$ `3` (subarrays `[1, -1]`, `[0]`, `[1, -1, 0]`)
+
+**Key Invariants & Pitfalls**:
+- Elements may include negative numbers and zeros, breaking monotonicity. Standard two pointers / sliding window fails; prefix sum frequency map is strictly required for $\mathcal{O}(n)$ resolution.
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1582,6 +1655,30 @@ if __name__ == "__main__":
 > 🔗 **LeetCode Link**: [LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Longest Substring Without Repeating Characters (LeetCode 3)**:
+> Given a string `s`, find the length of the longest substring without duplicate characters.
+
+**Function Signature**:
+```python
+def lengthOfLongestSubstring(s: str) -> int: ...
+```
+
+**Examples**:
+- `s = "abcabcbb"` $\implies$ `3` (longest substring is `"abc"`)
+- `s = "bbbbb"` $\implies$ `1` (longest substring is `"b"`)
+- `s = "pwwkew"` $\implies$ `3` (longest substring is `"wke"`)
+- `s = ""` $\implies$ `0`
+
+**Invariants & Skip Optimization**:
+- The substring must be contiguous.
+- Maintain a hash map recording each character's latest index. Upon encountering a duplicate, jump the left boundary to `max(left, last_pos[c] + 1)` for strict single-pass $\mathcal{O}(n)$ time.
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1651,6 +1748,31 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Memory Allocator Simulation with 8-Byte Alignment**:
+> Given a binary memory array of fixed size $N$ (0 = free, 1 = occupied) with 8-byte alignment constraints, implement two operations:
+> - `alloc x`: find the leftmost slot whose start index is a multiple of 8 (`start % 8 == 0`) with at least $x$ consecutive free cells. Mark them occupied with a fresh auto-incrementing integer ID (starting from 1) and return the start index. Return -1 if no suitable contiguous slot fits.
+> - `erase id`: free every cell currently tagged with `id` (reset to 0), and return the total count of cells cleared.
+
+**Interface Definition**:
+```python
+class AlignedMemoryAllocator:
+    def __init__(self, size: int): ...
+    def alloc(self, x: int) -> int: ...
+    def erase(self, id: int) -> int: ...
+```
+
+**Examples**:
+- `allocator = AlignedMemoryAllocator(32)`
+- `allocator.alloc(10)` $\implies$ `0` (occupies `0..9`, ID 1)
+- `allocator.alloc(5)` $\implies$ `16` (candidate 8 is blocked by `8..9`; candidate 16 is free, occupies `16..20`, ID 2)
+- `allocator.erase(1)` $\implies$ `10` (frees `0..9`, returns 10)
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1760,6 +1882,29 @@ ceil$.
 > - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
 
 <div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Zigzag (Alternating-Parity) Subarrays**:
+> Given an integer array `nums`, count every contiguous subarray whose adjacent elements have differing parity (odd/even alternating: odd followed by even, or even followed by odd).
+> Single elements count as length-1 zigzag sequences.
+
+**Function Signature**:
+```python
+def countAlternatingSubarrays(nums: List[int]) -> int: ...
+```
+
+**Examples**:
+- `nums = [1, 2, 3]` $\implies$ `6` (`[1],[2],[3]`, `[1,2],[2,3]`, `[1,2,3]`)
+- `nums = [2, 4, 6]` $\implies$ `3` (only 3 single elements, all adjacents are even)
+- `nums = [1, 3, 2, 5]` $\implies$ `7` (4 singles plus `[3,2]`, `[2,5]`, `[3,2,5]`)
+
+**Consecutive Run Mechanics**:
+- Track length of alternating run ending at index $i$: if $nums[i] \pmod 2 \ne nums[i-1] \pmod 2$, increment run length by 1; otherwise reset to 1. Accumulate run length for each $i$ in $\mathcal{O}(n)$ time and $\mathcal{O}(1)$ space.
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
@@ -1832,6 +1977,28 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Two-Direction Justified Newspaper Layout (LeetCode 68 Variant)**:
+> Given an array of strings `words` and an integer `maxWidth`, format the text into lines justified to both left and right margins with `maxWidth` characters per text line, then frame the entire article with a border of asterisks (`'*'`).
+> - Pack as many words as possible per line in greedy fashion;
+> - Spaces on fully justified lines must be distributed as evenly as possible. Extra slots are assigned to the leftmost space gaps;
+> - The final line must be left-justified with single spaces between words and padded to `maxWidth`;
+> - Surround the formatted text with a frame of `*`: top and bottom border of length `maxWidth + 2`, and each text line enclosed as `*line*`.
+
+**Function Signature**:
+```python
+def formatNewspaper(words: List[str], maxWidth: int) -> List[str]: ...
+```
+
+**Examples**:
+- `words = ["This", "is", "an", "example", "of", "text", "justification."], maxWidth = 16`
+- Framed output generates asterisks borders of width 18 enclosing each justified line.
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>
@@ -1939,6 +2106,30 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode Link**: [LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Longest Palindromic Substring (LeetCode 5)**:
+> Given a string `s`, return the longest palindromic substring in `s`.
+> Compare standard Center Expansion ($\mathcal{O}(n^2)$) with Manacher's Linear Algorithm ($\mathcal{O}(n)$).
+
+**Function Signature**:
+```python
+def longestPalindrome(s: str) -> str: ...
+```
+
+**Examples**:
+- `s = "babad"` $\implies$ `"bab"` (or `"aba"`)
+- `s = "cbbd"` $\implies$ `"bb"`
+- `s = "a"` $\implies$ `"a"`
+
+**Algorithmic Comparison**:
+- **Center Expansion**: Expands around $2n-1$ centers, $\mathcal{O}(n^2)$ time, $\mathcal{O}(1)$ space;
+- **Manacher's Algorithm**: Inserts delimiters `#` to unify odd/even lengths. Exploits palindrome symmetry $i' = 2C - i$ and the rightmost boundary $R$ to achieve strict $\mathcal{O}(n)$ linear time.
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 Core Implementation</div>

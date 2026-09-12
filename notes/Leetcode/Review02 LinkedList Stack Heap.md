@@ -134,6 +134,31 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) — `https://leetcode.com/problems/reverse-nodes-in-k-group/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Reverse Nodes in k-Group (LeetCode 25)**:
+> Given the head of a linked list, reverse the nodes of the list $k$ at a time, and return the modified list.
+> $k$ is a positive integer and is less than or equal to the length of the linked list. If the number of nodes is not a multiple of $k$ then left-out nodes, in the end, should remain as it is.
+>
+> **Industrial Follow-ups**:
+> 1. What if remaining nodes (< $k$) at the tail should also be reversed?
+> 2. What if groups of $k$ themselves are reversed in order while preserving relative order within each group?
+
+**函数签名**：
+```python
+class KGroupReverser:
+    @staticmethod
+    def reverseKGroup(head: Optional[ListNode], k: int) -> Optional[ListNode]: ...
+```
+
+**输入输出示例**：
+- `head = [1, 2, 3, 4, 5], k = 2` $\implies$ `[2, 1, 4, 3, 5]`
+- `head = [1, 2, 3, 4, 5], k = 3` $\implies$ `[3, 2, 1, 4, 5]`
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码与实现</div>
 
 ```python
@@ -249,7 +274,29 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/`
 
 <div class="review-block">
-<div class="review-block-label">📌 题目定义与实现</div>
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Flatten a Multilevel Doubly Linked List (LeetCode 430)**:
+> You are given a doubly linked list, which contains nodes that have a next pointer, a previous pointer, and an additional child pointer. This child pointer may or may not point to a separate doubly linked list, also containing these special nodes. These child lists may have one or more children of their own, and so on, to produce a multilevel data structure.
+> Flatten the list so that all the nodes appear in a single-level, doubly linked list. Nodes in the child list should appear between the parent node and the parent node's next node.
+>
+> **Industrial Extension**: Filter out empty or null nodes (`val is None`) during flattening and maintain bidirectional pointer integrity.
+
+**类与函数签名**：
+```python
+class MultiLevelNode:
+    def __init__(self, val=None, prev=None, next=None, child=None): ...
+
+class MultiLevelListFlattenSolution:
+    @classmethod
+    def flattenAndFilterEmpty(cls, head: Optional[MultiLevelNode]) -> Optional[MultiLevelNode]: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
 
 ```python
 from typing import Optional
@@ -338,6 +385,30 @@ if __name__ == "__main__":
 > - [LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) — `https://leetcode.com/problems/basic-calculator/`
 > - [LeetCode 227 · Basic Calculator II](https://leetcode.com/problems/basic-calculator-ii/) — `https://leetcode.com/problems/basic-calculator-ii/`
 > - [LeetCode 772 · Basic Calculator III](https://leetcode.com/problems/basic-calculator-iii/) — `https://leetcode.com/problems/basic-calculator-iii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Basic Calculator Hierarchy (LeetCode 224, 227, 772)**:
+> Given a string expression representing an arithmetic expression containing non-negative integers, operators `+`, `-`, `*`, `/`, and parentheses `(`, `)`, evaluate the expression and return its integer value.
+> Division must truncate toward zero (e.g. $-3 // 2 = -1$).
+> The solution must support nested parentheses, arbitrary whitespace, and multi-digit integers in strict $\mathcal{O}(n)$ time.
+
+**函数签名**：
+```python
+class ExpressionCalculator:
+    @classmethod
+    def calculate(cls, s: str) -> int: ...
+```
+
+**输入输出示例**：
+- `s = "3+2*2"` $\implies$ `7`
+- `s = " 3/2 "` $\implies$ `1`
+- `s = " 3+5 / 2 "` $\implies$ `5`
+- `s = "2*(5+5*2)/3+(6/2+8)"` $\implies$ `21`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -440,6 +511,31 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **LeetCode 链接**：[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) — `https://leetcode.com/problems/sliding-window-maximum/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Sliding Window Maximum (LeetCode 239)**:
+> You are given an array of integers `nums`, there is a sliding window of size $k$ which is moving from the very left of the array to the very right. You can only see the $k$ numbers in the window. Each time the sliding window moves right by one position.
+> Return the max sliding window.
+
+**函数签名**：
+```python
+class SlidingWindowMaxSolution:
+    @classmethod
+    def maxSlidingWindow(cls, nums: List[int], k: int) -> List[int]: ...
+```
+
+**输入输出示例**：
+- `nums = [1,3,-1,-3,5,3,6,7], k = 3` $\implies$ `[3, 3, 5, 5, 6, 7]`
+- `nums = [1], k = 1` $\implies$ `[1]`
+
+**核心不变量**：
+- 维护一个存储**元素下标**的单调双端队列（Monotonic Deque），队头到队尾对应数值严格单调递减；
+- 窗口滑出时淘汰超出左界 $i - k$ 的队头下标；新元素压入时弹出所有小于当前值的队尾元素，实现均摊 $\mathcal{O}(1)$ 转移。
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -779,6 +875,32 @@ if __name__ == "__main__":
 > - [LeetCode 23 · Merge k Sorted Lists](https://leetcode.com/problems/merge-k-sorted-lists/) — `https://leetcode.com/problems/merge-k-sorted-lists/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Find Median from Data Stream (LeetCode 295)**:
+> The median is the middle value in an ordered integer list. If the size of the list is even, there is no middle value, and the median is the mean of the two middle values.
+> Implement the `MedianFinder` class:
+> - `MedianFinder()` initializes the MedianFinder object.
+> - `void addNum(int num)` adds the integer `num` from the data stream to the data structure.
+> - `double findMedian()` returns the median of all elements so far. Answers within $10^{-5}$ of the actual answer will be accepted.
+
+**接口定义**：
+```python
+class MedianFinder:
+    def __init__(self): ...
+    def addNum(self, num: int) -> None: ...
+    def findMedian(self) -> float: ...
+```
+
+**输入输出示例**：
+- `mf = MedianFinder()`
+- `mf.addNum(1); mf.addNum(2); mf.findMedian()` $\implies$ `1.5`
+- `mf.addNum(3); mf.findMedian()` $\implies$ `2.0`
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -831,6 +953,26 @@ if __name__ == "__main__":
 <div class="review-card-content">
 
 > 🔗 **相关 LeetCode**：[LeetCode 621 · Task Scheduler](https://leetcode.com/problems/task-scheduler/) — `https://leetcode.com/problems/task-scheduler/` (系统级分级轮转调度扩展)
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Tiered Priority Task Scheduler**:
+> Design a multi-merchant fair round-robin task scheduler. Merchants have priority tiers (e.g., VIP vs Regular). Tasks arrive with timestamps.
+> - Support receiving tasks: `receive_task(merchant_id, task_id, is_vip, arrival_time)`
+> - Support dispatching tasks: `process_next_task() -> tuple`
+> Tasks must be dispatched fairly: round-robin across active merchants, giving VIP merchants proportional quota / priority, while preserving FIFO arrival order for each merchant's own tasks.
+
+**接口定义**：
+```python
+class TieredTaskScheduler:
+    def __init__(self, vip_ratio: int = 2): ...
+    def receive_task(self, merchant_id: str, task_id: str, is_vip: bool, arrival_time: int) -> None: ...
+    def process_next_task(self) -> Optional[Tuple[str, str, bool, int]]: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -930,6 +1072,28 @@ if __name__ == "__main__":
 > 🔗 **相关 LeetCode**：[LeetCode 1834 · Single-Threaded CPU](https://leetcode.com/problems/single-threaded-cpu/) — `https://leetcode.com/problems/single-threaded-cpu/` (时间戳调度与堆懒删除)
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Timestamp Task Scheduler with Direct ID Removal**:
+> Design a priority task scheduler that manages tasks with timestamps, priorities, and unique task IDs:
+> - `addTask(task_id, priority, timestamp)`: schedules a task.
+> - `removeTask(task_id)`: cancels/evicts a task directly before execution.
+> - `pollNextTask(current_time)`: dispatches the highest-priority eligible task whose timestamp $\le \text{current\_time}$.
+> Must use a min-heap with lazy eviction and hash map version validation for $\mathcal{O}(\log N)$ amortized operations.
+
+**接口定义**：
+```python
+class TimestampTaskScheduler:
+    def __init__(self): ...
+    def addTask(self, task_id: str, priority: int, timestamp: int) -> None: ...
+    def removeTask(self, task_id: str) -> bool: ...
+    def pollNextTask(self, current_time: int) -> Optional[Tuple[str, int, int]]: ...
+```
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -993,6 +1157,30 @@ if __name__ == "__main__":
 > 🔗 **LeetCode 链接**：
 > - [LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) — `https://leetcode.com/problems/reverse-linked-list/`
 > - [LeetCode 92 · Reverse Linked List II](https://leetcode.com/problems/reverse-linked-list-ii/) — `https://leetcode.com/problems/reverse-linked-list-ii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Reverse Linked List (LeetCode 206 / 92)**:
+> Given the head of a singly linked list, reverse the list in-place, and return the reversed list.
+> Follow-up: implement both iterative three-pointer sliding and clean recursion, maintaining $\mathcal{O}(1)$ auxiliary space in iterative mode.
+
+**函数签名**：
+```python
+class ReverseListSolution:
+    @staticmethod
+    def reverseListIterative(head: Optional[ListNode]) -> Optional[ListNode]: ...
+    @staticmethod
+    def reverseListRecursive(head: Optional[ListNode]) -> Optional[ListNode]: ...
+```
+
+**输入输出示例**：
+- `head = [1, 2, 3, 4, 5]` $\implies$ `[5, 4, 3, 2, 1]`
+- `head = [1, 2]` $\implies$ `[2, 1]`
+- `head = []` $\implies$ `[]`
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
@@ -1098,6 +1286,30 @@ if __name__ == "__main__":
 > - [LeetCode 1081 · Smallest Subsequence of Distinct Characters](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) — `https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/`
 
 <div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Remove Duplicate Letters (LeetCode 316 / 1081)**:
+> Given a string `s`, remove duplicate letters so that every letter appears once and only once. You must make sure your result is the smallest in lexicographical order among all possible results.
+
+**函数签名**：
+```python
+class RemoveDuplicateLettersSolution:
+    @classmethod
+    def removeDuplicateLetters(cls, s: str) -> str: ...
+```
+
+**输入输出示例**：
+- `s = "bcabc"` $\implies$ `"abc"`
+- `s = "cbacdcbc"` $\implies$ `"acdb"`
+
+**核心约束与单调栈贪心**：
+- 维护单调递增栈：当新字符比栈顶小，且栈顶字符在后续字符串中还会再次出现时，可安全弹出栈顶以换取更小的字典序；
+- 辅助记录每个字符的最后出现下标 `last_seen` 与栈内存在性布尔集合 `in_stack`，在 $\mathcal{O}(n)$ 时间内求解。
+
+</div>
+
+<div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
 
 ```python
@@ -1176,6 +1388,27 @@ if __name__ == "__main__":
 > - [LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) — `https://leetcode.com/problems/min-stack/`
 > - [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) — `https://leetcode.com/problems/max-stack/`
 > - [LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) — `https://leetcode.com/problems/find-median-from-data-stream/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **MinStack, MaxStack & Streaming Median System (LeetCode 155 / 716 / 295)**:
+> Design stack structures supporting $\mathcal{O}(1)$ push, pop, top, and retrieval of the minimum (or maximum) element:
+> - `MinStack`: tracks running minimum using parallel differential / min stack in $\mathcal{O}(1)$.
+> - `Streaming Median`: maintains running median over an infinite stream via dual balancing heaps in $\mathcal{O}(\log n)$ per insertion.
+
+**接口定义**：
+```python
+class MinStack:
+    def __init__(self): ...
+    def push(self, val: int) -> None: ...
+    def pop(self) -> None: ...
+    def top(self) -> int: ...
+    def getMin(self) -> int: ...
+```
+
+</div>
 
 <div class="review-block">
 <div class="review-block-label">📌 核心代码</div>
