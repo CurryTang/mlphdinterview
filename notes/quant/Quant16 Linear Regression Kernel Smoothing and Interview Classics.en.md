@@ -868,28 +868,75 @@ The bandwidth $\lambda$ acts as a continuous dial between global rigidity and lo
 ---
 
 ### 2. From k-NN to Nadaraya–Watson Kernel Regression (ESL 6.1)
-- **Defects of the k-NN Running Mean**:
-  A simple $k$-nearest-neighbor running mean estimates $\hat{f}(x) = \frac{1}{k}\sum_{x_i \in N_k(x)} y_i$. As $x$ shifts smoothly, observations enter and leave the neighborhood $N_k(x)$ abruptly in discrete steps, yielding an unnaturally jagged and discontinuous curve $\hat{f}(x)$.
-- **The Nadaraya–Watson Kernel Estimator (1964)**:
-  Replace the 0-1 indicator weights with a smoothly decaying **kernel weighting function** $K_\lambda(x_0, x_i) = D\left(\frac{|x_i - x_0|}{\lambda}\right)$:
+
+#### (1) Conceptual Essence: Why Nadaraya–Watson is Inherently "Continuous Soft Distance-Weighted Global k-NN"
+In nonparametric estimation, the simplest model-free baseline is the $k$-nearest-neighbor running mean:
+$$
+\hat{f}_{\text{KNN}}(x) = \frac{1}{k}\sum_{x_i \in N_k(x)} y_i = \sum_{i=1}^N w_i^{\text{KNN}}(x) y_i
+$$
+Standard $k$-NN assigns weights according to a **0/1 hard boxcar window**:
+$$
+w_i^{\text{KNN}}(x) = \begin{cases} \frac{1}{k}, & x_i \in N_k(x) \\ 0, & x_i \notin N_k(x) \end{cases}
+$$
+This rigid "all-or-nothing" cutoff exhibits two major statistical defects:
+1. **Insensitivity to Relative Distances**: A point $0.01$ units away from $x$ receives identical weight $1/k$ as an edge neighbor $0.99$ units away;
+2. **Discontinuous Step Artifacts**: As query point $x$ moves smoothly along the domain, observations abruptly jump into or out of the neighborhood set $N_k(x)$, causing jagged, discontinuous step artifacts and undefined derivatives everywhere.
+
+The **Nadaraya–Watson (1964) kernel estimator** replaces the discontinuous 0/1 indicator window with a smooth, radially symmetric, monotonically decaying **continuous kernel function** $K_h(x - x_i) = K\left(\frac{x - x_i}{h}\right)$:
+$$
+\hat{f}_{\text{NW}}(x_0) = \frac{\sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right) y_i}{\sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right)} = \sum_{i=1}^N w_i(x_0) y_i
+$$
+This continuous distance weighting provides three fundamental mathematical advantages:
+- **Global Soft Assignment**: Every observation in the sample space participates in the estimate with weight decaying smoothly with Euclidean distance. Under a Gaussian kernel, all weights remain strictly positive everywhere, completely eliminating boundary jumps and guaranteeing that $\hat{f}_{\text{NW}}(x_0)$ is **everywhere continuous and infinitely differentiable ($C^\infty$ Smooth)**;
+- **Convex Combination & Bounded Predictions**: The normalized weights satisfy $w_i(x_0) \ge 0$ and $\sum_{i=1}^N w_i(x_0) = 1$。 The estimate $\hat{f}_{\text{NW}}(x_0)$ is strictly guaranteed to lie within the convex hull of local responses $[\min Y_i, \max Y_i]$, avoiding catastrophic Runge-type oscillations common in global polynomials;
+- **Local Constant Fit Equivalence**: The Nadaraya–Watson estimator is mathematically equivalent to solving a local weighted least squares problem for a constant:
   $$
-  \hat{f}(x_0) = \frac{\sum_{i=1}^N K_\lambda(x_0, x_i) y_i}{\sum_{i=1}^N K_\lambda(x_0, x_i)} = \sum_{i=1}^N l_i(x_0) y_i
+  \hat{f}_{\text{NW}}(x_0) = \arg\min_c \sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right)(y_i - c)^2
   $$
-  where the normalized equivalent weights $l_i(x_0) = \frac{K_\lambda(x_0, x_i)}{\sum_{j=1}^N K_\lambda(x_0, x_j)}$ satisfy non-negativity and $\sum_{i=1}^N l_i(x_0) = 1$.
-  - **Local Constant Fit Equivalence**: The Nadaraya–Watson estimate is mathematically equivalent to solving a local weighted least squares problem for a constant:
+
+```nadaraya-watson-demo
+```
+
+#### (2) First-Principles Derivation: Conditional Expectation via Dual Kernel Density Estimation (KDE)
+Why does the formula require a kernel-weighted sum in the numerator divided by the sum of kernel weights in the denominator? This is derived directly from first principles of conditional expectation:
+1. **Theoretical Target (Conditional Expectation)**:
+   The optimal regression function under $L_2$ loss is the conditional expectation $m(x) \equiv \mathbb{E}[Y \mid X = x]$:
+   $$
+   m(x) = \int_{-\infty}^{\infty} y \, p(y \mid X = x) \, dy = \int_{-\infty}^{\infty} y \, \frac{p(x, y)}{p(x)} \, dy = \frac{\int_{-\infty}^{\infty} y \, p(x, y) \, dy}{p(x)}
+   $$
+2. **Plugging in Parzen-Window Kernel Density Estimators (KDE)**:
+   Since joint density $p(x, y)$ and marginal density $p(x)$ are unknown, Nadaraya and Watson plugged in empirical kernel density estimates:
+   - **Denominator (Marginal Feature Density)**:
+     $$
+     \hat{p}(x) = \frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)
+     $$
+   - **Numerator (Weighted Joint Integral)**: Using product kernel $\hat{p}(x, y) = \frac{1}{N h_x h_y} \sum_{i=1}^N K_x\left(\frac{x - x_i}{h_x}\right) K_y\left(\frac{y - y_i}{h_y}\right)$:
+     $$
+     \int_{-\infty}^{\infty} y \, \hat{p}(x, y) \, dy = \frac{1}{N h_x} \sum_{i=1}^N K_x\left(\frac{x - x_i}{h_x}\right) \underbrace{\int_{-\infty}^{\infty} y \, \frac{1}{h_y} K_y\left(\frac{y - y_i}{h_y}\right) dy}_{= y_i}
+     $$
+     Because zero-mean symmetric 1D kernel $K_y(u)$ satisfies $\int u K_y(u) du = 0$ and $\int K_y(u) du = 1$, variable substitution $u = \frac{y - y_i}{h_y}$ evaluates the inner integral to exactly $y_i$!
+3. **Exact Cancellation**:
+   Dividing numerator by denominator, the scaling constant $\frac{1}{N h}$ cancels out, producing the closed-form Nadaraya–Watson formula:
+   $$
+   \hat{m}(x) = \frac{\frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right) y_i}{\frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)} = \frac{\sum_{i=1}^N K\left(\frac{x - x_i}{h}\right) y_i}{\sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)}
+   $$
+
+#### (3) Kernel Geometry & The Effective Sample Size ($N_{\text{eff}}$)
+- **Comparison of Three Standard Kernels**:
+  1. **Gaussian Kernel**: $K(u) = \frac{1}{\sqrt{2\pi}} e^{-u^2/2}$. Infinite support ($u \in \mathbb{R}$), infinitely differentiable everywhere, exponential tail decay, providing the smoothest qualitative interpolant.
+  2. **Epanechnikov Parabolic Kernel**: $K(u) = \frac{3}{4}(1 - u^2) \cdot \mathbb{I}(|u| \le 1)$. Compact support ($|x - x_i| \le h$); asymptotically optimal under Mean Integrated Squared Error (MISE, ~5% more sample-efficient than Gaussian), but derivative is discontinuous at boundaries.
+  3. **Tri-cube Kernel (Default in Cleveland's LOESS)**: $K(u) = (1 - |u|^3)^3 \cdot \mathbb{I}(|t| \le 1)$. Compact support with twice-continuous derivatives at boundary knots, smoother than Epanechnikov.
+- **Bandwidth $h$ as a Continuous $k$ & Effective Sample Size**:
+  Bandwidth $h$ operates as the continuous analog of neighbor count $k$:
+  - When $h \to 0$: The kernel collapses to a Dirac delta function, concentrating 100% of weight on the closest sample point ($w_{\text{nearest}} \to 1$), degenerating to 1-NN interpolation (zero bias, extreme variance).
+  - When $h \to \infty$: The kernel flattens across the entire real line, equalizing all weights to $w_i \to \frac{1}{N}$, collapsing into the horizontal sample mean $\bar{y}$ (extreme bias, zero variance).
+  - **Effective Sample Size ($N_{\text{eff}}$)**: Quantifies the equivalent number of independent observations informing the local estimate:
     $$
-    \hat{f}(x_0) = \arg\min_c \sum_{i=1}^N K_\lambda(x_0, x_i)(y_i - c)^2
+    N_{\text{eff}}(x_0) \equiv \frac{1}{\sum_{i=1}^N [w_i(x_0)]^2}
     $$
-- **Comparison of Three Common Kernels**:
-  1. **Epanechnikov Kernel**: $D(t) = \frac{3}{4}(1 - t^2) \cdot \mathbb{I}(|t| \le 1)$. Compact support. Asymptotically optimal in the sense of minimizing mean squared error (AMSE) among nonnegative kernels, though its derivative is discontinuous at the support boundaries.
-  2. **Tri-cube Kernel (Default in Cleveland's LOESS)**: $D(t) = (1 - |t|^3)^3 \cdot \mathbb{I}(|t| \le 1)$. Compact support, twice continuously differentiable at the support boundaries, with a flatter peak and smoother transitions.
-  3. **Gaussian Kernel**: $D(t) = \frac{1}{\sqrt{2\pi}} e^{-t^2/2}$. Infinite support, infinitely differentiable everywhere, with bandwidth parameter $\lambda$ acting as the standard deviation.
-- **Bandwidth $\lambda$ & The Bias-Variance Tradeoff**:
-  - $\lambda \to 0$ (narrow window): Dominated by only one or very few points $\implies$ **low bias, high variance** (interpolates data, extreme overfitting).
-  - $\lambda \to \infty$ (wide window): All points receive equal weight $\implies$ **high bias, low variance** (degenerates to the global sample mean $\bar{y}$, severe underfitting).
-  - **Metric Bandwidth vs. k-NN Adaptive Bandwidth**:
-    - Constant metric bandwidth $\lambda$ maintains a constant neighborhood radius, keeping bias roughly uniform across space, but causes variance to spike in sparse data regions.
-    - $k$-NN adaptive bandwidth $h_k(x_0) = |x_0 - x_{[k]}|$ fixes the effective sample size $k$, ensuring uniform variance, but broadens the window in sparse regions, increasing bias.
+    - When weight is concentrated on a single nearest neighbor, $N_{\text{eff}} = 1$;
+    - When weight is uniformly distributed across all $N$ observations, $N_{\text{eff}} = N$;
+    - In quantitative finance (e.g., volatility smile calibration or high-frequency order-flow kernel smoothing), $N_{\text{eff}}$ provides a rigorous indicator of local statistical degrees of freedom.
 
 ### 3. The Fatal Flaw: Boundary Bias & Mathematical Analysis
 Why is the Nadaraya–Watson estimator often rejected as an inadequate baseline in quantitative research?

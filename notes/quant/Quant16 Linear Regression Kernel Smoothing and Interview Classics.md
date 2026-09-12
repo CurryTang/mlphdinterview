@@ -865,28 +865,75 @@ $$
 ---
 
 ### 2. 从 k-NN 到 Nadaraya–Watson 核加权平均（ESL 6.1）
-- **k-NN 局部均值的缺陷**：
-  在点 $x$ 处取 $k$ 近邻平均 $\hat{f}(x) = \frac{1}{k}\sum_{x_i \in N_k(x)} y_i$。当查询点 $x$ 连续移动时，边界样本点以离散阶跃（0-1 权重突变）进出邻域 $N_k(x)$，导致拟合出的 $\hat{f}(x)$ 呈现不自然的锯齿状断裂（Bumpy & Discontinuous）。
-- **Nadaraya–Watson 核估计量（1964）**：
-  引入平滑衰减的**核权重函数** $K_\lambda(x_0, x_i) = D\left(\frac{|x_i - x_0|}{\lambda}\right)$，使得邻域样本权重随距离平滑衰减：
+
+#### （1）概念本质：为什么 Nadaraya–Watson 本质上是“连续距离衰减带权的全局软 k-NN”？
+在非参数回归中，最直观的无模型基准是 $k$ 近邻（$k$-NN）局部平均法：
+$$
+\hat{f}_{\text{KNN}}(x) = \frac{1}{k}\sum_{x_i \in N_k(x)} y_i = \sum_{i=1}^N w_i^{\text{KNN}}(x) y_i
+$$
+其中普通 $k$-NN 的权重本质上是一个 **0/1 矩形硬截断窗（Hard Boxcar Window）**：
+$$
+w_i^{\text{KNN}}(x) = \begin{cases} \frac{1}{k}, & x_i \in N_k(x) \\ 0, & x_i \notin N_k(x) \end{cases}
+$$
+这种“非黑即白”的硬截断带来两个致命的统计与数值缺陷：
+1. **忽略邻域内部的相对距离差异**：距离查询点 $x$ 仅 $0.01$ 的点与距离 $x$ 为 $0.99$ 的边缘点，分得完全相同的权重 $1/k$；
+2. **阶跃断点与不可导（Discontinuous Step Artifacts）**：当待估点 $x$ 沿坐标轴连续平移时，边界处的数据点会突兀地“跳入”或“跳出” $k$ 近邻集合，导致拟合曲线呈现锯齿状的不连续阶梯跳跃，处处不可导。
+
+**Nadaraya–Watson（1964）核估计量**的核心突破，正是**用平滑对称、单调距离衰减的连续核函数 $K_h(x - x_i) = K\left(\frac{x - x_i}{h}\right)$ 彻底取代硬截断的 0/1 矩形窗**：
+$$
+\hat{f}_{\text{NW}}(x_0) = \frac{\sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right) y_i}{\sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right)} = \sum_{i=1}^N w_i(x_0) y_i
+$$
+这一加权机制实现了三大性质升华：
+- **全局连续软分配（Soft Assignment）**：全域所有样本点均参与求和，权重随欧氏距离平滑衰减。对于高斯核，全域所有点权重严格大于 0，彻底消除了数据点进出邻域的离散跳跃，使得预测曲线在全域**处处连续、无穷阶光滑可导（$C^\infty$ Smooth）**；
+- **凸组合保界性（Convex Combination）**：归一化权重满足 $w_i(x_0) \ge 0$ 且 $\sum_{i=1}^N w_i(x_0) = 1$。预测值 $\hat{f}_{\text{NW}}(x_0)$ 严格位于局部样本响应值的凸包内，绝不会像高阶多项式回归那样在样本稀疏区发生剧烈发散（Runge 现象）；
+- **局部常数（Local Constant）等价性**：Nadaraya–Watson 估计量在数学上严格等价于在 $x_0$ 局部求解加权最小二乘常数：
   $$
-  \hat{f}(x_0) = \frac{\sum_{i=1}^N K_\lambda(x_0, x_i) y_i}{\sum_{i=1}^N K_\lambda(x_0, x_i)} = \sum_{i=1}^N l_i(x_0) y_i
+  \hat{f}_{\text{NW}}(x_0) = \arg\min_c \sum_{i=1}^N K\left(\frac{x_0 - x_i}{h}\right)(y_i - c)^2
   $$
-  其中等价权重 $l_i(x_0) = \frac{K_\lambda(x_0, x_i)}{\sum_{j=1}^N K_\lambda(x_0, x_j)}$ 满足非负性且归一化 $\sum_{i=1}^N l_i(x_0) = 1$。
-  - **局部常数（Local Constant）等价性**：Nadaraya-Watson 估计量严格等价于在 $x_0$ 邻域内求解一个加权最小二乘常数：
+
+```nadaraya-watson-demo
+```
+
+#### （2）第一性原理推导：从条件期望到双重核密度估计（KDE）代入
+为什么分子是核加权和，而分母必须是核之和？这并非人为经验凑出的启发式公式，而是从条件期望第一性原理推导出的**精确解析闭式**：
+1. **理论目标（条件期望定义）**：
+   回归问题的终极统计目标是寻找条件期望函数 $m(x) \equiv \mathbb{E}[Y \mid X = x]$。根据概率论定义：
+   $$
+   m(x) = \int_{-\infty}^{\infty} y \, p(y \mid X = x) \, dy = \int_{-\infty}^{\infty} y \, \frac{p(x, y)}{p(x)} \, dy = \frac{\int_{-\infty}^{\infty} y \, p(x, y) \, dy}{p(x)}
+   $$
+2. **非参数核密度估计（Parzen Window KDE）代入**：
+   在现实中，联合概率密度 $p(x, y)$ 与边缘概率密度 $p(x)$ 均未知。统计学家 Nadaraya 与 Watson 提出用独立核密度估计分别代入分子与分母：
+   - **分母（特征边缘密度估计）**：
+     $$
+     \hat{p}(x) = \frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)
+     $$
+   - **分子（联合密度加权积分）**：采用乘积核 $\hat{p}(x, y) = \frac{1}{N h_x h_y} \sum_{i=1}^N K_x\left(\frac{x - x_i}{h_x}\right) K_y\left(\frac{y - y_i}{h_y}\right)$：
+     $$
+     \int_{-\infty}^{\infty} y \, \hat{p}(x, y) \, dy = \frac{1}{N h_x} \sum_{i=1}^N K_x\left(\frac{x - x_i}{h_x}\right) \underbrace{\int_{-\infty}^{\infty} y \, \frac{1}{h_y} K_y\left(\frac{y - y_i}{h_y}\right) dy}_{= y_i}
+     $$
+     因为对称零均值一维核 $K_y(u)$ 满足 $\int u K_y(u) du = 0$ 且 $\int K_y(u) du = 1$，变量代换 $u = \frac{y - y_i}{h_y}$ 使得该积分精确等于 $y_i$！
+3. **闭式约分**：
+   将分子与分母相除，标量系数 $\frac{1}{N h}$ 完美约去，分毫不差地诞生了 Nadaraya–Watson 估计量：
+   $$
+   \hat{m}(x) = \frac{\frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right) y_i}{\frac{1}{N h} \sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)} = \frac{\sum_{i=1}^N K\left(\frac{x - x_i}{h}\right) y_i}{\sum_{i=1}^N K\left(\frac{x - x_i}{h}\right)}
+   $$
+
+#### （3）三大核函数几何形态与有效样本容量（Effective Sample Size）
+- **三大常用核函数形态对比**：
+  1. **高斯核（Gaussian Kernel）**：$K(u) = \frac{1}{\sqrt{2\pi}} e^{-u^2/2}$。全域无限支集（$u \in \mathbb{R}$），处处无穷阶连续可导，尾部呈指数级衰减，平滑效果最为自然。
+  2. **Epanechnikov 抛物线核**：$K(u) = \frac{3}{4}(1 - u^2) \cdot \mathbb{I}(|u| \le 1)$。紧支集（$|x - x_i| \le h$ 之外权重严格为 0）；在渐近积分均方误差（MISE）准则下是理论最优核（相比高斯核效率高约 5%），但边界处一阶导数不连续。
+  3. **Tri-cube 三次核（Cleveland LOESS 默认核）**：$K(u) = (1 - |u|^3)^3 \cdot \mathbb{I}(|u| \le 1)$。紧支集且边界处二阶导数连续，过渡比 Epanechnikov 更平滑。
+- **连续调节旋钮：带宽 $h$ 与有效样本容量 $N_{\text{eff}}$**：
+  带宽 $h$ 充当了连续版的“近邻数 $k$”：
+  - 当 $h \to 0$ 时：核函数收敛至狄拉克 $\delta$ 函数，距离 $x_0$ 最近的单个样本点权重占 100%（$w_{\text{nearest}} \to 1$），估计量退化为 1-NN 样本点插值（零偏差、极大方差）；
+  - 当 $h \to \infty$ 时：核函数扁平化，所有样本点的核响应趋向相同常数，归一化权重均匀化为 $w_i \to \frac{1}{N}$，估计量退化为水平的全局样本均值 $\bar{y}$（极大偏差、零方差）；
+  - **有效样本容量（Effective Sample Size）**：定量刻画局部平滑所实际动用的“独立信息点数量”：
     $$
-    \hat{f}(x_0) = \arg\min_c \sum_{i=1}^N K_\lambda(x_0, x_i)(y_i - c)^2
+    N_{\text{eff}}(x_0) \equiv \frac{1}{\sum_{i=1}^N [w_i(x_0)]^2}
     $$
-- **三大常用核函数对比**：
-  1. **Epanechnikov 二次核**：$D(t) = \frac{3}{4}(1 - t^2) \cdot \mathbb{I}(|t| \le 1)$。紧支集（Compact Support）；在渐近均方误差（AMSE）意义下是方差最小的最优核，但在支集边界处一阶不可导。
-  2. **Tri-cube 三次核（Cleveland LOESS 默认核）**：$D(t) = (1 - |t|^3)^3 \cdot \mathbb{I}(|t| \le 1)$。紧支集；在支集边界具有二阶连续导数，顶部更平坦，过渡更平滑。
-  3. **高斯核（Gaussian Kernel）**：$D(t) = \frac{1}{\sqrt{2\pi}} e^{-t^2/2}$。全域无限支集，处处无限可微；以标准差充当带宽 $\lambda$。
-- **带宽 $\lambda$ 与偏差-方差权衡（Bias-Variance Tradeoff）**：
-  - $\lambda \to 0$（极窄窗口）：仅受极少数甚至单个点主导，$\hat{f}(x_0) \approx y_i$，**低偏差、高方差**（插值样本点，严重过拟合）；
-  - $\lambda \to \infty$（极宽窗口）：全样本均匀加权，$\hat{f}(x_0) \to \bar{y}$，**高偏差、低方差**（欠拟合，退化为全局常数均值）；
-  - **度量带宽（Metric Bandwidth） vs. k 近邻自适应带宽（Adaptive Bandwidth）**：
-    - 固定度量带宽 $\lambda$（如 $\lambda = 0.2$）：邻域物理宽度恒定，保持局部偏差基本恒定，但在样本稀疏区域（数据点极少）估计方差会剧烈上升；
-    - $k$ 近邻自适应宽度 $h_k(x_0) = |x_0 - x_{[k]}|$：保证估计方差处处恒定，但在稀疏区域邻域被迫变宽，导致偏差增大。
+    - 当权重全部集中于 1 个点时，$N_{\text{eff}} = 1$；
+    - 当权重均匀分散到全域全部 $N$ 个点时，$N_{\text{eff}} = N$；
+    - 在量化波动率曲面构造与高频微观结构因子平滑中，$N_{\text{eff}}$ 提供了各价位/各期限局部估计置信度的严谨指标。
 
 ### 3. 局部常数的致命弱点：边界偏差（Boundary Bias）与数学机理
 为什么 Nadaraya–Watson 核估计在实际应用中存在严重缺陷（边界偏差）？

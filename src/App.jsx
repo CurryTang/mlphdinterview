@@ -9298,6 +9298,642 @@ function ANOVAVarianceVisual() {
   );
 }
 
+const NW_DATA_POINTS = [
+  { id: 1, x: 0.8, y: 2.2 },
+  { id: 2, x: 1.5, y: 3.9 },
+  { id: 3, x: 2.3, y: 6.8 },
+  { id: 4, x: 3.1, y: 7.4 },
+  { id: 5, x: 3.9, y: 5.6 },
+  { id: 6, x: 4.7, y: 3.2 },
+  { id: 7, x: 5.5, y: 2.2 },
+  { id: 8, x: 6.3, y: 3.0 },
+  { id: 9, x: 7.1, y: 5.4 },
+  { id: 10, x: 7.9, y: 7.8 },
+  { id: 11, x: 8.7, y: 8.5 },
+  { id: 12, x: 9.3, y: 6.7 },
+];
+
+function NadarayaWatsonVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [x0, setX0] = useState(4.2);
+  const [bandwidth, setBandwidth] = useState(1.1);
+  const [kernelType, setKernelType] = useState('gaussian'); // 'gaussian' | 'epanechnikov' | 'knn'
+  const [activeTab, setActiveTab] = useState('weights'); // 'weights' | 'comparison' | 'bandwidth'
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [kNeighbors, setKNeighbors] = useState(3);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setX0((prev) => {
+        let next = prev + 0.12;
+        if (next > 9.2) next = 0.8;
+        return parseFloat(next.toFixed(2));
+      });
+    }, 90);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const svgWidth = 800;
+  const svgHeight = 380;
+  const padLeft = 60;
+  const padRight = 40;
+  const padTop = 35;
+  const padBottom = 45;
+  const plotW = svgWidth - padLeft - padRight;
+  const plotH = svgHeight - padTop - padBottom;
+
+  const toSvgX = (x) => padLeft + ((x - 0) / 10) * plotW;
+  const toSvgY = (y) => padTop + plotH - ((y - 0) / 10) * plotH;
+  const fromSvgX = (sx) => {
+    const val = ((sx - padLeft) / plotW) * 10;
+    return Math.max(0.5, Math.min(9.5, val));
+  };
+
+  const evalKernel = (u, type) => {
+    if (type === 'epanechnikov') {
+      return Math.abs(u) <= 1 ? 0.75 * (1 - u * u) : 0;
+    }
+    return Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+  };
+
+  const computeWeightsAndPred = (qx, h, type, k = 3) => {
+    if (type === 'knn') {
+      const sorted = NW_DATA_POINTS.map((p, idx) => ({
+        ...p,
+        idx,
+        dist: Math.abs(p.x - qx),
+      })).sort((a, b) => a.dist - b.dist);
+      const topKIndices = new Set(sorted.slice(0, k).map((p) => p.idx));
+      const weights = NW_DATA_POINTS.map((_, i) => (topKIndices.has(i) ? 1 / k : 0));
+      const yPred = weights.reduce((sum, w, i) => sum + w * NW_DATA_POINTS[i].y, 0);
+      return { weights, yPred };
+    }
+
+    const rawWeights = NW_DATA_POINTS.map((p) => {
+      const u = (qx - p.x) / h;
+      return evalKernel(u, type);
+    });
+    const sumW = rawWeights.reduce((a, b) => a + b, 0);
+
+    if (sumW < 1e-9) {
+      let minD = Infinity;
+      let minIdx = 0;
+      NW_DATA_POINTS.forEach((p, i) => {
+        const d = Math.abs(p.x - qx);
+        if (d < minD) {
+          minD = d;
+          minIdx = i;
+        }
+      });
+      const weights = NW_DATA_POINTS.map((_, i) => (i === minIdx ? 1 : 0));
+      return { weights, yPred: NW_DATA_POINTS[minIdx].y };
+    }
+
+    const weights = rawWeights.map((w) => w / sumW);
+    const yPred = weights.reduce((sum, w, i) => sum + w * NW_DATA_POINTS[i].y, 0);
+    return { weights, yPred };
+  };
+
+  const { weights: curWeights, yPred: curYPred } = useMemo(
+    () => computeWeightsAndPred(x0, bandwidth, kernelType, kNeighbors),
+    [x0, bandwidth, kernelType, kNeighbors]
+  );
+
+  const sumW2 = curWeights.reduce((acc, w) => acc + w * w, 0);
+  const nEff = sumW2 > 0 ? 1 / sumW2 : 1;
+
+  let maxWeightIdx = 0;
+  let maxWeightVal = 0;
+  curWeights.forEach((w, i) => {
+    if (w > maxWeightVal) {
+      maxWeightVal = w;
+      maxWeightIdx = i;
+    }
+  });
+
+  const sampleMeanY =
+    NW_DATA_POINTS.reduce((acc, p) => acc + p.y, 0) / NW_DATA_POINTS.length;
+
+  const curvePoints = useMemo(() => {
+    const steps = 90;
+    const nwPathPts = [];
+    const knnPathPts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = 0.5 + (i / steps) * 9.0;
+      const nwRes = computeWeightsAndPred(x, bandwidth, kernelType === 'knn' ? 'gaussian' : kernelType);
+      const knnRes = computeWeightsAndPred(x, bandwidth, 'knn', kNeighbors);
+      nwPathPts.push({ x, y: nwRes.yPred });
+      knnPathPts.push({ x, y: knnRes.yPred });
+    }
+    return { nwPathPts, knnPathPts };
+  }, [bandwidth, kernelType, kNeighbors]);
+
+  const nwPathString = useMemo(() => {
+    return curvePoints.nwPathPts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`)
+      .join(' ');
+  }, [curvePoints]);
+
+  const knnPathString = useMemo(() => {
+    return curvePoints.knnPathPts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`)
+      .join(' ');
+  }, [curvePoints]);
+
+  const kernelEnvelopePath = useMemo(() => {
+    const steps = 50;
+    const pts = [];
+    const span = bandwidth * 2.8;
+    const xStart = Math.max(0, x0 - span);
+    const xEnd = Math.min(10, x0 + span);
+    for (let i = 0; i <= steps; i++) {
+      const x = xStart + (i / steps) * (xEnd - xStart);
+      const u = (x - x0) / bandwidth;
+      const kVal = evalKernel(u, kernelType === 'knn' ? 'gaussian' : kernelType);
+      const yVal = 0.4 + kVal * 2.5;
+      pts.push({ x, y: yVal });
+    }
+    const pathD = pts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`)
+      .join(' ');
+    const baselineY = toSvgY(0.4);
+    return `${pathD} L ${toSvgX(xEnd).toFixed(1)} ${baselineY} L ${toSvgX(xStart).toFixed(1)} ${baselineY} Z`;
+  }, [x0, bandwidth, kernelType]);
+
+  const handleSvgClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const scale = svgWidth / rect.width;
+    const newX0 = fromSvgX(clickX * scale);
+    setX0(parseFloat(newX0.toFixed(2)));
+  };
+
+  return (
+    <section className="nw-demo-container">
+      <header className="nw-demo-header">
+        <div>
+          <div className="eyebrow">{t('非参数平滑 · 局部距离加权平均交互空间', 'Nonparametric Smoothing · Local Weighted Average Visual Lab')}</div>
+          <h2>{t('Nadaraya–Watson 核回归：连续距离权重的“软 KNN”', 'Nadaraya–Watson Kernel: Continuous Soft Distance-Weighted KNN')}</h2>
+        </div>
+
+        <div className="nw-demo-controls">
+          <div className="nw-tab-group">
+            <button
+              className={`nw-tab-btn ${activeTab === 'weights' ? 'active' : ''}`}
+              onClick={() => setActiveTab('weights')}
+            >
+              {t('权重与核响应', 'Weights & Kernel')}
+            </button>
+            <button
+              className={`nw-tab-btn ${activeTab === 'comparison' ? 'active' : ''}`}
+              onClick={() => setActiveTab('comparison')}
+            >
+              {t('平滑 vs 阶梯对比', 'NW vs Hard KNN')}
+            </button>
+            <button
+              className={`nw-tab-btn ${activeTab === 'bandwidth' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bandwidth')}
+            >
+              {t('带宽与有效样本量', 'Bandwidth & N_eff')}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              className={`nw-chip-btn ${kernelType === 'gaussian' ? 'active' : ''}`}
+              onClick={() => setKernelType('gaussian')}
+            >
+              {t('高斯核 (Gaussian)', 'Gaussian')}
+            </button>
+            <button
+              className={`nw-chip-btn ${kernelType === 'epanechnikov' ? 'active' : ''}`}
+              onClick={() => setKernelType('epanechnikov')}
+            >
+              {t('埃帕内奇尼科夫核 (Epanechnikov)', 'Epanechnikov')}
+            </button>
+            <button
+              className={`nw-chip-btn ${kernelType === 'knn' ? 'active' : ''}`}
+              onClick={() => setKernelType('knn')}
+            >
+              {t('硬截断 KNN (Hard KNN)', 'Hard KNN')}
+            </button>
+          </div>
+
+          <button
+            className={`nw-chip-btn ${isPlaying ? 'active' : ''}`}
+            onClick={() => setIsPlaying(!isPlaying)}
+            style={{ borderColor: '#10b981', color: isPlaying ? '#fff' : '#10b981' }}
+          >
+            {isPlaying ? t('⏸ 暂停扫描', '⏸ Pause') : t('▶ 动态扫描 x₀', '▶ Play Sweep')}
+          </button>
+        </div>
+      </header>
+
+      {/* Dual Sliders: Query x0 and Bandwidth h */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', background: '#0f172a', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '0.9rem', border: '1px solid #1e293b' }}>
+        <div className="nw-slider-wrap">
+          <span>{t('待估点 (Query Point)', 'Query Point')} <strong>x₀ = {x0.toFixed(2)}</strong>:</span>
+          <input
+            type="range"
+            min="0.5"
+            max="9.5"
+            step="0.05"
+            value={x0}
+            onChange={(e) => setX0(parseFloat(e.target.value))}
+            style={{ flex: 1, accentColor: '#10b981' }}
+          />
+        </div>
+
+        {kernelType !== 'knn' ? (
+          <div className="nw-slider-wrap">
+            <span>{t('核带宽 (Bandwidth)', 'Bandwidth')} <strong>h = {bandwidth.toFixed(2)}</strong>:</span>
+            <input
+              type="range"
+              min="0.4"
+              max="2.5"
+              step="0.05"
+              value={bandwidth}
+              onChange={(e) => setBandwidth(parseFloat(e.target.value))}
+              style={{ flex: 1, accentColor: '#38bdf8' }}
+            />
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+              {bandwidth < 0.7 ? t('(局部震荡)', '(Spiky/High Var)') : bandwidth > 1.8 ? t('(全局均值)', '(Flat/High Bias)') : t('(最佳平衡)', '(Balanced)')}
+            </span>
+          </div>
+        ) : (
+          <div className="nw-slider-wrap">
+            <span>{t('近邻数 (Neighbors)', 'Neighbors')} <strong>k = {kNeighbors}</strong>:</span>
+            <input
+              type="range"
+              min="1"
+              max="7"
+              step="1"
+              value={kNeighbors}
+              onChange={(e) => setKNeighbors(parseInt(e.target.value, 10))}
+              style={{ flex: 1, accentColor: '#f43f5e' }}
+            />
+            <span style={{ fontSize: '0.7rem', color: '#f43f5e' }}>
+              {t('(硬阶梯截断)', '(Hard Boxcar Jumps)')}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Real-time Math Metrics Bar */}
+      <div className="nw-metrics-grid">
+        <div className="nw-metric-card" style={{ borderLeft: '3px solid #10b981' }}>
+          <span>{t('查询位置 x₀', 'Query Point x₀')}</span>
+          <strong style={{ color: '#10b981' }}>x = {x0.toFixed(2)}</strong>
+        </div>
+        <div className="nw-metric-card" style={{ borderLeft: '3px solid #38bdf8' }}>
+          <span>{t('NW 预测值 m̂(x₀) = ∑ wᵢ Yᵢ', 'NW Estimate m̂(x₀)')}</span>
+          <strong style={{ color: '#38bdf8' }}>{curYPred.toFixed(2)}</strong>
+        </div>
+        <div className="nw-metric-card" style={{ borderLeft: '3px solid #a855f7' }}>
+          <span>{t('有效样本容量 N_eff = 1/∑wᵢ²', 'Effective Sample Size N_eff')}</span>
+          <strong style={{ color: '#c084fc' }}>{nEff.toFixed(2)} / 12</strong>
+        </div>
+        <div className="nw-metric-card" style={{ borderLeft: '3px solid #fbbf24' }}>
+          <span>{t('最大权重贡献点', 'Max Contributor Point')}</span>
+          <strong style={{ color: '#fbbf24' }}>
+            #{NW_DATA_POINTS[maxWeightIdx].id} ({(maxWeightVal * 100).toFixed(1)}%)
+          </strong>
+        </div>
+        <div className="nw-metric-card" style={{ borderLeft: '3px solid #94a3b8' }}>
+          <span>{t('全局均值 Ȳ (h → ∞)', 'Global Mean Ȳ (h → ∞)')}</span>
+          <strong style={{ color: '#94a3b8' }}>{sampleMeanY.toFixed(2)}</strong>
+        </div>
+      </div>
+
+      {/* Interactive SVG Canvas */}
+      <svg
+        className="nw-demo-svg"
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        onClick={handleSvgClick}
+        style={{ cursor: 'crosshair' }}
+      >
+        <defs>
+          <linearGradient id="nwKernelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0.03" />
+          </linearGradient>
+          <radialGradient id="nwPointGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Background Gridlines */}
+        {[2, 4, 6, 8].map((gx) => (
+          <line
+            key={`gx-${gx}`}
+            x1={toSvgX(gx)}
+            y1={padTop}
+            x2={toSvgX(gx)}
+            y2={svgHeight - padBottom}
+            stroke="#1e293b"
+            strokeDasharray="2 2"
+          />
+        ))}
+        {[2, 4, 6, 8].map((gy) => (
+          <line
+            key={`gy-${gy}`}
+            x1={padLeft}
+            y1={toSvgY(gy)}
+            x2={svgWidth - padRight}
+            y2={toSvgY(gy)}
+            stroke="#1e293b"
+            strokeDasharray="2 2"
+          />
+        ))}
+
+        {/* Global Sample Mean Baseline */}
+        <line
+          x1={padLeft}
+          y1={toSvgY(sampleMeanY)}
+          x2={svgWidth - padRight}
+          y2={toSvgY(sampleMeanY)}
+          stroke="#475569"
+          strokeDasharray="4 4"
+          strokeWidth="1.5"
+        />
+        <text
+          x={svgWidth - padRight - 5}
+          y={toSvgY(sampleMeanY) - 6}
+          fill="#64748b"
+          fontSize="10"
+          textAnchor="end"
+          fontFamily="IBM Plex Mono, monospace"
+        >
+          {t(`全局样本均值 Ȳ = ${sampleMeanY.toFixed(2)}`, `Sample Mean Ȳ = ${sampleMeanY.toFixed(2)}`)}
+        </text>
+
+        {/* Kernel Envelope Distribution hovering around x0 */}
+        {kernelType !== 'knn' && (
+          <g>
+            <path d={kernelEnvelopePath} fill="url(#nwKernelGrad)" stroke="#10b981" strokeWidth="1.5" />
+            <text
+              x={toSvgX(x0)}
+              y={toSvgY(0.4) - 26}
+              fill="#10b981"
+              fontSize="10"
+              textAnchor="middle"
+              fontFamily="IBM Plex Mono, monospace"
+              fontWeight="bold"
+            >
+              K((x - {x0.toFixed(1)}) / {bandwidth.toFixed(1)})
+            </text>
+          </g>
+        )}
+
+        {/* Fitted Nadaraya-Watson Smooth Curve */}
+        <path
+          d={nwPathString}
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="3"
+          style={{ filter: 'drop-shadow(0 0 6px rgba(16, 185, 129, 0.4))' }}
+        />
+
+        {/* Comparison: Hard KNN Step Curve */}
+        {(activeTab === 'comparison' || kernelType === 'knn') && (
+          <path
+            d={knnPathString}
+            fill="none"
+            stroke="#f43f5e"
+            strokeWidth="2.5"
+            strokeDasharray="5 3"
+            style={{ filter: 'drop-shadow(0 0 4px rgba(244, 63, 94, 0.4))' }}
+          />
+        )}
+
+        {/* Connecting Rays / Beams from Data Points to Query Line x0 */}
+        {NW_DATA_POINTS.map((p, idx) => {
+          const w = curWeights[idx];
+          if (w < 0.01) return null;
+          const px = toSvgX(p.x);
+          const py = toSvgY(p.y);
+          const qx = toSvgX(x0);
+          const qy = toSvgY(curYPred);
+
+          return (
+            <g key={`beam-${p.id}`}>
+              <line
+                x1={px}
+                y1={py}
+                x2={qx}
+                y2={qy}
+                stroke={kernelType === 'knn' ? '#f43f5e' : '#10b981'}
+                strokeWidth={Math.max(1, w * 9)}
+                strokeOpacity={Math.max(0.15, w * 0.9)}
+                className="nw-ray-animated"
+              />
+            </g>
+          );
+        })}
+
+        {/* Query Vertical Scan Line */}
+        <line
+          x1={toSvgX(x0)}
+          y1={padTop}
+          x2={toSvgX(x0)}
+          y2={svgHeight - padBottom}
+          stroke="#38bdf8"
+          strokeWidth="1.5"
+          strokeDasharray="3 3"
+        />
+
+        {/* Data Points */}
+        {NW_DATA_POINTS.map((p, idx) => {
+          const w = curWeights[idx];
+          const px = toSvgX(p.x);
+          const py = toSvgY(p.y);
+          const r = Math.max(4.5, 4.5 + w * 18);
+          const isMax = idx === maxWeightIdx;
+
+          return (
+            <g key={`pt-${p.id}`}>
+              {w > 0.05 && (
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={r * 1.8}
+                  fill="url(#nwPointGlow)"
+                  opacity={w * 1.5}
+                />
+              )}
+              <circle
+                cx={px}
+                cy={py}
+                r={r}
+                fill={isMax ? '#fbbf24' : w > 0.15 ? '#10b981' : '#38bdf8'}
+                stroke="#090e1a"
+                strokeWidth="2"
+                style={{
+                  transition: 'all 0.15s ease-out',
+                  filter: isMax ? 'drop-shadow(0 0 8px #fbbf24)' : 'none',
+                }}
+              />
+              <text
+                x={px}
+                y={py - r - 4}
+                fill={isMax ? '#fbbf24' : '#cbd5e1'}
+                fontSize="10"
+                textAnchor="middle"
+                fontFamily="IBM Plex Mono, monospace"
+                fontWeight={isMax ? 'bold' : 'normal'}
+              >
+                {(w * 100).toFixed(0)}%
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Query Point Prediction Marker */}
+        <g>
+          <circle
+            cx={toSvgX(x0)}
+            cy={toSvgY(curYPred)}
+            r="7"
+            fill="#38bdf8"
+            className="nw-pulse-beacon"
+          />
+          <circle
+            cx={toSvgX(x0)}
+            cy={toSvgY(curYPred)}
+            r="3"
+            fill="#ffffff"
+          />
+          <g transform={`translate(${toSvgX(x0) + 12}, ${toSvgY(curYPred) - 10})`}>
+            <rect
+              x="-6"
+              y="-14"
+              width="100"
+              height="22"
+              rx="4"
+              fill="rgba(15, 23, 42, 0.9)"
+              stroke="#38bdf8"
+              strokeWidth="1"
+            />
+            <text
+              x="44"
+              y="1"
+              fill="#38bdf8"
+              fontSize="11"
+              textAnchor="middle"
+              fontFamily="IBM Plex Mono, monospace"
+              fontWeight="bold"
+            >
+              m̂ = {curYPred.toFixed(2)}
+            </text>
+          </g>
+        </g>
+
+        {/* Axes */}
+        <line
+          x1={padLeft}
+          y1={svgHeight - padBottom}
+          x2={svgWidth - padRight}
+          y2={svgHeight - padBottom}
+          stroke="#475569"
+          strokeWidth="1.5"
+        />
+        <line
+          x1={padLeft}
+          y1={padTop}
+          x2={padLeft}
+          y2={svgHeight - padBottom}
+          stroke="#475569"
+          strokeWidth="1.5"
+        />
+
+        {/* X Axis Labels */}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((xVal) => (
+          <text
+            key={`x-${xVal}`}
+            x={toSvgX(xVal)}
+            y={svgHeight - padBottom + 18}
+            fill="#94a3b8"
+            fontSize="10"
+            textAnchor="middle"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {xVal}
+          </text>
+        ))}
+        <text
+          x={toSvgX(10)}
+          y={svgHeight - padBottom + 32}
+          fill="#94a3b8"
+          fontSize="11"
+          textAnchor="end"
+          fontFamily="IBM Plex Mono, monospace"
+        >
+          {t('特征输入 x', 'Feature x')}
+        </text>
+
+        {/* Y Axis Labels */}
+        {[0, 2, 4, 6, 8, 10].map((yVal) => (
+          <text
+            key={`y-${yVal}`}
+            x={padLeft - 10}
+            y={toSvgY(yVal) + 3}
+            fill="#94a3b8"
+            fontSize="10"
+            textAnchor="end"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {yVal}
+          </text>
+        ))}
+        <text
+          x={padLeft - 15}
+          y={padTop - 12}
+          fill="#94a3b8"
+          fontSize="11"
+          textAnchor="start"
+          fontFamily="IBM Plex Mono, monospace"
+        >
+          {t('响应值 Y', 'Response Y')}
+        </text>
+
+        {/* Legend */}
+        <g transform={`translate(${padLeft + 15}, ${padTop + 10})`}>
+          <line x1="0" y1="0" x2="20" y2="0" stroke="#10b981" strokeWidth="3" />
+          <text x="26" y="4" fill="#10b981" fontSize="10" fontFamily="IBM Plex Mono, monospace">
+            {t('Nadaraya–Watson 核平滑曲线', 'Nadaraya–Watson Smooth')}
+          </text>
+
+          {(activeTab === 'comparison' || kernelType === 'knn') && (
+            <g transform="translate(200, 0)">
+              <line x1="0" y1="0" x2="20" y2="0" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="4 2" />
+              <text x="26" y="4" fill="#f43f5e" fontSize="10" fontFamily="IBM Plex Mono, monospace">
+                {t(`硬截断 ${kNeighbors}-KNN 阶梯`, `Hard ${kNeighbors}-KNN Step Curve`)}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+
+      {/* Contextual Intuition Box */}
+      <div className="nw-explanation-box">
+        <p style={{ margin: 0 }}>
+          <strong>{t('核心概念辨析：为什么说 Nadaraya–Watson 是“连续距离衰减的全局软 KNN”？', 'Core Conceptual Synthesis: Why Nadaraya-Watson is "Continuous Soft Distance-Weighted Global KNN"?')}</strong>：
+          {t(
+            '① 经典 KNN 回归采用 0/1 矩形窗硬截断（距离前 k 近的点权重为 1/k，其余严格为 0）。当待估点 x₀ 连续移动时，近邻集合发生离散跳变，导致预测曲线呈现粗糙的锯齿状阶梯断点（见红色虚线）。' +
+            '② Nadaraya–Watson 核估计用连续核函数 K((x₀ - Xᵢ)/h) 取代阶梯窗，根据欧氏距离平滑衰减，全域所有样本均以连续正权重参与加权，保证了预测曲线的处处连续乃至无穷阶可导（高斯核）。' +
+            '③ 带宽 h 扮演了连续版的 k：当 h → 0 时，有效样本数 N_eff → 1，退化为最近邻插值（零偏差、高方差）；当 h → ∞ 时，核函数扁平化，所有点权重均匀退化为 1/n，曲线退化为水平的全局样本均值 Ȳ（高偏差、零方差）。',
+            '① Classical KNN regression adopts a 0/1 boxcar hard cutoff (top-k points get 1/k weight, all others strictly 0). As query point x₀ moves smoothly, discrete points enter and exit the neighborhood, creating jagged, discontinuous step artifacts (red dashed line).' +
+            '② Nadaraya-Watson replaces the discontinuous window with a smooth bell curve K((x₀ - Xᵢ)/h). All sample points contribute with smooth distance-decaying weights, ensuring the fitted curve is everywhere continuous and infinitely differentiable (under Gaussian kernel).' +
+            '③ Bandwidth h serves as a continuous analog to k: as h → 0, effective sample size N_eff → 1 (interpolating nearest neighbor, high variance); as h → ∞, weights equalize to 1/n, collapsing into the flat sample mean Ȳ (high bias, zero variance).'
+          )}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 const CART_DEMO_POINTS = [
   // R1: X1 in [0, 5], X2 in [0, 4.5] -> Mean = 8.5
   { id: 1, x1: 1.5, x2: 1.5, y: 7.0 },
@@ -24524,7 +25160,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -24808,6 +25444,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'anova-variance-demo') {
     return <ANOVAVarianceVisual />;
+  }
+
+  if (match?.[1] === 'nadaraya-watson-demo') {
+    return <NadarayaWatsonVisual />;
   }
 
   if (match?.[1] === 'ml-metrics-demo') {

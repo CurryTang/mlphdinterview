@@ -1184,10 +1184,10 @@ describe('App', () => {
         ok: true,
         text: async () => {
           if (requestUrl.includes('Quant16') && requestUrl.endsWith('.en.md')) {
-            return '# Quant 11 · Linear regression and kernel smoothing\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```';
+            return '# Quant 11 · Linear regression and kernel smoothing\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```';
           }
           if (requestUrl.includes('Quant16')) {
-            return '# Quant 11 · 线性回归与核平滑\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```';
+            return '# Quant 11 · 线性回归与核平滑\n\n```fwl-geometry-demo\n```\n\n```anova-variance-demo\n```\n\n```nadaraya-watson-demo\n```';
           }
           return '# Default note';
         },
@@ -1211,6 +1211,17 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /2D 样本散点与平方和分解/i }));
     expect(screen.getByText(/点击任意样本点观察该点/i)).toBeInTheDocument();
 
+    // Verify Nadaraya-Watson demo rendering
+    expect(screen.getByText(/Nadaraya–Watson 核回归：连续距离权重的“软 KNN”/i)).toBeInTheDocument();
+    expect(screen.getByText(/有效样本容量 N_eff/i)).toBeInTheDocument();
+
+    // Switch Nadaraya-Watson tab to Comparison
+    fireEvent.click(screen.getByRole('button', { name: /平滑 vs 阶梯对比/i }));
+    expect(screen.getByText(/硬截断 3-KNN 阶梯/i)).toBeInTheDocument();
+
+    // Switch Kernel to Epanechnikov
+    fireEvent.click(screen.getByRole('button', { name: /埃帕内奇尼科夫核 \(Epanechnikov\)/i }));
+
     // Verify interaction with FWL step button
     fireEvent.click(screen.getByRole('button', { name: /步骤 2: X₂ 正交化得 X̃₂/i }));
     expect(screen.getByText(/FWL 核心正交化/i)).toBeInTheDocument();
@@ -1220,6 +1231,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /Quant 11 · Linear regression/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/FWL Theorem Geometry & Two-Stage Regression Demo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/ANOVA Variance Decomposition & R² Geometry Demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nadaraya–Watson Kernel: Continuous Soft Distance-Weighted KNN/i)).toBeInTheDocument();
   });
 
   it('renders the Palindromic Substrings 2D DP matrix visual walkthrough and steps through states', async () => {
