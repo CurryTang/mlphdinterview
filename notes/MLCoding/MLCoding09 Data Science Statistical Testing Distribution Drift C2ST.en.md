@@ -1035,3 +1035,158 @@ if __name__ == "__main__":
 | **Tree Count Asymptotics** | Increasing tree count $B \to \infty$ **never causes overfitting**; variance monotonically converges under the SLLN. | Treating Random Forests like neural networks, prematurely halting $n\_estimators$ due to unfounded overfitting fears. |
 | **Importance Evaluation** | Never rely solely on MDI for feature screening; always pair with **MDA (Permutation Importance)** or **TreeSHAP**. | Using MDI to select continuous noise features, contaminating downstream production pipelines with uninformative variables. |
 | **Sparse Regimes** | When feature dimensions are large and relevant features are extremely sparse, **favor GBDT over Random Forests**. | Blindly applying RF in sparse settings, causing hypergeometric selection failure at candidate split nodes. |
+
+---
+
+## Module 8: Decision Tree Impurity, Ensemble Trade-offs & Scratch Bagging
+
+### 1. Decision Tree Impurity Measures: Entropy, Gini Index, Classification Error
+
+In CART, C4.5, and decision tree architectures, the selection of the node impurity function $i(t)$ governs the geometry of recursive spatial partitioning:
+
+#### (1) Canonical Impurity Measures
+
+Given node $t$ with class empirical probabilities $p_k = rac{N_k}{N}$ satisfying $\sum_{k=1}^K p_k = 1$:
+
+1. **Entropy (Information Gain / Deviance)**:
+   $$i_{	ext{Entropy}}(t) = - \sum_{k=1}^K p_k \log_2 p_k$$
+2. **Gini Impurity**:
+   $$i_{	ext{Gini}}(t) = 1 - \sum_{k=1}^K p_k^2 = \sum_{k=1}^K p_k (1 - p_k)$$
+3. **Classification Error (Misclassification Rate)**:
+   $$i_{	ext{Error}}(t) = 1 - \max_{k \in \{1, \dots, K\}} p_k$$
+
+#### (2) Why Classification Error is Rarely Used for Tree Growing (Strict Concavity Analysis)
+
+A frequent question asks: "If the ultimate optimization target is to minimize classification error, why not directly use $i_{	ext{Error}}(t)$ as the splitting criterion?"
+
+```text
+Impurity Curves for Binary Classification (p = positive class probability):
+Impurity
+ 1.0 ┼               ── Entropy (normalized to 1.0)
+     │             ╱    ╲
+ 0.5 ┼───────────╱        ╲──────────── Gini * 2
+     │         ╱            ╲
+     │       ╱                ╲
+ 0.0 ┼─────-•──────────────────•──────► Positive Class Probability p
+    0.0    0.2      0.5       0.8    1.0
+             \                /
+              ── Classification Error (Piecewise linear, zero curvature)
+```
+
+- **Strict Concavity Failure**:
+  - Gini impurity and Entropy are **strictly concave** everywhere ($
+abla^2 i(t) < 0$). By Jensen's inequality, any split dividing distinct class proportions guarantees strictly positive impurity reduction: $\Delta i > 0$.
+  - Classification Error $i_{	ext{Error}}(p) = 1 - \max(p, 1-p)$ is a **piecewise-linear function** with zero second derivatives on $(0, 0.5)$ and $(0.5, 1.0)$.
+- **Zero Gain Pathology**:
+  Consider a parent node with 800 samples and class counts $(400, 400)$ ($p = 0.5 \implies i_{	ext{Error}} = 0.5$).
+  Suppose a split creates left child $(300, 100)$ and right child $(100, 300)$.
+  - Weighted error $= 0.5(0.25) + 0.5(0.25) = 0.25 \implies 	ext{Gain} = 0.25$.
+  Now suppose a split produces left child $(400, 200)$ and right child $(0, 200)$:
+  - Left: $p_L = 400/600 pprox 0.67 \implies 	ext{Error} = 0.33$.
+  - Right: $p_R = 0/200 = 0.0 \implies 	ext{Error} = 0.0$.
+  - Weighted error $= (600/800)(0.33) + 0 = 0.25 \implies 	ext{Gain} = 0.25$.
+  Whenever splits do not alter the majority class across subsets, the error reduction is frequently **zero**, prematurely halting tree growth. Gini and Entropy guarantee smooth, strictly positive progress toward pure nodes.
+
+---
+
+### 2. Ensemble Learning Trade-offs: When Ensembling Helps vs. Hurts
+
+Ensemble methods combine base learners to improve predictive generalization, but introduce structural engineering trade-offs:
+
+| Evaluation Dimension | Impact of Ensembling (Helps vs. Hurts) | Theoretical & Engineering Mechanism |
+|---|---|---|
+| **Model Interpretability** | **Hurts** | Individual decision trees provide white-box rule chains. An ensemble of 500 trees dissolves into an opaque, high-dimensional black box requiring SHAP or permutation testing for post-hoc attribution. |
+| **Computational & Latency Overhead** | **Hurts** | Training requires fitting $B$ separate models; online serving incurs serial or parallel aggregation latency across all trees, inflating P99 response times and memory footprints. |
+| **Overfitting Control** | **Context-Dependent** | • **Bagging / Random Forest: Helps**. Bootstrapping and feature subsampling suppress tree correlation $ho$, driving variance down ($	ext{Var} 	o ho\sigma^2$) without increasing bias.<br>• **Boosting (without shrinkage): Hurts**. Iterating through hundreds of boosting rounds on noisy labels forces base trees to memorize label noise. |
+| **Mixed-Linearity Datasets** | **Helps** | Trees excel at non-linear thresholding and localized interactions, but struggle with global diagonal hyperplanes. Stacking or hybrid ensembles (combining linear models with tree ensembles) fuse global trends with localized rules. |
+
+---
+
+### 3. GBM vs. Random Forest for Fast Baseline Construction
+
+When setting up a fast, robust baseline in an applied ML pipeline, comparative trade-offs determine model selection:
+
+| Dimension | Random Forest | Gradient Boosted Trees (GBM / LightGBM / XGBoost) | Fast Baseline Verdict |
+|---|---|---|---|
+| **Parallelism** | **Embarrassingly Parallel**. Every tree is grown completely independently without inter-tree synchronization barriers. | **Strictly Sequential**. Tree $t$ must wait for tree $t-1$ to compute pseudo-residuals (negative gradients). | **RF Wins**: Trivial parallelization across all available CPU cores. |
+| **Hyperparameter Sensitivity** | **Extremely Robust**. Default parameters (`n_estimators=100`, `max_features='sqrt'`) reliably produce near-optimal performance without tuning. | **Highly Sensitive**. Misconfiguring learning rate $
+u$, `max_depth`, or subsampling leads to severe underfitting or overfitting. | **RF Strongly Wins**: A fast baseline must yield a dependable performance bound without tuning loops. |
+| **Tree Count vs. Overfitting** | **Never Overfits with More Trees**. By the Law of Large Numbers, as $B 	o \infty$, variance converges monotonically to an asymptotic floor. | **Overfits with Excessive Trees**. Without early stopping and small shrinkage, excessive boosting rounds memorize training noise. | **RF Wins**: Can safely set 200~500 trees without monitoring early stopping. |
+| **Validation Cost** | **Built-in Out-of-Bag (OOB) Evaluation**. ~36.8% of samples are unselected per tree, providing an unbiased validation set for free. | **Requires Explicit Validation Split**. Requires reserving a hold-out set to monitor early stopping rounds. | **RF Wins**: Maximizes training data efficiency on smaller datasets. |
+
+---
+
+### 4. Bagging Classifier from Scratch with Bootstrap & Majority Vote
+
+#### (1) Procedural Formulation
+
+1. **Bootstrap Resampling**: For $b = 1, \dots, B$, draw $N$ samples with replacement from dataset $S$ to form $S_b$;
+2. **Independent Fitting**: Fit base classifier $h_b \leftarrow 	ext{fit}(S_b)$;
+3. **Majority Vote Aggregation**: For a test point $\mathbf{x}$, aggregate predictions via majority vote (mode):
+   $$\hat{y} = rg\max_{c \in \mathcal{Y}} \sum_{b=1}^B \mathbb{I}(h_b(\mathbf{x}) == c)$$
+
+#### (2) Implementation
+
+```python
+import numpy as np
+from typing import List, Optional, Any
+
+class ScratchBaggingClassifier:
+    """
+    Clean NumPy implementation of Bagging Classifier.
+    Implements bootstrap sample generation, independent estimator fitting, and majority vote.
+    """
+    def __init__(self, base_estimator_cls: Any, n_estimators: int = 10, random_state: Optional[int] = None):
+        self.base_estimator_cls = base_estimator_cls
+        self.n_estimators = n_estimators
+        self.random_state = random_state
+        self.estimators_: List[Any] = []
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> 'ScratchBaggingClassifier':
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+
+        n_samples = X.shape[0]
+        self.estimators_ = []
+
+        for _ in range(self.n_estimators):
+            # 1. Bootstrap sample with replacement
+            boot_idx = np.random.choice(n_samples, size=n_samples, replace=True)
+            X_boot, y_boot = X[boot_idx], y[boot_idx]
+
+            # 2. Fit base estimator
+            estimator = self.base_estimator_cls()
+            estimator.fit(X_boot, y_boot)
+            self.estimators_.append(estimator)
+
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Aggregates base estimator predictions via majority vote."""
+        if not self.estimators_:
+            raise RuntimeError("Classifier has not been fitted yet.")
+
+        # Shape: (n_estimators, n_samples)
+        all_preds = np.array([est.predict(X) for est in self.estimators_])
+
+        n_samples = X.shape[0]
+        final_preds = np.zeros(n_samples, dtype=int)
+
+        for i in range(n_samples):
+            counts = np.bincount(all_preds[:, i])
+            final_preds[i] = np.argmax(counts)
+
+        return final_preds
+
+# Verification
+if __name__ == "__main__":
+    from sklearn.tree import DecisionTreeClassifier
+    X_toy = np.array([[1.0, 2.0], [2.0, 3.0], [3.0, 1.0], [6.0, 5.0], [7.0, 7.0], [8.0, 6.0]])
+    y_toy = np.array([0, 0, 0, 1, 1, 1])
+
+    bag = ScratchBaggingClassifier(base_estimator_cls=lambda: DecisionTreeClassifier(max_depth=2), n_estimators=7, random_state=42)
+    bag.fit(X_toy, y_toy)
+    preds = bag.predict(X_toy)
+    assert np.array_equal(preds, y_toy)
+```
+

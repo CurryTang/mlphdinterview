@@ -634,3 +634,241 @@ class TimestampTaskScheduler:
 
 </div>
 </details>
+
+---
+
+### 08. Reverse Linked List In-Place via Three Pointers
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">LIST 08</span>
+  <span class="review-card-title">Reverse Linked List In-Place via Three Pointers</span>
+  <span class="review-card-tag">Three-Pointer Iteration · Predecessor Shielding · In-Place · O(1) Space</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class ReverseListSolution:
+    @classmethod
+    def reverseListIterative(cls, head: Optional[ListNode]) -> Optional[ListNode]:
+        """
+        Reverses a singly linked list iteratively in-place.
+        Time O(N), auxiliary space O(1).
+        """
+        prev: Optional[ListNode] = None
+        curr = head
+
+        while curr is not None:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+
+        return prev
+
+    @classmethod
+    def reverseListRecursive(cls, head: Optional[ListNode]) -> Optional[ListNode]:
+        """
+        Reverses a singly linked list recursively.
+        Time O(N), call stack space O(N).
+        """
+        if head is None or head.next is None:
+            return head
+
+        new_head = cls.reverseListRecursive(head.next)
+        head.next.next = head
+        head.next = None
+        return new_head
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Three-Pointer Invariant**:
+  At any step, `prev` anchors the reversed prefix, `curr` points to the active node being re-pointed, and `nxt` preserves the unvisited suffix. Each reassignment `curr.next = prev` operates with zero heap allocations.
+- **Recursive Tail Clearance**:
+  `head.next.next = head` reverses the pointer of the immediate child. Clearing `head.next = None` prevents circular deadlocks at the original list head.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, visiting each node once.
+- **Space Complexity**: $\mathcal{O}(1)$ for iterative; $\mathcal{O}(N)$ call stack for recursive.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 09. Remove Duplicate Letters via Monotonic Stack
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STACK 09</span>
+  <span class="review-card-title">Remove Duplicate Letters via Monotonic Stack</span>
+  <span class="review-card-tag">Monotonic Increasing Stack · Last Seen Index Map · In-Stack Set · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+class RemoveDuplicateLettersSolution:
+    @classmethod
+    def removeDuplicateLetters(cls, s: str) -> str:
+        """
+        Removes duplicate letters to ensure each appears once, minimizing lexicographical order.
+        """
+        last_occurrence = {ch: i for i, ch in enumerate(s)}
+        stack = []
+        in_stack = set()
+
+        for i, ch in enumerate(s):
+            if ch in in_stack:
+                continue
+
+            # Greedy monotonic stack maintenance:
+            # Pop top character if it is larger than ch AND appears again later
+            while stack and stack[-1] > ch and last_occurrence[stack[-1]] > i:
+                popped = stack.pop()
+                in_stack.remove(popped)
+
+            stack.append(ch)
+            in_stack.add(ch)
+
+        return "".join(stack)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Monotonic Greedy Rule**:
+  Smaller characters should precede larger ones. If stack top `top > ch` and `last_occurrence[top] > i`, discarding `top` now is safe because it will appear downstream, allowing smaller `ch` to claim a higher significance index.
+- **Last-Appearance Shield**:
+  If `last_occurrence[top] <= i`, `top` cannot be discarded; doing so would fail the requirement that every unique character be retained.
+- **Deduplication Guard**:
+  If `ch` is already in the stack, its existing position is optimal under prior choices; re-adding it would only increase lexicographical weight.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, each character pushed and popped at most once.
+- **Space Complexity**: $\mathcal{O}(|\Sigma|)$ where $|\Sigma| \le 26$ for the alphabet.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 10. MinStack, MaxStack, Streaming Median & System Extensions
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">HEAP 10</span>
+  <span class="review-card-title">MinStack, MaxStack, Streaming Median & System Extensions</span>
+  <span class="review-card-tag">Two-Heap Dynamic Median · O(1) Extremum Stack · Lazy Deletion · Concurrency</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+import heapq
+from typing import Optional
+
+class MinStack:
+    """O(1) auxiliary stack tracking prefix minimums."""
+    def __init__(self):
+        self.stack = []
+        self.min_stack = []
+
+    def push(self, val: int) -> None:
+        self.stack.append(val)
+        if not self.min_stack or val <= self.min_stack[-1]:
+            self.min_stack.append(val)
+
+    def pop(self) -> None:
+        val = self.stack.pop()
+        if val == self.min_stack[-1]:
+            self.min_stack.pop()
+
+    def top(self) -> int:
+        return self.stack[-1]
+
+    def getMin(self) -> int:
+        return self.min_stack[-1]
+
+
+class MedianFinder:
+    """Two-heap balance structure maintaining a streaming dynamic median."""
+    def __init__(self):
+        self.small = []  # Max-heap (storing negated values): lower half
+        self.large = []  # Min-heap: upper half
+
+    def addNum(self, num: int) -> None:
+        heapq.heappush(self.small, -num)
+        heapq.heappush(self.large, -heapq.heappop(self.small))
+
+        if len(self.large) > len(self.small):
+            heapq.heappush(self.small, -heapq.heappop(self.large))
+
+    def findMedian(self) -> float:
+        if len(self.small) > len(self.large):
+            return float(-self.small[0])
+        return (-self.small[0] + self.large[0]) / 2.0
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Two-Heap Invariant**:
+  All elements in `small` are $\le$ all elements in `large`. Sizes are kept balanced with $0 \le |small| - |large| \le 1$. Median extraction is $\mathcal{O}(1)$; insertion is $\mathcal{O}(\log N)$.
+- **System Extensions & Follow-ups**:
+  1. **MaxStack + Running Median**:
+     To support `popMax` alongside median tracking, combine a Doubly-Linked List with an ordered balanced BST (`TreeMap`) for $\mathcal{O}(\log N)$ arbitrary deletion, coupled with hash-indexed lazy deletion on the two heaps.
+  2. **Bounded Domain (0..100)**:
+     If inputs are restricted to $[0, 100]$, heaps are completely replaced by a fixed frequency array `count[101]`. Insertion is $\mathcal{O}(1)$; finding the median takes a bounded $\le 101$-step prefix scan ($\mathcal{O}(1)$ time).
+  3. **Memory-Constrained Streams**:
+     When the stream exceeds RAM capacity, exact medians are intractable. Deploy streaming quantile estimators: **t-digest** (clustering near values into centroids) or **Reservoir Sampling**.
+  4. **High-Concurrency Access**:
+     Protect heaps via a **Read-Write Lock** (`findMedian` takes shared read locks; `addNum` acquires an exclusive write lock). Note: Medians are holistic rank statistics and cannot be partitioned across independent worker shards without coordinate bisection.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **MinStack**: $\mathcal{O}(1)$ time for all operations, $\mathcal{O}(N)$ auxiliary space.
+- **MedianFinder**: `addNum` in $\mathcal{O}(\log N)$, `findMedian` in $\mathcal{O}(1)$, $\mathcal{O}(N)$ space.
+
+</div>
+
+</div>
+</details>
+

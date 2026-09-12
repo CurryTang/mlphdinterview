@@ -1193,3 +1193,681 @@ class ReverseWordsSolution:
 
 </div>
 </details>
+
+---
+
+### 17. 数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 17</span>
+  <span class="review-card-title">数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)</span>
+  <span class="review-card-tag">双向单调性校验 · 边界自适应退化 · 滑动邻域 · O(N * K)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class LocalMaximaStreamSolution:
+    @classmethod
+    def findLocalMaxima(cls, rawData: List[float], localArea: int) -> List[int]:
+        """
+        检索一维数据流中所有满足左右 localArea 邻域严格单调递减的局部波峰最大值索引。
+        
+        形式化约束:
+        对于下标 i:
+        - 左侧有效邻居长度 L = min(i, localArea)
+          必须满足: rawData[i - j + 1] > rawData[i - j], for all j in [1, L]
+        - 右侧有效邻居长度 R = min(len(rawData) - 1 - i, localArea)
+          必须满足: rawData[i + j - 1] > rawData[i + j], for all j in [1, R]
+        - 若某侧可用邻居不足 localArea 个，自适应退化检查全部可用邻居。
+        """
+        n = len(rawData)
+        if n == 0:
+            return []
+
+        result = []
+
+        for i in range(n):
+            is_peak = True
+
+            # 1. 检验左侧单调性 (从外侧向 i 递增，即从 i 向外递减)
+            left_len = min(i, localArea)
+            for j in range(1, left_len + 1):
+                if rawData[i - j + 1] <= rawData[i - j]:
+                    is_peak = False
+                    break
+
+            if not is_peak:
+                continue
+
+            # 2. 检验右侧单调性 (从 i 向外递减)
+            right_len = min(n - 1 - i, localArea)
+            for j in range(1, right_len + 1):
+                if rawData[i + j - 1] <= rawData[i + j]:
+                    is_peak = False
+                    break
+
+            if is_peak:
+                result.append(i)
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **双侧单调递减语义**：
+  波峰极大值要求从中心向两侧发散时严格递减。即左侧序列 $rawData[i-L \dots i]$ 必须严格递增，右侧序列 $rawData[i \dots i+R]$ 必须严格递减。任何相邻相等数值（平顶 plateau）均无法满足严格单调性，会被立即滤除。
+- **边界自适应退化（Boundary Degradation Handling）**：
+  若序列首端 $i=0$，左侧有效邻居为 0，左侧条件平凡满足（Vacuously True），只需验证右侧 $\min(n-1, k)$ 个邻居；同理对于末端 $i=n-1$，只需验证左侧邻居。单元素数组直接返回 `[0]`。
+- **流式特征工程与时间序列波峰检出**：
+  在金融 Tick 数据流与传感器时序中，该算法用于捕捉支撑阻力位与局部极值事件，常作为上层形态学特征构建的算子基石。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N \cdot K)$。对于长度为 $N$ 的数组，每个点最多向两侧延伸检查 $K = 	ext{localArea}$ 步。若 $K \ll N$，整体逼近 $\mathcal{O}(N)$ 线性时间。
+- **空间复杂度**：除存储输出索引外，仅需 $\mathcal{O}(1)$ 额外辅助空间。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 18. 子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 18</span>
+  <span class="review-card-title">子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)</span>
+  <span class="review-card-tag">数学规约 · 局部对偶 · 相邻对扫描 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class LargestMinMaxSumSolution:
+    @classmethod
+    def largestMinMaxSum(cls, nums: List[int]) -> int:
+        """
+        求解长度 >= 2 的连续子数组中，min(sub) + max(sub) 的全局最大值。
+        
+        数学定理：
+        对于任意长度 >= 2 的连续子数组 nums[i..j]，其 min + max 必小于等于
+        该子数组内部某个相邻两元素对 nums[k] + nums[k+1] 的和。
+        因此全局最优解必然退化为所有相邻两数之和的最大值。
+        """
+        n = len(nums)
+        if n < 2:
+            raise ValueError("数组长度必须至少为 2")
+
+        max_sum = nums[0] + nums[1]
+        for i in range(1, n - 1):
+            pair_sum = nums[i] + nums[i + 1]
+            if pair_sum > max_sum:
+                max_sum = pair_sum
+
+        return max_sum
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **数学反证与规约证明（Reduction Proof）**：
+  设区间 $[i, j]$（$j - i \ge 1$）中最小值为 $m = \min(nums[i..j])$，最大值为 $M = \max(nums[i..j])$。
+  考察区间内任何相邻元素对 $(nums[k], nums[k+1])$：
+  1. 显然有 $nums[k] \ge m$ 且 $nums[k+1] \ge m$；
+  2. 必存在某个相邻对包含最大值 $M$（设 $nums[p] = M$，则其相邻元素 $nums[p-1]$ 或 $nums[p+1]$ 至少有一个属于该区间）；
+  3. 取该包含 $M$ 的相邻对，其较小元素必然 $\ge m$；
+  4. 故该相邻对的和 $M + 	ext{other} \ge M + m$ 恒成立！
+  5. **结论**：任意长区间的目标值均被其内部包含最大值的相邻对所支配。因此无需使用线段树或滑动窗口，单次 $\mathcal{O}(N)$ 线性遍历相邻元素即获全局最优解。
+- **边界防坑**：
+  必须在前置沟通中确认“长度 $\ge 2$”这一刚性约束。若允许长度为 1，则单个元素自身作为子数组的 $min + max = 2 	imes nums[i]$，将改变题目本质。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，单趟扫描数组相邻元素。
+- **空间复杂度**：$\mathcal{O}(1)$，仅需常数空间维护当前最大相邻和。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 19. 和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 19</span>
+  <span class="review-card-title">和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)</span>
+  <span class="review-card-tag">前缀和差分 · 频次哈希表 · 负数鲁棒性 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+from collections import defaultdict
+
+class SubarraySumEqualsKSolution:
+    @classmethod
+    def subarraySum(cls, nums: List[int], k: int) -> int:
+        """
+        统计数组中所有和等于 k 的连续子数组个数。
+        支持正数、负数与零。
+        """
+        prefix_counts = defaultdict(int)
+        prefix_counts[0] = 1  # 初始基准：前缀和恰好为 k 时，差值 0 贡献 1 次匹配
+        
+        current_sum = 0
+        total_valid_subarrays = 0
+
+        for num in nums:
+            current_sum += num
+            
+            # 查找以当前元素结尾且和为 k 的子数组个数
+            # sum(nums[i..j]) = current_sum - prefix_sum = k => prefix_sum = current_sum - k
+            if (current_sum - k) in prefix_counts:
+                total_valid_subarrays += prefix_counts[current_sum - k]
+
+            # 将当前前缀和注册进频次表
+            prefix_counts[current_sum] += 1
+
+        return total_valid_subarrays
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **前缀和差分原语**：
+  区间 $[i, j]$ 的元素之和可表示为两个前缀和之差：
+  $$\sum_{p=i}^j nums[p] = S_j - S_{i-1} = k \iff S_{i-1} = S_j - k$$
+  因此，只需维护一个记录历史前缀和出现次数的哈希表。每推进一位 $j$，查询历史中 $S_j - k$ 的频次即为以 $j$ 结尾且和为 $k$ 的合法子数组数量。
+- **为何双指针/滑动窗口失效**：
+  若数组中包含负数，前缀和序列 $S$ 失去了单调递增性。滑动窗口收缩左边界无法保证区间和单调减小，因此双指针算法彻底失效，哈希映射是 $\mathcal{O}(N)$ 的唯一解法。
+- **基准哨兵 `{0: 1}` 的必要性**：
+  若某前缀和 $S_j$ 本身恰好等于 $k$，则从第 0 个元素到第 $j$ 个元素构成的完整前缀本身就是一个合法子数组。初始化 `prefix_counts[0] = 1` 确保了此类子数组被正确计数。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，数组单趟遍历，哈希表平均 $\mathcal{O}(1)$ 存取。
+- **空间复杂度**：$\mathcal{O}(N)$，哈希表最多存储 $N+1$ 个不同的前缀和数值。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 20. 无重复字符的最长子串与最新索引滑动窗口 (Longest Substring Without Repeating Characters)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 20</span>
+  <span class="review-card-title">无重复字符的最长子串与最新索引滑动窗口 (Longest Substring Without Repeating Characters)</span>
+  <span class="review-card-tag">滑动窗口 · 字符最新下标表 · 左边界单调跳跃 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+class LongestSubstringWithoutRepeatingSolution:
+    @classmethod
+    def lengthOfLongestSubstring(cls, s: str) -> int:
+        """
+        计算无重复字符的最长连续子串长度。
+        使用字符最后出现索引表，实现左边界 O(1) 单调跳跃。
+        """
+        char_last_seen = {}
+        left = 0
+        max_length = 0
+
+        for right, ch in enumerate(s):
+            # 若字符重复且上次出现位置在当前窗口内部，直接跳跃左边界至上次位置的右侧一位
+            if ch in char_last_seen and char_last_seen[ch] >= left:
+                left = char_last_seen[ch] + 1
+            
+            char_last_seen[ch] = right
+            current_window = right - left + 1
+            if current_window > max_length:
+                max_length = current_window
+
+        return max_length
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **左边界跨步跳跃（O(1) Jump vs 步进收缩）**：
+  若采用基础滑动窗口（维护字符集合），当出现重复字符时，左指针必须单步递增循环删除字符，最坏情况下每个字符出入窗口各一次（总计 $2N$ 步）；
+  记录 `char_last_seen[ch]` 后，一旦检测到重复字符，左边界可直接置为 $\max(left, char\_last\_seen[ch] + 1)$，跳过内部冗余收缩。
+- **单调性卫语句**：
+  必须加入 `char_last_seen[ch] >= left` 判定。因为哈希表中可能记录了窗口左边界之前的陈旧历史索引，左边界绝不可逆流倒退。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，右指针单向推进，左指针单调前进。
+- **空间复杂度**：$\mathcal{O}(\min(N, |\Sigma|))$，哈希表大小取决于字符集大小（ASCII 为 128，Unicode 视字符种类而定）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 21. 8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">DESIGN 21</span>
+  <span class="review-card-title">8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)</span>
+  <span class="review-card-tag">底层仿真 · 8 字节对齐步进 · 唯一 ID 标记 · O(N / 8 * X)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class AlignedMemoryAllocator:
+    """
+    支持 8 字节对齐首地址约束的内存分配与按 ID 释放模拟器。
+    
+    规则:
+    - alloc(x): 寻找起始下标为 8 的倍数的最左侧连续 x 个空闲单元 (0)，
+                使用自增唯一整数 ID 标记并返回起始下标；无法容纳则返回 -1。
+    - erase(id): 释放所有标记为 id 的内存单元，返回清空的单元总数。
+    """
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        # 内存单元状态：0 代表空闲，正整数表示分配该单元的块 ID
+        self.memory: List[int] = [0] * capacity
+        self.next_alloc_id: int = 1
+
+    def alloc(self, x: int) -> int:
+        if x <= 0:
+            return -1
+
+        current_id = self.next_alloc_id
+
+        # 仅遍历 8 字节对齐的起始候选下标: 0, 8, 16, 24, ...
+        for start in range(0, self.capacity, 8):
+            if start + x <= self.capacity:
+                # 检查连续 x 个单元是否全为 0 (空闲)
+                can_fit = True
+                for offset in range(x):
+                    if self.memory[start + offset] != 0:
+                        can_fit = False
+                        break
+
+                if can_fit:
+                    # 占用内存并打上块 ID 标签
+                    for offset in range(x):
+                        self.memory[start + offset] = current_id
+                    self.next_alloc_id += 1
+                    return start
+
+        return -1
+
+    def erase(self, req_id: int) -> int:
+        if req_id <= 0:
+            return 0
+
+        cleared_count = 0
+        for i in range(self.capacity):
+            if self.memory[i] == req_id:
+                self.memory[i] = 0
+                cleared_count += 1
+
+        return cleared_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **硬件 8 字节对齐约束（Alignment Invariant）**：
+  在现代 CPU 架构中，未对齐内存访问（Unaligned Memory Access）会触发额外的总线周期甚至硬件异常。本题强制起始下标必须满足 $start \pmod 8 == 0$，因此外层循环以步长 8 跨步推进，候选点数量缩减至 $\lceil 	ext{capacity} / 8 ceil$。
+- **自动增量分配 ID 与安全擦除**：
+  `next_alloc_id` 保证即使连续分配释放后，每一个历史分配块的 ID 绝对唯一，避免因 ID 复用导致释放已销毁块时发生悬垂指针误删。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：
+  - `alloc(x)`：最多检查 $\lceil N / 8 ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathcal{O}(rac{N}{8} \cdot X)$。
+  - `erase(id)`：单趟线性扫描整块内存，时间复杂度为严格 $\mathcal{O}(N)$。
+- **空间复杂度**：$\mathcal{O}(N)$，用于维护整块内存状态数组。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 22. 奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 22</span>
+  <span class="review-card-title">奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)</span>
+  <span class="review-card-tag">动态连击增量 · 奇偶模数检验 · 单调推进 · O(N) 时间</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class AlternatingParitySubarraysSolution:
+    @classmethod
+    def countAlternatingSubarrays(cls, nums: List[int]) -> int:
+        """
+        统计数组中所有相邻元素奇偶性互不相同的连续子数组数量。
+        单个元素自身视为长度为 1 的合法交替子数组。
+        """
+        if not nums:
+            return 0
+
+        total_subarrays = 1
+        current_streak = 1  # 记录以当前元素结尾的奇偶交替最大连续长度
+
+        for i in range(1, len(nums)):
+            # 判断与前驱元素的奇偶性是否异号: (nums[i] % 2) != (nums[i-1] % 2)
+            if (nums[i] % 2) != (nums[i - 1] % 2):
+                current_streak += 1
+            else:
+                # 奇偶性相同，交替链断裂，当前元素单独作为长度为 1 的交替起点
+                current_streak = 1
+
+            # 核心增量：以 nums[i] 结尾的交替子数组个数恰好等于 current_streak
+            total_subarrays += current_streak
+
+        return total_subarrays
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **动态连击增量原语（Running Streak Counting）**：
+  若已知以 $nums[i-1]$ 结尾的最长交替连续子数组长度为 $k$，且 $nums[i]$ 与 $nums[i-1]$ 奇偶性不同，则以 $nums[i]$ 结尾的所有交替子数组，正是将前驱的这 $k$ 个子数组全部追加 $nums[i]$（长度从 $2$ 到 $k+1$），外加 $nums[i]$ 单独组成的长度 1 子数组，总数恰为 $k + 1$ 个！
+- **杜绝 $\mathcal{O}(N^2)$ 双重遍历**：
+  初学者常习惯枚举左右端点 $[i, j]$ 并遍历检验，导致在大规模数据评测中发生超时。通过维护前缀连击长度 `current_streak`，每次仅需累加当前值，单趟扫描即刻出解。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，单次线性扫描。
+- **空间复杂度**：$\mathcal{O}(1)$，仅需常数级别的连击累加器。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 23. 双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 23</span>
+  <span class="review-card-title">双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)</span>
+  <span class="review-card-tag">贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class NewspaperLayoutSolution:
+    @classmethod
+    def layoutNewspaper(
+        cls,
+        paragraphs: List[List[str]],
+        alignments: List[str],
+        width: int
+    ) -> List[str]:
+        """
+        根据各段落指定的左对齐 (LEFT) 或右对齐 (RIGHT) 标志，以最大行宽 width 贪心排版单词。
+        行内单词间用单空格隔开；短行在对应方向补齐空格；整体用 '*' 边框装裱输出。
+        """
+        content_lines: List[str] = []
+
+        for words, align in zip(paragraphs, alignments):
+            current_line_words: List[str] = []
+            current_line_len = 0
+
+            for word in words:
+                # 计算若加入该单词所需的总长度（非行首单词需追加 1 个间隔空格）
+                needed_len = len(word) if not current_line_words else len(word) + 1
+
+                if current_line_len + needed_len <= width:
+                    current_line_words.append(word)
+                    current_line_len += needed_len
+                else:
+                    # 缓冲区满，将当前行根据对齐规则输出
+                    line_text = " ".join(current_line_words)
+                    pad_spaces = " " * (width - len(line_text))
+                    
+                    if align == "LEFT":
+                        formatted_line = line_text + pad_spaces
+                    else:  # RIGHT
+                        formatted_line = pad_spaces + line_text
+
+                    content_lines.append(f"*{formatted_line}*")
+                    # 新行以当前溢出单词起步
+                    current_line_words = [word]
+                    current_line_len = len(word)
+
+            # 输出段落尾行
+            if current_line_words:
+                line_text = " ".join(current_line_words)
+                pad_spaces = " " * (width - len(line_text))
+                if align == "LEFT":
+                    formatted_line = line_text + pad_spaces
+                else:
+                    formatted_line = pad_spaces + line_text
+                content_lines.append(f"*{formatted_line}*")
+
+        # 构造顶部与底部星号边框 (边框宽度为 width + 2)
+        horizontal_border = "*" * (width + 2)
+        return [horizontal_border] + content_lines + [horizontal_border]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **贪心贪婪装箱（Greedy Word Packing）**：
+  同一段落内单词顺序不可颠倒。每行塞入尽可能多的单词，且行内单词间保持且仅保持一个空格间隔。当且仅当追加新单词后总长超过 `width` 时，触发换行刷盘。
+- **动态左右填补（Padding Logic）**：
+  - `LEFT` 对齐：文字靠左，剩余空格全部填充在右侧；
+  - `RIGHT` 对齐：文字靠右，剩余空格全部填充在左侧。
+- **物理边框封闭（Border Framing）**：
+  每行内容两侧各贴附一个 `*`，首尾单独追加长度为 `width + 2` 的纯星号行，确保渲染出的字符矩阵绝对平整矩形化。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(L)$，其中 $L$ 为所有段落单词字符与空格的总长度。
+- **空间复杂度**：$\mathcal{O}(L)$，存储格式化渲染输出列表。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 24. 最长回文子串与马拉车算法 (Longest Palindromic Substring: Center vs Manacher)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 24</span>
+  <span class="review-card-title">最长回文子串与马拉车算法 (Longest Palindromic Substring: Center vs Manacher)</span>
+  <span class="review-card-tag">中心扩散法 · 马拉车 (Manacher) · 回文半径对称映射 · 严格 O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+class LongestPalindromeSolution:
+    @classmethod
+    def longestPalindromeCenterExpand(cls, s: str) -> str:
+        """
+        解法一：经典中心扩散法
+        时间复杂度 O(N^2)，额外空间 O(1)。
+        """
+        if not s:
+            return ""
+
+        start, max_len = 0, 1
+
+        def expand_around_center(left: int, right: int) -> int:
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                left -= 1
+                right += 1
+            return right - left - 1
+
+        for i in range(len(s)):
+            len1 = expand_around_center(i, i)       # 奇数长度中心
+            len2 = expand_around_center(i, i + 1)   # 偶数长度中心
+            cur_max = max(len1, len2)
+            if cur_max > max_len:
+                max_len = cur_max
+                start = i - (cur_max - 1) // 2
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeManacher(cls, s: str) -> str:
+        """
+        解法二：工业级 Manacher 算法（马拉车）
+        利用回文对称性与最右边界缓存，时间复杂度严格 O(N)。
+        """
+        if not s:
+            return ""
+
+        # 1. 插入间隔符统一奇偶回文，前后加哨兵杜绝越界检查: "^#a#b#a#$"
+        transformed = "^#" + "#".join(s) + "#$"
+        m = len(transformed)
+        radius = [0] * m  # radius[i] 记录以 i 为中心的最长回文半径
+        center = 0
+        right = 0
+
+        # 2. 线性推导回文半径
+        for i in range(1, m - 1):
+            i_mirror = 2 * center - i  # i 关于当前最右边界中心 center 的对称点
+
+            if right > i:
+                # 对称加速：初值直接继承对称点的半径，但不能突破已知最右边界
+                radius[i] = min(right - i, radius[i_mirror])
+            else:
+                radius[i] = 0
+
+            # 3. 朴素扩散扩展（仅在突破边界时有效推进）
+            while transformed[i + 1 + radius[i]] == transformed[i - 1 - radius[i]]:
+                radius[i] += 1
+
+            # 4. 若新回文右翼超越了历史最右边界，更新中心与边界
+            if i + radius[i] > right:
+                center = i
+                right = i + radius[i]
+
+        # 5. 定位最大回文半径与其在原字符串中的起始位置
+        best_radius = 0
+        best_center = 0
+        for i in range(1, m - 1):
+            if radius[i] > best_radius:
+                best_radius = radius[i]
+                best_center = i
+
+        # 关键原串坐标映射: (best_center - best_radius) // 2
+        start_orig = (best_center - best_radius) // 2
+        return s[start_orig : start_orig + best_radius]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **中心扩散法（$\mathcal{O}(N^2)$ 基准）**：
+  每个字符（奇回文，共 $N$ 个）或相邻两字符间隙（偶回文，共 $N-1$ 个）作为扩散核，向双侧线性比对，单次最长扩散耗时 $\mathcal{O}(N)$，最坏情况（如全同一字符 `"aaaaa"`）退化至 $\mathcal{O}(N^2)$。
+- **Manacher 算法的 $\mathcal{O}(N)$ 飞跃机理**：
+  1. **奇偶同构化**：插入 `#` 后，无论原回文是奇是偶，在变换串中统统归一为**以某个字符或 `#` 为中心的奇数长度回文**；
+  2. **对称点映射借力（Mirror Reflection）**：当前点 $i$ 位于已知覆盖范围 $[center - R, right]$ 内部时，由于以 $center$ 为中心的大回文区间是对称的，$i$ 处的回文结构在前半区 $i_{mirror} = 2 \cdot center - i$ 处**早已被完全计算过**！因此 $radius[i]$ 可以直接继承 $\min(right - i, radius[i_{mirror}])$；
+  3. **单调前进摊还分析**：由于每一步只有在字符比对成功且拓展出新的 $right$ 边界时才会增加常数操作，$right$ 边界只能单调向右移动至多 $2N$ 次，因此总比对次数被严格限定为 $\mathcal{O}(N)$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：中心扩散法为 $\mathcal{O}(N^2)$；Manacher 算法为严格 $\mathcal{O}(N)$。
+- **空间复杂度**：中心扩散法为 $\mathcal{O}(1)$；Manacher 算法为 $\mathcal{O}(N)$（变换字符串与半径数组）。
+
+</div>
+
+</div>
+</details>
+

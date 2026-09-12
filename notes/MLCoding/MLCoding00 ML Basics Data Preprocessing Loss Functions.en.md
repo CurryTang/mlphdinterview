@@ -891,3 +891,402 @@ print("✅ All custom loss functions matched PyTorch native references!")
 > **Answer**:
 > The root cause is the False Positive Rate definition $\text{FPR} = \frac{\text{FP}}{\text{TN} + \text{FP}}$. Under extreme class imbalance (e.g., 1 positive per 1,000 negatives), the vast negative pool $\text{TN}$ inflates the denominator. Even if the model produces 1,000 false alarms for every 50 true positives, $\text{FPR} \approx 0.001$, appearing stellar on the ROC curve. However, operational precision $\text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}} = \frac{50}{1050} \approx 4.76\%$, causing triage queues to collapse under false alarms. Consequently, extreme skew mandates **PR-AUC (Average Precision)** or **Precision@k** as primary benchmarks.
 
+---
+
+## Module 7: Training Diagnostics, Forward Derivation & Scratch Implementations
+
+### 1. Confusion Matrix Selection under Recall > 90% and FPR < 10% Constraints
+
+In classification system evaluation and risk screening, engineering workflows frequently require filtering candidate models based on simultaneous operational constraints: **high sensitivity (Recall > 90%)** and **low false alarm rate (FPR < 10%)**.
+
+#### (1) Confusion Matrix Metrics Specification
+
+With ground-truth classes as rows and predictions as columns:
+
+$$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
+
+- **True Positive (TP)**: Actual positive correctly predicted as positive;
+- **False Negative (FN)**: Actual positive incorrectly predicted as negative (miss);
+- **False Positive (FP)**: Actual negative incorrectly predicted as positive (false alarm);
+- **True Negative (TN)**: Actual negative correctly predicted as negative.
+
+Operational criteria:
+1. **Recall (Sensitivity / True Positive Rate)**:
+   $$	ext{Recall} = rac{	ext{TP}}{	ext{TP} + 	ext{FN}} = rac{	ext{TP}}{	ext{Actual Positives}} > 0.90$$
+2. **False Positive Rate (FPR / Fall-out)**:
+   $$	ext{FPR} = rac{	ext{FP}}{	ext{FP} + 	ext{TN}} = rac{	ext{FP}}{	ext{Actual Negatives}} = 1 - 	ext{Specificity} < 0.10$$
+
+#### (2) Candidate Matrices Comparative Analysis
+
+Assuming an evaluation set with 100 actual positives and 100 actual negatives:
+
+| Candidate Matrix | TP | FN | FP | TN | Recall (TPR) | FPR | Satisfies Recall > 90% & FPR < 10%? |
+|---|---|---|---|---|---|---|---|
+| **Matrix A** | 95 | 5 | 8 | 92 | $rac{95}{100} = 95.0\%$ | $rac{8}{100} = 8.0\%$ | **Pass**: Recall=95% > 90%, FPR=8% < 10% |
+| **Matrix B** | 88 | 12 | 4 | 96 | $rac{88}{100} = 88.0\%$ | $rac{4}{100} = 4.0\%$ | **Fail**: Recall=88% below threshold (< 90%) |
+| **Matrix C** | 98 | 2 | 15 | 85 | $rac{98}{100} = 98.0\%$ | $rac{15}{100} = 15.0\%$ | **Fail**: FPR=15% exceeds tolerance (> 10%) |
+| **Matrix D** | 92 | 8 | 7 | 93 | $rac{92}{100} = 92.0\%$ | $rac{7}{100} = 7.0\%$ | **Pass**: Recall=92% > 90%, FPR=7% < 10% |
+
+#### (3) Validation Code
+
+```python
+from typing import List, Tuple, Dict
+
+def filter_confusion_matrices(
+    matrices: List[Dict[str, int]],
+    min_recall: float = 0.90,
+    max_fpr: float = 0.10
+) -> List[Tuple[Dict[str, int], float, float]]:
+    """
+    Filters confusion matrices satisfying Recall > min_recall and FPR < max_fpr.
+    """
+    valid_matrices = []
+    for m in matrices:
+        tp, fn = m['TP'], m['FN']
+        fp, tn = m['FP'], m['TN']
+        
+        positives = tp + fn
+        negatives = fp + tn
+        
+        recall = tp / positives if positives > 0 else 0.0
+        fpr = fp / negatives if negatives > 0 else 0.0
+        
+        if recall > min_recall and fpr < max_fpr:
+            valid_matrices.append((m, recall, fpr))
+            
+    return valid_matrices
+
+candidates = [
+    {'name': 'A', 'TP': 95, 'FN': 5, 'FP': 8, 'TN': 92},
+    {'name': 'B', 'TP': 88, 'FN': 12, 'FP': 4, 'TN': 96},
+    {'name': 'C', 'TP': 98, 'FN': 2, 'FP': 15, 'TN': 85},
+    {'name': 'D', 'TP': 92, 'FN': 8, 'FP': 7, 'TN': 93},
+]
+passed = filter_confusion_matrices(candidates, min_recall=0.90, max_fpr=0.10)
+assert [m[0]['name'] for m in passed] == ['A', 'D']
+```
+
+---
+
+### 2. Training Loss Divergence: Multi-Select Root Cause Analysis
+
+When a model's training loss spikes uncontrollably, explodes to infinity (`inf`), or yields `NaN`, diagnosis proceeds across optimization hyperparameters, data conditioning, and loss formulation:
+
+| Diagnostic Hypothesis | Causes Loss Divergence? | Mathematical Mechanism & System Rationale |
+|---|---|---|
+| **Learning Rate / Step Size Too Large** | **Yes [Primary Root Cause]** | For objective $rac{1}{2} x^T H x$, if step size $\eta > rac{2}{\lambda_{\max}(H)}$, gradient updates diverge exponentially: $\|w_{t+1} - w^*\| > \|w_t - w^*\|$. |
+| **Unnormalized / Unscaled Input Features** | **Yes [Primary Root Cause]** | Severe feature scale imbalance inflates the condition number $\kappa(H) = rac{\lambda_{\max}}{\lambda_{\min}} \gg 1$, creating pathological ravines where fixed step sizes overshoot orthogonal walls. |
+| **Numerically Unstable Loss Formulation** | **Yes [Primary Root Cause]** | Cross-entropy without probability clamping ($p 	o 0 \implies \log p 	o -\infty$), inducing arithmetic underflow and `NaN` propagation. |
+| **Exploding Gradients in Deep Layers** | **Yes [Primary Root Cause]** | Repeated matrix multiplication across deep layers yields unbounded gradient norms $\|
+abla_	heta \mathcal{L}\|$ without gradient clipping. |
+| **Regularization Parameter Too High** | **No [Common Misconception]** | Excessive regularization ($\lambda 	o \infty$) strongly penalizes weights to zero, causing **underfitting** with high but finite, bounded loss. It never causes divergence to infinity. |
+| **Zero Regularization on Ill-Conditioned Problems** | **Yes** | When features are multicollinear or $N < P$, the design matrix is singular. Absence of $L_2$ regularization allows weights to grow unbounded. |
+
+---
+
+### 3. Overfitting Diagnosis on Fit-vs-Validation Curves & Mitigations
+
+#### (1) Learning Curve Diagnostic Topology
+
+```text
+Loss
+ ▲
+ │   \              Validation Loss
+ │    \             /-------------------- (Widening Generalization Gap: High Variance)
+ │     \   Minimum /
+ │      \───★───/
+ │        │        \─────── Training Loss -> Approaching 0
+ └──────────────────────────────────────────► Training Epochs
+```
+
+- **Diagnostic Signature**: Training loss monotonically approaches zero while validation loss rebounds and escalates after reaching its trough. The widening generalization gap ($\mathcal{L}_{	ext{val}} - \mathcal{L}_{	ext{train}}$) signals that the model is memorizing training noise.
+
+#### (2) Mitigation Strategy Multi-Select Assessment
+
+| Engineering Mitigation | Effective Against Overfitting? | Systemic Mechanism |
+|---|---|---|
+| **Early Stopping** | **Effective [Core Strategy]** | Halts training at the inflection point where validation loss begins to diverge, freezing weights before noise memorization. |
+| **$L_1 / L_2$ Regularization (Weight Decay)** | **Effective [Core Strategy]** | Constrains parameter norm, shrinking hypothesis space complexity. |
+| **Dropout / DropPath** | **Effective [Core Strategy]** | Randomly zeros activations during forward passes, breaking co-adaptations and approximating an exponential ensemble. |
+| **Data Augmentation & Collecting More Data** | **Effective [Core Strategy]** | Expands empirical sample diversity, aligning empirical distribution closer to true population distribution. |
+| **Reduce Model Capacity** | **Effective [Core Strategy]** | Reduces network depth, width, or tree `max_depth`, fundamentally restricting functional expressiveness. |
+| **Feature Selection & Pruning** | **Effective [Core Strategy]** | Eliminates low signal-to-noise features that facilitate spurious memorization. |
+| **Train for More Epochs** | **Ineffective [Exacerbates Overfitting]** | Deepens noise memorization, driving generalization error higher. |
+| **Increase Network Depth & Layer Width** | **Ineffective [Exacerbates Overfitting]** | Expands hypothesis space, compounding overparameterization. |
+
+---
+
+### 4. 3-Layer Neural Network Forward Pass by Hand (Linear-Linear-Sigmoid)
+
+#### (1) Architecture & Numerical Parameters
+
+Consider a 3-layer fully connected network mapping $\mathbb{R}^2 	o \mathbb{R}^2 	o \mathbb{R}^1$:
+
+- **Input**: $x = egin{pmatrix} 0.5 \ -0.2 \end{pmatrix}$
+- **Layer 1 (Linear)**:
+  $$W_1 = egin{pmatrix} 0.4 & -0.5 \ 0.2 & 0.8 \end{pmatrix}, \quad b_1 = egin{pmatrix} 0.1 \ -0.1 \end{pmatrix}$$
+- **Layer 2 (Linear)**:
+  $$W_2 = egin{pmatrix} 0.5 & 0.3 \ -0.2 & 0.4 \end{pmatrix}, \quad b_2 = egin{pmatrix} -0.05 \ 0.15 \end{pmatrix}$$
+- **Layer 3 (Linear + Sigmoid)**:
+  $$W_3 = egin{pmatrix} 1.2 & -0.8 \end{pmatrix}, \quad b_3 = 0.05, \quad \sigma(z) = rac{1}{1 + e^{-z}}$$
+
+#### (2) Step-by-Step Numerical Computation
+
+1. **Layer 1 Forward**:
+   $$z_1 = W_1 x + b_1 = egin{pmatrix} 0.4(0.5) + (-0.5)(-0.2) + 0.1 \ 0.2(0.5) + 0.8(-0.2) + (-0.1) \end{pmatrix} = egin{pmatrix} 0.20 + 0.10 + 0.10 \ 0.10 - 0.16 - 0.10 \end{pmatrix} = egin{pmatrix} 0.400 \ -0.160 \end{pmatrix}$$
+
+2. **Layer 2 Forward**:
+   $$z_2 = W_2 z_1 + b_2 = egin{pmatrix} 0.5(0.400) + 0.3(-0.160) - 0.05 \ -0.2(0.400) + 0.4(-0.160) + 0.15 \end{pmatrix} = egin{pmatrix} 0.200 - 0.048 - 0.050 \ -0.080 - 0.064 + 0.150 \end{pmatrix} = egin{pmatrix} 0.102 \ 0.006 \end{pmatrix}$$
+
+3. **Layer 3 Linear & Sigmoid**:
+   $$z_3 = W_3 z_2 + b_3 = 1.2(0.102) + (-0.8)(0.006) + 0.050 = 0.1224 - 0.0048 + 0.0500 = 0.1676$$
+   $$\hat{y} = \sigma(0.1676) = rac{1}{1 + e^{-0.1676}} pprox rac{1}{1 + 0.84569} pprox rac{1}{1.84569} pprox 0.54180 pprox \mathbf{0.542}$$
+
+#### (3) Code Verification
+
+```python
+import numpy as np
+
+def manual_forward_pass() -> float:
+    x = np.array([0.5, -0.2])
+    W1 = np.array([[0.4, -0.5], [0.2, 0.8]])
+    b1 = np.array([0.1, -0.1])
+    W2 = np.array([[0.5, 0.3], [-0.2, 0.4]])
+    b2 = np.array([-0.05, 0.15])
+    W3 = np.array([1.2, -0.8])
+    b3 = 0.05
+
+    z1 = W1 @ x + b1
+    z2 = W2 @ z1 + b2
+    z3 = float(W3 @ z2 + b3)
+    out = 1.0 / (1.0 + np.exp(-z3))
+    return round(out, 3)
+
+assert manual_forward_pass() == 0.542
+```
+
+---
+
+### 5. Local Maximum on a 1-D Stream with Boundary Degradation
+
+In streaming feature engineering and signal processing, identifying local peak indices requires evaluating neighborhoods with adaptive boundary fallback:
+
+#### (1) Problem Formalization & Boundary Fallback
+
+Given a sequence `rawData` and search neighborhood radius `localArea` ($k$):
+- For index $i$, available left neighbors $L = \min(i, k)$ and right neighbors $R = \min(N - 1 - i, k)$;
+- Left neighborhood must strictly increase toward $i$ (strictly decreasing away from $i$):
+  $$rawData[i - j + 1] > rawData[i - j], \quad orall j \in [1, L]$$
+- Right neighborhood must strictly decrease away from $i$:
+  $$rawData[i + j - 1] > rawData[i + j], \quad orall j \in [1, R]$$
+- **Boundary Fallback**: If fewer than $k$ neighbors exist on a flank, validate across all available neighbors. Single element sequences trivially qualify. Equal adjacent values break strict inequality.
+
+#### (2) Implementation
+
+```python
+from typing import List
+
+def find_local_maxima(rawData: List[float], localArea: int) -> List[int]:
+    """
+    Returns indices i where localArea neighbors on each side form strictly
+    decreasing subsequences moving away from i, falling back to available neighbors.
+    """
+    n = len(rawData)
+    if n == 0:
+        return []
+
+    local_max_indices = []
+
+    for i in range(n):
+        is_peak = True
+
+        # Left flank check: strictly increasing toward i
+        left_bound = min(i, localArea)
+        for j in range(1, left_bound + 1):
+            if rawData[i - j + 1] <= rawData[i - j]:
+                is_peak = False
+                break
+
+        if not is_peak:
+            continue
+
+        # Right flank check: strictly decreasing away from i
+        right_bound = min(n - 1 - i, localArea)
+        for j in range(1, right_bound + 1):
+            if rawData[i + j - 1] <= rawData[i + j]:
+                is_peak = False
+                break
+
+        if is_peak:
+            local_max_indices.append(i)
+
+    return local_max_indices
+
+# Verification
+arr = [1, 3, 5, 4, 2, 6, 2, 1]
+assert find_local_maxima(arr, 2) == [2, 5]
+assert find_local_maxima([10], 3) == [0]
+assert find_local_maxima([2, 4, 4, 1], 1) == []
+```
+
+---
+
+### 6. k-Means Clustering from Scratch (Standard Assign-Update Loop)
+
+Lloyd's algorithm implements alternating minimization over cluster assignments and centroid coordinates:
+
+#### (1) Objective Function
+
+$$rg\min_{\mathcal{S}, oldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - oldsymbol{\mu}_j\|^2$$
+
+Iterative steps:
+1. **Assignment**: Assign each sample to the nearest centroid under Euclidean distance:
+   $$c_i^{(t)} = rg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - oldsymbol{\mu}_j^{(t)}\|^2$$
+2. **Centroid Update**: Recompute centroid as the cluster empirical mean:
+   $$oldsymbol{\mu}_j^{(t+1)} = rac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
+
+#### (2) Implementation
+
+```python
+import numpy as np
+from typing import List, Union
+
+class ScratchKMeans:
+    def __init__(self, k: int, initial_centroids: Union[List[List[float]], np.ndarray], max_iters: int = 100):
+        self.k = k
+        self.centroids = np.asarray(initial_centroids, dtype=float)
+        self.max_iters = max_iters
+
+    def fit_predict(self, data: Union[List[List[float]], np.ndarray]) -> List[int]:
+        """
+        Executes standard assign-then-update loop, returning cluster label per sample.
+        """
+        X = np.asarray(data, dtype=float)
+        n_samples = len(X)
+        labels = np.zeros(n_samples, dtype=int)
+
+        for _ in range(self.max_iters):
+            # Assignment step: broadcasting pairwise distances (N, K)
+            distances = np.sum((X[:, np.newaxis, :] - self.centroids[np.newaxis, :, :]) ** 2, axis=2)
+            new_labels = np.argmin(distances, axis=1)
+
+            # Convergence termination
+            if np.array_equal(labels, new_labels) and _ > 0:
+                break
+            labels = new_labels
+
+            # Update step
+            for c in range(self.k):
+                cluster_members = X[labels == c]
+                if len(cluster_members) > 0:
+                    self.centroids[c] = np.mean(cluster_members, axis=0)
+
+        return labels.tolist()
+
+# Verification
+X_pts = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
+init_centers = [[1.0, 2.0], [8.0, 8.0]]
+kmeans = ScratchKMeans(k=2, initial_centroids=init_centers)
+assert kmeans.fit_predict(X_pts) == [0, 0, 1, 1, 0, 1]
+```
+
+---
+
+### 7. Scaled Dot-Product Attention & First-Principles Binary Cross-Entropy
+
+In modern machine learning engineering evaluations, implementing core attention operators alongside first-principles loss derivations represents a primary interview benchmark:
+
+#### (1) Numerically Stable Scaled Dot-Product Attention
+
+Mathematical primitive:
+$$	ext{Attention}(Q, K, V) = 	ext{softmax}\left(rac{Q K^T}{\sqrt{d_k}} + Might) V$$
+
+- **Tensor Dimensions**: $Q, K, V \in \mathbb{R}^{B 	imes L 	imes d_k}$;
+- **Masking Semantics**: In causal masking or padding tokens, invalid entries receive $-10^9$ or $-\infty$, ensuring zero attention probability after softmax;
+- **Numerical Stability**: Row-max subtraction before exponentiation prevents floating-point overflow.
+
+```python
+import numpy as np
+from typing import Optional
+
+def self_attention(
+    Q: np.ndarray,
+    K: np.ndarray,
+    V: np.ndarray,
+    mask: Optional[np.ndarray] = None
+) -> np.ndarray:
+    """
+    Numerically stable scaled dot-product self-attention in pure NumPy.
+    
+    Shapes:
+    - Q, K, V: (batch_size, seq_len, d_k)
+    - mask: (seq_len, seq_len) or broadcastable, with 0 for masked and 1 for keep.
+    """
+    d_k = Q.shape[-1]
+    scale = 1.0 / np.sqrt(d_k)
+
+    # 1. Attention logits: Q @ K^T -> (B, L, L)
+    scores = np.matmul(Q, np.swapaxes(K, -1, -2)) * scale
+
+    # 2. Inject mask
+    if mask is not None:
+        scores = np.where(mask == 0, -1e9, scores)
+
+    # 3. Stable softmax with row-max subtraction
+    row_max = np.max(scores, axis=-1, keepdims=True)
+    exp_scores = np.exp(scores - row_max)
+    weights = exp_scores / np.sum(exp_scores, axis=-1, keepdims=True)
+
+    # 4. Output aggregation: Weights @ V -> (B, L, d_k)
+    return np.matmul(weights, V)
+```
+
+#### (2) First-Principles Derivation: Binary Cross-Entropy with Logits
+
+Let unnormalized logit be $z \in \mathbb{R}$. The posterior probability is parameterized by the Sigmoid function:
+$$p = \sigma(z) = rac{1}{1 + e^{-z}}$$
+
+Under the Bernoulli likelihood assumption, the likelihood for a single sample is:
+$$P(y \mid z) = p^y (1 - p)^{1 - y}$$
+
+The per-sample negative log-likelihood (BCE loss) is:
+$$\ell(z, y) = - ig[ y \log(p) + (1 - y) \log(1 - p) ig]$$
+
+**Algebraic Simplification substituting $p = \sigma(z)$**:
+$$\log(p) = -\log(1 + e^{-z})$$
+$$\log(1 - p) = -z - \log(1 + e^{-z})$$
+
+Substituting into $\ell(z, y)$:
+$$\ell(z, y) = (1 - y)z + \log(1 + e^{-z}) = z - yz + \log(1 + e^{-z})$$
+
+To eliminate positive exponent overflow for all $z \in \mathbb{R}$, we formulate the numerically stable equivalent:
+$$\ell(z, y) = \max(z, 0) - z \cdot y + \log(1 + e^{-|z|})$$
+
+Averaged over a batch of $N$ samples:
+$$\mathcal{L}(Z, Y) = rac{1}{N} \sum_{i=1}^N ig[ \max(z_i, 0) - z_i y_i + \log(1 + e^{-|z_i|}) ig]$$
+
+```python
+def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> float:
+    """
+    First-principles implementation of numerically stable BCE with logits.
+    Equivalent to PyTorch's nn.BCEWithLogitsLoss().
+    """
+    logits = np.asarray(logits, dtype=float)
+    labels = np.asarray(labels, dtype=float)
+
+    max_z = np.maximum(logits, 0.0)
+    abs_z = np.abs(logits)
+    loss = max_z - logits * labels + np.log(1.0 + np.exp(-abs_z))
+
+    return float(np.mean(loss))
+```
+
+#### (3) Systemic Architectural Invariants
+
+1. **Why scale the dot-product by $\sqrt{d_k}$?**
+   - For independent unit-variance components $q_i, k_i \sim \mathcal{N}(0, 1)$, the inner product $\sum_{i=1}^{d_k} q_i k_i$ has mean $0$ and variance $d_k$.
+   - As $d_k$ grows large (e.g. $d_k = 128$), variance expands to 128, pushing softmax inputs into saturation regions where gradients vanish ($\sigma'(z) 	o 0$). Scaling by $1/\sqrt{d_k}$ renormalizes variance to $1.0$, keeping softmax activations in high-sensitivity gradient zones.
+2. **What is the functional role of the Position-wise Feed-Forward Network (FFN)?**
+   - Self-attention acts as a global **Token Mixer** (inter-token context aggregation);
+   - The FFN operates as a localized **Channel Mixer** (intra-token non-linear feature transformation), projecting embeddings into a $4	imes$ expanded subspace before non-linear gating, storing persistent associative factual patterns.
+

@@ -1119,3 +1119,648 @@ class ReverseWordsSolution:
 
 </div>
 </details>
+
+---
+
+### 17. Local Maximum on a 1-D Stream with Boundary Degradation
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 17</span>
+  <span class="review-card-title">Local Maximum on a 1-D Stream with Boundary Degradation</span>
+  <span class="review-card-tag">Bidirectional Monotonicity · Boundary Fallback · Sliding Neighborhood · O(N * K)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class LocalMaximaStreamSolution:
+    @classmethod
+    def findLocalMaxima(cls, rawData: List[float], localArea: int) -> List[int]:
+        """
+        Returns all indices i in a 1-D stream where localArea neighbors on each flank
+        form strictly decreasing subsequences moving away from i.
+        
+        Boundary fallback: if fewer than localArea neighbors exist on a side,
+        validate against all available neighbors on that side.
+        """
+        n = len(rawData)
+        if n == 0:
+            return []
+
+        result = []
+
+        for i in range(n):
+            is_peak = True
+
+            # 1. Check left flank: strictly increasing toward i
+            left_len = min(i, localArea)
+            for j in range(1, left_len + 1):
+                if rawData[i - j + 1] <= rawData[i - j]:
+                    is_peak = False
+                    break
+
+            if not is_peak:
+                continue
+
+            # 2. Check right flank: strictly decreasing away from i
+            right_len = min(n - 1 - i, localArea)
+            for j in range(1, right_len + 1):
+                if rawData[i + j - 1] <= rawData[i + j]:
+                    is_peak = False
+                    break
+
+            if is_peak:
+                result.append(i)
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Bidirectional Monotonicity**:
+  A local maximum requires strict descent when moving outward in both directions. The left subarray $rawData[i-L \dots i]$ must strictly increase toward $i$, and the right subarray $rawData[i \dots i+R]$ must strictly decrease away from $i$. Equal plateau values violate strict inequality and are rejected.
+- **Boundary Fallback**:
+  At $i=0$, the left neighbor count is 0, satisfying the left flank vacuously; only the right flank is verified. At $i=n-1$, only the left flank is checked. A single-element array returns `[0]`.
+- **Streaming Context**:
+  Widely deployed in financial tick analysis and sensor stream signal processing for real-time peak identification and technical indicator feature generation.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N \cdot K)$ where $K = 	ext{localArea}$. For small fixed $K$, runtime scales linearly with stream length $N$.
+- **Space Complexity**: $\mathcal{O}(1)$ auxiliary space excluding output list.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 18. Largest Min+Max in Subarray via Adjacent Pair Reduction
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 18</span>
+  <span class="review-card-title">Largest Min+Max in Subarray via Adjacent Pair Reduction</span>
+  <span class="review-card-tag">Mathematical Reduction · Local Dominance · Adjacent Pair Scan · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class LargestMinMaxSumSolution:
+    @classmethod
+    def largestMinMaxSum(cls, nums: List[int]) -> int:
+        """
+        Finds the maximum possible value of min(sub) + max(sub) for any
+        contiguous subarray of length >= 2.
+        
+        Mathematical Reduction:
+        For any contiguous subarray nums[i..j] (j - i >= 1), its min + max
+        is bounded above by the adjacent pair containing its maximum element.
+        Thus the global optimum reduces to max(nums[i] + nums[i+1]).
+        """
+        n = len(nums)
+        if n < 2:
+            raise ValueError("Array length must be at least 2")
+
+        max_sum = nums[0] + nums[1]
+        for i in range(1, n - 1):
+            pair_sum = nums[i] + nums[i + 1]
+            if pair_sum > max_sum:
+                max_sum = pair_sum
+
+        return max_sum
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Mathematical Reduction Proof**:
+  Let $[i, j]$ be a subarray with $j - i \ge 1$, minimum $m$, and maximum $M$.
+  Consider the adjacent pair containing $M$ inside this subarray (e.g. $(nums[p-1], M)$ or $(M, nums[p+1])$).
+  Every element in the subarray is $\ge m$, so the neighbor element is $\ge m$.
+  Hence $M + 	ext{neighbor} \ge M + m$.
+  Therefore, every valid subarray's objective is dominated by an adjacent pair within it. No sliding window or segment tree is needed; a linear $\mathcal{O}(N)$ scan over adjacent pairs suffices.
+- **Length Constraint Guard**:
+  Clarifying "length $\ge 2$" is essential: a single-element subarray would trivially give $2 	imes nums[i]$, completely altering the problem.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ single linear pass.
+- **Space Complexity**: $\mathcal{O}(1)$ auxiliary space.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 19. Subarray Sum Equals K via Prefix Sum Hash Map
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 19</span>
+  <span class="review-card-title">Subarray Sum Equals K via Prefix Sum Hash Map</span>
+  <span class="review-card-tag">Prefix Sum Difference · Frequency Hash Map · Negative-Value Robustness · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+from collections import defaultdict
+
+class SubarraySumEqualsKSolution:
+    @classmethod
+    def subarraySum(cls, nums: List[int], k: int) -> int:
+        """
+        Counts contiguous subarrays whose sum equals k.
+        Robust to positive, negative, and zero values.
+        """
+        prefix_counts = defaultdict(int)
+        prefix_counts[0] = 1  # Base prefix for exact matches from index 0
+        
+        current_sum = 0
+        total_valid_subarrays = 0
+
+        for num in nums:
+            current_sum += num
+            
+            # Check for prefix sum satisfying: current_sum - prefix_sum = k
+            if (current_sum - k) in prefix_counts:
+                total_valid_subarrays += prefix_counts[current_sum - k]
+
+            prefix_counts[current_sum] += 1
+
+        return total_valid_subarrays
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Prefix Sum Difference Property**:
+  $$\sum_{p=i}^j nums[p] = S_j - S_{i-1} = k \iff S_{i-1} = S_j - k$$
+  Tracking historical prefix frequencies in a hash map allows counting valid starting indices for ending index $j$ in $\mathcal{O}(1)$ amortized time.
+- **Why Sliding Window Fails**:
+  Negative values destroy monotonicity of cumulative sums; contracting the left pointer no longer guarantees shrinking the window sum.
+- **Base Case `{0: 1}`**:
+  When $S_j == k$, the entire subarray from index 0 to $j$ is valid. Seeding `{0: 1}` guarantees this match is counted.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ single pass with $\mathcal{O}(1)$ hash map lookups.
+- **Space Complexity**: $\mathcal{O}(N)$ storing at most $N+1$ prefix values.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 20. Longest Substring Without Repeating Characters
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 20</span>
+  <span class="review-card-title">Longest Substring Without Repeating Characters</span>
+  <span class="review-card-tag">Sliding Window · Last Seen Index Map · Monotonic Left Jump · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+class LongestSubstringWithoutRepeatingSolution:
+    @classmethod
+    def lengthOfLongestSubstring(cls, s: str) -> int:
+        """
+        Computes length of longest contiguous substring without repeating characters.
+        Uses a last-seen index map for O(1) left pointer jumps.
+        """
+        char_last_seen = {}
+        left = 0
+        max_length = 0
+
+        for right, ch in enumerate(s):
+            if ch in char_last_seen and char_last_seen[ch] >= left:
+                left = char_last_seen[ch] + 1
+            
+            char_last_seen[ch] = right
+            current_window = right - left + 1
+            if current_window > max_length:
+                max_length = current_window
+
+        return max_length
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **O(1) Boundary Jump**:
+  Tracking `char_last_seen[ch]` allows the left pointer to jump directly to `last_seen + 1`, avoiding iterative single-character shrinkage.
+- **Monotonicity Guard**:
+  The condition `char_last_seen[ch] >= left` prevents the left boundary from moving backward to stale indices outside the active window.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, single pass.
+- **Space Complexity**: $\mathcal{O}(\min(N, |\Sigma|))$, bounded by the character alphabet size.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 21. 8-Byte Aligned Memory Allocator Simulation
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">DESIGN 21</span>
+  <span class="review-card-title">8-Byte Aligned Memory Allocator Simulation</span>
+  <span class="review-card-tag">Systems Emulation · 8-Byte Alignment Stride · Unique Block ID · O(N/8 * X)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class AlignedMemoryAllocator:
+    """
+    Simulates memory allocation under an 8-byte aligned start-index constraint.
+    
+    - alloc(x): finds leftmost slot starting at index = 0 (mod 8) with >= x
+                consecutive free cells (0), tags them with unique autoincrement ID,
+                and returns start index. Returns -1 if no space fits.
+    - erase(id): frees all cells tagged with id, returning total cells cleared.
+    """
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.memory: List[int] = [0] * capacity
+        self.next_alloc_id: int = 1
+
+    def alloc(self, x: int) -> int:
+        if x <= 0:
+            return -1
+
+        current_id = self.next_alloc_id
+
+        # Scan multiples of 8 exclusively: 0, 8, 16, 24, ...
+        for start in range(0, self.capacity, 8):
+            if start + x <= self.capacity:
+                can_fit = True
+                for offset in range(x):
+                    if self.memory[start + offset] != 0:
+                        can_fit = False
+                        break
+
+                if can_fit:
+                    for offset in range(x):
+                        self.memory[start + offset] = current_id
+                    self.next_alloc_id += 1
+                    return start
+
+        return -1
+
+    def erase(self, req_id: int) -> int:
+        if req_id <= 0:
+            return 0
+
+        cleared_count = 0
+        for i in range(self.capacity):
+            if self.memory[i] == req_id:
+                self.memory[i] = 0
+                cleared_count += 1
+
+        return cleared_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Alignment Stride Constraint**:
+  Enforcing $start \pmod 8 == 0$ restricts candidate search indices to step size 8, reducing candidate locations to $\lceil 	ext{capacity} / 8 ceil$.
+- **Monotonic ID Tagging**:
+  Auto-incrementing `next_alloc_id` ensures each allocation retains distinct identities even across allocations of identical size.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**:
+  - `alloc(x)`: $\mathcal{O}(rac{N}{8} \cdot X)$ worst-case.
+  - `erase(id)`: $\mathcal{O}(N)$ single pass over memory array.
+- **Space Complexity**: $\mathcal{O}(N)$ for memory state array.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 22. Zigzag Alternating-Parity Subarrays
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">ARRAY 22</span>
+  <span class="review-card-title">Zigzag Alternating-Parity Subarrays</span>
+  <span class="review-card-tag">Running Streak · Parity Disparity · Single Pass · O(N) Time</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class AlternatingParitySubarraysSolution:
+    @classmethod
+    def countAlternatingSubarrays(cls, nums: List[int]) -> int:
+        """
+        Counts contiguous subarrays whose adjacent elements alternate in parity.
+        Single-element subarrays count as length-1 alternating sequences.
+        """
+        if not nums:
+            return 0
+
+        total_subarrays = 1
+        current_streak = 1
+
+        for i in range(1, len(nums)):
+            if (nums[i] % 2) != (nums[i - 1] % 2):
+                current_streak += 1
+            else:
+                current_streak = 1
+
+            # Number of alternating subarrays ending at index i equals current_streak
+            total_subarrays += current_streak
+
+        return total_subarrays
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Running Streak Counting Principle**:
+  If the longest alternating contiguous subarray ending at $i-1$ has length $k$, and $nums[i]$ has opposite parity from $nums[i-1]$, then extending all $k$ previous subarrays plus the length-1 subarray $[nums[i]]$ yields exactly $k+1$ valid subarrays ending at $i$.
+- **Avoiding $\mathcal{O}(N^2)$ Trap**:
+  Maintaining `current_streak` removes the need to enumerate endpoints or verify subsegments.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ linear scan.
+- **Space Complexity**: $\mathcal{O}(1)$ auxiliary space.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 23. Two-Direction Justified Newspaper Layout
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 23</span>
+  <span class="review-card-title">Two-Direction Justified Newspaper Layout</span>
+  <span class="review-card-tag">Greedy Word Packing · Dual Alignment Padding · Asterisk Framing · O(Total Words)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class NewspaperLayoutSolution:
+    @classmethod
+    def layoutNewspaper(
+        cls,
+        paragraphs: List[List[str]],
+        alignments: List[str],
+        width: int
+    ) -> List[str]:
+        """
+        Lays out words greedily per paragraph with LEFT or RIGHT justification up to width,
+        and wraps the rendered output in a '*' border.
+        """
+        content_lines: List[str] = []
+
+        for words, align in zip(paragraphs, alignments):
+            current_line_words: List[str] = []
+            current_line_len = 0
+
+            for word in words:
+                needed_len = len(word) if not current_line_words else len(word) + 1
+
+                if current_line_len + needed_len <= width:
+                    current_line_words.append(word)
+                    current_line_len += needed_len
+                else:
+                    line_text = " ".join(current_line_words)
+                    pad_spaces = " " * (width - len(line_text))
+                    
+                    if align == "LEFT":
+                        formatted_line = line_text + pad_spaces
+                    else:
+                        formatted_line = pad_spaces + line_text
+
+                    content_lines.append(f"*{formatted_line}*")
+                    current_line_words = [word]
+                    current_line_len = len(word)
+
+            if current_line_words:
+                line_text = " ".join(current_line_words)
+                pad_spaces = " " * (width - len(line_text))
+                if align == "LEFT":
+                    formatted_line = line_text + pad_spaces
+                else:
+                    formatted_line = pad_spaces + line_text
+                content_lines.append(f"*{formatted_line}*")
+
+        horizontal_border = "*" * (width + 2)
+        return [horizontal_border] + content_lines + [horizontal_border]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Greedy Word Packing**:
+  Each line packs maximal words separated by single spaces until adding the next exceeds `width`.
+- **Directional Alignment**:
+  - `LEFT`: text padded with trailing spaces;
+  - `RIGHT`: text padded with leading spaces.
+- **Border Enclosure**:
+  Top and bottom lines are solid `*` strings of width `width + 2`, enclosing left and right frame stars.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(L)$ where $L$ is total length of all words and padded spaces.
+- **Space Complexity**: $\mathcal{O}(L)$ storing rendered strings.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 24. Longest Palindromic Substring: Center vs Manacher
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STRING 24</span>
+  <span class="review-card-title">Longest Palindromic Substring: Center vs Manacher</span>
+  <span class="review-card-tag">Center Expansion · Manacher's Algorithm · Symmetry Radius Mapping · Strict O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+class LongestPalindromeSolution:
+    @classmethod
+    def longestPalindromeCenterExpand(cls, s: str) -> str:
+        """Baseline Center Expansion: O(N^2) time, O(1) space."""
+        if not s:
+            return ""
+
+        start, max_len = 0, 1
+
+        def expand(left: int, right: int) -> int:
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                left -= 1
+                right += 1
+            return right - left - 1
+
+        for i in range(len(s)):
+            len1 = expand(i, i)
+            len2 = expand(i, i + 1)
+            cur_max = max(len1, len2)
+            if cur_max > max_len:
+                max_len = cur_max
+                start = i - (cur_max - 1) // 2
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeManacher(cls, s: str) -> str:
+        """Manacher's Algorithm: strict O(N) time and O(N) space."""
+        if not s:
+            return ""
+
+        transformed = "^#" + "#".join(s) + "#$"
+        m = len(transformed)
+        radius = [0] * m
+        center = 0
+        right = 0
+
+        for i in range(1, m - 1):
+            i_mirror = 2 * center - i
+
+            if right > i:
+                radius[i] = min(right - i, radius[i_mirror])
+            else:
+                radius[i] = 0
+
+            while transformed[i + 1 + radius[i]] == transformed[i - 1 - radius[i]]:
+                radius[i] += 1
+
+            if i + radius[i] > right:
+                center = i
+                right = i + radius[i]
+
+        best_radius = 0
+        best_center = 0
+        for i in range(1, m - 1):
+            if radius[i] > best_radius:
+                best_radius = radius[i]
+                best_center = i
+
+        start_orig = (best_center - best_radius) // 2
+        return s[start_orig : start_orig + best_radius]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Center Expansion ($\mathcal{O}(N^2)$ Baseline)**:
+  Examines $2N-1$ possible centers, expanding symmetrically. Degenerates to $\mathcal{O}(N^2)$ on repetitive strings (e.g. `"aaaa"`).
+- **Manacher's $\mathcal{O}(N)$ Symmetry Reuse**:
+  1. **Even/Odd Unification**: Inserting `#` transforms all palindromes into odd-length ones centered on a character or `#`.
+  2. **Mirror Seeding**: When $i < right$, the palindrome radius around $i$ is seeded from its mirror $i_{mirror} = 2 \cdot center - i$, bounded by `right - i`.
+  3. **Amortized Linearity**: Character comparisons only occur when expanding beyond the current `right` boundary. Because `right` advances monotonically at most $2N$ times, total runtime is strictly $\mathcal{O}(N)$.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: Center expansion is $\mathcal{O}(N^2)$; Manacher's algorithm is $\mathcal{O}(N)$.
+- **Space Complexity**: Center expansion is $\mathcal{O}(1)$; Manacher's algorithm is $\mathcal{O}(N)$ for transformed string and radius array.
+
+</div>
+
+</div>
+</details>
+

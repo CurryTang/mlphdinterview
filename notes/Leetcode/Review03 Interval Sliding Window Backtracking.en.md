@@ -451,3 +451,454 @@ class DigitConstructionSolution:
 
 </div>
 </details>
+
+---
+
+### 06. Non-overlapping Intervals via Earliest Deadline First
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 06</span>
+  <span class="review-card-title">Non-overlapping Intervals via Earliest Deadline First</span>
+  <span class="review-card-tag">Greedy Interval Scheduling · Earliest Deadline First · O(N log N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class NonOverlappingIntervalsSolution:
+    @classmethod
+    def eraseOverlapIntervals(cls, intervals: List[List[int]]) -> int:
+        """
+        Computes minimum removals to make remaining intervals non-overlapping.
+        Touching endpoints [a, b] and [b, c] are compatible.
+        """
+        if not intervals:
+            return 0
+
+        # Sort by end time ascending
+        intervals.sort(key=lambda x: x[1])
+
+        kept_count = 1
+        prev_end = intervals[0][1]
+
+        for i in range(1, len(intervals)):
+            if intervals[i][0] >= prev_end:
+                kept_count += 1
+                prev_end = intervals[i][1]
+
+        return len(intervals) - kept_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Dual Formulation**:
+  Minimizing removals is mathematically equivalent to maximizing the cardinality of a mutually disjoint subset of intervals.
+- **Earliest Deadline First (EDF) Optimality**:
+  Picking intervals that finish earliest leaves the largest possible remaining window for future candidates.
+- **Touching Boundary Invariant**:
+  Per standard interval convention, $start == end$ is compatible, requiring `intervals[i][0] >= prev_end`.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N \log N)$ for sorting, followed by an $\mathcal{O}(N)$ linear pass.
+- **Space Complexity**: $\mathcal{O}(\log N)$ auxiliary space for sorting.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 07. Time-Based Key-Value Store via Binary Search
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BS 07</span>
+  <span class="review-card-title">Time-Based Key-Value Store via Binary Search</span>
+  <span class="review-card-tag">Binary Search (bisect) · Time Series Multiversion Storage · O(log N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from collections import defaultdict
+import bisect
+from typing import List, Tuple
+
+class TimeMap:
+    def __init__(self):
+        self.store = defaultdict(list)
+
+    def set(self, key: str, value: str, timestamp: int) -> None:
+        """Stores key-value at timestamp. Assumes monotonically increasing timestamps."""
+        self.store[key].append((timestamp, value))
+
+    def get(self, key: str, timestamp: int) -> str:
+        """Returns value with largest timestamp_prev <= timestamp, or empty string."""
+        if key not in self.store:
+            return ""
+
+        records = self.store[key]
+        idx = bisect.bisect_right(records, (timestamp, chr(127)))
+
+        if idx == 0:
+            return ""
+
+        return records[idx - 1][1]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Predecessor Bisection**:
+  Because write timestamps arrive strictly in ascending order, each key's list is ordered. `bisect_right` finds the first entry $> timestamp$, whose immediate predecessor `idx - 1` gives the latest valid revision.
+- **Out-of-Order Writes Follow-up**:
+  If timestamps arrive out of order, use `bisect.insort` or maintain a balanced tree / `SortedDict` to preserve $\mathcal{O}(\log M)$ operations.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: `set` is $\mathcal{O}(1)$ amortized; `get` is $\mathcal{O}(\log M)$ where $M$ is the revision count for that key.
+- **Space Complexity**: $\mathcal{O}(N)$ overall storage across all entries.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 08. Interval List Intersections via Two-Pointer Scan
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TP 08</span>
+  <span class="review-card-title">Interval List Intersections via Two-Pointer Scan</span>
+  <span class="review-card-tag">Two Pointers · Closed Interval Intersection · Earliest End Advance · O(M + N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class IntervalIntersectionSolution:
+    @classmethod
+    def intervalIntersection(
+        cls, firstList: List[List[int]], secondList: List[List[int]]
+    ) -> List[List[int]]:
+        """
+        Computes pairwise intersection intervals between two sorted disjoint interval lists.
+        """
+        i, j = 0, 0
+        m, n = len(firstList), len(secondList)
+        result = []
+
+        while i < m and j < n:
+            start = max(firstList[i][0], secondList[j][0])
+            end = min(firstList[i][1], secondList[j][1])
+
+            if start <= end:
+                result.append([start, end])
+
+            # Advance the interval that finishes earlier
+            if firstList[i][1] < secondList[j][1]:
+                i += 1
+            else:
+                j += 1
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Overlap Formula**:
+  The intersection of $[A_s, A_e]$ and $[B_s, B_e]$ is $[\max(A_s, B_s), \min(A_e, B_e)]$, which is non-empty iff $\max \le \min$.
+- **Pointer Advancement Invariant**:
+  If $A_e < B_e$, no subsequent interval in list $B$ can ever intersect $A_i$ because list $B$ is disjoint and sorted. Thus, advancing $i$ safely discards $A_i$ without missing potential overlaps.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(M + N)$, each step advances at least one pointer.
+- **Space Complexity**: $\mathcal{O}(1)$ auxiliary space.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 09. Longest Substring with At Most K Distinct Characters
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">SLIDE 09</span>
+  <span class="review-card-title">Longest Substring with At Most K Distinct Characters</span>
+  <span class="review-card-tag">Sliding Window · Frequency Map · Key Eviction · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from collections import defaultdict
+
+class LongestSubstringKDistinctSolution:
+    @classmethod
+    def lengthOfLongestSubstringKDistinct(cls, s: str, k: int) -> int:
+        """
+        Finds length of the longest substring with at most k distinct characters.
+        """
+        if not s or k <= 0:
+            return 0
+
+        counts = defaultdict(int)
+        left = 0
+        max_len = 0
+
+        for right, ch in enumerate(s):
+            counts[ch] += 1
+
+            while len(counts) > k:
+                left_ch = s[left]
+                counts[left_ch] -= 1
+                if counts[left_ch] == 0:
+                    del counts[left_ch]  # Physical eviction ensures correct key count
+                left += 1
+
+            current_len = right - left + 1
+            if current_len > max_len:
+                max_len = current_len
+
+        return max_len
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Physical Eviction Invariant**:
+  `len(counts)` tracks distinct keys. Keys with zero count must be deleted via `del counts[ch]`; otherwise, zero-frequency characters falsely inflate the distinct count.
+- **Amortized Sliding Window**:
+  Right pointer expands, and left pointer shrinks monotonically. Every character enters and leaves at most once.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$.
+- **Space Complexity**: $\mathcal{O}(K)$ for the frequency map.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 10. Search in Rotated Sorted Array: Distinct vs Duplicates
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BS 10</span>
+  <span class="review-card-title">Search in Rotated Sorted Array: Distinct vs Duplicates</span>
+  <span class="review-card-tag">Half-Sorted Partitioning · Duplicate Ambiguity · Boundary Shrinkage · O(log N) -> O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class SearchRotatedArraySolution:
+    @classmethod
+    def searchDistinct(cls, nums: List[int], target: int) -> int:
+        """Search in rotated array with distinct values in strict O(log N)."""
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+
+            # Check if left half is sorted
+            if nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
+                else:
+                    left = mid + 1
+            else:
+                # Right half is sorted
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+
+        return -1
+
+    @classmethod
+    def searchDuplicates(cls, nums: List[int], target: int) -> bool:
+        """Search in rotated array with duplicates; worst case degrades to O(N)."""
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return True
+
+            # Ambiguity when ends match mid
+            if nums[left] == nums[mid] == nums[right]:
+                left += 1
+                right -= 1
+            elif nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
+                else:
+                    left = mid + 1
+            else:
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+
+        return False
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Half-Sorted Invariant**:
+  Dividing a rotated array always yields at least one monotone half. If target lies within that monotone range, search that half; otherwise discard it.
+- **Duplicate Ambiguity & Linear Degeneration**:
+  When $nums[left] == nums[mid] == nums[right]$, the inflection point cannot be determined. Bisection safely contracts boundaries by $1$, degrading to $\mathcal{O}(N)$ in the worst case (e.g. all equal elements).
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Distinct**: $\mathcal{O}(\log N)$ time, $\mathcal{O}(1)$ space.
+- **Duplicates**: $\mathcal{O}(\log N)$ average, $\mathcal{O}(N)$ worst-case, $\mathcal{O}(1)$ space.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 11. Drone Relay to Target via Greedy Forward Progression
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 11</span>
+  <span class="review-card-title">Drone Relay to Target via Greedy Forward Progression</span>
+  <span class="review-card-tag">Greedy Simulation · Relay Pointer · Forward Leap Update · O(M log M + M)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class DroneRelaySolution:
+    @classmethod
+    def minWalkingDistance(cls, target: int, relay_points: List[int]) -> int:
+        """
+        Calculates minimum total walking distance from 0 to reach or pass target.
+        Walking to a relay point incurs cost equal to distance; drone leaps forward 10 units.
+        """
+        if target <= 0:
+            return 0
+
+        relays = sorted(set(p for p in relay_points if p >= 0))
+        
+        curr_pos = 0
+        total_walk_cost = 0
+        idx = 0
+        m = len(relays)
+
+        while curr_pos < target:
+            while idx < m and relays[idx] < curr_pos:
+                idx += 1
+
+            # No relays ahead, or next relay is at/past target
+            if idx >= m or relays[idx] >= target:
+                total_walk_cost += (target - curr_pos)
+                break
+
+            next_relay = relays[idx]
+            walk_to_relay = next_relay - curr_pos
+
+            # If walking directly to target is shorter than walking to relay
+            if (target - curr_pos) <= walk_to_relay:
+                total_walk_cost += (target - curr_pos)
+                break
+
+            # Walk to relay and take 10-unit drone jump
+            total_walk_cost += walk_to_relay
+            curr_pos = next_relay + 10
+            idx += 1
+
+        return total_walk_cost
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Greedy Invariant**:
+  A 10-unit drone jump provides free forward displacement. Any forward relay located before the target provides non-negative displacement gain over walking.
+- **Terminal Overshoot Guard**:
+  If the next relay lies beyond target ($relays[idx] \ge target$), walking to it overshoots and wastes energy; walking directly to target completes the journey optimally.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(M \log M)$ to sort relays, plus $\mathcal{O}(M)$ two-pointer scan.
+- **Space Complexity**: $\mathcal{O}(M)$ auxiliary space for sorted relays.
+
+</div>
+
+</div>
+</details>
+

@@ -1075,3 +1075,163 @@ if __name__ == "__main__":
 | **树数量收敛性** | 随机森林增加树数量 $B \to \infty$ 由大数定律**绝不会引发过拟合**，只会使方差平滑单调收敛。 | 误将随机森林与神经网络类比，盲目担忧树多了会过拟合而不敢增加 $n\_estimators$。 |
 | **特征重要性度量** | 严禁单凭 MDI（不纯度减少）做高维特征筛选，必须配套 **MDA（OOB 置换重要性）** 或 **TreeSHAP**。 | 使用 MDI 选出了一堆高基数的连续噪声变量，导致上线特征工程充斥无效特征。 |
 | **极端稀疏特征选型** | 当存在成千上万维稀疏特征且有效特征极少时，**优先选 GBDT 而非随机森林**。 | 在高维稀疏特征下盲目使用 RF，导致节点随机抽取 $m$ 命中有效特征的超几何概率归零。 |
+
+---
+
+## 模块八：决策树切分不纯度、集成学习权衡与从零手写 Bagging
+
+### 1. 决策树节点切分不纯度指标多维辨析（Entropy, Gini, Misclassification Error）
+
+在 CART 与 C4.5 等决策树算法中，选择何种不纯度度量（Impurity Measure）$i(t)$ 直接决定了树的空间划分轨迹：
+
+#### (1) 三大合法分类不纯度度量及其数学定义
+
+设节点 $t$ 中类别 $k \in \{1, \dots, K\}$ 的经验概率为 $p_k = rac{N_k}{N}$，满足 $\sum_{k=1}^K p_k = 1$：
+
+1. **信息熵（Entropy / Deviance）**：
+   $$i_{	ext{Entropy}}(t) = - \sum_{k=1}^K p_k \log_2 p_k$$
+2. **基尼系数（Gini Impurity）**：
+   $$i_{	ext{Gini}}(t) = 1 - \sum_{k=1}^K p_k^2 = \sum_{k=1}^K p_k (1 - p_k)$$
+3. **分类错误率（Classification Error / Misclassification Rate）**：
+   $$i_{	ext{Error}}(t) = 1 - \max_{k \in \{1, \dots, K\}} p_k$$
+
+#### (2) 为什么“分类错误率”极少用于决策树生长？（严格凹性分析）
+
+在多选题与原理考查中，工程师经常被问及：“既然最终目标是最小化分类错误率，为什么建树时不直接使用 $i_{	ext{Error}}(t)$ 作为分裂准则？”
+
+```text
+二分类不纯度曲线对比 (p 为正类概率):
+不纯度
+ 1.0 ┼               ── 信息熵 Entropy (归一化至 1.0)
+     │             ╱    ╲
+ 0.5 ┼───────────╱        ╲──────────── 基尼系数 Gini * 2
+     │         ╱            ╲
+     │       ╱                ╲
+ 0.0 ┼─────-•──────────────────•──────► 正类概率 p
+    0.0    0.2      0.5       0.8    1.0
+             \                /
+              ── 分类错误率 Error (折线非严格凹函数，导数恒为 ±1)
+```
+
+- **数学本质：缺乏严格凹性（Strict Concavity）**：
+  - 基尼系数与信息熵在二阶导数处处负定（$
+abla^2 i(t) < 0$），属于**严格凹函数（Strictly Concave Functions）**。根据 Jensen 不等式，只要切分后两子节点的类分布不同，切分后的加权不纯度必严格小于父节点不纯度，信息增益恒为正：$\Delta i > 0$。
+  - 分类错误率 $i_{	ext{Error}}(p) = 1 - \max(p, 1-p)$ 是由两段直线拼接而成的**分段线性凸凹函数**，在 $p \in (0, 0.5)$ 与 $p \in (0.5, 1.0)$ 内二阶导数恒为 0。
+- **反例论证：增益假死（Zero Impurity Gain）**：
+  设父节点有 800 个样本，正负比为 $(400, 400)$，此时 $p = 0.5$，$i_{	ext{Error}} = 1 - 0.5 = 0.5$。
+  某个切分将样本拆分为两个大小均为 400 的子节点：
+  - 左子节点 $(300, 100) \implies p_L = 0.75 \implies i_{	ext{Error}}(L) = 1 - 0.75 = 0.25$；
+  - 右子节点 $(100, 300) \implies p_R = 0.25 \implies i_{	ext{Error}}(R) = 1 - 0.75 = 0.25$；
+  - 加权平均错误率 $= 0.5 	imes 0.25 + 0.5 	imes 0.25 = 0.25$，增益 $\Delta = 0.25$。
+  **但考虑另一个切分**：将样本拆为左节点 $(400, 200)$ 和右节点 $(0, 200)$：
+  - 左节点 $p_L = rac{400}{600} pprox 0.67 \implies i_{	ext{Error}}(L) = 1 - 0.67 = 0.33$；
+  - 右节点 $p_R = rac{0}{200} = 0.0 \implies i_{	ext{Error}}(R) = 0.0$；
+  - 虽然右节点已经完全纯化（Pure），但若某个切分两边多数类相同，分类错误率的不纯度改善极易为 0，导致树过早截断停止生长。因此 Gini 与 Entropy 才是工业主流标准。
+
+---
+
+### 2. 集成学习（Ensemble Learning）得失权衡多维辨析
+
+集成学习通过组合多个基学习器（Base Learners）来提升预测泛化能力，但在工业落地中具有显著的权衡代价（Trade-offs）：
+
+| 考量维度 | 集成学习的作用（增益 vs 受损） | 核心机理分析 |
+|---|---|---|
+| **模型可解释性 (Interpretability)** | **受损 (Hurts)** | 单棵决策树具有白盒透明性（if-else 规则链与拓扑树形图）；集成 500 棵树后破坏了单一判定路径，沦为高维非线性黑盒，特征归因必须依赖 SHAP 或置换检验。 |
+| **训练与推断算力成本 (Computational Cost)** | **受损 (Hurts)** | 训练时需拟合 $B$ 个基模型，内存与显存占用成倍增加；在线 Serving 阶段，每次推理必须并行/串行聚合所有子树预测，显著拉高了 P99 延迟与资源消耗。 |
+| **过拟合风险 (Overfitting Control)** | **视集成范式而定** | • **Bagging / 随机森林**：**有助于改善 (Helps)**。通过 Bootstrap 样本重采样与特征随机子空间强行降低树间相关性 $ho$，在大数定律下 $	ext{Var} 	o ho\sigma^2$，绝不增加模型偏差，极大抑制过拟合。<br>• **Boosting (未加正则)**：**可能恶化 (Hurts)**。若在含高噪声标签的数据集上训练大量 Iterations 且未设置收缩率（Shrinkage $
+u$），模型会死磕残差，过度拟合标签噪声。 |
+| **混合线性与非线性数据集 (Mixed-Linearity Datasets)** | **显著增益 (Helps)** | 树模型擅长捕捉离散阈值阶跃与局部特征交互，但难以拟合全局对角线平滑线性趋势；通过 Stacking 或混合集成（线性模型 + 树模型），可同时汲取全局线性泛化与局部非线性表征能力。 |
+
+---
+
+### 3. 梯度提升树 (GBM) vs. 随机森林 (Random Forest) 快速基线构建选型对比
+
+在工业建模初始阶段，需要快速构建一个稳健的高分 Baseline，此时 GBM 与随机森林的选型对比判定如下：
+
+| 对比维度 | 随机森林 (Random Forest) | 梯度提升树 (GBM / LightGBM / XGBoost) | 快速 Baseline 推荐 |
+|---|---|---|---|
+| **构建拓扑依赖** | **完全并行独立**。每棵树独立生长，无先后依赖，天然适合多进程/多节点 Embarrassingly Parallel。 | **严格串行累加**。第 $t$ 棵树必须等待第 $t-1$ 棵树产生预测，并基于其伪残差（Negative Gradients）拟合。 | **RF 占优**：并行度极高，无需管理串行迭代状态。 |
+| **超参数敏感度** | **极度鲁棒，开箱即用**。默认配置（`n_estimators=100`, `max_features='sqrt'`）几乎总能跑出接近最优的性能，无需精细调参。 | **高度敏感，依赖精调**。学习率 $
+u$、树深 `max_depth`、子采样 `subsample`、`min_child_weight` 错配极易导致欠拟合或严重过拟合。 | **RF 绝对胜出**：快速 Baseline 核心诉求是“无需调参即可获得可靠下界”。 |
+| **树数量与过拟合关系** | **多树绝不过拟合**。由大数定律，当 $B 	o \infty$ 时森林方差单调收敛，测试误差稳定在下界，不会因为树太多而变差。 | **树多必过拟合**。若 boosting rounds 过多且未配置早停（Early Stopping），模型必然过度拟合训练噪声。 | **RF 占优**：可放心无脑设置 200~500 棵树。 |
+| **验证集与评估开销** | **自带袋外验证 (OOB Score)**。约 $36.8\%$ 的样本未参与当前树训练，天然形成免费验证集，无需切分独立 Hold-out 集。 | **必须依赖独立验证集**。必须切分验证集并配合 Early Stopping 监控最优迭代轮次。 | **RF 占优**：小样本下可使用 100% 数据训练同时无偏估算泛化误差。 |
+
+---
+
+### 4. 从零纯手写 Bagging 分类器 (Bagging from Scratch with Bootstrap & Majority Vote)
+
+#### (1) 算法核心流程
+
+1. **Bootstrap 自助重采样**：对于 $b = 1, \dots, B$，从原始样本集合 $S$ 中有放回随机均匀抽取 $N$ 个样本构建训练集 $S_b$；
+2. **基模型独立拟合**：独立训练基分类器 $h_b \leftarrow 	ext{fit}(S_b)$；
+3. **多数表决聚合（Majority Vote）**：对于测试样本 $\mathbf{x}$，收集所有子模型的离散分类预测结果，通过求众数（Mode）输出最终类别：
+   $$\hat{y} = rg\max_{c \in \mathcal{Y}} \sum_{b=1}^B \mathbb{I}(h_b(\mathbf{x}) == c)$$
+
+#### (2) 生产级原生实现
+
+```python
+import numpy as np
+from typing import List, Optional, Any
+
+class ScratchBaggingClassifier:
+    """
+    原生纯 Python/NumPy 实现的 Bagging 分类器。
+    包含 Bootstrap 样本重采样、基学习器独立训练与多数表决聚合。
+    """
+    def __init__(self, base_estimator_cls: Any, n_estimators: int = 10, random_state: Optional[int] = None):
+        self.base_estimator_cls = base_estimator_cls
+        self.n_estimators = n_estimators
+        self.random_state = random_state
+        self.estimators_: List[Any] = []
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> 'ScratchBaggingClassifier':
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+
+        n_samples = X.shape[0]
+        self.estimators_ = []
+
+        for _ in range(self.n_estimators):
+            # 1. 有放回重采样构建 Bootstrap 数据集 (有约 36.8% 的样本落入袋外 OOB)
+            boot_idx = np.random.choice(n_samples, size=n_samples, replace=True)
+            X_boot, y_boot = X[boot_idx], y[boot_idx]
+
+            # 2. 独立初始化并拟合基学习器
+            estimator = self.base_estimator_cls()
+            estimator.fit(X_boot, y_boot)
+            self.estimators_.append(estimator)
+
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """收集所有基学习器的预测，并通过多数表决（Majority Vote）决定最终类别"""
+        if not self.estimators_:
+            raise RuntimeError("Classifier has not been fitted yet.")
+
+        # shape: (n_estimators, n_samples)
+        all_preds = np.array([est.predict(X) for est in self.estimators_])
+
+        n_samples = X.shape[0]
+        final_preds = np.zeros(n_samples, dtype=int)
+
+        for i in range(n_samples):
+            # 统计当前样本在所有基模型上的预测频次
+            sample_preds = all_preds[:, i]
+            counts = np.bincount(sample_preds)
+            final_preds[i] = np.argmax(counts)
+
+        return final_preds
+
+# 单元测试与功能验证
+if __name__ == "__main__":
+    from sklearn.tree import DecisionTreeClassifier
+    X_toy = np.array([[1.0, 2.0], [2.0, 3.0], [3.0, 1.0], [6.0, 5.0], [7.0, 7.0], [8.0, 6.0]])
+    y_toy = np.array([0, 0, 0, 1, 1, 1])
+
+    bag = ScratchBaggingClassifier(base_estimator_cls=lambda: DecisionTreeClassifier(max_depth=2), n_estimators=7, random_state=42)
+    bag.fit(X_toy, y_toy)
+    preds = bag.predict(X_toy)
+    assert np.array_equal(preds, y_toy)
+    print("✅ ScratchBaggingClassifier 多数表决与拟合验证通过！")
+```
+

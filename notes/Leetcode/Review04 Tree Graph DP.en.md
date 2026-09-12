@@ -1217,3 +1217,348 @@ class RightSideViewSolution:
 </div>
 </details>
 
+---
+
+### 17. Construct Binary Tree from Preorder and Postorder Traversal
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 17</span>
+  <span class="review-card-title">Construct Binary Tree from Preorder and Postorder Traversal</span>
+  <span class="review-card-tag">Recursive Reconstruction · Postorder Index Map · Subtree Size Partitioning · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List, Optional
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class ConstructFromPrePostSolution:
+    @classmethod
+    def constructFromPrePost(
+        cls, preorder: List[int], postorder: List[int]
+    ) -> Optional[TreeNode]:
+        """
+        Reconstructs a binary tree from preorder and postorder traversals (distinct values).
+        If ambiguous single-child nodes exist, returns any valid configuration.
+        """
+        if not preorder or not postorder:
+            return None
+
+        post_idx = {val: i for i, val in enumerate(postorder)}
+
+        def build(pre_start: int, pre_end: int, post_start: int, post_end: int) -> Optional[TreeNode]:
+            if pre_start > pre_end:
+                return None
+
+            root = TreeNode(preorder[pre_start])
+            if pre_start == pre_end:
+                return root
+
+            # Key pivot: preorder[pre_start + 1] is the left subtree root
+            left_root_val = preorder[pre_start + 1]
+            left_post_idx = post_idx[left_root_val]
+
+            left_size = left_post_idx - post_start + 1
+
+            root.left = build(
+                pre_start + 1, pre_start + left_size,
+                post_start, left_post_idx
+            )
+            root.right = build(
+                pre_start + left_size + 1, pre_end,
+                left_post_idx + 1, post_end - 1
+            )
+            return root
+
+        n = len(preorder)
+        return build(0, n - 1, 0, n - 1)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Partitioning Pivot**:
+  Preorder layout is `[Root, Left..., Right...]` and postorder is `[Left..., Right..., Root]`.
+  The element `preorder[pre_start + 1]` must be the left-child root. Finding its index in postorder yields `left_size = left_post_idx - post_start + 1`, splitting index boundaries recursively in $\mathcal{O}(1)$.
+- **Single-Child Ambiguity**:
+  Preorder and postorder cannot uniquely determine tree topology when a node has a single child. The algorithm canonically roots the child as a left subtree, satisfying consistency requirements.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ using hash-indexed lookups.
+- **Space Complexity**: $\mathcal{O}(N)$ for hash map and recursive call stack.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 18. Construct Binary Tree from Descriptions via Child Set Deduction
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 18</span>
+  <span class="review-card-title">Construct Binary Tree from Descriptions via Child Set Deduction</span>
+  <span class="review-card-tag">Node Registry · Child Set Set-Difference · Topological Root · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List, Optional
+
+class ConstructTreeFromDescriptionsSolution:
+    @classmethod
+    def createBinaryTree(cls, descriptions: List[List[int]]) -> Optional[TreeNode]:
+        """
+        descriptions[i] = [parent, child, isLeft]
+        Reconstructs the binary tree and returns its unique root.
+        """
+        nodes = {}
+        children = set()
+
+        for parent_val, child_val, is_left in descriptions:
+            if parent_val not in nodes:
+                nodes[parent_val] = TreeNode(parent_val)
+            if child_val not in nodes:
+                nodes[child_val] = TreeNode(child_val)
+
+            if is_left == 1:
+                nodes[parent_val].left = nodes[child_val]
+            else:
+                nodes[parent_val].right = nodes[child_val]
+
+            children.add(child_val)
+
+        root_val = None
+        for parent_val, _, _ in descriptions:
+            if parent_val not in children:
+                root_val = parent_val
+                break
+
+        return nodes[root_val] if root_val is not None else None
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Zero-Indegree Root Property**:
+  In a valid tree, every non-root node has in-degree exactly 1 (it appears in `child` positions). The root is the unique node that never appears as a child.
+- **Object Identity Caching**:
+  `nodes` dictionary ensures nodes referenced across multiple parent/child entries maintain consistent object identity and pointers.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$ single pass over edge descriptions.
+- **Space Complexity**: $\mathcal{O}(N)$ storing node references and child set.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 19. Restore IP Addresses & Generalized K-Segment Partition
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BT 19</span>
+  <span class="review-card-title">Restore IP Addresses & Generalized K-Segment Partition</span>
+  <span class="review-card-tag">Backtracking · Boundary Validation · Leading Zero Guard · Pigeonhole Pruning · O(1)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class RestoreIPSolution:
+    @classmethod
+    def restoreIpAddresses(cls, s: str) -> List[str]:
+        return cls.partitionStringIntoSegments(s, k=4, max_val=255)
+
+    @classmethod
+    def partitionStringIntoSegments(cls, s: str, k: int = 4, max_val: int = 255) -> List[str]:
+        """Partitions digit string into k valid integer segments in range [0, max_val]."""
+        n = len(s)
+        if n < k or n > k * 3:
+            return []
+
+        result = []
+        path: List[str] = []
+
+        def backtrack(start_idx: int, segments_left: int) -> None:
+            if segments_left == 0:
+                if start_idx == n:
+                    result.append(".".join(path))
+                return
+
+            remaining_chars = n - start_idx
+            if remaining_chars < segments_left or remaining_chars > segments_left * 3:
+                return
+
+            for length in range(1, 4):
+                if start_idx + length > n:
+                    break
+
+                segment_str = s[start_idx : start_idx + length]
+
+                if length > 1 and segment_str[0] == '0':
+                    break
+
+                val = int(segment_str)
+                if val > max_val:
+                    break
+
+                path.append(segment_str)
+                backtrack(start_idx + length, segments_left - 1)
+                path.pop()
+
+        backtrack(0, k)
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Validation Triad**:
+  1. No leading zero: multi-digit segment cannot start with `'0'`;
+  2. Range bound: $0 \le val \le 255$;
+  3. Total consumption: all input characters must be utilized.
+- **Pigeonhole Pruning**:
+  Remaining characters must satisfy $segments\_left \le rem \le 3 	imes segments\_left$, collapsing the recursion tree.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(1)$ for fixed $k=4$, bounded by $3^4 = 81$ states.
+- **Space Complexity**: $\mathcal{O}(k)$ recursion depth.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 20. Alien Dictionary via Directed Graph Topological Sort
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 20</span>
+  <span class="review-card-title">Alien Dictionary via Directed Graph Topological Sort</span>
+  <span class="review-card-tag">Directed Graph Topological Sort · Kahn's BFS · Prefix Trap Defense · O(C)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+from collections import defaultdict, deque
+
+class AlienDictionarySolution:
+    @classmethod
+    def alienOrder(cls, words: List[List[str]]) -> str:
+        """
+        Infers valid alphabet ordering from adjacent sorted words.
+        Returns empty string if order is contradictory (cyclic) or invalid.
+        """
+        if not words:
+            return ""
+
+        adj = defaultdict(set)
+        in_degree = {ch: 0 for word in words for ch in word}
+
+        for i in range(len(words) - 1):
+            w1, w2 = words[i], words[i + 1]
+            min_len = min(len(w1), len(w2))
+            found_diff = False
+
+            for j in range(min_len):
+                c1, c2 = w1[j], w2[j]
+                if c1 != c2:
+                    if c2 not in adj[c1]:
+                        adj[c1].add(c2)
+                        in_degree[c2] += 1
+                    found_diff = True
+                    break
+
+            # Prefix trap: w2 is strict prefix of w1 but w1 is longer (e.g. ["abc", "ab"])
+            if not found_diff and len(w1) > len(w2):
+                return ""
+
+        queue = deque([ch for ch, deg in in_degree.items() if deg == 0])
+        order = []
+
+        while queue:
+            curr = queue.popleft()
+            order.append(curr)
+
+            for nxt in adj[curr]:
+                in_degree[nxt] -= 1
+                if in_degree[nxt] == 0:
+                    queue.append(nxt)
+
+        if len(order) < len(in_degree):
+            return ""
+
+        return "".join(order)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **First Differing Character**:
+  Only the first mismatch between adjacent words provides valid relative ordering $c_1 	o c_2$.
+- **Crucial Pitfalls**:
+  1. **Prefix Violation Trap**: If $w1$ contains $w2$ as prefix with $len(w1) > len(w2)$, it violates lexicographical ordering; return `""`;
+  2. **Isolated Nodes**: Ensure all characters in any word are registered in `in_degree`;
+  3. **Duplicate Edges**: Store edges in a `set` to prevent incrementing in-degree multiple times for the same character pair.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(C)$ where $C$ is total characters across all words.
+- **Space Complexity**: $\mathcal{O}(|\Sigma| + |E|)$, bounded by unique alphabet size ($\le 26$).
+
+</div>
+
+</div>
+</details>
+

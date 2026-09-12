@@ -808,3 +808,254 @@ class TimestampTaskScheduler:
 
 </div>
 </details>
+
+---
+
+### 08. 链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">LIST 08</span>
+  <span class="review-card-title">链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)</span>
+  <span class="review-card-tag">三指针滑动 · 前驱后继保护 · 原地反转 · O(1) 空间</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class ReverseListSolution:
+    @classmethod
+    def reverseListIterative(cls, head: Optional[ListNode]) -> Optional[ListNode]:
+        """
+        三指针迭代原地反转单链表。
+        时间 O(N)，额外空间 O(1)。
+        """
+        prev: Optional[ListNode] = None
+        curr = head
+
+        while curr is not None:
+            # 1. 临时保存后继节点，防止链条断裂
+            nxt = curr.next
+            # 2. 翻转指针方向
+            curr.next = prev
+            # 3. 双指针同步向前平移
+            prev = curr
+            curr = nxt
+
+        return prev
+
+    @classmethod
+    def reverseListRecursive(cls, head: Optional[ListNode]) -> Optional[ListNode]:
+        """
+        递归反转单链表。
+        时间 O(N)，调用栈空间 O(N)。
+        """
+        if head is None or head.next is None:
+            return head
+
+        new_head = cls.reverseListRecursive(head.next)
+        head.next.next = head
+        head.next = None
+        return new_head
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **三指针不变量（Three-Pointer Invariant）**：
+  在任意时刻，$prev$ 指向已反转完成的子链表头部，$curr$ 指向当前待处理节点，$nxt$ 暂存原链表剩余未处理部分。每步操作通过 `curr.next = prev` 翻转指针，绝不引入任何堆内存分配。
+- **递归版归纳基底与尾部清空**：
+  在递归回溯阶段，`head.next.next = head` 让下一个节点反向指向当前节点；随后必须将 `head.next = None`，防止在原头节点处形成环形死锁。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，每个节点被精确访问一次。
+- **空间复杂度**：迭代法 $\mathcal{O}(1)$；递归法 $\mathcal{O}(N)$（递归系统调用栈深度）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 09. 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">STACK 09</span>
+  <span class="review-card-title">单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)</span>
+  <span class="review-card-tag">单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+class RemoveDuplicateLettersSolution:
+    @classmethod
+    def removeDuplicateLetters(cls, s: str) -> str:
+        """
+        移除重复字母，使得每个字母出现且仅出现一次，并保证结果字典序最小。
+        """
+        # 1. 记录每个字符在原字符串中的最终出现下标 (Last Occurrence)
+        last_occurrence = {ch: i for i, ch in enumerate(s)}
+        
+        stack = []
+        in_stack = set()  # 记录当前已存在于栈中的字符
+
+        for i, ch in enumerate(s):
+            # 若字符已在栈中，直接跳过（保持当前已锁定的最优字典序位置）
+            if ch in in_stack:
+                continue
+
+            # 贪心维护单调递增栈：
+            # 若栈顶字符比当前字符大，且栈顶字符在后续还会再次出现，则果断弹出栈顶
+            while stack and stack[-1] > ch and last_occurrence[stack[-1]] > i:
+                popped = stack.pop()
+                in_stack.remove(popped)
+
+            stack.append(ch)
+            in_stack.add(ch)
+
+        return "".join(stack)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **单调栈贪心决策律**：
+  字典序越小的字符越应靠前。遇到字符 $ch$ 时，若栈顶字符 $top > ch$，且 $top$ 在后续文本中还会再次登场（$last\_occurrence[top] > i$），则此时抛弃 $top$ 绝不会导致未来缺失该字符，同时让更小的 $ch$ 占据高位，必然能使整体字典序变小。
+- **不可挽回字符的刚性保护**：
+  若 $last\_occurrence[top] \le i$，意味着这是当前字符最后一次露面的机会，此时严禁弹出，必须保留在栈中以满足“包含每个不同字符”的硬性前提。
+- **已入栈字符直接跳过**：
+  若 $ch$ 已在栈中，由于之前的入栈位置必然是在更早决策下取得的字典序最优位，重新弹出重排只会使字典序变大或破坏单调性，故直接 `continue`。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，每个字符最多入栈出栈各一次。
+- **空间复杂度**：$\mathcal{O}(|\Sigma|)$，栈与哈希表大小受限于唯一字符集大小（英文字母为 $\le 26$）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 10. 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">HEAP 10</span>
+  <span class="review-card-title">双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)</span>
+  <span class="review-card-tag">对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+import heapq
+from typing import Optional
+
+class MinStack:
+    """O(1) 辅助栈维护运行最小值"""
+    def __init__(self):
+        self.stack = []      # 存储真实数值
+        self.min_stack = []  # 存储当前前缀最小值
+
+    def push(self, val: int) -> None:
+        self.stack.append(val)
+        if not self.min_stack or val <= self.min_stack[-1]:
+            self.min_stack.append(val)
+
+    def pop(self) -> None:
+        val = self.stack.pop()
+        if val == self.min_stack[-1]:
+            self.min_stack.pop()
+
+    def top(self) -> int:
+        return self.stack[-1]
+
+    def getMin(self) -> int:
+        return self.min_stack[-1]
+
+
+class MedianFinder:
+    """双堆（对顶堆）维护流式动态中位数"""
+    def __init__(self):
+        self.small = []  # 大顶堆 (Python heapq 存相反数): 存放较小的一半元素
+        self.large = []  # 小顶堆: 存放较大的一半元素
+
+    def addNum(self, num: int) -> None:
+        # 1. 优先推入 small 堆
+        heapq.heappush(self.small, -num)
+        # 2. 将 small 堆顶的最大值转移给 large 堆
+        heapq.heappush(self.large, -heapq.heappop(self.small))
+
+        # 3. 平衡条件: len(small) >= len(large)，且容量差不超过 1
+        if len(self.large) > len(self.small):
+            heapq.heappush(self.small, -heapq.heappop(self.large))
+
+    def findMedian(self) -> float:
+        if len(self.small) > len(self.large):
+            return float(-self.small[0])
+        return (-self.small[0] + self.large[0]) / 2.0
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与工业延伸</div>
+
+- **双堆动态天平原理**：
+  将全部数据切分为两半：左半部 $small$ 维持大顶堆，右半部 $large$ 维持小顶堆。始终满足 $\max(small) \le \min(large)$。两堆大小差严格控制在 $0$ 或 $1$。中位数可由堆顶以 $\mathcal{O}(1)$ 直接产出，插入开销为 $\mathcal{O}(\log N)$。
+- **高频系统架构追问（System Extensions）**：
+  1. **复合结构（MaxStack + 动态中位数）**：
+     若要求栈结构同时支持 `popMax` 与实时中位数：
+     - 使用双向链表记录元素物理入栈顺序，并结合平衡二叉搜索树（如 `TreeMap` / 红黑树）维护数值有序映射，实现 $\mathcal{O}(\log N)$ 的 `popMax` 与任意节点删除；
+     - 配合哈希表索引的**懒删除（Lazy Deletion）对顶堆**维护中位数。
+  2. **有界固定值域（Bounded Domain 0~100）**：
+     若数据流数值严格属于 $[0, 100]$，则完全废弃堆结构！改用大小为 101 的频次计数数组 `count[101]`。插入 $\mathcal{O}(1)$；查询中位数只需扫描计数数组累计频次至 $N/2$，单次查询严格 $\mathcal{O}(100) = \mathcal{O}(1)$，无任何内存碎片。
+  3. **超大数据流无法放入内存（Memory-Bound Stream）**：
+     当单机内存无法承载全量流数据时，无法精确维护绝对中位数，必须采用**分位数流式近似算法**：
+     - **t-digest**：聚类压缩临近数值为带权质心，特别适合高分位（P99, P99.9）与中位数近似；
+     - **Count-Min Sketch** 或 **蓄水池抽样（Reservoir Sampling）**。
+  4. **高并发读写同步（Concurrency & Thread Safety）**：
+     采用**读写锁（Read-Write Lock）**保护双堆。写操作 `addNum` 占用独占写锁；高频读操作 `findMedian` 共享读锁。注意：中位数属于全局秩统计量（Rank Statistic），无法像加法统计量（Sum / Count）那样简单按分片（Shard）做局部合并，因此分片中位数需要两阶段二分协同。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **MinStack**：所有操作均为严格 $\mathcal{O}(1)$ 时间，$\mathcal{O}(N)$ 辅助空间。
+- **MedianFinder**：`addNum` 耗时 $\mathcal{O}(\log N)$，`findMedian` 耗时 $\mathcal{O}(1)$，空间复杂度 $\mathcal{O}(N)$。
+
+</div>
+
+</div>
+</details>
+

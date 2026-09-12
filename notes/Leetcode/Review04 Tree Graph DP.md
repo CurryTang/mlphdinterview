@@ -1453,3 +1453,373 @@ class RightSideViewSolution:
 </div>
 </details>
 
+---
+
+### 17. 前序与后序遍历序列重构二叉树 (Construct Binary Tree from Preorder and Postorder Traversal)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 17</span>
+  <span class="review-card-title">前序与后序遍历序列重构二叉树 (Construct Binary Tree from Preorder and Postorder Traversal)</span>
+  <span class="review-card-tag">递归重构 · 后序索引哈希 · 子树规模定位 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List, Optional
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class ConstructFromPrePostSolution:
+    @classmethod
+    def constructFromPrePost(
+        cls, preorder: List[int], postorder: List[int]
+    ) -> Optional[TreeNode]:
+        """
+        利用前序遍历与后序遍历重构二叉树（节点值互不相同）。
+        若存在单子树二义性，返回任意一棵合法二叉树。
+        """
+        if not preorder or not postorder:
+            return None
+
+        # 预计算后序遍历数值到下标的映射，实现 O(1) 边界划分
+        post_idx = {val: i for i, val in enumerate(postorder)}
+
+        def build(pre_start: int, pre_end: int, post_start: int, post_end: int) -> Optional[TreeNode]:
+            if pre_start > pre_end:
+                return None
+
+            root = TreeNode(preorder[pre_start])
+            if pre_start == pre_end:
+                return root
+
+            # 关键切分点：preorder[pre_start + 1] 必定为左子树的根节点
+            left_root_val = preorder[pre_start + 1]
+            left_post_idx = post_idx[left_root_val]
+
+            # 计算左子树节点总数
+            left_size = left_post_idx - post_start + 1
+
+            # 递归重构左子树与右子树
+            root.left = build(
+                pre_start + 1, pre_start + left_size,
+                post_start, left_post_idx
+            )
+            root.right = build(
+                pre_start + left_size + 1, pre_end,
+                left_post_idx + 1, post_end - 1
+            )
+            return root
+
+        n = len(preorder)
+        return build(0, n - 1, 0, n - 1)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **分治结构与子树尺寸推导**：
+  前序遍历结构为 `[Root, (Left Subtree), (Right Subtree)]`；后序遍历为 `[(Left Subtree), (Right Subtree), Root]`。
+  当子树含有多于一个节点时，前序紧随根节点之后的元素 `preorder[pre_start + 1]` 必定是**左子树的根**。在后序遍历中定位该值的位置 `left_post_idx`，即可精确算出左子树包含的节点个数 `left_size = left_post_idx - post_start + 1`，进而一分为二递归切分。
+- **单子树二义性（Ambiguity Invariant）**：
+  前序 + 后序无法唯一确定二叉树形态。当某节点仅有一个子节点时，该子节点既可解释为左孩子，也可解释为右孩子（例如前序 `[1, 2]`，后序 `[2, 1]` 既可是左偏树也可是右偏树）。本解法规范地将该独生子树优先作为左子树构建，产出合法的一致解。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，哈希表预存索引，每个节点常数时间内划分边界。
+- **空间复杂度**：$\mathcal{O}(N)$，哈希表空间与递归调用栈开销。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 18. 关系描述数组重构二叉树与孤立根定位 (Construct Binary Tree from Descriptions)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TREE 18</span>
+  <span class="review-card-title">关系描述数组重构二叉树与孤立根定位 (Construct Binary Tree from Descriptions)</span>
+  <span class="review-card-tag">节点哈希表 · 子节点集合差集 · 拓扑根定位 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List, Optional
+
+class ConstructTreeFromDescriptionsSolution:
+    @classmethod
+    def createBinaryTree(cls, descriptions: List[List[int]]) -> Optional[TreeNode]:
+        """
+        descriptions[i] = [parent, child, isLeft]
+        isLeft == 1 表示 child 是 parent 的左子节点，0 表示右子节点。
+        节点值互不相同，返回根节点。
+        """
+        nodes = {}       # val -> TreeNode
+        children = set() # 记录所有曾作为子节点出现的数值
+
+        for parent_val, child_val, is_left in descriptions:
+            # 1. 动态获取或创建 parent 与 child 节点
+            if parent_val not in nodes:
+                nodes[parent_val] = TreeNode(parent_val)
+            if child_val not in nodes:
+                nodes[child_val] = TreeNode(child_val)
+
+            # 2. 挂载左右子指针
+            if is_left == 1:
+                nodes[parent_val].left = nodes[child_val]
+            else:
+                nodes[parent_val].right = nodes[child_val]
+
+            # 3. 标记 child
+            children.add(child_val)
+
+        # 4. 根节点拓扑性质：二叉树的根节点是唯一一个从未作为任何节点的 child 出现的节点
+        root_val = None
+        for parent_val, _, _ in descriptions:
+            if parent_val not in children:
+                root_val = parent_val
+                break
+
+        return nodes[root_val] if root_val is not None else None
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **入度为 0 根节点拓扑判定**：
+  在合法的树结构中，每个非根节点的入度严格为 1（恰好作为某一个父节点的子节点），而根节点的入度严格为 0。因此只需将所有描述中的 `child` 汇聚进哈希集合 `children`，在所有 `parent` 候选中，**唯一不在 `children` 集合中的节点必定是树根**。
+- **对象唯一性与指针共享**：
+  通过哈希表 `nodes` 缓存每个数值对应的 `TreeNode` 对象引用，确保多次提及同一个节点时指针正确连接，避免重复实例化孤立孤岛。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，对描述列表进行单趟线性扫描与单次集合差集查询。
+- **空间复杂度**：$\mathcal{O}(N)$，存储节点对象表与子节点哈希集合。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 19. 复原 IP 地址与泛化 K 段数字划分 (Restore IP Addresses & Generalized K-Segment Partition)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BT 19</span>
+  <span class="review-card-title">复原 IP 地址与泛化 K 段数字划分 (Restore IP Addresses & Generalized K-Segment Partition)</span>
+  <span class="review-card-tag">回溯搜索 · 数值边界校验 · 前导零防护 · 剩余长度剪枝 · O(1)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class RestoreIPSolution:
+    @classmethod
+    def restoreIpAddresses(cls, s: str) -> List[str]:
+        """经典 IPv4 复原：切分为 4 段合法整数"""
+        return cls.partitionStringIntoSegments(s, k=4, max_val=255)
+
+    @classmethod
+    def partitionStringIntoSegments(cls, s: str, k: int = 4, max_val: int = 255) -> List[str]:
+        """
+        通用追问版：将纯数字字符串分割为 k 段合法整数，每段取值 [0, max_val] 且无非法前导零。
+        """
+        n = len(s)
+        # 长度剪枝：每段至少 1 位，至多 3 位（针对 255 上限）
+        if n < k or n > k * 3:
+            return []
+
+        result = []
+        path: List[str] = []
+
+        def backtrack(start_idx: int, segments_left: int) -> None:
+            # 基础边界：所有段已填满
+            if segments_left == 0:
+                if start_idx == n:
+                    result.append(".".join(path))
+                return
+
+            # 强效长度剪枝：剩余字符数必须落在 [segments_left, segments_left * 3] 区间
+            remaining_chars = n - start_idx
+            if remaining_chars < segments_left or remaining_chars > segments_left * 3:
+                return
+
+            # 尝试当前段切分长度 1, 2, 3
+            for length in range(1, 4):
+                if start_idx + length > n:
+                    break
+
+                segment_str = s[start_idx : start_idx + length]
+
+                # 前导零合规校验：多位数严禁以 '0' 开头
+                if length > 1 and segment_str[0] == '0':
+                    break  # 单字符 '0' 合法，后续更长长度均以前导 0 开头，可直接中断
+
+                # 数值上限合规校验
+                val = int(segment_str)
+                if val > max_val:
+                    break  # 超过上限，更长切分更不可能合法
+
+                path.append(segment_str)
+                backtrack(start_idx + length, segments_left - 1)
+                path.pop()
+
+        backtrack(0, k)
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **三大刚性校验准则**：
+  1. **无前导零**：若切分长度 $> 1$ 且以 `'0'` 开头（如 `"01"`, `"001"`），非法；单字符 `"0"` 严格合法；
+  2. **数值上限**：数值必须落在 $[0, 255]$；
+  3. **字符完整消耗**：必须恰好切满 4 段且用尽全量字符。
+- **剩余长度区间剪枝（Pigeonhole Pruning）**：
+  在剩余 $segments\_left$ 段待切分时，剩余字符串长度必须满足：
+  $$segments\_left \le 	ext{remaining\_chars} \le 3 	imes segments\_left$$
+  若超出此区间，后续绝无可能凑出合法划分，直接返回，大幅压平回溯树深度。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：对固定 $k=4$，搜索树高度为 4，每层最多 3 个分支，最坏检查状态数 $\le 3^4 = 81$，时间复杂度为严格 $\mathcal{O}(1)$ 常数级。
+- **空间复杂度**：递归栈深度为 $\mathcal{O}(k)$，常数空间。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 20. 外星人词典拓扑排序与边界防御 (Alien Dictionary via Directed Graph Topological Sort)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GRAPH 20</span>
+  <span class="review-card-title">外星人词典拓扑排序与边界防御 (Alien Dictionary via Directed Graph Topological Sort)</span>
+  <span class="review-card-tag">有向图拓扑排序 · Kahn 算法 · 前缀非法校验 · 孤立字符收集 · O(C)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+from collections import defaultdict, deque
+
+class AlienDictionarySolution:
+    @classmethod
+    def alienOrder(cls, words: List[List[str]]) -> str:
+        """
+        根据按外星语言字典序排序的词表，推导合法的字母拓扑序列。
+        若词典顺序非法或存在环路，返回空字符串。
+        """
+        if not words:
+            return ""
+
+        # 1. 提取全量独立字符节点，并初始化入度
+        adj = defaultdict(set)
+        in_degree = {ch: 0 for word in words for ch in word}
+
+        # 2. 扫描相邻单词对，提取有向依赖关系
+        for i in range(len(words) - 1):
+            w1, w2 = words[i], words[i + 1]
+            min_len = min(len(w1), len(w2))
+            found_diff = False
+
+            for j in range(min_len):
+                c1, c2 = w1[j], w2[j]
+                if c1 != c2:
+                    # 发现第一处不同字符，建立有向边 c1 -> c2 (c1 字典序先于 c2)
+                    if c2 not in adj[c1]:
+                        adj[c1].add(c2)
+                        in_degree[c2] += 1
+                    found_diff = True
+                    break
+
+            # 前缀非法陷阱：w2 是 w1 的严格前缀且 w1 更长（如 ["abc", "ab"]）
+            # 在任何字典序中，更短的前缀必须排在前面，此处必为非法输入
+            if not found_diff and len(w1) > len(w2):
+                return ""
+
+        # 3. Kahn 算法 (BFS 拓扑排序)
+        queue = deque([ch for ch, deg in in_degree.items() if deg == 0])
+        order = []
+
+        while queue:
+            curr = queue.popleft()
+            order.append(curr)
+
+            for nxt in adj[curr]:
+                in_degree[nxt] -= 1
+                if in_degree[nxt] == 0:
+                    queue.append(nxt)
+
+        # 4. 环路校验：若拓扑排序产出的字符数小于总字符数，说明存在有向环（矛盾依赖）
+        if len(order) < len(in_degree):
+            return ""
+
+        return "".join(order)
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **首异字符决定序关系**：
+  比较两个相邻字符串时，仅有**第一个不相同的字符对**能够确定两个字符之间的字典序依赖关系 $c_1 	o c_2$；后续所有字符均无法提供任何有效顺序信息。
+- **工业级三大边界陷阱（Crucial Pitfalls）**：
+  1. **前缀倒挂非法陷阱**：若出现 `w1 = "apple", w2 = "app"`，此时公共前缀全部相同但 $len(w1) > len(w2)$。任何字典序下 `"app"` 必在 `"apple"` 之前，直接判定为非法输入并返回 `""`；
+  2. **孤立无依赖节点遗漏**：词表中某些字符可能从未与其他字符产生相对大小关系（如只出现一次的单个单词），必须在初始化时扫描全词表将所有字符注册入 `in_degree`；
+  3. **重边入度虚增**：相邻词对可能多次给出相同的 $c_1 	o c_2$ 关系。邻接表必须使用 `set` 存储，且只有首次添加时才能递增 `in_degree[c2]`。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(C)$，其中 $C$ 为词表中所有单词字符长度的总和。建图与拓扑排序均在字符集与边数上呈线性。
+- **空间复杂度**：$\mathcal{O}(|\Sigma| + |E|)$，受限于不同字母种数（字母表常数级 $\le 26$）。
+
+</div>
+
+</div>
+</details>
+

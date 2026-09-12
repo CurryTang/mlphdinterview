@@ -598,3 +598,476 @@ class DigitConstructionSolution:
 
 </div>
 </details>
+
+---
+
+### 06. 无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 06</span>
+  <span class="review-card-title">无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)</span>
+  <span class="review-card-tag">贪心区间调度 · 最早截止时间优先 · 端点排序 · O(N log N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class NonOverlappingIntervalsSolution:
+    @classmethod
+    def eraseOverlapIntervals(cls, intervals: List[List[int]]) -> int:
+        """
+        计算移除重叠区间所需的最少区间数，使得剩余区间互不重叠。
+        接触端点 [a, b] 与 [b, c] 视为不重叠兼容。
+        """
+        if not intervals:
+            return 0
+
+        # 按右端点 (结束时间) 升序排序
+        intervals.sort(key=lambda x: x[1])
+
+        kept_count = 1
+        prev_end = intervals[0][1]
+
+        for i in range(1, len(intervals)):
+            # 若当前区间起始时间 >= 上一个保留区间的结束时间，说明无冲突，果断保留
+            if intervals[i][0] >= prev_end:
+                kept_count += 1
+                prev_end = intervals[i][1]
+
+        # 最少移除数 = 总区间数 - 最大可保留不重叠区间数
+        return len(intervals) - kept_count
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **问题对偶转化（Dual Problem）**：
+  “移除最少重叠区间”等价于“在给定区间集合中选择**尽可能多且互不重叠的区间**”。设最多可保留 $K$ 个区间，则最小移除数为 $N - K$。
+- **最早结束时间贪心律（Earliest Deadline First, EDF）**：
+  优先选择结束时间最早的区间，能够为后续容纳更多区间留出最大的剩余时间跨度。任何结束时间更晚的同位替代选择，只会挤压后续空间，不可能优于 EDF 选择。
+- **边界兼容语义**：
+  根据题目约定，$start == end$ 属于可兼容相邻（如 $[1, 2]$ 与 $[2, 3]$ 不冲突），因此判断准则严格为 `intervals[i][0] >= prev_end`。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N \log N)$，主要耗费在区间按右端点排序；后续线性扫描为 $\mathcal{O}(N)$。
+- **空间复杂度**：$\mathcal{O}(\log N)$（Timsort 排序所需栈空间）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 07. 时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BS 07</span>
+  <span class="review-card-title">时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)</span>
+  <span class="review-card-tag">二分查找 (bisect) · 时间序列多版本存储 · 有序数组 · O(log N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from collections import defaultdict
+import bisect
+from typing import List, Tuple
+
+class TimeMap:
+    def __init__(self):
+        # key -> list of (timestamp, value)
+        self.store = defaultdict(list)
+
+    def set(self, key: str, value: str, timestamp: int) -> None:
+        """记录指定 key 在特定 timestamp 下的 value。假定 timestamp 严格递增到达。"""
+        self.store[key].append((timestamp, value))
+
+    def get(self, key: str, timestamp: int) -> str:
+        """返回 timestamp_prev <= timestamp 的最大时间戳对应的值，若无则返回空串。"""
+        if key not in self.store:
+            return ""
+
+        records = self.store[key]
+        
+        # 二分寻找首个时间戳 > timestamp 的位置
+        # 由于记录元组为 (ts, val)，传入 (timestamp, chr(127)) 可保证严格右侧边界判定
+        idx = bisect.bisect_right(records, (timestamp, chr(127)))
+
+        # 若 idx == 0，说明所有记录的时间戳都严格大于目标 timestamp
+        if idx == 0:
+            return ""
+
+        return records[idx - 1][1]
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **二分查找前驱节点（Predecessor Bisection）**：
+  由于写入时间戳严格单调递增，`records` 数组天然具备保序性。查询 $\le timestamp$ 的最大版本等价于利用 `bisect_right` 找到第一个 $> timestamp$ 的位置，其前驱下标 `idx - 1` 即为所求。
+- **乱序写入追问（Out-of-Order Writes）**：
+  若写入时间戳并非严格递增，可在 `set` 时利用 `bisect.insort` 插入保证有序（插入 $\mathcal{O}(M)$），或在内部采用自平衡二叉搜索树（红黑树 / `SortedDict`），使插入与查询均保持在 $\mathcal{O}(\log M)$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：`set` 操作 $\mathcal{O}(1)$（列表末尾追加）；`get` 操作 $\mathcal{O}(\log M)$，其中 $M$ 为该 key 下的历史版本数量。
+- **空间复杂度**：$\mathcal{O}(N)$，存储全量键值历史版本。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 08. 区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">TP 08</span>
+  <span class="review-card-title">区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)</span>
+  <span class="review-card-tag">双指针 · 闭区间相交判准 · 较早结束者平移 · O(M + N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class IntervalIntersectionSolution:
+    @classmethod
+    def intervalIntersection(
+        cls, firstList: List[List[int]], secondList: List[List[int]]
+    ) -> List[List[int]]:
+        """
+        求解两个互不重叠且已排序闭区间列表的公共交集列表。
+        """
+        i, j = 0, 0
+        m, n = len(firstList), len(secondList)
+        result = []
+
+        while i < m and j < n:
+            # 1. 计算当前双区间的可能交集区间 [start, end]
+            start = max(firstList[i][0], secondList[j][0])
+            end = min(firstList[i][1], secondList[j][1])
+
+            # 2. 闭区间相交判准: start <= end
+            if start <= end:
+                result.append([start, end])
+
+            # 3. 推进谁？淘汰结束时间较早的区间（因为后续区间绝不可能再与它产生重叠）
+            if firstList[i][1] < secondList[j][1]:
+                i += 1
+            else:
+                j += 1
+
+        return result
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **双指针交集数学闭环**：
+  任意两个闭区间 $[A_s, A_e]$ 与 $[B_s, B_e]$ 的交集必为 $[\max(A_s, B_s), \min(A_e, B_e)]$。若 $\max(A_s, B_s) \le \min(A_e, B_e)$，该闭区间非空且为有效交集。
+- **单向淘汰推进机制**：
+  若 $A_e < B_e$，由于列表中区间互不相交且单调递增，下一个区间 $A_{i+1}$ 的起始时间必然满足 $A_{i+1, s} > A_e$。因此区间 $A_i$ 绝无可能再与后续任何区间相交，可放心淘汰并推进指针 $i$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(M + N)$，每个步骤至少有一个指针右移一位。
+- **空间复杂度**：$\mathcal{O}(1)$ 额外辅助空间（不计输出结果）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 09. 至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">SLIDE 09</span>
+  <span class="review-card-title">至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)</span>
+  <span class="review-card-tag">可变滑动窗口 · 字符频次哈希 · 零频物理剔除 · O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from collections import defaultdict
+
+class LongestSubstringKDistinctSolution:
+    @classmethod
+    def lengthOfLongestSubstringKDistinct(cls, s: str, k: int) -> int:
+        """
+        求解至多包含 k 个不同字符的最长子串长度。
+        """
+        if not s or k <= 0:
+            return 0
+
+        counts = defaultdict(int)
+        left = 0
+        max_len = 0
+
+        for right, ch in enumerate(s):
+            counts[ch] += 1
+
+            # 若不同字符数超过 k，收缩左边界
+            while len(counts) > k:
+                left_ch = s[left]
+                counts[left_ch] -= 1
+                if counts[left_ch] == 0:
+                    del counts[left_ch]  # 必须物理删除 key，否则 len(counts) 无法减少
+                left += 1
+
+            current_len = right - left + 1
+            if current_len > max_len:
+                max_len = current_len
+
+        return max_len
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **哈希表物理键剔除（Key Eviction Invariant）**：
+  判断当前窗口不同字符数的依据是 `len(counts)`。当某字符计数减为 0 时，必须执行 `del counts[ch]`。若仅留存计数值为 0 的键，`len(counts)` 不会减小，导致死循环或错误判断。
+- **滑动窗口平摊线性度**：
+  右指针 $right$ 遍历 $N$ 次，左指针 $left$ 最多前进 $N$ 次。每个字符进入与离开窗口各一次，双指针整体严格平摊 $\mathcal{O}(N)$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$。
+- **空间复杂度**：$\mathcal{O}(K)$，哈希表中最多保留 $K + 1$ 个字符映射。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 10. 旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">BS 10</span>
+  <span class="review-card-title">旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)</span>
+  <span class="review-card-tag">对偶半区保序性 · 重复元素二义性 · 边界线性收缩 · O(log N) -> O(N)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class SearchRotatedArraySolution:
+    @classmethod
+    def searchDistinct(cls, nums: List[int], target: int) -> int:
+        """
+        在无重复元素的旋转有序数组中检索目标值下标。
+        严格 O(log N) 时间。
+        """
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+
+            # 判定前半区 [left, mid] 是否严格单调递增
+            if nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
+                else:
+                    left = mid + 1
+            else:
+                # 后半区 [mid, right] 严格单调递增
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+
+        return -1
+
+    @classmethod
+    def searchDuplicates(cls, nums: List[int], target: int) -> bool:
+        """
+        包含重复元素的旋转数组检索目标值是否存在。
+        当三端相等时触发 O(1) 边界向内收缩，最坏退化至 O(N)。
+        """
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return True
+
+            # 核心歧义处理：当 nums[left] == nums[mid] == nums[right] 时无法判定哪侧有序
+            if nums[left] == nums[mid] == nums[right]:
+                left += 1
+                right -= 1
+            elif nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
+                else:
+                    left = mid + 1
+            else:
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+
+        return False
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **局部保序对偶性（Half-Sorted Partitioning）**：
+  旋转后的数组被中点 $mid$ 切分为两半后，**至少有一半是严格单调有序的**。
+  若 $nums[left] \le nums[mid]$，则左半区必定连续有序；否则右半区必连续有序。只需检查 $target$ 是否落在该有序半区的端点区间内，即可果断排除另一半。
+- **重复元素的三态歧义与退化**：
+  若允许重复元素，如 $[1, 0, 1, 1, 1]$，此时 $nums[left] == nums[mid] == nums[right] == 1$，无法分辨断崖拐点到底在左侧还是右侧。此时二分剪枝失效，只能安全地双向收缩边界 `left += 1, right -= 1`。在全相等数组（如 $[1, 1, 1, \dots, 1]$ 查 0）中最坏退化为 $\mathcal{O}(N)$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **无重复版本**：时间复杂度严格为 $\mathcal{O}(\log N)$，空间复杂度 $\mathcal{O}(1)$。
+- **含重复版本**：平均时间复杂度 $\mathcal{O}(\log N)$，最坏退化时间复杂度 $\mathcal{O}(N)$，空间复杂度 $\mathcal{O}(1)$。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 11. 无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)
+
+<details class="review-card" open>
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 11</span>
+  <span class="review-card-title">无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)</span>
+  <span class="review-card-tag">贪心模拟 · 中继站二分/双指针 · 前向跳跃更新 · O(M log M + M)</span>
+</summary>
+<div class="review-card-content">
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class DroneRelaySolution:
+    @classmethod
+    def minWalkingDistance(cls, target: int, relay_points: List[int]) -> int:
+        """
+        从原点 0 出发前往目标点 target。
+        到达中继站 r (需步行支付代价) 后，可将包裹放入无人机瞬间向前跳跃 10 单位。
+        计算抵达或越过 target 时所累积支付的最小步行距离总和。
+        """
+        if target <= 0:
+            return 0
+
+        # 过滤负坐标并升序去重排序
+        relays = sorted(set(p for p in relay_points if p >= 0))
+        
+        curr_pos = 0
+        total_walk_cost = 0
+        idx = 0
+        m = len(relays)
+
+        while curr_pos < target:
+            # 1. 寻找当前位置之后最近的可选中继站
+            while idx < m and relays[idx] < curr_pos:
+                idx += 1
+
+            # 2. 若前方已无可用中继站，或者当前直达 target 距离更近
+            if idx >= m or relays[idx] >= target:
+                total_walk_cost += (target - curr_pos)
+                break
+
+            next_relay = relays[idx]
+            walk_to_relay = next_relay - curr_pos
+
+            # 3. 边界对比：若直接走到 target 距离比走到中继站还要短，直接走完全程
+            if (target - curr_pos) <= walk_to_relay:
+                total_walk_cost += (target - curr_pos)
+                break
+
+            # 4. 贪心决策：步行至该中继站，并由无人机运载向前飞跃 10 个单位
+            total_walk_cost += walk_to_relay
+            curr_pos = next_relay + 10  # 无人机将位置向前传送 10 单位
+            idx += 1
+
+        return total_walk_cost
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **无后效性贪心决策律**：
+  无人机跳跃步长为固定正值（10 单位），且不产生任何步行花费。对于任何中继站 $r$，只要其位于当前坐标前方且在 $target$ 左侧，步行至该站并借助无人机向前位移 10 单位，总是比徒步相同距离获得更远的有效位移（净赚至多 10 单位免费位移）。
+- **终点与中继站位置相对性校验**：
+  若下一中继站 $relays[idx] \ge target$，显然不可前往该中继站（否则会白白走过头，增加无效步行开销），此时最优策略是直接步行走完剩余的 $target - curr\_pos$ 距离。
+- **目标点即达与越过判定**：
+  若经无人机传送后 $curr\_pos \ge target$，循环立即终止，无需再走多余距离。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(M \log M)$，主要开销在中继站排序（若输入已排序则为严格 $\mathcal{O}(M)$ 双指针推进）。
+- **空间复杂度**：$\mathcal{O}(M)$（排序去重存储）。
+
+</div>
+
+</div>
+</details>
+
