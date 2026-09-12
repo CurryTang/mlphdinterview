@@ -9923,10 +9923,12 @@ function NadarayaWatsonVisual() {
           {t(
             '① 经典 KNN 回归采用 0/1 矩形窗硬截断（距离前 k 近的点权重为 1/k，其余严格为 0）。当待估点 x₀ 连续移动时，近邻集合发生离散跳变，导致预测曲线呈现粗糙的锯齿状阶梯断点（见红色虚线）。' +
             '② Nadaraya–Watson 核估计用连续核函数 K((x₀ - Xᵢ)/h) 取代阶梯窗，根据欧氏距离平滑衰减，全域所有样本均以连续正权重参与加权，保证了预测曲线的处处连续乃至无穷阶可导（高斯核）。' +
-            '③ 带宽 h 扮演了连续版的 k：当 h → 0 时，有效样本数 N_eff → 1，退化为最近邻插值（零偏差、高方差）；当 h → ∞ 时，核函数扁平化，所有点权重均匀退化为 1/n，曲线退化为水平的全局样本均值 Ȳ（高偏差、零方差）。',
+            '③ 带宽 h 扮演了连续版的 k：当 h → 0 时，有效样本数 N_eff → 1，退化为最近邻插值（零偏差、高方差）；当 h → ∞ 时，核函数扁平化，所有点权重均匀退化为 1/n，曲线退化为水平的全局样本均值 Ȳ（高偏差、零方差）。' +
+            '④ 与高斯过程（GP）回归的深层联系：两者同属于线性平滑器（ŷ = wᵀy）。但 NW 权重纯粹取决于独立点对距离，无法识别样本冗余聚集；而 GP 通过逆协方差矩阵 (K + σ²I)⁻¹ 显式解耦了样本自相关（屏蔽效应），其等价核允许负权重以自发拟合局部切线斜率，并严格输出解析闭式的贝叶斯后验不确定性。',
             '① Classical KNN regression adopts a 0/1 boxcar hard cutoff (top-k points get 1/k weight, all others strictly 0). As query point x₀ moves smoothly, discrete points enter and exit the neighborhood, creating jagged, discontinuous step artifacts (red dashed line).' +
             '② Nadaraya-Watson replaces the discontinuous window with a smooth bell curve K((x₀ - Xᵢ)/h). All sample points contribute with smooth distance-decaying weights, ensuring the fitted curve is everywhere continuous and infinitely differentiable (under Gaussian kernel).' +
-            '③ Bandwidth h serves as a continuous analog to k: as h → 0, effective sample size N_eff → 1 (interpolating nearest neighbor, high variance); as h → ∞, weights equalize to 1/n, collapsing into the flat sample mean Ȳ (high bias, zero variance).'
+            '③ Bandwidth h serves as a continuous analog to k: as h → 0, effective sample size N_eff → 1 (interpolating nearest neighbor, high variance); as h → ∞, weights equalize to 1/n, collapsing into the flat sample mean Ȳ (high bias, zero variance).' +
+            '④ Deep Connection to Gaussian Process (GP) Regression: Both are linear smoothers (ŷ = wᵀy). However, NW weights depend purely on decoupled pairwise distances; GP explicitly decorrelates inter-sample covariance via (K + σ²I)⁻¹ (screening effect), admits negative weights in its equivalent kernel to track slopes, and outputs exact Bayesian posterior uncertainty bounds.'
           )}
         </p>
       </div>
