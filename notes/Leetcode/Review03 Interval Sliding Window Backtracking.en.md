@@ -8,11 +8,11 @@ This note is the third volume of the high-frequency algorithmic interview review
 
 ### 1. Merge Intervals & Interval Topology Variants
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Interval 01</span>
   <span class="review-card-title">Merge Intervals & Interval Topology Variants</span>
-  <span class="review-card-tag">Closed Interval Semantics · Presorted Acceleration · Nested Absorption · Insert Interval · Non-Overlapping Greedy · Meeting Rooms Sweep Line</span>
+  <span class="review-card-tag">[LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) · [LeetCode 57](https://leetcode.com/problems/insert-interval/) · Closed Interval Semantics · Presorted Acceleration · Nested Absorption · Insert Interval · Non-Overlapping Greedy · Meeting Rooms Sweep Line</span>
 </summary>
 <div class="review-card-content">
 
@@ -35,6 +35,29 @@ class IntervalSolution:
             else:
                 merged.append(cur)
         return merged
+
+    @staticmethod
+    def insert(intervals: List[List[int]], newInterval: List[int]) -> List[List[int]]:
+        res = []
+        i = 0
+        n = len(intervals)
+        while i < n and intervals[i][1] < newInterval[0]:
+            res.append(intervals[i])
+            i += 1
+        while i < n and intervals[i][0] <= newInterval[1]:
+            newInterval[0] = min(newInterval[0], intervals[i][0])
+            newInterval[1] = max(newInterval[1], intervals[i][1])
+            i += 1
+        res.append(newInterval)
+        while i < n:
+            res.append(intervals[i])
+            i += 1
+        return res
+
+if __name__ == "__main__":
+    assert IntervalSolution.merge([[1, 3], [2, 6], [8, 10], [15, 18]]) == [[1, 6], [8, 10], [15, 18]]
+    assert IntervalSolution.insert([[1, 3], [6, 9]], [2, 5]) == [[1, 5], [6, 9]]
+    print("✅ Card 01 (Merge Intervals & Insert Interval) all tests passed!")
 ```
 
 </div>
@@ -55,11 +78,11 @@ class IntervalSolution:
 
 ### 2. Pythagorean Triplet & Multiplicity 2-Pointer Search
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Two Pointers 02</span>
   <span class="review-card-title">Pythagorean Triplet & Multiplicity 2-Pointer Search</span>
-  <span class="review-card-tag">Square Mapping · Multiplicity Preservation · 3SUM Reduction · Two Pointers Convergence · O(N^2) Optimality Proof</span>
+  <span class="review-card-tag">[LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) · Pythagorean Triplet · Square Mapping · Multiplicity Preservation · 3SUM Reduction · Two Pointers Convergence · O(N^2) Optimality Proof</span>
 </summary>
 <div class="review-card-content">
 
@@ -87,6 +110,11 @@ class PythagoreanTripletSolution:
                 else:
                     j -= 1
         return False
+
+if __name__ == "__main__":
+    assert PythagoreanTripletSolution.judgePythagoreanTriplet([3, 1, 4, 6, 5]) is True
+    assert PythagoreanTripletSolution.judgePythagoreanTriplet([10, 4, 6, 12, 5]) is False
+    print("✅ Card 02 (Pythagorean Triplet) all tests passed!")
 ```
 
 </div>
@@ -105,11 +133,11 @@ class PythagoreanTripletSolution:
 
 ### 3. Minimum Window Substring & Multi-Candidate Expansion
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 03</span>
   <span class="review-card-title">Minimum Window Substring & Multi-Candidate Expansion</span>
-  <span class="review-card-tag">Variable Window · O(|S| + |T|) Rigorous Proof · k-Factor Frequency · All Tied Minimum Windows · Fixed-Size Array Constant Bound</span>
+  <span class="review-card-tag">[LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) · Variable Window · O(|S| + |T|) Rigorous Proof · k-Factor Frequency · All Tied Minimum Windows · Fixed-Size Array Constant Bound</span>
 </summary>
 <div class="review-card-content">
 
@@ -190,6 +218,12 @@ class MinWindowSolution:
                 left += 1
 
         return ans_list
+
+if __name__ == "__main__":
+    assert MinWindowSolution.minWindowAll("ADOBECODEBANC", "ABC", 1) == ["BANC"]
+    assert MinWindowSolution.minWindowAll("a", "a", 1) == ["a"]
+    assert MinWindowSolution.minWindowAll("a", "aa", 1) == []
+    print("✅ Card 03 (Minimum Window Substring) all tests passed!")
 ```
 
 </div>
@@ -210,11 +244,11 @@ class MinWindowSolution:
 
 ### 4. Longest Repeating Character Replacement & Max-Frequency Invariant
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 04</span>
   <span class="review-card-title">Longest Repeating Character Replacement & Max-Frequency Invariant</span>
-  <span class="review-card-tag">Sliding Window · Max-Frequency Invariant · Non-Decreasing Window Size · O(N) Single-Pass</span>
+  <span class="review-card-tag">[LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) · Sliding Window · Max-Frequency Invariant · Non-Decreasing Window Size · O(N) Single-Pass</span>
 </summary>
 <div class="review-card-content">
 
@@ -258,6 +292,11 @@ class CharacterReplacementSolution:
             max_len = max(max_len, right - left + 1)
 
         return max_len
+
+if __name__ == "__main__":
+    assert CharacterReplacementSolution.characterReplacement("ABAB", 2) == 4
+    assert CharacterReplacementSolution.characterReplacement("AABABBA", 1) == 4
+    print("✅ Card 04 (Longest Repeating Character Replacement) all tests passed!")
 ```
 
 </div>
@@ -277,11 +316,11 @@ class CharacterReplacementSolution:
 
 ### 5. Variable & Fixed Sliding Window Patterns
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Window 05</span>
   <span class="review-card-title">Variable & Fixed Sliding Window Patterns</span>
-  <span class="review-card-tag">Longest Substring Without Repeating Characters · Hash Jump Optimization</span>
+  <span class="review-card-tag">[LeetCode 3 · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · Longest Substring Without Repeating Characters · Hash Jump Optimization</span>
 </summary>
 <div class="review-card-content">
 
@@ -300,6 +339,12 @@ class SlidingWindowSolution:
             last_seen[ch] = right
             max_len = max(max_len, right - left + 1)
         return max_len
+
+if __name__ == "__main__":
+    assert SlidingWindowSolution.lengthOfLongestSubstring("abcabcbb") == 3
+    assert SlidingWindowSolution.lengthOfLongestSubstring("bbbbb") == 1
+    assert SlidingWindowSolution.lengthOfLongestSubstring("pwwkew") == 3
+    print("✅ Card 05 (Variable Sliding Window) all tests passed!")
 ```
 
 </div>
@@ -313,11 +358,11 @@ class SlidingWindowSolution:
 
 ### 6. Subsets, Permutations & Combinations
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Backtrack 06</span>
   <span class="review-card-title">Subsets, Permutations & Combinations</span>
-  <span class="review-card-tag">State-Space Tree · Pruning Deduplication</span>
+  <span class="review-card-tag">[LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) · [LeetCode 46](https://leetcode.com/problems/permutations/) · [LeetCode 39](https://leetcode.com/problems/combination-sum/) · State-Space Tree · Pruning Deduplication</span>
 </summary>
 <div class="review-card-content">
 
@@ -341,6 +386,11 @@ class BacktrackSolution:
                 path.pop()
         backtrack(0)
         return res
+
+if __name__ == "__main__":
+    res_subs = BacktrackSolution.subsetsWithDup([1, 2, 2])
+    assert sorted(res_subs) == sorted([[], [1], [1, 2], [1, 2, 2], [2], [2, 2]])
+    print("✅ Card 06 (Subsets & Combinations Backtracking) all tests passed!")
 ```
 
 </div>
@@ -352,11 +402,11 @@ class BacktrackSolution:
 
 ### 7. Largest Number Smaller than N from Digits A (Digit Greedy Backtracking)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Digit 07</span>
   <span class="review-card-title">Largest Number Smaller than N from Digits A (Digit Greedy Backtracking)</span>
-  <span class="review-card-tag">Digit Backtracking · Greedy Prefix Match · Downgrade Suffix Max Fill · Shorter Length Fallback</span>
+  <span class="review-card-tag">Digit Greedy Construction · Largest Number Smaller Than N · Digit Backtracking · Greedy Prefix Match · Downgrade Suffix Max Fill · Shorter Length Fallback</span>
 </summary>
 <div class="review-card-content">
 
@@ -436,6 +486,11 @@ class DigitConstructionSolution:
             return int(str(max_d) * (L - 1))
 
         return -1
+
+if __name__ == "__main__":
+    assert DigitConstructionSolution.findLargestSmaller(2341, [2, 3, 4, 5]) == 2335
+    assert DigitConstructionSolution.findLargestSmaller(100, [9]) == 99
+    print("✅ Card 07 (Largest Number Smaller than N) all tests passed!")
 ```
 
 </div>
@@ -454,13 +509,13 @@ class DigitConstructionSolution:
 
 ---
 
-### 06. Non-overlapping Intervals via Earliest Deadline First
+### 08. Non-overlapping Intervals via Earliest Deadline First
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">GREEDY 06</span>
+  <span class="review-card-badge">GREEDY 08</span>
   <span class="review-card-title">Non-overlapping Intervals via Earliest Deadline First</span>
-  <span class="review-card-tag">Greedy Interval Scheduling · Earliest Deadline First · O(N log N)</span>
+  <span class="review-card-tag">[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) · Greedy Interval Scheduling · Earliest Deadline First · O(N log N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -492,6 +547,11 @@ class NonOverlappingIntervalsSolution:
                 prev_end = intervals[i][1]
 
         return len(intervals) - kept_count
+
+if __name__ == "__main__":
+    assert NonOverlappingIntervalsSolution.eraseOverlapIntervals([[1, 2], [2, 3], [3, 4], [1, 3]]) == 1
+    assert NonOverlappingIntervalsSolution.eraseOverlapIntervals([[1, 2], [1, 2], [1, 2]]) == 2
+    print("✅ Card 08 (Non-overlapping Intervals) all tests passed!")
 ```
 
 </div>
@@ -521,13 +581,13 @@ class NonOverlappingIntervalsSolution:
 
 ---
 
-### 07. Time-Based Key-Value Store via Binary Search
+### 09. Time-Based Key-Value Store via Binary Search
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">BS 07</span>
+  <span class="review-card-badge">BS 09</span>
   <span class="review-card-title">Time-Based Key-Value Store via Binary Search</span>
-  <span class="review-card-tag">Binary Search (bisect) · Time Series Multiversion Storage · O(log N)</span>
+  <span class="review-card-tag">[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) · Binary Search (bisect) · Time Series Multiversion Storage · O(log N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -559,6 +619,16 @@ class TimeMap:
             return ""
 
         return records[idx - 1][1]
+
+if __name__ == "__main__":
+    tm = TimeMap()
+    tm.set("foo", "bar", 1)
+    assert tm.get("foo", 1) == "bar"
+    assert tm.get("foo", 3) == "bar"
+    tm.set("foo", "bar2", 4)
+    assert tm.get("foo", 4) == "bar2"
+    assert tm.get("foo", 5) == "bar2"
+    print("✅ Card 09 (Time Based Key-Value Store) all tests passed!")
 ```
 
 </div>
@@ -586,13 +656,13 @@ class TimeMap:
 
 ---
 
-### 08. Interval List Intersections via Two-Pointer Scan
+### 10. Interval List Intersections via Two-Pointer Scan
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">TP 08</span>
+  <span class="review-card-badge">TP 10</span>
   <span class="review-card-title">Interval List Intersections via Two-Pointer Scan</span>
-  <span class="review-card-tag">Two Pointers · Closed Interval Intersection · Earliest End Advance · O(M + N)</span>
+  <span class="review-card-tag">[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) · Two Pointers · Closed Interval Intersection · Earliest End Advance · O(M + N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -628,6 +698,14 @@ class IntervalIntersectionSolution:
                 j += 1
 
         return result
+
+if __name__ == "__main__":
+    res_inter = IntervalIntersectionSolution.intervalIntersection(
+        [[0, 2], [5, 10], [13, 23], [24, 25]],
+        [[1, 5], [8, 12], [15, 24], [25, 26]]
+    )
+    assert res_inter == [[1, 2], [5, 5], [8, 10], [15, 23], [24, 24], [25, 25]]
+    print("✅ Card 10 (Interval List Intersections) all tests passed!")
 ```
 
 </div>
@@ -655,13 +733,13 @@ class IntervalIntersectionSolution:
 
 ---
 
-### 09. Longest Substring with At Most K Distinct Characters
+### 11. Longest Substring with At Most K Distinct Characters
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">SLIDE 09</span>
+  <span class="review-card-badge">SLIDE 11</span>
   <span class="review-card-title">Longest Substring with At Most K Distinct Characters</span>
-  <span class="review-card-tag">Sliding Window · Frequency Map · Key Eviction · O(N)</span>
+  <span class="review-card-tag">[LeetCode 340 · Longest Substring with At Most K Distinct](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) · [LeetCode 159](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) · Sliding Window · Frequency Map · Key Eviction · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -699,6 +777,11 @@ class LongestSubstringKDistinctSolution:
                 max_len = current_len
 
         return max_len
+
+if __name__ == "__main__":
+    assert LongestSubstringKDistinctSolution.lengthOfLongestSubstringKDistinct("eceba", 2) == 3
+    assert LongestSubstringKDistinctSolution.lengthOfLongestSubstringKDistinct("aa", 1) == 2
+    print("✅ Card 11 (Longest Substring with At Most K Distinct) all tests passed!")
 ```
 
 </div>
@@ -726,13 +809,13 @@ class LongestSubstringKDistinctSolution:
 
 ---
 
-### 10. Search in Rotated Sorted Array: Distinct vs Duplicates
+### 12. Search in Rotated Sorted Array: Distinct vs Duplicates
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">BS 10</span>
+  <span class="review-card-badge">BS 12</span>
   <span class="review-card-title">Search in Rotated Sorted Array: Distinct vs Duplicates</span>
-  <span class="review-card-tag">Half-Sorted Partitioning · Duplicate Ambiguity · Boundary Shrinkage · O(log N) -> O(N)</span>
+  <span class="review-card-tag">[LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) · [LeetCode 81](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) · Half-Sorted Partitioning · Duplicate Ambiguity · Boundary Shrinkage · O(log N) -> O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -794,6 +877,13 @@ class SearchRotatedArraySolution:
                     right = mid - 1
 
         return False
+
+if __name__ == "__main__":
+    assert SearchRotatedArraySolution.searchDistinct([4, 5, 6, 7, 0, 1, 2], 0) == 4
+    assert SearchRotatedArraySolution.searchDistinct([4, 5, 6, 7, 0, 1, 2], 3) == -1
+    assert SearchRotatedArraySolution.searchDuplicates([2, 5, 6, 0, 0, 1, 2], 0) is True
+    assert SearchRotatedArraySolution.searchDuplicates([2, 5, 6, 0, 0, 1, 2], 3) is False
+    print("✅ Card 12 (Search in Rotated Sorted Array) all tests passed!")
 ```
 
 </div>
@@ -821,11 +911,11 @@ class SearchRotatedArraySolution:
 
 ---
 
-### 11. Drone Relay to Target via Greedy Forward Progression
+### 13. Drone Relay to Target via Greedy Forward Progression
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">GREEDY 11</span>
+  <span class="review-card-badge">GREEDY 13</span>
   <span class="review-card-title">Drone Relay to Target via Greedy Forward Progression</span>
   <span class="review-card-tag">Greedy Simulation · Relay Pointer · Forward Leap Update · O(M log M + M)</span>
 </summary>
@@ -877,6 +967,11 @@ class DroneRelaySolution:
             idx += 1
 
         return total_walk_cost
+
+if __name__ == "__main__":
+    assert DroneRelaySolution.minWalkingDistance(25, [4, 18]) == 8
+    assert DroneRelaySolution.minWalkingDistance(5, [10]) == 5
+    print("✅ Card 13 (Drone Relay to Target) all tests passed!")
 ```
 
 </div>

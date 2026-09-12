@@ -12,7 +12,7 @@ This module provides high-yield algorithm interview review flashcards: distilled
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 01</span>
   <span class="review-card-title">Merge Sort</span>
-  <span class="review-card-tag">Divide &amp; Conquer · Stable</span>
+  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) · Divide &amp; Conquer · Stable</span>
 </summary>
 <div class="review-card-content">
 
@@ -51,6 +51,13 @@ def merge_sort(nums: list[int]) -> list[int]:
         else:
             res.append(right[j]); j += 1
     return res + left[i:] + right[j:]
+
+if __name__ == "__main__":
+    assert merge_sort([5, 2, 3, 1]) == [1, 2, 3, 5]
+    assert merge_sort([5, 1, 1, 2, 0, 0]) == [0, 0, 1, 1, 2, 5]
+    assert merge_sort([]) == []
+    assert merge_sort([42]) == [42]
+    print("✅ Card 01 (Merge Sort) all tests passed!")
 ```
 
 </div>
@@ -75,7 +82,7 @@ def merge_sort(nums: list[int]) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 02</span>
   <span class="review-card-title">Quick Sort</span>
-  <span class="review-card-tag">Partitioning · In-Place · Unstable</span>
+  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) / [LeetCode 215](https://leetcode.com/problems/kth-largest-element-in-an-array/) · Partitioning · In-Place · Unstable</span>
 </summary>
 <div class="review-card-content">
 
@@ -122,6 +129,15 @@ def quick_sort(nums: list[int], l: int, r: int) -> None:
     p = partition(nums, l, r)
     quick_sort(nums, l, p - 1)
     quick_sort(nums, p + 1, r)
+
+if __name__ == "__main__":
+    arr1 = [5, 2, 3, 1]
+    quick_sort(arr1, 0, len(arr1) - 1)
+    assert arr1 == [1, 2, 3, 5]
+    arr2 = [5, 1, 1, 2, 0, 0]
+    quick_sort(arr2, 0, len(arr2) - 1)
+    assert arr2 == [0, 0, 1, 1, 2, 5]
+    print("✅ Card 02 (Quick Sort) all tests passed!")
 ```
 
 </div>
@@ -146,7 +162,7 @@ def quick_sort(nums: list[int], l: int, r: int) -> None:
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 03</span>
   <span class="review-card-title">Dynamic Array Implementation</span>
-  <span class="review-card-tag">Contiguous Memory · Geometric Doubling · Amortized</span>
+  <span class="review-card-tag">[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) / Design Vector · Contiguous Memory · Geometric Doubling · Amortized</span>
 </summary>
 <div class="review-card-content">
 
@@ -193,6 +209,18 @@ class DynamicArray:
 
     def get(self, i: int) -> int:
         return self.arr[i]
+
+if __name__ == "__main__":
+    arr = DynamicArray(capacity=2)
+    arr.push_back(10)
+    arr.push_back(20)
+    assert arr.get(0) == 10 and arr.get(1) == 20
+    assert arr.cap == 2
+    arr.push_back(30)
+    assert arr.cap == 4
+    assert arr.pop_back() == 30
+    assert arr.size == 2
+    print("✅ Card 03 (Dynamic Array) all tests passed!")
 ```
 
 </div>
@@ -218,7 +246,7 @@ class DynamicArray:
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 04</span>
   <span class="review-card-title">Binary Search Boundary Template</span>
-  <span class="review-card-tag">Monotonic Search · Interval Invariant</span>
+  <span class="review-card-tag">[LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) / [LeetCode 34](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) · Monotonic Search · Interval Invariant</span>
 </summary>
 <div class="review-card-content">
 
@@ -256,6 +284,15 @@ def search_lower_bound(nums: list[int], target: int) -> int:
         else:
             l = mid + 1
     return l  # Terminates with l as first index >= target
+
+if __name__ == "__main__":
+    nums = [1, 2, 2, 2, 3, 5]
+    assert search_lower_bound(nums, 2) == 1
+    assert search_lower_bound(nums, 3) == 4
+    assert search_lower_bound(nums, 4) == 5
+    assert search_lower_bound(nums, 0) == 0
+    assert search_lower_bound(nums, 6) == 6
+    print("✅ Card 04 (Binary Search Bounds) all tests passed!")
 ```
 
 </div>
@@ -280,7 +317,7 @@ def search_lower_bound(nums: list[int], target: int) -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">Core 05</span>
   <span class="review-card-title">Rejection Sampling (Rand7 to Rand10)</span>
-  <span class="review-card-tag">Grid Flattening · Divisible Prefix · Expected 2.45 Calls</span>
+  <span class="review-card-tag">[LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) · Grid Flattening · Divisible Prefix · Expected 2.45 Calls</span>
 </summary>
 <div class="review-card-content">
 
@@ -318,6 +355,16 @@ def rand10() -> int:
         if x <= 40:
             return (x - 1) % 10 + 1
         # 41..49 rejected, retry
+
+if __name__ == "__main__":
+    import random
+    def rand7():
+        return random.randint(1, 7)
+    samples = [rand10() for _ in range(20000)]
+    for num in range(1, 11):
+        freq = samples.count(num)
+        assert 1600 <= freq <= 2400
+    print("✅ Card 05 (Rejection Sampling Rand7->Rand10) all tests passed!")
 ```
 
 </div>
@@ -345,7 +392,7 @@ def rand10() -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 01</span>
   <span class="review-card-title">Contains Duplicate</span>
-  <span class="review-card-tag">Hash Set · Early Exit · Single Pass</span>
+  <span class="review-card-tag">[LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) · Hash Set · Early Exit · Single Pass</span>
 </summary>
 <div class="review-card-content">
 
@@ -379,6 +426,12 @@ def contains_duplicate(nums: list[int]) -> bool:
             return True
         seen.add(x)
     return False
+
+if __name__ == "__main__":
+    assert contains_duplicate([1, 2, 3, 1]) is True
+    assert contains_duplicate([1, 2, 3, 4]) is False
+    assert contains_duplicate([1, 1, 1, 3, 3, 4, 3, 2, 4, 2]) is True
+    print("✅ Card 06 (Contains Duplicate) all tests passed!")
 ```
 
 </div>
@@ -403,7 +456,7 @@ def contains_duplicate(nums: list[int]) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 02</span>
   <span class="review-card-title">Valid Anagram</span>
-  <span class="review-card-tag">Frequency Array · ASCII Delta · Length Pruning</span>
+  <span class="review-card-tag">[LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) · Frequency Array · ASCII Delta · Length Pruning</span>
 </summary>
 <div class="review-card-content">
 
@@ -437,6 +490,12 @@ def is_anagram(s: str, t: str) -> bool:
         counts[ord(c1) - ord('a')] += 1
         counts[ord(c2) - ord('a')] -= 1
     return all(c == 0 for c in counts)
+
+if __name__ == "__main__":
+    assert is_anagram("anagram", "nagaram") is True
+    assert is_anagram("rat", "car") is False
+    assert is_anagram("a", "ab") is False
+    print("✅ Card 07 (Valid Anagram) all tests passed!")
 ```
 
 </div>
@@ -461,7 +520,7 @@ def is_anagram(s: str, t: str) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 03</span>
   <span class="review-card-title">Two Sum</span>
-  <span class="review-card-tag">Hash Map · Complement Matching · Single Pass</span>
+  <span class="review-card-tag">[LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) · Hash Map · Complement Matching · Single Pass</span>
 </summary>
 <div class="review-card-content">
 
@@ -497,6 +556,12 @@ def two_sum(nums: list[int], target: int) -> list[int]:
             return [lookup[complement], i]
         lookup[x] = i
     return []
+
+if __name__ == "__main__":
+    assert two_sum([2, 7, 11, 15], 9) == [0, 1]
+    assert two_sum([3, 2, 4], 6) == [1, 2]
+    assert two_sum([3, 3], 6) == [0, 1]
+    print("✅ Card 08 (Two Sum) all tests passed!")
 ```
 
 </div>
@@ -521,7 +586,7 @@ def two_sum(nums: list[int], target: int) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 04</span>
   <span class="review-card-title">Group Anagrams</span>
-  <span class="review-card-tag">Frequency Tuple · Canonical Hash Key · Grouping</span>
+  <span class="review-card-tag">[LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) · Frequency Tuple · Canonical Hash Key · Grouping</span>
 </summary>
 <div class="review-card-content">
 
@@ -560,6 +625,14 @@ def group_anagrams(strs: list[str]) -> list[list[str]]:
             counts[ord(c) - ord('a')] += 1
         groups[tuple(counts)].append(s)
     return list(groups.values())
+
+if __name__ == "__main__":
+    res = group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+    sorted_res = sorted([sorted(g) for g in res])
+    assert sorted_res == [["ate", "eat", "tea"], ["bat"], ["nat", "tan"]]
+    assert group_anagrams([""]) == [[""]]
+    assert group_anagrams(["a"]) == [["a"]]
+    print("✅ Card 09 (Group Anagrams) all tests passed!")
 ```
 
 </div>
@@ -584,7 +657,7 @@ def group_anagrams(strs: list[str]) -> list[list[str]]:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 05</span>
   <span class="review-card-title">Top K Frequent Elements</span>
-  <span class="review-card-tag">Bucket Sort · Inverted Index · Linear Time</span>
+  <span class="review-card-tag">[LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) · Bucket Sort · Inverted Index · Linear Time</span>
 </summary>
 <div class="review-card-content">
 
@@ -633,6 +706,12 @@ def top_k_frequent(nums: list[int], k: int) -> list[int]:
             if len(res) == k:
                 return res
     return res
+
+if __name__ == "__main__":
+    res1 = top_k_frequent([1, 1, 1, 2, 2, 3], 2)
+    assert set(res1) == {1, 2}
+    assert top_k_frequent([1], 1) == [1]
+    print("✅ Card 10 (Top K Frequent Elements) all tests passed!")
 ```
 
 </div>
@@ -657,7 +736,7 @@ def top_k_frequent(nums: list[int], k: int) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 06</span>
   <span class="review-card-title">Encode and Decode Strings</span>
-  <span class="review-card-tag">Length Prefix Protocol · Chunked Stream · Delimiter Independence</span>
+  <span class="review-card-tag">[LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) · Length Prefix Protocol · Chunked Stream · Delimiter Independence</span>
 </summary>
 <div class="review-card-content">
 
@@ -707,6 +786,21 @@ class Codec:
             res.append(s[j + 1 : j + 1 + length])
             i = j + 1 + length
         return res
+
+if __name__ == "__main__":
+    codec = Codec()
+    test_cases = [
+        ["lint", "code", "love", "you"],
+        [""],
+        [],
+        ["hello#world", "123#456", "##"],
+        ["a" * 100, "b" * 50]
+    ]
+    for tc in test_cases:
+        encoded = codec.encode(tc)
+        decoded = codec.decode(encoded)
+        assert decoded == tc, f"Failed on {tc}: got {decoded}"
+    print("✅ Card 11 (Encode and Decode Strings) all tests passed!")
 ```
 
 </div>
@@ -731,7 +825,7 @@ class Codec:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 07</span>
   <span class="review-card-title">Product of Array Except Self</span>
-  <span class="review-card-tag">Prefix &amp; Suffix Decomposition · Two-Pass In-Place · O(1) Auxiliary Space</span>
+  <span class="review-card-tag">[LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) · Prefix &amp; Suffix Decomposition · Two-Pass In-Place · O(1) Auxiliary Space</span>
 </summary>
 <div class="review-card-content">
 
@@ -780,6 +874,11 @@ def product_except_self(nums: list[int]) -> list[int]:
         postfix *= nums[i]
         
     return res
+
+if __name__ == "__main__":
+    assert product_except_self([1, 2, 3, 4]) == [24, 12, 8, 6]
+    assert product_except_self([-1, 1, 0, -3, 3]) == [0, 0, 9, 0, 0]
+    print("✅ Card 12 (Product of Array Except Self) all tests passed!")
 ```
 
 </div>
@@ -804,7 +903,7 @@ def product_except_self(nums: list[int]) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 08</span>
   <span class="review-card-title">Valid Sudoku</span>
-  <span class="review-card-tag">Row/Col/Box Validation · Grid Coordinate Flattening · O(1) Bound</span>
+  <span class="review-card-tag">[LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) · Row/Col/Box Validation · Grid Coordinate Flattening · O(1) Bound</span>
 </summary>
 <div class="review-card-content">
 
@@ -858,6 +957,23 @@ def is_valid_sudoku(board: list[list[str]]) -> bool:
             cols[c].add(val)
             boxes[box_idx].add(val)
     return True
+
+if __name__ == "__main__":
+    board = [
+        ["5","3",".",".","7",".",".",".","."],
+        ["6",".",".","1","9","5",".",".","."],
+        [".","9","8",".",".",".",".","6","."],
+        ["8",".",".",".","6",".",".",".","3"],
+        ["4",".",".","8",".","3",".",".","1"],
+        ["7",".",".",".","2",".",".",".","6"],
+        [".","6",".",".",".",".","2","8","."],
+        [".",".",".","4","1","9",".",".","5"],
+        [".",".",".",".","8",".",".","7","9"]
+    ]
+    assert is_valid_sudoku(board) is True
+    board[0][0] = "8"
+    assert is_valid_sudoku(board) is False
+    print("✅ Card 13 (Valid Sudoku) all tests passed!")
 ```
 
 </div>
@@ -882,7 +998,7 @@ def is_valid_sudoku(board: list[list[str]]) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">Array 09</span>
   <span class="review-card-title">Longest Consecutive Sequence</span>
-  <span class="review-card-tag">Hash Set · Predecessor Probing · Strict O(n)</span>
+  <span class="review-card-tag">[LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) · Hash Set · Predecessor Probing · Strict O(n)</span>
 </summary>
 <div class="review-card-content">
 
@@ -933,6 +1049,12 @@ def longest_consecutive(nums: list[int]) -> int:
             max_len = max(max_len, current_len)
             
     return max_len
+
+if __name__ == "__main__":
+    assert longest_consecutive([100, 4, 200, 1, 3, 2]) == 4
+    assert longest_consecutive([0, 3, 7, 2, 5, 8, 4, 6, 0, 1]) == 9
+    assert longest_consecutive([]) == 0
+    print("✅ Card 14 (Longest Consecutive Sequence) all tests passed!")
 ```
 
 </div>
@@ -957,7 +1079,7 @@ def longest_consecutive(nums: list[int]) -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">Card 15</span>
   <span class="review-card-title">Majority Element in Sorted Array via Sublinear Binary Search Probe</span>
-  <span class="review-card-tag">Sorted Array · Pigeonhole Principle · Probe Sampling · Binary Search Boundaries · O(log N) Sublinear</span>
+  <span class="review-card-tag">[LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) / [LeetCode 1150](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) · Sorted Array · Pigeonhole Principle · Probe Sampling · Binary Search Boundaries · O(log N) Sublinear</span>
 </summary>
 <div class="review-card-content">
 
@@ -1020,6 +1142,13 @@ class SortedMajoritySolution:
                 res.append(cand)
 
         return res
+
+if __name__ == "__main__":
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 1, 2, 3, 4]) == [1]
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 1, 2, 4, 4]) == [1, 4]
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 2, 3]) == []
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 2, 3, 4, 5, 6, 7]) == []
+    print("✅ Card 15 (Sorted Array Majority Probe) all tests passed!")
 ```
 
 </div>
@@ -1044,7 +1173,7 @@ class SortedMajoritySolution:
 <summary class="review-card-summary">
   <span class="review-card-badge">Card 16</span>
   <span class="review-card-title">Reverse Words with Exact Spacing Preservation & In-Place Semantics</span>
-  <span class="review-card-tag">Two Pointers · In-Place Dual Reversal · Exact Whitespace Preservation · O(1) Auxiliary</span>
+  <span class="review-card-tag">[LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) / [LeetCode 186](https://leetcode.com/problems/reverse-words-in-a-string-ii/) · Two Pointers · In-Place Dual Reversal · Exact Whitespace Preservation · O(1) Auxiliary</span>
 </summary>
 <div class="review-card-content">
 
@@ -1105,6 +1234,35 @@ class ReverseWordsSolution:
                 word_idx += 1
 
         return "".join(res)
+
+    @staticmethod
+    def reverseWordsInPlace(chars: List[str]) -> None:
+        def reverse_sub(l: int, r: int):
+            while l < r:
+                chars[l], chars[r] = chars[r], chars[l]
+                l += 1
+                r -= 1
+
+        n = len(chars)
+        reverse_sub(0, n - 1)
+        start = 0
+        while start < n:
+            if chars[start] == ' ':
+                start += 1
+                continue
+            end = start
+            while end < n and chars[end] != ' ':
+                end += 1
+            reverse_sub(start, end - 1)
+            start = end
+
+if __name__ == "__main__":
+    assert ReverseWordsSolution.reverseWordsPreserveSpacing("  hello   world  ") == "  world   hello  "
+    assert ReverseWordsSolution.reverseWordsPreserveSpacing("the sky is blue") == "blue is sky the"
+    chars = list("the sky is blue")
+    ReverseWordsSolution.reverseWordsInPlace(chars)
+    assert "".join(chars) == "blue is sky the"
+    print("✅ Card 16 (Reverse Words Exact Spacing) all tests passed!")
 ```
 
 </div>
@@ -1124,11 +1282,11 @@ class ReverseWordsSolution:
 
 ### 17. Local Maximum on a 1-D Stream with Boundary Degradation
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 17</span>
   <span class="review-card-title">Local Maximum on a 1-D Stream with Boundary Degradation</span>
-  <span class="review-card-tag">Bidirectional Monotonicity · Boundary Fallback · Sliding Neighborhood · O(N * K)</span>
+  <span class="review-card-tag">Stream Signal Processing / Local Peak Detection · Stream Signal Processing / Local Peak Detection · Bidirectional Monotonicity · Boundary Fallback · Sliding Neighborhood · O(N * K)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1178,6 +1336,12 @@ class LocalMaximaStreamSolution:
                 result.append(i)
 
         return result
+
+if __name__ == "__main__":
+    assert LocalMaximaStreamSolution.findLocalMaxima([1, 3, 5, 4, 2, 6, 2, 1], 2) == [2]
+    assert LocalMaximaStreamSolution.findLocalMaxima([10], 3) == [0]
+    assert LocalMaximaStreamSolution.findLocalMaxima([2, 4, 4, 1], 1) == []
+    print("✅ Card 17 (Local Maximum 1-D Stream) all tests passed!")
 ```
 
 </div>
@@ -1209,11 +1373,11 @@ class LocalMaximaStreamSolution:
 
 ### 18. Largest Min+Max in Subarray via Adjacent Pair Reduction
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 18</span>
   <span class="review-card-title">Largest Min+Max in Subarray via Adjacent Pair Reduction</span>
-  <span class="review-card-tag">Mathematical Reduction · Local Dominance · Adjacent Pair Scan · O(N)</span>
+  <span class="review-card-tag">Contiguous Subarray Mathematical Reduction · Contiguous Subarray Mathematical Reduction · Mathematical Reduction · Local Dominance · Adjacent Pair Scan · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1246,6 +1410,12 @@ class LargestMinMaxSumSolution:
                 max_sum = pair_sum
 
         return max_sum
+
+if __name__ == "__main__":
+    assert LargestMinMaxSumSolution.largestMinMaxSum([5, 12, 9, 6, 4]) == 21
+    assert LargestMinMaxSumSolution.largestMinMaxSum([1, 2]) == 3
+    assert LargestMinMaxSumSolution.largestMinMaxSum([10, 1, 10]) == 11
+    print("✅ Card 18 (Largest Min+Max Subarray) all tests passed!")
 ```
 
 </div>
@@ -1279,11 +1449,11 @@ class LargestMinMaxSumSolution:
 
 ### 19. Subarray Sum Equals K via Prefix Sum Hash Map
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 19</span>
   <span class="review-card-title">Subarray Sum Equals K via Prefix Sum Hash Map</span>
-  <span class="review-card-tag">Prefix Sum Difference · Frequency Hash Map · Negative-Value Robustness · O(N)</span>
+  <span class="review-card-tag">[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) · Prefix Sum Difference · Frequency Hash Map · Negative-Value Robustness · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1317,6 +1487,12 @@ class SubarraySumEqualsKSolution:
             prefix_counts[current_sum] += 1
 
         return total_valid_subarrays
+
+if __name__ == "__main__":
+    assert SubarraySumEqualsKSolution.subarraySum([1, 1, 1], 2) == 2
+    assert SubarraySumEqualsKSolution.subarraySum([1, 2, 3], 3) == 2
+    assert SubarraySumEqualsKSolution.subarraySum([1, -1, 0], 0) == 3
+    print("✅ Card 19 (Subarray Sum Equals K) all tests passed!")
 ```
 
 </div>
@@ -1349,11 +1525,11 @@ class SubarraySumEqualsKSolution:
 
 ### 20. Longest Substring Without Repeating Characters
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 20</span>
   <span class="review-card-title">Longest Substring Without Repeating Characters</span>
-  <span class="review-card-tag">Sliding Window · Last Seen Index Map · Monotonic Left Jump · O(N)</span>
+  <span class="review-card-tag">[LeetCode 3 powers · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · Sliding Window · Last Seen Index Map · Monotonic Left Jump · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1382,6 +1558,13 @@ class LongestSubstringWithoutRepeatingSolution:
                 max_length = current_window
 
         return max_length
+
+if __name__ == "__main__":
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("abcabcbb") == 3
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("bbbbb") == 1
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("pwwkew") == 3
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("") == 0
+    print("✅ Card 20 (Longest Substring Without Repeating) all tests passed!")
 ```
 
 </div>
@@ -1411,11 +1594,11 @@ class LongestSubstringWithoutRepeatingSolution:
 
 ### 21. 8-Byte Aligned Memory Allocator Simulation
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">DESIGN 21</span>
   <span class="review-card-title">8-Byte Aligned Memory Allocator Simulation</span>
-  <span class="review-card-tag">Systems Emulation · 8-Byte Alignment Stride · Unique Block ID · O(N/8 * X)</span>
+  <span class="review-card-tag">[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) · Systems Emulation · 8-Byte Alignment Stride · Unique Block ID · O(N/8 * X)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1473,6 +1656,15 @@ class AlignedMemoryAllocator:
                 cleared_count += 1
 
         return cleared_count
+
+if __name__ == "__main__":
+    alloc = AlignedMemoryAllocator(24)
+    assert alloc.alloc(5) == 0
+    assert alloc.alloc(10) == 8
+    assert alloc.alloc(5) == -1
+    assert alloc.erase(1) == 5
+    assert alloc.alloc(6) == 0
+    print("✅ Card 21 (8-Byte Aligned Memory Allocator) all tests passed!")
 ```
 
 </div>
@@ -1481,7 +1673,8 @@ class AlignedMemoryAllocator:
 <div class="review-block-label">💡 Mechanism & Invariants</div>
 
 - **Alignment Stride Constraint**:
-  Enforcing $start \pmod 8 == 0$ restricts candidate search indices to step size 8, reducing candidate locations to $\lceil 	ext{capacity} / 8 ceil$.
+  Enforcing $start \pmod 8 == 0$ restricts candidate search indices to step size 8, reducing candidate locations to $\lceil 	ext{capacity} / 8 
+ceil$.
 - **Monotonic ID Tagging**:
   Auto-incrementing `next_alloc_id` ensures each allocation retains distinct identities even across allocations of identical size.
 
@@ -1504,11 +1697,11 @@ class AlignedMemoryAllocator:
 
 ### 22. Zigzag Alternating-Parity Subarrays
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 22</span>
   <span class="review-card-title">Zigzag Alternating-Parity Subarrays</span>
-  <span class="review-card-tag">Running Streak · Parity Disparity · Single Pass · O(N) Time</span>
+  <span class="review-card-tag">[LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) / [LeetCode 978](https://leetcode.com/problems/longest-turbulent-subarray/) · Running Streak · Parity Disparity · Single Pass · O(N) Time</span>
 </summary>
 <div class="review-card-content">
 
@@ -1541,6 +1734,12 @@ class AlternatingParitySubarraysSolution:
             total_subarrays += current_streak
 
         return total_subarrays
+
+if __name__ == "__main__":
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1, 2, 3, 4]) == 10
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([2, 4, 6]) == 3
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1]) == 1
+    print("✅ Card 22 (Zigzag Alternating-Parity Subarrays) all tests passed!")
 ```
 
 </div>
@@ -1570,11 +1769,11 @@ class AlternatingParitySubarraysSolution:
 
 ### 23. Two-Direction Justified Newspaper Layout
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 23</span>
   <span class="review-card-title">Two-Direction Justified Newspaper Layout</span>
-  <span class="review-card-tag">Greedy Word Packing · Dual Alignment Padding · Asterisk Framing · O(Total Words)</span>
+  <span class="review-card-tag">[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) · Greedy Word Packing · Dual Alignment Padding · Asterisk Framing · O(Total Words)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1632,6 +1831,17 @@ class NewspaperLayoutSolution:
 
         horizontal_border = "*" * (width + 2)
         return [horizontal_border] + content_lines + [horizontal_border]
+
+if __name__ == "__main__":
+    paras = [["Hello", "world"], ["Antigravity", "AI", "news"]]
+    aligns = ["LEFT", "RIGHT"]
+    rendered = NewspaperLayoutSolution.layoutNewspaper(paras, aligns, 16)
+    assert rendered[0] == "******************"
+    assert rendered[1] == "*Hello world     *"
+    assert rendered[2] == "*  Antigravity AI*"
+    assert rendered[3] == "*            news*"
+    assert rendered[4] == "******************"
+    print("✅ Card 23 (Newspaper Layout) all tests passed!")
 ```
 
 </div>
@@ -1664,11 +1874,11 @@ class NewspaperLayoutSolution:
 
 ### 24. Longest Palindromic Substring: Center vs Manacher
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 24</span>
   <span class="review-card-title">Longest Palindromic Substring: Center vs Manacher</span>
-  <span class="review-card-tag">Center Expansion · Manacher's Algorithm · Symmetry Radius Mapping · Strict O(N)</span>
+  <span class="review-card-tag">[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) · Center Expansion · Manacher's Algorithm · Symmetry Radius Mapping · Strict O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1737,6 +1947,14 @@ class LongestPalindromeSolution:
 
         start_orig = (best_center - best_radius) // 2
         return s[start_orig : start_orig + best_radius]
+
+if __name__ == "__main__":
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeManacher("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("a") == "a"
+    print("✅ Card 24 (Longest Palindrome Manacher) all tests passed!")
 ```
 
 </div>

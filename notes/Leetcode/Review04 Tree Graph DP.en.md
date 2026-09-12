@@ -8,11 +8,11 @@ This note is the fourth volume of the high-frequency algorithmic interview revie
 
 ### 1. Number of Islands & All Canonical Variants
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 01</span>
   <span class="review-card-title">Number of Islands & All Canonical Variants</span>
-  <span class="review-card-tag">Grid Implicit Graph · BFS/DFS · Relative Coordinate Normalization</span>
+  <span class="review-card-tag">[LeetCode 200 · Number of Islands](https://leetcode.com/problems/number-of-islands/) · [LeetCode 694](https://leetcode.com/problems/number-of-distinct-islands/) · Grid Implicit Graph · BFS/DFS · Relative Coordinate Normalization</span>
 </summary>
 <div class="review-card-content">
 
@@ -42,6 +42,23 @@ class IslandSolution:
                                 grid[nr][nc] = '0'
                                 queue.append((nr, nc))
         return count
+
+if __name__ == "__main__":
+    g1 = [
+      ["1","1","1","1","0"],
+      ["1","1","0","1","0"],
+      ["1","1","0","0","0"],
+      ["0","0","0","0","0"]
+    ]
+    assert IslandSolution.numIslands(g1) == 1
+    g2 = [
+      ["1","1","0","0","0"],
+      ["1","1","0","0","0"],
+      ["0","0","1","0","0"],
+      ["0","0","0","1","1"]
+    ]
+    assert IslandSolution.numIslands(g2) == 3
+    print("✅ Card 01 (Number of Islands) all tests passed!")
 ```
 
 </div>
@@ -60,11 +77,11 @@ class IslandSolution:
 
 ### 2. Course Schedule & Topological Sort
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 02</span>
   <span class="review-card-title">Course Schedule & Topological Sort</span>
-  <span class="review-card-tag">Kahn BFS In-degree · DFS Three-Color Mark · Cycle Reconstruction</span>
+  <span class="review-card-tag">[LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) · [LeetCode 210](https://leetcode.com/problems/course-schedule-ii/) · Kahn BFS In-degree · DFS Three-Color Mark · Cycle Reconstruction</span>
 </summary>
 <div class="review-card-content">
 
@@ -93,6 +110,12 @@ class CourseScheduleSolution:
                 if in_degree[neighbor] == 0:
                     queue.append(neighbor)
         return order if len(order) == numCourses else []
+
+if __name__ == "__main__":
+    assert CourseScheduleSolution.findOrder(2, [[1, 0]]) == [0, 1]
+    assert CourseScheduleSolution.findOrder(2, [[1, 0], [0, 1]]) == []
+    assert len(CourseScheduleSolution.findOrder(4, [[1,0],[2,0],[3,1],[3,2]])) == 4
+    print("✅ Card 02 (Course Schedule & Topological Sort) all tests passed!")
 ```
 
 </div>
@@ -104,11 +127,11 @@ class CourseScheduleSolution:
 
 ### 3. Order Validator with Dynamic DAG Dependencies & Node Contraction
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 03</span>
   <span class="review-card-title">Order Validator with Dynamic DAG Dependencies & Node Contraction</span>
-  <span class="review-card-tag">Directed Acyclic Graph · Dynamic Dependencies · Topological Validation · Node Contraction Rewiring</span>
+  <span class="review-card-tag">DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · DAG Dynamic Dependency Order Validator · Cycle Detection & Topological Sort · Directed Acyclic Graph · Dynamic Dependencies · Topological Validation · Node Contraction Rewiring</span>
 </summary>
 <div class="review-card-content">
 
@@ -202,6 +225,23 @@ class OrderValidator:
                 if in_deg[nxt] == 0:
                     queue.append(nxt)
         return processed == len(self.rules)
+
+if __name__ == "__main__":
+    ov = OrderValidator()
+    ov.add_rule("R1", lambda o: o.get("amount", 0) > 0)
+    ov.add_rule("R2", lambda o: o.get("user_verified", False))
+    ov.add_dependency("R1", "R2")
+    cycle_caught = False
+    try:
+        ov.add_dependency("R2", "R1")
+    except ValueError:
+        cycle_caught = True
+    assert cycle_caught is True
+    assert ov.validate({"amount": 100, "user_verified": True}) is True
+    assert ov.validate({"amount": 0, "user_verified": True}) is False
+    ov.remove_rule("R2")
+    assert ov.validate({"amount": 100, "user_verified": False}) is True
+    print("✅ Card 03 (Order Validator & DAG Dependency) all tests passed!")
 ```
 
 </div>
@@ -221,11 +261,11 @@ class OrderValidator:
 
 ### 4. Shortest Path in Grid with Obstacles Elimination
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Graph 04</span>
   <span class="review-card-title">Shortest Path in Grid with Obstacles Elimination</span>
-  <span class="review-card-tag">3D State BFS · Dominance Pruning · Manhattan Distance Shortcut</span>
+  <span class="review-card-tag">[LeetCode 1293 · Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) · 3D State BFS · Dominance Pruning · Manhattan Distance Shortcut</span>
 </summary>
 <div class="review-card-content">
 
@@ -274,6 +314,12 @@ class ObstacleGridShortestPathSolution:
                         queue.append((nr, nc, nxt_k, steps + 1))
 
         return -1
+
+if __name__ == "__main__":
+    grid = [[0,0,0],[1,1,0],[0,0,0],[0,1,1],[0,0,0]]
+    assert ObstacleGridShortestPathSolution.shortestPath(grid, 1) == 6
+    assert ObstacleGridShortestPathSolution.shortestPath([[0,1,1],[1,1,1],[1,0,0]], 1) == -1
+    print("✅ Card 04 (Shortest Path with Obstacles Elimination) all tests passed!")
 ```
 
 </div>
@@ -295,11 +341,11 @@ class ObstacleGridShortestPathSolution:
 
 ### 5. Lowest Common Ancestor (LCA)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 05</span>
   <span class="review-card-title">Lowest Common Ancestor (LCA)</span>
-  <span class="review-card-tag">Postorder Divide-and-Conquer</span>
+  <span class="review-card-tag">[LeetCode 236 · Lowest Common Ancestor](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/) · [LeetCode 235](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/) · Postorder Divide-and-Conquer</span>
 </summary>
 <div class="review-card-content">
 
@@ -319,6 +365,16 @@ class LCASolution:
         left = LCASolution.lowestCommonAncestor(root.left, p, q)
         right = LCASolution.lowestCommonAncestor(root.right, p, q)
         return root if left and right else (left or right)
+
+if __name__ == "__main__":
+    root5 = TreeNode(3)
+    root5.left = TreeNode(5)
+    root5.right = TreeNode(1)
+    root5.left.left = TreeNode(6)
+    root5.left.right = TreeNode(2)
+    assert LCASolution.lowestCommonAncestor(root5, root5.left, root5.right).val == 3
+    assert LCASolution.lowestCommonAncestor(root5, root5.left, root5.left.right).val == 5
+    print("✅ Card 05 (Lowest Common Ancestor) all tests passed!")
 ```
 
 </div>
@@ -330,11 +386,11 @@ class LCASolution:
 
 ### 6. Binary Tree Maximum Path Sum & Path Reconstruction
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 06</span>
   <span class="review-card-title">Binary Tree Maximum Path Sum & Path Reconstruction</span>
-  <span class="review-card-tag">Postorder Tree DP · Negative Gain Clamping</span>
+  <span class="review-card-tag">[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) · Postorder Tree DP · Negative Gain Clamping</span>
 </summary>
 <div class="review-card-content">
 
@@ -342,6 +398,12 @@ class LCASolution:
 <div class="review-block-label">📌 Implementation</div>
 
 ```python
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
 from typing import Optional
 
 class MaxPathSumSolution:
@@ -357,6 +419,13 @@ class MaxPathSumSolution:
             return node.val + max(left_gain, right_gain)
         max_gain(root)
         return int(max_sum)
+
+if __name__ == "__main__":
+    r6 = TreeNode(1, TreeNode(2), TreeNode(3))
+    assert MaxPathSumSolution.maxPathSum(r6) == 6
+    r6_neg = TreeNode(-10, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+    assert MaxPathSumSolution.maxPathSum(r6_neg) == 42
+    print("✅ Card 06 (Binary Tree Maximum Path Sum) all tests passed!")
 ```
 
 </div>
@@ -368,11 +437,11 @@ class MaxPathSumSolution:
 
 ### 7. Flatten Comment Tree to Multi-Level Hierarchy
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 07</span>
   <span class="review-card-title">Flatten Comment Tree to Multi-Level Hierarchy</span>
-  <span class="review-card-tag">Two-Pass Hash Assembly · Arbitrary Depth · Orphan Safety · Self-Reference Guard</span>
+  <span class="review-card-tag">Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · Flatten Comment Tree to Multi-Level Hierarchy · Adjacency Tree Reversion · Two-Pass Hash Assembly · Arbitrary Depth · Orphan Safety · Self-Reference Guard</span>
 </summary>
 <div class="review-card-content">
 
@@ -439,6 +508,18 @@ class CommentTreeBuilder:
                     roots.append(node)
 
         return roots
+
+if __name__ == "__main__":
+    cmts = [
+        {"id": 1, "text": "Top 1", "parent_id": None},
+        {"id": 2, "text": "Reply 1.1", "parent_id": 1},
+        {"id": 3, "text": "Top 2", "parent_id": None}
+    ]
+    tree7 = CommentTreeBuilder.buildCommentTree(cmts)
+    assert len(tree7) == 2
+    assert tree7[0]["id"] == 1 and len(tree7[0]["children"]) == 1
+    assert tree7[0]["children"][0]["id"] == 2
+    print("✅ Card 07 (Comment Tree Multi-Level Hierarchy) all tests passed!")
 ```
 
 </div>
@@ -458,11 +539,11 @@ class CommentTreeBuilder:
 
 ### 8. Equalize Root-to-Leaf Path Sums in N-ary Tree
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Tree 08</span>
   <span class="review-card-title">Equalize Root-to-Leaf Path Sums in N-ary Tree</span>
-  <span class="review-card-tag">N-ary Tree Postorder · Tree Greedy Lift · Majority Element Warmup</span>
+  <span class="review-card-tag">Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · Equalize Root-to-Leaf Path Sums in N-ary Tree · Postorder Greedy Lifting · N-ary Tree Postorder · Tree Greedy Lift · Majority Element Warmup</span>
 </summary>
 <div class="review-card-content">
 
@@ -522,6 +603,13 @@ class NaryTreeEqualizeSolution:
 
         postorder(root)
         return total_ops
+
+if __name__ == "__main__":
+    leaf1 = NaryTreeNode(3)
+    leaf2 = NaryTreeNode(5)
+    root8 = NaryTreeNode(1, [leaf1, leaf2])
+    assert NaryTreeEqualizeSolution.minOperationsToEqualize(root8) == 2
+    print("✅ Card 08 (Equalize Root-to-Leaf Path Sums) all tests passed!")
 ```
 
 </div>
@@ -543,11 +631,11 @@ class NaryTreeEqualizeSolution:
 
 ### 9. Coin Change 1 & 2 / Unbounded Knapsack
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 09</span>
   <span class="review-card-title">Coin Change 1 & 2 / Unbounded Knapsack</span>
-  <span class="review-card-tag">Unbounded Knapsack</span>
+  <span class="review-card-tag">[LeetCode 322 · Coin Change](https://leetcode.com/problems/coin-change/) · [LeetCode 518](https://leetcode.com/problems/coin-change-ii/) · Unbounded Knapsack</span>
 </summary>
 <div class="review-card-content">
 
@@ -566,6 +654,12 @@ class CoinChangeSolution:
             for x in range(coin, amount + 1):
                 dp[x] = min(dp[x], dp[x - coin] + 1)
         return int(dp[amount]) if dp[amount] != float('inf') else -1
+
+if __name__ == "__main__":
+    assert CoinChangeSolution.coinChange([1, 2, 5], 11) == 3
+    assert CoinChangeSolution.coinChange([2], 3) == -1
+    assert CoinChangeSolution.coinChange([1], 0) == 0
+    print("✅ Card 09 (Coin Change) all tests passed!")
 ```
 
 </div>
@@ -577,11 +671,11 @@ class CoinChangeSolution:
 
 ### 10. Stickers to Spell Word & Bitmask DP
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">DP 10</span>
   <span class="review-card-title">Stickers to Spell Word & Bitmask DP</span>
-  <span class="review-card-tag">Bitmask DP · First Unmet Pruning · O(2^n * m * n)</span>
+  <span class="review-card-tag">[LeetCode 691 · Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/) · Bitmask DP · First Unmet Pruning · O(2^n * m * n)</span>
 </summary>
 <div class="review-card-content">
 
@@ -622,6 +716,11 @@ class StickersSolution:
 
         res = dfs(0)
         return int(res) if res != float('inf') else -1
+
+if __name__ == "__main__":
+    assert StickersSolution.minStickers(["with", "example", "science"], "thehat") == 3
+    assert StickersSolution.minStickers(["notice", "possible"], "basicbasic") == -1
+    print("✅ Card 10 (Stickers to Spell Word) all tests passed!")
 ```
 
 </div>
@@ -640,11 +739,11 @@ class StickersSolution:
 
 ### 11. Longest Alternating Zigzag Path in 2D Grid
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 11</span>
   <span class="review-card-title">Longest Alternating Zigzag Path in 2D Grid</span>
-  <span class="review-card-tag">2D Grid · Memoized Search · State-Machine DP · O(M * N)</span>
+  <span class="review-card-tag">Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · Longest Alternating Zigzag Path in 2D Grid · Memoized DFS · 2D Grid · Memoized Search · State-Machine DP · O(M * N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -703,6 +802,16 @@ class LongestZigzagPathSolution:
                 max_path = max(max_path, dfs(r, c, True), dfs(r, c, False))
         
         return max_path
+
+if __name__ == "__main__":
+    g_zz = [
+        [1, 5, 2],
+        [4, 3, 6],
+        [2, 7, 1]
+    ]
+    assert LongestZigzagPathSolution.longestZigzag(g_zz) == 10
+    assert LongestZigzagPathSolution.longestZigzag([[1]]) == 1
+    print("✅ Card 11 (Longest Alternating Zigzag Path) all tests passed!")
 ```
 
 </div>
@@ -734,11 +843,11 @@ class LongestZigzagPathSolution:
 
 ### 12. N-ary Tree Downward Target Path Sum via Prefix Sum
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 12</span>
   <span class="review-card-title">N-ary Tree Downward Target Path Sum via Prefix Sum</span>
-  <span class="review-card-tag">N-ary Tree · Running Prefix Sum · Backtracking Scope Cleanup · O(N)</span>
+  <span class="review-card-tag">[LeetCode 437 · Path Sum III](https://leetcode.com/problems/path-sum-iii/) · N-ary Tree Downward Target Path Sum · N-ary Tree · Running Prefix Sum · Backtracking Scope Cleanup · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -786,6 +895,15 @@ class NaryPathSumSolution:
 
         dfs(root, 0)
         return total_valid_paths
+
+if __name__ == "__main__":
+    n_root = NaryTreeNode(10, [
+        NaryTreeNode(5, [NaryTreeNode(3), NaryTreeNode(-2)]),
+        NaryTreeNode(-3, [NaryTreeNode(11)])
+    ])
+    assert NaryPathSumSolution.pathSum(n_root, 8) == 2
+    assert NaryPathSumSolution.pathSum(None, 8) == 0
+    print("✅ Card 12 (N-ary Tree Downward Target Path Sum) all tests passed!")
 ```
 
 </div>
@@ -819,11 +937,11 @@ class NaryPathSumSolution:
 
 ### 13. Word Search II with Trie & Backtracking Pruning
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 13</span>
   <span class="review-card-title">Word Search II with Trie & Backtracking Pruning</span>
-  <span class="review-card-tag">Trie · Grid Backtracking · Dynamic Leaf Pruning · In-Place Visited Sentinel</span>
+  <span class="review-card-tag">[LeetCode 212 · Word Search II](https://leetcode.com/problems/word-search-ii/) · Trie · Grid Backtracking · Dynamic Leaf Pruning · In-Place Visited Sentinel</span>
 </summary>
 <div class="review-card-content">
 
@@ -885,6 +1003,12 @@ class WordSearchIISolution:
                     dfs(r, c, root)
 
         return result
+
+if __name__ == "__main__":
+    b13 = [["o","a","a","n"],["e","t","a","e"],["i","h","k","r"],["i","f","l","v"]]
+    w13 = ["oath","pea","eat","rain"]
+    assert sorted(WordSearchIISolution.findWords(b13, w13)) == ["eat", "oath"]
+    print("✅ Card 13 (Word Search II with Trie) all tests passed!")
 ```
 
 </div>
@@ -916,11 +1040,11 @@ class WordSearchIISolution:
 
 ### 14. Grid Shortest Path with Fuel Tank & Recharge Stations
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 14</span>
   <span class="review-card-title">Grid Shortest Path with Fuel Tank & Recharge Stations</span>
-  <span class="review-card-tag">State Expansion · Dijkstra Shortest Path · Recharge State Collapse · Large-K Supergraph</span>
+  <span class="review-card-tag">[LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) · Fuel Tank & Recharge Stations · State Expansion · Dijkstra Shortest Path · Recharge State Collapse · Large-K Supergraph</span>
 </summary>
 <div class="review-card-content">
 
@@ -982,6 +1106,14 @@ class FuelGridShortestPathSolution:
                         heapq.heappush(pq, (next_cost, nr, nc, next_fuel))
 
         return -1
+
+if __name__ == "__main__":
+    grid_cost = [[1, 2], [3, 4]]
+    blocked = [[False, False], [False, False]]
+    recharge = [[False, False], [False, False]]
+    assert FuelGridShortestPathSolution.minCost(grid_cost, blocked, recharge, 2) == 7
+    assert FuelGridShortestPathSolution.minCost(grid_cost, blocked, recharge, 1) == -1
+    print("✅ Card 14 (Grid Shortest Path with Fuel Tank) all tests passed!")
 ```
 
 </div>
@@ -1014,11 +1146,11 @@ class FuelGridShortestPathSolution:
 
 ### 15. Photo Similarity Groups via Union-Find
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 15</span>
   <span class="review-card-title">Photo Similarity Groups via Union-Find</span>
-  <span class="review-card-tag">Disjoint Set Union · Connected Components · Upper-Triangle Scan · O(N^2 * α(N))</span>
+  <span class="review-card-tag">[LeetCode 547 · Number of Provinces](https://leetcode.com/problems/number-of-provinces/) · Photo Similarity Groups via Union-Find · Disjoint Set Union · Connected Components · Upper-Triangle Scan · O(N^2 * α(N))</span>
 </summary>
 <div class="review-card-content">
 
@@ -1071,6 +1203,16 @@ class PhotoSimilarityGroupsSolution:
                     union(i, j)
 
         return components_count
+
+if __name__ == "__main__":
+    sim_mat = [
+        [1, 1, 0],
+        [1, 1, 0],
+        [0, 0, 1]
+    ]
+    assert PhotoSimilarityGroupsSolution.findGroups(sim_mat) == 2
+    assert PhotoSimilarityGroupsSolution.findGroups([[1, 0], [0, 1]]) == 2
+    print("✅ Card 15 (Photo Similarity Groups via Union-Find) all tests passed!")
 ```
 
 </div>
@@ -1102,11 +1244,11 @@ class PhotoSimilarityGroupsSolution:
 
 ### 16. Binary Tree Right Side View with Custom Tree Scaffolding
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 16</span>
   <span class="review-card-title">Binary Tree Right Side View with Custom Tree Scaffolding</span>
-  <span class="review-card-tag">Binary Tree · Level-Order BFS · Right-First DFS · Test Scaffolding</span>
+  <span class="review-card-tag">[LeetCode 199 · Binary Tree Right Side View](https://leetcode.com/problems/binary-tree-right-side-view/) · Binary Tree · Level-Order BFS · Right-First DFS · Test Scaffolding</span>
 </summary>
 <div class="review-card-content">
 
@@ -1189,6 +1331,12 @@ class RightSideViewSolution:
 
         dfs(root, 0)
         return result
+
+if __name__ == "__main__":
+    tree16 = BinaryTreeScaffolding.build_tree([1, 2, 3, None, 5, None, 4])
+    assert RightSideViewSolution.rightSideViewBFS(tree16) == [1, 3, 4]
+    assert RightSideViewSolution.rightSideViewDFS(tree16) == [1, 3, 4]
+    print("✅ Card 16 (Binary Tree Right Side View) all tests passed!")
 ```
 
 </div>
@@ -1221,11 +1369,11 @@ class RightSideViewSolution:
 
 ### 17. Construct Binary Tree from Preorder and Postorder Traversal
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 17</span>
   <span class="review-card-title">Construct Binary Tree from Preorder and Postorder Traversal</span>
-  <span class="review-card-tag">Recursive Reconstruction · Postorder Index Map · Subtree Size Partitioning · O(N)</span>
+  <span class="review-card-tag">[LeetCode 889 · Construct Binary Tree from Pre/Postorder](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/) · Recursive Reconstruction · Postorder Index Map · Subtree Size Partitioning · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1281,6 +1429,11 @@ class ConstructFromPrePostSolution:
 
         n = len(preorder)
         return build(0, n - 1, 0, n - 1)
+
+if __name__ == "__main__":
+    r17 = ConstructFromPrePostSolution.constructFromPrePost([1,2,4,5,3,6,7], [4,5,2,6,7,3,1])
+    assert r17.val == 1 and r17.left.val == 2 and r17.right.val == 3
+    print("✅ Card 17 (Construct Binary Tree from Pre/Postorder) all tests passed!")
 ```
 
 </div>
@@ -1311,11 +1464,11 @@ class ConstructFromPrePostSolution:
 
 ### 18. Construct Binary Tree from Descriptions via Child Set Deduction
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">TREE 18</span>
   <span class="review-card-title">Construct Binary Tree from Descriptions via Child Set Deduction</span>
-  <span class="review-card-tag">Node Registry · Child Set Set-Difference · Topological Root · O(N)</span>
+  <span class="review-card-tag">[LeetCode 2196 · Create Binary Tree From Descriptions](https://leetcode.com/problems/create-binary-tree-from-descriptions/) · Node Registry · Child Set Set-Difference · Topological Root · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1323,6 +1476,12 @@ class ConstructFromPrePostSolution:
 <div class="review-block-label">📌 Core Implementation</div>
 
 ```python
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
 from typing import List, Optional
 
 class ConstructTreeFromDescriptionsSolution:
@@ -1355,6 +1514,12 @@ class ConstructTreeFromDescriptionsSolution:
                 break
 
         return nodes[root_val] if root_val is not None else None
+
+if __name__ == "__main__":
+    desc = [[20,15,1],[20,17,0],[50,20,1],[50,80,0],[80,19,1]]
+    r18 = ConstructTreeFromDescriptionsSolution.createBinaryTree(desc)
+    assert r18.val == 50 and r18.left.val == 20 and r18.right.val == 80
+    print("✅ Card 18 (Construct Binary Tree from Descriptions) all tests passed!")
 ```
 
 </div>
@@ -1384,11 +1549,11 @@ class ConstructTreeFromDescriptionsSolution:
 
 ### 19. Restore IP Addresses & Generalized K-Segment Partition
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">BT 19</span>
   <span class="review-card-title">Restore IP Addresses & Generalized K-Segment Partition</span>
-  <span class="review-card-tag">Backtracking · Boundary Validation · Leading Zero Guard · Pigeonhole Pruning · O(1)</span>
+  <span class="review-card-tag">[LeetCode 93 · Restore IP Addresses](https://leetcode.com/problems/restore-ip-addresses/) · Backtracking · Boundary Validation · Leading Zero Guard · Pigeonhole Pruning · O(1)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1442,6 +1607,12 @@ class RestoreIPSolution:
 
         backtrack(0, k)
         return result
+
+if __name__ == "__main__":
+    assert sorted(RestoreIPSolution.restoreIpAddresses("25525511135")) == sorted(["255.255.11.135", "255.255.111.35"])
+    assert RestoreIPSolution.restoreIpAddresses("0000") == ["0.0.0.0"]
+    assert RestoreIPSolution.restoreIpAddresses("101023") == ["1.0.10.23","1.0.102.3","10.1.0.23","10.10.2.3","101.0.2.3"]
+    print("✅ Card 19 (Restore IP Addresses) all tests passed!")
 ```
 
 </div>
@@ -1473,11 +1644,11 @@ class RestoreIPSolution:
 
 ### 20. Alien Dictionary via Directed Graph Topological Sort
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GRAPH 20</span>
   <span class="review-card-title">Alien Dictionary via Directed Graph Topological Sort</span>
-  <span class="review-card-tag">Directed Graph Topological Sort · Kahn's BFS · Prefix Trap Defense · O(C)</span>
+  <span class="review-card-tag">[LeetCode 269 · Alien Dictionary](https://leetcode.com/problems/alien-dictionary/) · Directed Graph Topological Sort · Kahn's BFS · Prefix Trap Defense · O(C)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1535,6 +1706,12 @@ class AlienDictionarySolution:
             return ""
 
         return "".join(order)
+
+if __name__ == "__main__":
+    assert AlienDictionarySolution.alienOrder(["wrt","wrf","er","ett","rftt"]) == "wertf"
+    assert AlienDictionarySolution.alienOrder(["z","x"]) == "zx"
+    assert AlienDictionarySolution.alienOrder(["z","x","z"]) == ""
+    print("✅ Card 20 (Alien Dictionary via Topological Sort) all tests passed!")
 ```
 
 </div>

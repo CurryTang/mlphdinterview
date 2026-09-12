@@ -8,11 +8,11 @@
 
 ### 1. LRU 缓存与其系统级演进全家桶 (LRU Cache & System-Level Extensions)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 01</span>
   <span class="review-card-title">LRU 缓存与其系统级演进全家桶 (LRU Cache & System-Level Extensions)</span>
-  <span class="review-card-tag">双向链表 · 哈希映射 · TTL 过期 · LFU 频次置换 · 4 端双端队列 · 缓存未命中调优</span>
+  <span class="review-card-tag">[LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) · [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) · 双向链表 · 哈希映射 · TTL 过期 · LFU 频次置换 · 4 端双端队列 · 缓存未命中调优</span>
 </summary>
 <div class="review-card-content">
 
@@ -90,6 +90,17 @@ class LRUCacheWithTTL:
         new_node = DLLNode(key, value, expiry)
         self.map[key] = new_node
         self._append_to_tail(new_node)
+
+if __name__ == "__main__":
+    lru = LRUCacheWithTTL(2)
+    lru.put(1, 10, ttl=100)
+    lru.put(2, 20, ttl=100)
+    assert lru.get(1) == 10
+    lru.put(3, 30, ttl=100)  # 淘汰 key 2
+    assert lru.get(2) == -1
+    assert lru.get(3) == 30
+    assert lru.get(1) == 10
+    print("✅ Card 01 (LRU Cache with TTL) all tests passed!")
 ```
 
 </div>
@@ -108,11 +119,11 @@ class LRUCacheWithTTL:
 
 ### 2. K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 02</span>
   <span class="review-card-title">K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)</span>
-  <span class="review-card-tag">哨兵虚拟节点 · 局部反转双指针 · 尾部不足也翻转 · 组间反转组内保序 · 自定义脚手架</span>
+  <span class="review-card-tag">[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) · 哨兵虚拟节点 · 局部反转双指针 · 尾部不足也翻转 · 组间反转组内保序 · 自定义脚手架</span>
 </summary>
 <div class="review-card-content">
 
@@ -186,6 +197,23 @@ class KGroupReverser:
         for g_h, g_t in reversed(groups):
             tail.next = g_h; tail = g_t
         return dummy.next
+
+if __name__ == "__main__":
+    def build_list(vals):
+        d = ListNode(0); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def to_list(head):
+        r = []
+        while head: r.append(head.val); head = head.next
+        return r
+
+    h1 = build_list([1, 2, 3, 4, 5])
+    assert to_list(KGroupReverser.reverseKGroup(h1, 2)) == [2, 1, 4, 3, 5]
+    h2 = build_list([1, 2, 3, 4, 5])
+    assert to_list(KGroupReverser.reverseKGroup(h2, 3)) == [3, 2, 1, 4, 5]
+    print("✅ Card 02 (Reverse Nodes in k-Group) all tests passed!")
 ```
 
 </div>
@@ -204,11 +232,11 @@ class KGroupReverser:
 
 ### 3. 扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 03</span>
   <span class="review-card-title">扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)</span>
-  <span class="review-card-tag">多级双向链表 · 子链优先递归/栈 · 空值节点清洗 · 双向指针自愈缝合</span>
+  <span class="review-card-tag">[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) · 多级双向链表 · 子链优先递归/栈 · 空值节点清洗 · 双向指针自愈缝合</span>
 </summary>
 <div class="review-card-content">
 
@@ -253,6 +281,23 @@ class MultiLevelListFlattenSolution:
         new_head = dummy.next
         if new_head: new_head.prev = None
         return new_head
+
+if __name__ == "__main__":
+    n1 = MultiLevelNode(1)
+    n2 = MultiLevelNode(2)
+    n_empty = MultiLevelNode(None)
+    n3 = MultiLevelNode(3)
+    n1.next = n2; n2.prev = n1
+    n2.child = n_empty
+    n_empty.child = n3
+    res_head = MultiLevelListFlattenSolution.flattenAndFilterEmpty(n1)
+    vals = []
+    c = res_head
+    while c:
+        vals.append(c.val)
+        c = c.next
+    assert vals == [1, 2, 3]
+    print("✅ Card 03 (Flatten Multilevel Doubly Linked List) all tests passed!")
 ```
 
 </div>
@@ -273,11 +318,11 @@ class MultiLevelListFlattenSolution:
 
 ### 4. 表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">栈 04</span>
   <span class="review-card-title">表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)</span>
-  <span class="review-card-tag">单栈即时归约 · 括号状态暂存 · 负号/一元负数预处理 · 幂运算右结合 · Dijkstra 双栈调度场</span>
+  <span class="review-card-tag">[LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) · [LeetCode 227](https://leetcode.com/problems/basic-calculator-ii/) · [LeetCode 772](https://leetcode.com/problems/basic-calculator-iii/) · 单栈即时归约 · 括号状态暂存 · 负号/一元负数预处理 · 幂运算右结合 · Dijkstra 双栈调度场</span>
 </summary>
 <div class="review-card-content">
 
@@ -344,6 +389,17 @@ class ExpressionCalculator:
 
         while ops: evaluate_top_op()
         return nums[0] if nums else 0
+
+if __name__ == "__main__":
+    assert ExpressionCalculator.calculate("1 + 1") == 2
+    assert ExpressionCalculator.calculate(" 2-1 + 2 ") == 3
+    assert ExpressionCalculator.calculate("(1+(4+5+2)-3)+(6+8)") == 23
+    assert ExpressionCalculator.calculate("3+2*2") == 7
+    assert ExpressionCalculator.calculate(" 3/2 ") == 1
+    assert ExpressionCalculator.calculate(" 3+5 / 2 ") == 5
+    assert ExpressionCalculator.calculate("2^3^2") == 512
+    assert ExpressionCalculator.calculate("-3 + 5") == 2
+    print("✅ Card 04 (Basic Calculator Hierarchy) all tests passed!")
 ```
 
 </div>
@@ -362,11 +418,11 @@ class ExpressionCalculator:
 
 ### 5. 滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">队列 05</span>
   <span class="review-card-title">滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)</span>
-  <span class="review-card-tag">单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
+  <span class="review-card-tag">[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) · 单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
 </summary>
 <div class="review-card-content">
 
@@ -389,6 +445,14 @@ class SlidingWindowMaxSolution:
             if q[0] <= i - k: q.popleft()
             if i >= k - 1: res.append(nums[q[0]])
         return res
+
+if __name__ == "__main__":
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1, 3, -1, -3, 5, 3, 6, 7], 3) == [3, 3, 5, 5, 6, 7]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1], 1) == [1]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1, -1], 1) == [1, -1]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([9, 11], 2) == [11]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([4, -2], 2) == [4]
+    print("✅ Card 05 (Sliding Window Maximum) all tests passed!")
 ```
 
 </div>
@@ -407,11 +471,11 @@ class SlidingWindowMaxSolution:
 
 ### 6. 柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">单调栈 06</span>
   <span class="review-card-title">柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)</span>
-  <span class="review-card-tag">单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
+  <span class="review-card-tag">[LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) · [LeetCode 85](https://leetcode.com/problems/maximal-rectangle/) · 单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
 </summary>
 <div class="review-card-content">
 
@@ -498,6 +562,13 @@ class HistogramSolution:
             stack.append(i)
 
         return max_area
+
+if __name__ == "__main__":
+    assert HistogramSolution.largestRectangleArea([2, 1, 5, 6, 2, 3]) == 10
+    assert HistogramSolution.largestRectangleArea([2, 4]) == 4
+    assert HistogramSolution.largestRectangleArea([]) == 0
+    assert HistogramSolution.largestRectangleArea([2, 1, 2]) == 3
+    print("✅ Card 06 (Largest Rectangle in Histogram) all tests passed!")
 ```
 
 </div>
@@ -519,11 +590,11 @@ class HistogramSolution:
 
 ### 7. 星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">栈/回溯 07</span>
   <span class="review-card-title">星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)</span>
-  <span class="review-card-tag">区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
+  <span class="review-card-tag">[LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) · 区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
 </summary>
 <div class="review-card-content">
 
@@ -641,6 +712,15 @@ class WildcardParenthesesSolution:
 
         dfs(0, 0)
         return sorted(list(results))
+
+if __name__ == "__main__":
+    assert WildcardParenthesesSolution.checkValidString("()") is True
+    assert WildcardParenthesesSolution.checkValidString("(*)") is True
+    assert WildcardParenthesesSolution.checkValidString("(*))") is True
+    assert WildcardParenthesesSolution.checkValidString(")(") is False
+    assert WildcardParenthesesSolution.allValidStrings("(*)") == ["()"]
+    assert WildcardParenthesesSolution.allValidStrings("(*))") == ["(())"]
+    print("✅ Card 07 (Valid Parenthesis String) all tests passed!")
 ```
 
 </div>
@@ -665,11 +745,11 @@ class WildcardParenthesesSolution:
 
 ### 8. 数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">堆 08</span>
   <span class="review-card-title">数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)</span>
-  <span class="review-card-tag">对顶双堆 · 严格平衡不变量 · 惰性删除</span>
+  <span class="review-card-tag">[LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) · [LeetCode 23](https://leetcode.com/problems/merge-k-sorted-lists/) · 对顶双堆 · 严格平衡不变量 · 惰性删除</span>
 </summary>
 <div class="review-card-content">
 
@@ -697,6 +777,15 @@ class MedianFinder:
         if len(self.lo) > len(self.hi):
             return float(-self.lo[0])
         return (-self.lo[0] + self.hi[0]) / 2.0
+
+if __name__ == "__main__":
+    mf = MedianFinder()
+    mf.addNum(1)
+    mf.addNum(2)
+    assert mf.findMedian() == 1.5
+    mf.addNum(3)
+    assert mf.findMedian() == 2.0
+    print("✅ Card 08 (Find Median from Data Stream) all tests passed!")
 ```
 
 </div>
@@ -708,11 +797,11 @@ class MedianFinder:
 
 ### 9. 多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">堆 09</span>
   <span class="review-card-title">多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)</span>
-  <span class="review-card-tag">商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
+  <span class="review-card-tag">Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · 商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
 </summary>
 <div class="review-card-content">
 
@@ -725,6 +814,8 @@ from collections import deque
 from typing import Dict, List, Tuple, Optional, Set
 
 class TieredTaskScheduler:
+    TIER_WEIGHTS = {'VIP': 2, 'STANDARD': 1}
+
     def __init__(self):
         self.seq = 0
         self.seller_heaps: Dict[str, List[Tuple[int, int, str]]] = {}
@@ -748,9 +839,48 @@ class TieredTaskScheduler:
             self.active_sellers.append(seller_id)
             self.in_active_set.add(seller_id)
 
-    def process_next_task() -> Optional[Tuple[str, str]]:
-        # 调度状态机代码见 Review02 生产实现
-        pass
+    def process_next_task(self) -> Optional[Tuple[str, str]]:
+        while True:
+            if not self.current_seller or self.remaining_quota <= 0:
+                if not self.active_sellers:
+                    self.current_seller = None
+                    self.remaining_quota = 0
+                    return None
+                self.current_seller = self.active_sellers.popleft()
+                self.in_active_set.remove(self.current_seller)
+                tier = self.seller_tiers.get(self.current_seller, 'STANDARD')
+                self.remaining_quota = self.TIER_WEIGHTS.get(tier, 1)
+
+            heap = self.seller_heaps.get(self.current_seller, [])
+            if not heap:
+                self.current_seller = None
+                self.remaining_quota = 0
+                continue
+
+            priority, seq, task_id = heapq.heappop(heap)
+            self.remaining_quota -= 1
+            seller = self.current_seller
+
+            if self.remaining_quota <= 0 or not heap:
+                if heap:
+                    self.active_sellers.append(self.current_seller)
+                    self.in_active_set.add(self.current_seller)
+                self.current_seller = None
+                self.remaining_quota = 0
+            return (seller, task_id)
+
+if __name__ == "__main__":
+    ts = TieredTaskScheduler()
+    ts.receive_task({'task_id': 'T1', 'seller_id': 'S1', 'priority': 2, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T2', 'seller_id': 'S1', 'priority': 1, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T3', 'seller_id': 'S1', 'priority': 1, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T4', 'seller_id': 'S2', 'priority': 1, 'tier': 'STANDARD'})
+    assert ts.process_next_task() == ('S1', 'T2')
+    assert ts.process_next_task() == ('S1', 'T3')
+    assert ts.process_next_task() == ('S2', 'T4')
+    assert ts.process_next_task() == ('S1', 'T1')
+    assert ts.process_next_task() is None
+    print("✅ Card 09 (Tiered Task Scheduler) all tests passed!")
 ```
 
 </div>
@@ -762,11 +892,11 @@ class TieredTaskScheduler:
 
 ### 10. 时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆 10</span>
+  <span class="review-card-badge">堆 13</span>
   <span class="review-card-title">时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)</span>
-  <span class="review-card-tag">复合小顶堆 · 惰性删除 · 哈希版本校验</span>
+  <span class="review-card-tag">Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · 复合小顶堆 · 惰性删除 · 哈希版本校验</span>
 </summary>
 <div class="review-card-content">
 
@@ -802,6 +932,16 @@ class TimestampTaskScheduler:
                 result.append(taskID)
                 del self.task_map[taskID]
         return result
+
+if __name__ == "__main__":
+    tts = TimestampTaskScheduler()
+    tts.addTask("taskA", 100)
+    tts.addTask("taskB", 200)
+    tts.addTask("taskC", 150)
+    tts.removeTask("taskA")
+    assert tts.popTask(2) == ["taskC", "taskB"]
+    assert tts.popTask(1) == []
+    print("✅ Card 10 (Timestamp Task Scheduler) all tests passed!")
 ```
 
 </div>
@@ -811,13 +951,13 @@ class TimestampTaskScheduler:
 
 ---
 
-### 08. 链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)
+### 11. 链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">LIST 08</span>
   <span class="review-card-title">链表原地反转与三指针迭代推进 (Reverse Linked List In-Place via Three Pointers)</span>
-  <span class="review-card-tag">三指针滑动 · 前驱后继保护 · 原地反转 · O(1) 空间</span>
+  <span class="review-card-tag">[LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) · [LeetCode 92](https://leetcode.com/problems/reverse-linked-list-ii/) · 三指针滑动 · 前驱后继保护 · 原地反转 · O(1) 空间</span>
 </summary>
 <div class="review-card-content">
 
@@ -866,6 +1006,23 @@ class ReverseListSolution:
         head.next.next = head
         head.next = None
         return new_head
+
+if __name__ == "__main__":
+    def build_list(vals):
+        d = ListNode(); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def to_list(h):
+        r = []
+        while h: r.append(h.val); h = h.next
+        return r
+
+    rl_h = build_list([1, 2, 3, 4, 5])
+    assert to_list(ReverseListSolution.reverseListIterative(rl_h)) == [5, 4, 3, 2, 1]
+    rl_h2 = build_list([1, 2])
+    assert to_list(ReverseListSolution.reverseListRecursive(rl_h2)) == [2, 1]
+    print("✅ Card 11 (Reverse Linked List) all tests passed!")
 ```
 
 </div>
@@ -893,13 +1050,13 @@ class ReverseListSolution:
 
 ---
 
-### 09. 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
+### 12. 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STACK 09</span>
   <span class="review-card-title">单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)</span>
-  <span class="review-card-tag">单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
+  <span class="review-card-tag">[LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) · [LeetCode 1081](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) · 单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -934,6 +1091,11 @@ class RemoveDuplicateLettersSolution:
             in_stack.add(ch)
 
         return "".join(stack)
+
+if __name__ == "__main__":
+    assert RemoveDuplicateLettersSolution.removeDuplicateLetters("bcabc") == "abc"
+    assert RemoveDuplicateLettersSolution.removeDuplicateLetters("cbacdcbc") == "acdb"
+    print("✅ Card 12 (Remove Duplicate Letters) all tests passed!")
 ```
 
 </div>
@@ -963,13 +1125,13 @@ class RemoveDuplicateLettersSolution:
 
 ---
 
-### 10. 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
+### 13. 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">HEAP 10</span>
   <span class="review-card-title">双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)</span>
-  <span class="review-card-tag">对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
+  <span class="review-card-tag">[LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) · [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) · [LeetCode 295](https://leetcode.com/problems/find-median-from-data-stream/) · 对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
 </summary>
 <div class="review-card-content">
 
@@ -1023,6 +1185,17 @@ class MedianFinder:
         if len(self.small) > len(self.large):
             return float(-self.small[0])
         return (-self.small[0] + self.large[0]) / 2.0
+
+if __name__ == "__main__":
+    ms = MinStack()
+    ms.push(-2)
+    ms.push(0)
+    ms.push(-3)
+    assert ms.getMin() == -3
+    ms.pop()
+    assert ms.top() == 0
+    assert ms.getMin() == -2
+    print("✅ Card 13 (MinStack & Streaming Median) all tests passed!")
 ```
 
 </div>

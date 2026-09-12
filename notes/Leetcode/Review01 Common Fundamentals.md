@@ -12,7 +12,7 @@
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 01</span>
   <span class="review-card-title">归并排序 (Merge Sort)</span>
-  <span class="review-card-tag">分治 · 递归 · 稳定</span>
+  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) · 分治 · 递归 · 稳定</span>
 </summary>
 <div class="review-card-content">
 
@@ -51,6 +51,13 @@ def merge_sort(nums: list[int]) -> list[int]:
         else:
             res.append(right[j]); j += 1
     return res + left[i:] + right[j:]
+
+if __name__ == "__main__":
+    assert merge_sort([5, 2, 3, 1]) == [1, 2, 3, 5]
+    assert merge_sort([5, 1, 1, 2, 0, 0]) == [0, 0, 1, 1, 2, 5]
+    assert merge_sort([]) == []
+    assert merge_sort([42]) == [42]
+    print("✅ Card 01 (Merge Sort) all tests passed!")
 ```
 
 </div>
@@ -75,7 +82,7 @@ def merge_sort(nums: list[int]) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 02</span>
   <span class="review-card-title">快速排序 (Quick Sort)</span>
-  <span class="review-card-tag">分治 · 原地划分 · 不稳定</span>
+  <span class="review-card-tag">[LeetCode 912 · Sort an Array](https://leetcode.com/problems/sort-an-array/) / [LeetCode 215](https://leetcode.com/problems/kth-largest-element-in-an-array/) · 分治 · 原地划分 · 不稳定</span>
 </summary>
 <div class="review-card-content">
 
@@ -122,6 +129,15 @@ def quick_sort(nums: list[int], l: int, r: int) -> None:
     p = partition(nums, l, r)
     quick_sort(nums, l, p - 1)
     quick_sort(nums, p + 1, r)
+
+if __name__ == "__main__":
+    arr1 = [5, 2, 3, 1]
+    quick_sort(arr1, 0, len(arr1) - 1)
+    assert arr1 == [1, 2, 3, 5]
+    arr2 = [5, 1, 1, 2, 0, 0]
+    quick_sort(arr2, 0, len(arr2) - 1)
+    assert arr2 == [0, 0, 1, 1, 2, 5]
+    print("✅ Card 02 (Quick Sort) all tests passed!")
 ```
 
 </div>
@@ -146,7 +162,7 @@ def quick_sort(nums: list[int], l: int, r: int) -> None:
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 03</span>
   <span class="review-card-title">动态数组实现 (Dynamic Array)</span>
-  <span class="review-card-tag">连续内存 · 几何倍增 · 均摊分析</span>
+  <span class="review-card-tag">[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) / Design Vector · 连续内存 · 几何倍增 · 均摊分析</span>
 </summary>
 <div class="review-card-content">
 
@@ -193,6 +209,18 @@ class DynamicArray:
 
     def get(self, i: int) -> int:
         return self.arr[i]
+
+if __name__ == "__main__":
+    arr = DynamicArray(capacity=2)
+    arr.push_back(10)
+    arr.push_back(20)
+    assert arr.get(0) == 10 and arr.get(1) == 20
+    assert arr.cap == 2
+    arr.push_back(30)
+    assert arr.cap == 4
+    assert arr.pop_back() == 30
+    assert arr.size == 2
+    print("✅ Card 03 (Dynamic Array) all tests passed!")
 ```
 
 </div>
@@ -218,7 +246,7 @@ class DynamicArray:
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 04</span>
   <span class="review-card-title">二分查找边界模板 (Binary Search Bounds)</span>
-  <span class="review-card-tag">有序检索 · 开闭区间不变量 · 边界收敛</span>
+  <span class="review-card-tag">[LeetCode 704 · Binary Search](https://leetcode.com/problems/binary-search/) / [LeetCode 34](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) · 有序检索 · 开闭区间不变量 · 边界收敛</span>
 </summary>
 <div class="review-card-content">
 
@@ -256,6 +284,15 @@ def search_lower_bound(nums: list[int], target: int) -> int:
         else:
             l = mid + 1
     return l  # 终止时 l 落在首个 >= target 的位置
+
+if __name__ == "__main__":
+    nums = [1, 2, 2, 2, 3, 5]
+    assert search_lower_bound(nums, 2) == 1
+    assert search_lower_bound(nums, 3) == 4
+    assert search_lower_bound(nums, 4) == 5
+    assert search_lower_bound(nums, 0) == 0
+    assert search_lower_bound(nums, 6) == 6
+    print("✅ Card 04 (Binary Search Bounds) all tests passed!")
 ```
 
 </div>
@@ -280,7 +317,7 @@ def search_lower_bound(nums: list[int], target: int) -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">基础 05</span>
   <span class="review-card-title">拒绝采样：用 Rand7 实现 Rand10 (Rejection Sampling)</span>
-  <span class="review-card-tag">二维展平 · 能除尽的最大前缀 · 期望调用 2.45 次</span>
+  <span class="review-card-tag">[LeetCode 470 · Implement Rand10() Using Rand7()](https://leetcode.com/problems/implement-rand10-using-rand7/) · 二维展平 · 能除尽的最大前缀 · 期望调用 2.45 次</span>
 </summary>
 <div class="review-card-content">
 
@@ -318,6 +355,16 @@ def rand10() -> int:
         if x <= 40:
             return (x - 1) % 10 + 1
         # 41..49 拒绝丢弃，继续下一轮重采
+
+if __name__ == "__main__":
+    import random
+    def rand7():
+        return random.randint(1, 7)
+    samples = [rand10() for _ in range(20000)]
+    for num in range(1, 11):
+        freq = samples.count(num)
+        assert 1600 <= freq <= 2400
+    print("✅ Card 05 (Rejection Sampling Rand7->Rand10) all tests passed!")
 ```
 
 </div>
@@ -345,7 +392,7 @@ def rand10() -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 01</span>
   <span class="review-card-title">存在重复元素 (Contains Duplicate)</span>
-  <span class="review-card-tag">哈希集合 · 早期退出 · 一次遍历</span>
+  <span class="review-card-tag">[LeetCode 217 · Contains Duplicate](https://leetcode.com/problems/contains-duplicate/) · 哈希集合 · 早期退出 · 一次遍历</span>
 </summary>
 <div class="review-card-content">
 
@@ -379,6 +426,12 @@ def contains_duplicate(nums: list[int]) -> bool:
             return True
         seen.add(x)
     return False
+
+if __name__ == "__main__":
+    assert contains_duplicate([1, 2, 3, 1]) is True
+    assert contains_duplicate([1, 2, 3, 4]) is False
+    assert contains_duplicate([1, 1, 1, 3, 3, 4, 3, 2, 4, 2]) is True
+    print("✅ Card 06 (Contains Duplicate) all tests passed!")
 ```
 
 </div>
@@ -403,7 +456,7 @@ def contains_duplicate(nums: list[int]) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 02</span>
   <span class="review-card-title">有效的字母异位词 (Valid Anagram)</span>
-  <span class="review-card-tag">频次数组 · ASCII 差值 · 长度剪枝</span>
+  <span class="review-card-tag">[LeetCode 242 · Valid Anagram](https://leetcode.com/problems/valid-anagram/) · 频次数组 · ASCII 差值 · 长度剪枝</span>
 </summary>
 <div class="review-card-content">
 
@@ -437,6 +490,12 @@ def is_anagram(s: str, t: str) -> bool:
         counts[ord(c1) - ord('a')] += 1
         counts[ord(c2) - ord('a')] -= 1
     return all(c == 0 for c in counts)
+
+if __name__ == "__main__":
+    assert is_anagram("anagram", "nagaram") is True
+    assert is_anagram("rat", "car") is False
+    assert is_anagram("a", "ab") is False
+    print("✅ Card 07 (Valid Anagram) all tests passed!")
 ```
 
 </div>
@@ -461,7 +520,7 @@ def is_anagram(s: str, t: str) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 03</span>
   <span class="review-card-title">两数之和 (Two Sum)</span>
-  <span class="review-card-tag">哈希查找 · 差值补数 · 前缀存储</span>
+  <span class="review-card-tag">[LeetCode 1 · Two Sum](https://leetcode.com/problems/two-sum/) · 哈希查找 · 差值补数 · 前缀存储</span>
 </summary>
 <div class="review-card-content">
 
@@ -497,6 +556,12 @@ def two_sum(nums: list[int], target: int) -> list[int]:
             return [lookup[complement], i]
         lookup[x] = i
     return []
+
+if __name__ == "__main__":
+    assert two_sum([2, 7, 11, 15], 9) == [0, 1]
+    assert two_sum([3, 2, 4], 6) == [1, 2]
+    assert two_sum([3, 3], 6) == [0, 1]
+    print("✅ Card 08 (Two Sum) all tests passed!")
 ```
 
 </div>
@@ -521,7 +586,7 @@ def two_sum(nums: list[int], target: int) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 04</span>
   <span class="review-card-title">字母异位词分组 (Group Anagrams)</span>
-  <span class="review-card-tag">频次元组 · 典范哈希键 · 字典聚合</span>
+  <span class="review-card-tag">[LeetCode 49 · Group Anagrams](https://leetcode.com/problems/group-anagrams/) · 频次元组 · 典范哈希键 · 字典聚合</span>
 </summary>
 <div class="review-card-content">
 
@@ -560,6 +625,14 @@ def group_anagrams(strs: list[str]) -> list[list[str]]:
             counts[ord(c) - ord('a')] += 1
         groups[tuple(counts)].append(s)
     return list(groups.values())
+
+if __name__ == "__main__":
+    res = group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+    sorted_res = sorted([sorted(g) for g in res])
+    assert sorted_res == [["ate", "eat", "tea"], ["bat"], ["nat", "tan"]]
+    assert group_anagrams([""]) == [[""]]
+    assert group_anagrams(["a"]) == [["a"]]
+    print("✅ Card 09 (Group Anagrams) all tests passed!")
 ```
 
 </div>
@@ -584,7 +657,7 @@ def group_anagrams(strs: list[str]) -> list[list[str]]:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 05</span>
   <span class="review-card-title">前 K 个高频元素 (Top K Frequent Elements)</span>
-  <span class="review-card-tag">桶排序 · 频次倒排 · 线性时间</span>
+  <span class="review-card-tag">[LeetCode 347 · Top K Frequent Elements](https://leetcode.com/problems/top-k-frequent-elements/) · 桶排序 · 频次倒排 · 线性时间</span>
 </summary>
 <div class="review-card-content">
 
@@ -633,6 +706,12 @@ def top_k_frequent(nums: list[int], k: int) -> list[int]:
             if len(res) == k:
                 return res
     return res
+
+if __name__ == "__main__":
+    res1 = top_k_frequent([1, 1, 1, 2, 2, 3], 2)
+    assert set(res1) == {1, 2}
+    assert top_k_frequent([1], 1) == [1]
+    print("✅ Card 10 (Top K Frequent Elements) all tests passed!")
 ```
 
 </div>
@@ -657,7 +736,7 @@ def top_k_frequent(nums: list[int], k: int) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 06</span>
   <span class="review-card-title">字符串的编码与解码 (Encode and Decode Strings)</span>
-  <span class="review-card-tag">长度前缀 · 字符流分块 · 无歧义边界</span>
+  <span class="review-card-tag">[LeetCode 271 · Encode and Decode Strings](https://leetcode.com/problems/encode-and-decode-strings/) · 长度前缀 · 字符流分块 · 无歧义边界</span>
 </summary>
 <div class="review-card-content">
 
@@ -706,6 +785,21 @@ class Codec:
             res.append(s[j + 1 : j + 1 + length])
             i = j + 1 + length
         return res
+
+if __name__ == "__main__":
+    codec = Codec()
+    test_cases = [
+        ["lint", "code", "love", "you"],
+        [""],
+        [],
+        ["hello#world", "123#456", "##"],
+        ["a" * 100, "b" * 50]
+    ]
+    for tc in test_cases:
+        encoded = codec.encode(tc)
+        decoded = codec.decode(encoded)
+        assert decoded == tc, f"Failed on {tc}: got {decoded}"
+    print("✅ Card 11 (Encode and Decode Strings) all tests passed!")
 ```
 
 </div>
@@ -730,7 +824,7 @@ class Codec:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 07</span>
   <span class="review-card-title">除自身以外数组的乘积 (Product of Array Except Self)</span>
-  <span class="review-card-tag">前后缀积分解 · 两次扫描 · 常数空间</span>
+  <span class="review-card-tag">[LeetCode 238 · Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) · 前后缀积分解 · 两次扫描 · 常数空间</span>
 </summary>
 <div class="review-card-content">
 
@@ -779,6 +873,11 @@ def product_except_self(nums: list[int]) -> list[int]:
         postfix *= nums[i]
         
     return res
+
+if __name__ == "__main__":
+    assert product_except_self([1, 2, 3, 4]) == [24, 12, 8, 6]
+    assert product_except_self([-1, 1, 0, -3, 3]) == [0, 0, 9, 0, 0]
+    print("✅ Card 12 (Product of Array Except Self) all tests passed!")
 ```
 
 </div>
@@ -803,7 +902,7 @@ def product_except_self(nums: list[int]) -> list[int]:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 08</span>
   <span class="review-card-title">有效的数独 (Valid Sudoku)</span>
-  <span class="review-card-tag">行/列/宫格 · 坐标展平 · 并行判重</span>
+  <span class="review-card-tag">[LeetCode 36 · Valid Sudoku](https://leetcode.com/problems/valid-sudoku/) · 行/列/宫格 · 坐标展平 · 并行判重</span>
 </summary>
 <div class="review-card-content">
 
@@ -857,6 +956,23 @@ def is_valid_sudoku(board: list[list[str]]) -> bool:
             cols[c].add(val)
             boxes[box_idx].add(val)
     return True
+
+if __name__ == "__main__":
+    board = [
+        ["5","3",".",".","7",".",".",".","."],
+        ["6",".",".","1","9","5",".",".","."],
+        [".","9","8",".",".",".",".","6","."],
+        ["8",".",".",".","6",".",".",".","3"],
+        ["4",".",".","8",".","3",".",".","1"],
+        ["7",".",".",".","2",".",".",".","6"],
+        [".","6",".",".",".",".","2","8","."],
+        [".",".",".","4","1","9",".",".","5"],
+        [".",".",".",".","8",".",".","7","9"]
+    ]
+    assert is_valid_sudoku(board) is True
+    board[0][0] = "8"
+    assert is_valid_sudoku(board) is False
+    print("✅ Card 13 (Valid Sudoku) all tests passed!")
 ```
 
 </div>
@@ -881,7 +997,7 @@ def is_valid_sudoku(board: list[list[str]]) -> bool:
 <summary class="review-card-summary">
   <span class="review-card-badge">数组 09</span>
   <span class="review-card-title">最长连续序列 (Longest Consecutive Sequence)</span>
-  <span class="review-card-tag">哈希集合 · 前驱探测 · 严格线性</span>
+  <span class="review-card-tag">[LeetCode 128 · Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/) · 哈希集合 · 前驱探测 · 严格线性</span>
 </summary>
 <div class="review-card-content">
 
@@ -931,6 +1047,12 @@ def longest_consecutive(nums: list[int]) -> int:
             max_len = max(max_len, current_len)
             
     return max_len
+
+if __name__ == "__main__":
+    assert longest_consecutive([100, 4, 200, 1, 3, 2]) == 4
+    assert longest_consecutive([0, 3, 7, 2, 5, 8, 4, 6, 0, 1]) == 9
+    assert longest_consecutive([]) == 0
+    print("✅ Card 14 (Longest Consecutive Sequence) all tests passed!")
 ```
 
 </div>
@@ -955,7 +1077,7 @@ def longest_consecutive(nums: list[int]) -> int:
 <summary class="review-card-summary">
   <span class="review-card-badge">卡片 15</span>
   <span class="review-card-title">有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)</span>
-  <span class="review-card-tag">有序数组 · 鸽巢原理 · 探针锚定 · 二分左右边界 · O(log N) 亚线性</span>
+  <span class="review-card-tag">[LeetCode 229 · Majority Element II](https://leetcode.com/problems/majority-element-ii/) / [LeetCode 1150](https://leetcode.com/problems/check-if-a-number-is-majority-element-in-a-sorted-array/) · 有序数组 · 鸽巢原理 · 探针锚定 · 二分左右边界 · O(log N) 亚线性</span>
 </summary>
 <div class="review-card-content">
 
@@ -1036,6 +1158,13 @@ class SortedMajoritySolution:
                 res.append(cand)
 
         return res
+
+if __name__ == "__main__":
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 1, 2, 3, 4]) == [1]
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 1, 2, 4, 4]) == [1, 4]
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 2, 3]) == []
+    assert SortedMajoritySolution.findMajorityElementsSorted([1, 2, 3, 4, 5, 6, 7]) == []
+    print("✅ Card 15 (Sorted Array Majority Probe) all tests passed!")
 ```
 
 </div>
@@ -1061,7 +1190,7 @@ class SortedMajoritySolution:
 <summary class="review-card-summary">
   <span class="review-card-badge">卡片 16</span>
   <span class="review-card-title">单词反转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place Semantics)</span>
-  <span class="review-card-tag">双指针 · 局部对称翻转 · 空格间距序列精准回填 · 原地 O(1) 空间</span>
+  <span class="review-card-tag">[LeetCode 151 · Reverse Words in a String](https://leetcode.com/problems/reverse-words-in-a-string/) / [LeetCode 186](https://leetcode.com/problems/reverse-words-in-a-string-ii/) · 双指针 · 局部对称翻转 · 空格间距序列精准回填 · 原地 O(1) 空间</span>
 </summary>
 <div class="review-card-content">
 
@@ -1177,6 +1306,14 @@ class ReverseWordsSolution:
                 end += 1
             reverse_sub(start, end - 1)
             start = end
+
+if __name__ == "__main__":
+    assert ReverseWordsSolution.reverseWordsPreserveSpacing("  hello   world  ") == "  world   hello  "
+    assert ReverseWordsSolution.reverseWordsPreserveSpacing("the sky is blue") == "blue is sky the"
+    chars = list("the sky is blue")
+    ReverseWordsSolution.reverseWordsInPlace(chars)
+    assert "".join(chars) == "blue is sky the"
+    print("✅ Card 16 (Reverse Words Exact Spacing) all tests passed!")
 ```
 
 </div>
@@ -1198,11 +1335,11 @@ class ReverseWordsSolution:
 
 ### 17. 数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 17</span>
   <span class="review-card-title">数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)</span>
-  <span class="review-card-tag">双向单调性校验 · 边界自适应退化 · 滑动邻域 · O(N * K)</span>
+  <span class="review-card-tag">Stream Signal Processing / Local Peak Detection · Stream Signal Processing / Local Peak Detection · 双向单调性校验 · 边界自适应退化 · 滑动邻域 · O(N * K)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1256,6 +1393,12 @@ class LocalMaximaStreamSolution:
                 result.append(i)
 
         return result
+
+if __name__ == "__main__":
+    assert LocalMaximaStreamSolution.findLocalMaxima([1, 3, 5, 4, 2, 6, 2, 1], 2) == [2]
+    assert LocalMaximaStreamSolution.findLocalMaxima([10], 3) == [0]
+    assert LocalMaximaStreamSolution.findLocalMaxima([2, 4, 4, 1], 1) == []
+    print("✅ Card 17 (Local Maximum 1-D Stream) all tests passed!")
 ```
 
 </div>
@@ -1287,11 +1430,11 @@ class LocalMaximaStreamSolution:
 
 ### 18. 子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 18</span>
   <span class="review-card-title">子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)</span>
-  <span class="review-card-tag">数学规约 · 局部对偶 · 相邻对扫描 · O(N)</span>
+  <span class="review-card-tag">Contiguous Subarray Mathematical Reduction · Contiguous Subarray Mathematical Reduction · 数学规约 · 局部对偶 · 相邻对扫描 · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1323,6 +1466,12 @@ class LargestMinMaxSumSolution:
                 max_sum = pair_sum
 
         return max_sum
+
+if __name__ == "__main__":
+    assert LargestMinMaxSumSolution.largestMinMaxSum([5, 12, 9, 6, 4]) == 21
+    assert LargestMinMaxSumSolution.largestMinMaxSum([1, 2]) == 3
+    assert LargestMinMaxSumSolution.largestMinMaxSum([10, 1, 10]) == 11
+    print("✅ Card 18 (Largest Min+Max Subarray) all tests passed!")
 ```
 
 </div>
@@ -1358,11 +1507,11 @@ class LargestMinMaxSumSolution:
 
 ### 19. 和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 19</span>
   <span class="review-card-title">和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)</span>
-  <span class="review-card-tag">前缀和差分 · 频次哈希表 · 负数鲁棒性 · O(N)</span>
+  <span class="review-card-tag">[LeetCode 560 · Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) · 前缀和差分 · 频次哈希表 · 负数鲁棒性 · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1398,6 +1547,12 @@ class SubarraySumEqualsKSolution:
             prefix_counts[current_sum] += 1
 
         return total_valid_subarrays
+
+if __name__ == "__main__":
+    assert SubarraySumEqualsKSolution.subarraySum([1, 1, 1], 2) == 2
+    assert SubarraySumEqualsKSolution.subarraySum([1, 2, 3], 3) == 2
+    assert SubarraySumEqualsKSolution.subarraySum([1, -1, 0], 0) == 3
+    print("✅ Card 19 (Subarray Sum Equals K) all tests passed!")
 ```
 
 </div>
@@ -1431,11 +1586,11 @@ class SubarraySumEqualsKSolution:
 
 ### 20. 无重复字符的最长子串与最新索引滑动窗口 (Longest Substring Without Repeating Characters)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 20</span>
   <span class="review-card-title">无重复字符的最长子串与最新索引滑动窗口 (Longest Substring Without Repeating Characters)</span>
-  <span class="review-card-tag">滑动窗口 · 字符最新下标表 · 左边界单调跳跃 · O(N)</span>
+  <span class="review-card-tag">[LeetCode 3 powers · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · 滑动窗口 · 字符最新下标表 · 左边界单调跳跃 · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1465,6 +1620,13 @@ class LongestSubstringWithoutRepeatingSolution:
                 max_length = current_window
 
         return max_length
+
+if __name__ == "__main__":
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("abcabcbb") == 3
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("bbbbb") == 1
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("pwwkew") == 3
+    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("") == 0
+    print("✅ Card 20 (Longest Substring Without Repeating) all tests passed!")
 ```
 
 </div>
@@ -1495,11 +1657,11 @@ class LongestSubstringWithoutRepeatingSolution:
 
 ### 21. 8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">DESIGN 21</span>
   <span class="review-card-title">8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)</span>
-  <span class="review-card-tag">底层仿真 · 8 字节对齐步进 · 唯一 ID 标记 · O(N / 8 * X)</span>
+  <span class="review-card-tag">[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) · 底层仿真 · 8 字节对齐步进 · 唯一 ID 标记 · O(N / 8 * X)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1560,6 +1722,15 @@ class AlignedMemoryAllocator:
                 cleared_count += 1
 
         return cleared_count
+
+if __name__ == "__main__":
+    alloc = AlignedMemoryAllocator(24)
+    assert alloc.alloc(5) == 0
+    assert alloc.alloc(10) == 8
+    assert alloc.alloc(5) == -1
+    assert alloc.erase(1) == 5
+    assert alloc.alloc(6) == 0
+    print("✅ Card 21 (8-Byte Aligned Memory Allocator) all tests passed!")
 ```
 
 </div>
@@ -1568,7 +1739,8 @@ class AlignedMemoryAllocator:
 <div class="review-block-label">💡 机制剖析</div>
 
 - **硬件 8 字节对齐约束（Alignment Invariant）**：
-  在现代 CPU 架构中，未对齐内存访问（Unaligned Memory Access）会触发额外的总线周期甚至硬件异常。本题强制起始下标必须满足 $start \pmod 8 == 0$，因此外层循环以步长 8 跨步推进，候选点数量缩减至 $\lceil 	ext{capacity} / 8 ceil$。
+  在现代 CPU 架构中，未对齐内存访问（Unaligned Memory Access）会触发额外的总线周期甚至硬件异常。本题强制起始下标必须满足 $start \pmod 8 == 0$，因此外层循环以步长 8 跨步推进，候选点数量缩减至 $\lceil 	ext{capacity} / 8 
+ceil$。
 - **自动增量分配 ID 与安全擦除**：
   `next_alloc_id` 保证即使连续分配释放后，每一个历史分配块的 ID 绝对唯一，避免因 ID 复用导致释放已销毁块时发生悬垂指针误删。
 
@@ -1578,7 +1750,8 @@ class AlignedMemoryAllocator:
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
 - **时间复杂度**：
-  - `alloc(x)`：最多检查 $\lceil N / 8 ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathcal{O}(rac{N}{8} \cdot X)$。
+  - `alloc(x)`：最多检查 $\lceil N / 8 
+ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathcal{O}(rac{N}{8} \cdot X)$。
   - `erase(id)`：单趟线性扫描整块内存，时间复杂度为严格 $\mathcal{O}(N)$。
 - **空间复杂度**：$\mathcal{O}(N)$，用于维护整块内存状态数组。
 
@@ -1591,11 +1764,11 @@ class AlignedMemoryAllocator:
 
 ### 22. 奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">ARRAY 22</span>
   <span class="review-card-title">奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)</span>
-  <span class="review-card-tag">动态连击增量 · 奇偶模数检验 · 单调推进 · O(N) 时间</span>
+  <span class="review-card-tag">[LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) / [LeetCode 978](https://leetcode.com/problems/longest-turbulent-subarray/) · 动态连击增量 · 奇偶模数检验 · 单调推进 · O(N) 时间</span>
 </summary>
 <div class="review-card-content">
 
@@ -1630,6 +1803,12 @@ class AlternatingParitySubarraysSolution:
             total_subarrays += current_streak
 
         return total_subarrays
+
+if __name__ == "__main__":
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1, 2, 3, 4]) == 10
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([2, 4, 6]) == 3
+    assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1]) == 1
+    print("✅ Card 22 (Zigzag Alternating-Parity Subarrays) all tests passed!")
 ```
 
 </div>
@@ -1659,11 +1838,11 @@ class AlternatingParitySubarraysSolution:
 
 ### 23. 双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 23</span>
   <span class="review-card-title">双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)</span>
-  <span class="review-card-tag">贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
+  <span class="review-card-tag">[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) · 贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1726,6 +1905,17 @@ class NewspaperLayoutSolution:
         # 构造顶部与底部星号边框 (边框宽度为 width + 2)
         horizontal_border = "*" * (width + 2)
         return [horizontal_border] + content_lines + [horizontal_border]
+
+if __name__ == "__main__":
+    paras = [["Hello", "world"], ["Antigravity", "AI", "news"]]
+    aligns = ["LEFT", "RIGHT"]
+    rendered = NewspaperLayoutSolution.layoutNewspaper(paras, aligns, 16)
+    assert rendered[0] == "******************"
+    assert rendered[1] == "*Hello world     *"
+    assert rendered[2] == "*  Antigravity AI*"
+    assert rendered[3] == "*            news*"
+    assert rendered[4] == "******************"
+    print("✅ Card 23 (Newspaper Layout) all tests passed!")
 ```
 
 </div>
@@ -1758,11 +1948,11 @@ class NewspaperLayoutSolution:
 
 ### 24. 最长回文子串与马拉车算法 (Longest Palindromic Substring: Center vs Manacher)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STRING 24</span>
   <span class="review-card-title">最长回文子串与马拉车算法 (Longest Palindromic Substring: Center vs Manacher)</span>
-  <span class="review-card-tag">中心扩散法 · 马拉车 (Manacher) · 回文半径对称映射 · 严格 O(N)</span>
+  <span class="review-card-tag">[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) · 中心扩散法 · 马拉车 (Manacher) · 回文半径对称映射 · 严格 O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -1844,6 +2034,14 @@ class LongestPalindromeSolution:
         # 关键原串坐标映射: (best_center - best_radius) // 2
         start_orig = (best_center - best_radius) // 2
         return s[start_orig : start_orig + best_radius]
+
+if __name__ == "__main__":
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeManacher("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("a") == "a"
+    print("✅ Card 24 (Longest Palindrome Manacher) all tests passed!")
 ```
 
 </div>

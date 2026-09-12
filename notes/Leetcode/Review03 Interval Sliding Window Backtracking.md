@@ -8,11 +8,11 @@
 
 ### 1. 合并区间与其工业级拓扑变体全家桶 (Merge Intervals & Interval Topology Variants)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">区间 01</span>
   <span class="review-card-title">合并区间与其工业级拓扑变体全家桶 (Merge Intervals & Interval Topology Variants)</span>
-  <span class="review-card-tag">闭区间语义 · 预排序加速 · 嵌套覆盖 · 插入区间 · 无重叠区间贪心 · 会议室扫描线</span>
+  <span class="review-card-tag">[LeetCode 56 · Merge Intervals](https://leetcode.com/problems/merge-intervals/) · [LeetCode 57](https://leetcode.com/problems/insert-interval/) · 闭区间语义 · 预排序加速 · 嵌套覆盖 · 插入区间 · 无重叠区间贪心 · 会议室扫描线</span>
 </summary>
 <div class="review-card-content">
 
@@ -70,6 +70,11 @@ class IntervalSolution:
         while i < n:
             res.append(intervals[i]); i += 1
         return res
+
+if __name__ == "__main__":
+    assert IntervalSolution.merge([[1, 3], [2, 6], [8, 10], [15, 18]]) == [[1, 6], [8, 10], [15, 18]]
+    assert IntervalSolution.insert([[1, 3], [6, 9]], [2, 5]) == [[1, 5], [6, 9]]
+    print("✅ Card 01 (Merge Intervals & Insert Interval) all tests passed!")
 ```
 
 </div>
@@ -90,11 +95,11 @@ class IntervalSolution:
 
 ### 2. 勾股数三元组判定与多重集保留 (Pythagorean Triplet & Multiplicity 2-Pointer Search)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">双指针 02</span>
   <span class="review-card-title">勾股数三元组判定与多重集保留 (Pythagorean Triplet & Multiplicity 2-Pointer Search)</span>
-  <span class="review-card-tag">平方映射 · 元素多重集保留 · 3SUM 规约 · 双指针相向夹逼 · O(N^2) 最优性证明</span>
+  <span class="review-card-tag">[LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) · Pythagorean Triplet · 平方映射 · 元素多重集保留 · 3SUM 规约 · 双指针相向夹逼 · O(N^2) 最优性证明</span>
 </summary>
 <div class="review-card-content">
 
@@ -130,6 +135,11 @@ class PythagoreanTripletSolution:
                 else:
                     j -= 1
         return False
+
+if __name__ == "__main__":
+    assert PythagoreanTripletSolution.judgePythagoreanTriplet([3, 1, 4, 6, 5]) is True
+    assert PythagoreanTripletSolution.judgePythagoreanTriplet([10, 4, 6, 12, 5]) is False
+    print("✅ Card 02 (Pythagorean Triplet) all tests passed!")
 ```
 
 </div>
@@ -148,11 +158,11 @@ class PythagoreanTripletSolution:
 
 ### 3. 最小覆盖子串与多最优解候选集 (Minimum Window Substring & Multi-Candidate Expansion)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 03</span>
   <span class="review-card-title">最小覆盖子串与多最优解候选集 (Minimum Window Substring & Multi-Candidate Expansion)</span>
-  <span class="review-card-tag">变长滑窗 · O(|S| + |T|) 复杂度推导 · k 倍频次扩展 · 全量平局最短子串 · 定长数组常数优化</span>
+  <span class="review-card-tag">[LeetCode 76 · Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/) · 变长滑窗 · O(|S| + |T|) 复杂度推导 · k 倍频次扩展 · 全量平局最短子串 · 定长数组常数优化</span>
 </summary>
 <div class="review-card-content">
 
@@ -264,6 +274,12 @@ class MinWindowSolution:
                 left += 1
 
         return ans_list
+
+if __name__ == "__main__":
+    assert MinWindowSolution.minWindowAll("ADOBECODEBANC", "ABC", 1) == ["BANC"]
+    assert MinWindowSolution.minWindowAll("a", "a", 1) == ["a"]
+    assert MinWindowSolution.minWindowAll("a", "aa", 1) == []
+    print("✅ Card 03 (Minimum Window Substring) all tests passed!")
 ```
 
 </div>
@@ -286,11 +302,11 @@ class MinWindowSolution:
 
 ### 4. 替换后的最长重复字符与滑窗最频计数维持 (Longest Repeating Character Replacement & Max-Frequency Invariant)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 04</span>
   <span class="review-card-title">替换后的最长重复字符与滑窗最频计数维持 (Longest Repeating Character Replacement & Max-Frequency Invariant)</span>
-  <span class="review-card-tag">变长滑动窗口 · 最频字符不变式 · 窗口非递减贪心 · O(N) 单趟线性</span>
+  <span class="review-card-tag">[LeetCode 424 · Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/) · 变长滑动窗口 · 最频字符不变式 · 窗口非递减贪心 · O(N) 单趟线性</span>
 </summary>
 <div class="review-card-content">
 
@@ -356,6 +372,11 @@ class CharacterReplacementSolution:
             max_len = max(max_len, right - left + 1)
 
         return max_len
+
+if __name__ == "__main__":
+    assert CharacterReplacementSolution.characterReplacement("ABAB", 2) == 4
+    assert CharacterReplacementSolution.characterReplacement("AABABBA", 1) == 4
+    print("✅ Card 04 (Longest Repeating Character Replacement) all tests passed!")
 ```
 
 </div>
@@ -375,11 +396,11 @@ class CharacterReplacementSolution:
 
 ### 5. 变长与定长滑动窗口经典范式 (Variable & Fixed Sliding Window Patterns)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">滑窗 05</span>
   <span class="review-card-title">变长与定长滑动窗口经典范式 (Variable & Fixed Sliding Window Patterns)</span>
-  <span class="review-card-tag">无重复字符最长子串 · 哈希跳跃加速 · 字符频次差分机</span>
+  <span class="review-card-tag">[LeetCode 3 · Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · 无重复字符最长子串 · 哈希跳跃加速 · 字符频次差分机</span>
 </summary>
 <div class="review-card-content">
 
@@ -398,6 +419,12 @@ class SlidingWindowSolution:
             last_seen[ch] = right
             max_len = max(max_len, right - left + 1)
         return max_len
+
+if __name__ == "__main__":
+    assert SlidingWindowSolution.lengthOfLongestSubstring("abcabcbb") == 3
+    assert SlidingWindowSolution.lengthOfLongestSubstring("bbbbb") == 1
+    assert SlidingWindowSolution.lengthOfLongestSubstring("pwwkew") == 3
+    print("✅ Card 05 (Variable Sliding Window) all tests passed!")
 ```
 
 </div>
@@ -418,11 +445,11 @@ class SlidingWindowSolution:
 
 ### 6. 子集、排列与组合通用回溯范式 (Subsets, Permutations & Combinations)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">回溯 06</span>
   <span class="review-card-title">子集、排列与组合通用回溯范式 (Subsets, Permutations & Combinations)</span>
-  <span class="review-card-tag">树形状态空间 · 树层剪枝去重 · 元素复用控制</span>
+  <span class="review-card-tag">[LeetCode 90 · Subsets II](https://leetcode.com/problems/subsets-ii/) · [LeetCode 46](https://leetcode.com/problems/permutations/) · [LeetCode 39](https://leetcode.com/problems/combination-sum/) · 树形状态空间 · 树层剪枝去重 · 元素复用控制</span>
 </summary>
 <div class="review-card-content">
 
@@ -446,6 +473,11 @@ class BacktrackSolution:
                 path.pop()
         backtrack(0)
         return res
+
+if __name__ == "__main__":
+    res_subs = BacktrackSolution.subsetsWithDup([1, 2, 2])
+    assert sorted(res_subs) == sorted([[], [1], [1, 2], [1, 2, 2], [2], [2, 2]])
+    print("✅ Card 06 (Subsets & Combinations Backtracking) all tests passed!")
 ```
 
 </div>
@@ -464,11 +496,11 @@ class BacktrackSolution:
 
 ### 7. 用指定数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A / Digit Greedy Backtracking)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">数位 07</span>
   <span class="review-card-title">用指定数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A / Digit Greedy Backtracking)</span>
-  <span class="review-card-tag">数位回溯 · 贪心前缀匹配 · 降级后缀全最大填充 · 长度回退退化</span>
+  <span class="review-card-tag">Digit Greedy Construction · Largest Number Smaller Than N · 数位回溯 · 贪心前缀匹配 · 降级后缀全最大填充 · 长度回退退化</span>
 </summary>
 <div class="review-card-content">
 
@@ -581,6 +613,11 @@ class DigitConstructionSolution:
             return int(str(max_d) * (L - 1))
 
         return -1
+
+if __name__ == "__main__":
+    assert DigitConstructionSolution.findLargestSmaller(2341, [2, 3, 4, 5]) == 2335
+    assert DigitConstructionSolution.findLargestSmaller(100, [9]) == 99
+    print("✅ Card 07 (Largest Number Smaller than N) all tests passed!")
 ```
 
 </div>
@@ -601,13 +638,13 @@ class DigitConstructionSolution:
 
 ---
 
-### 06. 无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)
+### 08. 无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GREEDY 06</span>
   <span class="review-card-title">无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)</span>
-  <span class="review-card-tag">贪心区间调度 · 最早截止时间优先 · 端点排序 · O(N log N)</span>
+  <span class="review-card-tag">[LeetCode 435 · Non-overlapping Intervals](https://leetcode.com/problems/non-overlapping-intervals/) · 贪心区间调度 · 最早截止时间优先 · 端点排序 · O(N log N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -641,6 +678,11 @@ class NonOverlappingIntervalsSolution:
 
         # 最少移除数 = 总区间数 - 最大可保留不重叠区间数
         return len(intervals) - kept_count
+
+if __name__ == "__main__":
+    assert NonOverlappingIntervalsSolution.eraseOverlapIntervals([[1, 2], [2, 3], [3, 4], [1, 3]]) == 1
+    assert NonOverlappingIntervalsSolution.eraseOverlapIntervals([[1, 2], [1, 2], [1, 2]]) == 2
+    print("✅ Card 08 (Non-overlapping Intervals) all tests passed!")
 ```
 
 </div>
@@ -670,13 +712,13 @@ class NonOverlappingIntervalsSolution:
 
 ---
 
-### 07. 时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)
+### 09. 时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 07</span>
   <span class="review-card-title">时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)</span>
-  <span class="review-card-tag">二分查找 (bisect) · 时间序列多版本存储 · 有序数组 · O(log N)</span>
+  <span class="review-card-tag">[LeetCode 981 · Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) · 二分查找 (bisect) · 时间序列多版本存储 · 有序数组 · O(log N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -713,6 +755,16 @@ class TimeMap:
             return ""
 
         return records[idx - 1][1]
+
+if __name__ == "__main__":
+    tm = TimeMap()
+    tm.set("foo", "bar", 1)
+    assert tm.get("foo", 1) == "bar"
+    assert tm.get("foo", 3) == "bar"
+    tm.set("foo", "bar2", 4)
+    assert tm.get("foo", 4) == "bar2"
+    assert tm.get("foo", 5) == "bar2"
+    print("✅ Card 09 (Time Based Key-Value Store) all tests passed!")
 ```
 
 </div>
@@ -740,13 +792,13 @@ class TimeMap:
 
 ---
 
-### 08. 区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)
+### 10. 区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">TP 08</span>
   <span class="review-card-title">区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)</span>
-  <span class="review-card-tag">双指针 · 闭区间相交判准 · 较早结束者平移 · O(M + N)</span>
+  <span class="review-card-tag">[LeetCode 986 · Interval List Intersections](https://leetcode.com/problems/interval-list-intersections/) · 双指针 · 闭区间相交判准 · 较早结束者平移 · O(M + N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -784,6 +836,14 @@ class IntervalIntersectionSolution:
                 j += 1
 
         return result
+
+if __name__ == "__main__":
+    res_inter = IntervalIntersectionSolution.intervalIntersection(
+        [[0, 2], [5, 10], [13, 23], [24, 25]],
+        [[1, 5], [8, 12], [15, 24], [25, 26]]
+    )
+    assert res_inter == [[1, 2], [5, 5], [8, 10], [15, 23], [24, 24], [25, 25]]
+    print("✅ Card 10 (Interval List Intersections) all tests passed!")
 ```
 
 </div>
@@ -811,13 +871,13 @@ class IntervalIntersectionSolution:
 
 ---
 
-### 09. 至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)
+### 11. 至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">SLIDE 09</span>
   <span class="review-card-title">至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)</span>
-  <span class="review-card-tag">可变滑动窗口 · 字符频次哈希 · 零频物理剔除 · O(N)</span>
+  <span class="review-card-tag">[LeetCode 340 · Longest Substring with At Most K Distinct](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/) · [LeetCode 159](https://leetcode.com/problems/longest-substring-with-at-most-two-distinct-characters/) · 可变滑动窗口 · 字符频次哈希 · 零频物理剔除 · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -856,6 +916,11 @@ class LongestSubstringKDistinctSolution:
                 max_len = current_len
 
         return max_len
+
+if __name__ == "__main__":
+    assert LongestSubstringKDistinctSolution.lengthOfLongestSubstringKDistinct("eceba", 2) == 3
+    assert LongestSubstringKDistinctSolution.lengthOfLongestSubstringKDistinct("aa", 1) == 2
+    print("✅ Card 11 (Longest Substring with At Most K Distinct) all tests passed!")
 ```
 
 </div>
@@ -883,13 +948,13 @@ class LongestSubstringKDistinctSolution:
 
 ---
 
-### 10. 旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)
+### 12. 旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">BS 10</span>
   <span class="review-card-title">旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)</span>
-  <span class="review-card-tag">对偶半区保序性 · 重复元素二义性 · 边界线性收缩 · O(log N) -> O(N)</span>
+  <span class="review-card-tag">[LeetCode 33 · Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) · [LeetCode 81](https://leetcode.com/problems/search-in-rotated-sorted-array-ii/) · 对偶半区保序性 · 重复元素二义性 · 边界线性收缩 · O(log N) -> O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -957,6 +1022,13 @@ class SearchRotatedArraySolution:
                     right = mid - 1
 
         return False
+
+if __name__ == "__main__":
+    assert SearchRotatedArraySolution.searchDistinct([4, 5, 6, 7, 0, 1, 2], 0) == 4
+    assert SearchRotatedArraySolution.searchDistinct([4, 5, 6, 7, 0, 1, 2], 3) == -1
+    assert SearchRotatedArraySolution.searchDuplicates([2, 5, 6, 0, 0, 1, 2], 0) is True
+    assert SearchRotatedArraySolution.searchDuplicates([2, 5, 6, 0, 0, 1, 2], 3) is False
+    print("✅ Card 12 (Search in Rotated Sorted Array) all tests passed!")
 ```
 
 </div>
@@ -985,9 +1057,9 @@ class SearchRotatedArraySolution:
 
 ---
 
-### 11. 无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)
+### 13. 无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">GREEDY 11</span>
   <span class="review-card-title">无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)</span>
@@ -1044,6 +1116,11 @@ class DroneRelaySolution:
             idx += 1
 
         return total_walk_cost
+
+if __name__ == "__main__":
+    assert DroneRelaySolution.minWalkingDistance(25, [4, 18]) == 8
+    assert DroneRelaySolution.minWalkingDistance(5, [10]) == 5
+    print("✅ Card 13 (Drone Relay to Target) all tests passed!")
 ```
 
 </div>

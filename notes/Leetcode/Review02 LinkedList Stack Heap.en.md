@@ -8,11 +8,11 @@ This note is the second volume of the high-frequency algorithmic interview revie
 
 ### 1. LRU Cache & System-Level Extensions
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 01</span>
   <span class="review-card-title">LRU Cache & System-Level Extensions</span>
-  <span class="review-card-tag">Doubly Linked List · Hash Map · TTL Expiration · LFU Replacement · Miss-Rate Tuning</span>
+  <span class="review-card-tag">[LeetCode 146 · LRU Cache](https://leetcode.com/problems/lru-cache/) · [LeetCode 460 · LFU Cache](https://leetcode.com/problems/lfu-cache/) · Doubly Linked List · Hash Map · TTL Expiration · LFU Replacement · Miss-Rate Tuning</span>
 </summary>
 <div class="review-card-content">
 
@@ -72,6 +72,17 @@ class LRUCacheWithTTL:
         new_node = DLLNode(key, value, expiry)
         self.map[key] = new_node
         self._append_to_tail(new_node)
+
+if __name__ == "__main__":
+    lru = LRUCacheWithTTL(2)
+    lru.put(1, 10, ttl=100)
+    lru.put(2, 20, ttl=100)
+    assert lru.get(1) == 10
+    lru.put(3, 30, ttl=100)  # 淘汰 key 2
+    assert lru.get(2) == -1
+    assert lru.get(3) == 30
+    assert lru.get(1) == 10
+    print("✅ Card 01 (LRU Cache with TTL) all tests passed!")
 ```
 
 </div>
@@ -83,11 +94,11 @@ class LRUCacheWithTTL:
 
 ### 2. Reverse Nodes in k-Group & Structural Group Inversion
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 02</span>
   <span class="review-card-title">Reverse Nodes in k-Group & Structural Group Inversion</span>
-  <span class="review-card-tag">Dummy Sentinel · Local Pointer Reversal · Invert Group Order</span>
+  <span class="review-card-tag">[LeetCode 25 · Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/) · Dummy Sentinel · Local Pointer Reversal · Invert Group Order</span>
 </summary>
 <div class="review-card-content">
 
@@ -128,6 +139,23 @@ class KGroupReverser:
             group_prev.next = new_head
             new_tail.next = next_group_head
             group_prev = new_tail
+
+if __name__ == "__main__":
+    def build_list(vals):
+        d = ListNode(0); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def to_list(head):
+        r = []
+        while head: r.append(head.val); head = head.next
+        return r
+
+    h1 = build_list([1, 2, 3, 4, 5])
+    assert to_list(KGroupReverser.reverseKGroup(h1, 2)) == [2, 1, 4, 3, 5]
+    h2 = build_list([1, 2, 3, 4, 5])
+    assert to_list(KGroupReverser.reverseKGroup(h2, 3)) == [3, 2, 1, 4, 5]
+    print("✅ Card 02 (Reverse Nodes in k-Group) all tests passed!")
 ```
 
 </div>
@@ -139,11 +167,11 @@ class KGroupReverser:
 
 ### 3. Flatten Multilevel Doubly Linked List with Empty-Node Filtering
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Linked List 03</span>
   <span class="review-card-title">Flatten Multilevel Doubly Linked List with Empty-Node Filtering</span>
-  <span class="review-card-tag">Multilevel DLL · DFS Flattening · Empty Node Cleansing · Pointer Healing</span>
+  <span class="review-card-tag">[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) · Multilevel DLL · DFS Flattening · Empty Node Cleansing · Pointer Healing</span>
 </summary>
 <div class="review-card-content">
 
@@ -188,6 +216,23 @@ class MultiLevelListFlattenSolution:
         new_head = dummy.next
         if new_head: new_head.prev = None
         return new_head
+
+if __name__ == "__main__":
+    n1 = MultiLevelNode(1)
+    n2 = MultiLevelNode(2)
+    n_empty = MultiLevelNode(None)
+    n3 = MultiLevelNode(3)
+    n1.next = n2; n2.prev = n1
+    n2.child = n_empty
+    n_empty.child = n3
+    res_head = MultiLevelListFlattenSolution.flattenAndFilterEmpty(n1)
+    vals = []
+    c = res_head
+    while c:
+        vals.append(c.val)
+        c = c.next
+    assert vals == [1, 2, 3]
+    print("✅ Card 03 (Flatten Multilevel Doubly Linked List) all tests passed!")
 ```
 
 </div>
@@ -201,11 +246,11 @@ class MultiLevelListFlattenSolution:
 
 ### 4. Basic Calculator & Operator Precedence Hierarchy
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 04</span>
   <span class="review-card-title">Basic Calculator & Operator Precedence Hierarchy</span>
-  <span class="review-card-tag">Single-Stack Accumulation · Parentheses State Stashing · Right-Associative Exponent</span>
+  <span class="review-card-tag">[LeetCode 224 · Basic Calculator](https://leetcode.com/problems/basic-calculator/) · [LeetCode 227](https://leetcode.com/problems/basic-calculator-ii/) · [LeetCode 772](https://leetcode.com/problems/basic-calculator-iii/) · Single-Stack Accumulation · Parentheses State Stashing · Right-Associative Exponent</span>
 </summary>
 <div class="review-card-content">
 
@@ -272,6 +317,17 @@ class ExpressionCalculator:
 
         while ops: evaluate_top_op()
         return nums[0] if nums else 0
+
+if __name__ == "__main__":
+    assert ExpressionCalculator.calculate("1 + 1") == 2
+    assert ExpressionCalculator.calculate(" 2-1 + 2 ") == 3
+    assert ExpressionCalculator.calculate("(1+(4+5+2)-3)+(6+8)") == 23
+    assert ExpressionCalculator.calculate("3+2*2") == 7
+    assert ExpressionCalculator.calculate(" 3/2 ") == 1
+    assert ExpressionCalculator.calculate(" 3+5 / 2 ") == 5
+    assert ExpressionCalculator.calculate("2^3^2") == 512
+    assert ExpressionCalculator.calculate("-3 + 5") == 2
+    print("✅ Card 04 (Basic Calculator Hierarchy) all tests passed!")
 ```
 
 </div>
@@ -283,11 +339,11 @@ class ExpressionCalculator:
 
 ### 5. Sliding Window Maximum & Monotonic Deque Pattern
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Queue 05</span>
   <span class="review-card-title">Sliding Window Maximum & Monotonic Deque Pattern</span>
-  <span class="review-card-tag">Monotonic Deque · Index Expiration Eviction · Amortized O(1) Transition</span>
+  <span class="review-card-tag">[LeetCode 239 · Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/) · Monotonic Deque · Index Expiration Eviction · Amortized O(1) Transition</span>
 </summary>
 <div class="review-card-content">
 
@@ -310,6 +366,14 @@ class SlidingWindowMaxSolution:
             if q[0] <= i - k: q.popleft()
             if i >= k - 1: res.append(nums[q[0]])
         return res
+
+if __name__ == "__main__":
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1, 3, -1, -3, 5, 3, 6, 7], 3) == [3, 3, 5, 5, 6, 7]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1], 1) == [1]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([1, -1], 1) == [1, -1]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([9, 11], 2) == [11]
+    assert SlidingWindowMaxSolution.maxSlidingWindow([4, -2], 2) == [4]
+    print("✅ Card 05 (Sliding Window Maximum) all tests passed!")
 ```
 
 </div>
@@ -321,11 +385,11 @@ class SlidingWindowMaxSolution:
 
 ### 6. Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 06</span>
   <span class="review-card-title">Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern</span>
-  <span class="review-card-tag">Monotonic Increasing Stack · Two-Sentinel Pattern · Dynamic Width · Maximal Rectangle Matrix</span>
+  <span class="review-card-tag">[LeetCode 84 · Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/) · [LeetCode 85](https://leetcode.com/problems/maximal-rectangle/) · Monotonic Increasing Stack · Two-Sentinel Pattern · Dynamic Width · Maximal Rectangle Matrix</span>
 </summary>
 <div class="review-card-content">
 
@@ -379,6 +443,13 @@ class HistogramSolution:
             stack.append(i)
 
         return max_area
+
+if __name__ == "__main__":
+    assert HistogramSolution.largestRectangleArea([2, 1, 5, 6, 2, 3]) == 10
+    assert HistogramSolution.largestRectangleArea([2, 4]) == 4
+    assert HistogramSolution.largestRectangleArea([]) == 0
+    assert HistogramSolution.largestRectangleArea([2, 1, 2]) == 3
+    print("✅ Card 06 (Largest Rectangle in Histogram) all tests passed!")
 ```
 
 </div>
@@ -399,11 +470,11 @@ class HistogramSolution:
 
 ### 7. Valid Parenthesis String with Wildcard & Concrete String Enumeration
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Stack 07</span>
   <span class="review-card-title">Valid Parenthesis String with Wildcard & Concrete String Enumeration</span>
-  <span class="review-card-tag">Interval Greedy · O(N) Two-Counter · Low Bound Clamping · DFS Branch Enumeration</span>
+  <span class="review-card-tag">[LeetCode 678 · Valid Parenthesis String](https://leetcode.com/problems/valid-parenthesis-string/) · Interval Greedy · O(N) Two-Counter · Low Bound Clamping · DFS Branch Enumeration</span>
 </summary>
 <div class="review-card-content">
 
@@ -477,6 +548,15 @@ class WildcardParenthesesSolution:
 
         dfs(0, 0)
         return sorted(list(results))
+
+if __name__ == "__main__":
+    assert WildcardParenthesesSolution.checkValidString("()") is True
+    assert WildcardParenthesesSolution.checkValidString("(*)") is True
+    assert WildcardParenthesesSolution.checkValidString("(*))") is True
+    assert WildcardParenthesesSolution.checkValidString(")(") is False
+    assert WildcardParenthesesSolution.allValidStrings("(*)") == ["()"]
+    assert WildcardParenthesesSolution.allValidStrings("(*))") == ["(())"]
+    print("✅ Card 07 (Valid Parenthesis String) all tests passed!")
 ```
 
 </div>
@@ -498,11 +578,11 @@ class WildcardParenthesesSolution:
 
 ### 8. Find Median from Data Stream & K-Way Merge
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Heap 08</span>
   <span class="review-card-title">Find Median from Data Stream & K-Way Merge</span>
-  <span class="review-card-tag">Dual-Heap Balance · Invariant Maintenance</span>
+  <span class="review-card-tag">[LeetCode 295 · Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/) · [LeetCode 23](https://leetcode.com/problems/merge-k-sorted-lists/) · Dual-Heap Balance · Invariant Maintenance</span>
 </summary>
 <div class="review-card-content">
 
@@ -530,6 +610,15 @@ class MedianFinder:
         if len(self.lo) > len(self.hi):
             return float(-self.lo[0])
         return (-self.lo[0] + self.hi[0]) / 2.0
+
+if __name__ == "__main__":
+    mf = MedianFinder()
+    mf.addNum(1)
+    mf.addNum(2)
+    assert mf.findMedian() == 1.5
+    mf.addNum(3)
+    assert mf.findMedian() == 2.0
+    print("✅ Card 08 (Find Median from Data Stream) all tests passed!")
 ```
 
 </div>
@@ -541,11 +630,11 @@ class MedianFinder:
 
 ### 9. Tiered Priority Task Scheduler
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">Heap 09</span>
   <span class="review-card-title">Tiered Priority Task Scheduler</span>
-  <span class="review-card-tag">Per-Seller Min-Heap · Active Deque Round-Robin</span>
+  <span class="review-card-tag">Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Tiered Priority Task Scheduler · Multi-Seller Fair Round-Robin · Per-Seller Min-Heap · Active Deque Round-Robin</span>
 </summary>
 <div class="review-card-content">
 
@@ -558,6 +647,8 @@ from collections import deque
 from typing import Dict, List, Tuple, Optional, Set
 
 class TieredTaskScheduler:
+    TIER_WEIGHTS = {'VIP': 2, 'STANDARD': 1}
+
     def __init__(self):
         self.seq = 0
         self.seller_heaps: Dict[str, List[Tuple[int, int, str]]] = {}
@@ -568,15 +659,61 @@ class TieredTaskScheduler:
         self.remaining_quota: int = 0
 
     def receive_task(self, task: dict) -> None:
-        task_id, seller_id, priority = task['task_id'], task['seller_id'], task['priority']
+        task_id = task['task_id']
+        seller_id = task['seller_id']
+        tier = task.get('tier', 'STANDARD')
+        priority = task['priority']
         self.seq += 1
-        self.seller_tiers[seller_id] = task.get('tier', 'STANDARD')
+        self.seller_tiers[seller_id] = tier
         if seller_id not in self.seller_heaps:
             self.seller_heaps[seller_id] = []
         heapq.heappush(self.seller_heaps[seller_id], (priority, self.seq, task_id))
         if seller_id != self.current_seller and seller_id not in self.in_active_set:
             self.active_sellers.append(seller_id)
             self.in_active_set.add(seller_id)
+
+    def process_next_task(self) -> Optional[Tuple[str, str]]:
+        while True:
+            if not self.current_seller or self.remaining_quota <= 0:
+                if not self.active_sellers:
+                    self.current_seller = None
+                    self.remaining_quota = 0
+                    return None
+                self.current_seller = self.active_sellers.popleft()
+                self.in_active_set.remove(self.current_seller)
+                tier = self.seller_tiers.get(self.current_seller, 'STANDARD')
+                self.remaining_quota = self.TIER_WEIGHTS.get(tier, 1)
+
+            heap = self.seller_heaps.get(self.current_seller, [])
+            if not heap:
+                self.current_seller = None
+                self.remaining_quota = 0
+                continue
+
+            priority, seq, task_id = heapq.heappop(heap)
+            self.remaining_quota -= 1
+            seller = self.current_seller
+
+            if self.remaining_quota <= 0 or not heap:
+                if heap:
+                    self.active_sellers.append(self.current_seller)
+                    self.in_active_set.add(self.current_seller)
+                self.current_seller = None
+                self.remaining_quota = 0
+            return (seller, task_id)
+
+if __name__ == "__main__":
+    ts = TieredTaskScheduler()
+    ts.receive_task({'task_id': 'T1', 'seller_id': 'S1', 'priority': 2, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T2', 'seller_id': 'S1', 'priority': 1, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T3', 'seller_id': 'S1', 'priority': 1, 'tier': 'VIP'})
+    ts.receive_task({'task_id': 'T4', 'seller_id': 'S2', 'priority': 1, 'tier': 'STANDARD'})
+    assert ts.process_next_task() == ('S1', 'T2')
+    assert ts.process_next_task() == ('S1', 'T3')
+    assert ts.process_next_task() == ('S2', 'T4')
+    assert ts.process_next_task() == ('S1', 'T1')
+    assert ts.process_next_task() is None
+    print("✅ Card 09 (Tiered Task Scheduler) all tests passed!")
 ```
 
 </div>
@@ -588,11 +725,11 @@ class TieredTaskScheduler:
 
 ### 10. Timestamp Task Scheduler with Direct ID Removal
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">Heap 10</span>
+  <span class="review-card-badge">Heap 13</span>
   <span class="review-card-title">Timestamp Task Scheduler with Direct ID Removal</span>
-  <span class="review-card-tag">Composite Min-Heap · Lazy Deletion · Hash Timestamp Verification</span>
+  <span class="review-card-tag">Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Composite Min-Heap · Lazy Deletion · Hash Timestamp Verification</span>
 </summary>
 <div class="review-card-content">
 
@@ -628,6 +765,16 @@ class TimestampTaskScheduler:
                 result.append(taskID)
                 del self.task_map[taskID]
         return result
+
+if __name__ == "__main__":
+    tts = TimestampTaskScheduler()
+    tts.addTask("taskA", 100)
+    tts.addTask("taskB", 200)
+    tts.addTask("taskC", 150)
+    tts.removeTask("taskA")
+    assert tts.popTask(2) == ["taskC", "taskB"]
+    assert tts.popTask(1) == []
+    print("✅ Card 10 (Timestamp Task Scheduler) all tests passed!")
 ```
 
 </div>
@@ -637,13 +784,13 @@ class TimestampTaskScheduler:
 
 ---
 
-### 08. Reverse Linked List In-Place via Three Pointers
+### 11. Reverse Linked List In-Place via Three Pointers
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">LIST 08</span>
   <span class="review-card-title">Reverse Linked List In-Place via Three Pointers</span>
-  <span class="review-card-tag">Three-Pointer Iteration · Predecessor Shielding · In-Place · O(1) Space</span>
+  <span class="review-card-tag">[LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) · [LeetCode 92](https://leetcode.com/problems/reverse-linked-list-ii/) · Three-Pointer Iteration · Predecessor Shielding · In-Place · O(1) Space</span>
 </summary>
 <div class="review-card-content">
 
@@ -689,6 +836,23 @@ class ReverseListSolution:
         head.next.next = head
         head.next = None
         return new_head
+
+if __name__ == "__main__":
+    def build_list(vals):
+        d = ListNode(); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def to_list(h):
+        r = []
+        while h: r.append(h.val); h = h.next
+        return r
+
+    rl_h = build_list([1, 2, 3, 4, 5])
+    assert to_list(ReverseListSolution.reverseListIterative(rl_h)) == [5, 4, 3, 2, 1]
+    rl_h2 = build_list([1, 2])
+    assert to_list(ReverseListSolution.reverseListRecursive(rl_h2)) == [2, 1]
+    print("✅ Card 11 (Reverse Linked List) all tests passed!")
 ```
 
 </div>
@@ -716,13 +880,13 @@ class ReverseListSolution:
 
 ---
 
-### 09. Remove Duplicate Letters via Monotonic Stack
+### 12. Remove Duplicate Letters via Monotonic Stack
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">STACK 09</span>
   <span class="review-card-title">Remove Duplicate Letters via Monotonic Stack</span>
-  <span class="review-card-tag">Monotonic Increasing Stack · Last Seen Index Map · In-Stack Set · O(N)</span>
+  <span class="review-card-tag">[LeetCode 316 · Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/) · [LeetCode 1081](https://leetcode.com/problems/smallest-subsequence-of-distinct-characters/) · Monotonic Increasing Stack · Last Seen Index Map · In-Stack Set · O(N)</span>
 </summary>
 <div class="review-card-content">
 
@@ -754,6 +918,11 @@ class RemoveDuplicateLettersSolution:
             in_stack.add(ch)
 
         return "".join(stack)
+
+if __name__ == "__main__":
+    assert RemoveDuplicateLettersSolution.removeDuplicateLetters("bcabc") == "abc"
+    assert RemoveDuplicateLettersSolution.removeDuplicateLetters("cbacdcbc") == "acdb"
+    print("✅ Card 12 (Remove Duplicate Letters) all tests passed!")
 ```
 
 </div>
@@ -783,13 +952,13 @@ class RemoveDuplicateLettersSolution:
 
 ---
 
-### 10. MinStack, MaxStack, Streaming Median & System Extensions
+### 13. MinStack, MaxStack, Streaming Median & System Extensions
 
-<details class="review-card" open>
+<details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">HEAP 10</span>
+  <span class="review-card-badge">HEAP 13</span>
   <span class="review-card-title">MinStack, MaxStack, Streaming Median & System Extensions</span>
-  <span class="review-card-tag">Two-Heap Dynamic Median · O(1) Extremum Stack · Lazy Deletion · Concurrency</span>
+  <span class="review-card-tag">[LeetCode 155 · Min Stack](https://leetcode.com/problems/min-stack/) · [LeetCode 716 · Max Stack](https://leetcode.com/problems/max-stack/) · [LeetCode 295](https://leetcode.com/problems/find-median-from-data-stream/) · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Timestamp Task Scheduler with Direct ID Removal · Lazy Eviction · Two-Heap Dynamic Median · O(1) Extremum Stack · Lazy Deletion · Concurrency</span>
 </summary>
 <div class="review-card-content">
 
@@ -840,6 +1009,17 @@ class MedianFinder:
         if len(self.small) > len(self.large):
             return float(-self.small[0])
         return (-self.small[0] + self.large[0]) / 2.0
+
+if __name__ == "__main__":
+    ms = MinStack()
+    ms.push(-2)
+    ms.push(0)
+    ms.push(-3)
+    assert ms.getMin() == -3
+    ms.pop()
+    assert ms.top() == 0
+    assert ms.getMin() == -2
+    print("✅ Card 13 (MinStack & Streaming Median) all tests passed!")
 ```
 
 </div>
