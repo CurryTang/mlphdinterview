@@ -6341,6 +6341,11 @@ function SystemDesignOverviewVisual() {
 }
 
 const PHOTO_PATHS = {
+  topology: {
+    eyebrow: 'TOPOLOGY',
+    title: '全局高层架构拓扑与数据流解耦',
+    note: '数据面（原图直传+转码）与控制面（鉴权+元数据）彻底分离，读写分流支撑海量吞吐。',
+  },
   upload: {
     eyebrow: 'UPLOAD PATH',
     title: '大文件直传，API 只走控制流',
@@ -6351,9 +6356,19 @@ const PHOTO_PATHS = {
     title: '先取 post_id，再批量补齐内容',
     note: 'Timeline 是可重建索引，metadata 才是事实数据；图片由 CDN 返回。',
   },
+  fanout: {
+    eyebrow: 'FAN-OUT MODELS',
+    title: '推拉模型对比与大 V 混合策略',
+    note: '普通用户写扩散物化 Inbox，头部大 V 读扩散在线归并，规避千万级写放大。',
+  },
 };
 
 const PHOTO_PATHS_EN = {
+  topology: {
+    eyebrow: 'TOPOLOGY',
+    title: 'High-Level System Topology & Decoupled Planes',
+    note: 'Strictly decouple the data plane (direct upload + transcode) from the control plane (auth + metadata) to handle massive scale.',
+  },
   upload: {
     eyebrow: 'UPLOAD PATH',
     title: 'Upload large files directly; keep bytes off the API path',
@@ -6364,12 +6379,250 @@ const PHOTO_PATHS_EN = {
     title: 'Fetch post IDs first, then hydrate content in batches',
     note: 'The timeline is a rebuildable index; metadata is factual state, and the CDN serves image bytes.',
   },
+  fanout: {
+    eyebrow: 'FAN-OUT MODELS',
+    title: 'Push vs. Pull Models & Hybrid Celebrity Fan-Out',
+    note: 'Materialize inboxes for normal authors; dynamically merge celebrity outboxes at read time to avoid write amplification.',
+  },
+};
+
+const PHOTO_NODE_DETAILS = {
+  client: {
+    title: '客户端 (Web / iOS / Android)',
+    tag: 'CLIENT TIER',
+    badge: 'neutral',
+    specs: '100M DAU · 发帖 20M/天 · 刷 Feed 10 亿次/天',
+    desc: '控制面与数据面完全分离。发帖时仅向 API 网关发起元数据协商；图片原图二进制流直接向对象存储执行 HTTP PUT 预签名直传。读取 Feed 时先拉取轻量 ID，再并发请求 CDN 边缘节点加载 WebP 图片。',
+    protocols: 'HTTPS / HTTP/2 / QUIC',
+  },
+  gateway: {
+    title: 'API 网关与负载均衡 (API Gateway & LB)',
+    tag: 'EDGE TIER',
+    badge: 'edge',
+    specs: '峰值写 1,200~5,000 QPS · 峰值读 50,000 QPS',
+    desc: '统一外网流量入口。负责 TLS 卸载、动静态路由转发、请求追踪（TraceID 注入）与微服务健康检查。透传业务请求前与 Authz / Rate Limiter 侧车协同。',
+    protocols: 'Nginx / Envoy / AWS ALB',
+  },
+  authz: {
+    title: '鉴权与令牌桶限流 (Authz & Rate Limiter)',
+    tag: 'SECURITY TIER',
+    badge: 'security',
+    specs: '延迟 < 1ms · 单用户发帖限额 10 次/分钟',
+    desc: '基于分布式 Redis 执行 JWT 校验与滑动窗口/令牌桶限流。在网关入口处直接拦截爬虫、未认证请求与黑产刷量，防止突发流量打穿核心业务微服务与下游数据库。',
+    protocols: 'Redis Cluster token bucket',
+  },
+  raw_storage: {
+    title: '原始对象存储暂存区 (Raw Storage / S3 Staging)',
+    tag: 'DATA PLANE',
+    badge: 'blob',
+    specs: '日增 40TB 原图 · 99.999999999% 持久性',
+    desc: '暂存客户端直传的未压缩高清单图（平均 2MB）。仅授权 Pre-signed URL 带有单次写入凭据。配置 24 小时生命周期清理策略（TTL），自动清除由于网络中断未完成 Commit 的孤儿临时文件。',
+    protocols: 'AWS S3 / Cloudflare R2 / MinIO',
+  },
+  processor: {
+    title: '异步媒体处理流水线 (Media Processor Pipeline)',
+    tag: 'WORKER TIER',
+    badge: 'worker',
+    specs: '消费延迟 < 3s · 并发 GPU/CPU 弹性转码',
+    desc: '监听对象存储 S3 Event Notification 或 SQS 消息队列。异步提取 EXIF 经纬度与设备元数据，执行缩略图（Thumbnail 50KB）、中图（Medium 200KB）、高清大图（Large 800KB）的 WebP/AVIF 转码，并调用 NSFW 涉黄鉴黄过滤模型。',
+    protocols: 'Kafka / SQS + Go/C++ Workers / GPU cluster',
+  },
+  upload: {
+    title: '发帖协调微服务 (Upload Service)',
+    tag: 'CONTROL PLANE',
+    badge: 'service',
+    specs: '响应时间 < 50ms · 无状态弹性伸缩',
+    desc: '创建上传 Session，校验文件格式与 MIME Type。生成全局唯一 Snowflake post_id，在数据库中落盘初始状态为 PENDING 的元数据，并向客户端签发带有 15 分钟时效的 S3 预签名直传凭证。客户端上传完成后接收 commit 回调并将状态推进为 PROCESSING。',
+    protocols: 'gRPC / JSON over HTTP/2',
+  },
+  view: {
+    title: '信息流读取与聚合微服务 (View / Feed Service)',
+    tag: 'READ PLANE',
+    badge: 'service',
+    specs: '峰值 50,000 QPS · p99 延迟 < 200ms',
+    desc: '负责 Home Feed 刷流请求的核心组装。采用 Hybrid 混合推拉模型：从该用户的 Redis Inbox 提取普通关注者的预计算队列，同时并发 MGET 关注列表中大 V 的专属 Outbox。在内存中执行 Online Heap Merge 堆排序取 Top 20，最后调用 Hydration 批量水化点赞与作者信息。',
+    protocols: 'Go/Java + Netty / gRPC',
+  },
+  object_storage: {
+    title: '成品对象存储与 CDN 源站 (Processed S3 & CDN)',
+    tag: 'DATA PLANE',
+    badge: 'blob',
+    specs: '日增 20TB · 600Gbps 边缘带宽 · 95%+ 缓存命中率',
+    desc: '持久化多规格成品图片。每个文件采用不可变的内容指纹命名（Content-Addressable Key），设置 HTTP 响应头 Cache-Control: public, max-age=31536000, immutable。全球边缘 PoP 节点广泛缓存，使 95% 以上的图片读取直接在边缘终结，回源带宽削减至 30Gbps。',
+    protocols: 'CloudFront / Akamai CDN + S3 Bucket',
+  },
+  metadata_db: {
+    title: '分片元数据库 (Metadata DB: SQL Sharding / NoSQL)',
+    tag: 'PERSISTENCE',
+    badge: 'store',
+    specs: '日增 10GB · 3.65TB/年 · 主从读写分离',
+    desc: '持久化存储 users、photos/posts、follows 关系实体。核心 posts 表按 user_id 水平分片（Z 轴 Sharding），单片内保留单机事务；在主库事务提交中通过 Transactional Outbox 写入 PostReady 领域事件，由 CDC 引擎异步抽取引发下游 Feed 分发。',
+    protocols: 'MySQL / PostgreSQL + Debezium CDC',
+  },
+  timeline_store: {
+    title: '时间线缓存集群 (Timeline Store: Redis ZSet)',
+    tag: 'CACHE PLANE',
+    badge: 'cache',
+    specs: '单个 Inbox 限制 800 条 · 1GB 内存承载 200~300 万 Keys',
+    desc: 'Feed 流物化加速层。每个活跃用户一个 ZSet（Key: feed:user_id, Score: timestamp, Member: post_id）。普通博主发帖走写扩散异步写入粉丝 Inbox；头部大 V 发帖走读扩散仅写入该大 V 个人 Outbox。仅维护近 7 天活跃粉丝，降低内存开销。',
+    protocols: 'Redis Cluster / KeyDB / Aerospike',
+  },
+};
+
+const PHOTO_NODE_DETAILS_EN = {
+  client: {
+    title: 'Client (Web / iOS / Android)',
+    tag: 'CLIENT TIER',
+    badge: 'neutral',
+    specs: '100M DAU · 20M Posts/day · 1B Feed Reads/day',
+    desc: 'Strictly decouples control from data. During post creation, it negotiates metadata with the API Gateway; raw image bytes are sent directly to Object Storage via HTTP PUT pre-signed URLs. When reading feeds, it fetches lightweight IDs before loading WebP images from CDN edge nodes.',
+    protocols: 'HTTPS / HTTP/2 / QUIC',
+  },
+  gateway: {
+    title: 'API Gateway & Load Balancer',
+    tag: 'EDGE TIER',
+    badge: 'edge',
+    specs: 'Peak Write 1.2k~5k QPS · Peak Read 50k QPS',
+    desc: 'Unified external ingress point. Performs TLS termination, dynamic path routing, distributed tracing injection, and health checks. Interacts with Authz & Rate Limiter before dispatching to downstream services.',
+    protocols: 'Nginx / Envoy / AWS ALB',
+  },
+  authz: {
+    title: 'Authz & Token Bucket Limiter',
+    tag: 'SECURITY TIER',
+    badge: 'security',
+    specs: 'Latency < 1ms · 10 posts/min per user rate limit',
+    desc: 'Validates JWT session tokens and enforces token bucket / sliding window rate limits in Redis. Blocks scrapers, unauthorized requests, and spam attacks at the perimeter before touching application servers or databases.',
+    protocols: 'Redis Cluster token bucket',
+  },
+  raw_storage: {
+    title: 'Raw Storage Staging (S3 Staging)',
+    tag: 'DATA PLANE',
+    badge: 'blob',
+    specs: '40 TB/day raw media · 99.999999999% durability',
+    desc: 'Staging area for client direct uploads of uncompressed originals (~2MB each). Accessible only via short-lived pre-signed URLs. A 24-hour lifecycle expiration rule (TTL) automatically cleans up orphan uploads if client commits never arrive.',
+    protocols: 'AWS S3 / Cloudflare R2 / MinIO',
+  },
+  processor: {
+    title: 'Async Media Processor Pipeline',
+    tag: 'WORKER TIER',
+    badge: 'worker',
+    specs: 'Processing lag < 3s · Elastic GPU/CPU workers',
+    desc: 'Consumes S3 Event Notifications or SQS events. Asynchronously strips EXIF geo/device tags, generates Thumbnail (50KB), Medium (200KB), and Large (800KB) WebP/AVIF variants, runs NSFW moderation classifiers, saves to processed storage, and marks DB status READY.',
+    protocols: 'Kafka / SQS + Go/C++ Workers / GPU cluster',
+  },
+  upload: {
+    title: 'Upload Orchestration Service',
+    tag: 'CONTROL PLANE',
+    badge: 'service',
+    specs: 'Response latency < 50ms · Stateless horizontal scale',
+    desc: 'Validates captions and MIME types. Allocates a 64-bit Snowflake post_id, inserts a PENDING record in the database, and issues a 15-minute Pre-signed S3 URL. Receives client commit calls upon binary upload completion and transitions status to PROCESSING.',
+    protocols: 'gRPC / JSON over HTTP/2',
+  },
+  view: {
+    title: 'View & Feed Service',
+    tag: 'READ PLANE',
+    badge: 'service',
+    specs: 'Peak Read 50k QPS · p99 latency < 200ms',
+    desc: 'Coordinates Home Feed reads via the Hybrid Model: fetches the pre-computed Inbox ZSet from Redis, concurrently MGETs recent outbox posts from followed celebrities, runs an in-memory Heap Merge to pick the Top 20, and invokes Hydration to fill post authors and CDN URLs.',
+    protocols: 'Go/Java + Netty / gRPC',
+  },
+  object_storage: {
+    title: 'Processed Object Storage & CDN Origin',
+    tag: 'DATA PLANE',
+    badge: 'blob',
+    specs: '20 TB/day variants · 600 Gbps edge egress · 95%+ cache hit',
+    desc: 'Persistent storage for transcoded image variants. Keys use content hashes (Content-Addressable). Response headers set Cache-Control: public, max-age=31536000, immutable. Edge PoPs terminate 95%+ of traffic, reducing origin egress to under 30 Gbps.',
+    protocols: 'CloudFront / Akamai CDN + S3 Bucket',
+  },
+  metadata_db: {
+    title: 'Metadata Database (Sharded SQL / NoSQL)',
+    tag: 'PERSISTENCE',
+    badge: 'store',
+    specs: '10 GB/day · 3.65 TB/year · Primary-Replica split',
+    desc: 'Stores users, posts/photos, and follow graphs. The posts table is horizontally sharded by user_id (Z-axis Sharding) for single-shard write transactions. Writes emit a PostReady event via Transactional Outbox for asynchronous CDC extraction to Kafka.',
+    protocols: 'MySQL / PostgreSQL + Debezium CDC',
+  },
+  timeline_store: {
+    title: 'Timeline Cache (Redis ZSet)',
+    tag: 'CACHE PLANE',
+    badge: 'cache',
+    specs: '800 items per inbox · 1GB RAM ~ 2M-3M stable keys',
+    desc: 'Materialized timeline index layer. Each active user owns a ZSet (Key: feed:user_id, Score: timestamp, Member: post_id). Normal authors fan out writes to followers\' inboxes; celebrities write only to their own outboxes. Inactive users are pruned to save RAM.',
+    protocols: 'Redis Cluster / KeyDB / Aerospike',
+  },
+};
+
+const FANOUT_COMPARISONS = {
+  push: {
+    title: 'Push 模型 (写扩散 / Fan-out-on-write)',
+    tag: 'INBOX-CENTRIC',
+    writeCost: 'O(F) — 随粉丝数 F 线性膨胀',
+    readCost: 'O(1) — 单点读取自身收件箱 (Redis ZSet)',
+    pros: '极速读取 (p99 < 10ms)，完全贴合社交网络 100:1 的读写倾斜。关系链简单。',
+    cons: '写放大灾难。若大 V (如 6000 万粉丝) 发帖，单次产生 6000 万次数据库写入，消息队列堆积数小时；且僵尸粉白占内存。',
+    fit: '双向好友网络 (微信朋友圈、熟人社交)，粉丝数上限明确 (< 5,000)。',
+  },
+  pull: {
+    title: 'Pull 模型 (读扩散 / Fan-out-on-read)',
+    tag: 'OUTBOX-CENTRIC',
+    writeCost: 'O(1) — 零写放大，仅写自己发件箱',
+    readCost: 'O(N log N) — 读时拉取 N 个关注者的发件箱并做堆排序',
+    pros: '发帖零延迟，绝无写放大。取关/拉黑立刻生效；不消耗任何冗余 Timeline 存储。',
+    cons: '读延迟极高 (p99 > 800ms)；长尾效应严重 (受最慢一个 Outbox 拖累)；关注数达数千时产生网络风暴与 CPU 堆排序峰值。',
+    fit: '写密集型、关注人数极少、或公开匿名论坛系统。',
+  },
+  hybrid: {
+    title: 'Hybrid 混合推拉模型 (Instagram / Twitter 工业解法)',
+    tag: 'CELEBRITY-AWARE HYBRID',
+    writeCost: '普通用户 O(F)；大 V 仅 O(1)',
+    readCost: 'O(1 + M log M) — 自身 Inbox + M 个关注大 V 的在线归并',
+    pros: '完美化解大 V 写放大雪崩。普通用户享受 Push 的超低读延迟；大 V 发帖秒级落盘；只推近 7 天活跃用户，节省 70% 内存。',
+    cons: '系统复杂度高：需要维护大 V 动态阈值判定 (如 F ≥ 50,000)、读时在线双流归并器与冷启动增量补拉机制。',
+    fit: '超大规模开放式社交平台 (Instagram, Twitter, 微博)。',
+  },
+};
+
+const FANOUT_COMPARISONS_EN = {
+  push: {
+    title: 'Push Model (Fan-out-on-write)',
+    tag: 'INBOX-CENTRIC',
+    writeCost: 'O(F) — Scales linearly with follower count F',
+    readCost: 'O(1) — Point lookup of own inbox (Redis ZSet)',
+    pros: 'Ultra-fast read latency (p99 < 10ms); matches 100:1 read/write ratio in social platforms.',
+    cons: 'Catastrophic write amplification for celebrities (60M followers → 60M writes, hours of queue lag); wastes RAM on dormant followers.',
+    fit: 'Bidirectional friend networks (WeChat Moments, Facebook friends) with bounded friend counts (< 5,000).',
+  },
+  pull: {
+    title: 'Pull Model (Fan-out-on-read)',
+    tag: 'OUTBOX-CENTRIC',
+    writeCost: 'O(1) — Zero write amplification; single outbox write',
+    readCost: 'O(N log N) — Multi-get from N followees + heap merge',
+    pros: 'Instant posting with zero lag. Unfollows and blocks take effect immediately; zero redundant timeline storage.',
+    cons: 'High read latency (p99 > 800ms); severe tail latency stragglers; CPU spikes from multi-way merges when following thousands.',
+    fit: 'Write-heavy systems, anonymous bulletin boards, or users with tiny followee counts.',
+  },
+  hybrid: {
+    title: 'Hybrid Push-Pull Model (Instagram / Twitter Production)',
+    tag: 'CELEBRITY-AWARE HYBRID',
+    writeCost: 'Normal users: O(F); Celebrities: O(1)',
+    readCost: 'O(1 + M log M) — Own inbox + M followed celebrities',
+    pros: 'Completely eliminates celebrity write-fanout storms. Normal users retain sub-10ms reads; celebrities post in milliseconds; 70% RAM saved via active follower pruning.',
+    cons: 'High architectural complexity: requires dynamic celebrity thresholding (e.g. F ≥ 50k), runtime dual-stream heap mergers, and lazy catch-up sync.',
+    fit: 'Hyperscale open social networks (Instagram, Twitter/X, Weibo).',
+  },
 };
 
 function PhotoSharingArchitectureVisual() {
   const { isEnglish, t } = useUiCopy();
-  const [mode, setMode] = useState('upload');
-  const copy = (isEnglish ? PHOTO_PATHS_EN : PHOTO_PATHS)[mode];
+  const [mode, setMode] = useState('topology');
+  const [selectedNode, setSelectedNode] = useState('gateway');
+  const [fanoutTab, setFanoutTab] = useState('hybrid');
+
+  const copy = (isEnglish ? PHOTO_PATHS_EN : PHOTO_PATHS)[mode] || PHOTO_PATHS.topology;
+  const nodeDict = isEnglish ? PHOTO_NODE_DETAILS_EN : PHOTO_NODE_DETAILS;
+  const activeNode = nodeDict[selectedNode] || nodeDict.gateway;
+  const fanoutDict = isEnglish ? FANOUT_COMPARISONS_EN : FANOUT_COMPARISONS;
+  const activeFanout = fanoutDict[fanoutTab] || fanoutDict.hybrid;
 
   return (
     <section className="arch-visual photo-arch" aria-label={t('图片分享系统架构图', 'Photo sharing system architecture')}>
@@ -6380,14 +6633,188 @@ function PhotoSharingArchitectureVisual() {
           <p>{copy.note}</p>
         </div>
         <div className="arch-tabs" role="group" aria-label={t('选择图片系统链路', 'Choose a photo-system path')}>
+          <button type="button" className={mode === 'topology' ? 'active' : ''} onClick={() => setMode('topology')}>{t('全景拓扑', 'Full topology')}</button>
           <button type="button" className={mode === 'upload' ? 'active' : ''} onClick={() => setMode('upload')}>{t('发布图片', 'Publish photo')}</button>
           <button type="button" className={mode === 'feed' ? 'active' : ''} onClick={() => setMode('feed')}>{t('读取 Feed', 'Read feed')}</button>
+          <button type="button" className={mode === 'fanout' ? 'active' : ''} onClick={() => setMode('fanout')}>{t('推拉对比与大 V', 'Push vs Pull')}</button>
         </div>
       </header>
 
       <div className="photo-stage" data-mode={mode}>
-        <div className="photo-stage-label">{mode === 'upload' ? t('上传链路', copy.eyebrow) : t('读取链路', copy.eyebrow)}</div>
-        {mode === 'upload' ? (
+        <div className="photo-stage-label">
+          {mode === 'topology' ? t('全景架构与组件拓扑', copy.eyebrow) : mode === 'upload' ? t('上传链路', copy.eyebrow) : mode === 'feed' ? t('读取链路', copy.eyebrow) : t('推拉分流对比', copy.eyebrow)}
+        </div>
+
+        {mode === 'topology' && (
+          <div className="photo-topology-canvas">
+            <div className="topo-legend-strip">
+              <span className="legend-chip control"><i /> {t('控制面 (RPC/JSON)', 'Control Plane')}</span>
+              <span className="legend-chip data"><i /> {t('数据面 (图片字节流直传)', 'Data Plane (Bytes)')}</span>
+              <span className="legend-chip storage"><i /> {t('持久化与缓存', 'Storage & Cache')}</span>
+              <span className="legend-hint">{t('点击任意节点查看核心指标与设计权衡', 'Click any component to inspect')}</span>
+            </div>
+
+            {/* Client Tier */}
+            <div className="topo-grid-tier">
+              <div className="topo-tier-center">
+                <button
+                  type="button"
+                  className={`topo-card client ${selectedNode === 'client' ? 'active' : ''}`}
+                  onClick={() => setSelectedNode('client')}
+                >
+                  <span className="topo-badge">{t('CLIENT', 'CLIENT')}</span>
+                  <strong>{t('客户端 App / Web', 'Client App / Web')}</strong>
+                  <span>{t('发帖元数据 · 预签名直传 · 刷 Feed 流', 'Post metadata · Signed PUT · Read feed')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Split connectors */}
+            <div className="topo-wire-dual">
+              <div className="wire-left">
+                <span className="wire-tag data">{t('① 预签名直传原图 (PUT /upload)', '① Direct PUT signed URL')}</span>
+                <span className="wire-arrow">↓</span>
+              </div>
+              <div className="wire-right">
+                <span className="wire-tag control">{t('② API 会话协商与刷流 (HTTPS)', '② API control & read flow')}</span>
+                <span className="wire-arrow">↓</span>
+              </div>
+            </div>
+
+            {/* Core Middle Tier: Left Data Plane vs Right Control Plane */}
+            <div className="topo-split-container">
+              {/* Left Column: Media Data Plane */}
+              <div className="topo-column media-pipe">
+                <div className="column-title">{t('数据面 · 图片流水线', 'DATA PLANE · MEDIA PIPELINE')}</div>
+                
+                <button
+                  type="button"
+                  className={`topo-card blob ${selectedNode === 'raw_storage' ? 'active' : ''}`}
+                  onClick={() => setSelectedNode('raw_storage')}
+                >
+                  <span className="topo-badge">{t('RAW STORAGE', 'RAW STORAGE')}</span>
+                  <strong>{t('原始对象存储 (S3 Staging)', 'Raw Storage (S3 Staging)')}</strong>
+                  <span>{t('暂存高清原图 · 24h 生命周期清理', 'Uncompressed originals · 24h TTL')}</span>
+                </button>
+
+                <div className="topo-link-indicator">↓ {t('S3 Event 驱动通知', 'S3 Event Notify')}</div>
+
+                <button
+                  type="button"
+                  className={`topo-card worker ${selectedNode === 'processor' ? 'active' : ''}`}
+                  onClick={() => setSelectedNode('processor')}
+                >
+                  <span className="topo-badge">{t('MEDIA PROCESSOR', 'MEDIA PROCESSOR')}</span>
+                  <strong>{t('异步转码集群 (Workers)', 'Media Processor Workers')}</strong>
+                  <span>{t('EXIF 提取 · 裁剪缩放 · WebP/AVIF · NSFW 审查', 'Crop · WebP transcode · NSFW filter')}</span>
+                </button>
+
+                <div className="topo-link-indicator">↓ {t('落盘成品多尺寸图片', 'Save Transcoded Variants')}</div>
+
+                <button
+                  type="button"
+                  className={`topo-card blob ${selectedNode === 'object_storage' ? 'active' : ''}`}
+                  onClick={() => setSelectedNode('object_storage')}
+                >
+                  <span className="topo-badge">{t('CDN ORIGINS', 'CDN ORIGINS')}</span>
+                  <strong>{t('成品存储与 CDN 源站 (S3)', 'Processed Storage & CDN')}</strong>
+                  <span>{t('多 AZ 归档 · 边缘缓存命中率 95%+ · 600Gbps', 'Multi-AZ · 95%+ Edge Hit · 600Gbps')}</span>
+                </button>
+              </div>
+
+              {/* Right Column: Control & Feed Plane */}
+              <div className="topo-column control-pipe">
+                <div className="column-title">{t('控制与读取面 · 微服务集群', 'CONTROL & READ PLANE')}</div>
+
+                <div className="gateway-row">
+                  <button
+                    type="button"
+                    className={`topo-card edge ${selectedNode === 'gateway' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('gateway')}
+                  >
+                    <span className="topo-badge">{t('GATEWAY', 'GATEWAY')}</span>
+                    <strong>{t('API 网关与负载均衡', 'API Gateway / LB')}</strong>
+                    <span>{t('TLS 卸载 · 路由转发 · 请求熔断', 'TLS termination · Routing · Breaker')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`topo-card security ${selectedNode === 'authz' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('authz')}
+                  >
+                    <span className="topo-badge">{t('SECURITY', 'SECURITY')}</span>
+                    <strong>{t('鉴权与令牌桶限流', 'Authz & Limiter')}</strong>
+                    <span>{t('JWT 校验 · 5k QPS 限额防刷', 'JWT auth · 5k QPS token bucket')}</span>
+                  </button>
+                </div>
+
+                <div className="topo-link-indicator">↓ {t('分流转发至专用微服务', 'Route to Microservices')}</div>
+
+                <div className="service-row">
+                  <button
+                    type="button"
+                    className={`topo-card service ${selectedNode === 'upload' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('upload')}
+                  >
+                    <span className="topo-badge">{t('UPLOAD SVC', 'UPLOAD SVC')}</span>
+                    <strong>{t('发布协调服务', 'Upload Service')}</strong>
+                    <span>{t('会话创建 · 预签名签发 · PENDING 状态', 'Session · Pre-signed URL · PENDING')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`topo-card service ${selectedNode === 'view' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('view')}
+                  >
+                    <span className="topo-badge">{t('FEED SVC', 'FEED SVC')}</span>
+                    <strong>{t('信息流服务 (View)', 'Feed / View Service')}</strong>
+                    <span>{t('推拉双流多路归并 · 批量 Hydrate', 'Hybrid merge · Batch hydration')}</span>
+                  </button>
+                </div>
+
+                <div className="topo-link-indicator">↓ {t('持久化与时间线物化', 'Persistence & Materialization')}</div>
+
+                <div className="storage-row">
+                  <button
+                    type="button"
+                    className={`topo-card store ${selectedNode === 'metadata_db' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('metadata_db')}
+                  >
+                    <span className="topo-badge">{t('METADATA DB', 'METADATA DB')}</span>
+                    <strong>{t('分片元数据库 (SQL)', 'Metadata DB (SQL)')}</strong>
+                    <span>{t('users, posts, follows · user_id 分片', 'users, posts, follows · Shard by user_id')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`topo-card cache ${selectedNode === 'timeline_store' ? 'active' : ''}`}
+                    onClick={() => setSelectedNode('timeline_store')}
+                  >
+                    <span className="topo-badge">{t('TIMELINE CACHE', 'TIMELINE CACHE')}</span>
+                    <strong>{t('时间线缓存 (Redis)', 'Timeline Cache (Redis)')}</strong>
+                    <span>{t('活跃粉丝 Inbox (800条) + 大 V Outbox', 'Active Inboxes (800) + Celebrity Outboxes')}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Inspector */}
+            <div className="topo-inspector-card">
+              <div className="inspector-head">
+                <span className={`inspector-pill ${activeNode.badge}`}>{activeNode.tag}</span>
+                <h3>{activeNode.title}</h3>
+                <span className="inspector-spec">{activeNode.specs}</span>
+              </div>
+              <p className="inspector-desc">{activeNode.desc}</p>
+              <div className="inspector-meta">
+                <b>{t('核心协议 / 技术栈：', 'Core Protocols / Stack: ')}</b>
+                <code>{activeNode.protocols}</code>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode === 'upload' && (
           <>
             <div className="photo-control-row arch-flow">
               <div className="arch-node neutral"><small>CLIENT</small><strong>App</strong><span>create post</span></div>
@@ -6419,7 +6846,9 @@ function PhotoSharingArchitectureVisual() {
               </div>
             </div>
           </>
-        ) : (
+        )}
+
+        {mode === 'feed' && (
           <>
             <div className="photo-control-row arch-flow">
               <div className="arch-node neutral"><small>CLIENT</small><strong>App</strong><span>GET /feed</span></div>
@@ -6441,9 +6870,76 @@ function PhotoSharingArchitectureVisual() {
             </div>
           </>
         )}
+
+        {mode === 'fanout' && (
+          <div className="photo-fanout-container">
+            <div className="fanout-selector-tabs" role="tablist">
+              <button
+                type="button"
+                className={`fanout-btn ${fanoutTab === 'push' ? 'active' : ''}`}
+                onClick={() => setFanoutTab('push')}
+              >
+                {t('Push 模型 (写扩散)', 'Push (Fan-out-on-write)')}
+              </button>
+              <button
+                type="button"
+                className={`fanout-btn ${fanoutTab === 'pull' ? 'active' : ''}`}
+                onClick={() => setFanoutTab('pull')}
+              >
+                {t('Pull 模型 (读扩散)', 'Pull (Fan-out-on-read)')}
+              </button>
+              <button
+                type="button"
+                className={`fanout-btn ${fanoutTab === 'hybrid' ? 'active' : ''}`}
+                onClick={() => setFanoutTab('hybrid')}
+              >
+                {t('Hybrid 混合模型 (大 V 优化)', 'Hybrid Model (Celebrity)')}
+              </button>
+            </div>
+
+            <div className="fanout-detail-card">
+              <div className="fanout-card-header">
+                <span className="fanout-tag">{activeFanout.tag}</span>
+                <h3>{activeFanout.title}</h3>
+              </div>
+              <div className="fanout-cost-grid">
+                <div className="cost-box write">
+                  <small>{t('写入复杂度 (发帖)', 'Write Complexity')}</small>
+                  <strong>{activeFanout.writeCost}</strong>
+                </div>
+                <div className="cost-box read">
+                  <small>{t('读取复杂度 (刷流)', 'Read Complexity')}</small>
+                  <strong>{activeFanout.readCost}</strong>
+                </div>
+              </div>
+              <div className="fanout-pros-cons">
+                <div className="pros-block">
+                  <b>{t('优势 (Pros)：', 'Pros: ')}</b>
+                  <span>{activeFanout.pros}</span>
+                </div>
+                <div className="cons-block">
+                  <b>{t('劣势与隐患 (Cons)：', 'Cons: ')}</b>
+                  <span>{activeFanout.cons}</span>
+                </div>
+                <div className="fit-block">
+                  <b>{t('最佳适用场景：', 'Best Fit: ')}</b>
+                  <span>{activeFanout.fit}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <footer className="arch-footnote"><span><i className="sync" />{t('控制流', 'control')}</span><span><i className="data" />{t('字节 / 读取', 'bytes / reads')}</span><span><i className="async" />{t('事件', 'events')}</span><strong>{t('当前视图：', 'Current view: ')}{mode === 'upload' ? t('写入与派生', 'write and derive') : t('读取与补齐', 'read and hydrate')}</strong></footer>
+      <footer className="arch-footnote">
+        <span><i className="sync" />{t('控制流', 'control')}</span>
+        <span><i className="data" />{t('字节 / 读取', 'bytes / reads')}</span>
+        <span><i className="async" />{t('事件', 'events')}</span>
+        <strong>
+          {t('当前视图：', 'Current view: ')}
+          {mode === 'topology' ? t('系统全景拓扑', 'full topology') : mode === 'upload' ? t('写入与派生', 'write and derive') : mode === 'feed' ? t('读取与补齐', 'read and hydrate') : t('推拉决策矩阵', 'fan-out decision')}
+        </strong>
+      </footer>
     </section>
   );
 }
