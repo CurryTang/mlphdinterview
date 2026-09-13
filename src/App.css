@@ -24454,3 +24454,116 @@ button.overview-support-card.active {
 .pros-block span { color: #166534; }
 .cons-block span { color: #991b1b; }
 .fit-block span { color: #1e40af; }
+
+
+/* Photo Sharing SVG Box-and-Polyline Topology Canvas */
+.photo-topology-svg-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.photo-topology-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 780px;
+  max-width: 100%;
+}
+
+.svg-edge-path {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.svg-edge-path.control {
+  stroke: #3b82f6;
+  stroke-dasharray: 4 3;
+}
+
+.svg-edge-path.data {
+  stroke: #10b981;
+  stroke-width: 2.2;
+}
+
+.svg-edge-path.is-active {
+  stroke: #2563eb !important;
+  stroke-width: 2.6 !important;
+  stroke-dasharray: none !important;
+}
+
+.svg-edge-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  fill: #475569;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: #f8fafc;
+  stroke-width: 3px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  user-select: none;
+}
+
+.svg-edge-label.is-active {
+  fill: #1d4ed8;
+  font-weight: 700;
+}
+
+.svg-node-group {
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease;
+}
+
+.svg-node-group:hover .svg-node-rect {
+  stroke: #3b82f6;
+  stroke-width: 2px;
+}
+
+.svg-node-rect {
+  fill: #ffffff;
+  stroke: #cbd5e1;
+  stroke-width: 1.2;
+  transition: all 0.2s ease;
+}
+
+.svg-node-group.is-selected .svg-node-rect {
+  stroke: #2563eb;
+  stroke-width: 2.4px;
+  fill: #f0f7ff;
+}
+
+.svg-node-tag {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  user-select: none;
+}
+
+.svg-node-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  fill: #0f172a;
+  user-select: none;
+}
+
+.svg-node-sub {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  fill: #64748b;
+  user-select: none;
+}

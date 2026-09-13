@@ -6344,7 +6344,7 @@ const PHOTO_PATHS = {
   topology: {
     eyebrow: 'TOPOLOGY',
     title: '全局高层架构拓扑与数据流解耦',
-    note: '数据面（原图直传+转码）与控制面（鉴权+元数据）彻底分离，读写分流支撑海量吞吐。',
+    note: '直观折线 + 方格拓扑图：数据面（直传转码）与控制面（鉴权元数据）彻底分离。',
   },
   upload: {
     eyebrow: 'UPLOAD PATH',
@@ -6366,8 +6366,8 @@ const PHOTO_PATHS = {
 const PHOTO_PATHS_EN = {
   topology: {
     eyebrow: 'TOPOLOGY',
-    title: 'High-Level System Topology & Decoupled Planes',
-    note: 'Strictly decouple the data plane (direct upload + transcode) from the control plane (auth + metadata) to handle massive scale.',
+    title: 'High-Level Architecture Topology & Decoupled Planes',
+    note: 'Box & polyline topology: strict separation between Data Plane (direct upload) and Control Plane.',
   },
   upload: {
     eyebrow: 'UPLOAD PATH',
@@ -6385,6 +6385,95 @@ const PHOTO_PATHS_EN = {
     note: 'Materialize inboxes for normal authors; dynamically merge celebrity outboxes at read time to avoid write amplification.',
   },
 };
+
+const PHOTO_TOPOLOGY_NODES = [
+  {
+    id: 'client',
+    x: 365, y: 20, w: 150, h: 60,
+    titleZh: 'Client (App/Web)', titleEn: 'Client (App/Web)',
+    subZh: '发帖 · 直传 · 刷流', subEn: 'Upload · PUT · Read',
+    tag: 'CLIENT', color: '#64748b'
+  },
+  {
+    id: 'raw_storage',
+    x: 40, y: 140, w: 160, h: 62,
+    titleZh: 'Raw Storage', titleEn: 'Raw Storage',
+    subZh: 'S3 Staging 暂存原图', subEn: 'S3 Staging Bucket',
+    tag: 'DATA PLANE', color: '#10b981'
+  },
+  {
+    id: 'gateway',
+    x: 365, y: 140, w: 150, h: 62,
+    titleZh: 'API Gateway / LB', titleEn: 'API Gateway / LB',
+    subZh: 'TLS 卸载 · 路由转发', subEn: 'TLS · Routing · Proxy',
+    tag: 'EDGE', color: '#3b82f6'
+  },
+  {
+    id: 'authz',
+    x: 680, y: 140, w: 160, h: 62,
+    titleZh: 'Authz & Limiter', titleEn: 'Authz & Limiter',
+    subZh: 'JWT 鉴权 · 令牌桶限流', subEn: 'JWT Auth · Token Bucket',
+    tag: 'SECURITY', color: '#ef4444'
+  },
+  {
+    id: 'processor',
+    x: 40, y: 270, w: 160, h: 62,
+    titleZh: 'Media Processor', titleEn: 'Media Processor',
+    subZh: '裁剪 · 转码 · NSFW 审核', subEn: 'Resize · WebP · NSFW',
+    tag: 'WORKER', color: '#8b5cf6'
+  },
+  {
+    id: 'upload',
+    x: 260, y: 270, w: 150, h: 62,
+    titleZh: 'Upload Service', titleEn: 'Upload Service',
+    subZh: '签发预签名 · PENDING', subEn: 'Pre-signed URL · PENDING',
+    tag: 'SERVICE', color: '#06b6d4'
+  },
+  {
+    id: 'view',
+    x: 470, y: 270, w: 150, h: 62,
+    titleZh: 'View / Feed Svc', titleEn: 'View / Feed Svc',
+    subZh: '双流堆归并 · 水化', subEn: 'Hybrid Merge · Hydrate',
+    tag: 'SERVICE', color: '#06b6d4'
+  },
+  {
+    id: 'object_storage',
+    x: 40, y: 400, w: 160, h: 62,
+    titleZh: 'Object Storage', titleEn: 'Object Storage',
+    subZh: 'CDN 源站 · 多规格成品', subEn: 'CDN Origins · Variants',
+    tag: 'STORAGE', color: '#10b981'
+  },
+  {
+    id: 'metadata_db',
+    x: 365, y: 400, w: 150, h: 62,
+    titleZh: 'Metadata DB', titleEn: 'Metadata DB',
+    subZh: 'Sharded SQL (user_id)', subEn: 'Sharded SQL (user_id)',
+    tag: 'DATABASE', color: '#f59e0b'
+  },
+  {
+    id: 'timeline_store',
+    x: 680, y: 400, w: 160, h: 62,
+    titleZh: 'Timeline Cache', titleEn: 'Timeline Cache',
+    subZh: 'Redis ZSet 收件箱/发件箱', subEn: 'Redis ZSet Inbox/Outbox',
+    tag: 'CACHE', color: '#ec4899'
+  },
+];
+
+const PHOTO_TOPOLOGY_EDGES = [
+  { id: 'e1', from: 'client', to: 'gateway', d: 'M 440 80 V 140', labelZh: 'HTTPS 控制流', labelEn: 'HTTPS Control', lx: 445, ly: 110, type: 'control' },
+  { id: 'e2', from: 'client', to: 'raw_storage', d: 'M 365 50 H 120 V 140', labelZh: '① 预签名直传 (PUT)', labelEn: '① Direct PUT (bytes)', lx: 210, ly: 42, type: 'data' },
+  { id: 'e3', from: 'gateway', to: 'authz', d: 'M 515 171 H 680', labelZh: 'JWT 校验 / 限流', labelEn: 'JWT / Rate Limit', lx: 595, ly: 163, type: 'control' },
+  { id: 'e4', from: 'gateway', to: 'upload', d: 'M 400 202 V 236 H 335 V 270', labelZh: 'POST /session', labelEn: 'POST /session', lx: 310, ly: 245, type: 'control' },
+  { id: 'e5', from: 'gateway', to: 'view', d: 'M 480 202 V 236 H 545 V 270', labelZh: 'GET /feed', labelEn: 'GET /feed', lx: 565, ly: 245, type: 'control' },
+  { id: 'e6', from: 'raw_storage', to: 'processor', d: 'M 120 202 V 270', labelZh: 'S3 Event 驱动', labelEn: 'S3 Event Notify', lx: 125, ly: 236, type: 'data' },
+  { id: 'e7', from: 'processor', to: 'object_storage', d: 'M 120 332 V 400', labelZh: '保存成品图', labelEn: 'Save Variants', lx: 125, ly: 366, type: 'data' },
+  { id: 'e8', from: 'upload', to: 'raw_storage', d: 'M 260 290 H 220 V 171 H 200', labelZh: '签发 Token', labelEn: 'Issue Token', lx: 225, ly: 210, type: 'control' },
+  { id: 'e9', from: 'upload', to: 'object_storage', d: 'M 285 332 V 370 H 180 V 400', labelZh: '校验 URL', labelEn: 'Verify URL', lx: 230, ly: 365, type: 'control' },
+  { id: 'e10', from: 'upload', to: 'metadata_db', d: 'M 355 332 V 365 H 405 V 400', labelZh: '写入 PENDING', labelEn: 'Insert PENDING', lx: 350, ly: 382, type: 'control' },
+  { id: 'e11', from: 'view', to: 'object_storage', d: 'M 505 332 V 355 H 200 V 420', labelZh: '读 CDN URL', labelEn: 'Fetch CDN URLs', lx: 285, ly: 350, type: 'control' },
+  { id: 'e12', from: 'view', to: 'metadata_db', d: 'M 525 332 V 365 H 465 V 400', labelZh: 'Hydrate 水化', labelEn: 'Hydrate Posts', lx: 495, ly: 382, type: 'control' },
+  { id: 'e13', from: 'view', to: 'timeline_store', d: 'M 620 301 H 760 V 400', labelZh: '查 Inbox / Outbox', labelEn: 'Query Inbox/Outbox', lx: 690, ly: 295, type: 'control' },
+];
 
 const PHOTO_NODE_DETAILS = {
   client: {
@@ -6642,7 +6731,7 @@ function PhotoSharingArchitectureVisual() {
 
       <div className="photo-stage" data-mode={mode}>
         <div className="photo-stage-label">
-          {mode === 'topology' ? t('全景架构与组件拓扑', copy.eyebrow) : mode === 'upload' ? t('上传链路', copy.eyebrow) : mode === 'feed' ? t('读取链路', copy.eyebrow) : t('推拉分流对比', copy.eyebrow)}
+          {mode === 'topology' ? t('全景架构与组件拓扑 (折线+方格图)', copy.eyebrow) : mode === 'upload' ? t('上传链路', copy.eyebrow) : mode === 'feed' ? t('读取链路', copy.eyebrow) : t('推拉分流对比', copy.eyebrow)}
         </div>
 
         {mode === 'topology' && (
@@ -6651,151 +6740,96 @@ function PhotoSharingArchitectureVisual() {
               <span className="legend-chip control"><i /> {t('控制面 (RPC/JSON)', 'Control Plane')}</span>
               <span className="legend-chip data"><i /> {t('数据面 (图片字节流直传)', 'Data Plane (Bytes)')}</span>
               <span className="legend-chip storage"><i /> {t('持久化与缓存', 'Storage & Cache')}</span>
-              <span className="legend-hint">{t('点击任意节点查看核心指标与设计权衡', 'Click any component to inspect')}</span>
+              <span className="legend-hint">{t('点击方格节点可查看详细指标与设计权衡', 'Click boxes to inspect specs & tradeoffs')}</span>
             </div>
 
-            {/* Client Tier */}
-            <div className="topo-grid-tier">
-              <div className="topo-tier-center">
-                <button
-                  type="button"
-                  className={`topo-card client ${selectedNode === 'client' ? 'active' : ''}`}
-                  onClick={() => setSelectedNode('client')}
-                >
-                  <span className="topo-badge">{t('CLIENT', 'CLIENT')}</span>
-                  <strong>{t('客户端 App / Web', 'Client App / Web')}</strong>
-                  <span>{t('发帖元数据 · 预签名直传 · 刷 Feed 流', 'Post metadata · Signed PUT · Read feed')}</span>
-                </button>
-              </div>
-            </div>
+            {/* SVG Diagram Canvas: Rectangular Boxes + Orthogonal Polylines with Arrowheads */}
+            <div className="photo-topology-svg-wrapper">
+              <svg viewBox="0 0 880 490" className="photo-topology-svg" aria-label="Photo Sharing Architecture Canvas">
+                <defs>
+                  <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
+                  </marker>
+                  <marker id="arch-arrow-data" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+                  </marker>
+                  <marker id="arch-arrow-control" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3b82f6" />
+                  </marker>
+                  <marker id="arch-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb" />
+                  </marker>
+                  <filter id="node-shadow" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.08" />
+                  </filter>
+                </defs>
 
-            {/* Split connectors */}
-            <div className="topo-wire-dual">
-              <div className="wire-left">
-                <span className="wire-tag data">{t('① 预签名直传原图 (PUT /upload)', '① Direct PUT signed URL')}</span>
-                <span className="wire-arrow">↓</span>
-              </div>
-              <div className="wire-right">
-                <span className="wire-tag control">{t('② API 会话协商与刷流 (HTTPS)', '② API control & read flow')}</span>
-                <span className="wire-arrow">↓</span>
-              </div>
-            </div>
+                {/* Draw Orthogonal Polylines (折线连接) */}
+                {PHOTO_TOPOLOGY_EDGES.map((edge) => {
+                  const isConnected = selectedNode === edge.from || selectedNode === edge.to;
+                  const isData = edge.type === 'data';
+                  const markerId = isConnected ? 'arch-arrow-active' : isData ? 'arch-arrow-data' : 'arch-arrow-control';
+                  return (
+                    <g key={edge.id} className="svg-edge-group">
+                      <path
+                        d={edge.d}
+                        className={`svg-edge-path ${edge.type} ${isConnected ? 'is-active' : ''}`}
+                        markerEnd={`url(#${markerId})`}
+                      />
+                      <text x={edge.lx} y={edge.ly} className={`svg-edge-label ${isConnected ? 'is-active' : ''}`}>
+                        {isEnglish ? edge.labelEn : edge.labelZh}
+                      </text>
+                    </g>
+                  );
+                })}
 
-            {/* Core Middle Tier: Left Data Plane vs Right Control Plane */}
-            <div className="topo-split-container">
-              {/* Left Column: Media Data Plane */}
-              <div className="topo-column media-pipe">
-                <div className="column-title">{t('数据面 · 图片流水线', 'DATA PLANE · MEDIA PIPELINE')}</div>
-                
-                <button
-                  type="button"
-                  className={`topo-card blob ${selectedNode === 'raw_storage' ? 'active' : ''}`}
-                  onClick={() => setSelectedNode('raw_storage')}
-                >
-                  <span className="topo-badge">{t('RAW STORAGE', 'RAW STORAGE')}</span>
-                  <strong>{t('原始对象存储 (S3 Staging)', 'Raw Storage (S3 Staging)')}</strong>
-                  <span>{t('暂存高清原图 · 24h 生命周期清理', 'Uncompressed originals · 24h TTL')}</span>
-                </button>
-
-                <div className="topo-link-indicator">↓ {t('S3 Event 驱动通知', 'S3 Event Notify')}</div>
-
-                <button
-                  type="button"
-                  className={`topo-card worker ${selectedNode === 'processor' ? 'active' : ''}`}
-                  onClick={() => setSelectedNode('processor')}
-                >
-                  <span className="topo-badge">{t('MEDIA PROCESSOR', 'MEDIA PROCESSOR')}</span>
-                  <strong>{t('异步转码集群 (Workers)', 'Media Processor Workers')}</strong>
-                  <span>{t('EXIF 提取 · 裁剪缩放 · WebP/AVIF · NSFW 审查', 'Crop · WebP transcode · NSFW filter')}</span>
-                </button>
-
-                <div className="topo-link-indicator">↓ {t('落盘成品多尺寸图片', 'Save Transcoded Variants')}</div>
-
-                <button
-                  type="button"
-                  className={`topo-card blob ${selectedNode === 'object_storage' ? 'active' : ''}`}
-                  onClick={() => setSelectedNode('object_storage')}
-                >
-                  <span className="topo-badge">{t('CDN ORIGINS', 'CDN ORIGINS')}</span>
-                  <strong>{t('成品存储与 CDN 源站 (S3)', 'Processed Storage & CDN')}</strong>
-                  <span>{t('多 AZ 归档 · 边缘缓存命中率 95%+ · 600Gbps', 'Multi-AZ · 95%+ Edge Hit · 600Gbps')}</span>
-                </button>
-              </div>
-
-              {/* Right Column: Control & Feed Plane */}
-              <div className="topo-column control-pipe">
-                <div className="column-title">{t('控制与读取面 · 微服务集群', 'CONTROL & READ PLANE')}</div>
-
-                <div className="gateway-row">
-                  <button
-                    type="button"
-                    className={`topo-card edge ${selectedNode === 'gateway' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('gateway')}
-                  >
-                    <span className="topo-badge">{t('GATEWAY', 'GATEWAY')}</span>
-                    <strong>{t('API 网关与负载均衡', 'API Gateway / LB')}</strong>
-                    <span>{t('TLS 卸载 · 路由转发 · 请求熔断', 'TLS termination · Routing · Breaker')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`topo-card security ${selectedNode === 'authz' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('authz')}
-                  >
-                    <span className="topo-badge">{t('SECURITY', 'SECURITY')}</span>
-                    <strong>{t('鉴权与令牌桶限流', 'Authz & Limiter')}</strong>
-                    <span>{t('JWT 校验 · 5k QPS 限额防刷', 'JWT auth · 5k QPS token bucket')}</span>
-                  </button>
-                </div>
-
-                <div className="topo-link-indicator">↓ {t('分流转发至专用微服务', 'Route to Microservices')}</div>
-
-                <div className="service-row">
-                  <button
-                    type="button"
-                    className={`topo-card service ${selectedNode === 'upload' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('upload')}
-                  >
-                    <span className="topo-badge">{t('UPLOAD SVC', 'UPLOAD SVC')}</span>
-                    <strong>{t('发布协调服务', 'Upload Service')}</strong>
-                    <span>{t('会话创建 · 预签名签发 · PENDING 状态', 'Session · Pre-signed URL · PENDING')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`topo-card service ${selectedNode === 'view' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('view')}
-                  >
-                    <span className="topo-badge">{t('FEED SVC', 'FEED SVC')}</span>
-                    <strong>{t('信息流服务 (View)', 'Feed / View Service')}</strong>
-                    <span>{t('推拉双流多路归并 · 批量 Hydrate', 'Hybrid merge · Batch hydration')}</span>
-                  </button>
-                </div>
-
-                <div className="topo-link-indicator">↓ {t('持久化与时间线物化', 'Persistence & Materialization')}</div>
-
-                <div className="storage-row">
-                  <button
-                    type="button"
-                    className={`topo-card store ${selectedNode === 'metadata_db' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('metadata_db')}
-                  >
-                    <span className="topo-badge">{t('METADATA DB', 'METADATA DB')}</span>
-                    <strong>{t('分片元数据库 (SQL)', 'Metadata DB (SQL)')}</strong>
-                    <span>{t('users, posts, follows · user_id 分片', 'users, posts, follows · Shard by user_id')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`topo-card cache ${selectedNode === 'timeline_store' ? 'active' : ''}`}
-                    onClick={() => setSelectedNode('timeline_store')}
-                  >
-                    <span className="topo-badge">{t('TIMELINE CACHE', 'TIMELINE CACHE')}</span>
-                    <strong>{t('时间线缓存 (Redis)', 'Timeline Cache (Redis)')}</strong>
-                    <span>{t('活跃粉丝 Inbox (800条) + 大 V Outbox', 'Active Inboxes (800) + Celebrity Outboxes')}</span>
-                  </button>
-                </div>
-              </div>
+                {/* Draw Rectangular Node Boxes (方格节点) */}
+                {PHOTO_TOPOLOGY_NODES.map((node) => {
+                  const isSelected = selectedNode === node.id;
+                  return (
+                    <g
+                      key={node.id}
+                      className={`svg-node-group ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => setSelectedNode(node.id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={node.titleZh}
+                    >
+                      {/* Main Box */}
+                      <rect
+                        x={node.x}
+                        y={node.y}
+                        width={node.w}
+                        height={node.h}
+                        rx="8"
+                        className="svg-node-rect"
+                        filter="url(#node-shadow)"
+                      />
+                      {/* Left accent bar */}
+                      <rect
+                        x={node.x}
+                        y={node.y}
+                        width="5"
+                        height={node.h}
+                        rx="2"
+                        fill={node.color}
+                      />
+                      {/* Node Tag */}
+                      <text x={node.x + 14} y={node.y + 18} className="svg-node-tag" fill={node.color}>
+                        {node.tag}
+                      </text>
+                      {/* Node Title */}
+                      <text x={node.x + 14} y={node.y + 36} className="svg-node-title">
+                        {isEnglish ? node.titleEn : node.titleZh}
+                      </text>
+                      {/* Node Subtitle */}
+                      <text x={node.x + 14} y={node.y + 51} className="svg-node-sub">
+                        {isEnglish ? node.subEn : node.subZh}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
 
             {/* Interactive Inspector */}
