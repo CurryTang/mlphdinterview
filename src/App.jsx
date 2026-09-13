@@ -6701,6 +6701,196 @@ const FANOUT_COMPARISONS_EN = {
   },
 };
 
+
+/**
+ * ArchitectureTopologyCanvas
+ * Decoupled, reusable interactive SVG architecture diagram component.
+ * Features:
+ * - Rectangular component boxes with color accents, tags, titles, and sub-labels.
+ * - Orthogonal polylines with directional arrow markers (control vs data vs async vs sync).
+ * - Interactive node selection highlighting all connected incoming/outgoing links.
+ * - Dynamic bottom inspector card with specs, descriptions, protocols, and architectural trade-offs.
+ */
+function ArchitectureTopologyCanvas({
+  viewBox = '0 0 880 490',
+  nodes = [],
+  edges = [],
+  nodeDetails = {},
+  selectedNode: controlledSelectedNode,
+  onSelectNode,
+  defaultSelectedNode,
+  legendItems,
+  showInspector = true,
+  inspectorHint,
+  ariaLabel = 'System Architecture Canvas',
+}) {
+  const { isEnglish, t } = useUiCopy();
+  const [internalSelected, setInternalSelected] = useState(defaultSelectedNode || (nodes[0] ? nodes[0].id : ''));
+  const activeNodeId = controlledSelectedNode !== undefined ? controlledSelectedNode : internalSelected;
+
+  const handleSelect = (id) => {
+    if (onSelectNode) {
+      onSelectNode(id);
+    }
+    setInternalSelected(id);
+  };
+
+  const activeNode = nodeDetails[activeNodeId] || (nodes[0] ? nodeDetails[nodes[0].id] : null);
+
+  const defaultLegend = [
+    { type: 'control', labelZh: '控制面 (RPC/JSON)', labelEn: 'Control Plane (RPC/JSON)' },
+    { type: 'data', labelZh: '数据面 (字节流/事务)', labelEn: 'Data Plane (Bytes/Txn)' },
+    { type: 'storage', labelZh: '持久化与缓存', labelEn: 'Storage & Cache' },
+  ];
+  const activeLegend = legendItems || defaultLegend;
+
+  return (
+    <div className="photo-topology-canvas arch-topology-canvas">
+      {/* Legend Strip */}
+      <div className="topo-legend-strip">
+        {activeLegend.map((item, idx) => (
+          <span key={idx} className={`legend-chip ${item.type}`}>
+            <i /> {isEnglish ? item.labelEn : item.labelZh}
+          </span>
+        ))}
+        <span className="legend-hint">
+          {inspectorHint || t('点击方格节点可查看详细指标与设计权衡', 'Click boxes to inspect specs & tradeoffs')}
+        </span>
+      </div>
+
+      {/* SVG Canvas */}
+      <div className="photo-topology-svg-wrapper arch-topology-svg-wrapper">
+        <svg viewBox={viewBox} className="photo-topology-svg arch-topology-svg" aria-label={ariaLabel}>
+          <defs>
+            <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
+            </marker>
+            <marker id="arch-arrow-data" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+            </marker>
+            <marker id="arch-arrow-control" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3b82f6" />
+            </marker>
+            <marker id="arch-arrow-async" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8b5cf6" />
+            </marker>
+            <marker id="arch-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb" />
+            </marker>
+            <filter id="node-shadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.08" />
+            </filter>
+          </defs>
+
+          {/* Orthogonal Polylines */}
+          {edges.map((edge) => {
+            const isConnected = activeNodeId === edge.from || activeNodeId === edge.to;
+            const markerId = isConnected
+              ? 'arch-arrow-active'
+              : edge.type === 'data'
+              ? 'arch-arrow-data'
+              : edge.type === 'async'
+              ? 'arch-arrow-async'
+              : 'arch-arrow-control';
+
+            return (
+              <g key={edge.id} className="svg-edge-group">
+                <path
+                  d={edge.d}
+                  className={`svg-edge-path ${edge.type || 'control'} ${isConnected ? 'is-active' : ''}`}
+                  markerEnd={`url(#${markerId})`}
+                />
+                {(edge.labelZh || edge.labelEn) && (
+                  <text x={edge.lx} y={edge.ly} className={`svg-edge-label ${isConnected ? 'is-active' : ''}`}>
+                    {isEnglish ? edge.labelEn : edge.labelZh}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Rectangular Node Boxes */}
+          {nodes.map((node) => {
+            const isSelected = activeNodeId === node.id;
+            return (
+              <g
+                key={node.id}
+                className={`svg-node-group ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => handleSelect(node.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelect(node.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={isEnglish ? node.titleEn : node.titleZh}
+              >
+                {/* Node Box */}
+                <rect
+                  x={node.x}
+                  y={node.y}
+                  width={node.w}
+                  height={node.h}
+                  rx="8"
+                  className="svg-node-rect"
+                  filter="url(#node-shadow)"
+                />
+                {/* Accent line on left */}
+                <rect
+                  x={node.x}
+                  y={node.y}
+                  width="5"
+                  height={node.h}
+                  rx="2"
+                  fill={node.color}
+                />
+                {/* Node Tag */}
+                {node.tag && (
+                  <text x={node.x + 14} y={node.y + 18} className="svg-node-tag" fill={node.color}>
+                    {node.tag}
+                  </text>
+                )}
+                {/* Node Title */}
+                <text x={node.x + 14} y={node.y + 36} className="svg-node-title">
+                  {isEnglish ? node.titleEn : node.titleZh}
+                </text>
+                {/* Node Subtitle */}
+                {(node.subZh || node.subEn) && (
+                  <text x={node.x + 14} y={node.y + 51} className="svg-node-sub">
+                    {isEnglish ? node.subEn : node.subZh}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Node Inspector Card */}
+      {showInspector && activeNode && (
+        <div className="topo-inspector-card">
+          <div className="inspector-head">
+            {activeNode.tag && (
+              <span className={`inspector-pill ${activeNode.badge || 'neutral'}`}>{activeNode.tag}</span>
+            )}
+            <h3>{activeNode.title}</h3>
+            {activeNode.specs && <span className="inspector-spec">{activeNode.specs}</span>}
+          </div>
+          {activeNode.desc && <p className="inspector-desc">{activeNode.desc}</p>}
+          {activeNode.protocols && (
+            <div className="inspector-meta">
+              <b>{t('核心协议 / 技术栈：', 'Core Protocols / Stack: ')}</b>
+              <code>{activeNode.protocols}</code>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhotoSharingArchitectureVisual() {
   const { isEnglish, t } = useUiCopy();
   const [mode, setMode] = useState('topology');
@@ -6735,117 +6925,20 @@ function PhotoSharingArchitectureVisual() {
         </div>
 
         {mode === 'topology' && (
-          <div className="photo-topology-canvas">
-            <div className="topo-legend-strip">
-              <span className="legend-chip control"><i /> {t('控制面 (RPC/JSON)', 'Control Plane')}</span>
-              <span className="legend-chip data"><i /> {t('数据面 (图片字节流直传)', 'Data Plane (Bytes)')}</span>
-              <span className="legend-chip storage"><i /> {t('持久化与缓存', 'Storage & Cache')}</span>
-              <span className="legend-hint">{t('点击方格节点可查看详细指标与设计权衡', 'Click boxes to inspect specs & tradeoffs')}</span>
-            </div>
+          <ArchitectureTopologyCanvas
+            viewBox="0 0 880 490"
+            nodes={PHOTO_TOPOLOGY_NODES}
+            edges={PHOTO_TOPOLOGY_EDGES}
+            nodeDetails={nodeDict}
+            selectedNode={selectedNode}
+            onSelectNode={setSelectedNode}
+            legendItems={[
+              { type: 'control', labelZh: '控制面 (RPC/JSON)', labelEn: 'Control Plane (RPC/JSON)' },
+              { type: 'data', labelZh: '数据面 (图片字节流直传)', labelEn: 'Data Plane (Bytes)' },
+              { type: 'storage', labelZh: '持久化与缓存', labelEn: 'Storage & Cache' },
+            ]}
+          />
 
-            {/* SVG Diagram Canvas: Rectangular Boxes + Orthogonal Polylines with Arrowheads */}
-            <div className="photo-topology-svg-wrapper">
-              <svg viewBox="0 0 880 490" className="photo-topology-svg" aria-label="Photo Sharing Architecture Canvas">
-                <defs>
-                  <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
-                  </marker>
-                  <marker id="arch-arrow-data" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
-                  </marker>
-                  <marker id="arch-arrow-control" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3b82f6" />
-                  </marker>
-                  <marker id="arch-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb" />
-                  </marker>
-                  <filter id="node-shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.08" />
-                  </filter>
-                </defs>
-
-                {/* Draw Orthogonal Polylines (折线连接) */}
-                {PHOTO_TOPOLOGY_EDGES.map((edge) => {
-                  const isConnected = selectedNode === edge.from || selectedNode === edge.to;
-                  const isData = edge.type === 'data';
-                  const markerId = isConnected ? 'arch-arrow-active' : isData ? 'arch-arrow-data' : 'arch-arrow-control';
-                  return (
-                    <g key={edge.id} className="svg-edge-group">
-                      <path
-                        d={edge.d}
-                        className={`svg-edge-path ${edge.type} ${isConnected ? 'is-active' : ''}`}
-                        markerEnd={`url(#${markerId})`}
-                      />
-                      <text x={edge.lx} y={edge.ly} className={`svg-edge-label ${isConnected ? 'is-active' : ''}`}>
-                        {isEnglish ? edge.labelEn : edge.labelZh}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Draw Rectangular Node Boxes (方格节点) */}
-                {PHOTO_TOPOLOGY_NODES.map((node) => {
-                  const isSelected = selectedNode === node.id;
-                  return (
-                    <g
-                      key={node.id}
-                      className={`svg-node-group ${isSelected ? 'is-selected' : ''}`}
-                      onClick={() => setSelectedNode(node.id)}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={node.titleZh}
-                    >
-                      {/* Main Box */}
-                      <rect
-                        x={node.x}
-                        y={node.y}
-                        width={node.w}
-                        height={node.h}
-                        rx="8"
-                        className="svg-node-rect"
-                        filter="url(#node-shadow)"
-                      />
-                      {/* Left accent bar */}
-                      <rect
-                        x={node.x}
-                        y={node.y}
-                        width="5"
-                        height={node.h}
-                        rx="2"
-                        fill={node.color}
-                      />
-                      {/* Node Tag */}
-                      <text x={node.x + 14} y={node.y + 18} className="svg-node-tag" fill={node.color}>
-                        {node.tag}
-                      </text>
-                      {/* Node Title */}
-                      <text x={node.x + 14} y={node.y + 36} className="svg-node-title">
-                        {isEnglish ? node.titleEn : node.titleZh}
-                      </text>
-                      {/* Node Subtitle */}
-                      <text x={node.x + 14} y={node.y + 51} className="svg-node-sub">
-                        {isEnglish ? node.subEn : node.subZh}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-
-            {/* Interactive Inspector */}
-            <div className="topo-inspector-card">
-              <div className="inspector-head">
-                <span className={`inspector-pill ${activeNode.badge}`}>{activeNode.tag}</span>
-                <h3>{activeNode.title}</h3>
-                <span className="inspector-spec">{activeNode.specs}</span>
-              </div>
-              <p className="inspector-desc">{activeNode.desc}</p>
-              <div className="inspector-meta">
-                <b>{t('核心协议 / 技术栈：', 'Core Protocols / Stack: ')}</b>
-                <code>{activeNode.protocols}</code>
-              </div>
-            </div>
-          </div>
         )}
 
         {mode === 'upload' && (
@@ -6978,14 +7071,249 @@ function PhotoSharingArchitectureVisual() {
   );
 }
 
+
+const FLASH_TOPOLOGY_NODES = [
+  {
+    id: 'client',
+    x: 365, y: 20, w: 150, h: 60,
+    titleZh: 'Client (App/Web)', titleEn: 'Client (App/Web)',
+    subZh: '抢购 · 轮询结果 · 详情', subEn: 'Buy · Poll Result · View',
+    tag: 'CLIENT', color: '#64748b'
+  },
+  {
+    id: 'limiter',
+    x: 40, y: 140, w: 160, h: 62,
+    titleZh: 'WAF & Rate Limiter', titleEn: 'WAF & Rate Limiter',
+    subZh: '滑动窗口 · 黑名单 · 验证码', subEn: 'Sliding Window · Captcha',
+    tag: 'SECURITY', color: '#ef4444'
+  },
+  {
+    id: 'gateway',
+    x: 365, y: 140, w: 150, h: 62,
+    titleZh: 'API Gateway / LB', titleEn: 'API Gateway / LB',
+    subZh: '动静分流 · 路由 · 鉴权', subEn: 'Routing · Auth · TLS',
+    tag: 'EDGE', color: '#3b82f6'
+  },
+  {
+    id: 'sale_svc',
+    x: 680, y: 140, w: 160, h: 62,
+    titleZh: 'Sale Query Service', titleEn: 'Sale Query Service',
+    subZh: '活动详情 · 读缓存模型', subEn: 'Sale Details · Read Cache',
+    tag: 'READ SERVICE', color: '#06b6d4'
+  },
+  {
+    id: 'purchase_svc',
+    x: 200, y: 270, w: 160, h: 62,
+    titleZh: 'Purchase API Service', titleEn: 'Purchase API Service',
+    subZh: '入参校验 · 投递 MQ · 202', subEn: 'Validate · Enqueue · 202',
+    tag: 'WRITE SERVICE', color: '#06b6d4'
+  },
+  {
+    id: 'mq',
+    x: 500, y: 270, w: 160, h: 62,
+    titleZh: 'Kafka / RocketMQ', titleEn: 'Kafka / RocketMQ',
+    subZh: '单 SKU 独占分区 · 削峰', subEn: 'Per-SKU Partition · Buffer',
+    tag: 'ASYNC QUEUE', color: '#8b5cf6'
+  },
+  {
+    id: 'db',
+    x: 200, y: 400, w: 160, h: 62,
+    titleZh: 'MySQL (InnoDB Txn)', titleEn: 'MySQL (InnoDB Txn)',
+    subZh: 'stock - 1 > 0 · 唯一防重', subEn: 'stock - 1 > 0 · Unique UK',
+    tag: 'DATABASE', color: '#f59e0b'
+  },
+  {
+    id: 'stock_worker',
+    x: 500, y: 400, w: 160, h: 62,
+    titleZh: 'Stock Worker Cluster', titleEn: 'Stock Worker Cluster',
+    subZh: '受控背压 · 事务提交', subEn: 'Controlled Backpressure',
+    tag: 'WORKER', color: '#8b5cf6'
+  },
+  {
+    id: 'read_cache',
+    x: 700, y: 400, w: 160, h: 62,
+    titleZh: 'Redis Read Cluster', titleEn: 'Redis Read Cluster',
+    subZh: '订单状态 (Hash) · 读模型', subEn: 'Order Status · Read Model',
+    tag: 'CACHE', color: '#ec4899'
+  },
+];
+
+const FLASH_TOPOLOGY_EDGES = [
+  { id: 'f1', from: 'client', to: 'gateway', d: 'M 440 80 V 140', labelZh: 'HTTPS 控制流', labelEn: 'HTTPS Control', lx: 445, ly: 105, type: 'control' },
+  { id: 'f2', from: 'gateway', to: 'limiter', d: 'M 365 171 H 200', labelZh: '令牌桶拦截', labelEn: 'Token Bucket', lx: 280, ly: 163, type: 'control' },
+  { id: 'f3', from: 'gateway', to: 'sale_svc', d: 'M 515 171 H 680', labelZh: 'GET /sale (查详情)', labelEn: 'GET /sale', lx: 595, ly: 163, type: 'control' },
+  { id: 'f4', from: 'gateway', to: 'purchase_svc', d: 'M 400 202 V 236 H 280 V 270', labelZh: 'POST /buy (抢购)', labelEn: 'POST /buy', lx: 290, ly: 245, type: 'control' },
+  { id: 'f5', from: 'purchase_svc', to: 'mq', d: 'M 360 301 H 500', labelZh: '异步投递 (返回 202)', labelEn: 'Enqueue -> 202 Accepted', lx: 430, ly: 292, type: 'async' },
+  { id: 'f6', from: 'mq', to: 'stock_worker', d: 'M 580 332 V 400', labelZh: '受控背压顺序消费', labelEn: 'Ordered Backpressure', lx: 590, ly: 365, type: 'async' },
+  { id: 'f7', from: 'stock_worker', to: 'db', d: 'M 500 431 H 360', labelZh: '事务扣减 & 唯一索引', labelEn: 'Txn Deduct & Unique UK', lx: 430, ly: 423, type: 'data' },
+  { id: 'f8', from: 'stock_worker', to: 'read_cache', d: 'M 660 431 H 700', labelZh: '写处理结果', labelEn: 'Set Order Status', lx: 680, ly: 423, type: 'data' },
+  { id: 'f9', from: 'sale_svc', to: 'read_cache', d: 'M 760 202 V 400', labelZh: '读预热活动详情', labelEn: 'Fetch Cached Sale', lx: 765, ly: 300, type: 'data' },
+  { id: 'f10', from: 'client', to: 'read_cache', d: 'M 515 50 H 830 V 400', labelZh: '轮询 / SSE 查订单结果', labelEn: 'Poll / SSE Order Status', lx: 690, ly: 42, type: 'data' },
+];
+
+const FLASH_NODE_DETAILS = {
+  client: {
+    title: '客户端应用 (Web / iOS / Android)',
+    tag: 'CLIENT TIER',
+    badge: 'neutral',
+    specs: '峰值并发数十万 · 抢购倒计时 · 静态资源 CDN 缓存',
+    desc: '活动开启前倒计时并在本地打散随机抖动（Jitter 0~500ms），防止海量客户端瞬间并发将网关打挂。抢购按钮点击后进入 loading 禁用重试，收到 202 Accepted 后启动带指数退避的短轮询或长连接监听 Redis 订单结果。',
+    protocols: 'HTTPS / HTTP/2 / SSE',
+  },
+  limiter: {
+    title: 'WAF 防护与分布式限流 (WAF & Rate Limiter)',
+    tag: 'SECURITY TIER',
+    badge: 'security',
+    specs: '拦截率 > 95% · 校验耗时 < 0.5ms',
+    desc: '基于 IP/DeviceID/UID 维护令牌桶与滑动窗口计数器。对异常发包频率直接阻断或弹出滑动验证码；设置全局放行水位上限，超过后端队列承载能力的瞬时请求直接在边缘层返回优雅排队提示页，保护内网系统不被雪崩拖垮。',
+    protocols: 'Sentinel / OpenResty Lua + Redis',
+  },
+  gateway: {
+    title: 'API 网关与动静分流 (API Gateway)',
+    tag: 'EDGE TIER',
+    badge: 'edge',
+    specs: '连接保活 · TLS 卸载 · 协议转码',
+    desc: '统一流量入口。剥离静态资源（全部引向 CDN 边缘节点），对动态请求做鉴权并注入全局链路追踪 trace_id。将抢购写入与活动只读查询严格路由到相互物理隔离的后端微服务集群。',
+    protocols: 'Envoy / Nginx / AWS ALB',
+  },
+  sale_svc: {
+    title: '秒杀活动详情服务 (Sale Query Service)',
+    tag: 'READ SERVICE',
+    badge: 'service',
+    specs: '读 QPS 50,000+ · 纯读缓存链路 · 本地二级缓存',
+    desc: '负责秒杀活动元数据（价格、时间、规则）的查询。数据在活动开始前数小时全量预热至 Redis 集群，并在应用进程内开启 Caffeine 本地只读缓存，命中率 > 99.9%，杜绝活动瞬时读请求穿透至关系型数据库。',
+    protocols: 'Go/Java + Caffeine + Redis Cluster',
+  },
+  purchase_svc: {
+    title: '秒杀下单接入服务 (Purchase API Service)',
+    tag: 'WRITE SERVICE',
+    badge: 'service',
+    specs: '无状态水平扩容 · 接口耗时 < 10ms',
+    desc: '执行轻量级前置校验（活动是否开启、Token 签名校验、用户黑名单）。生成幂等请求唯一 request_id，直接向消息队列投递 OrderPlacementEvent，收到 Broker 持久化 Ack 后立刻向客户端返回 HTTP 202 Accepted，绝对不在此阶段同步操作数据库。',
+    protocols: 'gRPC / JSON over HTTP/2',
+  },
+  mq: {
+    title: '消息削峰缓冲队列 (Kafka / RocketMQ)',
+    tag: 'ASYNC QUEUE',
+    badge: 'worker',
+    specs: '吞吐数十万 TPS · 单 SKU 独占分区严格保序',
+    desc: '秒杀系统最核心的削峰蓄水池。采用单 SKU 路由至同一 Partition 的策略，利用消息队列分区内部的严格 FIFO 顺序性消除多节点并发写数据库的锁争抢；将瞬时数十万 QPS 的下单洪峰平滑为下游 Worker 可承受的恒定受控消费速率。',
+    protocols: 'Apache Kafka / RocketMQ',
+  },
+  stock_worker: {
+    title: '订单处理与库存扣减集群 (Stock Worker Cluster)',
+    tag: 'WORKER TIER',
+    badge: 'worker',
+    specs: '受控背压 (Backpressure) · 批量提交',
+    desc: '根据关系型数据库的最大写吞吐量（例如单库 3,000~5,000 TPS）严格控制消费并发度。每次拉取一批事件在单事务中执行库存扣减与订单落盘；处理完毕后将 (request_id, status, order_id) 写入 Redis 供前端轮询，若库存已耗尽则快速短路后续订单。',
+    protocols: 'Go / Java Workers + JDBC Pool',
+  },
+  db: {
+    title: '主关系型数据库 (MySQL InnoDB Primary)',
+    tag: 'DATABASE',
+    badge: 'store',
+    specs: '事实数据真相 (Source of Truth) · ACID 事务',
+    desc: '存储核心订单与真实库存。库存扣减使用原子语句：UPDATE stock_table SET remain = remain - 1 WHERE sku_id = ? AND remain >= 1；订单表建立 (user_id, sku_id) 唯一联合索引，依靠底层数据库物理约束彻底杜绝同一用户重复抢购与超卖。',
+    protocols: 'MySQL InnoDB / PostgreSQL',
+  },
+  read_cache: {
+    title: '订单结果读缓存 (Redis Read Model)',
+    tag: 'CACHE',
+    badge: 'cache',
+    specs: '读取延迟 < 1ms · TTL 自动过期',
+    desc: '纯读模型缓存，绝非库存唯一真相。存储客户端轮询查询的订单处理状态：PENDING（排队中）、SUCCESS（下单成功及 order_id）、FAILED（已售罄/重复购买）。若缓存节点宕机或丢数据，前端降级重试回源主 API 查询，保证系统强韧性。',
+    protocols: 'Redis Cluster (Hash/String with TTL)',
+  },
+};
+
+const FLASH_NODE_DETAILS_EN = {
+  client: {
+    title: 'Client Application (Web / iOS / Android)',
+    tag: 'CLIENT TIER',
+    badge: 'neutral',
+    specs: 'Hundreds of thousands of concurrent users · Countdown jitter · CDN cached assets',
+    desc: 'Applies randomized client-side jitter (0-500ms) before the countdown zero mark to disperse request spikes. Disables buy button immediately after first click, receives HTTP 202 Accepted, and starts polling Redis order status with exponential backoff.',
+    protocols: 'HTTPS / HTTP/2 / SSE',
+  },
+  limiter: {
+    title: 'WAF & Rate Limiter',
+    tag: 'SECURITY TIER',
+    badge: 'security',
+    specs: 'Drop rate > 95% · Verification latency < 0.5ms',
+    desc: 'Token bucket and sliding window rate limiting based on IP/DeviceID/UID. Blocks scripted bot nets or triggers interactive captchas. Enforces hard concurrency caps to prevent downstream queue and service exhaustion.',
+    protocols: 'Sentinel / OpenResty Lua + Redis',
+  },
+  gateway: {
+    title: 'API Gateway & Reverse Proxy',
+    tag: 'EDGE TIER',
+    badge: 'edge',
+    specs: 'Keep-Alive · TLS offloading · Routing',
+    desc: 'Central traffic ingress. Offloads static content to CDN edge. Injects trace_id for end-to-end distributed tracing, and cleanly isolates read traffic from mission-critical write pipelines.',
+    protocols: 'Envoy / Nginx / AWS ALB',
+  },
+  sale_svc: {
+    title: 'Sale Query Service',
+    tag: 'READ SERVICE',
+    badge: 'service',
+    specs: 'Read QPS 50,000+ · 100% pre-warmed cache · In-memory L2 cache',
+    desc: 'Handles read queries for sale metadata (pricing, inventory status, rules). Pre-warmed into Redis cluster hours prior to event launch. Backed by Caffeine in-process L2 cache with >99.9% hit rate, shielding the primary DB from read surges.',
+    protocols: 'Go/Java + Caffeine + Redis Cluster',
+  },
+  purchase_svc: {
+    title: 'Purchase API Service',
+    tag: 'WRITE SERVICE',
+    badge: 'service',
+    specs: 'Stateless horizontal scaling · Latency < 10ms',
+    desc: 'Runs lightweight preliminary validations (event state, token signatures, user blocklist). Generates idempotent request_id, produces an OrderPlacementEvent into Kafka, and returns HTTP 202 Accepted immediately upon broker Ack. Zero synchronous DB access here.',
+    protocols: 'gRPC / JSON over HTTP/2',
+  },
+  mq: {
+    title: 'Message Buffer & Peak Shaver (Kafka / RocketMQ)',
+    tag: 'ASYNC QUEUE',
+    badge: 'worker',
+    specs: 'High throughput · Single partition per SKU strict ordering',
+    desc: 'The core peak-shaving reservoir. Routes orders for a given SKU to a single partition, leveraging FIFO ordering to eliminate database lock contention across multiple application nodes, converting spike traffic into steady downstream consumption.',
+    protocols: 'Apache Kafka / RocketMQ',
+  },
+  stock_worker: {
+    title: 'Stock Worker Cluster',
+    tag: 'WORKER TIER',
+    badge: 'worker',
+    specs: 'Controlled backpressure · Batched transactional commits',
+    desc: 'Consumes from Kafka at a strictly calibrated rate matching DB write capacity (e.g. 3,000-5,000 TPS). Executes atomic stock deductions and order persistence within single transactions, then writes (request_id, status, order_id) to Redis for client polling.',
+    protocols: 'Go / Java Workers + JDBC Pool',
+  },
+  db: {
+    title: 'Primary Relational Database (MySQL InnoDB)',
+    tag: 'DATABASE',
+    badge: 'store',
+    specs: 'Source of Truth · ACID transactions',
+    desc: 'Stores durable orders and factual inventory. Executes atomic deduction: UPDATE stock_table SET remain = remain - 1 WHERE sku_id = ? AND remain >= 1. Backed by a unique composite index on (user_id, sku_id) to physically enforce one purchase per user.',
+    protocols: 'MySQL InnoDB / PostgreSQL',
+  },
+  read_cache: {
+    title: 'Order Status Read Cache (Redis Read Model)',
+    tag: 'CACHE',
+    badge: 'cache',
+    specs: 'Read latency < 1ms · Automatic TTL eviction',
+    desc: 'A pure read model, NOT the source of truth for stock. Stores asynchronous order processing states: PENDING, SUCCESS, or FAILED. If cache entries are missing or evicted, clients safely fall back to the primary API, ensuring maximum resilience.',
+    protocols: 'Redis Cluster (Hash/String with TTL)',
+  },
+};
+
 function FlashSaleArchitectureVisual() {
-  const { t } = useUiCopy();
+  const { isEnglish, t } = useUiCopy();
   const [mode, setMode] = useState('buy');
+  const [selectedNode, setSelectedNode] = useState('gateway');
+
   const titles = {
-    view: t('查看活动：Gateway → Sale Service → DB', 'View sale: Gateway → Sale Service → DB'),
     buy: t('下单：MQ ack 后返回 202，不预占库存', 'Buy: 202 after MQ ack; stock is not reserved'),
+    view: t('查看活动：Gateway → Sale Service → DB', 'View sale: Gateway → Sale Service → DB'),
     result: t('查单：长轮询 Redis；miss 走 API', 'Result: long-poll Redis; miss hits the API'),
+    topology: t('全景拓扑：用户 → 网关 → 异步 MQ 削峰 → Worker → DB 唯一写', 'Full Topology: User → Gateway → MQ Peak Shaving → Worker → DB'),
   };
+
+  const nodeDict = isEnglish ? FLASH_NODE_DETAILS_EN : FLASH_NODE_DETAILS;
 
   return (
     <section className="arch-visual flash-arch" aria-label={t('秒杀系统架构图', 'Flash sale architecture')}>
@@ -6996,13 +7324,29 @@ function FlashSaleArchitectureVisual() {
           <p>{t('一场活动一个 SKU。读走 cache，买走队列，库存只在 DB 事务里动。', 'One sale, one SKU. Cache the reads. Queue the buys. Stock moves only in a DB transaction.')}</p>
         </div>
         <div className="arch-tabs" role="group" aria-label={t('选择秒杀链路', 'Choose a flash-sale path')}>
-          <button type="button" className={mode === 'view' ? 'active' : ''} onClick={() => setMode('view')}>{t('查看活动', 'View sale')}</button>
           <button type="button" className={mode === 'buy' ? 'active' : ''} onClick={() => setMode('buy')}>{t('下单', 'Buy')}</button>
+          <button type="button" className={mode === 'view' ? 'active' : ''} onClick={() => setMode('view')}>{t('查看活动', 'View sale')}</button>
           <button type="button" className={mode === 'result' ? 'active' : ''} onClick={() => setMode('result')}>{t('查结果', 'Result')}</button>
+          <button type="button" className={mode === 'topology' ? 'active' : ''} onClick={() => setMode('topology')}>{t('全景拓扑', 'Full topology')}</button>
         </div>
       </header>
 
       <div className="flash-stage" data-mode={mode}>
+        {mode === 'topology' && (
+          <ArchitectureTopologyCanvas
+            viewBox="0 0 880 490"
+            nodes={FLASH_TOPOLOGY_NODES}
+            edges={FLASH_TOPOLOGY_EDGES}
+            nodeDetails={nodeDict}
+            selectedNode={selectedNode}
+            onSelectNode={setSelectedNode}
+            legendItems={[
+              { type: 'control', labelZh: '控制面 (HTTPS/RPC)', labelEn: 'Control Plane (HTTPS/RPC)' },
+              { type: 'async', labelZh: '异步削峰队列 (Kafka)', labelEn: 'Async Peak-Shaving (Kafka)' },
+              { type: 'data', labelZh: '数据面 (事务/缓存)', labelEn: 'Data Plane (Txn/Cache)' },
+            ]}
+          />
+        )}
         {mode === 'view' && (
           <div className="arch-flow photo-control-row">
             <div className="arch-node neutral"><small>CLIENT</small><strong>App</strong><span>view sale</span></div>
