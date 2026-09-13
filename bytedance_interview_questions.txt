@@ -1,0 +1,552 @@
+========================================================================================================================
+字节跳动 (ByteDance) 面试/笔试高频题库清单总汇表 (全部收录题目)
+总收录量：65 题  |  生成时间：2026-09-12  |  输出文件：bytedance_interview_questions.txt
+========================================================================================================================
+
+【模块导航】
+  一、字节工业界手撕独家真题（共 16 题，无直接 1:1 LeetCode 原题，系统/算法独立逻辑）
+  二、字节核心算法手撕高频真题（共 39 题，含 LeetCode 经典原题编号与系统级追问）
+  三、字节机器学习系统工程、手算推导与算法从零手撕（共 10 题，含模型诊断、手算与自研实现）
+  四、Excel / Google Sheets / Notion 极速导入区 (TSV Data Block)
+
+
+========================================================================================================================
+【一、字节工业界手撕独家真题 (系统仿真 / 数据流 / 拓扑调度 / 树形贪心)】（共 16 题）
+========================================================================================================================
+
+[01] 8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator Simulation)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N/8 * X) | 空间 O(N)
+  ├─ 核心考点: 位运算步进 · 数组空闲块扫描 · 连续槽位分配 · 唯一ID解构释放
+  ├─ 题目规格: alloc(size): 起始下标必须为 8 的倍数且有连续 size 个 free cell；erase(id): 释放所有标记为 id 的单元并返回计数
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[02] 数据流单调降序邻域局部最大值检索 (Local Maximum on a 1-D Stream with Boundary Degradation)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 一维流局部极值 · 双侧严格单调递减检验 · 边界自适应退化
+  ├─ 题目规格: 给定 rawData 与 localArea，检出左右两翼在其可用邻域内均严格单调递减的峰值索引；端点处元素依现有单侧邻域退化判准
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[03] 子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray via Adjacent Pair Reduction)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 连续子数组 · 极值和数学归约 · 相邻元素贪心对偶
+  ├─ 题目规格: 求长度 >= 2 的连续子数组中 min(sub) + max(sub) 的最大值。数学证明最大值必然由相邻两数构成：max_i (nums[i] + nums[i+1])
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[04] 有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)
+  ├─ 题型定位: 字节工业界手撕 (亚线性二分)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(log N) | 空间 O(1)
+  ├─ 核心考点: 有序数组 · 鸽巢原理 · 候选探针锚定 · 二分首尾边界计数
+  ├─ 题目规格: 在已排序数组中检索所有频次 > len/3 的元素。任何频次超标元素必然覆盖 n/3 或 2n/3 探针点，通过 bisect 边界精确判定
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[05] 单词反转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place Semantics)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1) 原地
+  ├─ 核心考点: 双指针 · 局部对称反转 · 空格间隙序列提取与精准回填 · 原地语义
+  ├─ 题目规格: 单词整体逆序倒排，但原字符串各位置所拥有的空格长度与绝对间隔必须严格原样保留（与 LC 151 截然不同）
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[06] 奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 连续子数组 · 动态连击增量 (Streak Counter) · 奇偶异或模检验
+  ├─ 题目规格: 统计相邻元素奇偶性交替的连续子数组总数（单元素算长度 1 交替串）。以 nums[i] 结尾的合法子数组数量递推累加
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[07] 分级优先级任务调度系统 (Tiered Priority Task Scheduler)
+  ├─ 题型定位: 字节系统架构手撕 (高频题)  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(log K) | 空间 O(N)
+  ├─ 核心考点: 多级优先队列 · 桶队列 (Bucket Queue) / 最大堆 · 同级 FIFO 保序
+  ├─ 题目规格: 支持 addTask(priority, taskId) 与 executeNext()。优先弹出最高 priority 任务，同优先级依先来后到 FIFO 执行
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[08] 基于时间戳的任务调度与即时清除器 (Timestamp-based Task Scheduler with Instant Cancellation)
+  ├─ 题型定位: 字节系统架构手撕 (高频题)  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(log N) | 空间 O(N)
+  ├─ 核心考点: 最小堆 (按时间戳) · 延迟删除 (Lazy Deletion) · 哈希反向索引双向映射
+  ├─ 题目规格: schedule(timestamp, taskId) 注册执行时间；getNextReady(now) 批量触发到期任务；removeTask(taskId) 需支持快速取消
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[09] 勾股数三元组判定与多重集保留 (Pythagorean Triplet & Multiplicity 2-Pointer Search)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N^2) | 空间 O(N)
+  ├─ 核心考点: 平方数值哈希 · 双指针两端夹逼 · 多重集元素重数校验 (Multiplicity)
+  ├─ 题目规格: 判定数组是否存在 a^2 + b^2 = c^2。必须严格校验元素物理实例独立性（数值相同但下标不同，杜绝单元素自加倍虚假匹配）
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[10] 用指定数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A / Digit Greedy)
+  ├─ 题型定位: 字节高频手撕 (数位贪心回溯)  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(L * |A|) | 空间 O(L)
+  ├─ 核心考点: 数位分解 · 前缀贪心匹配 · 回溯降级选择 · 长度回退全最大填充
+  ├─ 题目规格: 给定正整数集合 A 与数字 N，用 A 中的数字拼接一个严格小于 N 的最大数（允许重复使用数字）。包含同位降级与退化少一位分支
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[11] 无人机中继贪心跳跃与步行距离最小化 (Drone Relay to Target via Greedy Forward Progression)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(M log M) | 空间 O(M)
+  ├─ 核心考点: 贪心模拟 · 中继站排序 · 前向跳跃更新 · 步行代价累积
+  ├─ 题目规格: 从 0 到 target。在某些中继站可将包裹交给无人机向前运送 10 单位。走到中继站花费等额距离。贪心选择中继站最小化总步行代价
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[12] 双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)
+  ├─ 题型定位: 字节工业界手撕 (文本排版与边框)  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(Total Words) | 空间 O(Total Output)
+  ├─ 核心考点: 贪心单词装箱 · 左右动态对齐补齐 · 物理字符矩阵矩形封闭渲染
+  ├─ 题目规格: 单词依行宽贪心装箱；依段落标志做 LEFT/RIGHT 动态空格填充；在外围整体渲染一层完整的星号 ('*') 矩形包裹框
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[13] 带动态 DAG 依赖与节点收缩的规则校验系统 (Order Validator with Dynamic DAG Dependencies & Node Contraction)
+  ├─ 题型定位: 字节系统架构手撕 (高频题)  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(V + E) | 空间 O(V + E)
+  ├─ 核心考点: 有向无环图 (DAG) · 拓扑排序环检测 · 节点收缩 (Node Contraction) 邻接重组
+  ├─ 题目规格: 规则引擎校验：动态添加/删除依赖规则；执行环路检测与拓扑校验流；当指定节点收缩时，自动旁路重建入边与出边的直连传递闭包
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[14] 扁平化多级评论数据转换为嵌套层级树 (Flatten Comment Tree to Multi-Level Hierarchy)
+  ├─ 题型定位: 字节业务高频手撕 (评论系统核心)  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 哈希表索引映射 · 两趟单线性扫描 · 孤儿节点防御 · 自引用环路拦截
+  ├─ 题目规格: 给定扁平评论列表 [id, parent_id, content]，单次线性构造成多叉嵌套树结构。根节点 parent_id 为 null；严格防范孤儿节点与循环引用
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[15] N 叉树根到叶路径和拉平的最小操作数 (Equalize Root-to-Leaf Path Sums in N-ary Tree)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(H)
+  ├─ 核心考点: 多叉树遍历 · 树形后序贪心 (Post-order DP) · 公共祖先优先提升 (Greedy Lift)
+  ├─ 题目规格: 每次操作可将某条边的权值加 1。求将所有根节点到叶子节点的路径权重和全部提升拉平为同一最大值的最少增加总权重
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[16] 带油箱与充能站的网格最短路径 (Grid Shortest Path with Fuel Tank & Recharge Stations)
+  ├─ 题型定位: 字节工业界手撕 (无直接LC原题)  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(R * C * F) | 空间 O(R * C * F)
+  ├─ 核心考点: 三维状态空间 BFS (r, c, fuel) · 优先队列 Dijkstra · 充能状态坍缩
+  ├─ 题目规格: 网格迷宫带障碍物，小车拥有最大容量 fuel 的油箱，每步消耗 1 单位；特定格点为充能站（可充满油）。求到达目标的最短步数
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+
+========================================================================================================================
+【二、字节核心算法手撕高频真题 (LeetCode 对标经典与系统级追问)】（共 39 题）
+========================================================================================================================
+
+[17] 和为 K 的子数组计数与前缀和哈希映射 (Subarray Sum Equals K via Prefix Sum Hash Map)
+  ├─ 题型定位: LeetCode 560  [所属篇章: Review01]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 前缀和差分 · 频次哈希表 · 负数鲁棒性
+  ├─ 题目规格: 统计连续子数组和等于 k 的总个数。利用 sum[j] - sum[i] = k 转化为查找历史前缀和出现次数
+  └─ 对应代码: notes/Leetcode/Review01 Common Fundamentals.md
+
+[18] LRU 缓存与其系统级演进全家桶 (LRU Cache & System-Level Extensions)
+  ├─ 题型定位: LeetCode 146  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(1) | 空间 O(Capacity)
+  ├─ 核心考点: 双向链表 · 哈希字典 · 哨兵节点 · O(1) 访问与淘汰
+  ├─ 题目规格: 实现 Least Recently Used 缓存置换机制；拓展 TTL 过期清理与分段锁高并发读写架构
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[19] K 个一组翻转链表 (Reverse Nodes in k-Group)
+  ├─ 题型定位: LeetCode 25  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 单链表局部反转 · 探测步长 · 虚拟头节点穿针引线
+  ├─ 题目规格: 每 k 个节点一组进行链表倒序翻转；若最后剩余不足 k 个节点，则保持原有相对顺序不翻转
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[20] 扁平化多级双向链表 (Flatten a Multilevel Doubly Linked List)
+  ├─ 题型定位: LeetCode 430  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(D)
+  ├─ 核心考点: 双向链表 · 深度优先遍历 (DFS) 迭代栈 · 子链表穿针引线
+  ├─ 题目规格: 包含 next、prev 和 child 指针的多级双向链表，将其扁平化展开为单层双向链表
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[21] 基本计算器层级语法机 (Basic Calculator Hierarchy (I, II, III))
+  ├─ 题型定位: LeetCode 224 / 227 / 772  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 操作数栈与符号栈 · 运算符优先级调度 · 括号递归下潜/栈回溯
+  ├─ 题目规格: 解析计算包含加减乘除、空格及多层括号 '(' ')' 的四则运算表达式字符串
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[22] 滑动窗口最大值与单调双端队列 (Sliding Window Maximum via Monotonic Deque)
+  ├─ 题型定位: LeetCode 239  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(K)
+  ├─ 核心考点: 单调双端队列 (Monotonic Deque) · 头部过期剔除 · 尾部破坏单调性挤压
+  ├─ 题目规格: 大小为 k 的滑动窗口从数组最左移动到最右，实时输出每个窗口内的最大数值
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[23] 柱状图中最大的矩形与单调栈对称收敛 (Largest Rectangle in Histogram via Monotonic Stack)
+  ├─ 题型定位: LeetCode 84  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 严格单调递增栈 · 左右两侧首个更小高度边界界定 · 虚拟高度 0 哨兵
+  ├─ 题目规格: 给定非负整数柱状图数组 heights，求柱状图中能够勾勒出的最大矩形面积
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[24] 有效的括号字符串与双贪心平衡界 (Valid Parenthesis String: Two Greedy Bounds)
+  ├─ 题型定位: LeetCode 678  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 贪心区间收敛 · 未匹配左括号可能范围 [min_open, max_open] · 负数截断
+  ├─ 题目规格: 字符串包含 '(', ')' 和通配符 '*'（可充当左、右括号或空字符），判定是否合法闭合
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[25] 数据流的中位数与对偶极值对顶堆 (Find Median from Data Stream via Dual Heaps)
+  ├─ 题型定位: LeetCode 295  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(log N) | 空间 O(N)
+  ├─ 核心考点: 大顶堆 (存前半区) + 小顶堆 (存后半区) · 动态容量平衡 (差值<=1) · 峰顶极值
+  ├─ 题目规格: 持续从数据流读入数值，随时返回当前所有数值的中位数（偶数个数取两极均值）
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[26] 反转链表与递归迭代双范式 (Reverse Linked List)
+  ├─ 题型定位: LeetCode 206  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(1)
+  ├─ 核心考点: 单链表指针翻转 · 前驱当前迭代推进 · 递归后序回溯穿针
+  ├─ 题目规格: 将单向链表的所有节点链接方向就地彻底倒置
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[27] 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
+  ├─ 题型定位: LeetCode 316 / 1081  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(N) | 空间 O(|Sigma|)
+  ├─ 核心考点: 单调栈 · 字符剩余计数表 (Remaining) · 栈内存在哈希集合 (In-Stack)
+  ├─ 题目规格: 去除字符串中所有重复字母，使得每个字母仅出现一次，且返回结果的字典序最小
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[28] 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
+  ├─ 题型定位: LeetCode 155 / 295  [所属篇章: Review02]
+  ├─ 时空开销: 时间 O(1) | 空间 O(N)
+  ├─ 核心考点: 辅助单调同步栈 / 差值编码栈 · O(1) 检索极值 · 并发读写锁扩展
+  ├─ 题目规格: 实现支持 push, pop, top, 并在 O(1) 时间检索最小元素的 MinStack，并追问多维极值扩展
+  └─ 对应代码: notes/Leetcode/Review02 LinkedList Stack Heap.md
+
+[29] 合并区间与其工业级拓扑变体全家桶 (Merge Intervals & Interval Topology Variants)
+  ├─ 题型定位: LeetCode 56 / 57  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N log N) | 空间 O(N)
+  ├─ 核心考点: 闭区间贪心 · 起点预排序 · 右边界动态拉伸 · 插入区间
+  ├─ 题目规格: 合并所有重叠的闭区间 [start, end]，返回互不重叠覆盖全集的区间列表
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[30] 最小覆盖子串与多最优解候选集 (Minimum Window Substring & Multi-Candidate Expansion)
+  ├─ 题型定位: LeetCode 76  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(|S| + |T|) | 空间 O(|Sigma|)
+  ├─ 核心考点: 滑动窗口双指针 · 欠款哈希字典 (Required vs Window) · 达标有效计数器
+  ├─ 题目规格: 在 S 中找出包含 T 所有字符（含重复频次）的最短连续子串；追问返回所有同长度最优解
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[31] 替换后的最长重复字符与滑窗最频计数维持 (Longest Repeating Character Replacement)
+  ├─ 题型定位: LeetCode 424  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N) | 空间 O(|Sigma|)
+  ├─ 核心考点: 可变滑动窗口 · 历史最高频次 max_freq 惰性单调维持 · (window - max_freq <= k)
+  ├─ 题目规格: 仅包含大写字母的字符串，最多可将 k 个字符替换为任意字母，求最长重复字符子串长度
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[32] 变长与定长滑动窗口经典范式 (无重复字符最长子串) (Variable & Fixed Sliding Window Patterns)
+  ├─ 题型定位: LeetCode 3  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N) | 空间 O(|Sigma|)
+  ├─ 核心考点: 滑动窗口 · 字符最新下标表 · left = max(left, last_seen[ch] + 1) 跳跃
+  ├─ 题目规格: 找出给定字符串中不含有重复字符的最长子串长度
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[33] 子集、排列与组合通用回溯范式 (Subsets, Permutations & Combinations)
+  ├─ 题型定位: LeetCode 78 / 46 / 77  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(2^N) / O(N!) | 空间 O(N)
+  ├─ 核心考点: 树形状态空间搜索 · 回溯深搜 · 树枝去重 (used) vs 树层去重 (nums[i] == nums[i-1])
+  ├─ 题目规格: 回溯三大基石：无重子集收集、含重排列全遍历、固定大小组合选取通用模版
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[34] 无重叠区间贪心调度与最少移除数 (Non-overlapping Intervals via Earliest Deadline First)
+  ├─ 题型定位: LeetCode 435  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N log N) | 空间 O(1)
+  ├─ 核心考点: 贪心区间调度 · 最早截止时间优先 (EDF) · 按右端点升序排序
+  ├─ 题目规格: 计算使数组中剩余区间互不重叠所需要移除的最少区间数量
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[35] 时间戳键值存储与有序版本二分检索 (Time-Based Key-Value Store via Binary Search)
+  ├─ 题型定位: LeetCode 981  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(log N) | 空间 O(Total Entries)
+  ├─ 核心考点: 哈希表套列表 · 升序时间戳追加 · 二分查找 (bisect_right - 1)
+  ├─ 题目规格: set(key, value, timestamp) 写入；get(key, timestamp) 检索小于等于该时刻的最新值
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[36] 区间列表相交两指针交集扫描 (Interval List Intersections via Two-Pointer Scan)
+  ├─ 题型定位: LeetCode 986  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(M + N) | 空间 O(1)
+  ├─ 核心考点: 双指针协同推进 · 闭区间重叠判准 max(start) <= min(end) · 较早结束者指针平移
+  ├─ 题目规格: 给定两个各自内部互不相交且已排序的区间列表，求两者的公共相交区间集合
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[37] 至多 K 个不同字符的最长子串滑动窗口 (Longest Substring with At Most K Distinct Characters)
+  ├─ 题型定位: LeetCode 340  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(N) | 空间 O(K)
+  ├─ 核心考点: 可变滑动窗口 · 字符频次哈希字典 · 零频物理删除 (len(map) <= k)
+  ├─ 题目规格: 给定字符串 s 与整数 k，找出至多包含 k 个不同字符的最长连续子串长度
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[38] 旋转有序数组二分查找与重复元素退化 (Search in Rotated Sorted Array: Distinct vs Duplicates)
+  ├─ 题型定位: LeetCode 33 / 81  [所属篇章: Review03]
+  ├─ 时空开销: 时间 O(log N) | 空间 O(1)
+  ├─ 核心考点: 二分查找 · 对偶单调半区判别 (nums[mid] >= nums[left]) · 边界线性收缩
+  ├─ 题目规格: 在未知轴心旋转后的有序数组中查找目标值 target 下标；处理含重复数字退化情形
+  └─ 对应代码: notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+
+[39] 岛屿数量与全景变体全家桶 (Number of Islands & All Canonical Variants)
+  ├─ 题型定位: LeetCode 200 / 694 / 827  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(M * N) | 空间 O(M * N)
+  ├─ 核心考点: 网格隐式图 · 沉岛 BFS/DFS · 并查集 (DSU) · 相对坐标归一化
+  ├─ 题目规格: 统计网格中 '1' (陆地) 连通块个数；延伸统计不同形状岛屿 (LC 694) 与造桥最大岛 (LC 827)
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[40] 课程表与拓扑排序全家桶 (Course Schedule & Topological Sort)
+  ├─ 题型定位: LeetCode 207 / 210  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(V + E) | 空间 O(V + E)
+  ├─ 核心考点: 有向图拓扑排序 · Kahn 入度队列 · DFS 三色标记法 · 依赖成环诊断
+  ├─ 题目规格: 给定先决修课依赖，判定是否能学完所有课程 (LC 207) 并输出可行修课序列 (LC 210)
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[41] 带消除障碍物预算的网格最短路径 (Shortest Path in Grid with Obstacles Elimination)
+  ├─ 题型定位: LeetCode 1293  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(M * N * K) | 空间 O(M * N * K)
+  ├─ 核心考点: 三维状态空间 BFS (r, c, remaining_k) · 支配性剪枝 (visited 记录最大消除预算)
+  ├─ 题目规格: 在包含障碍物 '1' 的网格中从左上走到右下，最多消除 k 个障碍物，求最短移动步数
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[42] 最近公共祖先与全景变体全家桶 (Lowest Common Ancestor / LCA)
+  ├─ 题型定位: LeetCode 236 / 235 / 1644  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(H)
+  ├─ 核心考点: 递归后序分治 (Post-order DFS) · BST 数值区间剪枝 · 父指针哈希交汇
+  ├─ 题目规格: 求普通二叉树 (LC 236) 或二叉搜索树 (LC 235) 中两节点的最近公共祖先；节点可能不存在
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[43] 二叉树最大路径和全景与路径重构 (Binary Tree Maximum Path Sum & Path Reconstruction)
+  ├─ 题型定位: LeetCode 124  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(H)
+  ├─ 核心考点: 树形动态规划 · 单侧最大贡献值递归 · 负收益截断 max(0, gain) · 全局最优路径
+  ├─ 题目规格: 路径可从二叉树任意节点开始到任意节点结束。求所有非空路径的节点数值总和最大值
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[44] 零钱兑换与完全背包模型全景 (Coin Change 1 & 2 / Unbounded Knapsack)
+  ├─ 题型定位: LeetCode 322 / 518  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(Amount * N) | 空间 O(Amount)
+  ├─ 核心考点: 完全背包 DP · 极值模型 vs 组合计数模型 · 外层硬币内层金额循环本质
+  ├─ 题目规格: 零钱兑换 I：凑齐总金额最少硬币数 (最值)；零钱兑换 II：凑齐总金额组合总数 (计数去重)
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[45] 贴纸拼词与状态压缩动态规划 (Stickers to Spell Word & Bitmask DP)
+  ├─ 题型定位: LeetCode 691  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(2^L * S * L) | 空间 O(2^L)
+  ├─ 核心考点: 状态压缩动态规划 · 记忆化搜索 · 首个未覆盖字符强行匹配剪枝
+  ├─ 题目规格: 给定字符贴纸数组 stickers 和目标词 target，求拼出 target 所有字符所需的最少贴纸数
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[46] 网格最长交替折线路径 (Longest Alternating Zigzag Path in 2D Grid)
+  ├─ 题型定位: 字节状态机网格 DP (真题)  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(M * N) | 空间 O(M * N)
+  ├─ 核心考点: 二维网格 · 状态机动态规划 / 记忆化深搜 · 方向交替转换规则
+  ├─ 题目规格: 在网格中寻找最长折线路径，每步必须在水平与垂直方向交替前进（如 右 -> 下 -> 右 -> 下）
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[47] 多叉树垂直自顶向下目标路径和 (N-ary Tree Downward Target Path Sum)
+  ├─ 题型定位: LeetCode 437  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(H)
+  ├─ 核心考点: 树上前缀和 · 哈希频次映射 · 回溯离开时作用域清除 (Backtracking Cleanup)
+  ├─ 题目规格: 在树中查找路径和等于 targetSum 的向下路径总数（路径只能自祖先走向后代节点）
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[48] 字典树加速网格单词搜寻 (Word Search II with Trie & Backtracking Pruning)
+  ├─ 题型定位: LeetCode 212  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(M * N * 4 * 3^L) | 空间 O(Sigma * L)
+  ├─ 核心考点: Trie 前缀树 · 二维网格 DFS 回溯 · 动态叶节点剪枝 (Trie Pruning) · 原地状态置换
+  ├─ 题目规格: 在字母矩阵中找出所有在给定字典 words 中出现的单词；必须进行搜索中 Trie 叶子剪枝
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[49] 图片相似度聚类与并查集连通分量 (Photo Similarity Groups via Union-Find)
+  ├─ 题型定位: LeetCode 547  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N^2 * alpha(N)) | 空间 O(N)
+  ├─ 核心考点: 并查集 (Disjoint Set Union) · 路径压缩与按秩合并 · 连通分量统计
+  ├─ 题目规格: 给定两两图片间的相似度判定矩阵（无向图邻接矩阵），求所有相互连通的相似图片集群总数
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[50] 二叉树右视图与自建树脚手架 (Binary Tree Right Side View)
+  ├─ 题型定位: LeetCode 199  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(D)
+  ├─ 核心考点: 二叉树遍历 · 层序遍历 (BFS) 队列取层尾 · 逆先序 DFS (根-右-左) 优先占位
+  ├─ 题目规格: 站在二叉树的右侧，自顶向下返回所能看到的所有节点数值序列
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[51] 前序与后序遍历序列重构二叉树 (Construct Binary Tree from Preorder and Postorder)
+  ├─ 题型定位: LeetCode 889  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 递归分治 · 后序位置哈希索引 · 左子树根节点定位与规模划界
+  ├─ 题目规格: 给定二叉树的前序遍历与后序遍历序列，重构并返回一棵满足条件的二叉树
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[52] 关系描述数组重构二叉树与孤立根定位 (Construct Binary Tree from Descriptions)
+  ├─ 题型定位: LeetCode 2196  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N) | 空间 O(N)
+  ├─ 核心考点: 哈希字典节点缓存 · 子节点集合差集运算 (Parents - Children) 定位根节点
+  ├─ 题目规格: 二维数组 descriptions[i] = [parent, child, isLeft] 给出树边关系，重构整棵二叉树
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[53] 复原 IP 地址与泛化 K 段数字划分 (Restore IP Addresses & Generalized K-Segment Partition)
+  ├─ 题型定位: LeetCode 93  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(1) | 空间 O(1)
+  ├─ 核心考点: 回溯搜索 · 数值边界严格校验 (0..255) · 前导零非法防护 · 剩余长度剪枝
+  ├─ 题目规格: 只包含数字的字符串，复原所有可能构成的有效 IPv4 地址点分十进制组合
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[54] 外星人词典拓扑排序与边界防御 (Alien Dictionary via Directed Graph Topological Sort)
+  ├─ 题型定位: LeetCode 269  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(C) | 空间 O(|Sigma| + |E|)
+  ├─ 核心考点: 有向图拓扑排序 · Kahn 算法 · 前缀非法校验 (apple vs app) · 孤立字符收集
+  ├─ 题目规格: 给定字典序排好的一组外星语言单词列表，推导并返回该语言字母的唯一字典排序顺序
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+[55] 最长回文子串：区间动态规划与中心扩散 (Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher)
+  ├─ 题型定位: LeetCode 5  [所属篇章: Review04]
+  ├─ 时空开销: 时间 O(N^2) / O(N) | 空间 O(N^2) / O(N)
+  ├─ 核心考点: 区间动态规划 dp[i][j] · 中心扩散法 · 马拉车 (Manacher) 回文对称映射
+  ├─ 题目规格: 返回字符串 s 中的最长回文子串。完整掌握区间 DP 填表递推与 Manacher 线性对称借力
+  └─ 对应代码: notes/Leetcode/Review04 Tree Graph DP.md
+
+
+========================================================================================================================
+【三、字节机器学习系统工程、手算推导与算法从零手撕 (诊断/手算/手撕)】（共 10 题）
+========================================================================================================================
+
+[56] 满足 Recall > 90% 与 FPR < 10% 的混淆矩阵严选决策 (Confusion Matrix Selection under Dual Performance Bounds)
+  ├─ 题型定位: 字节 ML 笔试/面试选择题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 O(1) | 空间 O(1)
+  ├─ 核心考点: 二分类混淆矩阵 · Recall = TP/(TP+FN) · FPR = FP/(FP+TN) 双不等式约束联立
+  ├─ 题目规格: 给定多个备选候选混淆矩阵 [[TP, FP], [FN, TN]]，快速计算检出满足高召回低假阳阈值的矩阵
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[57] 训练损失发散（Training Loss Divergence）多维根因排查与多选辨析 (Training Loss Divergence Diagnostics)
+  ├─ 题型定位: 字节 ML 系统工程辨析题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 定性推导 | 空间 工程诊断
+  ├─ 核心考点: 梯度下降动力学 · 学习率过大 (Overshooting) · 梯度爆炸 · 特征未归一化 · 正则过弱
+  ├─ 题目规格: 训练初期损失迅速飙升至 NaN/Inf 的原因多选题辨析：步长过大、损失与激活函数不匹配等
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[58] 拟合-验证曲线过拟合诊断与针对性缓解对策 (Overfitting Diagnosis & Mitigation on Train-Val Curves)
+  ├─ 题型定位: 字节 ML 核心概念选择题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 定性分析 | 空间 实验指标
+  ├─ 核心考点: 泛化误差分解 (Bias-Variance) · 泛化差距 (Generalization Gap) · 正则化与早停
+  ├─ 题目规格: 给定训练损失持续下降而验证损失上翘发散的曲线图，多选辨别最优缓解手段（加正则/Dropout/扩增）
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[59] 3 层神经网络前向传播纯手算数值推导 (3-Layer NN Forward Pass by Hand: Linear-Linear-Sigmoid)
+  ├─ 题型定位: 字节 ML 纯手算数值题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 O(Sum(d_in*d_out)) | 空间 O(Hidden)
+  ├─ 核心考点: 多层感知机 (MLP) · 矩阵乘法 · 偏置累加 · Sigmoid 激活函数数值截断计算
+  ├─ 题目规格: 给定输入向量 x=[1, 2] 与三层权重 W1, b1, W2, b2, W3, b3，纯手工矩阵运算并精确舍入至小数点后三位
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[60] 从零纯手写 K-Means 聚类器 (k-Means Clustering from Scratch: Lloyd's Algorithm)
+  ├─ 题型定位: 字节 ML 手撕代码题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 O(T * N * K * D) | 空间 O(N*K + K*D)
+  ├─ 核心考点: 无监督聚类 · 欧氏距离广播矩阵 · 质心分配 (Assign) · 均值重算 (Update) · 收敛判准
+  ├─ 题目规格: 不调 sklearn，从零编写标准 K-Means 类：支持 fit(X), predict(X), 处理空簇兜底与容差早停
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[61] 缩放点积自注意力机制与第一性原理二元交叉熵损失 (Scaled Dot-Product Attention & Numerically Stable BCE)
+  ├─ 题型定位: 字节 ML 手撕代码题  [所属篇章: MLCoding00]
+  ├─ 时空开销: 时间 O(SeqLen^2 * D) | 空间 O(SeqLen^2)
+  ├─ 核心考点: Transformer Attention · 根号 d_k 缩放 · Softmax 减最大值防溢出 · Log-Sum-Exp 稳定 BCE
+  ├─ 题目规格: 从零纯手写注意力矩阵计算；编写带有 log1p/exp 数值防下溢截断的二元交叉熵损失函数
+  └─ 对应代码: notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+
+[62] 决策树节点切分不纯度指标多维辨析 (Decision Tree Impurity: Entropy vs Gini vs Misclassification Error)
+  ├─ 题型定位: 字节 ML 理论多选题  [所属篇章: MLCoding09]
+  ├─ 时空开销: 时间 凸性分析 | 空间 O(1)
+  ├─ 核心考点: 信息熵 (Entropy) · 基尼系数 (Gini) · 分类错误率 (Error) · 凹性 (Concavity) 与信息增益
+  ├─ 题目规格: 深入辨析三类切分准则优劣：为什么决策树切分绝不采用 Classification Error（导数不敏感）
+  └─ 对应代码: notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+
+[63] 集成学习（Ensemble Learning）得失权衡多维辨析 (Ensemble Learning Trade-offs: When Ensembling Helps vs Hurts)
+  ├─ 题型定位: 字节 ML 系统面试题  [所属篇章: MLCoding09]
+  ├─ 时空开销: 时间 定性分析 | 空间 系统架构
+  ├─ 核心考点: 偏差-方差分解 · 模型多样性 (Diversity) · 推理延迟 · 可解释性黑盒 · 线性混杂集
+  ├─ 题目规格: 多选题研判：什么时候集成学习会显著带来收益？什么时候会造成计算灾难或边际收益归零？
+  └─ 对应代码: notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+
+[64] 梯度提升树 (GBM) vs 随机森林 (Random Forest) 快速基线构建选型对比 (GBM vs Random Forest Baseline Selection)
+  ├─ 题型定位: 字节 ML 面试真题  [所属篇章: MLCoding09]
+  ├─ 时空开销: 时间 定性权衡 | 空间 生产选型
+  ├─ 核心考点: Boosting vs Bagging · 串行拟合残差 vs 并行独立采样 · 超参数敏感度 · 并行吞吐
+  ├─ 题目规格: 对于需要极速交付的初始业务基线，辨析 RF 与 GBM 在鲁棒性、调参成本与抗噪性上的优劣真伪命题
+  └─ 对应代码: notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+
+[65] 从零纯手写 Bagging 分类器 (Bagging Classifier from Scratch: Bootstrap Sampling & Majority Vote)
+  ├─ 题型定位: 字节 ML 手撕代码题  [所属篇章: MLCoding09]
+  ├─ 时空开销: 时间 O(B * TrainCost) | 空间 O(B * ModelSize)
+  ├─ 核心考点: 自助采样法 (Bootstrap with Replacement) · 弱分类器森林 · 多数表决投票 (Majority Vote)
+  ├─ 题目规格: 纯原生 Python/NumPy 实现完整 BaggingClassifier 类，包含有放回重采样抽样与预测表决机制
+  └─ 对应代码: notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+
+
+========================================================================================================================
+四、Excel / Notion / Sheets 极速导入区 (TSV 纯文本制表符数据)
+※ 使用说明：复制下方全部制表符文本，在 Excel / Numbers / Notion 页面直接 Ctrl+V / Cmd+V 即可自动生成表格。
+========================================================================================================================
+序号	所属篇章	题目中文名	题目英文名	题目定位/LeetCode	时间复杂度	空间复杂度	核心考点与算法机制	核心题意与规格约束	本地代码路径
+01	Review01	8 字节对齐内存分配器仿真	8-Byte Aligned Memory Allocator Simulation	字节工业界手撕 (无直接LC原题)	位运算步进 · 数组空闲块扫描 · 连续槽位分配 · 唯一ID解构释放	O(N/8 * X)	O(N)	alloc(size): 起始下标必须为 8 的倍数且有连续 size 个 free cell；erase(id): 释放所有标记为 id 的单元并返回计数	notes/Leetcode/Review01 Common Fundamentals.md
+02	Review01	数据流单调降序邻域局部最大值检索	Local Maximum on a 1-D Stream with Boundary Degradation	字节工业界手撕 (无直接LC原题)	一维流局部极值 · 双侧严格单调递减检验 · 边界自适应退化	O(N)	O(1)	给定 rawData 与 localArea，检出左右两翼在其可用邻域内均严格单调递减的峰值索引；端点处元素依现有单侧邻域退化判准	notes/Leetcode/Review01 Common Fundamentals.md
+03	Review01	子数组极值和极大化与相邻对偶性规约	Largest Min+Max in Subarray via Adjacent Pair Reduction	字节工业界手撕 (无直接LC原题)	连续子数组 · 极值和数学归约 · 相邻元素贪心对偶	O(N)	O(1)	求长度 >= 2 的连续子数组中 min(sub) + max(sub) 的最大值。数学证明最大值必然由相邻两数构成：max_i (nums[i] + nums[i+1])	notes/Leetcode/Review01 Common Fundamentals.md
+04	Review01	有序数组中三分频众数的对数探针检索	Majority Element in Sorted Array via Sublinear Binary Search Probe	字节工业界手撕 (亚线性二分)	有序数组 · 鸽巢原理 · 候选探针锚定 · 二分首尾边界计数	O(log N)	O(1)	在已排序数组中检索所有频次 > len/3 的元素。任何频次超标元素必然覆盖 n/3 或 2n/3 探针点，通过 bisect 边界精确判定	notes/Leetcode/Review01 Common Fundamentals.md
+05	Review01	单词反转与空格排版精确保留	Reverse Words with Exact Spacing Preservation & In-Place Semantics	字节工业界手撕 (无直接LC原题)	双指针 · 局部对称反转 · 空格间隙序列提取与精准回填 · 原地语义	O(N)	O(1) 原地	单词整体逆序倒排，但原字符串各位置所拥有的空格长度与绝对间隔必须严格原样保留（与 LC 151 截然不同）	notes/Leetcode/Review01 Common Fundamentals.md
+06	Review01	奇偶交替连续子数组极速计数	Zigzag Alternating-Parity Subarrays	字节工业界手撕 (无直接LC原题)	连续子数组 · 动态连击增量 (Streak Counter) · 奇偶异或模检验	O(N)	O(1)	统计相邻元素奇偶性交替的连续子数组总数（单元素算长度 1 交替串）。以 nums[i] 结尾的合法子数组数量递推累加	notes/Leetcode/Review01 Common Fundamentals.md
+07	Review02	分级优先级任务调度系统	Tiered Priority Task Scheduler	字节系统架构手撕 (高频题)	多级优先队列 · 桶队列 (Bucket Queue) / 最大堆 · 同级 FIFO 保序	O(log K)	O(N)	支持 addTask(priority, taskId) 与 executeNext()。优先弹出最高 priority 任务，同优先级依先来后到 FIFO 执行	notes/Leetcode/Review02 LinkedList Stack Heap.md
+08	Review02	基于时间戳的任务调度与即时清除器	Timestamp-based Task Scheduler with Instant Cancellation	字节系统架构手撕 (高频题)	最小堆 (按时间戳) · 延迟删除 (Lazy Deletion) · 哈希反向索引双向映射	O(log N)	O(N)	schedule(timestamp, taskId) 注册执行时间；getNextReady(now) 批量触发到期任务；removeTask(taskId) 需支持快速取消	notes/Leetcode/Review02 LinkedList Stack Heap.md
+09	Review03	勾股数三元组判定与多重集保留	Pythagorean Triplet & Multiplicity 2-Pointer Search	字节工业界手撕 (无直接LC原题)	平方数值哈希 · 双指针两端夹逼 · 多重集元素重数校验 (Multiplicity)	O(N^2)	O(N)	判定数组是否存在 a^2 + b^2 = c^2。必须严格校验元素物理实例独立性（数值相同但下标不同，杜绝单元素自加倍虚假匹配）	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+10	Review03	用指定数字集拼出严格小于 N 的最大数	Largest Number Smaller than N from Digits A / Digit Greedy	字节高频手撕 (数位贪心回溯)	数位分解 · 前缀贪心匹配 · 回溯降级选择 · 长度回退全最大填充	O(L * |A|)	O(L)	给定正整数集合 A 与数字 N，用 A 中的数字拼接一个严格小于 N 的最大数（允许重复使用数字）。包含同位降级与退化少一位分支	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+11	Review03	无人机中继贪心跳跃与步行距离最小化	Drone Relay to Target via Greedy Forward Progression	字节工业界手撕 (无直接LC原题)	贪心模拟 · 中继站排序 · 前向跳跃更新 · 步行代价累积	O(M log M)	O(M)	从 0 到 target。在某些中继站可将包裹交给无人机向前运送 10 单位。走到中继站花费等额距离。贪心选择中继站最小化总步行代价	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+12	Review03	双向对齐报纸排版与星号边框渲染	Two-Direction Justified Newspaper Layout	字节工业界手撕 (文本排版与边框)	贪心单词装箱 · 左右动态对齐补齐 · 物理字符矩阵矩形封闭渲染	O(Total Words)	O(Total Output)	单词依行宽贪心装箱；依段落标志做 LEFT/RIGHT 动态空格填充；在外围整体渲染一层完整的星号 ('*') 矩形包裹框	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+13	Review04	带动态 DAG 依赖与节点收缩的规则校验系统	Order Validator with Dynamic DAG Dependencies & Node Contraction	字节系统架构手撕 (高频题)	有向无环图 (DAG) · 拓扑排序环检测 · 节点收缩 (Node Contraction) 邻接重组	O(V + E)	O(V + E)	规则引擎校验：动态添加/删除依赖规则；执行环路检测与拓扑校验流；当指定节点收缩时，自动旁路重建入边与出边的直连传递闭包	notes/Leetcode/Review04 Tree Graph DP.md
+14	Review04	扁平化多级评论数据转换为嵌套层级树	Flatten Comment Tree to Multi-Level Hierarchy	字节业务高频手撕 (评论系统核心)	哈希表索引映射 · 两趟单线性扫描 · 孤儿节点防御 · 自引用环路拦截	O(N)	O(N)	给定扁平评论列表 [id, parent_id, content]，单次线性构造成多叉嵌套树结构。根节点 parent_id 为 null；严格防范孤儿节点与循环引用	notes/Leetcode/Review04 Tree Graph DP.md
+15	Review04	N 叉树根到叶路径和拉平的最小操作数	Equalize Root-to-Leaf Path Sums in N-ary Tree	字节工业界手撕 (无直接LC原题)	多叉树遍历 · 树形后序贪心 (Post-order DP) · 公共祖先优先提升 (Greedy Lift)	O(N)	O(H)	每次操作可将某条边的权值加 1。求将所有根节点到叶子节点的路径权重和全部提升拉平为同一最大值的最少增加总权重	notes/Leetcode/Review04 Tree Graph DP.md
+16	Review04	带油箱与充能站的网格最短路径	Grid Shortest Path with Fuel Tank & Recharge Stations	字节工业界手撕 (无直接LC原题)	三维状态空间 BFS (r, c, fuel) · 优先队列 Dijkstra · 充能状态坍缩	O(R * C * F)	O(R * C * F)	网格迷宫带障碍物，小车拥有最大容量 fuel 的油箱，每步消耗 1 单位；特定格点为充能站（可充满油）。求到达目标的最短步数	notes/Leetcode/Review04 Tree Graph DP.md
+17	Review01	和为 K 的子数组计数与前缀和哈希映射	Subarray Sum Equals K via Prefix Sum Hash Map	LeetCode 560	前缀和差分 · 频次哈希表 · 负数鲁棒性	O(N)	O(N)	统计连续子数组和等于 k 的总个数。利用 sum[j] - sum[i] = k 转化为查找历史前缀和出现次数	notes/Leetcode/Review01 Common Fundamentals.md
+18	Review02	LRU 缓存与其系统级演进全家桶	LRU Cache & System-Level Extensions	LeetCode 146	双向链表 · 哈希字典 · 哨兵节点 · O(1) 访问与淘汰	O(1)	O(Capacity)	实现 Least Recently Used 缓存置换机制；拓展 TTL 过期清理与分段锁高并发读写架构	notes/Leetcode/Review02 LinkedList Stack Heap.md
+19	Review02	K 个一组翻转链表	Reverse Nodes in k-Group	LeetCode 25	单链表局部反转 · 探测步长 · 虚拟头节点穿针引线	O(N)	O(1)	每 k 个节点一组进行链表倒序翻转；若最后剩余不足 k 个节点，则保持原有相对顺序不翻转	notes/Leetcode/Review02 LinkedList Stack Heap.md
+20	Review02	扁平化多级双向链表	Flatten a Multilevel Doubly Linked List	LeetCode 430	双向链表 · 深度优先遍历 (DFS) 迭代栈 · 子链表穿针引线	O(N)	O(D)	包含 next、prev 和 child 指针的多级双向链表，将其扁平化展开为单层双向链表	notes/Leetcode/Review02 LinkedList Stack Heap.md
+21	Review02	基本计算器层级语法机	Basic Calculator Hierarchy (I, II, III)	LeetCode 224 / 227 / 772	操作数栈与符号栈 · 运算符优先级调度 · 括号递归下潜/栈回溯	O(N)	O(N)	解析计算包含加减乘除、空格及多层括号 '(' ')' 的四则运算表达式字符串	notes/Leetcode/Review02 LinkedList Stack Heap.md
+22	Review02	滑动窗口最大值与单调双端队列	Sliding Window Maximum via Monotonic Deque	LeetCode 239	单调双端队列 (Monotonic Deque) · 头部过期剔除 · 尾部破坏单调性挤压	O(N)	O(K)	大小为 k 的滑动窗口从数组最左移动到最右，实时输出每个窗口内的最大数值	notes/Leetcode/Review02 LinkedList Stack Heap.md
+23	Review02	柱状图中最大的矩形与单调栈对称收敛	Largest Rectangle in Histogram via Monotonic Stack	LeetCode 84	严格单调递增栈 · 左右两侧首个更小高度边界界定 · 虚拟高度 0 哨兵	O(N)	O(N)	给定非负整数柱状图数组 heights，求柱状图中能够勾勒出的最大矩形面积	notes/Leetcode/Review02 LinkedList Stack Heap.md
+24	Review02	有效的括号字符串与双贪心平衡界	Valid Parenthesis String: Two Greedy Bounds	LeetCode 678	贪心区间收敛 · 未匹配左括号可能范围 [min_open, max_open] · 负数截断	O(N)	O(1)	字符串包含 '(', ')' 和通配符 '*'（可充当左、右括号或空字符），判定是否合法闭合	notes/Leetcode/Review02 LinkedList Stack Heap.md
+25	Review02	数据流的中位数与对偶极值对顶堆	Find Median from Data Stream via Dual Heaps	LeetCode 295	大顶堆 (存前半区) + 小顶堆 (存后半区) · 动态容量平衡 (差值<=1) · 峰顶极值	O(log N)	O(N)	持续从数据流读入数值，随时返回当前所有数值的中位数（偶数个数取两极均值）	notes/Leetcode/Review02 LinkedList Stack Heap.md
+26	Review02	反转链表与递归迭代双范式	Reverse Linked List	LeetCode 206	单链表指针翻转 · 前驱当前迭代推进 · 递归后序回溯穿针	O(N)	O(1)	将单向链表的所有节点链接方向就地彻底倒置	notes/Leetcode/Review02 LinkedList Stack Heap.md
+27	Review02	单调栈去重与字典序最小子序列	Remove Duplicate Letters via Monotonic Stack	LeetCode 316 / 1081	单调栈 · 字符剩余计数表 (Remaining) · 栈内存在哈希集合 (In-Stack)	O(N)	O(|Sigma|)	去除字符串中所有重复字母，使得每个字母仅出现一次，且返回结果的字典序最小	notes/Leetcode/Review02 LinkedList Stack Heap.md
+28	Review02	双堆中位数流与多维栈系统架构	MinStack, MaxStack, Streaming Median & Extensions	LeetCode 155 / 295	辅助单调同步栈 / 差值编码栈 · O(1) 检索极值 · 并发读写锁扩展	O(1)	O(N)	实现支持 push, pop, top, 并在 O(1) 时间检索最小元素的 MinStack，并追问多维极值扩展	notes/Leetcode/Review02 LinkedList Stack Heap.md
+29	Review03	合并区间与其工业级拓扑变体全家桶	Merge Intervals & Interval Topology Variants	LeetCode 56 / 57	闭区间贪心 · 起点预排序 · 右边界动态拉伸 · 插入区间	O(N log N)	O(N)	合并所有重叠的闭区间 [start, end]，返回互不重叠覆盖全集的区间列表	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+30	Review03	最小覆盖子串与多最优解候选集	Minimum Window Substring & Multi-Candidate Expansion	LeetCode 76	滑动窗口双指针 · 欠款哈希字典 (Required vs Window) · 达标有效计数器	O(|S| + |T|)	O(|Sigma|)	在 S 中找出包含 T 所有字符（含重复频次）的最短连续子串；追问返回所有同长度最优解	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+31	Review03	替换后的最长重复字符与滑窗最频计数维持	Longest Repeating Character Replacement	LeetCode 424	可变滑动窗口 · 历史最高频次 max_freq 惰性单调维持 · (window - max_freq <= k)	O(N)	O(|Sigma|)	仅包含大写字母的字符串，最多可将 k 个字符替换为任意字母，求最长重复字符子串长度	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+32	Review03	变长与定长滑动窗口经典范式 (无重复字符最长子串)	Variable & Fixed Sliding Window Patterns	LeetCode 3	滑动窗口 · 字符最新下标表 · left = max(left, last_seen[ch] + 1) 跳跃	O(N)	O(|Sigma|)	找出给定字符串中不含有重复字符的最长子串长度	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+33	Review03	子集、排列与组合通用回溯范式	Subsets, Permutations & Combinations	LeetCode 78 / 46 / 77	树形状态空间搜索 · 回溯深搜 · 树枝去重 (used) vs 树层去重 (nums[i] == nums[i-1])	O(2^N) / O(N!)	O(N)	回溯三大基石：无重子集收集、含重排列全遍历、固定大小组合选取通用模版	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+34	Review03	无重叠区间贪心调度与最少移除数	Non-overlapping Intervals via Earliest Deadline First	LeetCode 435	贪心区间调度 · 最早截止时间优先 (EDF) · 按右端点升序排序	O(N log N)	O(1)	计算使数组中剩余区间互不重叠所需要移除的最少区间数量	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+35	Review03	时间戳键值存储与有序版本二分检索	Time-Based Key-Value Store via Binary Search	LeetCode 981	哈希表套列表 · 升序时间戳追加 · 二分查找 (bisect_right - 1)	O(log N)	O(Total Entries)	set(key, value, timestamp) 写入；get(key, timestamp) 检索小于等于该时刻的最新值	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+36	Review03	区间列表相交两指针交集扫描	Interval List Intersections via Two-Pointer Scan	LeetCode 986	双指针协同推进 · 闭区间重叠判准 max(start) <= min(end) · 较早结束者指针平移	O(M + N)	O(1)	给定两个各自内部互不相交且已排序的区间列表，求两者的公共相交区间集合	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+37	Review03	至多 K 个不同字符的最长子串滑动窗口	Longest Substring with At Most K Distinct Characters	LeetCode 340	可变滑动窗口 · 字符频次哈希字典 · 零频物理删除 (len(map) <= k)	O(N)	O(K)	给定字符串 s 与整数 k，找出至多包含 k 个不同字符的最长连续子串长度	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+38	Review03	旋转有序数组二分查找与重复元素退化	Search in Rotated Sorted Array: Distinct vs Duplicates	LeetCode 33 / 81	二分查找 · 对偶单调半区判别 (nums[mid] >= nums[left]) · 边界线性收缩	O(log N)	O(1)	在未知轴心旋转后的有序数组中查找目标值 target 下标；处理含重复数字退化情形	notes/Leetcode/Review03 Interval Sliding Window Backtracking.md
+39	Review04	岛屿数量与全景变体全家桶	Number of Islands & All Canonical Variants	LeetCode 200 / 694 / 827	网格隐式图 · 沉岛 BFS/DFS · 并查集 (DSU) · 相对坐标归一化	O(M * N)	O(M * N)	统计网格中 '1' (陆地) 连通块个数；延伸统计不同形状岛屿 (LC 694) 与造桥最大岛 (LC 827)	notes/Leetcode/Review04 Tree Graph DP.md
+40	Review04	课程表与拓扑排序全家桶	Course Schedule & Topological Sort	LeetCode 207 / 210	有向图拓扑排序 · Kahn 入度队列 · DFS 三色标记法 · 依赖成环诊断	O(V + E)	O(V + E)	给定先决修课依赖，判定是否能学完所有课程 (LC 207) 并输出可行修课序列 (LC 210)	notes/Leetcode/Review04 Tree Graph DP.md
+41	Review04	带消除障碍物预算的网格最短路径	Shortest Path in Grid with Obstacles Elimination	LeetCode 1293	三维状态空间 BFS (r, c, remaining_k) · 支配性剪枝 (visited 记录最大消除预算)	O(M * N * K)	O(M * N * K)	在包含障碍物 '1' 的网格中从左上走到右下，最多消除 k 个障碍物，求最短移动步数	notes/Leetcode/Review04 Tree Graph DP.md
+42	Review04	最近公共祖先与全景变体全家桶	Lowest Common Ancestor / LCA	LeetCode 236 / 235 / 1644	递归后序分治 (Post-order DFS) · BST 数值区间剪枝 · 父指针哈希交汇	O(N)	O(H)	求普通二叉树 (LC 236) 或二叉搜索树 (LC 235) 中两节点的最近公共祖先；节点可能不存在	notes/Leetcode/Review04 Tree Graph DP.md
+43	Review04	二叉树最大路径和全景与路径重构	Binary Tree Maximum Path Sum & Path Reconstruction	LeetCode 124	树形动态规划 · 单侧最大贡献值递归 · 负收益截断 max(0, gain) · 全局最优路径	O(N)	O(H)	路径可从二叉树任意节点开始到任意节点结束。求所有非空路径的节点数值总和最大值	notes/Leetcode/Review04 Tree Graph DP.md
+44	Review04	零钱兑换与完全背包模型全景	Coin Change 1 & 2 / Unbounded Knapsack	LeetCode 322 / 518	完全背包 DP · 极值模型 vs 组合计数模型 · 外层硬币内层金额循环本质	O(Amount * N)	O(Amount)	零钱兑换 I：凑齐总金额最少硬币数 (最值)；零钱兑换 II：凑齐总金额组合总数 (计数去重)	notes/Leetcode/Review04 Tree Graph DP.md
+45	Review04	贴纸拼词与状态压缩动态规划	Stickers to Spell Word & Bitmask DP	LeetCode 691	状态压缩动态规划 · 记忆化搜索 · 首个未覆盖字符强行匹配剪枝	O(2^L * S * L)	O(2^L)	给定字符贴纸数组 stickers 和目标词 target，求拼出 target 所有字符所需的最少贴纸数	notes/Leetcode/Review04 Tree Graph DP.md
+46	Review04	网格最长交替折线路径	Longest Alternating Zigzag Path in 2D Grid	字节状态机网格 DP (真题)	二维网格 · 状态机动态规划 / 记忆化深搜 · 方向交替转换规则	O(M * N)	O(M * N)	在网格中寻找最长折线路径，每步必须在水平与垂直方向交替前进（如 右 -> 下 -> 右 -> 下）	notes/Leetcode/Review04 Tree Graph DP.md
+47	Review04	多叉树垂直自顶向下目标路径和	N-ary Tree Downward Target Path Sum	LeetCode 437	树上前缀和 · 哈希频次映射 · 回溯离开时作用域清除 (Backtracking Cleanup)	O(N)	O(H)	在树中查找路径和等于 targetSum 的向下路径总数（路径只能自祖先走向后代节点）	notes/Leetcode/Review04 Tree Graph DP.md
+48	Review04	字典树加速网格单词搜寻	Word Search II with Trie & Backtracking Pruning	LeetCode 212	Trie 前缀树 · 二维网格 DFS 回溯 · 动态叶节点剪枝 (Trie Pruning) · 原地状态置换	O(M * N * 4 * 3^L)	O(Sigma * L)	在字母矩阵中找出所有在给定字典 words 中出现的单词；必须进行搜索中 Trie 叶子剪枝	notes/Leetcode/Review04 Tree Graph DP.md
+49	Review04	图片相似度聚类与并查集连通分量	Photo Similarity Groups via Union-Find	LeetCode 547	并查集 (Disjoint Set Union) · 路径压缩与按秩合并 · 连通分量统计	O(N^2 * alpha(N))	O(N)	给定两两图片间的相似度判定矩阵（无向图邻接矩阵），求所有相互连通的相似图片集群总数	notes/Leetcode/Review04 Tree Graph DP.md
+50	Review04	二叉树右视图与自建树脚手架	Binary Tree Right Side View	LeetCode 199	二叉树遍历 · 层序遍历 (BFS) 队列取层尾 · 逆先序 DFS (根-右-左) 优先占位	O(N)	O(D)	站在二叉树的右侧，自顶向下返回所能看到的所有节点数值序列	notes/Leetcode/Review04 Tree Graph DP.md
+51	Review04	前序与后序遍历序列重构二叉树	Construct Binary Tree from Preorder and Postorder	LeetCode 889	递归分治 · 后序位置哈希索引 · 左子树根节点定位与规模划界	O(N)	O(N)	给定二叉树的前序遍历与后序遍历序列，重构并返回一棵满足条件的二叉树	notes/Leetcode/Review04 Tree Graph DP.md
+52	Review04	关系描述数组重构二叉树与孤立根定位	Construct Binary Tree from Descriptions	LeetCode 2196	哈希字典节点缓存 · 子节点集合差集运算 (Parents - Children) 定位根节点	O(N)	O(N)	二维数组 descriptions[i] = [parent, child, isLeft] 给出树边关系，重构整棵二叉树	notes/Leetcode/Review04 Tree Graph DP.md
+53	Review04	复原 IP 地址与泛化 K 段数字划分	Restore IP Addresses & Generalized K-Segment Partition	LeetCode 93	回溯搜索 · 数值边界严格校验 (0..255) · 前导零非法防护 · 剩余长度剪枝	O(1)	O(1)	只包含数字的字符串，复原所有可能构成的有效 IPv4 地址点分十进制组合	notes/Leetcode/Review04 Tree Graph DP.md
+54	Review04	外星人词典拓扑排序与边界防御	Alien Dictionary via Directed Graph Topological Sort	LeetCode 269	有向图拓扑排序 · Kahn 算法 · 前缀非法校验 (apple vs app) · 孤立字符收集	O(C)	O(|Sigma| + |E|)	给定字典序排好的一组外星语言单词列表，推导并返回该语言字母的唯一字典排序顺序	notes/Leetcode/Review04 Tree Graph DP.md
+55	Review04	最长回文子串：区间动态规划与中心扩散	Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher	LeetCode 5	区间动态规划 dp[i][j] · 中心扩散法 · 马拉车 (Manacher) 回文对称映射	O(N^2) / O(N)	O(N^2) / O(N)	返回字符串 s 中的最长回文子串。完整掌握区间 DP 填表递推与 Manacher 线性对称借力	notes/Leetcode/Review04 Tree Graph DP.md
+56	MLCoding00	满足 Recall > 90% 与 FPR < 10% 的混淆矩阵严选决策	Confusion Matrix Selection under Dual Performance Bounds	字节 ML 笔试/面试选择题	二分类混淆矩阵 · Recall = TP/(TP+FN) · FPR = FP/(FP+TN) 双不等式约束联立	O(1)	O(1)	给定多个备选候选混淆矩阵 [[TP, FP], [FN, TN]]，快速计算检出满足高召回低假阳阈值的矩阵	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+57	MLCoding00	训练损失发散（Training Loss Divergence）多维根因排查与多选辨析	Training Loss Divergence Diagnostics	字节 ML 系统工程辨析题	梯度下降动力学 · 学习率过大 (Overshooting) · 梯度爆炸 · 特征未归一化 · 正则过弱	定性推导	工程诊断	训练初期损失迅速飙升至 NaN/Inf 的原因多选题辨析：步长过大、损失与激活函数不匹配等	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+58	MLCoding00	拟合-验证曲线过拟合诊断与针对性缓解对策	Overfitting Diagnosis & Mitigation on Train-Val Curves	字节 ML 核心概念选择题	泛化误差分解 (Bias-Variance) · 泛化差距 (Generalization Gap) · 正则化与早停	定性分析	实验指标	给定训练损失持续下降而验证损失上翘发散的曲线图，多选辨别最优缓解手段（加正则/Dropout/扩增）	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+59	MLCoding00	3 层神经网络前向传播纯手算数值推导	3-Layer NN Forward Pass by Hand: Linear-Linear-Sigmoid	字节 ML 纯手算数值题	多层感知机 (MLP) · 矩阵乘法 · 偏置累加 · Sigmoid 激活函数数值截断计算	O(Sum(d_in*d_out))	O(Hidden)	给定输入向量 x=[1, 2] 与三层权重 W1, b1, W2, b2, W3, b3，纯手工矩阵运算并精确舍入至小数点后三位	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+60	MLCoding00	从零纯手写 K-Means 聚类器	k-Means Clustering from Scratch: Lloyd's Algorithm	字节 ML 手撕代码题	无监督聚类 · 欧氏距离广播矩阵 · 质心分配 (Assign) · 均值重算 (Update) · 收敛判准	O(T * N * K * D)	O(N*K + K*D)	不调 sklearn，从零编写标准 K-Means 类：支持 fit(X), predict(X), 处理空簇兜底与容差早停	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+61	MLCoding00	缩放点积自注意力机制与第一性原理二元交叉熵损失	Scaled Dot-Product Attention & Numerically Stable BCE	字节 ML 手撕代码题	Transformer Attention · 根号 d_k 缩放 · Softmax 减最大值防溢出 · Log-Sum-Exp 稳定 BCE	O(SeqLen^2 * D)	O(SeqLen^2)	从零纯手写注意力矩阵计算；编写带有 log1p/exp 数值防下溢截断的二元交叉熵损失函数	notes/MLCoding/MLCoding00 ML Basics Data Preprocessing Loss Functions.md
+62	MLCoding09	决策树节点切分不纯度指标多维辨析	Decision Tree Impurity: Entropy vs Gini vs Misclassification Error	字节 ML 理论多选题	信息熵 (Entropy) · 基尼系数 (Gini) · 分类错误率 (Error) · 凹性 (Concavity) 与信息增益	凸性分析	O(1)	深入辨析三类切分准则优劣：为什么决策树切分绝不采用 Classification Error（导数不敏感）	notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+63	MLCoding09	集成学习（Ensemble Learning）得失权衡多维辨析	Ensemble Learning Trade-offs: When Ensembling Helps vs Hurts	字节 ML 系统面试题	偏差-方差分解 · 模型多样性 (Diversity) · 推理延迟 · 可解释性黑盒 · 线性混杂集	定性分析	系统架构	多选题研判：什么时候集成学习会显著带来收益？什么时候会造成计算灾难或边际收益归零？	notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+64	MLCoding09	梯度提升树 (GBM) vs 随机森林 (Random Forest) 快速基线构建选型对比	GBM vs Random Forest Baseline Selection	字节 ML 面试真题	Boosting vs Bagging · 串行拟合残差 vs 并行独立采样 · 超参数敏感度 · 并行吞吐	定性权衡	生产选型	对于需要极速交付的初始业务基线，辨析 RF 与 GBM 在鲁棒性、调参成本与抗噪性上的优劣真伪命题	notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
+65	MLCoding09	从零纯手写 Bagging 分类器	Bagging Classifier from Scratch: Bootstrap Sampling & Majority Vote	字节 ML 手撕代码题	自助采样法 (Bootstrap with Replacement) · 弱分类器森林 · 多数表决投票 (Majority Vote)	O(B * TrainCost)	O(B * ModelSize)	纯原生 Python/NumPy 实现完整 BaggingClassifier 类，包含有放回重采样抽样与预测表决机制	notes/MLCoding/MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md
