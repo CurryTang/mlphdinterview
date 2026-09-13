@@ -1323,7 +1323,7 @@ if __name__ == "__main__":
 
 - **前缀和差分原语**：
   若存在祖先节点 $u$ 到当前节点 $v$ 的路径和等于 $target$，根据前缀和定义：
-  $$\sum_{w \in 	ext{path}(u 	o v)} 	ext{val}(w) = S(v) - S(	ext{parent}(u)) = target \implies S(	ext{parent}(u)) = S(v) - target$$
+  $$\sum_{w \in \ext{path}(u \o v)} \ext{val}(w) = S(v) - S(\ext{parent}(u)) = target \implies S(\ext{parent}(u)) = S(v) - target$$
   只需在进入 $v$ 时查询当前作用域内值为 $S(v) - target$ 的祖先节点个数即可。
 - **为何双指针/滑动窗口彻底失效**：
   1. 树节点数值可能包含负数与零，前缀和序列失去了单调递增性；
@@ -1577,12 +1577,12 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 机制剖析</div>
 
 - **分层图（Layered Graph / State Expansion）建模**：
-  普通的网格最短路状态仅包含 $(r, c)$，但在带油量约束时，同一个坐标在持有不同油量下的后续可达性存在本质区别。因此将物理坐标扩展为三维状态 $(r, c, 	ext{fuel})$，边权为目标格子的 `grid_cost[nr][nc]`。
+  普通的网格最短路状态仅包含 $(r, c)$，但在带油量约束时，同一个坐标在持有不同油量下的后续可达性存在本质区别。因此将物理坐标扩展为三维状态 $(r, c, \ext{fuel})$，边权为目标格子的 `grid_cost[nr][nc]`。
 - **充能状态坍缩（State Space Collapse）**：
   若某一非障碍格子是充能站（`recharge[nr][nc] == True`），进入后剩余油量无条件补满至 $K$。此时所有流入该格子的前驱状态，在出格转移时均统一坍缩为 $(nr, nc, K)$ 唯一状态。
 - **极端大 $K$ 场景优化策略（Large-K Supergraph Reduction）**：
-  1. 若 $K \ge m + n - 2$：油量无法对路径构成任何约束，状态第三维 $	ext{fuel}$ 可直接舍弃，退化为经典二维网格 Dijkstra，复杂度降为 $\mathcal{O}(MN \log(MN))$。
-  2. 若充能站数量稀疏（$R \ll MN$）且 $K$ 较大：可构造**充能站超图（Recharge Supergraph）**。顶点集合为 $\{	ext{Start}, 	ext{Goal}\} \cup \{	ext{All Recharge Stations}\}$。利用网格 BFS/Dijkstra 预处理各顶点在 $K$ 步以内的成对最短可达距离，在仅含 $\mathcal{O}(R)$ 顶点的紧凑超图上执行最短路搜索。
+  1. 若 $K \ge m + n - 2$：油量无法对路径构成任何约束，状态第三维 $\ext{fuel}$ 可直接舍弃，退化为经典二维网格 Dijkstra，复杂度降为 $\mathcal{O}(MN \log(MN))$。
+  2. 若充能站数量稀疏（$R \ll MN$）且 $K$ 较大：可构造**充能站超图（Recharge Supergraph）**。顶点集合为 $\{\ext{Start}, \ext{Goal}\} \cup \{\ext{All Recharge Stations}\}$。利用网格 BFS/Dijkstra 预处理各顶点在 $K$ 步以内的成对最短可达距离，在仅含 $\mathcal{O}(R)$ 顶点的紧凑超图上执行最短路搜索。
 
 </div>
 
@@ -1699,17 +1699,17 @@ if __name__ == "__main__":
 - **无向图连通分支的代数同构**：
   矩阵的对称性与相似的传递性构成了标准的等价关系。求解相似组数等价于无向图 $G = (V, E)$ 中独立极大连通子图（Connected Components）的数量。
 - **严格上三角遍历**：
-  由于相似关系具有对称性（$isSimilar[i][j] == isSimilar[j][i]$），且对角线元素自反恒为 1，只需检查 $j > i$ 的上三角区域，有效循环次数由 $N^2$ 减半为 $rac{N(N-1)}{2}$。
+  由于相似关系具有对称性（$isSimilar[i][j] == isSimilar[j][i]$），且对角线元素自反恒为 1，只需检查 $j > i$ 的上三角区域，有效循环次数由 $N^2$ 减半为 $\frac{N(N-1)}{2}$。
 - **并查集 vs 广度优先搜索 (BFS/DFS)**：
   - 在密集邻接矩阵输入下，无论采用 DSU 还是 BFS 均受限于 $\mathcal{O}(N^2)$ 的矩阵元素扫描下界；
-  - 但并查集具有优良的**流式（Streaming/Online）扩展性**：若后续动态新增相似图片对，并查集仅需 $\mathcal{O}(lpha(N))$ 即可增量合并，无需重新遍历整图。
+  - 但并查集具有优良的**流式（Streaming/Online）扩展性**：若后续动态新增相似图片对，并查集仅需 $\mathcal{O}(\alpha(N))$ 即可增量合并，无需重新遍历整图。
 
 </div>
 
 <div class="review-block">
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：$\mathcal{O}(N^2 \cdot lpha(N))$，其中 $lpha$ 为反阿克曼函数。由上三角扫描主导，整体在常数上优于全矩阵扫描。
+- **时间复杂度**：$\mathcal{O}(N^2 \cdot \alpha(N))$，其中 $\alpha$ 为反阿克曼函数。由上三角扫描主导，整体在常数上优于全矩阵扫描。
 - **空间复杂度**：$\mathcal{O}(N)$，维护长度为 $N$ 的父指针与秩数组。
 
 </div>
@@ -2205,7 +2205,7 @@ if __name__ == "__main__":
   3. **字符完整消耗**：必须恰好切满 4 段且用尽全量字符。
 - **剩余长度区间剪枝（Pigeonhole Pruning）**：
   在剩余 $segments\_left$ 段待切分时，剩余字符串长度必须满足：
-  $$segments\_left \le 	ext{remaining\_chars} \le 3 	imes segments\_left$$
+  $$segments\_left \le \ext{remaining\_chars} \le 3 \imes segments\_left$$
   若超出此区间，后续绝无可能凑出合法划分，直接返回，大幅压平回溯树深度。
 
 </div>
@@ -2327,11 +2327,11 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 机制剖析</div>
 
 - **首异字符决定序关系**：
-  比较两个相邻字符串时，仅有**第一个不相同的字符对**能够确定两个字符之间的字典序依赖关系 $c_1 	o c_2$；后续所有字符均无法提供任何有效顺序信息。
+  比较两个相邻字符串时，仅有**第一个不相同的字符对**能够确定两个字符之间的字典序依赖关系 $c_1 \o c_2$；后续所有字符均无法提供任何有效顺序信息。
 - **工业级三大边界陷阱（Crucial Pitfalls）**：
   1. **前缀倒挂非法陷阱**：若出现 `w1 = "apple", w2 = "app"`，此时公共前缀全部相同但 $len(w1) > len(w2)$。任何字典序下 `"app"` 必在 `"apple"` 之前，直接判定为非法输入并返回 `""`；
   2. **孤立无依赖节点遗漏**：词表中某些字符可能从未与其他字符产生相对大小关系（如只出现一次的单个单词），必须在初始化时扫描全词表将所有字符注册入 `in_degree`；
-  3. **重边入度虚增**：相邻词对可能多次给出相同的 $c_1 	o c_2$ 关系。邻接表必须使用 `set` 存储，且只有首次添加时才能递增 `in_degree[c2]`。
+  3. **重边入度虚增**：相邻词对可能多次给出相同的 $c_1 \o c_2$ 关系。邻接表必须使用 `set` 存储，且只有首次添加时才能递增 `in_degree[c2]`。
 
 </div>
 

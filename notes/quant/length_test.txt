@@ -1,0 +1,59 @@
+# Quant 07 · 鞅、停时与下注
+
+课程位置：[[Quant09 Hypothesis Testing Maximum Likelihood|06 假设检验]] → 本篇 → [[Quant12 Brownian Motion Ito Calculus Stopping Times and Options|08 布朗运动]]
+
+如果资产在下一步的条件期望等于当前值 $\mathbb{E}[M_{n+1}\mid\mathcal{F}_n] = M_n$，该随机过程即为鞅（martingale）。风险中性赔率更改状态权重，将动态下注折算为静态终局期望。
+
+```martingale-rw-demo
+```
+
+---
+
+## 1 · 最优停时与陷阱
+
+停时 $T$ 的决策仅依赖当前及历史信息。最优停时定理（OST）得出 $\mathbb{E}[M_T] = \mathbb{E}[M_0]$，前提需满足三者之一：
+1. $T$ 有界；
+2. 停止过程有界；
+3. $\mathbb{E}[T] < \infty$ 且单步增量有界。
+
+反例：一维对称游走“首次到达 $+1$”的停时 $T$ 满足 $\mathbb{E}[M_T]=1$ 但 $M_0=0$。因 $\mathbb{E}[T] = \infty$ 且负向游走深不见底，定理条件全部失效。
+
+---
+
+## 2 · Wald 等式
+
+对独立同分布步长（均值 $\mu$，方差 $\sigma^2$）和满足 $\mathbb{E}[T] < \infty$ 的合法停时：
+- 一阶等式：$\mathbb{E}[S_T] = \mu \mathbb{E}[T]$
+- 二阶等式：$\mathbb{E}[(S_T - T\mu)^2] = \sigma^2 \mathbb{E}[T]$
+
+---
+
+## 3 · 赌徒破产与游走
+
+一维游走与 [[Quant02 Markov Chains Expected Time|02 Markov 链]] 共享同态的线性系统。通过构造不同的鞅，可以直接解出吸收概率与时间。
+对止损 $-a$ 和止盈 $b$，应用 OST 到线性鞅 $S_n$ 与二次方差鞅 $S_n^2 - n$（假设步长方差为 1），可以立刻解出：
+- 触碰 $b$ 的终局概率：$\frac{S_0 + a}{a + b}$
+- 游戏结束的期望吸收步数：$(b - S_0)(S_0 + a)$
+
+---
+
+## 4 · 下注定价与效用
+
+在 Best-of-$N$ 的系列赛中，$1{:}1$ 赔率在无套利定价下隐含风险中性概率 $q=1/2$。由于不需要垫资，任意状态下 A 队夺冠的公允胜率 $P(a, b)$ 构成了一个离散鞅：
+$$P(a, b) = \frac{1}{2}P(a+1, b) + \frac{1}{2}P(a, b+1)$$
+这即 Problem of Points 的递推。若投资者的目标从“无套利复制确定的终局”转为最大化复合对数财富，则通过对数收益求导导出凯利判据的最优杠杆；遇到类似圣彼得堡悖论这种期望收益发散的赌局，引入对数效用即可解出有限入场费。
+
+---
+
+## 5 · 单步前瞻最优停止
+
+在最优停止问题中，单步前瞻（1-Step Look-Ahead, 1-SLA）能将问题降维。
+考虑 $B$ 蓝 $1$ 红的无放回抽样博弈：抽蓝得 $+1$ 分，抽红则倒扣全部得分。当手持 $n$ 分时，选择再抽一次的条件期望增量为 $\Delta_n = \frac{B - 3n}{B + 1 - n}$。
+由于其分子 $B - 3n$ 随 $n$ 严格单调递减，一旦出现 $\Delta_n \le 0$（即 $n \ge \lfloor B/3 \rfloor$），后续所有抽签的期望增量必将持续为负。因满足单步前瞻条件，在该处停止即为全局最优策略。
+
+---
+
+## 一手资料
+
+- Zhou *A Practical Guide to Quantitative Finance Interviews*
+- Crack *Heard on the Street*

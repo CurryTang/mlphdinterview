@@ -944,7 +944,7 @@ print("✅ 所有损失函数数值测试均通过验证！")
 
 设真实类别为行（Rows），预测类别为列（Columns）：
 
-$$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
+$$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
 
 - **真正例（TP）**：真实为正，预测为正；
 - **假负例（FN）**：真实为正，预测为负（漏报）；
@@ -953,9 +953,9 @@ $$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
 
 核心评估公式：
 1. **召回率 / 真正率（Recall / Sensitivity / TPR）**：
-   $$	ext{Recall} = rac{	ext{TP}}{	ext{TP} + 	ext{FN}} = rac{	ext{TP}}{	ext{Actual Positives}} > 0.90$$
+   $$\ext{Recall} = \frac{\ext{TP}}{\ext{TP} + \ext{FN}} = \frac{\ext{TP}}{\ext{Actual Positives}} > 0.90$$
 2. **假阳率（False Positive Rate / FPR / Fall-out）**：
-   $$	ext{FPR} = rac{	ext{FP}}{	ext{FP} + 	ext{TN}} = rac{	ext{FP}}{	ext{Actual Negatives}} = 1 - 	ext{Specificity} < 0.10$$
+   $$\ext{FPR} = \frac{\ext{FP}}{\ext{FP} + \ext{TN}} = \frac{\ext{FP}}{\ext{Actual Negatives}} = 1 - \ext{Specificity} < 0.10$$
 
 #### (2) 候选矩阵多维对比与判定实例
 
@@ -963,10 +963,10 @@ $$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
 
 | 矩阵 | TP | FN | FP | TN | Recall (TPR) | FPR | 满足 Recall > 90% 且 FPR < 10%？ |
 |---|---|---|---|---|---|---|---|
-| **Matrix A** | 95 | 5 | 8 | 92 | $rac{95}{100} = 95.0\%$ | $rac{8}{100} = 8.0\%$ | **合格 (Pass)**：Recall=95% > 90%, FPR=8% < 10% |
-| **Matrix B** | 88 | 12 | 4 | 96 | $rac{88}{100} = 88.0\%$ | $rac{4}{100} = 4.0\%$ | **淘汰 (Fail)**：Recall=88% 未达标 (< 90%) |
-| **Matrix C** | 98 | 2 | 15 | 85 | $rac{98}{100} = 98.0\%$ | $rac{15}{100} = 15.0\%$ | **淘汰 (Fail)**：FPR=15% 超标 (> 10%) |
-| **Matrix D** | 92 | 8 | 7 | 93 | $rac{92}{100} = 92.0\%$ | $rac{7}{100} = 7.0\%$ | **合格 (Pass)**：Recall=92% > 90%, FPR=7% < 10% |
+| **Matrix A** | 95 | 5 | 8 | 92 | $\frac{95}{100} = 95.0\%$ | $\frac{8}{100} = 8.0\%$ | **合格 (Pass)**：Recall=95% > 90%, FPR=8% < 10% |
+| **Matrix B** | 88 | 12 | 4 | 96 | $\frac{88}{100} = 88.0\%$ | $\frac{4}{100} = 4.0\%$ | **淘汰 (Fail)**：Recall=88% 未达标 (< 90%) |
+| **Matrix C** | 98 | 2 | 15 | 85 | $\frac{98}{100} = 98.0\%$ | $\frac{15}{100} = 15.0\%$ | **淘汰 (Fail)**：FPR=15% 超标 (> 10%) |
+| **Matrix D** | 92 | 8 | 7 | 93 | $\frac{92}{100} = 92.0\%$ | $\frac{7}{100} = 7.0\%$ | **合格 (Pass)**：Recall=92% > 90%, FPR=7% < 10% |
 
 #### (3) 验证实现代码
 
@@ -1016,11 +1016,11 @@ assert [m[0]['name'] for m in passed] == ['A', 'D']
 
 | 潜在成因 | 是否会导致发散？ | 理论机制与物理证明 |
 |---|---|---|
-| **学习率 / 步长过大 (Step Size / Learning Rate Too Large)** | **是 [核心主因]** | 在二次目标函数 $rac{1}{2} x^T H x$ 中，若学习率 $\eta > rac{2}{\lambda_{\max}(H)}$，梯度更新将在曲率最大方向发生几何级发散：$\|w_{t+1} - w^*\| > \|w_t - w^*\|$，导致损失指数级爆炸。 |
-| **未对输入特征进行归一化 / 标准化 (Unnormalized Features)** | **是 [核心主因]** | 特征尺度差异巨大导致损失曲面的 Hessian 矩阵条件数极度恶化（$\kappa(H) = rac{\lambda_{\max}}{\lambda_{\min}} \gg 1$），形成狭长病态狭谷。固定学习率在陡峭方向震荡跳出边界。 |
-| **损失函数缺乏数值截断保护 (Unstable Loss Formulation)** | **是 [核心主因]** | 交叉熵损失中未对预测概率施加防溢出截断（如缺少 `clamp(p, eps, 1-eps)`），当 $p 	o 0$ 时 $\log(p) 	o -\infty$，乘法溢出直接产生 `NaN`。 |
+| **学习率 / 步长过大 (Step Size / Learning Rate Too Large)** | **是 [核心主因]** | 在二次目标函数 $\frac{1}{2} x^T H x$ 中，若学习率 $\eta > \frac{2}{\lambda_{\max}(H)}$，梯度更新将在曲率最大方向发生几何级发散：$\|w_{t+1} - w^*\| > \|w_t - w^*\|$，导致损失指数级爆炸。 |
+| **未对输入特征进行归一化 / 标准化 (Unnormalized Features)** | **是 [核心主因]** | 特征尺度差异巨大导致损失曲面的 Hessian 矩阵条件数极度恶化（$\kappa(H) = \frac{\lambda_{\max}}{\lambda_{\min}} \gg 1$），形成狭长病态狭谷。固定学习率在陡峭方向震荡跳出边界。 |
+| **损失函数缺乏数值截断保护 (Unstable Loss Formulation)** | **是 [核心主因]** | 交叉熵损失中未对预测概率施加防溢出截断（如缺少 `clamp(p, eps, 1-eps)`），当 $p \o 0$ 时 $\log(p) \o -\infty$，乘法溢出直接产生 `NaN`。 |
 | **深度网络中缺乏梯度裁剪 (Exploding Gradients without Clipping)** | **是 [核心主因]** | 反向传播中长程矩阵连乘导致梯度范数 $\|
-abla_	heta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹。 |
+abla_\heta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹。 |
 | **正则化系数过高 (Regularization Too High)** | **否 [典型误选]** | 正则化系数 $\lambda$ 过高会把权重强行压制向 0，导致**严重欠拟合（Underfitting）**，损失维持在较大的恒定非零值，但**绝不会引起损失发散至无穷大**。 |
 | **病态问题中未施加正则化 (Zero Regularization in Ill-Posed Problems)** | **是** | 当特征高度共线性或样本数少于特征数时，$X^T X$ 不可逆或奇异，缺少 $L_2$ 正则化导致权重参数毫无约束地膨胀发散。 |
 
@@ -1041,7 +1041,7 @@ abla_	heta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹
  └──────────────────────────────────────────► 训练轮次 (Epochs)
 ```
 
-- **过拟合识别特征**：训练集损失持续单调下降逼近 0，而验证集损失在越过鞍部拐点后不降反升，泛化鸿沟（Generalization Gap: $\mathcal{L}_{	ext{val}} - \mathcal{L}_{	ext{train}}$）持续发散。此时模型进入“背诵训练样本噪声”的高方差阶段。
+- **过拟合识别特征**：训练集损失持续单调下降逼近 0，而验证集损失在越过鞍部拐点后不降反升，泛化鸿沟（Generalization Gap: $\mathcal{L}_{\ext{val}} - \mathcal{L}_{\ext{train}}$）持续发散。此时模型进入“背诵训练样本噪声”的高方差阶段。
 
 #### (2) 缓解对策多选有效性判定
 
@@ -1064,26 +1064,26 @@ abla_	heta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹
 
 考虑一个 3 层全连接前向神经网络，输入维度 2，隐层维度 2，输出维度 1，激活函数为 **Linear - Linear - Sigmoid**：
 
-- **输入**：$x = egin{pmatrix} 0.5 \ -0.2 \end{pmatrix}$
+- **输入**：$x = \begin{pmatrix} 0.5 \ -0.2 \end{pmatrix}$
 - **第 1 层 (Linear)**：
-  $$W_1 = egin{pmatrix} 0.4 & -0.5 \ 0.2 & 0.8 \end{pmatrix}, \quad b_1 = egin{pmatrix} 0.1 \ -0.1 \end{pmatrix}$$
+  $$W_1 = \begin{pmatrix} 0.4 & -0.5 \ 0.2 & 0.8 \end{pmatrix}, \quad b_1 = \begin{pmatrix} 0.1 \ -0.1 \end{pmatrix}$$
 - **第 2 层 (Linear)**：
-  $$W_2 = egin{pmatrix} 0.5 & 0.3 \ -0.2 & 0.4 \end{pmatrix}, \quad b_2 = egin{pmatrix} -0.05 \ 0.15 \end{pmatrix}$$
+  $$W_2 = \begin{pmatrix} 0.5 & 0.3 \ -0.2 & 0.4 \end{pmatrix}, \quad b_2 = \begin{pmatrix} -0.05 \ 0.15 \end{pmatrix}$$
 - **第 3 层 (Linear + Sigmoid)**：
-  $$W_3 = egin{pmatrix} 1.2 & -0.8 \end{pmatrix}, \quad b_3 = 0.05$$
-  激活函数：$\sigma(z) = rac{1}{1 + e^{-z}}$
+  $$W_3 = \begin{pmatrix} 1.2 & -0.8 \end{pmatrix}, \quad b_3 = 0.05$$
+  激活函数：$\sigma(z) = \frac{1}{1 + e^{-z}}$
 
 #### (2) 纯手算分步推导
 
 1. **第 1 层计算**：
-   $$z_1 = W_1 x + b_1 = egin{pmatrix} 0.4(0.5) + (-0.5)(-0.2) + 0.1 \ 0.2(0.5) + 0.8(-0.2) + (-0.1) \end{pmatrix} = egin{pmatrix} 0.20 + 0.10 + 0.10 \ 0.10 - 0.16 - 0.10 \end{pmatrix} = egin{pmatrix} 0.400 \ -0.160 \end{pmatrix}$$
+   $$z_1 = W_1 x + b_1 = \begin{pmatrix} 0.4(0.5) + (-0.5)(-0.2) + 0.1 \ 0.2(0.5) + 0.8(-0.2) + (-0.1) \end{pmatrix} = \begin{pmatrix} 0.20 + 0.10 + 0.10 \ 0.10 - 0.16 - 0.10 \end{pmatrix} = \begin{pmatrix} 0.400 \ -0.160 \end{pmatrix}$$
 
 2. **第 2 层计算**：
-   $$z_2 = W_2 z_1 + b_2 = egin{pmatrix} 0.5(0.400) + 0.3(-0.160) - 0.05 \ -0.2(0.400) + 0.4(-0.160) + 0.15 \end{pmatrix} = egin{pmatrix} 0.200 - 0.048 - 0.050 \ -0.080 - 0.064 + 0.150 \end{pmatrix} = egin{pmatrix} 0.102 \ 0.006 \end{pmatrix}$$
+   $$z_2 = W_2 z_1 + b_2 = \begin{pmatrix} 0.5(0.400) + 0.3(-0.160) - 0.05 \ -0.2(0.400) + 0.4(-0.160) + 0.15 \end{pmatrix} = \begin{pmatrix} 0.200 - 0.048 - 0.050 \ -0.080 - 0.064 + 0.150 \end{pmatrix} = \begin{pmatrix} 0.102 \ 0.006 \end{pmatrix}$$
 
 3. **第 3 层计算与 Sigmoid**：
    $$z_3 = W_3 z_2 + b_3 = 1.2(0.102) + (-0.8)(0.006) + 0.050 = 0.1224 - 0.0048 + 0.0500 = 0.1676$$
-   $$\hat{y} = \sigma(0.1676) = rac{1}{1 + e^{-0.1676}} pprox rac{1}{1 + 0.84569} pprox rac{1}{1.84569} pprox 0.54180 pprox \mathbf{0.542}$$
+   $$\hat{y} = \sigma(0.1676) = \frac{1}{1 + e^{-0.1676}} \approx \frac{1}{1 + 0.84569} \approx \frac{1}{1.84569} \approx 0.54180 \approx \mathbf{0.542}$$
 
 #### (3) 验证代码
 
@@ -1121,9 +1121,9 @@ assert manual_forward_pass() == 0.542
 给定一维数值序列 `rawData` 与局部考察半径 `localArea`（记为 $k$）：
 - 对于索引 $i$，左侧有效邻居长度为 $L = \min(i, k)$，右侧有效邻居长度为 $R = \min(N - 1 - i, k)$；
 - 若左侧存在邻居，从外侧向 $i$ 必须**严格单调递增**（即从 $i$ 向左看必须严格单调递减）：
-  $$rawData[i - j + 1] > rawData[i - j], \quad orall j \in [1, L]$$
+  $$rawData[i - j + 1] > rawData[i - j], \quad \forall j \in [1, L]$$
 - 若右侧存在邻居，从 $i$ 向右看必须**严格单调递减**：
-  $$rawData[i + j - 1] > rawData[i + j], \quad orall j \in [1, R]$$
+  $$rawData[i + j - 1] > rawData[i + j], \quad \forall j \in [1, R]$$
 - **边界退化原则**：当某一侧有效邻居不足 $k$ 个时，直接使用现有存在的全部邻居进行校验。若长度为 1，直接判定为极大值；若存在平顶（相邻相等数值），严格打破递减关系，不判定为极值。
 
 #### (2) 算法实现与测试
@@ -1188,13 +1188,13 @@ K-Means 是最经典的无监督聚类算法，核心遵循 Lloyd 算法的交�
 
 最小化样本点到对应聚类中心的簇内平方误差和（Inertia / WCSS）：
 
-$$rg\min_{\mathcal{S}, oldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - oldsymbol{\mu}_j\|^2$$
+$$\arg\min_{\mathcal{S}, \boldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - \boldsymbol{\mu}_j\|^2$$
 
 两步迭代交替推进：
 1. **样本簇分配（Assignment Step）**：
-   $$c_i^{(t)} = rg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - oldsymbol{\mu}_j^{(t)}\|^2$$
+   $$c_i^{(t)} = \arg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - \boldsymbol{\mu}_j^{(t)}\|^2$$
 2. **质心重算更新（Update Step）**：
-   $$oldsymbol{\mu}_j^{(t+1)} = rac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
+   $$\boldsymbol{\mu}_j^{(t+1)} = \frac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
 
 #### (2) 生产级实现
 
@@ -1254,9 +1254,10 @@ assert cluster_res == [0, 0, 1, 1, 0, 1]
 #### (1) 缩放点积自注意力（Scaled Dot-Product Attention）机制实现
 
 公式原语：
-$$	ext{Attention}(Q, K, V) = 	ext{softmax}\left(rac{Q K^T}{\sqrt{d_k}} + Might) V$$
+$$\ext{Attention}(Q, K, V) = \ext{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M
+ight) V$$
 
-- **输入张量维度**：$Q, K, V \in \mathbb{R}^{B 	imes L 	imes d_k}$（$B$ 为 batch size，$L$ 为序列长度，$d_k$ 为头维度）；
+- **输入张量维度**：$Q, K, V \in \mathbb{R}^{B \imes L \imes d_k}$（$B$ 为 batch size，$L$ 为序列长度，$d_k$ 为头维度）；
 - **掩码（Mask）语义**：在因果自注意力或填充位处，对于无效位置赋予 $-10^9$ 或 $-\infty$，确保经 softmax 后注意力权重绝对归零；
 - **数值稳定性保证（Log-Sum-Exp Trick）**：在执行 $\exp$ 之前，减去每行的最大值（Row-Max Subtraction），杜绝浮点数上溢（Overflow）。
 
@@ -1304,26 +1305,28 @@ def self_attention(
 #### (2) 第一性原理推导：Logits 版二元交叉熵损失（BCEWithLogits）
 
 设逻辑回归模型的未归一化对数几率（Logit）为 $z \in \mathbb{R}$，则预测概率由 Sigmoid 函数给出：
-$$p = \sigma(z) = rac{1}{1 + e^{-z}}$$
+$$p = \sigma(z) = \frac{1}{1 + e^{-z}}$$
 
 根据伯努利分布假设，单个样本的目标似然函数为：
 $$P(y \mid z) = p^y (1 - p)^{1 - y}$$
 
 取负对数似然（Negative Log-Likelihood）得到单个样本的损失函数：
-$$\ell(z, y) = - ig[ y \log(p) + (1 - y) \log(1 - p) ig]$$
+$$\ell(z, y) = - \big[ y \log(p) + (1 - y) \log(1 - p) \big]$$
 
 **代入 $p = \sigma(z)$ 进行代数化简**：
-$$\log(p) = \log\left(rac{1}{1 + e^{-z}}ight) = -\log(1 + e^{-z})$$
-$$\log(1 - p) = \log\left(rac{e^{-z}}{1 + e^{-z}}ight) = -z - \log(1 + e^{-z})$$
+$$\log(p) = \log\left(\frac{1}{1 + e^{-z}}
+ight) = -\log(1 + e^{-z})$$
+$$\log(1 - p) = \log\left(\frac{e^{-z}}{1 + e^{-z}}
+ight) = -z - \log(1 + e^{-z})$$
 
 将上述两式代入 $\ell(z, y)$：
-$$\ell(z, y) = - ig[ -y \log(1 + e^{-z}) + (1 - y)(-z - \log(1 + e^{-z})) ig] = (1 - y)z + \log(1 + e^{-z}) = z - yz + \log(1 + e^{-z})$$
+$$\ell(z, y) = - \big[ -y \log(1 + e^{-z}) + (1 - y)(-z - \log(1 + e^{-z})) \big] = (1 - y)z + \log(1 + e^{-z}) = z - yz + \log(1 + e^{-z})$$
 
 为了保证在 $z > 0$ 与 $z < 0$ 时均不会发生指数爆炸，转化为数值稳定的等价形式：
 $$\ell(z, y) = \max(z, 0) - z \cdot y + \log(1 + e^{-|z|})$$
 
 批次经验损失为全部样本的算术平均：
-$$\mathcal{L}(Z, Y) = rac{1}{N} \sum_{i=1}^N ig[ \max(z_i, 0) - z_i y_i + \log(1 + e^{-|z_i|}) ig]$$
+$$\mathcal{L}(Z, Y) = \frac{1}{N} \sum_{i=1}^N \big[ \max(z_i, 0) - z_i y_i + \log(1 + e^{-|z_i|}) \big]$$
 
 ```python
 def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> float:
@@ -1348,9 +1351,9 @@ def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> 
    - 假设向量 $Q$ 与 $K$ 的各个分量独立同分布，均值为 0，方差为 1。
    - 点积为 $d_k$ 个独立变量之积的累加：$q \cdot k = \sum_{i=1}^{d_k} q_i k_i$。
    - 由独立随机变量方差的可加性：
-     $$\mathbb{E}[q \cdot k] = 0, \quad 	ext{Var}(q \cdot k) = \sum_{i=1}^{d_k} 	ext{Var}(q_i k_i) = \sum_{i=1}^{d_k} 	ext{Var}(q_i) 	ext{Var}(k_i) = d_k$$
+     $$\mathbb{E}[q \cdot k] = 0, \quad \ext{Var}(q \cdot k) = \sum_{i=1}^{d_k} \ext{Var}(q_i k_i) = \sum_{i=1}^{d_k} \ext{Var}(q_i) \ext{Var}(k_i) = d_k$$
    - 点积的标准差为 $\sqrt{d_k}$。若不除以 $\sqrt{d_k}$，当维度 $d_k$ 很大时（如 $d_k = 128$），点积结果方差高达 128，绝大多数注意力分数值会被推入 Softmax 函数两端的极端饱和区，导致反向传播梯度极其接近于 0（梯度消失）。除以 $\sqrt{d_k}$ 将方差重新缩放归一至 1，保证 Softmax 工作在灵敏活跃区间。
 2. **前馈神经网络（FFN）子层在 Attention 模块后的核心作用是什么？**
    - Self-Attention 是**跨 Token 的全局线性加权混叠**（Token Mixing），它实现了全序列上下文信息的聚合，但其本身主要提供线性重组；
-   - FFN 是**位置级非线性特征投影**（Channel / Feature Mixing），通常采用两层全连接与激活函数（如 GELU/SwiGLU），中间隐层升维至 $4	imes d_{	ext{model}}$。它为每个 Token 独立提供丰富的非线性函数拟合能力与高维语义记忆存储。
+   - FFN 是**位置级非线性特征投影**（Channel / Feature Mixing），通常采用两层全连接与激活函数（如 GELU/SwiGLU），中间隐层升维至 $4\imes d_{\ext{model}}$。它为每个 Token 独立提供丰富的非线性函数拟合能力与高维语义记忆存储。
 

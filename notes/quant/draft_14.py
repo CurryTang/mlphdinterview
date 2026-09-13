@@ -1,4 +1,4 @@
-# Quant 10 · Markets, assets and portfolios
+content = """# Quant 10 · Markets, assets and portfolios
 
 Course: [[Quant13 Game Theory and Strategic Decision Making|09 Game Theory]] → This note → [[Quant16 Linear Regression Kernel Smoothing and Interview Classics|11 Regression]]
 
@@ -99,7 +99,7 @@ Short selling is the foundation of quantitative long/short strategies.
 
 Bond interest rates form the center of gravity for financial asset pricing. The fair value of any asset is the discounted sum of its expected future cash flows:
 
-$$P = \sum_{t=1}^{T} \frac{CF_t}{(1 + r)^t}$$
+$$P = \sum_{t=1}^{T} \\frac{CF_t}{(1 + r)^t}$$
 
 An increase in the discount rate $r$ drastically shrinks the present value of forward cash flows.
 
@@ -148,7 +148,7 @@ $$(x + \Delta x)(y - \Delta y) = k$$
 
 Solving for the amount of $Y$ received:
 
-$$\Delta y = \frac{y \Delta x}{x + \Delta x}$$
+$$\Delta y = \\frac{y \Delta x}{x + \Delta x}$$
 
 Under this curve, the larger the single trade size $\Delta x$ relative to the pool depth $x$, the more severe the marginal execution price deviation. This mechanism naturally creates nonlinear price slippage.
 
@@ -157,9 +157,9 @@ Under this curve, the larger the single trade size $\Delta x$ relative to the po
 Liquidity providers (LPs) bear the structural cost of passive asset ratio adjustments. When external market prices change, arbitrageurs withdraw the appreciating asset from the pool, leaving behind the depreciating asset.
 Assuming the initial prices of two assets are equal, and relative prices subsequently change. Compared to statically holding the assets from inception, the LP's capital change rate can be derived as:
 
-$$\text{IL}(k) = \frac{2\sqrt{k}}{1+k} - 1 \le 0$$
+$$\\text{IL}(k) = \\frac{2\\sqrt{k}}{1+k} - 1 \le 0$$
 
-Here, $k$ is the multiplier of the external price change. Whether the price deviates upwards or downwards, $\text{IL}$ is always negative. This payoff profile is equivalent to shorting a straddle in traditional finance: earning transaction fees while bearing the negative gamma convexity loss of large price swings in the underlying asset.
+Here, $k$ is the multiplier of the external price change. Whether the price deviates upwards or downwards, $\\text{IL}$ is always negative. This payoff profile is equivalent to shorting a straddle in traditional finance: earning transaction fees while bearing the negative gamma convexity loss of large price swings in the underlying asset.
 
 ---
 
@@ -196,7 +196,7 @@ Options deconstruct linear rights and obligations. Buyers pay a premium to obtai
 
 Anatomy of option value:
 
-$$\text{Option price} = \text{Intrinsic value} + \text{Time value}$$
+$$\\text{Option price} = \\text{Intrinsic value} + \\text{Time value}$$
 
 - Intrinsic value: The theoretical profit that could be realized if the option were exercised immediately.
 
@@ -235,16 +235,14 @@ Quantitative market making and portfolio management use the Greeks to measure no
 
 | Risk dimension | Mathematical definition | Trading interpretation |
 |---|---|---|
-| **Delta ($\Delta$)** | $\frac{\partial V}{\partial S}$ | The linear sensitivity of option price to changes in the underlying asset price. Represents the equivalent spot position. |
-| **Gamma ($\Gamma$)** | $\frac{\partial^2 V}{\partial S^2}$ | The sensitivity (curvature) of Delta to underlying asset price changes. At-the-money options have the largest Gamma. |
-| **Theta ($\Theta$)** | $\frac{\partial V}{\partial t}$ | The decay rate of option value as time passes. Longs pay Theta, shorts collect Theta. |
-| **Vega ($
-u$)** | $\frac{\partial V}{\partial \sigma}$ | The sensitivity of option price to changes in implied volatility. |
-| **Rho ($
-ho$)** | $\frac{\partial V}{\partial r}$ | The sensitivity of option price to changes in the risk-free interest rate. |
+| **Delta ($\Delta$)** | $\\frac{\partial V}{\partial S}$ | The linear sensitivity of option price to changes in the underlying asset price. Represents the equivalent spot position. |
+| **Gamma ($\Gamma$)** | $\\frac{\partial^2 V}{\partial S^2}$ | The sensitivity (curvature) of Delta to underlying asset price changes. At-the-money options have the largest Gamma. |
+| **Theta ($\Theta$)** | $\\frac{\partial V}{\partial t}$ | The decay rate of option value as time passes. Longs pay Theta, shorts collect Theta. |
+| **Vega ($\nu$)** | $\\frac{\partial V}{\partial \sigma}$ | The sensitivity of option price to changes in implied volatility. |
+| **Rho ($\rho$)** | $\\frac{\partial V}{\partial r}$ | The sensitivity of option price to changes in the risk-free interest rate. |
 
 Being long Gamma (holding long options) allows one to profit from violent swings in the underlying asset, but this must be paid for via daily Theta decay. This embodies the conservation of energy law in option pricing:
-$$\Theta + \frac{1}{2}\sigma^2 S^2 \Gamma \approx 0$$
+$$\Theta + \\frac{1}{2}\sigma^2 S^2 \Gamma \\approx 0$$
 If the actual realized volatility falls short of the priced implied volatility, the long position will face systemic net losses.
 
 ---
@@ -255,8 +253,7 @@ Modern portfolio theory utilizes incomplete correlation between assets to optimi
 
 ### Diversification and the Capital Asset Pricing Model
 
-Combining multiple assets with correlation coefficients $
-ho < 1$ can reduce total portfolio variance without lowering expected returns.
+Combining multiple assets with correlation coefficients $\rho < 1$ can reduce total portfolio variance without lowering expected returns.
 The Capital Asset Pricing Model (CAPM) decomposes the excess return of a portfolio into two orthogonal components:
 
 $$R_p = R_f + \beta (R_m - R_f) + \alpha$$
@@ -292,16 +289,16 @@ import math
 from typing import Dict, Literal
 
 class BSMAnalytics:
-    """Option pricing and Greeks analysis tool"""
+    \"\"\"Option pricing and Greeks analysis tool\"\"\"
 
     @staticmethod
     def _phi(x: float) -> float:
-        """Standard normal probability density function"""
+        \"\"\"Standard normal probability density function\"\"\"
         return math.exp(-0.5 * x * x) / math.sqrt(2.0 * math.pi)
 
     @staticmethod
     def _cdf(x: float) -> float:
-        """Standard normal cumulative distribution function"""
+        \"\"\"Standard normal cumulative distribution function\"\"\"
         return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
     @classmethod
@@ -314,7 +311,7 @@ class BSMAnalytics:
         volatility: float,
         option_type: Literal["call", "put"] = "call",
     ) -> Dict[str, float]:
-        """Calculates theoretical option price and various Greeks"""
+        \"\"\"Calculates theoretical option price and various Greeks\"\"\"
         s, k, t, r, sigma = spot, strike, time_to_maturity, risk_free_rate, volatility
 
         if t <= 0:
@@ -372,7 +369,7 @@ def portfolio_risk_breakdown(
     vol_bond: float = 0.06,
     corr: float = 0.0,
 ):
-    """Calculates total portfolio variance and true risk contribution percentage of assets"""
+    \"\"\"Calculates total portfolio variance and true risk contribution percentage of assets\"\"\"
     w_s, w_b = weight_stock, weight_bond
     sigma_s, sigma_b = vol_stock, vol_bond
 
@@ -397,7 +394,7 @@ def portfolio_risk_breakdown(
 
     print(f"Capital allocation: Stocks {w_s*100:.0f}% / Bonds {w_b*100:.0f}%")
     print(f"Annualized portfolio volatility: {vol_total*100:.2f}%")
-    print(f"Actual risk bearing -> Stocks: {pct_stock:.2f}% | Bonds: {pct_bond:.2f}%\n")
+    print(f"Actual risk bearing -> Stocks: {pct_stock:.2f}% | Bonds: {pct_bond:.2f}%\\n")
 
 
 if __name__ == "__main__":
@@ -413,3 +410,7 @@ if __name__ == "__main__":
 ## References
 
 - Hull, J. C. (2014). *Options, futures, and other derivatives*. Pearson.
+"""
+
+with open("Quant14 Financial Markets Asset Classes and Portfolio Theory.en.md", "w") as f:
+    f.write(content)

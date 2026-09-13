@@ -1487,7 +1487,7 @@ if __name__ == "__main__":
 <div class="review-block">
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：$\mathcal{O}(N \cdot K)$。对于长度为 $N$ 的数组，每个点最多向两侧延伸检查 $K = 	ext{localArea}$ 步。若 $K \ll N$，整体逼近 $\mathcal{O}(N)$ 线性时间。
+- **时间复杂度**：$\mathcal{O}(N \cdot K)$。对于长度为 $N$ 的数组，每个点最多向两侧延伸检查 $K = \ext{localArea}$ 步。若 $K \ll N$，整体逼近 $\mathcal{O}(N)$ 线性时间。
 - **空间复杂度**：除存储输出索引外，仅需 $\mathcal{O}(1)$ 额外辅助空间。
 
 </div>
@@ -1579,10 +1579,10 @@ if __name__ == "__main__":
   1. 显然有 $nums[k] \ge m$ 且 $nums[k+1] \ge m$；
   2. 必存在某个相邻对包含最大值 $M$（设 $nums[p] = M$，则其相邻元素 $nums[p-1]$ 或 $nums[p+1]$ 至少有一个属于该区间）；
   3. 取该包含 $M$ 的相邻对，其较小元素必然 $\ge m$；
-  4. 故该相邻对的和 $M + 	ext{other} \ge M + m$ 恒成立！
+  4. 故该相邻对的和 $M + \ext{other} \ge M + m$ 恒成立！
   5. **结论**：任意长区间的目标值均被其内部包含最大值的相邻对所支配。因此无需使用线段树或滑动窗口，单次 $\mathcal{O}(N)$ 线性遍历相邻元素即获全局最优解。
 - **边界防坑**：
-  必须在前置沟通中确认“长度 $\ge 2$”这一刚性约束。若允许长度为 1，则单个元素自身作为子数组的 $min + max = 2 	imes nums[i]$，将改变题目本质。
+  必须在前置沟通中确认“长度 $\ge 2$”这一刚性约束。若允许长度为 1，则单个元素自身作为子数组的 $min + max = 2 \imes nums[i]$，将改变题目本质。
 
 </div>
 
@@ -1814,7 +1814,7 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 机制剖析</div>
 
 - **硬件 8 字节对齐约束（Alignment Invariant）**：
-  在现代 CPU 架构中，未对齐内存访问（Unaligned Memory Access）会触发额外的总线周期甚至硬件异常。本题强制起始下标必须满足 $start \pmod 8 == 0$，因此外层循环以步长 8 跨步推进，候选点数量缩减至 $\lceil 	ext{capacity} / 8 
+  在现代 CPU 架构中，未对齐内存访问（Unaligned Memory Access）会触发额外的总线周期甚至硬件异常。本题强制起始下标必须满足 $start \pmod 8 == 0$，因此外层循环以步长 8 跨步推进，候选点数量缩减至 $\lceil \ext{capacity} / 8 
 ceil$。
 - **自动增量分配 ID 与安全擦除**：
   `next_alloc_id` 保证即使连续分配释放后，每一个历史分配块的 ID 绝对唯一，避免因 ID 复用导致释放已销毁块时发生悬垂指针误删。
@@ -1826,7 +1826,7 @@ ceil$。
 
 - **时间复杂度**：
   - `alloc(x)`：最多检查 $\lceil N / 8 
-ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathcal{O}(rac{N}{8} \cdot X)$。
+ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathcal{O}(\frac{N}{8} \cdot X)$。
   - `erase(id)`：单趟线性扫描整块内存，时间复杂度为严格 $\mathcal{O}(N)$。
 - **空间复杂度**：$\mathcal{O}(N)$，用于维护整块内存状态数组。
 

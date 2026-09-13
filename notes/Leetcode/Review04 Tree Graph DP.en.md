@@ -1118,7 +1118,7 @@ if __name__ == "__main__":
 
 - **Prefix Sum Difference Property**:
   A downward path from ancestor $u$ to current node $v$ sums to $target$ iff:
-  $$\sum_{w \in 	ext{path}(u 	o v)} 	ext{val}(w) = S(v) - S(	ext{parent}(u)) = target \implies S(	ext{parent}(u)) = S(v) - target$$
+  $$\sum_{w \in \ext{path}(u \o v)} \ext{val}(w) = S(v) - S(\ext{parent}(u)) = target \implies S(\ext{parent}(u)) = S(v) - target$$
   Checking the frequency of $S(v) - target$ in the ancestor prefix map directly yields the count of valid downward paths ending at $v$.
 - **Why Sliding Window Fails**:
   Node values can be negative or zero (violating prefix monotonicity), and tree branches diverge into non-linear paths.
@@ -1367,12 +1367,12 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 Mechanism & Invariants</div>
 
 - **Layered Graph / State Space Expansion**:
-  Fuel remaining dictates future reachability. The state space is expanded to $(r, c, 	ext{fuel})$, with directed edges weighted by destination `grid_cost[nr][nc]`.
+  Fuel remaining dictates future reachability. The state space is expanded to $(r, c, \ext{fuel})$, with directed edges weighted by destination `grid_cost[nr][nc]`.
 - **Recharge State Collapse**:
   At any cell with `recharge[nr][nc] == True`, fuel resets to $K$, collapsing all arriving fuel states into $(nr, nc, K)$.
 - **Large-K Optimization & Supergraph Condensation**:
   1. If $K \ge m + n - 2$, fuel never bounds the optimal path, reducing to 2D grid Dijkstra in $\mathcal{O}(MN \log(MN))$.
-  2. For sparse recharge cells ($R \ll MN$), construct a **Recharge Supergraph** with vertices $\{	ext{Start}, 	ext{Goal}\} \cup \{	ext{Recharge Stations}\}$. Run pair-wise fuel-constrained shortest paths between stations, then execute Dijkstra over the condensed $\mathcal{O}(R)$-node graph.
+  2. For sparse recharge cells ($R \ll MN$), construct a **Recharge Supergraph** with vertices $\{\ext{Start}, \ext{Goal}\} \cup \{\ext{Recharge Stations}\}$. Run pair-wise fuel-constrained shortest paths between stations, then execute Dijkstra over the condensed $\mathcal{O}(R)$-node graph.
 
 </div>
 
@@ -1487,16 +1487,16 @@ if __name__ == "__main__":
 - **Equivalence Relation & Connected Components**:
   Symmetry and transitivity form an equivalence relation. Counting similarity groups is isomorphic to finding connected components in an undirected graph $G = (V, E)$.
 - **Strict Upper-Triangle Scan**:
-  Since $isSimilar[i][j] == isSimilar[j][i]$ and the diagonal is reflexive, scanning $j \in [i+1, n-1]$ halves the iterations to $rac{N(N-1)}{2}$.
+  Since $isSimilar[i][j] == isSimilar[j][i]$ and the diagonal is reflexive, scanning $j \in [i+1, n-1]$ halves the iterations to $\frac{N(N-1)}{2}$.
 - **Streaming Adaptability**:
-  While BFS and DSU both run in $\mathcal{O}(N^2)$ on dense matrices, DSU supports online streaming updates in $\mathcal{O}(lpha(N))$ per new edge without re-traversing.
+  While BFS and DSU both run in $\mathcal{O}(N^2)$ on dense matrices, DSU supports online streaming updates in $\mathcal{O}(\alpha(N))$ per new edge without re-traversing.
 
 </div>
 
 <div class="review-block">
 <div class="review-block-label">⏱️ Complexity Analysis</div>
 
-- **Time Complexity**: $\mathcal{O}(N^2 \cdot lpha(N))$, dominated by matrix scanning with near-constant DSU operations.
+- **Time Complexity**: $\mathcal{O}(N^2 \cdot \alpha(N))$, dominated by matrix scanning with near-constant DSU operations.
 - **Space Complexity**: $\mathcal{O}(N)$ for parent and rank arrays.
 
 </div>
@@ -1970,7 +1970,7 @@ if __name__ == "__main__":
   2. Range bound: $0 \le val \le 255$;
   3. Total consumption: all input characters must be utilized.
 - **Pigeonhole Pruning**:
-  Remaining characters must satisfy $segments\_left \le rem \le 3 	imes segments\_left$, collapsing the recursion tree.
+  Remaining characters must satisfy $segments\_left \le rem \le 3 \imes segments\_left$, collapsing the recursion tree.
 
 </div>
 
@@ -2084,7 +2084,7 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 Mechanism & Invariants</div>
 
 - **First Differing Character**:
-  Only the first mismatch between adjacent words provides valid relative ordering $c_1 	o c_2$.
+  Only the first mismatch between adjacent words provides valid relative ordering $c_1 \o c_2$.
 - **Crucial Pitfalls**:
   1. **Prefix Violation Trap**: If $w1$ contains $w2$ as prefix with $len(w1) > len(w2)$, it violates lexicographical ordering; return `""`;
   2. **Isolated Nodes**: Ensure all characters in any word are registered in `in_degree`;

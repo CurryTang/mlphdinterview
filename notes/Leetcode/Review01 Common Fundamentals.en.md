@@ -1430,7 +1430,7 @@ if __name__ == "__main__":
 <div class="review-block">
 <div class="review-block-label">⏱️ Complexity Analysis</div>
 
-- **Time Complexity**: $\mathcal{O}(N \cdot K)$ where $K = 	ext{localArea}$. For small fixed $K$, runtime scales linearly with stream length $N$.
+- **Time Complexity**: $\mathcal{O}(N \cdot K)$ where $K = \ext{localArea}$. For small fixed $K$, runtime scales linearly with stream length $N$.
 - **Space Complexity**: $\mathcal{O}(1)$ auxiliary space excluding output list.
 
 </div>
@@ -1521,10 +1521,10 @@ if __name__ == "__main__":
   Let $[i, j]$ be a subarray with $j - i \ge 1$, minimum $m$, and maximum $M$.
   Consider the adjacent pair containing $M$ inside this subarray (e.g. $(nums[p-1], M)$ or $(M, nums[p+1])$).
   Every element in the subarray is $\ge m$, so the neighbor element is $\ge m$.
-  Hence $M + 	ext{neighbor} \ge M + m$.
+  Hence $M + \ext{neighbor} \ge M + m$.
   Therefore, every valid subarray's objective is dominated by an adjacent pair within it. No sliding window or segment tree is needed; a linear $\mathcal{O}(N)$ scan over adjacent pairs suffices.
 - **Length Constraint Guard**:
-  Clarifying "length $\ge 2$" is essential: a single-element subarray would trivially give $2 	imes nums[i]$, completely altering the problem.
+  Clarifying "length $\ge 2$" is essential: a single-element subarray would trivially give $2 \imes nums[i]$, completely altering the problem.
 
 </div>
 
@@ -1750,7 +1750,7 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 Mechanism & Invariants</div>
 
 - **Alignment Stride Constraint**:
-  Enforcing $start \pmod 8 == 0$ restricts candidate search indices to step size 8, reducing candidate locations to $\lceil 	ext{capacity} / 8 
+  Enforcing $start \pmod 8 == 0$ restricts candidate search indices to step size 8, reducing candidate locations to $\lceil \ext{capacity} / 8 
 ceil$.
 - **Monotonic ID Tagging**:
   Auto-incrementing `next_alloc_id` ensures each allocation retains distinct identities even across allocations of identical size.
@@ -1761,7 +1761,7 @@ ceil$.
 <div class="review-block-label">⏱️ Complexity Analysis</div>
 
 - **Time Complexity**:
-  - `alloc(x)`: $\mathcal{O}(rac{N}{8} \cdot X)$ worst-case.
+  - `alloc(x)`: $\mathcal{O}(\frac{N}{8} \cdot X)$ worst-case.
   - `erase(id)`: $\mathcal{O}(N)$ single pass over memory array.
 - **Space Complexity**: $\mathcal{O}(N)$ for memory state array.
 

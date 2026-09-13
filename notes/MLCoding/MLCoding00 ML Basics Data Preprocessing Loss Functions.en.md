@@ -903,7 +903,7 @@ In classification system evaluation and risk screening, engineering workflows fr
 
 With ground-truth classes as rows and predictions as columns:
 
-$$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
+$$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
 
 - **True Positive (TP)**: Actual positive correctly predicted as positive;
 - **False Negative (FN)**: Actual positive incorrectly predicted as negative (miss);
@@ -912,9 +912,9 @@ $$egin{pmatrix} 	ext{TN} & 	ext{FP} \ 	ext{FN} & 	ext{TP} \end{pmatrix}$$
 
 Operational criteria:
 1. **Recall (Sensitivity / True Positive Rate)**:
-   $$	ext{Recall} = rac{	ext{TP}}{	ext{TP} + 	ext{FN}} = rac{	ext{TP}}{	ext{Actual Positives}} > 0.90$$
+   $$\ext{Recall} = \frac{\ext{TP}}{\ext{TP} + \ext{FN}} = \frac{\ext{TP}}{\ext{Actual Positives}} > 0.90$$
 2. **False Positive Rate (FPR / Fall-out)**:
-   $$	ext{FPR} = rac{	ext{FP}}{	ext{FP} + 	ext{TN}} = rac{	ext{FP}}{	ext{Actual Negatives}} = 1 - 	ext{Specificity} < 0.10$$
+   $$\ext{FPR} = \frac{\ext{FP}}{\ext{FP} + \ext{TN}} = \frac{\ext{FP}}{\ext{Actual Negatives}} = 1 - \ext{Specificity} < 0.10$$
 
 #### (2) Candidate Matrices Comparative Analysis
 
@@ -922,10 +922,10 @@ Assuming an evaluation set with 100 actual positives and 100 actual negatives:
 
 | Candidate Matrix | TP | FN | FP | TN | Recall (TPR) | FPR | Satisfies Recall > 90% & FPR < 10%? |
 |---|---|---|---|---|---|---|---|
-| **Matrix A** | 95 | 5 | 8 | 92 | $rac{95}{100} = 95.0\%$ | $rac{8}{100} = 8.0\%$ | **Pass**: Recall=95% > 90%, FPR=8% < 10% |
-| **Matrix B** | 88 | 12 | 4 | 96 | $rac{88}{100} = 88.0\%$ | $rac{4}{100} = 4.0\%$ | **Fail**: Recall=88% below threshold (< 90%) |
-| **Matrix C** | 98 | 2 | 15 | 85 | $rac{98}{100} = 98.0\%$ | $rac{15}{100} = 15.0\%$ | **Fail**: FPR=15% exceeds tolerance (> 10%) |
-| **Matrix D** | 92 | 8 | 7 | 93 | $rac{92}{100} = 92.0\%$ | $rac{7}{100} = 7.0\%$ | **Pass**: Recall=92% > 90%, FPR=7% < 10% |
+| **Matrix A** | 95 | 5 | 8 | 92 | $\frac{95}{100} = 95.0\%$ | $\frac{8}{100} = 8.0\%$ | **Pass**: Recall=95% > 90%, FPR=8% < 10% |
+| **Matrix B** | 88 | 12 | 4 | 96 | $\frac{88}{100} = 88.0\%$ | $\frac{4}{100} = 4.0\%$ | **Fail**: Recall=88% below threshold (< 90%) |
+| **Matrix C** | 98 | 2 | 15 | 85 | $\frac{98}{100} = 98.0\%$ | $\frac{15}{100} = 15.0\%$ | **Fail**: FPR=15% exceeds tolerance (> 10%) |
+| **Matrix D** | 92 | 8 | 7 | 93 | $\frac{92}{100} = 92.0\%$ | $\frac{7}{100} = 7.0\%$ | **Pass**: Recall=92% > 90%, FPR=7% < 10% |
 
 #### (3) Validation Code
 
@@ -974,12 +974,12 @@ When a model's training loss spikes uncontrollably, explodes to infinity (`inf`)
 
 | Diagnostic Hypothesis | Causes Loss Divergence? | Mathematical Mechanism & System Rationale |
 |---|---|---|
-| **Learning Rate / Step Size Too Large** | **Yes [Primary Root Cause]** | For objective $rac{1}{2} x^T H x$, if step size $\eta > rac{2}{\lambda_{\max}(H)}$, gradient updates diverge exponentially: $\|w_{t+1} - w^*\| > \|w_t - w^*\|$. |
-| **Unnormalized / Unscaled Input Features** | **Yes [Primary Root Cause]** | Severe feature scale imbalance inflates the condition number $\kappa(H) = rac{\lambda_{\max}}{\lambda_{\min}} \gg 1$, creating pathological ravines where fixed step sizes overshoot orthogonal walls. |
-| **Numerically Unstable Loss Formulation** | **Yes [Primary Root Cause]** | Cross-entropy without probability clamping ($p 	o 0 \implies \log p 	o -\infty$), inducing arithmetic underflow and `NaN` propagation. |
+| **Learning Rate / Step Size Too Large** | **Yes [Primary Root Cause]** | For objective $\frac{1}{2} x^T H x$, if step size $\eta > \frac{2}{\lambda_{\max}(H)}$, gradient updates diverge exponentially: $\|w_{t+1} - w^*\| > \|w_t - w^*\|$. |
+| **Unnormalized / Unscaled Input Features** | **Yes [Primary Root Cause]** | Severe feature scale imbalance inflates the condition number $\kappa(H) = \frac{\lambda_{\max}}{\lambda_{\min}} \gg 1$, creating pathological ravines where fixed step sizes overshoot orthogonal walls. |
+| **Numerically Unstable Loss Formulation** | **Yes [Primary Root Cause]** | Cross-entropy without probability clamping ($p \o 0 \implies \log p \o -\infty$), inducing arithmetic underflow and `NaN` propagation. |
 | **Exploding Gradients in Deep Layers** | **Yes [Primary Root Cause]** | Repeated matrix multiplication across deep layers yields unbounded gradient norms $\|
-abla_	heta \mathcal{L}\|$ without gradient clipping. |
-| **Regularization Parameter Too High** | **No [Common Misconception]** | Excessive regularization ($\lambda 	o \infty$) strongly penalizes weights to zero, causing **underfitting** with high but finite, bounded loss. It never causes divergence to infinity. |
+abla_\heta \mathcal{L}\|$ without gradient clipping. |
+| **Regularization Parameter Too High** | **No [Common Misconception]** | Excessive regularization ($\lambda \o \infty$) strongly penalizes weights to zero, causing **underfitting** with high but finite, bounded loss. It never causes divergence to infinity. |
 | **Zero Regularization on Ill-Conditioned Problems** | **Yes** | When features are multicollinear or $N < P$, the design matrix is singular. Absence of $L_2$ regularization allows weights to grow unbounded. |
 
 ---
@@ -999,7 +999,7 @@ Loss
  └──────────────────────────────────────────► Training Epochs
 ```
 
-- **Diagnostic Signature**: Training loss monotonically approaches zero while validation loss rebounds and escalates after reaching its trough. The widening generalization gap ($\mathcal{L}_{	ext{val}} - \mathcal{L}_{	ext{train}}$) signals that the model is memorizing training noise.
+- **Diagnostic Signature**: Training loss monotonically approaches zero while validation loss rebounds and escalates after reaching its trough. The widening generalization gap ($\mathcal{L}_{\ext{val}} - \mathcal{L}_{\ext{train}}$) signals that the model is memorizing training noise.
 
 #### (2) Mitigation Strategy Multi-Select Assessment
 
@@ -1020,27 +1020,27 @@ Loss
 
 #### (1) Architecture & Numerical Parameters
 
-Consider a 3-layer fully connected network mapping $\mathbb{R}^2 	o \mathbb{R}^2 	o \mathbb{R}^1$:
+Consider a 3-layer fully connected network mapping $\mathbb{R}^2 \o \mathbb{R}^2 \o \mathbb{R}^1$:
 
-- **Input**: $x = egin{pmatrix} 0.5 \ -0.2 \end{pmatrix}$
+- **Input**: $x = \begin{pmatrix} 0.5 \ -0.2 \end{pmatrix}$
 - **Layer 1 (Linear)**:
-  $$W_1 = egin{pmatrix} 0.4 & -0.5 \ 0.2 & 0.8 \end{pmatrix}, \quad b_1 = egin{pmatrix} 0.1 \ -0.1 \end{pmatrix}$$
+  $$W_1 = \begin{pmatrix} 0.4 & -0.5 \ 0.2 & 0.8 \end{pmatrix}, \quad b_1 = \begin{pmatrix} 0.1 \ -0.1 \end{pmatrix}$$
 - **Layer 2 (Linear)**:
-  $$W_2 = egin{pmatrix} 0.5 & 0.3 \ -0.2 & 0.4 \end{pmatrix}, \quad b_2 = egin{pmatrix} -0.05 \ 0.15 \end{pmatrix}$$
+  $$W_2 = \begin{pmatrix} 0.5 & 0.3 \ -0.2 & 0.4 \end{pmatrix}, \quad b_2 = \begin{pmatrix} -0.05 \ 0.15 \end{pmatrix}$$
 - **Layer 3 (Linear + Sigmoid)**:
-  $$W_3 = egin{pmatrix} 1.2 & -0.8 \end{pmatrix}, \quad b_3 = 0.05, \quad \sigma(z) = rac{1}{1 + e^{-z}}$$
+  $$W_3 = \begin{pmatrix} 1.2 & -0.8 \end{pmatrix}, \quad b_3 = 0.05, \quad \sigma(z) = \frac{1}{1 + e^{-z}}$$
 
 #### (2) Step-by-Step Numerical Computation
 
 1. **Layer 1 Forward**:
-   $$z_1 = W_1 x + b_1 = egin{pmatrix} 0.4(0.5) + (-0.5)(-0.2) + 0.1 \ 0.2(0.5) + 0.8(-0.2) + (-0.1) \end{pmatrix} = egin{pmatrix} 0.20 + 0.10 + 0.10 \ 0.10 - 0.16 - 0.10 \end{pmatrix} = egin{pmatrix} 0.400 \ -0.160 \end{pmatrix}$$
+   $$z_1 = W_1 x + b_1 = \begin{pmatrix} 0.4(0.5) + (-0.5)(-0.2) + 0.1 \ 0.2(0.5) + 0.8(-0.2) + (-0.1) \end{pmatrix} = \begin{pmatrix} 0.20 + 0.10 + 0.10 \ 0.10 - 0.16 - 0.10 \end{pmatrix} = \begin{pmatrix} 0.400 \ -0.160 \end{pmatrix}$$
 
 2. **Layer 2 Forward**:
-   $$z_2 = W_2 z_1 + b_2 = egin{pmatrix} 0.5(0.400) + 0.3(-0.160) - 0.05 \ -0.2(0.400) + 0.4(-0.160) + 0.15 \end{pmatrix} = egin{pmatrix} 0.200 - 0.048 - 0.050 \ -0.080 - 0.064 + 0.150 \end{pmatrix} = egin{pmatrix} 0.102 \ 0.006 \end{pmatrix}$$
+   $$z_2 = W_2 z_1 + b_2 = \begin{pmatrix} 0.5(0.400) + 0.3(-0.160) - 0.05 \ -0.2(0.400) + 0.4(-0.160) + 0.15 \end{pmatrix} = \begin{pmatrix} 0.200 - 0.048 - 0.050 \ -0.080 - 0.064 + 0.150 \end{pmatrix} = \begin{pmatrix} 0.102 \ 0.006 \end{pmatrix}$$
 
 3. **Layer 3 Linear & Sigmoid**:
    $$z_3 = W_3 z_2 + b_3 = 1.2(0.102) + (-0.8)(0.006) + 0.050 = 0.1224 - 0.0048 + 0.0500 = 0.1676$$
-   $$\hat{y} = \sigma(0.1676) = rac{1}{1 + e^{-0.1676}} pprox rac{1}{1 + 0.84569} pprox rac{1}{1.84569} pprox 0.54180 pprox \mathbf{0.542}$$
+   $$\hat{y} = \sigma(0.1676) = \frac{1}{1 + e^{-0.1676}} \approx \frac{1}{1 + 0.84569} \approx \frac{1}{1.84569} \approx 0.54180 \approx \mathbf{0.542}$$
 
 #### (3) Code Verification
 
@@ -1076,9 +1076,9 @@ In streaming feature engineering and signal processing, identifying local peak i
 Given a sequence `rawData` and search neighborhood radius `localArea` ($k$):
 - For index $i$, available left neighbors $L = \min(i, k)$ and right neighbors $R = \min(N - 1 - i, k)$;
 - Left neighborhood must strictly increase toward $i$ (strictly decreasing away from $i$):
-  $$rawData[i - j + 1] > rawData[i - j], \quad orall j \in [1, L]$$
+  $$rawData[i - j + 1] > rawData[i - j], \quad \forall j \in [1, L]$$
 - Right neighborhood must strictly decrease away from $i$:
-  $$rawData[i + j - 1] > rawData[i + j], \quad orall j \in [1, R]$$
+  $$rawData[i + j - 1] > rawData[i + j], \quad \forall j \in [1, R]$$
 - **Boundary Fallback**: If fewer than $k$ neighbors exist on a flank, validate across all available neighbors. Single element sequences trivially qualify. Equal adjacent values break strict inequality.
 
 #### (2) Implementation
@@ -1137,13 +1137,13 @@ Lloyd's algorithm implements alternating minimization over cluster assignments a
 
 #### (1) Objective Function
 
-$$rg\min_{\mathcal{S}, oldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - oldsymbol{\mu}_j\|^2$$
+$$\arg\min_{\mathcal{S}, \boldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - \boldsymbol{\mu}_j\|^2$$
 
 Iterative steps:
 1. **Assignment**: Assign each sample to the nearest centroid under Euclidean distance:
-   $$c_i^{(t)} = rg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - oldsymbol{\mu}_j^{(t)}\|^2$$
+   $$c_i^{(t)} = \arg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - \boldsymbol{\mu}_j^{(t)}\|^2$$
 2. **Centroid Update**: Recompute centroid as the cluster empirical mean:
-   $$oldsymbol{\mu}_j^{(t+1)} = rac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
+   $$\boldsymbol{\mu}_j^{(t+1)} = \frac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
 
 #### (2) Implementation
 
@@ -1199,9 +1199,10 @@ In modern machine learning engineering evaluations, implementing core attention 
 #### (1) Numerically Stable Scaled Dot-Product Attention
 
 Mathematical primitive:
-$$	ext{Attention}(Q, K, V) = 	ext{softmax}\left(rac{Q K^T}{\sqrt{d_k}} + Might) V$$
+$$\ext{Attention}(Q, K, V) = \ext{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M
+ight) V$$
 
-- **Tensor Dimensions**: $Q, K, V \in \mathbb{R}^{B 	imes L 	imes d_k}$;
+- **Tensor Dimensions**: $Q, K, V \in \mathbb{R}^{B \imes L \imes d_k}$;
 - **Masking Semantics**: In causal masking or padding tokens, invalid entries receive $-10^9$ or $-\infty$, ensuring zero attention probability after softmax;
 - **Numerical Stability**: Row-max subtraction before exponentiation prevents floating-point overflow.
 
@@ -1244,13 +1245,13 @@ def self_attention(
 #### (2) First-Principles Derivation: Binary Cross-Entropy with Logits
 
 Let unnormalized logit be $z \in \mathbb{R}$. The posterior probability is parameterized by the Sigmoid function:
-$$p = \sigma(z) = rac{1}{1 + e^{-z}}$$
+$$p = \sigma(z) = \frac{1}{1 + e^{-z}}$$
 
 Under the Bernoulli likelihood assumption, the likelihood for a single sample is:
 $$P(y \mid z) = p^y (1 - p)^{1 - y}$$
 
 The per-sample negative log-likelihood (BCE loss) is:
-$$\ell(z, y) = - ig[ y \log(p) + (1 - y) \log(1 - p) ig]$$
+$$\ell(z, y) = - \big[ y \log(p) + (1 - y) \log(1 - p) \big]$$
 
 **Algebraic Simplification substituting $p = \sigma(z)$**:
 $$\log(p) = -\log(1 + e^{-z})$$
@@ -1263,7 +1264,7 @@ To eliminate positive exponent overflow for all $z \in \mathbb{R}$, we formulate
 $$\ell(z, y) = \max(z, 0) - z \cdot y + \log(1 + e^{-|z|})$$
 
 Averaged over a batch of $N$ samples:
-$$\mathcal{L}(Z, Y) = rac{1}{N} \sum_{i=1}^N ig[ \max(z_i, 0) - z_i y_i + \log(1 + e^{-|z_i|}) ig]$$
+$$\mathcal{L}(Z, Y) = \frac{1}{N} \sum_{i=1}^N \big[ \max(z_i, 0) - z_i y_i + \log(1 + e^{-|z_i|}) \big]$$
 
 ```python
 def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> float:
@@ -1285,8 +1286,8 @@ def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> 
 
 1. **Why scale the dot-product by $\sqrt{d_k}$?**
    - For independent unit-variance components $q_i, k_i \sim \mathcal{N}(0, 1)$, the inner product $\sum_{i=1}^{d_k} q_i k_i$ has mean $0$ and variance $d_k$.
-   - As $d_k$ grows large (e.g. $d_k = 128$), variance expands to 128, pushing softmax inputs into saturation regions where gradients vanish ($\sigma'(z) 	o 0$). Scaling by $1/\sqrt{d_k}$ renormalizes variance to $1.0$, keeping softmax activations in high-sensitivity gradient zones.
+   - As $d_k$ grows large (e.g. $d_k = 128$), variance expands to 128, pushing softmax inputs into saturation regions where gradients vanish ($\sigma'(z) \o 0$). Scaling by $1/\sqrt{d_k}$ renormalizes variance to $1.0$, keeping softmax activations in high-sensitivity gradient zones.
 2. **What is the functional role of the Position-wise Feed-Forward Network (FFN)?**
    - Self-attention acts as a global **Token Mixer** (inter-token context aggregation);
-   - The FFN operates as a localized **Channel Mixer** (intra-token non-linear feature transformation), projecting embeddings into a $4	imes$ expanded subspace before non-linear gating, storing persistent associative factual patterns.
+   - The FFN operates as a localized **Channel Mixer** (intra-token non-linear feature transformation), projecting embeddings into a $4\imes$ expanded subspace before non-linear gating, storing persistent associative factual patterns.
 
