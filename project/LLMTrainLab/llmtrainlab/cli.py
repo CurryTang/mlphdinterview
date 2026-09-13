@@ -83,7 +83,12 @@ def cmd_job_submit(args: argparse.Namespace) -> int:
     if not args.no_tick:
         engine.step(1)
     _save(engine, args.root)
-    print(f"submitted {job.name} phase={engine.jobs[job.name].phase} demand={job.gpu_demand}x{job.gpu_type}")
+    live = engine.jobs[job.name]
+    print(f"submitted {live.name} phase={live.phase} demand={live.gpu_demand}x{live.gpu_type} {live.method} tp={live.tp} ep={live.ep}")
+    for event in live.events:
+        if event.startswith("t="):
+            continue
+        print(f"  why: {event}")
     return 0
 
 
@@ -99,15 +104,17 @@ def cmd_job_list(args: argparse.Namespace) -> int:
                 "name": job.name,
                 "ns": job.namespace,
                 "phase": job.phase,
-                "pri": job.priority,
+                "method": job.method,
+                "engine": job.engine or "-",
                 "gpus": job.gpu_demand,
                 "type": job.gpu_type,
+                "tp": job.tp,
                 "step": step,
                 "ckpt": ckpt.step if ckpt else "-",
                 "retries": job.retries,
             }
         )
-    _print_table(rows, ["name", "ns", "phase", "pri", "gpus", "type", "step", "ckpt", "retries"])
+    _print_table(rows, ["name", "ns", "phase", "method", "engine", "gpus", "type", "tp", "step", "ckpt", "retries"])
     return 0
 
 
@@ -183,6 +190,115 @@ def cmd_metrics(args: argparse.Namespace) -> int:
     print(f"throughput   {metrics['training_throughput']} steps/tick")
     print("tenant GPUs:", metrics["tenant_gpus"])
     print("inventory:", metrics["gpu_inventory"])
+    if metrics.get("dcgm"):
+        print("dcgm (HBM / NVLink):")
+        _print_table(
+            [
+                {"node": name, **{k: item[k] for k in ("sku", "hbm_gb", "sm_util", "nvlink_active")}}
+                for name, item in metrics["dcgm"].items()
+            ],
+            ["node", "sku", "hbm_gb", "sm_util", "nvlink_active"],
+        )
+    return 0
+
+
+def cmd_landscape(args: argparse.Namespace) -> int:
+    from llmtrainlab.landscape import (
+        AXES,
+        ENGINES,
+        GPUS,
+        METHODS,
+        MODELS,
+        recommend,
+        table_axes,
+        table_gpus,
+    )
+
+    topic = args.topic
+    if topic == "gpus":
+        _print_table(table_gpus(), ["sku", "hbm_gb", "hbm_tbs", "nvlink", "nic", "tdp_w"])
+        for sku in GPUS.values():
+            print(f"  {sku.name}: {sku.notes}")
+        return 0
+    if topic == "models":
+        rows = [{"name": m.name, "params_b": m.params_b, "dense": m.dense, "context": m.context} for m in MODELS.values()]
+        _print_table(rows, ["name", "params_b", "dense", "context"])
+        return 0
+    if topic == "methods":
+        rows = [{"name": m.name, "workload": m.workload, "gang": m.gang, "notes": m.notes} for m in METHODS.values()]
+        _print_table(rows, ["name", "workload", "gang", "notes"])
+        return 0
+    if topic == "engines":
+        rows = [{"name": e.name, "kind": e.kind, "notes": e.notes} for e in ENGINES.values()]
+        _print_table(rows, ["name", "kind", "notes"])
+        return 0
+    if topic == "parallelism":
+        _print_table(table_axes(), ["axis", "collective", "fabric", "scheduler"])
+        return 0
+    if topic == "recipe":
+        recipe = recommend(args.model, args.method, args.gpu)
+        print(json.dumps(
+            {
+                "model": recipe.model,
+                "method": recipe.method,
+                "engine": recipe.engine,
+                "gpuType": recipe.gpu_type,
+                "parallelism": {"dp": recipe.dp, "tp": recipe.tp, "pp": recipe.pp, "ep": recipe.ep},
+                "workers": recipe.workers,
+                "requireRdma": recipe.require_rdma,
+                "preferSameNode": recipe.prefer_same_node,
+                "qos": recipe.qos,
+                "hbm_gb_needed": recipe.hbm_gb_needed,
+                "why": recipe.reasons,
+            },
+            indent=2,
+        ))
+        return 0
+    raise SystemExit(f"unknown landscape topic {topic}")
+
+
+def cmd_kubectl(args: argparse.Namespace) -> int:
+    engine = _load_engine(args.root)
+    resource = args.resource
+    if resource == "nodes":
+        _print_table(
+            [
+                {
+                    "NAME": node.name,
+                    "STATUS": node.status,
+                    "GPU": f"{node.gpus}x{node.gpu_type}",
+                    "NET": node.network,
+                    "XCONN": node.interconnect,
+                    "RACK": node.rack,
+                }
+                for node in engine.nodes.values()
+            ],
+            ["NAME", "STATUS", "GPU", "NET", "XCONN", "RACK"],
+        )
+        return 0
+    if resource == "pods":
+        rows = []
+        for worker in engine.workers.values():
+            rows.append(
+                {
+                    "NAME": worker.name,
+                    "READY": worker.phase,
+                    "NODE": worker.node or "",
+                    "RANK": worker.rank,
+                    "STEP": worker.step,
+                }
+            )
+        _print_table(rows, ["NAME", "READY", "NODE", "RANK", "STEP"])
+        return 0
+    if resource == "jobs":
+        return cmd_job_list(args)
+    raise SystemExit("kubectl get nodes|pods|jobs")
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    from llmtrainlab.api import run
+
+    run(host=args.host, port=args.port, root=args.root)
     return 0
 
 
@@ -247,46 +363,41 @@ def cmd_demo_canonical(args: argparse.Namespace) -> int:
 
 
 def cmd_demo_walk(args: argparse.Namespace) -> int:
-    """Print the exact command sequence of the Chinese README."""
+    return cmd_tutorial_print(args)
+
+
+def cmd_tutorial_print(_args: argparse.Namespace) -> int:
+    from llmtrainlab.tutorial import WALK
+
+    print(WALK)
+    print()
     print(
         """
-# LLMTrainLab 逐步命令（把每一段贴进终端）
-
-cd project/LLMTrainLab
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
+# Appendix — default cluster gang / preempt / KWOK (after the landscape tutorial)
 
 llmctl cluster init --config examples/cluster.yaml
-llmctl cluster status
-
 llmctl job submit examples/jobs/job-a.yaml
 llmctl tick --steps 8
-llmctl job list
-
 llmctl job submit examples/jobs/job-b.yaml
 llmctl tick --steps 4
-llmctl job list
-
 llmctl job submit examples/jobs/job-c.yaml
-llmctl tick --steps 3
-llmctl job list          # C 应仍是 Queued
-
-llmctl tick --steps 120  # 让 A 写出第一个 checkpoint
+llmctl tick --steps 3          # C stays Queued
+llmctl tick --steps 120
 llmctl fault pod llama-a-worker-2
-llmctl job status llama-a
-llmctl tick --steps 6
-llmctl job status llama-a   # Recovering → Running，retries>=1
-
-llmctl job submit examples/jobs/preempt-high.yaml
-llmctl tick --steps 5
-llmctl job list             # 低优先级任务被整组抢占
-
-llmctl scale --nodes 40
-llmctl tick --steps 10
-llmctl metrics
+llmctl demo canonical --preempt --virtual-nodes 40
 """.strip()
     )
+    return 0
+
+
+def cmd_tutorial_run(args: argparse.Namespace) -> int:
+    from llmtrainlab.tutorial import run_tutorial
+
+    engine = run_tutorial()
+    _save(engine, args.root)
+    print("tutorial finished. expected: lora+70b-full+vllm running, ds-rlhf and bad-tp-l40s Queued, lora retries>=1")
+    print(f"state → {state_path(args.root)}")
+    cmd_job_list(args)
     return 0
 
 
@@ -342,6 +453,26 @@ def build_parser() -> argparse.ArgumentParser:
     metrics.add_argument("--json", action="store_true")
     metrics.set_defaults(func=cmd_metrics)
 
+    landscape = sub.add_parser("landscape")
+    landscape.add_argument(
+        "topic",
+        choices=["gpus", "models", "methods", "engines", "parallelism", "recipe"],
+    )
+    landscape.add_argument("--model", default="llama-70b")
+    landscape.add_argument("--method", default="full")
+    landscape.add_argument("--gpu", default=None)
+    landscape.set_defaults(func=cmd_landscape)
+
+    kubectl = sub.add_parser("kubectl")
+    kubectl.add_argument("verb", choices=["get"])
+    kubectl.add_argument("resource", choices=["nodes", "pods", "jobs"])
+    kubectl.set_defaults(func=cmd_kubectl)
+
+    serve = sub.add_parser("serve")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.set_defaults(func=cmd_serve)
+
     demo = sub.add_parser("demo")
     demo_sub = demo.add_subparsers(dest="demo_cmd", required=True)
     canonical = demo_sub.add_parser("canonical")
@@ -350,6 +481,13 @@ def build_parser() -> argparse.ArgumentParser:
     canonical.set_defaults(func=cmd_demo_canonical)
     walk = demo_sub.add_parser("walk")
     walk.set_defaults(func=cmd_demo_walk)
+
+    tutorial = sub.add_parser("tutorial")
+    tutorial_sub = tutorial.add_subparsers(dest="tutorial_cmd", required=True)
+    t_print = tutorial_sub.add_parser("print")
+    t_print.set_defaults(func=cmd_tutorial_print)
+    t_run = tutorial_sub.add_parser("run")
+    t_run.set_defaults(func=cmd_tutorial_run)
     return parser
 
 

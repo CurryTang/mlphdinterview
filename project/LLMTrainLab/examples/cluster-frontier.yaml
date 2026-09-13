@@ -1,0 +1,54 @@
+# Frontier SKUs for landscape recipes (H200 / B200). Default demo still uses examples/cluster.yaml.
+nodes:
+  - name: node-a
+    gpu_type: A100
+    gpus: 8
+    zone: az-a
+    rack: rack-1
+    network: ethernet
+    interconnect: nvlink
+  - name: node-h100
+    gpu_type: H100
+    gpus: 8
+    zone: az-a
+    rack: rack-1
+    network: rdma
+    interconnect: nvlink
+  - name: node-h200
+    gpu_type: H200
+    gpus: 8
+    zone: az-a
+    rack: rack-2
+    network: rdma
+    interconnect: nvlink
+  - name: node-b200
+    gpu_type: B200
+    gpus: 8
+    zone: az-b
+    rack: rack-3
+    network: rdma
+    interconnect: nvlink
+  - name: node-l40s
+    gpu_type: L40S
+    gpus: 4
+    zone: az-b
+    rack: rack-4
+    network: ethernet
+    interconnect: pcie
+
+teams:
+  team-a:
+    namespace: team-a
+    guaranteed_gpus: 16
+    burst_gpus: 32
+    priority: 80
+  team-b:
+    namespace: team-b
+    guaranteed_gpus: 4
+    burst_gpus: 8
+    priority: 20
+  team-c:
+    namespace: team-c
+    guaranteed_gpus: 8
+    burst_gpus: 16
+    priority: 100

@@ -1,0 +1,11 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: ds-rlhf
+  namespace: team-a
+spec:
+  team: team-a
+  model: deepseek-v3
+  method: rlhf
+  steps: 120
+  checkpointEvery: 40

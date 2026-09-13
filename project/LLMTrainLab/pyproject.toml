@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmtrainlab"
 version = "0.1.0"
-description = "Local LLM training control plane: gang scheduling, queues, checkpoints, faults."
+description = "Local LLM training / post-training control plane: GPU landscape, gang scheduling, queues, checkpoints, faults."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,12 +14,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+api = ["fastapi>=0.110", "uvicorn>=0.27"]
 
 [project.scripts]
 llmctl = "llmtrainlab.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["llmtrainlab*"]
+
+[tool.setuptools.package-data]
+llmtrainlab = ["dashboard.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

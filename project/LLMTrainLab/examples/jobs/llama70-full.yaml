@@ -1,0 +1,11 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: llama70-full
+  namespace: team-a
+spec:
+  team: team-a
+  model: llama-70b
+  method: full
+  steps: 200
+  checkpointEvery: 50

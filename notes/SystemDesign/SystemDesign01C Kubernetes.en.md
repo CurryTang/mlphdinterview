@@ -449,30 +449,26 @@ On the topology axis: The 4 ranks reside within the same rack; they write checkp
 ## 9 · Companion Lab
 
 Kubernetes focuses on managing the lifecycle of individual Pods.
-Our training control plane takes responsibility for managing synchronized Worker groups.
-The experimental lab configures a miniature, heterogeneous cluster:
-- node-a: 4 A100 GPUs connected via standard ethernet.
-- node-b: 8 H100 GPUs connected via rdma.
-- node-c: 2 L40S GPUs connected via standard ethernet.
-
-Executing the lab requires a single command:
+The lab control plane manages synchronized Worker groups instead.
+Code lives in `project/LLMTrainLab/`. The README there is the hands-on path: landscape recipe → frontier cluster → LoRA / 70B full / vLLM → gang queue → kill a rank and recover.
 
 ```bash
 cd project/LLMTrainLab
-python3 -m pip install -e ".[dev]"
-llmctl demo canonical
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+pytest -q
+llmctl tutorial print
+llmctl tutorial run
 ```
 
-The execution produces this sequence:
-1. 6 GPU slots are claimed by Job A.
-2. 2 vacant GPU slots are backfilled by Job B.
-3. Job C, requiring 4 GPUs, encounters a resource shortage and waits in the Kueue-managed queue.
-4. The experimental script injects a hardware failure, terminating one of Job A's worker processes.
-5. This triggers the RestartAll fallback logic.
-6. The remaining workers of Job A are halted.
-7. The task recovers by relaunching and loading states from ckpt files on disk.
+After `tutorial run`: LoRA / 70B full / vLLM should be running, MoE RLHF and PCIe TP>1 stay Queued, and the LoRA job has `retries>=1`.
 
-The lab includes an optional 8-GPU preemption test and p50/p95 scheduling latency reports.
+The older 8×H100 queue / preemption story is still:
+
+```bash
+llmctl demo canonical --preempt --virtual-nodes 40
+```
 
 ---
 

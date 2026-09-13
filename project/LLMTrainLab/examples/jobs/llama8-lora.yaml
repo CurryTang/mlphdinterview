@@ -1,0 +1,11 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: llama8-lora
+  namespace: team-b
+spec:
+  team: team-b
+  model: llama-8b
+  method: lora
+  steps: 80
+  checkpointEvery: 20

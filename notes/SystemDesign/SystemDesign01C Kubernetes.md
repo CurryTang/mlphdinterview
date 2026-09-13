@@ -452,27 +452,26 @@ Kubernetes 控制面依赖 Node 的元数据 label 识别拓扑层次。
 
 作为容器编排底座，Kubernetes 本身的职责是管理分散的 Pod。
 本教学实验中的训练外围控制面组件，用于管理严格同步的 Worker 组。
-实验代码配置了一个微型的测试集群：
-- node-a 节点: 提供 4 张 A100 计算卡，连接 ethernet 网卡。
-- node-b 节点: 提供 8 张 H100 计算卡，连接 rdma 网络。
-- node-c 节点: 提供 2 张 L40S，连接 ethernet 网卡。
-
-运行命令：
+代码在 `project/LLMTrainLab/`。逐步手打路径写在该目录的 README：landscape recipe → frontier 集群 → LoRA / 70B full / vLLM → gang 排队 → 杀 rank 恢复。
 
 ```bash
 cd project/LLMTrainLab
-python3 -m pip install -e ".[dev]"
-llmctl demo canonical
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+pytest -q
+llmctl tutorial print          # 只打印命令
+# 逐步敲 README 的 Step 1–9，或一条跑完：
+llmctl tutorial run
 ```
 
-命令执行情况：
-1. 资源空闲时，6 个 GPU slot 被先到达的任务 A 申请占据。
-2. 任务 A 占用后剩余的 2 个 GPU slot，被任务 B 经调度器回填启动。
-3. 需要连续 4 个 GPU 的任务 C，由于资源不足，进入 Kueue 队列排队等待。
-4. 实验脚本模拟硬件故障，终止任务 A 的一个 worker 子进程。
-5. 这触发了 RestartAll 逻辑，任务 A 其他健康 worker 被中止，整个任务依靠新的分配重新拉起，并从预存的 ckpt 恢复进度。
+`tutorial run` 走完后应看到：LoRA / 70B full / vLLM 在跑，MoE RLHF 和 PCIe 上的 TP>1 停在 Queued，LoRA 被杀掉一个 rank 后 `retries>=1`。
 
-实验代码还包含了一套强制 8 GPU 抢占驱逐测试以及 p50/p95 调度器延迟分布报告图表。
+旧的 8×H100 队列 / 抢占故事仍可用：
+
+```bash
+llmctl demo canonical --preempt --virtual-nodes 40
+```
 
 ---
 

@@ -1,0 +1,12 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: llama70-full-h100
+  namespace: team-a
+spec:
+  team: team-a
+  model: llama-70b
+  method: full
+  gpuType: H100
+  steps: 200
+  checkpointEvery: 50

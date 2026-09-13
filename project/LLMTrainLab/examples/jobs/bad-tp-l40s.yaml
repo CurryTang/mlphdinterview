@@ -1,0 +1,16 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: bad-tp-l40s
+  namespace: team-b
+spec:
+  team: team-b
+  gpuType: L40S
+  workers: 2
+  parallelism:
+    dp: 1
+    tp: 2
+    pp: 1
+    ep: 1
+  steps: 40
+  checkpointEvery: 20

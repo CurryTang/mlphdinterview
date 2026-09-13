@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from statistics import median
 from typing import Any
 
-GPU_TYPES = ("A100", "H100", "L40S")
+from llmtrainlab.landscape import GPU_TYPES, GPUS, apply_recipe, fabric_step_cost
 
 
 def _pctl(values: list[float], q: float) -> float:
@@ -87,6 +87,16 @@ class Job:
     require_rdma: bool = False
     prefer_same_rack: bool = True
     qos: str = "training"
+    model: str = ""
+    method: str = "full"
+    engine: str = ""
+    dp: int = 1
+    tp: int = 1
+    pp: int = 1
+    ep: int = 1
+    prefer_same_node: bool = False
+    fabric_cost: int = 0
+    hbm_gb_needed: float = 0.0
     phase: str = "Queued"
     arrival_tick: int = 0
     admit_tick: int | None = None
@@ -196,7 +206,10 @@ class ClusterEngine:
         engine.nodes = {k: Node(**v) for k, v in data.get("nodes", {}).items()}
         engine.gpus = {k: GPU(**v) for k, v in data.get("gpus", {}).items()}
         engine.teams = {k: Team(**v) for k, v in data.get("teams", {}).items()}
-        engine.jobs = {k: Job(**v) for k, v in data.get("jobs", {}).items()}
+        job_fields = Job.__dataclass_fields__
+        engine.jobs = {}
+        for name, raw in data.get("jobs", {}).items():
+            engine.jobs[name] = Job(**{key: raw[key] for key in raw if key in job_fields})
         engine.workers = {k: Worker(**v) for k, v in data.get("workers", {}).items()}
         engine.checkpoints = {
             job: [Checkpoint(**item) for item in items]
@@ -213,29 +226,52 @@ class ClusterEngine:
 
     def submit_job(self, raw: dict[str, Any]) -> Job:
         meta = raw.get("metadata", {})
-        spec = raw.get("spec", raw)
+        spec = dict(raw.get("spec", raw))
+        spec = apply_recipe(spec)
         name = str(meta.get("name") or spec["name"])
         if name in self.jobs:
             raise ValueError(f"job {name} already exists")
+        par = spec.get("parallelism") or {}
+        dp = int(par.get("dp") or spec.get("dp") or 1)
+        tp = int(par.get("tp") or spec.get("tp") or 1)
+        pp = int(par.get("pp") or spec.get("pp") or 1)
+        ep = int(par.get("ep") or spec.get("ep") or 1)
+        workers = int(spec.get("workers") or dp * tp * pp * ep)
         job = Job(
             name=name,
             namespace=str(meta.get("namespace") or spec.get("namespace") or spec.get("team")),
             team=str(spec["team"]),
             priority=int(spec.get("priority", self.teams.get(spec["team"], Team(spec["team"], spec["team"], 0, 0, 50)).priority)),
-            workers=int(spec["workers"]),
+            workers=workers,
             gpus_per_worker=int(spec.get("gpusPerWorker") or spec.get("gpus_per_worker") or 1),
             gpu_type=str(spec.get("gpuType") or spec.get("gpu_type")),
             steps=int(spec.get("steps", 100)),
             checkpoint_every=int(spec.get("checkpointEvery") or spec.get("checkpoint_every") or 20),
             require_rdma=bool(spec.get("requireRdma") or spec.get("require_rdma") or False),
             prefer_same_rack=bool(spec.get("preferSameRack", spec.get("prefer_same_rack", True))),
+            prefer_same_node=bool(spec.get("preferSameNode") or spec.get("prefer_same_node") or False),
             qos=str(spec.get("qos", "training")),
+            model=str(spec.get("model") or ""),
+            method=str(spec.get("method") or "full"),
+            engine=str(spec.get("engine") or ""),
+            dp=dp,
+            tp=tp,
+            pp=pp,
+            ep=ep,
+            hbm_gb_needed=float(spec.get("_hbm_gb_needed") or 0.0),
             arrival_tick=self.tick,
         )
         if job.gpu_type not in GPU_TYPES:
             raise ValueError(f"unknown gpuType {job.gpu_type}")
+        if job.ep > 1:
+            job.require_rdma = True
+        if job.tp > 1:
+            job.prefer_same_node = True
         self.jobs[name] = job
-        self._note(f"submit {name} demand={job.gpu_demand} {job.gpu_type} pri={job.priority} ns={job.namespace}")
+        reasons = spec.get("_recipe_reasons") or []
+        if reasons:
+            job.events.extend(reasons)
+        self._note(f"submit {name} demand={job.gpu_demand} {job.gpu_type} pri={job.priority} ns={job.namespace} {job.method} tp={job.tp} ep={job.ep}")
         return job
 
     def _node(self, name: str) -> Node:
@@ -251,7 +287,12 @@ class ClusterEngine:
                 continue
             if gpu.gpu_type != job.gpu_type:
                 continue
+            sku = GPUS[gpu.gpu_type]
+            if job.hbm_gb_needed and sku.hbm_gb + 1e-6 < job.hbm_gb_needed:
+                continue
             if job.require_rdma and node.network != "rdma":
+                continue
+            if job.tp > 1 and node.interconnect != "nvlink":
                 continue
             free.append(gpu)
         return free
@@ -260,9 +301,15 @@ class ClusterEngine:
         need = job.gpu_demand
         if len(gpus) < need:
             return None
+        by_node: dict[str, list[GPU]] = {}
         by_rack: dict[str, list[GPU]] = {}
         for gpu in gpus:
+            by_node.setdefault(gpu.node, []).append(gpu)
             by_rack.setdefault(self._node(gpu.node).rack, []).append(gpu)
+        if job.prefer_same_node:
+            ordered_nodes = sorted(by_node, key=lambda name: (-len(by_node[name]), name))
+            if len(by_node[ordered_nodes[0]]) >= need:
+                return by_node[ordered_nodes[0]][:need]
         ordered_racks = sorted(by_rack, key=lambda rack: (-len(by_rack[rack]), rack))
         chosen: list[GPU] = []
         if job.prefer_same_rack and len(by_rack[ordered_racks[0]]) >= need:
@@ -339,7 +386,16 @@ class ClusterEngine:
                 gpu.allocated_to = worker.name
             self.workers[worker.name] = worker
         racks = {self._node(gpu.node).rack for gpu in gpus}
-        job.events.append(f"t={self.tick} placed workers={job.workers} racks={sorted(racks)}")
+        nodes = [self._node(gpu.node) for gpu in gpus]
+        job.fabric_cost = fabric_step_cost(
+            job.tp,
+            job.ep,
+            job.dp,
+            (node.interconnect for node in nodes),
+            (node.network for node in nodes),
+            extra=job.network_extra_ticks,
+        )
+        job.events.append(f"t={self.tick} placed workers={job.workers} racks={sorted(racks)} fabric_cost={job.fabric_cost}")
         self._note(f"admit {job.name} workers={job.workers} racks={sorted(racks)}")
 
     def _stop_job_workers(self, job: Job, reason: str) -> None:
@@ -362,6 +418,8 @@ class ClusterEngine:
             ),
             key=lambda item: (item.priority, -item.gpu_demand, item.name),
         )
+        if not victims:
+            return False
         reserved: list[Job] = []
         snapshot_gpus = deepcopy(self.gpus)
         snapshot_workers = deepcopy(self.workers)
@@ -375,14 +433,20 @@ class ClusterEngine:
                     item.events.append(f"t={self.tick} preempted by {job.name}")
                     self._note(f"preempt {item.name} -> queued, winner={job.name}")
                 return True
-        # rollback if still cannot place
         self.gpus = snapshot_gpus
         self.workers = snapshot_workers
-        self.jobs = snapshot_jobs
+        for name, snap in snapshot_jobs.items():
+            live = self.jobs[name]
+            for field_name in Job.__dataclass_fields__:
+                setattr(live, field_name, getattr(snap, field_name))
         return False
 
     def _admit_loop(self) -> None:
-        for job in self._queue_order():
+        names = [item.name for item in self._queue_order()]
+        for name in names:
+            job = self.jobs[name]
+            if job.phase not in {"Queued", "Preempted", "Recovering"}:
+                continue
             if job.phase == "Recovering" and any(
                 worker.job == job.name and worker.phase not in {"Stopped", "Failed"}
                 for worker in self.workers.values()
@@ -463,9 +527,12 @@ class ClusterEngine:
             if job.phase != "Running":
                 continue
 
+            step_cost = max(1, job.fabric_cost)
             if job.network_extra_ticks:
+                step_cost = max(step_cost, job.network_extra_ticks)
+            if step_cost > 1:
                 job.progress_budget += 1
-                if job.progress_budget < job.network_extra_ticks:
+                if job.progress_budget < step_cost:
                     for worker in live:
                         worker.last_heartbeat = self.tick
                     continue
@@ -641,6 +708,18 @@ class ClusterEngine:
             "recovery_samples": list(self.samples.recovery),
             "controller_reconcile_latency": 1,
             "training_throughput": round(median(through), 4) if through else 0.0,
+            "dcgm": {
+                name: {
+                    "sku": node.gpu_type,
+                    "hbm_gb": GPUS[node.gpu_type].hbm_gb,
+                    "hbm_tbs": GPUS[node.gpu_type].hbm_tbs,
+                    "nvlink": GPUS[node.gpu_type].nvlink,
+                    "sm_util": round(used_on / max(1, node.gpus), 4),
+                    "nvlink_active": node.interconnect == "nvlink" and used_on > 1,
+                }
+                for name, node in self.nodes.items()
+                for used_on in [sum(1 for gpu in self.gpus.values() if gpu.node == name and gpu.allocated_to)]
+            },
             "jobs": {
                 name: {
                     "phase": job.phase,
@@ -648,6 +727,11 @@ class ClusterEngine:
                     "lost_steps": job.lost_steps,
                     "priority": job.priority,
                     "qos": job.qos,
+                    "model": job.model,
+                    "method": job.method,
+                    "engine": job.engine,
+                    "parallelism": {"dp": job.dp, "tp": job.tp, "pp": job.pp, "ep": job.ep},
+                    "fabric_cost": job.fabric_cost,
                     "checkpoint": (self._latest_ckpt(name).step if self._latest_ckpt(name) else None),
                     "workers": [
                         {

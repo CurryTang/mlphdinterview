@@ -12,9 +12,9 @@ Live site: [https://currytang.github.io/mlphdinterview/](https://currytang.githu
 - **ML Coding**：从 tokenizer、tensor module、attention 到 training loop 的实现练习
 - **System Design**：后端系统设计、LLM serving、Kubernetes 训练控制面、feature store、agent infra
 
-Kubernetes 章节的配套实验在 [`project/LLMTrainLab/`](project/LLMTrainLab/)（独立仓库 [CurryTang/LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)），用本地控制面走一遍 GPU gang、队列抢占和 checkpoint 恢复。
+Kubernetes 章节的配套实验在 [`project/LLMTrainLab/`](project/LLMTrainLab/)（独立仓库 [CurryTang/LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)）。README 里有逐步手打路径：GPU landscape recipe → 调度约束 → gang 排队 → 杀 rank 恢复。
 
-配套实验：[LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)（本仓库 `project/LLMTrainLab/`）用本地控制面走一遍 GPU gang、队列抢占和 checkpoint 恢复。
+配套实验：[LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)（本仓库 `project/LLMTrainLab/`）。
 - **业务算法八股**：推荐、搜索、广告、排序、实验设计等，正在补充
 - **ML 八股**：机器学习基础，正在补充
 - **LeetCode Core Skills**：数据结构、DP、图、贪心、数学、区间等核心题型
@@ -31,7 +31,7 @@ This is a personal interview-notes site for ML / LLM roles. The notes are organi
 - **ML Coding**: implementation exercises from tokenizers and tensor modules to attention and training loops
 - **System Design**: backend design, LLM serving, Kubernetes training control planes, feature stores, agent infrastructure
 
-The Kubernetes lab lives in [`project/LLMTrainLab/`](project/LLMTrainLab/) (standalone repo [CurryTang/LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)). It walks through GPU gang scheduling, queue preemption, and checkpoint recovery on a laptop.
+The Kubernetes lab lives in [`project/LLMTrainLab/`](project/LLMTrainLab/) (standalone repo [CurryTang/LLMTrainLab](https://github.com/CurryTang/LLMTrainLab)). The README is a step-by-step path: GPU landscape recipes, placement filters, gang admission, then restart-all after a rank dies.
 - **Business Algorithms**: recommendation, search, ads, ranking, experimentation, still in progress
 - **ML Fundamentals**: core machine learning interview notes, still in progress
 - **LeetCode Core Skills**: data structures, DP, graphs, greedy, math, interval problems

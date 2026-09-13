@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>LLMTrainLab</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 24px; background: #111; color: #ddd; }
+    h1 { font-size: 18px; font-weight: 600; }
+    .muted { color: #888; }
+    table { border-collapse: collapse; margin: 12px 0 24px; width: 100%; }
+    th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid #333; }
+    th { color: #888; font-weight: 500; }
+    .Queued { color: #e6b450; }
+    .Running, .Starting { color: #6ee7a8; }
+    .Recovering { color: #f0a; }
+  </style>
+</head>
+<body>
+  <h1>LLMTrainLab</h1>
+  <p class="muted">Polls <code>/v1/cluster</code>. Refresh is every 2s while <code>llmctl serve</code> is up.</p>
+  <div id="meta" class="muted">loading…</div>
+  <h2>jobs</h2>
+  <table><thead><tr><th>name</th><th>phase</th><th>model</th><th>method</th><th>engine</th><th>tp</th><th>retries</th></tr></thead><tbody id="jobs"></tbody></table>
+  <h2>dcgm</h2>
+  <table><thead><tr><th>node</th><th>sku</th><th>hbm_gb</th><th>sm_util</th><th>nvlink</th></tr></thead><tbody id="dcgm"></tbody></table>
+  <script>
+    async function tick() {
+      const m = await fetch("/v1/cluster").then(r => r.json());
+      document.getElementById("meta").textContent =
+        `tick=${m.tick}  gpu_util=${m.gpu_slot_util}  throughput=${m.training_throughput} steps/tick  pending=${m.pending_pods}`;
+      const jobs = Object.entries(m.jobs || {});
+      document.getElementById("jobs").innerHTML = jobs.map(([name, j]) =>
+        `<tr><td>${name}</td><td class="${j.phase}">${j.phase}</td><td>${j.model || ""}</td><td>${j.method}</td><td>${j.engine || ""}</td><td>${(j.parallelism || {}).tp || 1}</td><td>${j.retries}</td></tr>`
+      ).join("") || `<tr><td colspan="7" class="muted">(empty — submit a job, then keep serve running)</td></tr>`;
+      const dcgm = Object.entries(m.dcgm || {});
+      document.getElementById("dcgm").innerHTML = dcgm.map(([node, d]) =>
+        `<tr><td>${node}</td><td>${d.sku}</td><td>${d.hbm_gb}</td><td>${d.sm_util}</td><td>${d.nvlink_active}</td></tr>`
+      ).join("");
+    }
+    tick();
+    setInterval(tick, 2000);
+  </script>
+</body>
+</html>

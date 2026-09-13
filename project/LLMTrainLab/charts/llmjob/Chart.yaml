@@ -1,0 +1,6 @@
+apiVersion: v1
+name: llmjob
+description: LLMJob operator surface (CRD + queue). Applied against a real cluster later; the laptop lab reads the same spec.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

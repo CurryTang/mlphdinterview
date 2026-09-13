@@ -1,0 +1,13 @@
+apiVersion: llmtrainlab.io/v1
+kind: LLMJob
+metadata:
+  name: llama70-vllm
+  namespace: team-c
+spec:
+  team: team-c
+  model: llama-70b
+  method: infer
+  engine: vllm
+  priority: 90
+  steps: 1000
+  checkpointEvery: 1000

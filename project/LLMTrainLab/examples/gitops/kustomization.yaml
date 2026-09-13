@@ -1,0 +1,7 @@
+# GitOps-shaped overlay. On GKE this would be the source of truth for the operator.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../charts/llmjob/crds/llmjob.yaml
+  - ../../examples/jobs/llama70-full.yaml
+  - ../../examples/jobs/llama70-vllm.yaml
