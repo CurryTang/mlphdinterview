@@ -208,8 +208,8 @@ Client
 #### 非功能需求 (Non-Functional Requirements)
 1. **超高可用性 (High Availability)**：重定向读服务可用性目标为 $99.99\%$（年化故障时间 $< 52.6$ 分钟），读服务必须在底层存储降级甚至宕机时依靠分布式缓存维持运转；
 2. **极低访问延迟 (Ultra-Low Latency)**：
-   - 读重定向链路：$	ext{P99 延迟} < 15	ext{ ms}$；
-   - 写短链生成链路：$	ext{P99 延迟} < 100	ext{ ms}$；
+   - 读重定向链路：$\text{P99 延迟} < 15\text{ ms}$；
+   - 写短链生成链路：$\text{P99 延迟} < 100\text{ ms}$；
 3. **高读写比与无状态弹性扩展 (Scale-Out Flexibility)**：读写比例为典型的 $100:1$ 读多写少模型，无状态 API 计算层可在秒级弹性扩容应对热点营销爆发；
 4. **数据持久性与唯一性 (Durability & Invariants)**：已生成的短链映射绝不丢失，相同短码绝不允许并发冲突覆盖不同长链接。
 
@@ -219,17 +219,17 @@ Client
 
 #### (1) 流量 QPS 估算
 - **写入 QPS (Write Traffic)**：
-  - 假设系统平均每天生成 $1000	ext{ 万} (10^7)$ 条新短链；
-  - 1 天约为 $10^5	ext{ 秒} (86{,}400	ext{ s})$；
-  $$	ext{平均写入 QPS} = rac{10^7	ext{ 次}}{10^5	ext{ 秒}} = 100	ext{ writes/s}$$
-  - 考虑峰值流量（按 $2 	imes$ 峰值系数计算）：
-  $$	ext{峰值写入 QPS} = 100 	imes 2 = 200	ext{ writes/s}$$
+  - 假设系统平均每天生成 $1000\text{ 万} (10^7)$ 条新短链；
+  - 1 天约为 $10^5\text{ 秒} (86{,}400\text{ s})$；
+  $$\text{平均写入 QPS} = \frac{10^7\text{ 次}}{10^5\text{ 秒}} = 100\text{ writes/s}$$
+  - 考虑峰值流量（按 $2 \times$ 峰值系数计算）：
+  $$\text{峰值写入 QPS} = 100 \times 2 = 200\text{ writes/s}$$
 
 - **读取 QPS (Read Traffic / Redirection)**：
   - 读写比按 $100:1$ 计算；
-  $$	ext{平均读取 QPS} = 100	ext{ writes/s} 	imes 100 = 10{,}000	ext{ reads/s}$$
-  - 考虑突发与活动热点（按 $3 	imes$ 峰值系数计算）：
-  $$	ext{峰值读取 QPS} = 10{,}000 	imes 3 = 30{,}000	ext{ reads/s}$$
+  $$\text{平均读取 QPS} = 100\text{ writes/s} \times 100 = 10{,}000\text{ reads/s}$$
+  - 考虑突发与活动热点（按 $3 \times$ 峰值系数计算）：
+  $$\text{峰值读取 QPS} = 10{,}000 \times 3 = 30{,}000\text{ reads/s}$$
 
 #### (2) 存储容量估算 (5 年数据持久化)
 - **单条记录数据体积拆解**：
@@ -239,27 +239,27 @@ Client
   - `user_id`: 8 字节 (BIGINT)
   - `created_at`: 8 字节 (TIMESTAMP)
   - `expires_at`: 8 字节 (TIMESTAMP)
-  - B+ 树索引与元数据开销预留：$pprox 60	ext{ 字节}$
-  - **单条记录总计**：$pprox 611	ext{ 字节} pprox 0.6	ext{ KB}$
+  - B+ 树索引与元数据开销预留：$\approx 60\text{ 字节}$
+  - **单条记录总计**：$\approx 611\text{ 字节} \approx 0.6\text{ KB}$
 - **5 年累计总存储容量**：
-  - 5 年总生成短链数：$10^7	ext{ 条/天} 	imes 365 	imes 5 = 1.825 	imes 10^{10}	ext{ 条} (182.5	ext{ 亿条})$；
+  - 5 年总生成短链数：$10^7\text{ 条/天} \times 365 \times 5 = 1.825 \times 10^{10}\text{ 条} (182.5\text{ 亿条})$；
   - 5 年累计数据库持久化存储空间：
-  $$	ext{总存储量} = 1.825 	imes 10^{10} 	imes 0.6	ext{ KB} pprox 1.095 	imes 10^{10}	ext{ KB} pprox 10.95	ext{ TB}$$
+  $$\text{总存储量} = 1.825 \times 10^{10} \times 0.6\text{ KB} \approx 1.095 \times 10^{10}\text{ KB} \approx 10.95\text{ TB}$$
   *结论*：单机单表（如 MySQL 推荐单表千万级）完全无法容纳，必须在架构中采用基于 `short_code` 哈希取模的分库分表（Sharded Relational DB）或原生分布式数据库（如 CockroachDB / TiDB）。
 
 #### (3) 内存缓存容量估算 (Redis Cache Memory)
 - 遵循典型的 **Pareto 80/20 法则**：$20\%$ 的热门短链接贡献了 $80\%$ 的重定向请求；
-- 每日重定向访问量中涉及的独立热点短链数按每日新产生短链的 $20\%$ 结合历史存量估算，约为 $200	ext{ 万} (2	imes 10^6)$ 条热点短链；
-- 缓存单条键值对大小（Key: `short_code` 7B，Value: `original_url` 512B，加上 Redis `dictEntry` 开销 $pprox 600	ext{ 字节}$）；
+- 每日重定向访问量中涉及的独立热点短链数按每日新产生短链的 $20\%$ 结合历史存量估算，约为 $200\text{ 万} (2\times 10^6)$ 条热点短链；
+- 缓存单条键值对大小（Key: `short_code` 7B，Value: `original_url` 512B，加上 Redis `dictEntry` 开销 $\approx 600\text{ 字节}$）；
 - **单日热点数据内存容量**：
-  $$	ext{Cache Memory} = 2 	imes 10^6 	imes 600	ext{ 字节} pprox 1.2	ext{ GB}$$
+  $$\text{Cache Memory} = 2 \times 10^6 \times 600\text{ 字节} \approx 1.2\text{ GB}$$
 - 若缓存过去 7 天内的全部高频访问短链并设置 LRU 驱逐策略，所需内存总量仅为：
-  $$1.2	ext{ GB} 	imes 7 pprox 8.4	ext{ GB}$$
+  $$1.2\text{ GB} \times 7 \approx 8.4\text{ GB}$$
   *结论*：单台 16GB 规格的 Redis 实例即可完全装下全部热点映射。生产环境采用主从双机 + 哨兵集群（或 Redis Cluster 分片）部署，主要用于分摊 30,000 QPS 的并发读压力并提供容灾高可用。
 
 #### (4) 网络吞吐与带宽估算 (Network Bandwidth)
-- **读带宽（峰值）**：$30{,}000	ext{ reads/s} 	imes 512	ext{ 字节} pprox 15.36	ext{ MB/s} pprox 123	ext{ Mbps}$；
-- **写带宽（峰值）**：$200	ext{ writes/s} 	imes 600	ext{ 字节} pprox 120	ext{ KB/s} pprox 0.96	ext{ Mbps}$。
+- **读带宽（峰值）**：$30{,}000\text{ reads/s} \times 512\text{ 字节} \approx 15.36\text{ MB/s} \approx 123\text{ Mbps}$；
+- **写带宽（峰值）**：$200\text{ writes/s} \times 600\text{ 字节} \approx 120\text{ KB/s} \approx 0.96\text{ Mbps}$。
 
 ---
 

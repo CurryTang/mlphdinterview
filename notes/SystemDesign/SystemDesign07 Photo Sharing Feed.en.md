@@ -39,8 +39,17 @@ Designing a hyperscale photo sharing and social feed system (similar to Instagra
 | Dimension | Baseline Assumptions | Throughput Derivation & Capacity Planning |
 |---|---|---|
 | **User Scale** | 1 Billion (1B) registered accounts; 100 Million (100M) Daily Active Users (DAU) | Hyperscale consumer social network benchmark |
-| **Write QPS (Post Uploads)** | Assume $20\%$ of DAU publish 1 photo daily $\to \mathbf{20\text{M Posts / day}}$ | $$\text{Avg Write QPS} = \frac{20 \times 10^6}{86,400\text{ s}} \approx 231\text{ QPS}$$With a peak-to-average ratio of $4\sim 5\times$, **normal peak write QPS $\approx 1,200\text{ QPS}$**; provisioning for retry spikes and bursts, system is dimensioned for $\mathbf{5,000\text{ Peak Write QPS}}$. |
-| **Read QPS (Feed Reads)** | Each DAU refreshes feed 10 times daily; social read-to-write ratio is typically $50:1 \sim 100:1$ | $$\text{Total Daily Reads} = 100\text{M} \times 10 = \mathbf{1,000,000,000\text{ Reads / day}}$$$$\text{Avg Read QPS} = \frac{10^9}{86,400\text{ s}} \approx 11,600\text{ QPS}$$Peak read multiplier of $3\sim 4\times$ yields **peak read QPS of $\approx 40,000 \sim 50,000\text{ QPS}$**. |
+| **Write QPS (Post Uploads)** | Assume $20\%$ of DAU publish 1 photo daily $\to \mathbf{20\text{M Posts / day}}$ | Average write QPS $\approx 231\text{ QPS}$; normal peak write QPS $\approx 1,200\text{ QPS}$; system dimensioned for $\mathbf{5,000\text{ Peak Write QPS}}$ safety headroom. |
+| **Read QPS (Feed Reads)** | Each DAU refreshes feed 10 times daily; social read-to-write ratio is typically $50:1 \sim 100:1$ | Total daily reads $\approx 1\text{ Billion reads/day}$; average read QPS $\approx 11,600\text{ QPS}$; evening peak read QPS $\approx \mathbf{40,000 \sim 50,000\text{ QPS}}$. |
+
+#### Quantitative Throughput Derivations:
+- **Average Write QPS**:
+  $$\text{Avg Write QPS} = \frac{20 \times 10^6}{86,400\text{ s}} \approx 231\text{ QPS}$$
+  With a peak-to-average multiplier of $4\sim 5\times$, normal peak write QPS $\approx 1,200\text{ QPS}$. To absorb retry storms and instantaneous spikes, microservices are dimensioned for $\mathbf{5,000\text{ Peak Write QPS}}$.
+- **Average Feed Read QPS**:
+  $$\text{Total Daily Reads} = 100\text{M} \times 10 = \mathbf{1,000,000,000\text{ Reads / day}}$$
+  $$\text{Avg Read QPS} = \frac{10^9}{86,400\text{ s}} \approx 11,600\text{ QPS}$$
+  Applying a peak multiplier of $3\sim 4\times$ yields **peak read QPS of $\approx \mathbf{40,000 \sim 50,000\text{ QPS}}$**.
 
 ### 2.2 · Storage Capacity & Physical Footprint
 

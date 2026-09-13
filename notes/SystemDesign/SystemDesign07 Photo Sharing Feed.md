@@ -24,9 +24,9 @@
 
 ### 1.2 · 非功能需求与 SLA 约束 (Non-Functional Requirements)
 - **高可用性 (High Availability)**：系统整体可用性达 $99.99\%$（全年停机 $< 52$ 分钟）。在发生网络分区或节点故障时，**读链路（刷 Feed）优先保障可用性（遵循 CAP 定理中的 AP 模型）**，允许暂时展示数秒前缓存的数据；
-- **极低读取延迟 (Low Latency)**：Feed 接口元数据返回延迟 $\mathbf{p99 < 200	ext{ ms}}$（不含大图片 CDN 网络传输时间）；发帖上传会话创建延迟 $< 100	ext{ ms}$；
+- **极低读取延迟 (Low Latency)**：Feed 接口元数据返回延迟 $\mathbf{p99 < 200\text{ ms}}$（不含大图片 CDN 网络传输时间）；发帖上传会话创建延迟 $< 100\text{ ms}$；
 - **数据鲜度与时序一致性 (Freshness & Consistency)**：
-  - 普通创作者发帖后，活跃粉丝在 $\le 5	ext{ 秒}$ 内可见；
+  - 普通创作者发帖后，活跃粉丝在 $\le 5\text{ 秒}$ 内可见；
   - 创作者本人发帖后刷新个人主页，必须严格满足**写后读一致性（Read-Your-Writes Consistency）**；
 - **图片持久性与容灾 (Durability)**：已完成 Commit 的原图与成品多规格衍生图跨多可用区（Multi-AZ）冗余持久化，承诺 **$99.999999999\%$（11 个 9）** 数据持久性。
 
@@ -39,34 +39,43 @@
 | 业务维度 | 基础假设与量化基准 | 吞吐推导与系统规划 |
 |---|---|---|
 | **用户规模** | 总注册用户 10 亿（1B），日活跃用户（DAU）1 亿（100M） | 典型超大规模消费级社交平台 |
-| **发帖写 QPS (Write Path)** | 假设 $20\%$ DAU 每天发布 1 张照片 $	o \mathbf{20	ext{M Posts / 天}}$ | $$	ext{平均写 QPS} = rac{20 	imes 10^6}{86,400	ext{ s}} pprox 231	ext{ QPS}$$峰均比按 $4\sim 5$ 倍计，**常态峰值写 QPS $pprox 1,200	ext{ QPS}$**；考虑突发重试与极端秒级尖峰，预留 $\mathbf{5,000	ext{ Peak Write QPS}}$ 安全容量。 |
-| **Feed 刷流读 QPS (Read Path)** | DAU 平均每人每天刷新 Feed 10 次；社交网络读写比通常在 $50:1 \sim 100:1$ | $$	ext{每日总读请求} = 100	ext{M} 	imes 10 = \mathbf{1,000,000,000	ext{ 次/天}}$$$$	ext{平均读 QPS} = rac{10^9}{86,400	ext{ s}} pprox 11,600	ext{ QPS}$$晚间高峰读 QPS 按 $3\sim 4$ 倍估算，**峰值读 QPS $pprox 40,000 \sim 50,000	ext{ QPS}$**。 |
+| **发帖写 QPS (Write Path)** | 假设 $20\%$ DAU 每天发布 1 张照片 $\to \mathbf{20\text{M Posts / 天}}$ | 平均写 QPS $\approx 231\text{ QPS}$；常态峰值写 QPS $\approx 1,200\text{ QPS}$；系统按 $\mathbf{5,000\text{ Peak Write QPS}}$ 安全容量规划。 |
+| **Feed 刷流读 QPS (Read Path)** | DAU 平均每人每天刷新 Feed 10 次；社交网络读写比通常在 $50:1 \sim 100:1$ | 每日总读请求 $\approx 10\text{ 亿次/天}$；平均读 QPS $\approx 11,600\text{ QPS}$；晚间峰值读 QPS $\approx \mathbf{40,000 \sim 50,000\text{ QPS}}$。 |
+
+#### 吞吐公式定量推导：
+- **平均发帖写 QPS**：
+  $$\text{平均写 QPS} = \frac{20 \times 10^6}{86,400\text{ s}} \approx 231\text{ QPS}$$
+  峰均比按 $4\sim 5$ 倍计，常态峰值写 QPS $\approx 1,200\text{ QPS}$；为应对突发秒级尖峰与客户端重试，微服务层按 $\mathbf{5,000\text{ Peak Write QPS}}$ 部署。
+- **平均 Feed 刷流读 QPS**：
+  $$\text{每日总读请求} = 100\text{M} \times 10 = \mathbf{1,000,000,000\text{ 次/天}}$$
+  $$\text{平均读 QPS} = \frac{10^9}{86,400\text{ s}} \approx 11,600\text{ QPS}$$
+  晚间高峰峰均比取 $3\sim 4$ 倍，**峰值读 QPS 达到 $\mathbf{40,000 \sim 50,000\text{ QPS}}$**。
 
 ### 2.2 · 存储容量与增长规划
 
 #### 1. 媒体二进制数据（图片存储）
-- 单张原图平均体积约为 $2	ext{ MB}$；
+- 单张原图平均体积约为 $2\text{ MB}$；
 - 异步媒体流水线对原图进行裁剪与多规格转码，生成 3 种衍生规格：
-  - 缩略图（Thumbnail，网格预览）：$50	ext{ KB}$；
-  - 移动端中图（Medium，Feed 瀑布流）：$200	ext{ KB}$；
-  - 高清大图（Large，单图详情展示）：$800	ext{ KB}$；
-  - 多规格衍生图合计体积约为 $1	ext{ MB}$。
-- **每日新增存储增量**：
-  $$	ext{Daily Media Storage} = 20	ext{M} 	imes (2	ext{ MB 原图} + 1	ext{ MB 衍生图}) = \mathbf{60	ext{ TB / 天}}$$
+  - 缩略图（Thumbnail，网格预览）：$50\text{ KB}$；
+  - 移动端中图（Medium，Feed 瀑布流）：$200\text{ KB}$；
+  - 高清大图（Large，单图详情展示）：$800\text{ KB}$；
+  - 多规格衍生图合计体积约为 $1\text{ MB}$。
+- **每日新增物理存储增量**：
+  $$\text{Daily Media Storage} = 20\text{M} \times (2\text{ MB 原图} + 1\text{ MB 衍生图}) = \mathbf{60\text{ TB / 天}}$$
 - **年化物理存储增量**：
-  $$	ext{Annual Media Storage} = 60	ext{ TB/天} 	imes 365 pprox \mathbf{21.9	ext{ PB / 年}}$$
+  $$\text{Annual Media Storage} = 60\text{ TB/天} \times 365 \approx \mathbf{21.9\text{ PB / 年}}$$
 
 #### 2. 关系型元数据存储 (Metadata Storage)
-单条 Post 包含 `(post_id, author_id, caption, cdn_urls, lat, lon, created_at)` 紧凑结构约 $500	ext{ Bytes}$：
-$$	ext{Daily Metadata} = 20	ext{M} 	imes 500	ext{ B} = \mathbf{10	ext{ GB / 天}} \implies \mathbf{3.65	ext{ TB / 年}}$$
+单条 Post 包含 `(post_id, author_id, caption, cdn_urls, lat, lon, created_at)` 紧凑结构约 $500\text{ Bytes}$：
+$$\text{Daily Metadata} = 20\text{M} \times 500\text{ B} = \mathbf{10\text{ GB / 天}} \implies \mathbf{3.65\text{ TB / 年}}$$
 单机关系型数据库几年内即会突破物理单盘限制与 B+ 树索引性能拐点，**元数据库必须按 `user_id` 进行水平分库分表（Z 轴 Sharding）**。
 
 ### 2.3 · 网络出口带宽与 CDN 流量卸载
-- 客户端每次刷新 Feed 拉取 10 条帖子，每条展示 1 张中图（$150	ext{ KB}$），单次刷新总数据量约为 $1.5	ext{ MB}$；
+- 客户端每次刷新 Feed 拉取 10 条帖子，每条展示 1 张中图（$150\text{ KB}$），单次刷新总数据量约为 $1.5\text{ MB}$；
 - **全站峰值读流出带宽**：
-  $$	ext{Peak Read Egress} = 50,000	ext{ QPS} 	imes 1.5	ext{ MB} 	imes 8	ext{ bit} = \mathbf{600	ext{ Gbps}}$$
+  $$\text{Peak Read Egress} = 50,000\text{ QPS} \times 1.5\text{ MB} \times 8\text{ bit} = \mathbf{600\text{ Gbps}}$$
 - **CDN 边缘卸载**：
-  由于图片具有高度的时间局部性与空间局部性，绝大多数图片直接缓存在全球 CDN 边缘 PoP 节点。**在保证 CDN 缓存命中率 $\ge 95\%$ 的前提下，源站对象存储的真实回源网络带宽被压缩至 $\le \mathbf{30	ext{ Gbps}}$**。
+  由于图片具有高度的时间局部性与空间局部性，绝大多数图片直接缓存在全球 CDN 边缘 PoP 节点。**在保证 CDN 缓存命中率 $\ge 95\%$ 的前提下，源站对象存储的真实回源网络带宽被压缩至 $\le \mathbf{30\text{ Gbps}}$**。
 
 ---
 
@@ -99,7 +108,7 @@ Processed Storage (CDN Origin) ◄── Media Processor (Resize / WebP / NSFW) 
 ### 3.2 · 核心组件职责与数据流闭环
 
 1. **客户端 (Web / iOS / Android)**：
-   - 上传时：向网关协商会话 $	o$ 凭 Pre-signed URL 直传原图 $	o$ 向网关 Commit 提交元数据；
+   - 上传时：向网关协商会话 $\to$ 凭 Pre-signed URL 直传原图 $\to$ 向网关 Commit 提交元数据；
    - 刷流时：先向网关发起 `GET /feed` 拉取轻量 Post ID 列表，再按需请求 CDN 边缘加载 WebP 图片；
 2. **API Gateway & Load Balancer**：
    - 统一入口，负责 TLS 卸载、动态路由、TraceID 全链路追踪注入；
@@ -184,7 +193,7 @@ CREATE TABLE follows (
 
 | 评估维度 | 关系型分库分表 (Sharded MySQL/PostgreSQL) | 分布式 NoSQL (Cassandra / DynamoDB) | 生产决策结论 |
 |---|---|---|---|
-| **事务与状态机保障** | 单分片内严格保障 **ACID 本地事务**。状态机（`PENDING` $	o$ `READY`）流转配合 Transactional Outbox 杜绝数据不一致 | 仅提供行级原子性，缺乏复杂的跨表事务与多状态机回滚能力 | **帖子元数据选用 Sharded MySQL**：发帖、修改文案、防重提交需要强一致事务边界 |
+| **事务与状态机保障** | 单分片内严格保障 **ACID 本地事务**。状态机（`PENDING` $\to$ `READY`）流转配合 Transactional Outbox 杜绝数据不一致 | 仅提供行级原子性，缺乏复杂的跨表事务与多状态机回滚能力 | **帖子元数据选用 Sharded MySQL**：发帖、修改文案、防重提交需要强一致事务边界 |
 | **主键与时序排序** | 原生 B+ 树复合聚簇索引 `(user_id, created_at DESC)` 范围扫描极佳 | 基于 Partition Key 与 Clustering Key，时序倒序检索同样为 $O(1) \sim O(\log N)$ | 均可胜任，但 MySQL 对分页和过滤生态更成熟 |
 | **关系关注图谱** | 关系型多表关联需要双向索引（按 `follower_id` 查关注的人，按 `followee_id` 查粉丝列表），跨分片查询复杂 | 需维护两张异构只读表（`user_followings` 与 `user_followers`），依赖应用层双写或 CDC | **关注关系采用关系型双向分片表**；大 V 粉丝列表由专有服务加载至 Redis Set 缓存 |
 | **时间线存储** | 关系型单表无法承受亿级用户 Inbox 的毫秒级读写吞吐 | 宽列模型适合存储时序流，但内存缓存性能逊于内存数据库 | **Timeline 收取箱不落关系型 DB**，全部采用 **Redis Sorted Set (ZSet)** 纯内存物化 |
@@ -217,11 +226,11 @@ Client                  API Gateway / Upload Svc              Raw S3 Staging    
 
 #### 1. 为什么预签名直传是海量吞吐的唯一选择？
 1. **彻底消除 API 服务器带宽瓶颈**：
-   按峰值写 QPS $1,200$、单图 $2	ext{ MB}$ 计算，若经由 API 代理中转，入口瞬时网络吞吐达：
-   $$1,200	ext{ QPS} 	imes 2	ext{ MB} 	imes 8	ext{ bit} = \mathbf{19.2	ext{ Gbps}}$$
+   按峰值写 QPS $1,200$、单图 $2\text{ MB}$ 计算，若经由 API 代理中转，入口瞬时网络吞吐达：
+   $$1,200\text{ QPS} \times 2\text{ MB} \times 8\text{ bit} = \mathbf{19.2\text{ Gbps}}$$
    需要数十台大型应用服务器仅充当“字节搬运工”，成本极高且网卡容易拥塞；采用 S3 Pre-signed 直传后，API 仅收发几百字节的 JSON 控制报文，集群规模削减 90%。
 2. **连接解耦与防止线程枯竭**：
-   移动端上传原图受制于用户弱网环境，耗时通常需 $1\sim 5	ext{ 秒}$。直传将慢速长连接完全推至对象存储集群，API 服务器工作线程可在 $< 50	ext{ ms}$ 内释放。
+   移动端上传原图受制于用户弱网环境，耗时通常需 $1\sim 5\text{ 秒}$。直传将慢速长连接完全推至对象存储集群，API 服务器工作线程可在 $< 50\text{ ms}$ 内释放。
 
 #### 2. 上传异常与孤儿文件回收（Garbage Collection）
 若客户端在调用 `PUT` 直传成功后突发断网或应用崩溃，未向 Upload Service 触发 `commit`：
@@ -238,7 +247,7 @@ Feed 流的本质是：**如何将创作者发布的内容（Outbox），高效�
 - **实现机制**：系统为每个接收者（Follower）维护一个专属的收取箱（Inbox）。博主发帖时，Worker 查出其全部粉丝，逐一将 `post_id` 写入每个粉丝的 Inbox 中（Redis ZSet，保留最新 800 条）；
 - **数学复杂度**：
   - **写入放大**：$\mathbf{O(F)}$（$F$ 为博主粉丝数）；
-  - **读取复杂度**：$\mathbf{O(1)}$（直接单点点查自己的 Redis Inbox，延迟 $< 2	ext{ ms}$）；
+  - **读取复杂度**：$\mathbf{O(1)}$（直接单点点查自己的 Redis Inbox，延迟 $< 2\text{ ms}$）；
 - **致命隐患（大 V 场景雪崩）**：
   如果一个拥有 6000 万粉丝的大 V（如 Cristiano Ronaldo）发帖，单次写操作将向消息队列投递 6000 万个任务。即使 Worker 集群每秒能处理 10 万次写入，**队列也要积压长达 10 分钟**，下游 Redis 集群被写流量瞬间打满；同时，6000 万粉丝中有大量长达半年未登录的“僵尸粉”，为其物化时间线纯属浪费内存。
 
@@ -248,7 +257,7 @@ Feed 流的本质是：**如何将创作者发布的内容（Outbox），高效�
   - **写入复杂度**：$\mathbf{O(1)}$（发帖仅写一次，零写放大）；
   - **读取复杂度**：$\mathbf{O(N \log N + K \log N)}$；单次读触发 $N$ 次数据库/缓存网络调用；
 - **致命隐患（长尾读延迟与计算风暴）**：
-  若用户关注了 1000 人，单次刷流并发打出 1000 次 RPC 查询。整体响应时间取决于最慢的一个节点（$T_{	ext{total}} = \max T_i$），在峰值 $50,000	ext{ QPS}$ 下，应用服务器的 CPU 将彻底崩溃在并发网络开销与内存堆排序上。
+  若用户关注了 1000 人，单次刷流并发打出 1000 次 RPC 查询。整体响应时间取决于最慢的一个节点（$T_{\text{total}} = \max T_i$），在峰值 $50,000\text{ QPS}$ 下，应用服务器的 CPU 将彻底崩溃在并发网络开销与内存堆排序上。
 
 #### 3. 工业级 Hybrid 混合推拉模型（Instagram / Twitter 最优解）
 
@@ -292,13 +301,13 @@ Feed 流的本质是：**如何将创作者发布的内容（Outbox），高效�
 ```
 
 - **大 V 动态阈值划分**：
-  - 设定固定阈值（如粉丝数 $F_{	ext{threshold}} = 50,000$）。在关注计数变更时动态维护标志位 `is_celebrity`；
+  - 设定固定阈值（如粉丝数 $F_{\text{threshold}} = 50,000$）。在关注计数变更时动态维护标志位 `is_celebrity`；
   - **普通创作者**：走 **Push 模式**，仅写扩散至其关注者的 Inbox；
   - **头部大 V**：走 **Pull 模式**，**严禁写扩散**，仅单点写入该大 V 的个人 Outbox。
 - **在线双流堆归并 (Online Merge)**：
   - 用户刷新 Feed 时，应用层先从自身 Redis Inbox 取出候选流（已排好序）；
   - 提取用户关注的大 V 列表（普通人关注的大 V 数量极其有限，通常 $M < 30$ 个），向这 $M$ 个大 V 的 Outbox 发起 `MGET`；
-  - 在内存中利用优先级队列（Min-Heap）将 Inbox 流与大 V 增量流进行就地双路归并，耗时 $< 5	ext{ ms}$。
+  - 在内存中利用优先级队列（Min-Heap）将 Inbox 流与大 V 增量流进行就地双路归并，耗时 $< 5\text{ ms}$。
 - **活跃用户裁剪策略 (Active Follower Inboxing)**：
   - 即使对普通创作者发帖，也**仅向最近 7 天内有登录行为的活跃粉丝进行写扩散**；
   - 沉睡粉丝重新打开 App 时触发**冷启动增量补拉（Lazy Catch-up）**：后台异步任务按 Pull 模式拉取其所有关注者在离线期间发布的新帖，重建其 Redis Inbox。此优化可直接削减时间线缓存集群 **$70\%$ 以上的无效内存开销**。
@@ -308,13 +317,13 @@ Feed 流的本质是：**如何将创作者发布的内容（Outbox），高效�
 ### 5.3 · Timeline 只存 ID 与只读元数据水化模式 (Hydration Pattern)
 
 在时间线存储设计中，**绝对禁止在每个粉丝的 Inbox 中冗余存储帖子的完整 JSON 内容（如 Caption、图片 URL、作者头像）**：
-1. **存储体积灾难**：若冗余存储单条 500B 的完整内容，1 亿用户 $	imes$ 800 条 Inbox 需消耗数十 TB 的超昂贵 Redis 内存；
+1. **存储体积灾难**：若冗余存储单条 500B 的完整内容，1 亿用户 $\times$ 800 条 Inbox 需消耗数十 TB 的超昂贵 Redis 内存；
 2. **数据变更无法同步**：若创作者修改了文案或删除了违规帖子，写扩散无法高效地遍历并更新全网所有粉丝 Inbox 中的历史副本；
 3. **权限穿透安全漏洞**：若某创作者将账号设为私密或拉黑了某粉丝，预先物化的冗余内容无法实时收回，造成隐私内容泄露。
 
 #### 工业级水化三步走架构 (Hydration Pipeline)：
 - **Step 1 · 纯 ID 候选提取**：
-  Inbox 中仅存储轻量元组：`(post_id, author_id, timestamp)`，单条仅占 $24	ext{ Bytes}$；
+  Inbox 中仅存储轻量元组：`(post_id, author_id, timestamp)`，单条仅占 $24\text{ Bytes}$；
 - **Step 2 · 分布式只读缓存批量填充 (MGET)**：
   通过堆归并确定最终展示的 20 个 `post_id` 后，Feed Service 向 Redis / Memcached 集群发起批量 `MGET posts:meta:<post_id>`，一次网络往返批量获取 20 条帖子的完整元数据；
 - **Step 3 · 读时安全鉴权 (Read-time Guards)**：
