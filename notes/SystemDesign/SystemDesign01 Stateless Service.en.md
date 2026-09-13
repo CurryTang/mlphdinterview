@@ -169,6 +169,24 @@ Stateless services do not ban affinity. In **WebSocket gateways, collaborative e
 
 ---
 
+### 1.4 · Application Server QPS Tiers and the Saturation Knee Rule
+
+In stateless compute tier sizing, architects must maintain an intuitive grasp of per-node QPS thresholds:
+
+| QPS per Node | System State | Engineering Characteristics & Actions |
+|---|---|---|
+| **10 QPS / node** | Minimal Load | Completely acceptable; internal admin tools or heavy compute batch tasks. |
+| **100 QPS / node** | Casual / Easy | Steady-state zone for most microservices; CPU utilization typically $< 15\%$. |
+| **500 QPS / node** | **Normal Working Zone** | The healthy sweet spot for microservices (JSON parsing, auth, 1–2 DB queries). |
+| **2,000 QPS / node** | **Optimization Alert** | Profiling required; monitor GC pauses, thread queue lengths, and DB connection limits. |
+| **> 2,000 QPS / node** | **High Load** | Approaching physical limits of standard business logic; introduce caching or async batching. |
+| **> 10,000 QPS / node** | **Extreme High Throughput** | **Rare in general apps**. Requires: ultra-simple logic, pure in-memory cache, non-blocking IO (epoll), connection reuse, and zero heavy ORM. |
+
+> [!IMPORTANT]
+> **The Universal Capacity Saturation Rule (The +30% Knee-of-the-Curve Rule)**:
+> In load testing, when **incoming QPS increases by only 30%**, if you observe **a sharp non-linear spike in p95/p99 latency, steep CPU rise, or queue buildup**, the system has crossed its saturation knee point.
+> **Read-heavy + API QPS in the hundreds + DB struggling $\implies$ Must immediately introduce an in-memory cache (Redis)!**
+
 ## Part II: Production-Grade System Design Case Study (URL Shortener & Analytics System)
 
 To ground the stateless architectural paradigm in a complete, end-to-end design, this section details the complete architecture of an industry-standard **High-Performance Distributed URL Shortener & Analytics System**.

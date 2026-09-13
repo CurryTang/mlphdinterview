@@ -40,6 +40,23 @@ Redis 并非只支持简单的字符串，其提供的数据结构高度优于�
 Redis 最普遍的角色是数据库前置的内存层。作为缓存，它仅仅是底层数据库数据的一个复制品。
 核心原则是：一旦发生 Cache Miss，应用必须能够安全回退并命中数据库。
 
+### 缓存量化估算基准：QPS 与容量 Numbers
+
+在规划 Redis 集群时，必须依托以下核心物理常数进行容量与吞吐估算：
+
+#### 1. 缓存 QPS 估算与 CPU 物理公式
+- **网络往返（RTT）**：同可用区机房内简单 GET/SET 的网络延迟约为 $\approx 0.2 - 1.0\text{ ms}$；
+- **单实例吞吐上限**：单机通常能承载 **数万 QPS 级别**（受 CPU 单核性能与网卡包转发 PPS 限制）。
+- **CPU 计算时间估算公式**：
+  $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times u$$
+  *算例*：分配 4 核，平均每个请求占用 CPU 时间 $t_{\text{cpu}} = 0.1\text{ ms}$，安全利用率 $u = 0.8$：
+  $$\text{QPS} \approx 4 \times \frac{1000}{0.1} \times 0.8 = 32,000\text{ QPS}$$
+
+#### 2. 缓存容量：1 GB 内存能放多少 Key？
+- **理想基准**：按单条记录及元数据约 $200\text{ B}$ 计算，$\mathbf{1\text{ GB 内存} \approx 500\text{ 万 Key}}$；
+- **生产保守经验值**：考虑到内存分配器（jemalloc）碎片、数据结构指针膨胀以及预留的 $30\%$ 安全水位，实际按：
+  $$\mathbf{1\text{ GB 内存} \approx 200\text{ 万} - 300\text{ 万稳定 Key}}$$
+
 ### Cache Aside 与 Write-Through
 最标准的模式是 Cache Aside：
 

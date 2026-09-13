@@ -46,6 +46,8 @@ describe('App', () => {
             ? `${english ? '# Business algorithm system map' : '# 第一部分：系统总览与数据基础'}\n\n\`\`\`business-algorithm-map\n\`\`\``
             : english
               ? '# English tutorial\n\nThis is the English version.'
+            : requestUrl.includes('SystemDesign00')
+              ? '# System Design 00 · 全局架构体系与量化估算基准'
             : requestUrl.includes('SystemDesign03')
               ? '# System Design 03 · 数据库扩展\n\n分片与副本。'
             : requestUrl.includes('SystemDesign05')
@@ -593,8 +595,8 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('本板块共 12 篇笔记')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /System Design 00 · /i })).not.toBeInTheDocument();
+    expect(screen.getByText('本板块共 13 篇笔记')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 00 · 全局架构与量化估算/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态服务/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01C · Kubernetes/i })).toBeInTheDocument();
@@ -831,17 +833,13 @@ describe('App', () => {
     expect(within(layered).getByText(/无状态副本 topologySpread/)).toBeInTheDocument();
   });
 
-  it('redirects System Design 00 Overview to the first component note', async () => {
+  it('opens System Design 00 Overview directly as the blueprint note', async () => {
     window.history.replaceState(null, '', '/#SystemDesign00%20Overview.md');
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /无状态服务/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign01 Stateless Service.md')).toHaveLength(2);
-
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#SystemDesign01%20Stateless%20Service.md');
-    });
+    expect(await screen.findByRole('heading', { name: /全局架构体系与量化估算基准/ })).toBeInTheDocument();
+    expect(screen.getAllByText('SystemDesign00 Overview.md')).toHaveLength(2);
   });
 
   it('redirects renamed System Design note routes to the new chapter numbers', async () => {
@@ -875,8 +873,10 @@ describe('App', () => {
       const requestUrl = String(input);
       let content = '# System Design tutorial';
 
-      if (requestUrl.includes('SystemDesign01 Stateless') || requestUrl.includes('SystemDesign01%20Stateless')) {
+      if (requestUrl.includes('SystemDesign00') || requestUrl.includes('SystemDesign01 Stateless') || requestUrl.includes('SystemDesign01%20Stateless')) {
         content = '# Overview\n\n```system-design-overview-visual\n```';
+      } else if (requestUrl.includes('SystemDesign02')) {
+        content = '# Database\n\n```database-scaling-visual\n```';
       } else if (requestUrl.includes('SystemDesign06')) {
         content = '# Async Messaging\n\n```async-messaging-architecture-visual\n```';
       } else if (requestUrl.includes('SystemDesign07')) {
@@ -895,6 +895,13 @@ describe('App', () => {
     expect(within(overview).getByText('先跑通同步闭环，再按指标加组件')).toBeInTheDocument();
     fireEvent.click(within(overview).getByRole('button', { name: /Primary Store/i }));
     expect(within(overview).getByText('先明确 source of truth')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
+    const dbVisual = await screen.findByRole('region', { name: '数据库扩展与分片决策器' });
+    expect(within(dbVisual).getByText('基于数据依赖性的架构选型决策树')).toBeInTheDocument();
+    fireEvent.click(within(dbVisual).getByRole('button', { name: /分片键实战避坑/i }));
+    expect(within(dbVisual).getByRole('button', { name: /电商订单/ })).toBeInTheDocument();
+    expect(within(dbVisual).getByRole('heading', { level: 3, name: /买家 vs 卖家双维度查询/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i }));
     const photo = await screen.findByRole('region', { name: '图片分享系统架构图' });

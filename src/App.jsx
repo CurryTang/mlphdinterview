@@ -1491,6 +1491,12 @@ const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
 
 const systemDesignNoteDefinitions = [
   createTutorialDefinition(
+    'System Design 00 · 全局架构与量化估算',
+    'SystemDesign00 Overview.md',
+    'SystemDesign00 Overview.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 00 · Blueprint & Numbers', category: 'Overview', difficulty: 'Easy' },
+  ),
+  createTutorialDefinition(
     'System Design 01 · 无状态服务',
     'SystemDesign01 Stateless Service.md',
     'SystemDesign01 Stateless Service.en.md',
@@ -6511,6 +6517,295 @@ function FlashSaleArchitectureVisual() {
               <div className="arch-node store"><small>FALLBACK</small><strong>API → DB</strong><span>cache miss / reconnect</span></div>
             </div>
             <p className="flash-callout">{t('Redis 是读模型，不是库存真相。通知丢了就查 API。', 'Redis is a read model, not stock truth. Missed notify → query the API.')}</p>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const DB_DEPENDENCY_DATA_ZH = {
+  strong_txn: {
+    title: '强事务与参照完整性依赖',
+    tag: 'Strong Invariants',
+    scenarios: '银行转账、会计借贷记账、订单状态与资金流水原子结算、跨行外键级联。',
+    characteristics: '不可分割的原子性约束（All-or-Nothing），要求绝对隔离性（Snapshot / Serializable），不允许脏读与并发幻读。',
+    solution: '单机 RDBMS / 分布式强一致数据库 (Spanner/TiDB)，或垂直微服务拆分 (Y 轴) + 本地事务 + Transactional Outbox + Saga 补偿。',
+    mechanism: '单机 WAL 锁机制或多副本 Raft/Paxos 共识提交，保持强一致物理提交边界。',
+    antiPattern: '【致命反模式】在未解耦强事务依赖时盲目按用户 ID 水平切片，导致大量转账与结算被迫跨节点执行两阶段提交（2PC），死锁频发且吞吐断崖式下跌。',
+  },
+  colocated: {
+    title: '实体亲和聚合依赖',
+    tag: 'Colocation Affinity',
+    scenarios: '订单与其商品项 (Order + OrderItems)、电商商家与其店铺设置、用户基本信息与其偏好设置。',
+    characteristics: '子实体的生命周期完全依附于父聚合根，业务查询几乎总是同时读写父子两个实体。',
+    solution: 'Z 轴水平分片时采用【共享分片键 (Colocated Sharding)】（如子表均以父表的 order_id 或 user_id 作为分片键），或采用 Document 嵌套建模。',
+    mechanism: '路由代理将同一聚合根的所有父子行映射至同一物理 Shard，单 Shard 内部即可完成本地事务（Intra-shard ACID）与本地 JOIN。',
+    antiPattern: '【致命反模式】orders 表按 order_id 分片，而 order_items 却按 item_id 分片；导致每次查询订单详情必须发起昂贵的跨网络分布式 JOIN。',
+  },
+  weak_stream: {
+    title: '弱依赖与派生分析流',
+    tag: 'Eventual Stream',
+    scenarios: '短链点击实时计数、Feed 流点赞数、商品全网浏览量、全站热搜排行、BI 报表统计。',
+    characteristics: '高频并发读写，允许秒级数据延迟，最终一致性收敛，核心主业务链路不强依赖统计精度的绝对实时同步。',
+    solution: 'X 轴读写分离 (Primary-Replica) + 异步削峰消息队列 (Kafka) + CQRS 读端物化视图 (ClickHouse / Redis 缓存)。',
+    mechanism: '主路径只写入单点或投递 MQ 即返回 202/302；后台消费者微批聚合（Micro-batching）刷盘，读写物理隔离。',
+    antiPattern: '【致命反模式】在核心支付或跳转请求主路径上同步执行 `UPDATE counter SET count = count + 1`，行级锁竞争直接打垮交易主库。',
+  },
+  static_read: {
+    title: '无状态 / 静态配置独立依赖',
+    tag: 'Static Reference',
+    scenarios: '系统通用字典表、全国行政区划代码表、外汇基准汇率、全局业务费率规则。',
+    characteristics: '极高频读取，几乎零写入或仅通过后台管理台低频变更，全业务系统全局依赖。',
+    solution: '全分片广播复制 (Broadcast Replication to all Shards) + 客户端本地内存缓存 (In-Memory Cache / Guava)。',
+    mechanism: '在每一个 Shard 实例中均冗余一份完整的静态字典；应用层启动时全量预热至内存，数据变更通过广播事件使本地缓存失效。',
+    antiPattern: '【致命反模式】将静态字典单独做分片或单库放置，各高并发业务查询每次都跨网络向该中心库发起高频点查，造就无意义的物理瓶颈。',
+  },
+};
+
+const DB_DEPENDENCY_DATA_EN = {
+  strong_txn: {
+    title: 'Strong Transactional Invariants',
+    tag: 'Strong Invariants',
+    scenarios: 'Bank transfers, double-entry accounting ledgers, atomic order-payment state transitions, foreign key cascades.',
+    characteristics: 'Indivisible atomicity (All-or-Nothing), strict isolation (Snapshot/Serializable), zero tolerance for stale/dirty intermediate reads.',
+    solution: 'Single-node RDBMS / Distributed SQL (Spanner/TiDB), or Vertical Decomposition (Y-Axis) + Local Transactions + Transactional Outbox + Saga compensation.',
+    mechanism: 'Single-node WAL locks or Raft/Paxos consensus log commits, ensuring strict and deterministic physical commit boundaries.',
+    antiPattern: 'Blindly sharding horizontally (Z-axis) before decoupling transaction boundaries, trapping transfers in cross-shard 2PC distributed deadlocks.',
+  },
+  colocated: {
+    title: 'Colocation & Aggregate Affinity',
+    tag: 'Colocation Affinity',
+    scenarios: 'Orders and their line items (Order + OrderItems), merchant and store settings, user profiles and preferences.',
+    characteristics: 'Sub-entities strictly bound to a parent aggregate root; queries almost always inspect and mutate parent and children together.',
+    solution: 'Z-Axis Horizontal Sharding with Shared Sharding Key (e.g. child tables sharded by parent order_id/user_id), or Document embedding.',
+    mechanism: 'Routing proxy maps all affiliated entities to the identical physical shard, enabling zero-network local ACID transactions and joins.',
+    antiPattern: 'Sharding orders by order_id while sharding order_items by item_id, forcing every order lookup into an expensive cross-network distributed join.',
+  },
+  weak_stream: {
+    title: 'Weak / Analytics / Eventual Consistency',
+    tag: 'Eventual Stream',
+    scenarios: 'Short link click tracking, social post like counters, product view counts, trending leaderboards, real-time BI reports.',
+    characteristics: 'High-throughput mutations, acceptable multi-second lag, eventual convergence, core transaction path decoupled from exact stats.',
+    solution: 'X-Axis Primary-Replica read split + Asynchronous message queues (Kafka) + CQRS Read Models (ClickHouse / Redis).',
+    mechanism: 'Main request path commits or enqueues message and immediately returns; downstream consumers micro-batch writes to analytical stores.',
+    antiPattern: 'Executing synchronous `UPDATE counter SET count = count + 1` directly on the primary transaction path, locking rows and collapsing OLTP throughput.',
+  },
+  static_read: {
+    title: 'Stateless / Static Configuration',
+    tag: 'Static Reference',
+    scenarios: 'System dictionaries, postal/region codes, currency exchange benchmarks, platform fee schedules.',
+    characteristics: 'Ultra-high read QPS, near-zero writes (admin updates only), globally referenced across all system domains.',
+    solution: 'Broadcast Replication (full replica across every shard) + Client In-Memory Caching (Guava / Local In-Memory).',
+    mechanism: 'Redundantly stores the static table in every shard database; apps prewarm it into memory on startup; cache evicted via broadcast event.',
+    antiPattern: 'Isolating static dictionaries onto a single database shard, forcing millions of queries to cross the network and hammer a single instance.',
+  },
+};
+
+const SHARDING_CASES_ZH = {
+  ecommerce: {
+    title: '电商订单：买家 vs 卖家双维度查询',
+    problem: '买家端需要高频按 buyer_id 查订单；卖家端需要高频按 seller_id 查店铺订单。若只按 buyer_id 分片，卖家查询退化为全分片广播 (Scatter-Gather)；反之亦然。',
+    optimalKey: '买家端以 buyer_id 作为物理分片键；订单 ID 采用【基因分片算法 (Gene Sharding)】，将 buyer_id 的最后 4~6 位二进制嵌入 order_id 末尾。',
+    architecture: '通过基因分片法，从 order_id 即可直接逆推出所在的 Shard。针对卖家维度的复杂检索，通过 MySQL Binlog + CDC (Debezium) 异步流式写入 Elasticsearch 或构建卖家维度的异构只读分片库 (CQRS)。',
+    trap: '【严重事故】试图在数据库层直接执行跨分片全局扫描 `SELECT * FROM orders WHERE seller_id = ?`，瞬间导致数十个 Shard 连接池被打满，整站瘫痪。',
+  },
+  saas: {
+    title: 'B2B 多租户 SaaS：大客户与中小客户隔离',
+    problem: '按租户 ID (tenant_id) 分片是最直观方案，但少数超大企业客户（KA 客户）的数据量是普通客户的 10,000 倍以上，极易造成严重的数据与负载倾斜。',
+    optimalKey: '采用【租户分层分片法 (Tiered Sharding)】：中小租户按 hash(tenant_id) % N 路由到共享的分片池 (Pooled Shards)；超大客户分配独立物理 Shard。',
+    architecture: '路由网关维护轻量租户路由缓存表 (Lookup Table)。对于超大客户，进一步在该租户内部按业务实体 ID（如 user_id 或 dept_id）进行二级分片。',
+    trap: '【严重事故】将所有租户一视同仁全部哈希散列。一旦某超大租户在月末跑对账报表，直接将该 Shard 内存和 CPU 吃光，导致同 Shard 内数百家小企业全部不可用（Noisy Neighbor 击穿）。',
+  },
+  chat: {
+    title: '即时通讯 IM：单聊对话 vs 千人群聊消息',
+    problem: '单聊是两方双向通信，群聊是一人发送、成百上千人接收。若简单按 sender_id 分片，接收方每次拉取未读消息都必须全分片广播！',
+    optimalKey: '单聊按 min(userA, userB) + "_" + max(userA, userB) 的会话 ID (session_id) 分片；群聊按 group_id 分片。',
+    architecture: '所有同一会话的消息天然落地在同一物理 Shard 内，支持按时间戳极速本地范围扫描。消息投递采用读扩散（Pull）或写扩散（Push）解耦。',
+    trap: '【严重事故】按 message_id 或单独 sender_id 分片，导致拉取历史聊天记录时被迫向所有 Shard 发起 Scatter-Gather，网络风暴与乱序合并代价极高。',
+  },
+  iot: {
+    title: 'IoT / 时序监控流：海量单调递增指标写入',
+    problem: '物联网设备每秒产生数百万条遥测数据。按时间戳 (timestamp) 范围分片看似便于按日清理，但会导致当前秒/当前分钟的全部写入集中在最新的单个 Shard 上！',
+    optimalKey: '采用【复合分片键 (Compound Key)】：hash(device_id) 决定物理分区节点，本地时间戳区间作为分级局部聚簇索引 (Clustering Key / Partition Table)。',
+    architecture: '写入按 device_id 均匀打散至所有物理 Shard，彻底消除写瓶颈；每个 Shard 内部采用按时间自动分区表（如 TimescaleDB / ClickHouse 分区机制），到期后直接 DROP 分区零开销归档。',
+    trap: '【严重事故】直接按 `date` 或自增主键分片，新数据写入产生灾难性“写入热点倾斜”，单节点 CPU 100%，而其余历史分片利用率为 0%。',
+  },
+};
+
+const SHARDING_CASES_EN = {
+  ecommerce: {
+    title: 'E-Commerce Orders: Buyer vs Seller Lookups',
+    problem: 'Buyers frequently query orders by buyer_id; merchants query all store orders by seller_id. Sharding solely by buyer_id forces seller queries into full-cluster scatter-gather broadcasts; and vice-versa.',
+    optimalKey: 'Shard orders by buyer_id. Use Gene Sharding to embed the lowest 4–6 bits of hash(buyer_id) into the suffix of order_id.',
+    architecture: 'With Gene Sharding, any order lookup by order_id routes immediately to the correct shard. For merchant queries, stream MySQL Binlogs via CDC (Debezium) into Elasticsearch or a merchant-partitioned read replica (CQRS).',
+    trap: 'Executing cross-shard scans `SELECT * FROM orders WHERE seller_id = ?` directly against the sharded cluster, exhausting connection pools across all nodes and triggering site-wide downtime.',
+  },
+  saas: {
+    title: 'B2B Multi-Tenant SaaS: Key Accounts vs Long-Tail SMBs',
+    problem: 'Sharding by tenant_id is intuitive, but enterprise Key Accounts generate 10,000x more data than smaller tenants, creating massive data and workload skew.',
+    optimalKey: 'Tiered Sharding: Route SMB tenants via hash(tenant_id) % N into shared pooled shards; assign dedicated physical shards to massive enterprise tenants.',
+    architecture: 'Routing proxy maintains a cached tenant-to-shard lookup table. Super-large tenants can further sub-shard internally by employee/department ID.',
+    trap: 'Treating all tenants uniformly with simple hashing. A giant tenant running end-of-month financial reports exhausts shard CPU and RAM, starving hundreds of co-located small businesses (Noisy Neighbor).',
+  },
+  chat: {
+    title: 'Instant Messaging: 1-on-1 Direct Chat vs Group Messages',
+    problem: 'Direct chat is bilateral; group chat is 1-to-many fan-out. Sharding by sender_id forces the recipient to broadcast across all shards to fetch unread messages.',
+    optimalKey: 'Shard 1-on-1 chat by canonical session ID `min(A, B) + "_" + max(A, B)`; shard group chats by group_id.',
+    architecture: 'All messages belonging to the same conversation naturally reside on the same physical shard, enabling blazing-fast local range scans. Push/Pull models decouple fan-out delivery.',
+    trap: 'Sharding by message_id or standalone sender_id, forcing chat history retrievals into scatter-gather broadcasts across all nodes with disastrous network fan-out and out-of-order reassembly.',
+  },
+  iot: {
+    title: 'IoT / Time-Series Telemetry: Monotonic Write Surges',
+    problem: 'Millions of telemetry metrics are ingested per second. Sharding purely by timestamp ranges seems intuitive for retention, but concentrates 100% of current writes onto the latest single shard.',
+    optimalKey: 'Compound Key: `hash(device_id)` determines the physical shard node, while time buckets act as local cluster partition keys.',
+    architecture: 'Writes are evenly distributed across all physical shards by device_id, eliminating write hotspots. Each shard maintains local time partitions (e.g. TimescaleDB/ClickHouse chunks) dropped instantly on expiry.',
+    trap: 'Sharding directly by sequential timestamps or auto-increment IDs. Current writes create catastrophic write hotspots where one node is pinned at 100% CPU while all historical shards sit idle.',
+  },
+};
+
+function DatabaseScalingVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [tab, setTab] = useState('dependency');
+  const [depKey, setDepKey] = useState('strong_txn');
+  const [caseKey, setCaseKey] = useState('ecommerce');
+
+  const depData = isEnglish ? DB_DEPENDENCY_DATA_EN : DB_DEPENDENCY_DATA_ZH;
+  const currentDep = depData[depKey];
+
+  const caseData = isEnglish ? SHARDING_CASES_EN : SHARDING_CASES_ZH;
+  const currentCase = caseData[caseKey];
+
+  return (
+    <section className="db-scaling-visual" aria-label={t('数据库扩展与分片决策器', 'Database Scaling & Sharding Key Decision Visualizer')}>
+      <header className="arch-header split">
+        <div>
+          <p className="eyebrow">{t('数据库扩展决策系统', 'DATABASE SCALING ARCHITECTURE')}</p>
+          <h2>{tab === 'dependency' ? t('基于数据依赖性的架构选型决策树', 'Data Dependency Driven Architecture Selection') : t('分片键 (Sharding Key) 设计评估与生产避坑', 'Sharding Key Evaluation Factors & Production Pitfalls')}</h2>
+          <p>{tab === 'dependency' ? t('数据的耦合与事务边界决定了系统能走哪条扩展路径。切忌在解耦前过早分片。', 'Coupling and transaction invariants dictate scaling viability. Decouple dependencies before sharding.') : t('分片键决定了未来十年的系统吞吐与尾延迟。评估基数、均匀度、点查率与亲和共存度。', 'The sharding key governs query routing and tail latency. Evaluate cardinality, uniformity, alignment, and colocation.')}</p>
+        </div>
+        <div className="arch-tabs" role="group" aria-label={t('切换视图', 'Switch View')}>
+          <button type="button" className={tab === 'dependency' ? 'active' : ''} onClick={() => setTab('dependency')}>
+            {t('数据依赖选型', 'Data Dependency')}
+          </button>
+          <button type="button" className={tab === 'sharding' ? 'active' : ''} onClick={() => setTab('sharding')}>
+            {t('分片键实战避坑', 'Sharding Key Cases')}
+          </button>
+        </div>
+      </header>
+
+      <div className="db-scaling-body">
+        {tab === 'dependency' ? (
+          <>
+            <div className="db-chip-row" role="tablist" aria-label={t('选择数据依赖类型', 'Select Data Dependency Type')}>
+              <button type="button" className={`db-chip ${depKey === 'strong_txn' ? 'active' : ''}`} onClick={() => setDepKey('strong_txn')}>
+                🔒 {t('强事务依赖 (ACID Invariants)', 'Strong Transactional')}
+              </button>
+              <button type="button" className={`db-chip ${depKey === 'colocated' ? 'active' : ''}`} onClick={() => setDepKey('colocated')}>
+                🧩 {t('实体亲和聚合依赖 (Colocation)', 'Colocation Affinity')}
+              </button>
+              <button type="button" className={`db-chip ${depKey === 'weak_stream' ? 'active' : ''}`} onClick={() => setDepKey('weak_stream')}>
+                ⚡ {t('弱依赖分析流 (Eventual / Stream)', 'Weak / Eventual Stream')}
+              </button>
+              <button type="button" className={`db-chip ${depKey === 'static_read' ? 'active' : ''}`} onClick={() => setDepKey('static_read')}>
+                📖 {t('无状态静态依赖 (Stateless / Config)', 'Stateless Reference')}
+              </button>
+            </div>
+
+            <article className="db-detail-card">
+              <div className="db-detail-header">
+                <h3>{currentDep.title}</h3>
+                <span className="db-badge-tag">{currentDep.tag}</span>
+              </div>
+              <div className="db-grid-sections">
+                <div className="db-section-item">
+                  <label>{t('典型业务场景', 'Production Scenarios')}</label>
+                  <p>{currentDep.scenarios}</p>
+                </div>
+                <div className="db-section-item">
+                  <label>{t('数据依赖与不变量特征', 'Dependency Characteristics')}</label>
+                  <p>{currentDep.characteristics}</p>
+                </div>
+              </div>
+              <div className="db-solution-box">
+                <strong>✓ {t('推荐架构落地解法', 'Recommended Architectural Solution')}</strong>
+                <p>{currentDep.solution}</p>
+                <small style={{ color: '#2d7a5b', display: 'block', marginTop: '0.35rem' }}><b>{t('机制：', 'Mechanism: ')}</b>{currentDep.mechanism}</small>
+              </div>
+              <div className="db-anti-pattern-box">
+                <strong>⚠ {t('高危反模式与架构代价', 'High-Risk Anti-Pattern & Tradeoffs')}</strong>
+                <p>{currentDep.antiPattern}</p>
+              </div>
+            </article>
+          </>
+        ) : (
+          <>
+            <div className="factor-pill-grid">
+              <div className="factor-pill-card">
+                <strong>1. {t('高基数 (Cardinality)', 'Cardinality')}</strong>
+                <span>{t('取值空间必须极大 (如用户ID)，禁止用状态/枚举等低基数字段做分片键。', 'Must have massive entropy (e.g. user_id); never use low-cardinality enums.')}</span>
+              </div>
+              <div className="factor-pill-card">
+                <strong>2. {t('散列均匀 (Uniformity)', 'Uniformity')}</strong>
+                <span>{t('哈希消除倾斜；严禁按自增ID或时间戳分片导致当前分片写入打爆。', 'Hash evenly; avoid sequential IDs or timestamps that create hot write shards.')}</span>
+              </div>
+              <div className="factor-pill-card">
+                <strong>3. {t('点查覆盖率 (Alignment)', 'Query Alignment')}</strong>
+                <span>{t('85%+ 高频查询必须带分片键，严防无分片键的全分片广播 (Scatter-Gather)。', '85%+ queries must include shard key to avoid costly scatter-gather broadcasts.')}</span>
+              </div>
+              <div className="factor-pill-card">
+                <strong>4. {t('亲和共存 (Colocation)', 'Colocation')}</strong>
+                <span>{t('关联实体共享相同分片键，锁定本地单片事务与本地 JOIN，消除 2PC。', 'Share key across parent/child tables to preserve intra-shard ACID and joins.')}</span>
+              </div>
+              <div className="factor-pill-card">
+                <strong>5. {t('永久不可变 (Immutable)', 'Immutability')}</strong>
+                <span>{t('分片键变更等同于跨节点物理迁移与重锁，必须永久不可变。', 'Shard keys must never change; mutation requires distributed cross-node moves.')}</span>
+              </div>
+              <div className="factor-pill-card">
+                <strong>6. {t('多维 GSI 扩展 (GSI / CQRS)', 'Multi-Dimension')}</strong>
+                <span>{t('买家/卖家双维度查询采用基因分片法或 CDC 异步构建异构读模型。', 'Handle dual-dimension access via Gene Sharding or CDC asynchronous CQRS views.')}</span>
+              </div>
+            </div>
+
+            <div className="db-chip-row" role="tablist" aria-label={t('选择行业实战案例', 'Select Industry Case')}>
+              <button type="button" className={`db-chip ${caseKey === 'ecommerce' ? 'active' : ''}`} onClick={() => setCaseKey('ecommerce')}>
+                🛒 {t('电商订单 (Buyer vs Seller)', 'E-Commerce Orders')}
+              </button>
+              <button type="button" className={`db-chip ${caseKey === 'saas' ? 'active' : ''}`} onClick={() => setCaseKey('saas')}>
+                🏢 {t('SaaS 多租户 (Key Accounts)', 'B2B Multi-Tenant')}
+              </button>
+              <button type="button" className={`db-chip ${caseKey === 'chat' ? 'active' : ''}`} onClick={() => setCaseKey('chat')}>
+                💬 {t('IM 聊天消息 (1-on-1 vs Group)', 'Instant Messaging')}
+              </button>
+              <button type="button" className={`db-chip ${caseKey === 'iot' ? 'active' : ''}`} onClick={() => setCaseKey('iot')}>
+                📡 {t('IoT 时序指标 (Write Surges)', 'IoT Telemetry')}
+              </button>
+            </div>
+
+            <article className="db-detail-card">
+              <div className="db-detail-header">
+                <h3>{currentCase.title}</h3>
+                <span className="db-badge-tag">{t('实战避坑案例', 'Production Case Study')}</span>
+              </div>
+              <div className="db-grid-sections">
+                <div className="db-section-item">
+                  <label>{t('核心挑战与矛盾', 'Problem & Conflict')}</label>
+                  <p>{currentCase.problem}</p>
+                </div>
+                <div className="db-section-item">
+                  <label>{t('最佳分片键设计 (Optimal Key)', 'Optimal Shard Key Design')}</label>
+                  <p>{currentCase.optimalKey}</p>
+                </div>
+              </div>
+              <div className="db-solution-box">
+                <strong>✓ {t('配套分布式架构方案', 'Supporting Architecture Solution')}</strong>
+                <p>{currentCase.architecture}</p>
+              </div>
+              <div className="db-anti-pattern-box">
+                <strong>⚠ {t('必须严防的翻车事故 (Deadly Trap)', 'Deadly Anti-Pattern & Trap')}</strong>
+                <p>{currentCase.trap}</p>
+              </div>
+            </article>
           </>
         )}
       </div>
@@ -25894,7 +26189,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -26086,6 +26381,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'business-algorithm-map') {
     return <BusinessAlgorithmMap />;
+  }
+
+  if (match?.[1] === 'database-scaling-visual') {
+    return <DatabaseScalingVisual />;
   }
 
   if (match?.[1] === 'system-design-overview-visual') {
@@ -26431,7 +26730,6 @@ function tokenizeCode(code, language) {
 }
 
 const legacyRoutes = {
-  'SystemDesign00 Overview.md': 'SystemDesign01 Stateless Service.md',
   'SystemDesign05 Interview Flow.md': 'SystemDesign01 Stateless Service.md',
   'SystemDesign03 Database Scaling.md': 'SystemDesign02 Database Paradigms.md',
   'SystemDesign05 Reliability Replication.md': 'SystemDesign02 Database Paradigms.md',

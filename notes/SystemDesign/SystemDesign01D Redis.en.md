@@ -37,6 +37,23 @@ Note: Although they function as queues, a Redis List is not a highly reliable, r
 
 ## 2 · Cache
 
+### Quantitative Cache Numbers: QPS & Capacity Sizing
+
+When sizing a Redis cluster, rely on these foundational physical constants:
+
+#### 1. Cache QPS & CPU Sizing Formula
+- **Round-Trip Time (RTT)**: Intra-AZ simple GET/SET network latency is $\approx 0.2 - 1.0\text{ ms}$;
+- **Single-Node Throughput**: A single instance comfortably handles **tens of thousands of QPS** (CPU and network packet bound).
+- **CPU Sizing Formula**:
+  $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times u$$
+  *Example*: 4 cores, average CPU time $t_{\text{cpu}} = 0.1\text{ ms}$, utilization target $u = 0.8$:
+  $$\text{QPS} \approx 4 \times \frac{1000}{0.1} \times 0.8 = 32,000\text{ QPS}$$
+
+#### 2. Cache Capacity: How Many Keys Fit in 1 GB RAM?
+- **Theoretical Benchmark**: At $\approx 200\text{ B}$ per item, $\mathbf{1\text{ GB RAM} \approx 5,000,000\text{ keys}}$;
+- **Production Conservative Rule**: Accounting for jemalloc fragmentation, pointer overhead, and $30\%$ safety headroom:
+  $$\mathbf{1\text{ GB RAM} \approx 2,000,000 - 3,000,000\text{ stable keys}}$$
+
 The most common role for Redis is an in-memory layer in front of a database. As a cache, it is merely a copy of the underlying database.
 The core principle is: in the event of a cache miss, the application must safely fall back to the database.
 
