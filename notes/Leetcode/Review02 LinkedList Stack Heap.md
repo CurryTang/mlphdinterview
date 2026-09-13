@@ -952,7 +952,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 621 · Task Scheduler](https://leetcode.com/problems/task-scheduler/) — `https://leetcode.com/problems/task-scheduler/` (系统级分级轮转调度扩展)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1069,7 +1069,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 1834 · Single-Threaded CPU](https://leetcode.com/problems/single-threaded-cpu/) — `https://leetcode.com/problems/single-threaded-cpu/` (时间戳调度与堆懒删除)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>

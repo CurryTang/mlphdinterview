@@ -108,7 +108,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Link**: [LeetCode 15 · 3Sum](https://leetcode.com/problems/3sum/) — `https://leetcode.com/problems/3sum/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -510,7 +510,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 902 · Numbers At Most N Given Digit Set](https://leetcode.com/problems/numbers-at-most-n-given-digit-set/) — `https://leetcode.com/problems/numbers-at-most-n-given-digit-set/` (Digit Greedy Backtracking OA)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Examples</div>
@@ -1158,7 +1158,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 45 · Jump Game II](https://leetcode.com/problems/jump-game-ii/) — `https://leetcode.com/problems/jump-game-ii/` (Greedy Forward Progression Relay)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>

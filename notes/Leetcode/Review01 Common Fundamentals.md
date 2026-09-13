@@ -172,7 +172,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode 链接**：[LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) — `https://leetcode.com/problems/concatenation-of-array/`
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1383,7 +1383,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (工业界手撕题 / 局部极值变体)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1507,7 +1507,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (量化面试高频数学归约手撕真题)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1810,7 +1810,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode 链接**：[LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1944,9 +1944,7 @@ ceil$ 个候选槽位，单次校验 $X$ 步，最坏时间复杂度为 $\mathca
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode 链接**：
-> - [LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) — `https://leetcode.com/problems/longest-alternating-subarray/`
-> - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -2045,7 +2043,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode 链接**：[LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>

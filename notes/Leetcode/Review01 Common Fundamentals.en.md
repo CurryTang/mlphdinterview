@@ -172,7 +172,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Link**: [LeetCode 1929 · Concatenation of Array](https://leetcode.com/problems/concatenation-of-array/) — `https://leetcode.com/problems/concatenation-of-array/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition &amp; Invariants</div>
@@ -1330,7 +1330,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 162 · Find Peak Element](https://leetcode.com/problems/find-peak-element/) — `https://leetcode.com/problems/find-peak-element/` (Industry Custom OA / Peak Element Variant)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -1450,7 +1450,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 53 · Maximum Subarray](https://leetcode.com/problems/maximum-subarray/) — `https://leetcode.com/problems/maximum-subarray/` (Quant Interview Mathematical Reduction OA)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -1747,7 +1747,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Link**: [LeetCode 2502 · Design Memory Allocator](https://leetcode.com/problems/design-memory-allocator/) — `https://leetcode.com/problems/design-memory-allocator/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -1877,9 +1877,7 @@ ceil$.
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Links**:
-> - [LeetCode 2765 · Longest Alternating Subarray](https://leetcode.com/problems/longest-alternating-subarray/) — `https://leetcode.com/problems/longest-alternating-subarray/`
-> - [LeetCode 978 · Longest Turbulent Subarray](https://leetcode.com/problems/longest-turbulent-subarray/) — `https://leetcode.com/problems/longest-turbulent-subarray/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -1976,7 +1974,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Link**: [LeetCode 68 · Text Justification](https://leetcode.com/problems/text-justification/) — `https://leetcode.com/problems/text-justification/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>

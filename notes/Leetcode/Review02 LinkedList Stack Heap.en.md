@@ -808,7 +808,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 621 · Task Scheduler](https://leetcode.com/problems/task-scheduler/) — `https://leetcode.com/problems/task-scheduler/` (Tiered Round-Robin Task Scheduler Extension)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -925,7 +925,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 1834 · Single-Threaded CPU](https://leetcode.com/problems/single-threaded-cpu/) — `https://leetcode.com/problems/single-threaded-cpu/` (Timestamp Scheduler & Lazy Deletion Heap)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>

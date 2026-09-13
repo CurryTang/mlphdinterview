@@ -189,7 +189,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/` (Production Dynamic DAG & Dependency Validation)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Architectural Contract</div>
@@ -551,7 +551,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/` (Hierarchical Nested Tree Assembly)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Examples</div>
@@ -655,7 +655,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/` (Postorder Greedy Tree Lift Variant)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Definition & Greedy Lift Mechanics</div>
@@ -907,7 +907,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **Related LeetCode**: [LeetCode 329 · Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/) — `https://leetcode.com/problems/longest-increasing-path-in-a-matrix/` (Grid Memoized Search Alternating Path)
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -1273,7 +1273,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode Link**: [LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) — `https://leetcode.com/problems/shortest-path-to-get-all-keys/`
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>

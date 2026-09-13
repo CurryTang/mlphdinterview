@@ -221,7 +221,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 207 · Course Schedule](https://leetcode.com/problems/course-schedule/) — `https://leetcode.com/problems/course-schedule/` (工业级动态 DAG 依赖与拓扑排序)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业系统契约</div>
@@ -670,7 +670,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 430 · Flatten a Multilevel Doubly Linked List](https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/) — `https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/` (系统级层级评论树重构)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与工业输入输出规范</div>
@@ -811,7 +811,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 124 · Binary Tree Maximum Path Sum](https://leetcode.com/problems/binary-tree-maximum-path-sum/) — `https://leetcode.com/problems/binary-tree-maximum-path-sum/` (树形后序贪心提升变体)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与操作模型</div>
@@ -1112,7 +1112,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **相关 LeetCode**：[LeetCode 329 · Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/) — `https://leetcode.com/problems/longest-increasing-path-in-a-matrix/` (网格记忆化搜索交替路径)
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -1479,7 +1479,7 @@ if __name__ == "__main__":
 </summary>
 <div class="review-card-content">
 
-> 🔗 **LeetCode 链接**：[LeetCode 864 · Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/) — `https://leetcode.com/problems/shortest-path-to-get-all-keys/`
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
