@@ -2346,3 +2346,187 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 21. 最长回文子串：区间动态规划与中心扩散 (Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">DP 21</span>
+  <span class="review-card-title">最长回文子串：区间动态规划与中心扩散 (Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher)</span>
+  <span class="review-card-tag">区间动态规划 · 状态转移方程 · 中心扩散 · 马拉车 (Manacher) · 严格 O(N)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：[LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Longest Palindromic Substring (LeetCode 5)**:
+> Given a string `s`, return the longest palindromic substring in `s`.
+> Compare standard Center Expansion ($\mathcal{O}(n^2)$) with Manacher's Linear Algorithm ($\mathcal{O}(n)$).
+
+**函数签名**：
+```python
+def longestPalindrome(s: str) -> str: ...
+```
+
+**输入输出示例**：
+- `s = "babad"` $\implies$ `"bab"`（或 `"aba"`）
+- `s = "cbbd"` $\implies$ `"bb"`
+- `s = "a"` $\implies$ `"a"`
+
+**核心机制与算法对比**：
+- **中心扩散法**：遍历每个字符及字符间隙作为中心向两侧对称扩散，时间 $\mathcal{O}(n^2)$，空间 $\mathcal{O}(1)$；
+- **马拉车 (Manacher) 算法**：插入虚拟分隔符 `#` 统一奇偶回文，维护最右回文边界 $R$ 与对称中心 $C$。利用镜像点 $i' = 2C - i$ 的回文半径信息快速初始化当前点回文半径，实现严格 $\mathcal{O}(n)$ 线性时间。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+class LongestPalindromeSolution:
+    @classmethod
+    def longestPalindromeDP(cls, s: str) -> str:
+        """
+        解法一：经典区间动态规划 (Interval DP)
+        状态定义：dp[i][j] 表示子串 s[i..j] 是否为回文串。
+        状态转移：dp[i][j] = (s[i] == s[j]) and (j - i <= 2 or dp[i + 1][j - 1])
+        时间复杂度 O(N^2)，空间复杂度 O(N^2)。
+        """
+        n = len(s)
+        if n <= 1:
+            return s
+        dp = [[False] * n for _ in range(n)]
+        start, max_len = 0, 1
+        for i in range(n):
+            dp[i][i] = True
+
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+                if s[i] == s[j]:
+                    if length <= 3:
+                        dp[i][j] = True
+                    else:
+                        dp[i][j] = dp[i + 1][j - 1]
+                if dp[i][j] and length > max_len:
+                    max_len = length
+                    start = i
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeCenterExpand(cls, s: str) -> str:
+        """
+        解法二：经典中心扩散法
+        时间复杂度 O(N^2)，额外空间 O(1)。
+        """
+        if not s:
+            return ""
+
+        start, max_len = 0, 1
+
+        def expand_around_center(left: int, right: int) -> int:
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                left -= 1
+                right += 1
+            return right - left - 1
+
+        for i in range(len(s)):
+            len1 = expand_around_center(i, i)       # 奇数长度中心
+            len2 = expand_around_center(i, i + 1)   # 偶数长度中心
+            cur_max = max(len1, len2)
+            if cur_max > max_len:
+                max_len = cur_max
+                start = i - (cur_max - 1) // 2
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeManacher(cls, s: str) -> str:
+        """
+        解法三：工业级 Manacher 算法（马拉车）
+        利用回文对称性与最右边界缓存，时间复杂度严格 O(N)。
+        """
+        if not s:
+            return ""
+
+        # 1. 插入间隔符统一奇偶回文，前后加哨兵杜绝越界检查: "^#a#b#a#$"
+        transformed = "^#" + "#".join(s) + "#$"
+        m = len(transformed)
+        radius = [0] * m  # radius[i] 记录以 i 为中心的最长回文半径
+        center = 0
+        right = 0
+
+        # 2. 线性推导回文半径
+        for i in range(1, m - 1):
+            i_mirror = 2 * center - i  # i 关于当前最右边界中心 center 的对称点
+
+            if right > i:
+                # 对称加速：初值直接继承对称点的半径，但不能突破已知最右边界
+                radius[i] = min(right - i, radius[i_mirror])
+            else:
+                radius[i] = 0
+
+            # 3. 朴素扩散扩展（仅在突破边界时有效推进）
+            while transformed[i + 1 + radius[i]] == transformed[i - 1 - radius[i]]:
+                radius[i] += 1
+
+            # 4. 若新回文右翼超越了历史最右边界，更新中心与边界
+            if i + radius[i] > right:
+                center = i
+                right = i + radius[i]
+
+        # 5. 定位最大回文半径与其在原字符串中的起始位置
+        best_radius = 0
+        best_center = 0
+        for i in range(1, m - 1):
+            if radius[i] > best_radius:
+                best_radius = radius[i]
+                best_center = i
+
+        # 关键原串坐标映射: (best_center - best_radius) // 2
+        start_orig = (best_center - best_radius) // 2
+        return s[start_orig : start_orig + best_radius]
+
+if __name__ == "__main__":
+    assert LongestPalindromeSolution.longestPalindromeDP("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeDP("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeManacher("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("a") == "a"
+    print("✅ Card 21 (Longest Palindrome) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **区间动态规划（$\mathcal{O}(N^2)$ 经典模型）**：
+  定义二维状态表 $dp[i][j]$ 表示子串 $s[i..j]$ 是否回文。当 $s[i] == s[j]$ 时，若长度 $\le 3$（如 `"a"`, `"aa"`, `"aba"`）基础状态为真；长度 $> 3$ 时由内层子问题 $dp[i+1][j-1]$ 转移，按子串长度递增填表。
+- **中心扩散法（$\mathcal{O}(N^2)$ 基准）**：
+  每个字符（奇回文，共 $N$ 个）或相邻两字符间隙（偶回文，共 $N-1$ 个）作为扩散核，向双侧线性比对，单次最长扩散耗时 $\mathcal{O}(N)$，最坏情况（如全同一字符 `"aaaaa"`）退化至 $\mathcal{O}(N^2)$。
+- **Manacher 算法的 $\mathcal{O}(N)$ 飞跃机理**：
+  1. **奇偶同构化**：插入 `#` 后，无论原回文是奇是偶，在变换串中统统归一为**以某个字符或 `#` 为中心的奇数长度回文**；
+  2. **对称点映射借力（Mirror Reflection）**：当前点 $i$ 位于已知覆盖范围 $[center - R, right]$ 内部时，由于以 $center$ 为中心的大回文区间是对称的，$i$ 处的回文结构在前半区 $i_{mirror} = 2 \cdot center - i$ 处**早已被完全计算过**！因此 $radius[i]$ 可以直接继承 $\min(right - i, radius[i_{mirror}])$；
+  3. **单调前进摊还分析**：由于每一步只有在字符比对成功且拓展出新的 $right$ 边界时才会增加常数操作，$right$ 边界只能单调向右移动至多 $2N$ 次，因此总比对次数被严格限定为 $\mathcal{O}(N)$。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：区间 DP 与中心扩散法为 $\mathcal{O}(N^2)$；Manacher 算法为严格 $\mathcal{O}(N)$。
+- **空间复杂度**：区间 DP 为 $\mathcal{O}(N^2)$；中心扩散法为 $\mathcal{O}(1)$；Manacher 算法为 $\mathcal{O}(N)$（变换字符串与半径数组）。
+
+</div>
+
+</div>
+</details>
+
+

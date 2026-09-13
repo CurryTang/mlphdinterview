@@ -2103,3 +2103,174 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 21. Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">DP 21</span>
+  <span class="review-card-title">Longest Palindromic Substring: Interval DP vs Center Expansion & Manacher</span>
+  <span class="review-card-tag">Interval DP · State Transition Equation · Center Expansion · Manacher Algorithm · Strict O(N)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Link**: [LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Longest Palindromic Substring (LeetCode 5)**:
+> Given a string `s`, return the longest palindromic substring in `s`.
+> Compare standard Center Expansion ($\mathcal{O}(n^2)$) with Manacher's Linear Algorithm ($\mathcal{O}(n)$).
+
+**Function Signature**:
+```python
+def longestPalindrome(s: str) -> str: ...
+```
+
+**Examples**:
+- `s = "babad"` $\implies$ `"bab"` (or `"aba"`)
+- `s = "cbbd"` $\implies$ `"bb"`
+- `s = "a"` $\implies$ `"a"`
+
+**Algorithmic Comparison**:
+- **Center Expansion**: Expands around $2n-1$ centers, $\mathcal{O}(n^2)$ time, $\mathcal{O}(1)$ space;
+- **Manacher's Algorithm**: Inserts delimiters `#` to unify odd/even lengths. Exploits palindrome symmetry $i' = 2C - i$ and the rightmost boundary $R$ to achieve strict $\mathcal{O}(n)$ linear time.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+class LongestPalindromeSolution:
+    @classmethod
+    def longestPalindromeDP(cls, s: str) -> str:
+        """
+        Approach 1: Canonical Interval DP
+        State: dp[i][j] indicates whether substring s[i..j] is a palindrome.
+        Transition: dp[i][j] = (s[i] == s[j]) and (j - i <= 2 or dp[i + 1][j - 1])
+        Time Complexity: O(N^2), Space Complexity: O(N^2).
+        """
+        n = len(s)
+        if n <= 1:
+            return s
+        dp = [[False] * n for _ in range(n)]
+        start, max_len = 0, 1
+        for i in range(n):
+            dp[i][i] = True
+
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+                if s[i] == s[j]:
+                    if length <= 3:
+                        dp[i][j] = True
+                    else:
+                        dp[i][j] = dp[i + 1][j - 1]
+                if dp[i][j] and length > max_len:
+                    max_len = length
+                    start = i
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeCenterExpand(cls, s: str) -> str:
+        """Approach 2: Baseline Center Expansion (O(N^2) time, O(1) space)."""
+        if not s:
+            return ""
+
+        start, max_len = 0, 1
+
+        def expand(left: int, right: int) -> int:
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                left -= 1
+                right += 1
+            return right - left - 1
+
+        for i in range(len(s)):
+            len1 = expand(i, i)
+            len2 = expand(i, i + 1)
+            cur_max = max(len1, len2)
+            if cur_max > max_len:
+                max_len = cur_max
+                start = i - (cur_max - 1) // 2
+
+        return s[start : start + max_len]
+
+    @classmethod
+    def longestPalindromeManacher(cls, s: str) -> str:
+        """Approach 3: Manacher's Algorithm (strict O(N) time and O(N) space)."""
+        if not s:
+            return ""
+
+        transformed = "^#" + "#".join(s) + "#$"
+        m = len(transformed)
+        radius = [0] * m
+        center = 0
+        right = 0
+
+        for i in range(1, m - 1):
+            i_mirror = 2 * center - i
+
+            if right > i:
+                radius[i] = min(right - i, radius[i_mirror])
+            else:
+                radius[i] = 0
+
+            while transformed[i + 1 + radius[i]] == transformed[i - 1 - radius[i]]:
+                radius[i] += 1
+
+            if i + radius[i] > right:
+                center = i
+                right = i + radius[i]
+
+        best_radius = 0
+        best_center = 0
+        for i in range(1, m - 1):
+            if radius[i] > best_radius:
+                best_radius = radius[i]
+                best_center = i
+
+        start_orig = (best_center - best_radius) // 2
+        return s[start_orig : start_orig + best_radius]
+
+if __name__ == "__main__":
+    assert LongestPalindromeSolution.longestPalindromeDP("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeDP("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeCenterExpand("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("babad") in ("bab", "aba")
+    assert LongestPalindromeSolution.longestPalindromeManacher("cbbd") == "bb"
+    assert LongestPalindromeSolution.longestPalindromeManacher("a") == "a"
+    print("✅ Card 21 (Longest Palindrome) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Interval Dynamic Programming ($\mathcal{O}(N^2)$ Baseline)**:
+  Defines 2D table $dp[i][j]$ representing palindrome validity for substring $s[i..j]$. When $s[i] == s[j]$, lengths $\le 3$ evaluate to true, whereas longer substrings transition from interior subproblem $dp[i+1][j-1]$.
+- **Center Expansion ($\mathcal{O}(N^2)$ Baseline)**:
+  Examines $2N-1$ possible centers, expanding symmetrically. Degenerates to $\mathcal{O}(N^2)$ on repetitive strings (e.g. `"aaaa"`).
+- **Manacher's $\mathcal{O}(N)$ Symmetry Reuse**:
+  1. **Even/Odd Unification**: Inserting `#` transforms all palindromes into odd-length ones centered on a character or `#`.
+  2. **Mirror Seeding**: When $i < right$, the palindrome radius around $i$ is seeded from its mirror $i_{mirror} = 2 \cdot center - i$, bounded by `right - i`.
+  3. **Amortized Linearity**: Character comparisons only occur when expanding beyond the current `right` boundary. Because `right` advances monotonically at most $2N$ times, total runtime is strictly $\mathcal{O}(N)$.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: Interval DP and center expansion are $\mathcal{O}(N^2)$; Manacher's algorithm is $\mathcal{O}(N)$.
+- **Space Complexity**: Interval DP is $\mathcal{O}(N^2)$; center expansion is $\mathcal{O}(1)$; Manacher's algorithm is $\mathcal{O}(N)$ for transformed string and radius array.
+
+</div>
+
+</div>
+</details>
+
+

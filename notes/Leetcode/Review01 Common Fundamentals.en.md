@@ -1642,106 +1642,11 @@ if __name__ == "__main__":
 
 ---
 
-### 20. Longest Substring Without Repeating Characters
+### 20. 8-Byte Aligned Memory Allocator Simulation
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">STRING 20</span>
-  <span class="review-card-title">Longest Substring Without Repeating Characters</span>
-  <span class="review-card-tag">Sliding Window · Last Seen Index Table · Left Pointer Skip · O(N)</span>
-</summary>
-<div class="review-card-content">
-
-> 🔗 **LeetCode Link**: [LeetCode 3 · Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/) — `https://leetcode.com/problems/longest-substring-without-repeating-characters/`
-
-<div class="review-block">
-<div class="review-block-label">📌 Problem Statement & Requirements</div>
-
-**Original Problem Statement**:
-> **Longest Substring Without Repeating Characters (LeetCode 3)**:
-> Given a string `s`, find the length of the longest substring without duplicate characters.
-
-**Function Signature**:
-```python
-def lengthOfLongestSubstring(s: str) -> int: ...
-```
-
-**Examples**:
-- `s = "abcabcbb"` $\implies$ `3` (longest substring is `"abc"`)
-- `s = "bbbbb"` $\implies$ `1` (longest substring is `"b"`)
-- `s = "pwwkew"` $\implies$ `3` (longest substring is `"wke"`)
-- `s = ""` $\implies$ `0`
-
-**Invariants & Skip Optimization**:
-- The substring must be contiguous.
-- Maintain a hash map recording each character's latest index. Upon encountering a duplicate, jump the left boundary to `max(left, last_pos[c] + 1)` for strict single-pass $\mathcal{O}(n)$ time.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">📌 Core Implementation</div>
-
-```python
-class LongestSubstringWithoutRepeatingSolution:
-    @classmethod
-    def lengthOfLongestSubstring(cls, s: str) -> int:
-        """
-        Computes length of longest contiguous substring without repeating characters.
-        Uses a last-seen index map for O(1) left pointer jumps.
-        """
-        char_last_seen = {}
-        left = 0
-        max_length = 0
-
-        for right, ch in enumerate(s):
-            if ch in char_last_seen and char_last_seen[ch] >= left:
-                left = char_last_seen[ch] + 1
-            
-            char_last_seen[ch] = right
-            current_window = right - left + 1
-            if current_window > max_length:
-                max_length = current_window
-
-        return max_length
-
-if __name__ == "__main__":
-    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("abcabcbb") == 3
-    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("bbbbb") == 1
-    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("pwwkew") == 3
-    assert LongestSubstringWithoutRepeatingSolution.lengthOfLongestSubstring("") == 0
-    print("✅ Card 20 (Longest Substring Without Repeating) all tests passed!")
-```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 Mechanism & Invariants</div>
-
-- **O(1) Boundary Jump**:
-  Tracking `char_last_seen[ch]` allows the left pointer to jump directly to `last_seen + 1`, avoiding iterative single-character shrinkage.
-- **Monotonicity Guard**:
-  The condition `char_last_seen[ch] >= left` prevents the left boundary from moving backward to stale indices outside the active window.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ Complexity Analysis</div>
-
-- **Time Complexity**: $\mathcal{O}(N)$, single pass.
-- **Space Complexity**: $\mathcal{O}(\min(N, |\Sigma|))$, bounded by the character alphabet size.
-
-</div>
-
-</div>
-</details>
-
----
-
-### 21. 8-Byte Aligned Memory Allocator Simulation
-
-<details class="review-card">
-<summary class="review-card-summary">
-  <span class="review-card-badge">DESIGN 21</span>
+  <span class="review-card-badge">DESIGN 20</span>
   <span class="review-card-title">8-Byte Aligned Memory Allocator Simulation</span>
   <span class="review-card-tag">Hardware Simulation · 8-Byte Alignment Stride · Unique Tagged Free · O(N / 8 * X)</span>
 </summary>
@@ -1836,7 +1741,7 @@ if __name__ == "__main__":
     assert alloc.alloc(5) == -1
     assert alloc.erase(1) == 5
     assert alloc.alloc(6) == 0
-    print("✅ Card 21 (8-Byte Aligned Memory Allocator) all tests passed!")
+    print("✅ Card 20 (8-Byte Aligned Memory Allocator) all tests passed!")
 ```
 
 </div>
@@ -1867,11 +1772,11 @@ ceil$.
 
 ---
 
-### 22. Zigzag Alternating-Parity Subarrays
+### 21. Zigzag Alternating-Parity Subarrays
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">ARRAY 22</span>
+  <span class="review-card-badge">ARRAY 21</span>
   <span class="review-card-title">Zigzag Alternating-Parity Subarrays</span>
   <span class="review-card-tag">Consecutive Run Accumulation · Parity Modulo Check · Single-Pass · O(N) Time</span>
 </summary>
@@ -1936,7 +1841,7 @@ if __name__ == "__main__":
     assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1, 2, 3, 4]) == 10
     assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([2, 4, 6]) == 3
     assert AlternatingParitySubarraysSolution.countAlternatingSubarrays([1]) == 1
-    print("✅ Card 22 (Zigzag Alternating-Parity Subarrays) all tests passed!")
+    print("✅ Card 21 (Zigzag Alternating-Parity Subarrays) all tests passed!")
 ```
 
 </div>
@@ -1963,269 +1868,4 @@ if __name__ == "__main__":
 </details>
 
 ---
-
-### 23. Two-Direction Justified Newspaper Layout
-
-<details class="review-card">
-<summary class="review-card-summary">
-  <span class="review-card-badge">STRING 23</span>
-  <span class="review-card-title">Two-Direction Justified Newspaper Layout</span>
-  <span class="review-card-tag">Greedy Word Bin-Packing · Round-Robin Space Distribution · Frame Rendering · O(Total Words)</span>
-</summary>
-<div class="review-card-content">
-
-> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
-
-<div class="review-block">
-<div class="review-block-label">📌 Problem Statement & Requirements</div>
-
-**Original Problem Statement**:
-> **Two-Direction Justified Newspaper Layout (LeetCode 68 Variant)**:
-> Given an array of strings `words` and an integer `maxWidth`, format the text into lines justified to both left and right margins with `maxWidth` characters per text line, then frame the entire article with a border of asterisks (`'*'`).
-> - Pack as many words as possible per line in greedy fashion;
-> - Spaces on fully justified lines must be distributed as evenly as possible. Extra slots are assigned to the leftmost space gaps;
-> - The final line must be left-justified with single spaces between words and padded to `maxWidth`;
-> - Surround the formatted text with a frame of `*`: top and bottom border of length `maxWidth + 2`, and each text line enclosed as `*line*`.
-
-**Function Signature**:
-```python
-def formatNewspaper(words: List[str], maxWidth: int) -> List[str]: ...
-```
-
-**Examples**:
-- `words = ["This", "is", "an", "example", "of", "text", "justification."], maxWidth = 16`
-- Framed output generates asterisks borders of width 18 enclosing each justified line.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">📌 Core Implementation</div>
-
-```python
-from typing import List
-
-class NewspaperLayoutSolution:
-    @classmethod
-    def layoutNewspaper(
-        cls,
-        paragraphs: List[List[str]],
-        alignments: List[str],
-        width: int
-    ) -> List[str]:
-        """
-        Lays out words greedily per paragraph with LEFT or RIGHT justification up to width,
-        and wraps the rendered output in a '*' border.
-        """
-        content_lines: List[str] = []
-
-        for words, align in zip(paragraphs, alignments):
-            current_line_words: List[str] = []
-            current_line_len = 0
-
-            for word in words:
-                needed_len = len(word) if not current_line_words else len(word) + 1
-
-                if current_line_len + needed_len <= width:
-                    current_line_words.append(word)
-                    current_line_len += needed_len
-                else:
-                    line_text = " ".join(current_line_words)
-                    pad_spaces = " " * (width - len(line_text))
-                    
-                    if align == "LEFT":
-                        formatted_line = line_text + pad_spaces
-                    else:
-                        formatted_line = pad_spaces + line_text
-
-                    content_lines.append(f"*{formatted_line}*")
-                    current_line_words = [word]
-                    current_line_len = len(word)
-
-            if current_line_words:
-                line_text = " ".join(current_line_words)
-                pad_spaces = " " * (width - len(line_text))
-                if align == "LEFT":
-                    formatted_line = line_text + pad_spaces
-                else:
-                    formatted_line = pad_spaces + line_text
-                content_lines.append(f"*{formatted_line}*")
-
-        horizontal_border = "*" * (width + 2)
-        return [horizontal_border] + content_lines + [horizontal_border]
-
-if __name__ == "__main__":
-    paras = [["Hello", "world"], ["Antigravity", "AI", "news"]]
-    aligns = ["LEFT", "RIGHT"]
-    rendered = NewspaperLayoutSolution.layoutNewspaper(paras, aligns, 16)
-    assert rendered[0] == "******************"
-    assert rendered[1] == "*Hello world     *"
-    assert rendered[2] == "*  Antigravity AI*"
-    assert rendered[3] == "*            news*"
-    assert rendered[4] == "******************"
-    print("✅ Card 23 (Newspaper Layout) all tests passed!")
-```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 Mechanism & Invariants</div>
-
-- **Greedy Word Packing**:
-  Each line packs maximal words separated by single spaces until adding the next exceeds `width`.
-- **Directional Alignment**:
-  - `LEFT`: text padded with trailing spaces;
-  - `RIGHT`: text padded with leading spaces.
-- **Border Enclosure**:
-  Top and bottom lines are solid `*` strings of width `width + 2`, enclosing left and right frame stars.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ Complexity Analysis</div>
-
-- **Time Complexity**: $\mathcal{O}(L)$ where $L$ is total length of all words and padded spaces.
-- **Space Complexity**: $\mathcal{O}(L)$ storing rendered strings.
-
-</div>
-
-</div>
-</details>
-
----
-
-### 24. Longest Palindromic Substring: Center vs Manacher
-
-<details class="review-card">
-<summary class="review-card-summary">
-  <span class="review-card-badge">STRING 24</span>
-  <span class="review-card-title">Longest Palindromic Substring: Center vs Manacher</span>
-  <span class="review-card-tag">Center Expansion · Manacher Algorithm · Palindromic Radius Symmetry · Strict O(N)</span>
-</summary>
-<div class="review-card-content">
-
-> 🔗 **LeetCode Link**: [LeetCode 5 · Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) — `https://leetcode.com/problems/longest-palindromic-substring/`
-
-<div class="review-block">
-<div class="review-block-label">📌 Problem Statement & Requirements</div>
-
-**Original Problem Statement**:
-> **Longest Palindromic Substring (LeetCode 5)**:
-> Given a string `s`, return the longest palindromic substring in `s`.
-> Compare standard Center Expansion ($\mathcal{O}(n^2)$) with Manacher's Linear Algorithm ($\mathcal{O}(n)$).
-
-**Function Signature**:
-```python
-def longestPalindrome(s: str) -> str: ...
-```
-
-**Examples**:
-- `s = "babad"` $\implies$ `"bab"` (or `"aba"`)
-- `s = "cbbd"` $\implies$ `"bb"`
-- `s = "a"` $\implies$ `"a"`
-
-**Algorithmic Comparison**:
-- **Center Expansion**: Expands around $2n-1$ centers, $\mathcal{O}(n^2)$ time, $\mathcal{O}(1)$ space;
-- **Manacher's Algorithm**: Inserts delimiters `#` to unify odd/even lengths. Exploits palindrome symmetry $i' = 2C - i$ and the rightmost boundary $R$ to achieve strict $\mathcal{O}(n)$ linear time.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">📌 Core Implementation</div>
-
-```python
-class LongestPalindromeSolution:
-    @classmethod
-    def longestPalindromeCenterExpand(cls, s: str) -> str:
-        """Baseline Center Expansion: O(N^2) time, O(1) space."""
-        if not s:
-            return ""
-
-        start, max_len = 0, 1
-
-        def expand(left: int, right: int) -> int:
-            while left >= 0 and right < len(s) and s[left] == s[right]:
-                left -= 1
-                right += 1
-            return right - left - 1
-
-        for i in range(len(s)):
-            len1 = expand(i, i)
-            len2 = expand(i, i + 1)
-            cur_max = max(len1, len2)
-            if cur_max > max_len:
-                max_len = cur_max
-                start = i - (cur_max - 1) // 2
-
-        return s[start : start + max_len]
-
-    @classmethod
-    def longestPalindromeManacher(cls, s: str) -> str:
-        """Manacher's Algorithm: strict O(N) time and O(N) space."""
-        if not s:
-            return ""
-
-        transformed = "^#" + "#".join(s) + "#$"
-        m = len(transformed)
-        radius = [0] * m
-        center = 0
-        right = 0
-
-        for i in range(1, m - 1):
-            i_mirror = 2 * center - i
-
-            if right > i:
-                radius[i] = min(right - i, radius[i_mirror])
-            else:
-                radius[i] = 0
-
-            while transformed[i + 1 + radius[i]] == transformed[i - 1 - radius[i]]:
-                radius[i] += 1
-
-            if i + radius[i] > right:
-                center = i
-                right = i + radius[i]
-
-        best_radius = 0
-        best_center = 0
-        for i in range(1, m - 1):
-            if radius[i] > best_radius:
-                best_radius = radius[i]
-                best_center = i
-
-        start_orig = (best_center - best_radius) // 2
-        return s[start_orig : start_orig + best_radius]
-
-if __name__ == "__main__":
-    assert LongestPalindromeSolution.longestPalindromeCenterExpand("babad") in ("bab", "aba")
-    assert LongestPalindromeSolution.longestPalindromeCenterExpand("cbbd") == "bb"
-    assert LongestPalindromeSolution.longestPalindromeManacher("babad") in ("bab", "aba")
-    assert LongestPalindromeSolution.longestPalindromeManacher("cbbd") == "bb"
-    assert LongestPalindromeSolution.longestPalindromeManacher("a") == "a"
-    print("✅ Card 24 (Longest Palindrome Manacher) all tests passed!")
-```
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">💡 Mechanism & Invariants</div>
-
-- **Center Expansion ($\mathcal{O}(N^2)$ Baseline)**:
-  Examines $2N-1$ possible centers, expanding symmetrically. Degenerates to $\mathcal{O}(N^2)$ on repetitive strings (e.g. `"aaaa"`).
-- **Manacher's $\mathcal{O}(N)$ Symmetry Reuse**:
-  1. **Even/Odd Unification**: Inserting `#` transforms all palindromes into odd-length ones centered on a character or `#`.
-  2. **Mirror Seeding**: When $i < right$, the palindrome radius around $i$ is seeded from its mirror $i_{mirror} = 2 \cdot center - i$, bounded by `right - i`.
-  3. **Amortized Linearity**: Character comparisons only occur when expanding beyond the current `right` boundary. Because `right` advances monotonically at most $2N$ times, total runtime is strictly $\mathcal{O}(N)$.
-
-</div>
-
-<div class="review-block">
-<div class="review-block-label">⏱️ Complexity Analysis</div>
-
-- **Time Complexity**: Center expansion is $\mathcal{O}(N^2)$; Manacher's algorithm is $\mathcal{O}(N)$.
-- **Space Complexity**: Center expansion is $\mathcal{O}(1)$; Manacher's algorithm is $\mathcal{O}(N)$ for transformed string and radius array.
-
-</div>
-
-</div>
-</details>
 

@@ -1257,3 +1257,129 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 14. Two-Direction Justified Newspaper Layout
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 14</span>
+  <span class="review-card-title">Two-Direction Justified Newspaper Layout</span>
+  <span class="review-card-tag">Greedy Word Bin-Packing · Round-Robin Space Distribution · Frame Rendering · O(Total Words)</span>
+</summary>
+<div class="review-card-content">
+
+> 💡 **Problem Type**: Standalone Algorithm Implementation (No direct LeetCode equivalent; logic and test specifications are standalone, please run the self-contained test suite below for local verification).
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Original Problem Statement**:
+> **Two-Direction Justified Newspaper Layout (LeetCode 68 Variant)**:
+> Given an array of strings `words` and an integer `maxWidth`, format the text into lines justified to both left and right margins with `maxWidth` characters per text line, then frame the entire article with a border of asterisks (`'*'`).
+> - Pack as many words as possible per line in greedy fashion;
+> - Spaces on fully justified lines must be distributed as evenly as possible. Extra slots are assigned to the leftmost space gaps;
+> - The final line must be left-justified with single spaces between words and padded to `maxWidth`;
+> - Surround the formatted text with a frame of `*`: top and bottom border of length `maxWidth + 2`, and each text line enclosed as `*line*`.
+
+**Function Signature**:
+```python
+def formatNewspaper(words: List[str], maxWidth: int) -> List[str]: ...
+```
+
+**Examples**:
+- `words = ["This", "is", "an", "example", "of", "text", "justification."], maxWidth = 16`
+- Framed output generates asterisks borders of width 18 enclosing each justified line.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import List
+
+class NewspaperLayoutSolution:
+    @classmethod
+    def layoutNewspaper(
+        cls,
+        paragraphs: List[List[str]],
+        alignments: List[str],
+        width: int
+    ) -> List[str]:
+        """
+        Lays out words greedily per paragraph with LEFT or RIGHT justification up to width,
+        and wraps the rendered output in a '*' border.
+        """
+        content_lines: List[str] = []
+
+        for words, align in zip(paragraphs, alignments):
+            current_line_words: List[str] = []
+            current_line_len = 0
+
+            for word in words:
+                needed_len = len(word) if not current_line_words else len(word) + 1
+
+                if current_line_len + needed_len <= width:
+                    current_line_words.append(word)
+                    current_line_len += needed_len
+                else:
+                    line_text = " ".join(current_line_words)
+                    pad_spaces = " " * (width - len(line_text))
+                    
+                    if align == "LEFT":
+                        formatted_line = line_text + pad_spaces
+                    else:
+                        formatted_line = pad_spaces + line_text
+
+                    content_lines.append(f"*{formatted_line}*")
+                    current_line_words = [word]
+                    current_line_len = len(word)
+
+            if current_line_words:
+                line_text = " ".join(current_line_words)
+                pad_spaces = " " * (width - len(line_text))
+                if align == "LEFT":
+                    formatted_line = line_text + pad_spaces
+                else:
+                    formatted_line = pad_spaces + line_text
+                content_lines.append(f"*{formatted_line}*")
+
+        horizontal_border = "*" * (width + 2)
+        return [horizontal_border] + content_lines + [horizontal_border]
+
+if __name__ == "__main__":
+    paras = [["Hello", "world"], ["Antigravity", "AI", "news"]]
+    aligns = ["LEFT", "RIGHT"]
+    rendered = NewspaperLayoutSolution.layoutNewspaper(paras, aligns, 16)
+    assert rendered[0] == "******************"
+    assert rendered[1] == "*Hello world     *"
+    assert rendered[2] == "*  Antigravity AI*"
+    assert rendered[3] == "*            news*"
+    assert rendered[4] == "******************"
+    print("✅ Card 14 (Newspaper Layout) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariants</div>
+
+- **Greedy Word Packing**:
+  Each line packs maximal words separated by single spaces until adding the next exceeds `width`.
+- **Directional Alignment**:
+  - `LEFT`: text padded with trailing spaces;
+  - `RIGHT`: text padded with leading spaces.
+- **Border Enclosure**:
+  Top and bottom lines are solid `*` strings of width `width + 2`, enclosing left and right frame stars.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(L)$ where $L$ is total length of all words and padded spaces.
+- **Space Complexity**: $\mathcal{O}(L)$ storing rendered strings.
+
+</div>
+
+</div>
+</details>

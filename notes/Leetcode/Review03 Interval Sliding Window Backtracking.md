@@ -1381,3 +1381,134 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 14. 双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">GREEDY 14</span>
+  <span class="review-card-title">双向对齐报纸排版与星号边框渲染 (Two-Direction Justified Newspaper Layout)</span>
+  <span class="review-card-tag">贪心单词装箱 · 左右动态对齐补齐 · 物理星号边框包裹 · O(Total Words)</span>
+</summary>
+<div class="review-card-content">
+
+> 💡 **题目类型**：独立算法工程实现（无直接对应 LeetCode 原题，逻辑规则与测试规格独立，请直接使用卡片内置完整测试桩在本地运行验证）
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Two-Direction Justified Newspaper Layout (LeetCode 68 Variant)**:
+> Given an array of strings `words` and an integer `maxWidth`, format the text into lines justified to both left and right margins with `maxWidth` characters per text line, then frame the entire article with a border of asterisks (`'*'`).
+> - Pack as many words as possible per line in greedy fashion;
+> - Spaces on fully justified lines must be distributed as evenly as possible. Extra slots are assigned to the leftmost space gaps;
+> - The final line must be left-justified with single spaces between words and padded to `maxWidth`;
+> - Surround the formatted text with a frame of `*`: top and bottom border of length `maxWidth + 2`, and each text line enclosed as `*line*`.
+
+**函数签名**：
+```python
+def formatNewspaper(words: List[str], maxWidth: int) -> List[str]: ...
+```
+
+**输入输出示例**：
+- `words = ["This", "is", "an", "example", "of", "text", "justification."], maxWidth = 16`
+- 顶底行渲染为 `******************`（长 18），中间各行带星号左右包裹。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import List
+
+class NewspaperLayoutSolution:
+    @classmethod
+    def layoutNewspaper(
+        cls,
+        paragraphs: List[List[str]],
+        alignments: List[str],
+        width: int
+    ) -> List[str]:
+        """
+        根据各段落指定的左对齐 (LEFT) 或右对齐 (RIGHT) 标志，以最大行宽 width 贪心排版单词。
+        行内单词间用单空格隔开；短行在对应方向补齐空格；整体用 '*' 边框装裱输出。
+        """
+        content_lines: List[str] = []
+
+        for words, align in zip(paragraphs, alignments):
+            current_line_words: List[str] = []
+            current_line_len = 0
+
+            for word in words:
+                # 计算若加入该单词所需的总长度（非行首单词需追加 1 个间隔空格）
+                needed_len = len(word) if not current_line_words else len(word) + 1
+
+                if current_line_len + needed_len <= width:
+                    current_line_words.append(word)
+                    current_line_len += needed_len
+                else:
+                    # 缓冲区满，将当前行根据对齐规则输出
+                    line_text = " ".join(current_line_words)
+                    pad_spaces = " " * (width - len(line_text))
+                    
+                    if align == "LEFT":
+                        formatted_line = line_text + pad_spaces
+                    else:  # RIGHT
+                        formatted_line = pad_spaces + line_text
+
+                    content_lines.append(f"*{formatted_line}*")
+                    # 新行以当前溢出单词起步
+                    current_line_words = [word]
+                    current_line_len = len(word)
+
+            # 输出段落尾行
+            if current_line_words:
+                line_text = " ".join(current_line_words)
+                pad_spaces = " " * (width - len(line_text))
+                if align == "LEFT":
+                    formatted_line = line_text + pad_spaces
+                else:
+                    formatted_line = pad_spaces + line_text
+                content_lines.append(f"*{formatted_line}*")
+
+        # 构造顶部与底部星号边框 (边框宽度为 width + 2)
+        horizontal_border = "*" * (width + 2)
+        return [horizontal_border] + content_lines + [horizontal_border]
+
+if __name__ == "__main__":
+    paras = [["Hello", "world"], ["Antigravity", "AI", "news"]]
+    aligns = ["LEFT", "RIGHT"]
+    rendered = NewspaperLayoutSolution.layoutNewspaper(paras, aligns, 16)
+    assert rendered[0] == "******************"
+    assert rendered[1] == "*Hello world     *"
+    assert rendered[2] == "*  Antigravity AI*"
+    assert rendered[3] == "*            news*"
+    assert rendered[4] == "******************"
+    print("✅ Card 14 (Newspaper Layout) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **贪心贪婪装箱（Greedy Word Packing）**：
+  同一段落内单词顺序不可颠倒。每行塞入尽可能多的单词，且行内单词间保持且仅保持一个空格间隔。当且仅当追加新单词后总长超过 `width` 时，触发换行刷盘。
+- **动态左右填补（Padding Logic）**：
+  - `LEFT` 对齐：文字靠左，剩余空格全部填充在右侧；
+  - `RIGHT` 对齐：文字靠右，剩余空格全部填充在左侧。
+- **物理边框封闭（Border Framing）**：
+  每行内容两侧各贴附一个 `*`，首尾单独追加长度为 `width + 2` 的纯星号行，确保渲染出的字符矩阵绝对平整矩形化。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(L)$，其中 $L$ 为所有段落单词字符与空格的总长度。
+- **空间复杂度**：$\mathcal{O}(L)$，存储格式化渲染输出列表。
+
+</div>
+
+</div>
+</details>
