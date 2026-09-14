@@ -351,16 +351,73 @@ In quantitative finance interviews (Jane Street, Citadel, SIG, Optiver, etc.), g
 
 ---
 
-### Trick 2: Mixed Strategy "Level Opponent Payoffs" Template
-- **Applicable Problems**: Zero-sum or non-zero-sum games without pure strategy saddle points (penalty kicks, poker bluffing, matching pennies).
-- **Core Cardinal Rule**: **Never construct the equilibrium equation using your own payoffs!**
-- **3-Step Execution Template**:
-  1. **Parameterize Your Own Probabilities**: Assume you choose Action A with probability $p$, and Action B with $1-p$.
-  2. **Compute the Counterparty's Expected Payoff**:
-     $$E_{\text{Opponent}}[\text{Action 1}] = f(p), \quad E_{\text{Opponent}}[\text{Action 2}] = g(p)$$
-  3. **Enforce Counterparty Indifference**:
-     $$f(p^*) = g(p^*)$$
-  *Intuition*: Your randomization serves strictly to level the opponent's payoff curve. If one opponent action yielded higher expected return, a rational counterparty would exploit it deterministically; flattening their expectations removes their leverage.
+### Trick 2: Minimax Payoff Leveling Principle (Equalizing Opponent Payoffs)
+
+Classic Quant Interview Problem Statement:
+> **"From a game-theoretic perspective, if A can find a mixed strategy that makes B's expected score the same regardless of which number B guesses (or which action B takes), then B's expected score is minimized."**
+
+---
+
+#### 1. Why Does Leveling B's Expectation Guarantee Minimizing B's Score? (First-Principles Proof)
+
+Let Player A adopt a mixed strategy probability distribution $\mathbf{p} = (p_1, \dots, p_n)$.
+1. **The Counterparty's Rational Best Response**:
+   A rational opponent B, upon observing or inferring A's probability vector $\mathbf{p}$, will not guess at random. B computes the expected payoff for every candidate action $g$, $E_B(g; \mathbf{p})$, and **deterministically chooses the action with the single highest expected payout**:
+   $$\text{Score}_B(\mathbf{p}) = \max_{g} E_B(g; \mathbf{p})$$
+2. **A's Minimax Objective**:
+   In zero-sum/adversarial games, Player A's objective is to minimize the counterparty's maximum achievable return:
+   $$\min_{\mathbf{p}} \max_g E_B(g; \mathbf{p})$$
+3. **Peak-Shaving Dynamic Proof (Contradiction)**:
+   - Suppose under A's strategy $\mathbf{p}$, the expected payouts across B's options are **unequal**. For instance, across 3 actions: $E_B(1) = 3$, $E_B(2) = 6$, and $E_B(3) = 2$;
+   - B will ruthlessly exploit this by picking Action 2, reaping the peak score $\max(3, 6, 2) = 6$;
+   - Observing this peak at 6, Player A can shift probability mass away from outcomes that reward Action 2 and allocate it toward suppressing options;
+   - This adjustment lowers Action 2's return from 6 to 5, while slightly elevating Action 1 from 3 to 3.5. B's resulting maximum score drops from 6 to 5!
+   - **Key Invariant**: **As long as peaks and valleys exist across B's options, B will exploit the peak, and A can always lower the maximum score by shaving the peak and filling the valley.**
+   - **Terminal Steady State**: A cannot lower the peak any further **only when all candidate options for B are leveled to a uniform horizontal constant $V^*$**:
+     $$E_B(1; \mathbf{p}^*) = E_B(2; \mathbf{p}^*) = \dots = E_B(n; \mathbf{p}^*) = V^*$$
+     B is left with zero exploitability: $\max_g E_B(g; \mathbf{p}^*) = V^*$ reaches the global minimax optimum.
+
+#### 2. Geometric Interpretation: Upper Envelope Minimum at the Intersection
+For each choice $g$, $E_B(g; \mathbf{p})$ is an affine linear hyper-plane over $\mathbf{p}$.
+The composite function $M(\mathbf{p}) = \max_g E_B(g; \mathbf{p})$ represents the **upper envelope** of these hyper-planes, forming a convex, V-shaped piecewise surface.
+The global infimum (minimum) of a convex V-shaped envelope occurs precisely at the **intersection point** of the opposing planes. At this intersection, the expected heights across all active options are algebraically equal.
+
+---
+
+#### 3. Quant Interview Case Studies
+
+##### Case A: Weighted Number Guessing Game ($1$ to $n$ with Payout $k$)
+> **Problem**: Player A chooses $X \in \{1, 2, \dots, n\}$. Player B guesses once. If B guesses $k$ correctly, A pays B $k$ dollars; otherwise 0. What is A's optimal mixed strategy and what is B's expected score?
+
+- **Applying the Leveling Template**:
+  Let A pick number $k$ with probability $p_k$. If B guesses $k$, B's expected return is $k \cdot p_k$.
+  To minimize B's return, A levels B's expected score to a constant $C$ across all guesses:
+  $$1 \cdot p_1 = 2 \cdot p_2 = 3 \cdot p_3 = \dots = n \cdot p_n = C$$
+  Hence $p_k = C/k$. Substituting into normalization $\sum_{k=1}^n p_k = 1$:
+  $$C \sum_{k=1}^n \frac{1}{k} = 1 \implies C = \frac{1}{H_n}, \quad p_k^* = \frac{1/k}{H_n}$$
+  where $H_n = 1 + \frac{1}{2} + \dots + \frac{1}{n}$ is the harmonic number. B's expected score is minimized to $\frac{1}{H_n}$.
+
+##### Case B: The Green Book 1-to-4 Game with High/Low Clues
+> **Problem**: A chooses $X \in \{1, 2, 3, 4\}$. B guesses: if correct on attempt 1, B gets 4 points. If incorrect, A reveals whether the guess was "too high" or "too low". B gets a second guess: if correct on attempt 2, B gets 2 points; otherwise 0. What is A's optimal strategy and B's expected score?
+
+- **Applying the Leveling Template**:
+  By symmetry, let A choose probabilities $(p_1, p_2, p_2, p_1)$ with $2p_1 + 2p_2 = 1$.
+  - If B starts by guessing 2:
+    - If $X=2$ (prob $p_2$), score is 4;
+    - If $X < 2 \implies X=1$ (prob $p_1$), A says "too high", B guesses 1 on attempt 2, score is 2;
+    - If $X > 2 \implies X \in \{3, 4\}$, A says "too low", B guesses 3 on attempt 2, score is 2 if $X=3$ (prob $p_2$);
+    - Expected score: $E[\text{Guess } 2] = 2p_1 + 4p_2 + 2p_2 = 2p_1 + 6p_2$.
+  - If B starts by guessing 1:
+    - If $X=1$ (prob $p_1$), score is 4;
+    - If $X > 1 \implies X \in \{2, 3, 4\}$, A says "too low", B optimally guesses 3 on attempt 2, getting 2 if $X=3$ (prob $p_2$);
+    - Expected score: $E[\text{Guess } 1] = 4p_1 + 2p_2$.
+  - **By the Payoff Leveling Principle, equate B's candidate scores**:
+    $$E[\text{Guess } 1] = E[\text{Guess } 2] \implies 4p_1 + 2p_2 = 2p_1 + 6p_2 \implies 2p_1 = 4p_2 \implies p_1 = 2p_2$$
+  - Combining with $2p_1 + 2p_2 = 1 \implies 4p_2 + 2p_2 = 1 \implies p_2^* = \frac{1}{6}, \; p_1^* = \frac{1}{3}$.
+  - A's optimal mixed strategy is:
+    $$\mathbf{p}^* = \left(\frac{1}{3}, \frac{1}{6}, \frac{1}{6}, \frac{1}{3}\right)$$
+  - B's minimized expected score is:
+    $$V^* = 4\left(\frac{1}{3}\right) + 2\left(\frac{1}{6}\right) = \frac{4}{3} + \frac{1}{3} = \frac{5}{3} \approx 1.67$$
 
 ---
 
