@@ -109,9 +109,9 @@ Rules:
   - If Pirate 1 dies, distribution is `2: 98, 3: 0, 4: 1, 5: 0`.
   - Opportunity cost: Pirates 3 and 5 get 0 coins in the next stage.
   - Pirate 1 offers **1 coin to Pirate 3** and **1 coin to Pirate 5**.
-  - Proposal: `1: 96, 2: 0, 3: 1, 4: 0, 5: 1`. Passed by 1, 3, and 5.
+  - Proposal: `1: 98, 2: 0, 3: 1, 4: 0, 5: 1`. Passed by 1, 3, and 5.
 
-$$\boxed{\text{Pirate 1 Optimal Proposal: }(96, 0, 1, 0, 1) \quad \text{Passed with 3 votes}}$$
+$$\boxed{\text{Pirate 1 Optimal Proposal: }(98, 0, 1, 0, 1) \quad \text{Passed with 3 votes}}$$
 
 #### Scaling to Large $N$
 With $M=100$ coins:
@@ -489,7 +489,7 @@ The global infimum (minimum) of a convex V-shaped envelope occurs precisely at t
 |---|---|---|---|
 | **Prisoner's Dilemma** | Static Non-Zero Sum | Dominant Strategy | `(Defect, Defect)`, Pareto suboptimal |
 | **Penalty Kick** | Static Zero Sum | Indifference Principle | Match expectations to remove counterparty edge |
-| **Pirate Game** | Dynamic Finite Game | Backward Induction | 5-player solution: `(96, 0, 1, 0, 1)` |
+| **Pirate Game** | Dynamic Finite Game | Backward Induction | 5-player solution: `(98, 0, 1, 0, 1)` |
 | **Tigers and Sheep** | Dynamic Full Information | Parity Recurrence | Odd tigers eat; even tigers starve |
 | **The Truel** | Dynamic Stochastic Duel | State Machine Reverse | Weakest player shoots into the air ($\approx 39.7\%$) |
 | **Vickrey Auction** | Incomplete Info | Weakly Dominant | Truthful bidding $b = v$ |
