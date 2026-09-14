@@ -142,29 +142,72 @@ $$\boxed{\begin{cases} N \text{ is Odd} & \implies \text{The first tiger eats th
 
 ### 2.3 The Truel (3-Player Duel with Unequal Accuracies)
 
-**Problem**: Players A, B, and C duel in rounds (order A $\to$ B $\to$ C $\to$ A $\dots$). Accuracies:
-$$p_A = 1/3, \quad p_B = 2/3, \quad p_C = 1 \text{ (Never misses)}$$
-Last person alive wins. A player may shoot at any opponent or **deliberately shoot into the air (Pass)**. What is A's optimal first shot?
+**Problem**: Three players A, B, and C take turns shooting in cyclic order (A $\to$ B $\to$ C $\to$ A $\dots$). Their individual single-shot accuracies are:
+$$p_A = 1/3, \quad p_B = 2/3, \quad p_C = 1 \text{ (Never misses / Perfect marksman)}$$
+Rules:
+1. The last surviving player wins the entire game;
+2. On each turn, a player may shoot at any living opponent, or **deliberately shoot into the air (Pass / miss on purpose)**;
+3. A hit eliminates the victim immediately, skipping them in all subsequent rounds.
+**Question**: What is A's strictly optimal strategy on turn 1?
 
-**Step-by-Step Derivation**:
-1. **Two-Player Endgames**:
-   - **A shoots first vs. B**:
-     $$P_{AB} = \frac{1}{3} + \frac{2}{3} \times \left(1 - \frac{2}{3}\right) P_{AB} \implies P_{AB} = \frac{3}{7}$$
-   - **A shoots first vs. C**:
-     $$P_{AC} = \frac{1}{3} + \frac{2}{3} \times 0 = \frac{1}{3}$$
-2. **Target Priorities**:
-   B and C treat each other as the primary mortal threat. If B shoots, B targets C. If C shoots, C targets B.
-3. **Player A's Options**:
-   - **A shoots C and hits** (prob $1/3$): Leaves A vs. B with **B shooting first**. B hits A with prob $2/3$. A's survival rate is $(1 - 2/3) \times P_{AB} = 1/7$.
-   - **A shoots B and hits** (prob $1/3$): Leaves A vs. C with **C shooting first**. C kills A with prob $1.0$. A dies immediately.
-   - **A intentionally shoots into the air (Pass)**:
-     - Turn passes to B, who shoots at C.
-     - Case 1 (prob $2/3$): B kills C. Leaves A vs. B with **A holding the first shot**! Survival is $P_{AB} = 3/7$.
-     - Case 2 (prob $1/3$): B misses C. C kills B. Leaves A vs. C with **A holding the first shot**! Survival is $P_{AC} = 1/3$.
-     - Total survival for A:
-       $$P_A(\text{Pass}) = \frac{2}{3} \times \frac{3}{7} + \frac{1}{3} \times \frac{1}{3} = \frac{2}{7} + \frac{1}{9} = \frac{25}{63} \approx 39.7\%$$
+#### 1. Core Notation: 2-Player Endgame Win Rates $P_{AB}$ and $P_{AC}$
+To analyze the dynamic 3-player game via **backward induction**, we first solve the terminal 1v1 duels:
 
-$$\boxed{\text{A's optimal strategy is to shoot into the air, achieving the highest survival rate } \frac{25}{63} \approx 39.7\%}$$
+- **Strict Definition of $P_{AB}$**:
+  **The probability that A wins (survives) in a 1-on-1 duel between A and B, given that it is currently A's turn to shoot first.**
+- **Markov Recursive Derivation of $P_{AB}$**:
+  Conditioning on the first exchange of shots:
+  - **Branch 1 (A hits B)**: Probability $p_A = 1/3$. B is eliminated immediately. A wins (payoff 1);
+  - **Branch 2 (A misses B)**: Probability $1 - p_A = 2/3$. Turn passes to B:
+    - If B hits A (probability $p_B = 2/3$): A is eliminated. A loses (payoff 0);
+    - If B misses A (probability $1 - p_B = 1/3$): Both missed. The game **resets to the exact identical state** (A and B alive, A to shoot first). By the memoryless Markov property, A's forward win probability is again $P_{AB}$.
+  
+  Applying the law of total probability (equivalent to summing the infinite geometric series):
+  $$
+  P_{AB} = \underbrace{p_A \times 1}_{\text{A hits on turn 1}} + \underbrace{(1 - p_A)}_{\text{A misses}} \times \left[ \underbrace{p_B \times 0}_{\text{B hits A}} + \underbrace{(1 - p_B) \times P_{AB}}_{\text{B misses; state resets}} \right]
+  $$
+  Substituting the parameters:
+  $$
+  P_{AB} = \frac{1}{3} + \frac{2}{3} \times \left(1 - \frac{2}{3}\right) P_{AB} = \frac{1}{3} + \frac{2}{9} P_{AB}
+  $$
+  Solving for $P_{AB}$:
+  $$
+  \left(1 - \frac{2}{9}\right) P_{AB} = \frac{1}{3} \implies \frac{7}{9} P_{AB} = \frac{1}{3} \implies P_{AB} = \frac{3}{7} \approx 42.86\%
+  $$
+  *(Note: If the 1v1 duel starts with **B shooting first**, A survives only if B misses on turn 1, after which A gets the first shot. Thus A's win probability drops to $(1 - p_B) P_{AB} = \frac{1}{3} \times \frac{3}{7} = \frac{1}{7} \approx 14.29\%$.)*
+
+- **Strict Definition and Value of $P_{AC}$**:
+  The probability that A wins a 1-on-1 duel against C when **A shoots first**.
+  Since $p_C = 1$, if A misses, C shoots back with 100% precision:
+  $$
+  P_{AC} = p_A \times 1 + (1 - p_A) \times (1 - p_C) \times P_{AC} = \frac{1}{3} + \frac{2}{3} \times 0 = \frac{1}{3} \approx 33.33\%
+  $$
+
+#### 2. Cross-Targeting Incentives with All 3 Alive
+When all three players are alive:
+- **B's Target**: B will never shoot A. If B kills A, next is C, who kills B with 100% certainty. If B kills C, B faces A with a dominant win rate of $1 - 3/7 = 4/7$. Hence, **B must target C**.
+- **C's Target**: C will never shoot A. B poses a much higher threat ($p_B = 2/3$ vs $p_A = 1/3$) and shoots immediately after A. Hence, **C must target B**.
+
+#### 3. Complete Comparison of A's Three Actions on Turn 1
+
+| Strategy | Hits Target (Prob 1/3) | Misses Target (Prob 2/3) | A's Overall Win Probability |
+|---|---|---|---|
+| **Strategy 1: Shoot B** | **Kills B**. Leaves A vs C with **C shooting next**! C kills A with 100% certainty ($P = 0$). | **Misses**. All 3 alive; enters common miss branch ($P = \frac{25}{63}$). | $P = \frac{1}{3} \times 0 + \frac{2}{3} \times \frac{25}{63} = \frac{50}{189} \approx \mathbf{26.46\%}$ |
+| **Strategy 2: Shoot C** | **Kills C**. Leaves A vs B with **B shooting next**! A's survival is $(1 - p_B)P_{AB} = \frac{1}{7}$. | **Misses**. All 3 alive; enters common miss branch ($P = \frac{25}{63}$). | $P = \frac{1}{3} \times \frac{1}{7} + \frac{2}{3} \times \frac{25}{63} = \frac{59}{189} \approx \mathbf{31.22\%}$ |
+| **Strategy 3: Pass (Shoot into air)** | **Deterministic Miss (100%)**. Leaves all 3 alive; B must shoot C! | See breakdown below. | $P = \frac{2}{3} \times P_{AB} + \frac{1}{3} \times P_{AC} = \frac{75}{189} = \frac{\mathbf{25}}{\mathbf{63}} \approx \mathbf{39.68\%}$ |
+
+> **Breakdown Following a Pass**:
+> If A passes, turn goes to B, who fires at C:
+> - **Case 2.1 (B hits C, prob $p_B = 2/3$)**: C is eliminated. Skipping dead C, **A shoots next**! A faces B with first-shot advantage: win rate is $P_{AB} = 3/7$;
+> - **Case 2.2 (B misses C, prob $1 - p_B = 1/3$)**: Turn passes to C, who eliminates B with 100% probability. **A shoots next**! A faces C with first-shot advantage: win rate is $P_{AC} = 1/3$.
+> 
+> $$P_A(\text{Pass}) = \frac{2}{3} \times \frac{3}{7} + \frac{1}{3} \times \frac{1}{3} = \frac{2}{7} + \frac{1}{9} = \frac{25}{63} \approx 39.68\%$$
+
+$$\boxed{\text{A's strictly optimal strategy on turn 1 is to intentionally Pass (shoot into the air), yielding } \frac{25}{63} \approx 39.7\%}$$
+
+#### Strategic Takeaways
+- **Elimination Backfire**: Successfully hitting any rival immediately gives the remaining surviving rival the first shot, dramatically increasing A's risk of death.
+- **First-Mover Preservation**: Intentionally missing lets the two strongest competitors weaken or destroy each other while **guaranteeing that A holds the decisive first shot** in the final two-player showdown.
 
 ---
 
