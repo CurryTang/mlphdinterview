@@ -385,100 +385,315 @@ $$
 
 ### 4.1 Guess 2/3 of the Average (The Keynesian Beauty Contest)
 
-**Problem**: $N$ participants each pick a real number in $[0, 100]$. The winner is whoever is closest to $2/3$ of the group average.
+#### 1. Problem Formulation
+$N$ rational players each choose a real number $x_i \in [0, 100]$. Let $\mu = \frac{1}{N}\sum_{i=1}^N x_i$ denote the arithmetic mean of all chosen numbers. The prize is awarded to the player whose guess is closest to the target $T = \frac{2}{3}\mu$ (shared equally in case of a tie).
+**Question**: What is the unique theoretical Nash equilibrium? How should a quantitative trader play this game in real markets?
 
-**Iterated Elimination of Strictly Dominated Strategies (IESDS)**:
-1. Max possible average is 100 $\implies$ max target is $66.67$. Numbers $> 66.67$ are strictly dominated.
-2. In $[0, 66.67]$, max possible average is $66.67 \implies$ max target is $66.67 \times 2/3 = 44.44$.
-3. At round $k$, the space contracts to $[0, 100 \times (2/3)^k]$.
-4. As $k \to \infty$, the unique Nash equilibrium collapses to:
-   $$s^* = 0$$
+#### 2. Rigorous Proof via Iterated Elimination of Strictly Dominated Strategies (IESDS)
+Let $S_0 = [0, 100]$ be the initial strategy set.
+- **Iteration 1**:
+  Even if every single player irrationally chooses the maximum possible value $100$, the sample average cannot exceed $\mu \le 100$. Hence, the target value is bounded from above by:
+  $$T \le \frac{2}{3} \times 100 \approx 66.67$$
+  If a player chooses any number $x_i > 66.67$, then choosing $66.67$ is strictly closer to the true target $T$ than $x_i$, regardless of what other players pick. Thus, all strategies in $(66.67, 100]$ are **strictly dominated** and eliminated under first-order rationality. The viable strategy set contracts to $S_1 = [0, 66.67]$.
+- **Iteration 2**:
+  Since it is second-order common knowledge that no rational player chooses $> 66.67$, the maximum possible average in $S_1$ drops to $66.67$. The target ceiling shrinks to:
+  $$T \le \frac{2}{3} \times 66.67 \approx 44.44$$
+  Strategies in $(44.44, 66.67]$ are strictly dominated and eliminated. The viable set becomes $S_2 = [0, 44.44]$.
+- **Iteration $k$**:
+  After $k$ levels of iterative reasoning, the viable strategy space contracts according to:
+  $$S_k = \left[0, 100 \times \left(\frac{2}{3}\right)^k\right]$$
+- **Infinite-Horizon Limit (Fixed Point)**:
+  As $k \to \infty$, the contraction mapping collapses to its unique fixed point:
+  $$x^* = \frac{2}{3} x^* \implies \frac{1}{3} x^* = 0 \implies x^* = 0$$
 
-**Trading Reality (Level-$k$ Thinking)**:
-Real market participants are not infinite-depth logicians. In practice:
-- Level-0: Random pick, avg 50;
-- Level-1: Expects Level-0, picks $50 \times 2/3 \approx 33$;
-- Level-2: Expects Level-1, picks $33 \times 2/3 \approx 22$.
-Being three steps ahead of the market is indistinguishable from being wrong; quant strategy design requires estimating counterparty sophistication depth.
+$$\boxed{\text{The unique symmetric Nash equilibrium in continuous space is for all players to choose } x^* = 0}$$
+
+> **Discrete Integer Trap in Quant Interviews**:
+> If the rules mandate picking **positive integers** from $\{1, 2, \dots, 100\}$:
+> - When the viable set contracts to $\{1, 2, 3\}$, if everyone chooses 1, the average is 1, and the target is $2/3 \approx 0.67$.
+> - The closest positive integer to $0.67$ is $1$.
+> - Thus, on positive integers $\{1, \dots, 100\}$, **the unique weak Nash equilibrium is for everyone to choose 1**.
+
+#### 3. Behavioral Game Theory & Level-$k$ Reasoning (Why Theory Fails in Practice)
+John Maynard Keynes famously described stock market speculation through a newspaper beauty contest: professional investors do not pick who they believe is genuinely prettiest, but rather predict what average opinion expects average opinion to be. In experimental economics (e.g., Nagel 1995, Financial Times reader competitions), the actual winning number is consistently around **21.6**!
+
+The Cognitive Hierarchy distribution:
+- **Level-0 (Zero-order noise)**: Guesses randomly without strategic deliberation, yielding an empirical mean around $50$;
+- **Level-1 (First-order reasoning)**: Assumes all opponents are Level-0, best-responding to 50: $50 \times \frac{2}{3} \approx 33.3$;
+- **Level-2 (Second-order reasoning)**: Assumes opponents are Level-1, choosing $33.3 \times \frac{2}{3} \approx \mathbf{22.2}$ (the modal cluster of smart traders in the real world);
+- **Level-3 (Third-order reasoning)**: Assumes opponents are Level-2, choosing $22.2 \times \frac{2}{3} \approx 14.8$;
+- **Level-$\infty$ (Pure game theorists)**: Chooses 0, and almost always finishes dead last because the market has not iterated to infinity.
+
+**Hedge Fund Trading Implication**:
+Generating Alpha is not about proving where the asymptotic equilibrium lies, but rather diagnosing the prevailing cognitive level of market counterparties. **"Being half a step ahead of the herd captures Alpha; being three steps ahead gets you crushed by short-term liquidity."**
 
 ---
 
 ### 4.2 Coins in a Line
 
-**Problem**: An even number ($2n$) of coins with arbitrary values are placed in a row. Players alternate taking one coin from either the left or right end. Can the first player always guarantee at least half the total value?
+#### 1. Problem Formulation
+An even number of coins ($2n$ coins) with arbitrary non-negative values $c_1, c_2, \dots, c_{2n} \ge 0$ are arranged in a straight line. Two players alternate turns. On each turn, a player may take either the **leftmost or rightmost** remaining coin. Both players seek to maximize their total collected coin value.
+**Question**: Does the first player have a guaranteed winning strategy? What is the lower bound on their payoff? What happens if $N$ is odd?
 
-**Parity Coloring Strategy**:
-Label coin positions $1, 2, 3, \dots, 2n$:
-- Odd positions sum: $S_{\text{odd}} = c_1 + c_3 + \dots + c_{2n-1}$
-- Even positions sum: $S_{\text{even}} = c_2 + c_4 + \dots + c_{2n}$
+#### 2. Parity Coloring Invariant (Qualitative Lower Bound Proof)
+Partition the $2n$ positions by index parity:
+- **Sum of odd-indexed coins**: $S_{\text{odd}} = \sum_{k=1}^n c_{2k-1} = c_1 + c_3 + \dots + c_{2n-1}$
+- **Sum of even-indexed coins**: $S_{\text{even}} = \sum_{k=1}^n c_{2k} = c_2 + c_4 + \dots + c_{2n}$
+- **Total value**: $S_{\text{total}} = S_{\text{odd}} + S_{\text{even}}$
 
-**First Player's Control**:
-- If $S_{\text{odd}} \ge S_{\text{even}}$, Player 1 takes $c_1$ (odd position).
-- Both ends exposed to Player 2 are now $c_2$ and $c_{2n}$ (both even positions).
-- Player 2 is forced to take an even coin. Player 1 can then take another odd coin.
-- Player 1 guarantees at least $\max(S_{\text{odd}}, S_{\text{even}}) \ge 50\%$ of the total value.
+**The First Player's Parity Monopoly**:
+Without loss of generality, assume $S_{\text{odd}} \ge S_{\text{even}}$ (if opposite, swap roles):
+1. **Turn 1 (Player 1 takes an odd coin)**:
+   Player 1 picks the leftmost coin $c_1$ (odd index). The remaining line has $2n-1$ coins, with the leftmost at $c_2$ (even) and the rightmost at $c_{2n}$ (even). **Both endpoints are even-indexed!**
+2. **Turn 2 (Player 2 is forced to take an even coin)**:
+   Player 2 is forced to choose between $c_2$ and $c_{2n}$. Regardless of choice, Player 2 **must take an even-indexed coin**.
+3. **Turn 3 (Player 1 regains parity control)**:
+   - If Player 2 took left ($c_2$): endpoints become $c_3$ (odd) and $c_{2n}$ (even);
+   - If Player 2 took right ($c_{2n}$): endpoints become $c_2$ (even) and $c_{2n-1}$ (odd).
+   - In either case, **one odd-indexed and one even-indexed coin are exposed**. Player 1 immediately takes the odd-indexed coin.
+4. **Inductive Invariant**:
+   Player 1 can unilaterally force the game so that they collect **every single odd-indexed coin**, restricting Player 2 exclusively to even-indexed coins.
+
+$$\boxed{\text{Player 1 has a guaranteed win strategy, securing at least } \max(S_{\text{odd}}, S_{\text{even}}) \ge \frac{1}{2} S_{\text{total}}}$$
+
+#### 3. Algorithmic Game Theory: Minimax Dynamic Programming
+Parity coloring guarantees $\ge 50\%$, but does not necessarily find the global maximum score. In algorithmic quant interviews (LeetCode 486 / Predict the Winner):
+
+- **State Definition**:
+  Let $dp[i][j]$ be the maximum **net relative score difference** (current player's score minus opponent's score) achievable from the sub-array $[i, j]$.
+- **Recurrence Relation**:
+  The current player chooses between taking $c_i$ or $c_j$, knowing the opponent will play optimally on the remainder:
+  $$dp[i][j] = \max\Big( c_i - dp[i+1][j], \quad c_j - dp[i][j-1] \Big)$$
+- **Base Cases**:
+  For single coins ($j = i$): $dp[i][i] = c_i$.
+- **Final Exact Payoff**:
+  The net advantage of Player 1 over Player 2 is $dp[1][2n]$. Player 1's exact total collected value is:
+  $$\text{Player 1 Total} = \frac{S_{\text{total}} + dp[1][2n]}{2}$$
+
+#### 4. Critical Interview Follow-up: What if the Number of Coins is Odd ($2n+1$)?
+**Conclusion: Player 1 is NOT guaranteed to win, and can suffer a devastating loss!**
+- **Decisive Counterexample**: Consider 3 coins $[1, 100, 1]$ (odd length $N = 3$).
+  - Player 1 takes either the left 1 or the right 1, leaving $[1, 100]$ or $[100, 1]$.
+  - Player 2 immediately takes the center prize $100$!
+  - Player 1 ends with $1 + 1 = 2$, while Player 2 wins $100$.
+- **Why Parity Coloring Breaks**:
+  With an odd number of coins, the first index (1, odd) and the last index ($2n+1$, odd) are **both odd**! After Player 1 takes one odd coin, the remaining endpoints are one odd and one even, allowing Player 2 to also claim odd-indexed coins. Player 1 loses the ability to monopolize a parity class.
 
 ---
 
-### 4.3 Nim Game & The Sprague-Grundy Theorem
+### 4.3 Nim Game & Sprague-Grundy Theorem
 
-**Problem**: $k$ heaps of stones with sizes $x_1, x_2, \dots, x_k$. Players alternate taking any positive number of stones from a single heap. Last player to move wins.
+#### 1. Problem Formulation
+There are $k$ piles of stones with sizes $x_1, x_2, \dots, x_k \ge 0$. Two players alternate turns. On their turn, a player chooses any non-empty pile and removes at least 1 stone (up to the entire pile). Under standard Normal Play convention, **the player who takes the last stone wins**.
+**Question**: How do we evaluate whether a position is a winning or losing state? What is the explicit winning move algorithm?
 
-**Bouton's Theorem**:
-Compute the XOR sum (Nim-Sum):
+#### 2. Bouton's Theorem & The Nim-Sum
+Define the binary bitwise XOR sum (the Nim-sum) of the game state:
 $$S = x_1 \oplus x_2 \oplus \dots \oplus x_k$$
-- **$S = 0$**: Losing position (P-position, second player wins);
-- **$S \ne 0$**: Winning position (N-position, first player wins).
+- **If $S = 0$**: The position is a **P-position (Previous-player-winning / Losing state)**. The player whose turn it is faces certain defeat under optimal counterplay.
+- **If $S \ne 0$**: The position is an **N-position (Next-player-winning / Winning state)**. The player whose turn it is has an explicit winning move.
 
-**Winning Move Execution**:
-If $S \ne 0$, identify the most significant bit $d$ of $S$. Pick a heap $x_i$ whose $d$-th bit is 1. Reduce that heap to:
-$$x_i' = x_i \oplus S < x_i$$
-The new XOR sum becomes $S' = 0$. The first player systematically maintains $S=0$ for the opponent, guaranteeing victory.
+#### 3. Rigorous Proof of Bouton's Three Axiomatic Properties
+In impartial combinatorial game theory, the characterization of P and N positions rests upon three necessary and sufficient conditions:
+
+##### (1) Terminal State is a P-position:
+When all stones have been removed, the state is $(0, 0, \dots, 0)$ with Nim-sum $S = 0$. By definition, the player facing this empty board has no legal moves and loses. Hence, the terminal $S = 0$ state is a P-position.
+
+##### (2) From any $S \ne 0$ state, there exists at least one legal move leading to $S' = 0$:
+- Let $S \ne 0$, and let the **most significant set bit (highest power of 2)** in $S$ be bit $d$ ($2^d \le S < 2^{d+1}$).
+- By the definition of XOR, among the piles $x_1, \dots, x_k$, **there must exist at least one pile $x_i$ whose $d$-th bit is also 1** (if all were 0, the $d$-th bit of $S$ could not be 1).
+- We reduce this pile $x_i$ to:
+  $$x_i' = x_i \oplus S$$
+- **Proof that $x_i' < x_i$ (ensuring legality)**:
+  At the most significant differing bit $d$, both $x_i$ and $S$ have a 1. In $x_i \oplus S$, bit $d$ becomes 0. For all bits higher than $d$, $S$ has 0s, leaving $x_i$'s higher bits unchanged. Therefore, $x_i' = x_i \oplus S < x_i$ strictly holds!
+- **Proof that the new Nim-sum $S' = 0$**:
+  $$S' = S \oplus x_i \oplus x_i' = S \oplus x_i \oplus (x_i \oplus S) = S \oplus S \oplus x_i \oplus x_i = 0$$
+
+##### (3) From any $S = 0$ state, EVERY legal move results in $S' \ne 0$:
+- Suppose $S = 0$. A player alters pile $x_i$ to $x_i' < x_i$.
+- The new Nim-sum is:
+  $$S' = S \oplus x_i \oplus x_i' = 0 \oplus x_i \oplus x_i' = x_i \oplus x_i'$$
+- Since a legal move requires $x_i' \ne x_i$, their binary representations differ in at least one bit, so $x_i \oplus x_i' \ne 0 \implies S' \ne 0$.
+
+**Inductive Conclusion**: An N-player always transitions $S \ne 0 \to S = 0$. The opponent is trapped into transitioning $S = 0 \to S \ne 0$. The N-player steadily drives the game to the terminal $(0, \dots, 0)$, winning the game.
+
+#### 4. Step-by-Step Calculation: 3 Piles of Sizes (3, 4, 5)
+Let $x_1 = 3, x_2 = 4, x_3 = 5$:
+1. **Binary representations and XOR sum**:
+   $$
+   \begin{aligned}
+   x_1 &= 3 = (011)_2 \\
+   x_2 &= 4 = (100)_2 \\
+   x_3 &= 5 = (101)_2 \\
+   \hline
+   S &= 3 \oplus 4 \oplus 5 = (010)_2 = 2 \ne 0 \quad (\text{Winning state / N-position!})
+   \end{aligned}
+   $$
+2. **Find the target pile**:
+   The highest bit of $S = 2 = (010)_2$ is bit 1 (value 2).
+   Checking which pile has bit 1 set: only $x_1 = 3 = (011)_2$ has a 1 in bit 1.
+3. **Compute replacement value**:
+   $$x_1' = x_1 \oplus S = 3 \oplus 2 = 1 < 3$$
+4. **Optimal Move**:
+   Remove 2 stones from pile 1, reducing it from 3 to 1!
+   The new state is $(1, 4, 5)$. Check new Nim-sum: $1 \oplus 4 \oplus 5 = 001_2 \oplus 100_2 \oplus 101_2 = 0$. Opponent is doomed.
+
+#### 5. Misère Nim (The Last-Stone-Loser Variation)
+If rules invert: **the player who takes the last stone LOSES**.
+- **Golden Rule of Misère Play**:
+  1. While **at least two piles have size $> 1$**: Play exactly according to standard Nim rules (keep $S = 0$ after your move);
+  2. The turning point arrives when your move can leave **exactly one pile of size $> 1$ and all other piles of size 1 (state $x, 1, 1, \dots$)**:
+     - Do NOT make the XOR sum 0! Instead, reduce the large pile to 0 or 1 such that **an ODD number of piles of size 1 remain**!
+     - The opponent is forced to take from singleton piles one by one, ultimately taking the final stone and losing.
 
 ---
 
 ### 4.4 Chomp & The Strategy-Stealing Argument
 
-**Problem**: An $R \times C$ grid of chocolate. Bottom-left square $(1, 1)$ is poisoned. Players alternate choosing a square and eating it along with all squares above and to its right. Whoever eats $(1, 1)$ loses. Does Player 1 have a winning strategy?
+#### 1. Problem Formulation
+An $R \times C$ rectangular chocolate grid has a poisoned bottom-left square at $(1, 1)$. Two players alternate picking a remaining square $(r, c)$. Choosing $(r, c)$ eats that square along with all squares located to its **upper-right** (all $(r', c')$ such that $r' \ge r$ and $c' \ge c$). The player forced to eat the poisoned square $(1, 1)$ loses.
+**Question**: Does Player 1 have a guaranteed winning strategy?
 
-**Strategy-Stealing Proof (Non-Constructive)**:
-1. Suppose Player 2 has a winning strategy.
-2. Player 1 takes only the top-right single square $(R, C)$.
-3. This transitions the board to state $S_1$. By assumption, Player 2 has a winning response, move $A$.
-4. However, move $A$ was an available legal first move from the initial board $S_0$! Player 1 could have played move $A$ on move 1.
-5. Player 1 steals the winning strategy, a contradiction.
-6. Hence Player 1 must have a winning strategy.
+#### 2. Strategy-Stealing Argument (Non-Constructive Proof)
+Chomp is a finite, deterministic, perfect-information game with no passing and no draws. By Zermelo's Theorem, one player must have a winning strategy.
+
+**Proof by Contradiction**:
+1. Assume that **Player 2 (the second player) has a winning strategy**.
+2. Player 1 opens the game by eating only the single top-right corner square $(R, C)$.
+   - The board transitions from initial state $S_0$ to new state $S_1$.
+3. By our assumption that Player 2 has a winning strategy, Player 2 has a designated winning response to $S_1$. Let this move be eating square $(r^*, c^*)$ and its upper-right shadow.
+4. **The Logical Contradiction**:
+   - Notice that $(R, C)$ satisfies $R \ge r^*$ and $C \ge c^*$. Therefore, square $(R, C)$ is **already contained within the upper-right region dominated by $(r^*, c^*)$**!
+   - Consequently, the board state resulting from "Player 1 takes $(R, C)$, then Player 2 takes $(r^*, c^*)$" is **physically identical** to the board state created if someone had simply taken $(r^*, c^*)$ from the initial full board $S_0$ in one single stroke!
+   - But $(r^*, c^*)$ was an available legal move for Player 1 on Turn 1!
+   - Thus, Player 1 could have bypassed $(R, C)$ entirely and played $(r^*, c^*)$ on the very first turn, thereby "stealing" Player 2's winning position!
+5. This contradicts the premise that Player 2 has a winning strategy.
+
+$$\boxed{\text{Player 2 cannot have a winning strategy. Hence, Player 1 must have a winning strategy.}}$$
+
+#### 3. Explicit Winning Constructions for Specific Grids
+While the strategy-stealing proof is non-constructive (finding winning moves for general Chomp is EXPTIME-complete), interviewers often ask for explicit constructions on symmetric boards:
+
+- **Square Board $N \times N$**:
+  - **Winning Move**: Player 1 eats square $(2, 2)$ and its upper-right quadrant on Turn 1!
+  - The remaining board forms a symmetric "L-shape" with two arms of length $N$ (row 1 and column 1).
+  - **Mirroring Strategy**: If Player 2 bites row 1 at $(1, k)$, Player 1 mirrors by biting column 1 at $(k, 1)$. Player 1 preserves equal arm lengths until Player 2 is forced to eat the poison $(1, 1)$.
+- **$2 \times N$ Rectangular Board**:
+  - Player 1 bites $(2, N)$ on Turn 1, making row 2 one square shorter than row 1.
+  - Invariant: Player 1 always keeps row 2 exactly one unit shorter than row 1, forcing Player 2 into the poisoned corner.
 
 ---
 
-### 4.5 100 Prisoners Hat Puzzle
+### 4.5 The 100 Prisoners Hat Puzzle
 
-**Problem**: 100 prisoners lined up single file. Each wears a red or blue hat. Each sees all hats in front, but neither their own nor those behind. Starting from Prisoner 100 at the back, each must guess their own hat color out loud. How many prisoners can be guaranteed to survive?
+#### 1. Problem Formulation
+100 rational prisoners are queued in a line ($P_1$ to $P_{100}$). Each wears a Red hat (1) or Blue hat (0).
+- **Vision**: Each prisoner can see the hat colors of all prisoners standing in front of them, but cannot see their own hat or anyone standing behind them ($P_{100}$ sees 99 hats; $P_1$ sees 0 hats);
+- **Protocol**: Starting from $P_{100}$ at the back and proceeding sequentially forward to $P_1$, each prisoner speaks either "Red" or "Blue";
+- **Survival**: If a prisoner speaks their own hat color, they survive; otherwise they are executed. Everyone hears all prior public declarations.
+**Question**: What pre-arranged coordination protocol maximizes the expected number of survivors?
 
-**Parity Protocol**:
-- Encode Red $= 1$, Blue $= 0$.
-- **Prisoner 100**: Sums the red hats seen among the 99 prisoners ahead ($R_{99}$). Calls "Red" if $R_{99}$ is odd, "Blue" if even. Prisoner 100 survives with 50% probability.
-- **Prisoner 99**: Counts red hats ahead ($R_{98}$). If $R_{98}$ parity matches Prisoner 100's call, Prisoner 99's hat must be Blue; otherwise Red. Prisoner 99 survives with 100% certainty.
-- **Subsequent Prisoners (98 down to 1)**: Each deducts the known colors called behind them, surviving with 100% certainty.
-- **Outcome: 99 prisoners guaranteed to survive; expected survival is 99.5%**.
+#### 2. The Parity Check Protocol
+Let hat colors be $c_i \in \{0, 1\}$ (Red $= 1$, Blue $= 0$).
+
+```
+  [P1 (Front)]    [P2]        ...        [P98]        [P99]        [P100 (Back)]
+   Sees: 0 hats   Sees: 1 hat            Sees: 97     Sees: 98     Sees: All 99 hats
+        ↑                                                ↑              ↑
+   Speaks last                                      Speaks 2nd     Speaks first (Broadcasts Parity)
+```
+
+##### (1) Prisoner 100 (The Martyr & Parity Beacon):
+- $P_{100}$ has no information about their own hat, but counts the total number of red hats among the 99 prisoners in front:
+  $$S_{99} = \sum_{k=1}^{99} c_k$$
+- $P_{100}$ computes the modulo-2 parity check:
+  $$b_{100} = S_{99} \bmod 2 = \left(\sum_{k=1}^{99} c_k\right) \bmod 2$$
+- Protocol: $P_{100}$ announces "Red" if $b_{100} = 1$, and "Blue" if $b_{100} = 0$.
+- $P_{100}$ has a $50\%$ chance of personal survival, but broadcasts the global parity of the front 99 hats to the entire group!
+
+##### (2) Prisoner 99 (First Guaranteed Survivor):
+- $P_{99}$ hears parity $b_{100}$.
+- $P_{99}$ directly sees the 98 hats ahead, summing their red hats: $S_{98} = \sum_{k=1}^{98} c_k$.
+- Since $S_{99} = c_{99} + S_{98}$, taking modulo 2:
+  $$c_{99} = (b_{100} - S_{98}) \bmod 2$$
+- Both $b_{100}$ and $S_{98}$ are known with 100% certainty! $P_{99}$ announces $c_{99}$ and survives with $100\%$ certainty.
+
+##### (3) Prisoner $i$ ($i$ descending from 98 to 1):
+- At turn $i$, prisoner $P_i$ knows:
+  1. The global base parity $b_{100}$;
+  2. The deduced colors $c_{99}, \dots, c_{i+1}$ from behind;
+  3. The visible colors $c_{i-1}, \dots, c_1$ seen ahead.
+- $P_i$ computes their own hat color deterministically:
+  $$c_i = \left( b_{100} - \sum_{j=i+1}^{99} c_j - \sum_{k=1}^{i-1} c_k \right) \bmod 2$$
+- All terms are known. Every prisoner from 99 down to 1 answers correctly!
+
+$$\boxed{\text{Prisoners 1 through 99 survive with } 100\% \text{ certainty. Expected survivors: } 99 + 0.5 = 99.5 \text{ prisoners (99.5\%)}}$$
+
+#### 3. Generalization to $K$ Hat Colors
+If hats have $K \ge 2$ distinct colors, encode colors as elements of $\mathbb{Z}_K = \{0, 1, \dots, K-1\}$. $P_{100}$ announces $\left(\sum_{k=1}^{99} c_k\right) \bmod K$. Each subsequent prisoner performs modular subtraction in $\mathbb{Z}_K$, guaranteeing $100\%$ survival for all 99 remaining prisoners.
 
 ---
 
 ### 4.6 Russian Roulette Conditional Decision
 
-**Problem**: A 6-chamber revolver has 2 bullets. Player 1 points the gun at their own head and pulls the trigger: click, empty chamber. It is now your turn. You can: (1) Pull the trigger immediately; (2) Spin the cylinder before pulling. Which gives higher survival?
+#### 1. Problem Formulation
+A standard 6-chamber revolver contains 2 live bullets (4 empty chambers). Two players play Russian roulette.
+- Opponent goes first, points the gun at their head, pulls the trigger: **Click! An empty chamber. Opponent survives**.
+- The gun is handed to you. You have two mutually exclusive options:
+  - **Option 1 (Stay)**: Do not spin the cylinder; pull the trigger on the next adjacent chamber;
+  - **Option 2 (Spin)**: Spin the cylinder vigorously, randomizing the chamber before pulling the trigger.
+**Question**: Which action maximizes your survival probability under different bullet configurations?
 
-- **Scenario 1: 2 Bullets are Adjacent**
-  - Player 1 survived an empty chamber, so we are at one of the 4 empty chambers.
-  - Of the 4 empty chambers, only 1 is immediately followed by a bullet.
-  - Shooting directly: Death probability is $1/4 = 25\%$.
-  - Spinning cylinder: Death probability is $2/6 = 33.3\%$.
-  - $\implies$ **Pull the trigger directly without spinning**.
-- **Scenario 2: 2 Bullets are Non-Adjacent**
-  - Of the 4 empty chambers, 2 are followed by a bullet.
-  - Shooting directly: Death probability is $2/4 = 50\%$.
-  - Spinning cylinder: Death probability is $2/6 = 33.3\%$.
-  - $\implies$ **Spin the cylinder first**.
+#### 2. Configuration 1: The Two Bullets are Adjacent
+Label the 6 chambers clockwise: $1 \to 2 \to 3 \to 4 \to 5 \to 6 \to 1$.
+With adjacent bullets at chambers 1 and 2, chambers 3, 4, 5, 6 are consecutive empties:
+$$\text{Chambers: } [B_1, \ B_2, \ E_3, \ E_4, \ E_5, \ E_6] \quad (B = \text{Bullet}, \ E = \text{Empty})$$
+
+- **Conditioning on Opponent's Survival**:
+  The opponent's shot was empty, meaning the hammer landed on one of the 4 empty chambers: $\{E_3, E_4, E_5, E_6\}$.
+- **Tracing the Next Chamber**:
+  - Opponent hit $E_3 \implies$ Your chamber is $E_4$ (Empty, Survive);
+  - Opponent hit $E_4 \implies$ Your chamber is $E_5$ (Empty, Survive);
+  - Opponent hit $E_5 \implies$ Your chamber is $E_6$ (Empty, Survive);
+  - Opponent hit $E_6 \implies$ Your chamber is $B_1$ (**Bullet, Fatal!**).
+- **Probability Comparison**:
+  - **Stay**: Only 1 of the 4 conditioned outcomes is a bullet:
+    $$\mathbb{P}(\text{Bullet} \mid \text{Stay, Adjacent}) = \frac{1}{4} = \mathbf{25\%}$$
+  - **Spin**: Randomizes over all 6 chambers with 2 bullets:
+    $$\mathbb{P}(\text{Bullet} \mid \text{Spin}) = \frac{2}{6} = \frac{1}{3} \approx \mathbf{33.33\%}$$
+- **Optimal Choice**: $25\% < 33.33\% \implies$ **Stay! Do not spin the cylinder.**
+- **Physical Intuition**: Clustering bullets creates a wide continuous "oasis" of 4 empty chambers. An empty shot indicates you are inside this oasis, giving a $75\%$ conditional survival rate. Spinning breaks this protective cluster.
+
+#### 3. Configuration 2: The Two Bullets are Separated (e.g., Separated by 1 Chamber)
+Place bullets at chambers 1 and 3, leaving 2, 4, 5, 6 empty:
+$$\text{Chambers: } [B_1, \ E_2, \ B_3, \ E_4, \ E_5, \ E_6]$$
+
+- Conditioned on empty chamber: $\{E_2, E_4, E_5, E_6\}$.
+- Tracing the next chamber:
+  - Opponent hit $E_2 \implies$ Next is $B_3$ (**Bullet, Fatal!**);
+  - Opponent hit $E_4 \implies$ Next is $E_5$ (Empty, Survive);
+  - Opponent hit $E_5 \implies$ Next is $E_6$ (Empty, Survive);
+  - Opponent hit $E_6 \implies$ Next is $B_1$ (**Bullet, Fatal!**).
+- **Probability Comparison**:
+  - **Stay**: 2 out of 4 outcomes lead to death:
+    $$\mathbb{P}(\text{Bullet} \mid \text{Stay, Separated}) = \frac{2}{4} = \mathbf{50\%}$$
+  - **Spin**:
+    $$\mathbb{P}(\text{Bullet} \mid \text{Spin}) = \frac{2}{6} \approx \mathbf{33.33\%}$$
+- **Optimal Choice**: $33.33\% < 50\% \implies$ **Spin! Always re-spin when bullets are separated.**
+
+#### 4. Configuration 3 (The Ultimate Interview Twist): Uniformly Random Bullets
+What if the dealer loaded 2 bullets uniformly at random among the 6 chambers ($\binom{6}{2} = 15$ equally likely placements)?
+- **Adjacent configurations**: Exactly 6 pairs: $(1,2), (2,3), (3,4), (4,5), (5,6), (6,1)$. Prior probability is $\frac{6}{15} = 40\%$;
+- **Separated configurations**: The remaining $15 - 6 = 9$ pairs. Prior probability is $\frac{9}{15} = 60\%$.
+
+**Posterior Likelihood**:
+Observing that the opponent hit an empty chamber does not change the ratio of adjacent to separated configurations (each has 4 empty chambers, so the likelihood ratio is $4/6 : 4/6 = 1:1$).
+- Expected death rate under **Stay**:
+  $$\mathbb{P}(\text{Bullet} \mid \text{Stay}) = 0.40 \times \frac{1}{4} + 0.60 \times \frac{2}{4} = 0.10 + 0.30 = \mathbf{40\%}$$
+- Death rate under **Spin**:
+  $$\mathbb{P}(\text{Bullet} \mid \text{Spin}) = \frac{2}{6} = \frac{1}{3} \approx \mathbf{33.33\%}$$
+
+$$\boxed{33.33\% < 40\% \implies \text{Under uniformly random loading, you should strictly choose to SPIN}}$$
 
 ---
 
