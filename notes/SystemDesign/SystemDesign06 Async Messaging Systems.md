@@ -270,11 +270,159 @@ COMMIT;
 4. Is your scale small? -> Database table queue (SKIP LOCKED)
 ```
 
-## 7 · Event Bus 与 Webhook
+## 7 · Event Bus 与 Router 水平扩缩容设计
 
-**Event Bus** 是一个多对多路由器的泛称。它包含事件接入（Ingest）、匹配过滤（Match）和可靠投递（Durable Delivery），控制面与数据面分离。通常底层构建在 DB、RabbitMQ 或 Kafka 上。
+**Event Bus** 是多对多事件分发路由器的系统抽象。它包含事件接入（Ingest）、规则匹配（Match）和可靠投递（Durable Delivery），并在架构上将**控制面**（租户注册 Webhook URL、事件订阅过滤规则）与**数据面**（高吞吐事件流转与分发）彻底解耦。
 
-**Webhook** 则是该路由器支持的一种常见 HTTP 目标端点。为了安全与隔离，它要求使用 HMAC 进行签名校验，并对各租户设置独立限流与重试退避（Backoff）策略。
+在分布式消息架构中，Event Router 的核心职责是从消息中间件（如 Kafka/Pulsar）拉取原始事件，匹配各租户的订阅配置，并将单条事件扇出（Fan-out）为多个下游微服务调用或外部 Webhook 的 Delivery 任务。
+
+```text
+Event Bus / Kafka ──► [Event Router] ──► 匹配 Subscription 规则 ──► Fan-out 生成多个 Delivery
+```
+
+---
+
+### 7.1 Router 扩缩容的反模式与两层哈希间接层设计
+
+#### 常见反模式：直接取模哈希
+为实现多台 Router 实例的负载均衡，一种直觉做法是：
+$$\text{target\_router} = \text{hash}(\text{tenant\_id}) \pmod{\text{router\_count}}$$
+
+**致命缺陷（Rehashing Storm）**：
+当 Router 实例从 4 台水平扩容到 5 台时，由于模数发生改变（从 4 变为 5），数学上将有 $\frac{4}{5} = 80\%$ 的 `tenant_id` 映射到全新的机器上。
+这会导致海量租户瞬间发生机器漂移：
+1. 实例内存中的局部缓存（订阅规则、TLS 连接池、限流令牌桶）大面积失效；
+2. 正在进行中的批量发送被迫中断并在新机器上重发，引发广播风暴与大量重复投递。
+
+#### 正确架构：两层哈希间接层（Fixed Partition Indirection）
+工业级系统通过引入**固定分区（Fixed Partition）作为解耦间接层**，将“数据哈希空间”与“弹性计算实例”分离：
+
+```text
+tenant_id
+   │
+   ▼  (① 稳定的哈希算法，如 Murmur3 / CityHash)
+partition_id   (固定数量 M，例如预分配 256 或 512 个物理分区)
+   │
+   ▼  (② 动态路由分配器 / Kafka Consumer Group Assignment)
+Router 实例 (如 Router-1, Router-2, ...)
+```
+
+1. **第一层：数据到分区的映射恒定不变（Data -> Partition）**：
+   $$\text{partition\_id} = \text{murmur3}(\text{tenant\_id}) \pmod M \quad (M = 256 \text{ 固定不变})$$
+   同一租户的事件始终写入固定的 Partition，保证单租户内部事件的严格局部保序（FIFO）。
+2. **第二层：分区到计算实例的弹性映射（Partition -> Router Instance）**：
+   由分布式流引擎（如 Kafka Consumer Group）负责分区的动态分配与均衡：
+
+**扩容演进示例**：
+- **初始状态（4 台 Router，256 个 Partition）**：
+  - `Router-1`：分配 P0 ~ P63（共 64 个）
+  - `Router-2`：分配 P64 ~ P127（共 64 个）
+  - `Router-3`：分配 P128 ~ P191（共 64 个）
+  - `Router-4`：分配 P192 ~ P255（共 64 个）
+- **触发水平扩容（Kubernetes 弹性伸缩）**：
+  ```bash
+  kubectl scale deployment webhook-router --replicas=8
+  ```
+- **扩容后状态（8 台 Router）**：
+  - `Router-1` ~ `Router-8`：每台均匀分担 32 个 Partition。
+
+**核心架构红利**：
+`tenant_id -> partition_id` 的归属**零改变**。从 4 台增加到 8 台时，仅有恰好一半的分区发生所有权交接（Partition Handover），原机器上保留的 32 个分区缓存与状态完全不受影响，系统抖动降至理论最低限度。
+
+---
+
+### 7.2 Consumer Group Rebalance 与平滑交接协议 (Graceful Handover)
+
+在 Kafka 架构中，Router 扩缩容本质上由 Consumer Group 的 Rebalance 机制驱动。为了防止交接过程中的数据堆积与丢件，必须实现严格的生命周期交接协议：
+
+```text
+[旧 Owner (Router-1)]                         [新 Owner (Router-5)]
+        │                                              │
+ 1. 收到 Revoke 分区通知                                  │
+ 2. 暂停拉取 (Pause fetching)                            │
+ 3. 等待在途 Delivery 落盘 (Flush in-flight)              │
+ 4. 提交已完成 Offset (Commit completed offset)         │
+ 5. 释放分区所有权 ─────────────────────────────────────► 6. 收到 Assign 分区通知
+                                                       7. 从 Broker 读取 Committed Offset
+                                                       8. 恢复流消费 (Resume stream ingestion)
+```
+
+1. **旧节点交接协议 (Revocation Protocol)**：
+   - 收到 Kafka `ConsumerRebalanceListener.onPartitionsRevoked()` 回调；
+   - 立即对将被回收的 Partition 执行 `pause()`，停止摄入新数据；
+   - 将内存中已经完成匹配但未入库的 Delivery 任务全部持久化（Flush in-flight progress）；
+   - 同步提交最新的 Offset；
+   - 确保外部网络调用均处于安全断点后，正式释放分区所有权。
+2. **新节点接管协议 (Assignment Protocol)**：
+   - 收到 `onPartitionsAssigned()` 回调；
+   - 从 Broker 读取由上一个 Owner 提交的精确 Committed Offset；
+   - 从该位点恢复拉取与扇出，继续推进消费。
+
+在主流 Kafka 客户端中，推荐开启 **Cooperative Sticky Assignor**（渐进式协同再均衡），避免旧版本 Eager 协议中“全员暂停消费（Stop-The-World）”的缺陷，实现分区的平滑按需迁移。
+
+---
+
+### 7.3 防范脑裂与僵尸节点：Fencing Token 与 ownership_epoch
+
+即便实现了上述交接协议，分布式系统仍然面临**假死与脑裂（Split-Brain）**的致命威胁。
+
+#### 经典故障场景：僵尸节点写穿 (Zombie Node)
+1. **Router-1 突发长 GC 停顿**（Full GC 停顿 30 秒）或发生短暂网络假死；
+2. Kafka Broker 因长时间未收到心跳包，判定 Router-1 死亡，触发 Consumer Group Rebalance；
+3. Broker 将原本属于 Router-1 的 `Partition-42` 重新分配给健康的新节点 `Router-2`；
+4. `Router-2` 从上次提交的位点正常恢复，向数据库插入 Delivery 记录并向外部系统分发；
+5. **故障点**：Router-1 从长 GC 停顿中苏醒！其自身进程并不知道已被集群驱逐，继续执行停顿前读入的一批消息，并向数据库提交 Delivery 写入！
+6. **灾难后果**：Router-1 与 Router-2 同时作为同一 Partition 的 Owner 写入，产生并发脑裂与重复任务爆炸。
+
+#### 解决方案：数据库层面的 Fencing Token (ownership_epoch)
+通过在数据库持久化层引入**单调递增的代数（Epoch / Fencing Token）**与乐观锁校验，从根本上解决僵尸节点问题：
+
+```text
+Partition 租约与进度表 (partition_leases):
+┌──────────────┬───────────────┬─────────────────┬──────────────────────┐
+│ partition_id │ current_owner │ ownership_epoch │ last_committed_offset│
+├──────────────┼───────────────┼─────────────────┼──────────────────────┤
+│ 42           │ router-2      │ 108             │ 948210               │
+└──────────────┴───────────────┴─────────────────┴──────────────────────┘
+```
+
+1. **接管递增 Epoch**：
+   当新节点 `Router-2` 接管 `Partition-42` 时，在数据库事务中原子递增该分区的代数：
+   ```sql
+   UPDATE partition_leases 
+   SET current_owner = 'router-2', 
+       ownership_epoch = ownership_epoch + 1, 
+       updated_at = now()
+   WHERE partition_id = 42;
+   ```
+   此时 `Partition-42` 的 Epoch 从 `107` 跃升至 `108`。
+2. **受检写入 (Fenced Writes)**：
+   任何 Router 在向数据库插入该 Partition 派生的 Delivery 记录或更新 Offset 进度时，SQL 必须附带当前持有的 `epoch` 约束条件：
+   ```sql
+   INSERT INTO deliveries (delivery_id, partition_id, event_id, target_url, status)
+   SELECT :delivery_id, 42, :event_id, :target_url, 'PENDING'
+   WHERE EXISTS (
+       SELECT 1 FROM partition_leases 
+       WHERE partition_id = 42 AND ownership_epoch = :current_epoch
+   );
+   ```
+3. **僵尸节点自然失效**：
+   当僵尸节点 `Router-1` 苏醒并试图提交时，其请求携带旧的 `epoch = 107`。数据库校验条件不满足，写入受阻（更新/插入 0 行），彻底阻断由于假死引起的跨代脏写。
+
+---
+
+### 7.4 Webhook 可靠投递最佳实践
+
+作为 Event Router 下游最常见的端点，外部 Webhook 属于不可信网络环境，必须实施以下系统防护：
+
+1. **HMAC 防篡改签名**：
+   在 HTTP 请求头中附加使用租户密钥生成的 HMAC-SHA256 签名（如 `X-Hub-Signature-256: sha256=...` 或 `Stripe-Signature: t=1614...,v1=...`）。包含时间戳以防御重放攻击（Replay Attack）。
+2. **指数退避与抖动 (Exponential Backoff with Full Jitter)**：
+   对 5xx 错误或网络超时实施渐进重试：
+   $$T_{\text{wait}} = \min(T_{\max}, T_{\text{base}} \times 2^{\text{attempt}}) \times \text{Uniform}(0.5, 1.5)$$
+   防止大批失败 Webhook 同时重试造成重试风暴（Thundering Herd）。
+3. **租户舱壁隔离 (Tenant Bulkhead Isolation)**：
+   若某租户的自建 Webhook 服务彻底宕机或响应延迟飙升至 30 秒，不能让其堵塞公共 Worker 线程池。必须按租户维度隔离消费并发度或独立队列分流，保障健康租户的事件交付不受慢租户影响。
 
 ## 8 · 观测指标与一手资料
 

@@ -268,11 +268,158 @@ Decision matrix (6-line text block):
 4. Is your scale small? -> Database table queue (SKIP LOCKED)
 ```
 
-## 7 · Event Bus and Webhook
+## 7 · Event Bus and Router Horizontal Scaling Design
 
-An **Event Bus** is a general term for a many-to-many router. It encompasses ingestion, match filtering, and durable delivery, with separated control and data planes. It is usually built on top of a DB, RabbitMQ, or Kafka.
+An **Event Bus** is a system abstraction representing a many-to-many event distribution engine. It encompasses event ingestion, subscription matching, and durable delivery, architecturally decoupling the **Control Plane** (tenant webhook registrations, event filters) from the **Data Plane** (high-throughput event streaming and dispatch).
 
-A **Webhook** is a common HTTP target endpoint supported by this router. For security and isolation, it requires HMAC signature verification and separate rate-limiting and retry backoff strategies per tenant.
+In distributed architectures, an Event Router's primary role is to consume raw events from a messaging backbone (e.g., Kafka/Pulsar), evaluate tenant subscription rules, and fan out each event into multiple delivery tasks for downstream services or external webhooks.
+
+```text
+Event Bus / Kafka ──► [Event Router] ──► Match Subscriptions ──► Fan-out to multiple Deliveries
+```
+
+---
+
+### 7.1 Router Scaling: Anti-Patterns vs. Two-Tier Fixed Partition Indirection
+
+#### The Anti-Pattern: Direct Modulo Hashing
+To distribute load across multiple Router instances, a naive design uses:
+$$\text{target\_router} = \text{hash}(\text{tenant\_id}) \pmod{\text{router\_count}}$$
+
+**Fatal Flaw (The Rehashing Storm)**:
+When the router cluster scales from 4 to 5 instances, the modulus changes from 4 to 5. Mathematically, $\frac{4}{5} = 80\%$ of all `tenant_id`s remap to completely different instances.
+This triggers massive tenant churn across the cluster:
+1. In-memory caches (compiled subscription rules, TLS connection pools, token bucket rate limiters) become instantly invalidated.
+2. In-flight batched deliveries are aborted and resent on new instances, creating broadcast storms and widespread duplicate deliveries.
+
+#### The Production Solution: Two-Tier Fixed Partition Indirection
+Production-grade architectures introduce **fixed partitions as an indirection layer**, cleanly separating the immutable data hash space from the elastic compute cluster:
+
+```text
+tenant_id
+   │
+   ▼  (① Stable Hash Algorithm, e.g., Murmur3 / CityHash)
+partition_id   (Fixed quantity M, e.g., pre-provisioned 256 or 512 physical partitions)
+   │
+   ▼  (② Dynamic Routing Assignment / Kafka Consumer Group Assignment)
+Router Instance (e.g., Router-1, Router-2, ...)
+```
+
+1. **Tier 1: Immutable Data-to-Partition Mapping (Data -> Partition)**:
+   $$\text{partition\_id} = \text{murmur3}(\text{tenant\_id}) \pmod M \quad (M = 256 \text{ is strictly immutable})$$
+   All events for a given tenant always land in the same physical Partition, guaranteeing strict local FIFO ordering per tenant.
+2. **Tier 2: Elastic Partition-to-Compute Assignment (Partition -> Router Instance)**:
+   A distributed stream coordination engine (such as Kafka Consumer Groups) dynamically balances partition ownership across active compute instances:
+
+**Scaling Trace Example**:
+- **Initial State (4 Routers, 256 Partitions)**:
+  - `Router-1`: Owns P0 ~ P63 (64 partitions)
+  - `Router-2`: Owns P64 ~ P127 (64 partitions)
+  - `Router-3`: Owns P128 ~ P191 (64 partitions)
+  - `Router-4`: Owns P192 ~ P255 (64 partitions)
+- **Elastic Scale-Out (Kubernetes)**:
+  ```bash
+  kubectl scale deployment webhook-router --replicas=8
+  ```
+- **Post-Scale State (8 Routers)**:
+  - `Router-1` through `Router-8`: Each owns exactly 32 partitions.
+
+**Key Architectural Invariant**:
+The mapping $\text{tenant\_id} \to \text{partition\_id}$ **never changes**. When expanding from 4 to 8 instances, exactly half of the partitions undergo handover. The remaining 32 partitions on each existing router remain untouched, keeping state cache churn to an absolute minimum.
+
+---
+
+### 7.2 Kafka Consumer Group Rebalance and Graceful Handover Protocol
+
+Scaling the router cluster is orchestrated via Kafka Consumer Group Rebalances. To prevent uncommitted backlog accumulation and duplicate delivery bursts, routers must follow a strict handover protocol:
+
+```text
+[Old Owner (Router-1)]                         [New Owner (Router-5)]
+        │                                              │
+ 1. Receive Partition Revocation Notification          │
+ 2. Pause fetching (pause())                           │
+ 3. Flush in-flight deliveries to disk                 │
+ 4. Commit completed offsets                           │
+ 5. Relinquish partition ownership ───────────────────► 6. Receive Partition Assignment Notification
+                                                       7. Fetch committed offsets from Broker
+                                                       8. Resume stream consumption (resume())
+```
+
+1. **Revocation Protocol (Old Owner)**:
+   - Receives the Kafka `ConsumerRebalanceListener.onPartitionsRevoked()` callback.
+   - Invokes `pause()` on partitions to be surrendered, halting new message ingestion immediately.
+   - Flushes in-flight progress (matching evaluations and generated delivery records) durably to the persistence layer.
+   - Synchronously commits completed offsets.
+   - Ensures all active external operations reach safe checkpoints before releasing partition ownership.
+2. **Assignment Protocol (New Owner)**:
+   - Receives the `onPartitionsAssigned()` callback.
+   - Fetches the exact committed offsets recorded by the prior owner from the broker.
+   - Resumes consuming and fan-out dispatching from that verified position.
+
+In production Kafka clients, configure the **Cooperative Sticky Assignor**. This replaces the legacy Stop-the-World Eager Assignor, allowing healthy, untouched partitions to continue processing without interruption while reassigned partitions migrate smoothly.
+
+---
+
+### 7.3 Preventing Split-Brain & Zombie Nodes: Fencing Tokens and ownership_epoch
+
+Even with handover protocols, distributed networks face the risk of **split-brain execution caused by zombie / straggler nodes**.
+
+#### Failure Scenario: The Zombie Node Double-Write
+1. **Router-1 suffers an unexpected 30-second Full GC pause** or transient network partition.
+2. The Kafka Broker misses heartbeats, declares Router-1 dead, and triggers a Consumer Group Rebalance.
+3. The Broker reassigns `Partition-42` to healthy node `Router-2`.
+4. `Router-2` starts consuming from the committed offset, writing Delivery records to the database.
+5. **The Trap**: Router-1 finishes its GC pause. Unaware that it has been ejected, Router-1 processes the in-memory pre-pause batch and attempts to write to the database!
+6. **Resulting Disaster**: Router-1 and Router-2 both actively write Deliveries for the same partition simultaneously, causing duplicate execution and corrupt state.
+
+#### The Solution: Database-Level Fencing Tokens (ownership_epoch)
+By introducing a **monotonically increasing generation counter (Epoch / Fencing Token)** combined with optimistic concurrency controls in the database, zombie writes are neutralized:
+
+```text
+Partition Lease & Offset Tracking Table (partition_leases):
+┌──────────────┬───────────────┬─────────────────┬──────────────────────┐
+│ partition_id │ current_owner │ ownership_epoch │ last_committed_offset│
+├──────────────┼───────────────┼─────────────────┼──────────────────────┤
+│ 42           │ router-2      │ 108             │ 948210               │
+└──────────────┴───────────────┴─────────────────┴──────────────────────┘
+```
+
+1. **Atomic Epoch Increments on Assignment**:
+   When new node `Router-2` is assigned `Partition-42`, it atomically increments the lease epoch within a short transaction:
+   ```sql
+   UPDATE partition_leases 
+   SET current_owner = 'router-2', 
+       ownership_epoch = ownership_epoch + 1, 
+       updated_at = now()
+   WHERE partition_id = 42;
+   ```
+   The epoch for `Partition-42` advances from `107` to `108`.
+2. **Fenced Writes on Persistence**:
+   Whenever a Router writes derived Delivery rows or commits offsets, it must enforce an epoch match constraint:
+   ```sql
+   INSERT INTO deliveries (delivery_id, partition_id, event_id, target_url, status)
+   SELECT :delivery_id, 42, :event_id, :target_url, 'PENDING'
+   WHERE EXISTS (
+       SELECT 1 FROM partition_leases 
+       WHERE partition_id = 42 AND ownership_epoch = :current_epoch
+   );
+   ```
+3. **Deterministic Zombie Rejection**:
+   When zombie `Router-1` awakens and attempts to commit with its stale `epoch = 107`, the database condition evaluates to false. Zero rows are inserted or updated, deterministically neutralizing split-brain mutations.
+
+---
+
+### 7.4 Webhook Delivery Best Practices
+
+Because external webhook destinations operate across untrusted public networks, implement these defense-in-depth mechanisms:
+
+1. **HMAC Signatures**:
+   Include an HMAC-SHA256 signature in request headers (e.g., `X-Hub-Signature-256` or `Stripe-Signature`) calculated with the tenant secret and a timestamp to eliminate replay attacks.
+2. **Exponential Backoff with Full Jitter**:
+   Apply randomized backoff on 5xx failures or timeouts to prevent retry storms (Thundering Herd):
+   $$T_{\text{wait}} = \min(T_{\max}, T_{\text{base}} \times 2^{\text{attempt}}) \times \text{Uniform}(0.5, 1.5)$$
+3. **Tenant Bulkhead Isolation**:
+   If a single tenant's webhook server experiences persistent degradation (e.g., 30s timeouts), enforce isolated concurrency limits or separate worker queues per tenant. This prevents one degraded subscriber from exhausting the shared worker thread pool.
 
 ## 8 · Observability and Primary Sources
 
