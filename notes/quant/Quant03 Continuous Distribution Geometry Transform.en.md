@@ -251,6 +251,72 @@ $$
 
 ---
 
+### 3.2 Discrete Order Statistics and the Tail Probability Technique
+
+Unlike continuous random variables, **discrete order statistics cannot be differentiated to find a density, and ties (equal values) occur with positive probability**. Directly enumerating point probabilities $P(X_{(k)} = x)$ is tedious and prone to combinatorial miscounts.
+
+#### 1. The Gold Standard: Tail Probability Formula
+For any discrete random variable $Y$ taking values in positive integers $\{1, 2, \dots, K\}$, its expectation equals the sum of its survival (tail) probabilities:
+
+$$
+\mathbb{E}[Y] = \sum_{k=1}^K P(Y \ge k)
+$$
+
+> **Proof**:
+> Substitute $P(Y \ge k) = \sum_{j=k}^K P(Y = j)$ and switch the order of summation:
+> $$
+> \sum_{k=1}^K P(Y \ge k) = \sum_{k=1}^K \sum_{j=k}^K P(Y = j) = \sum_{j=1}^K P(Y = j) \sum_{k=1}^j 1 = \sum_{j=1}^K j \cdot P(Y = j) = \mathbb{E}[Y]
+> $$
+
+#### 2. Why Is This Extremely Efficient for Extremes?
+- **Sample Minimum $X_{(1)} = \min(X_1, \dots, X_n)$**:
+  The event "minimum is at least $k$" means "every single sample is at least $k$". By independence:
+  $$
+  P(X_{(1)} \ge k) = [P(X_1 \ge k)]^n
+  $$
+- **Sample Maximum $X_{(n)} = \max(X_1, \dots, X_n)$**:
+  The event "maximum is at most $k-1$" means "every sample is at most $k-1$":
+  $$
+  P(X_{(n)} \ge k) = 1 - P(X_{(n)} \le k - 1) = 1 - [P(X_1 \le k - 1)]^n
+  $$
+
+#### 3. Classic Quant Interview Problem: Extremes of 3 Dice
+Consider 3 fair 6-sided dice rolled independently: $X_1, X_2, X_3 \sim \mathrm{Uniform}\{1, 2, 3, 4, 5, 6\}$.
+
+##### (1) Expected Minimum $\mathbb{E}[X_{(1)}]$
+Let $M = X_{(1)} = \min(X_1, X_2, X_3) \in \{1, 2, 3, 4, 5, 6\}$.
+For any integer $k \in \{1, \dots, 6\}$, a single die lands $\ge k$ with $7 - k$ outcomes, so $P(X_1 \ge k) = \frac{7-k}{6}$.
+By independence of the 3 rolls:
+$$
+P(M \ge k) = [P(X_1 \ge k)]^3 = \left(\frac{7-k}{6}\right)^3
+$$
+Summing tail probabilities:
+$$
+\mathbb{E}[M] = \sum_{k=1}^6 P(M \ge k) = \sum_{k=1}^6 \left(\frac{7-k}{6}\right)^3 = \frac{6^3 + 5^3 + 4^3 + 3^3 + 2^3 + 1^3}{216}
+$$
+Using the sum of cubes $\sum_{j=1}^6 j^3 = \left(\frac{6 \times 7}{2}\right)^2 = 21^2 = 441$:
+$$
+\mathbb{E}[X_{(1)}] = \frac{441}{216} = \frac{49}{24} \approx 2.0417
+$$
+
+##### (2) Expected Maximum $\mathbb{E}[X_{(3)}]$
+Using the discrete symmetry $7 - X_i \sim X_i$:
+$$
+X_{(3)} = \max(X_1, X_2, X_3) = 7 - \min(7-X_1, 7-X_2, 7-X_3)
+$$
+Taking expectations:
+$$
+\mathbb{E}[X_{(3)}] = 7 - \mathbb{E}[X_{(1)}] = 7 - \frac{49}{24} = \frac{119}{24} \approx 4.9583
+$$
+
+##### (3) Expected Median $\mathbb{E}[X_{(2)}]$
+Using the conservation of order statistics $X_1 + X_2 + X_3 = X_{(1)} + X_{(2)} + X_{(3)}$:
+$$
+\mathbb{E}[X_{(2)}] = 3 \times \mathbb{E}[X_1] - \mathbb{E}[X_{(1)}] - \mathbb{E}[X_{(3)}] = 3 \times 3.5 - \frac{49}{24} - \frac{119}{24} = \frac{21}{2} - 7 = 3.5
+$$
+
+---
+
 ## 4 · Joint Distribution and Spacings
 
 The joint density of all order statistics introduces the permutation factor $n!$:
