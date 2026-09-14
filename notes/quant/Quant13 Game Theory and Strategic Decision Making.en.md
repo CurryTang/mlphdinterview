@@ -1,125 +1,462 @@
-# Quant 09 · Game theory
+# Quant 09 · Game Theory and Strategic Decision Making
 
-Course: [[Quant12 Brownian Motion Ito Calculus Stopping Times and Options|08 Brownian Motion]] → This note → [[Quant14 Financial Markets Asset Classes and Portfolio Theory|10 Markets]]
+Course track: [[Quant12 Brownian Motion Ito Calculus Stopping Times and Options|08 Brownian Motion]] → This Note → [[Quant14 Financial Markets Asset Classes and Portfolio Theory|10 Markets and Assets]]
 
-Game theory analyzes strategic interactions, backward induction, and asymmetric information.
+Game theory studies optimal decision-making when outcomes depend on the interactive strategies of multiple agents. In quantitative trading, market making, and algorithmic order execution, game theory provides the structural foundation for analyzing counterparty behavior, adverse selection in order books, auction design, and information asymmetry.
 
-## 1 · Core concepts and equilibria
-
-| Concept | Definition |
-|---|---|
-| Normal-form game | Defined by players, strategy spaces, and payoffs. Used for static simultaneous games. |
-| Extensive-form game | Represented by a game tree with decision nodes, information sets, and action sequences. |
-| Dominant and dominated strategies | A strictly dominant strategy yields a strictly higher payoff regardless of opponents' actions. Rational players never play strictly dominated strategies. |
-| Nash equilibrium | No player has an incentive to unilaterally deviate from their chosen strategy (mutual best responses). |
-| Mixed strategy and indifference | Every pure strategy in a mixed strategy support must yield the exact same expected payoff. |
-| Minimax theorem | In zero-sum games, maximizing the lower bound of one's payoff equates to minimizing the upper bound of the opponent's payoff, driving expected payoff equalization. |
-| Subgame perfect equilibrium (SPE) | A strategy profile that induces a Nash equilibrium in every subgame. Typically solved via backward induction to eliminate non-credible threats. |
+This note is tailored specifically to the level expected in quantitative finance interviews, stripping away esoteric topology and dense abstract notations to focus on **core intuition, backward induction, the indifference principle, classic interview puzzle derivations, and market-maker microeconomics**.
 
 ---
 
-## 2 · Dynamic games and backward induction
+## 1 · Core Concepts & Equilibrium Intuition
 
-### Pirate gold
+A game consists of players, available actions/strategy spaces, and payoff functions.
 
-5 pirates (1 is most senior, 5 is most junior) divide 100 gold coins. 1 proposes an allocation. It requires $\ge 50\%$ approval to pass, otherwise 1 is thrown to sharks. Preferences: Survival > Gold > Bloodlust.
-Backward induction:
-- 2 remaining (4, 5): 4 proposes `(100, 0)` and votes for it.
-- 3 remaining (3, 4, 5): 3 needs 2 votes. Giving 5 one coin secures their vote ($1 > 0$), so `(99, 0, 1)`.
-- 4 remaining (2, 3, 4, 5): 2 needs 2 votes. Giving 4 one coin is enough, so `(98, 0, 1, 0)`.
-- 5 remaining: 1 needs 3 votes. Buying 3 and 5 with one coin each yields `(96, 0, 1, 0, 1)`.
+### 1.1 Pure Strategy Nash Equilibrium (PNE) & Best Response
 
-### Tigers and sheep
+The essence of a **Nash Equilibrium** is **mutual best responses**:
+> A profile of strategies where no single player can unilaterally deviate and strictly increase their payoff, holding all other players' strategies fixed.
 
-$N$ perfectly rational tigers and 1 sheep. A tiger that eats the sheep turns into a sheep. Preferences: Survival > Eating sheep.
-- $N=1$: Eats (safe).
-- $N=2$: Does not eat (eating turns it into a sheep to be eaten by the remaining tiger).
-- $N=3$: Eats (after eating, 2 tigers remain and dare not eat).
-Parity recursion: An odd number guarantees the first tiger eats; an even number guarantees no tiger eats.
+#### The Prisoner's Dilemma
+Two suspects are interrogated separately. The payoff matrix (utilities representing sentence reductions, negative numbers denote prison years):
 
-### The truel
-
-A hits with $1/3$, B with $2/3$, C with $1$. Sequential shooting (A $\to$ B $\to$ C). Players can intentionally shoot into the air.
-A's win probability in 2-player subgames:
-- A shoots first against B: $P_{AB} = 1/3 + (2/3)(1/3)P_{AB} \implies P_{AB} = 3/7$.
-- A shoots first against C: $P_{AC} = 1/3 + (2/3) \times 0 = 1/3$.
-With all 3 alive, B must target C, and C must target B. A's first shot options:
-- Hit C: Leads to A vs B with B shooting first. A's survival is $(1 - 2/3) \times 3/7 = 1/7$. Total probability: $1/3 \times 1/7 + 2/3 \times 3/7 = 1/3$.
-- Hit B: A is killed by C. Total probability: $2/7$.
-- Shoot in the air: B shoots C. If B kills C (prob $2/3$), A faces B shooting first (win prob $3/7$). If B misses (prob $1/3$), C kills B, and A faces C shooting first (win prob $1/3$). A's total probability: $(2/3)(3/7) + (1/3)(1/3) = 25/63 \approx 39.7\%$.
-The optimal decision is to shoot into the air.
-
----
-
-## 3 · Static and combinatorial games
-
-### Guess 2/3 of the average
-
-$N$ players pick a number in $[0, 100]$. The closest to $2/3$ of the group average wins.
-- Strategy space $S_0 = [0, 100]$. The average is at most 100, so the target is at most $66.67$. Bidding over $66.67$ is strictly dominated. Space contracts to $S_1 = [0, 66.67]$.
-- Round $k$ contraction: $S_k = [0, 100 \times (2/3)^k]$.
-The limit is $S_\infty = \{0\}$. The unique Nash equilibrium is for everyone to bid $0$.
-
-### Auctions and revenue equivalence
-
-Bidders have independent private valuations $v \sim U[0, 1]$:
-- **Second-price auction**: If bidding $b > v$, winning when the second price $P_2 \in (v, b)$ causes a net loss $v - P_2 < 0$. If $b < v$, losing when $P_2 \in (b, v)$ forfeits a $>0$ profit. Thus, truthful bidding $b(v) = v$ is weakly dominant.
-- **First-price auction**: Expected profit $E[\Pi] = (v - b) \beta(b)^{n-1}$. The FOC is $-( \beta(b) )^{n-1} + (v-b)(n-1)\beta(b)^{n-2}\beta'(b) = 0$. Substituting the symmetric equilibrium $\beta(b)=v$ yields $b(v) = \frac{n-1}{n} v$.
-- **All-pay auction**: Expected profit $E[\Pi] = v \beta(b)^{n-1} - b$. FOC yields $b(v) = \frac{n-1}{n} v^n$.
-The revenue equivalence theorem states all three mechanisms yield an identical expected seller revenue of $\frac{n-1}{n+1}$.
-
-### Corporate acquisition
-
-Target company T's true value $V \sim U[0, 100]$. Under company A, value rises to $1.5V$. A makes a flat bid $B$, and T accepts if $B \ge V$.
-Due to adverse selection, the acquisition succeeds only if $V \le B$. The expected true value given success is the truncated expectation $E[V \mid V \le B] = B/2$.
-A's expected value post-acquisition is $1.5 \times (B/2) = 0.75B$.
-Expected profit is $P(V \le B) \times (0.75B - B) = -0.25B^2 / 100 \le 0$. The optimal bid is $B^* = 0$.
-
-### Coins in a line
-
-$2n$ coins of known values are placed in a line. Two players alternate taking one coin from either end.
-Odd/even partition: odd-indexed sum $S_{odd}$ and even-indexed sum $S_{even}$.
-The first player can take an odd or even coin to continually force the second player into exposing coins of the opposite parity. This guarantees the first player can collect all odd or all even coins, securing at least $\max(S_{odd}, S_{even}) \ge 50\%$.
-
-### Chomp grid and hat parity
-
-**Chomp**: $R \times C$ grid with a poisoned cell at $(1, 1)$. Picking a cell removes it and everything to its top and right. The player forced to eat $(1, 1)$ loses.
-Strategy-stealing argument: Suppose the second player has a winning strategy. The first player takes only the top-right cell $(R, C)$, entering the second player's winning state, which implies a winning response $A$. However, the first player could have directly played $A$ on turn 1. Contradiction. The first player must have a winning strategy.
-
-**100 prisoners and hats**: Prisoners face forward. Prisoner 100 counts the red hats ahead and calls out the parity bit $S_{99} \pmod 2$.
-Prisoner 99 uses this global parity and the 98 visible hats to deduce their own color, surviving and updating the parity. The 99 prisoners ahead survive with $100\%$ certainty.
-
-### Russian roulette
-
-A 6-chamber revolver has 2 live bullets. The opponent pulls the trigger and survives.
-- **Adjacent bullets**: The cylinder is at one of 4 empty chambers. Pulling directly hits a bullet $1/4 = 25\%$ of the time. Spinning yields $2/6 = 33.3\%$. Pull directly.
-- **Non-adjacent bullets**: Of the 4 empty chambers, 2 are immediately followed by a bullet. Pulling directly yields $2/4 = 50\%$. Spinning yields $33.3\%$. Spin.
-
----
-
-## 4 · Game model summary
-
-| Model | Characteristics | Core conclusion |
+| Player A \ Player B | Defect (Confess) | Cooperate (Silent) |
 |---|---|---|
-| Pirate gold / Tigers and sheep | Dynamic complete info | Backward induction. Odd tigers eat, even do not. |
-| The truel | State transitions | Subgame backward reasoning. Weakest player passes. |
-| Guess 2/3 of average | Continuous coordination | Iterated elimination of dominated strategies. Equilibrium is 0. |
-| Sealed-bid auctions | Incomplete info game | FPA bids $v(n-1)/n$, SPA bids $v$. Revenue equivalent. |
-| Corporate acquisition | Adverse selection | Truncated conditional expectation $E[V \mid V \le B]$. Never bid. |
-| Coins in a line / Chomp | Combinatorial game | Parity invariant. Strategy-stealing proves first-player win. |
-| 100 prisoners' hats | Cooperative information | Last person sacrifices to broadcast global parity. |
+| **Defect (Confess)** | $(-5, -5)$ | $(0, -10)$ |
+| **Cooperate (Silent)** | $(-10, 0)$ | $(-1, -1)$ |
+
+- **Strictly Dominant Strategy**: A strategy that strictly yields a higher payoff regardless of the counterparty's action.
+  - If B defects, A gets $-5$ by defecting vs. $-10$ by staying silent;
+  - If B cooperates, A gets $0$ by defecting vs. $-1$ by staying silent;
+  - Defecting is strictly dominant for A, and symmetrically for B.
+- **Pareto Inefficiency**: The unique Nash Equilibrium is `(Defect, Defect)` yielding $(-5, -5)$, even though `(Cooperate, Cooperate)` $(-1, -1)$ is strictly Pareto superior. Individual rationality produces collective suboptimality.
 
 ---
 
-## 5 · Interactive simulator
+### 1.2 Mixed Strategy Nash Equilibrium (MSNE) & The Indifference Principle
+
+When a game has no pure strategy saddle point (e.g., matching pennies, penalty kicks, poker bluffing), players must randomize across pure actions.
+
+> **Fundamental Principle: The Indifference Principle**
+> In a mixed strategy Nash equilibrium, a player randomizes their own actions to make the counterparty **completely indifferent between the pure strategies in their active support**.
+> If the counterparty had an action yielding strictly higher expected utility, they would exploit it deterministically, breaking the equilibrium.
+
+#### Example: The Penalty Kick
+A striker shoots Left or Right; the goalkeeper dives Left or Right. Goal conversion probabilities (striker's payoff in a zero-sum game):
+
+| Striker \ Goalkeeper | Dive Left (L) | Dive Right (R) |
+|---|---|---|
+| **Shoot Left (L)** | $0.60$ | $0.90$ |
+| **Shoot Right (R)** | $0.95$ | $0.70$ |
+
+Let the striker shoot Left with probability $p$ and Right with probability $1-p$.
+The striker chooses $p$ such that the goalkeeper's expected conceded goals are identical whether diving Left or Right:
+$$E[\text{Goal} \mid \text{Keeper L}] = 0.6p + 0.95(1-p)$$
+$$E[\text{Goal} \mid \text{Keeper R}] = 0.9p + 0.7(1-p)$$
+Setting them equal:
+$$0.6p + 0.95 - 0.95p = 0.9p + 0.7 - 0.7p \implies 0.95 - 0.35p = 0.7 + 0.2p$$
+$$0.55p = 0.25 \implies p^* = \frac{25}{55} = \frac{5}{11} \approx 45.5\%$$
+The striker shoots Left with probability $5/11$ and Right with probability $6/11$.
+
+---
+
+### 1.3 Zero-Sum Games & The Minimax Theorem
+
+In a two-player zero-sum game, Player 1's gain is Player 2's loss. Von Neumann's Minimax Theorem establishes:
+$$\max_{\sigma_1} \min_{\sigma_2} E[u_1(\sigma_1, \sigma_2)] = \min_{\sigma_2} \max_{\sigma_1} E[u_1(\sigma_1, \sigma_2)] = V^*$$
+$V^*$ is the **Value of the Game**.
+
+- **Intuition: "Leveling Opponent Payoffs"**:
+  If Player 1 adopts a distribution where Player 2 gets payoff 3 by choosing Action 1 and payoff 7 by choosing Action 2, a rational Player 2 will pick Action 1 to minimize Player 1's payoff.
+  To maximize the worst-case floor, Player 1 must level the opponent's payoff profile until the peaks and valleys are completely flat.
+
+---
+
+### 1.4 Dynamic Games, Backward Induction & Subgame Perfection (SPE)
+
+- **Extensive-form Game**: Games played sequentially, represented as a tree with decision nodes and information sets.
+- **Non-credible Threat**: A strategy specifying an irrational, self-destructive action at an unreached node (e.g., "if you enter my market, I will price below cost forever"). If that subgame is reached, executing the threat is suboptimal.
+- **Backward Induction**: Solving from the terminal subgame leaves backward to the root. The resulting equilibrium is a **Subgame Perfect Equilibrium (SPE)**, eliminating non-credible threats.
+
+---
+
+## 2 · Classic Quant Interview Dynamic Games
+
+---
+
+### 2.1 The Pirate Game (Pirate Loot Division)
+
+**Problem**: 5 strictly rational pirates (ranked 1 to 5, where 1 is the most senior/fierce, 5 is the weakest) must divide 100 gold coins.
+Rules:
+1. Pirate 1 proposes a division. All living pirates vote (including the proposer).
+2. If $\ge 50\%$ vote in favor, the proposal passes and the game ends. Otherwise, the proposer is thrown overboard to the sharks, and the next pirate proposes.
+3. Preferences: **Survival first > Number of coins second > Bloodthirst third** (if coin payout is identical, vote to kill).
+
+**Backward Induction Derivation**:
+- **Base Case: Only Pirates 4 and 5 remain**
+  - Pirate 4 proposes `4: 100, 5: 0`. Pirate 4 votes for himself ($1/2 = 50\%$), passing the proposal. Pirate 5 gets 0.
+- **3 Pirates remain: 3, 4, 5**
+  - Pirate 3 needs 2 votes ($2/3 > 50\%$). Needs to buy 1 vote.
+  - Pirate 5 gets 0 in the next stage; Pirate 3 gives Pirate 5 **1 coin** ($1 > 0$), securing Pirate 5's vote.
+  - Proposal: `3: 99, 4: 0, 5: 1`. Passed by 3 and 5.
+- **4 Pirates remain: 2, 3, 4, 5**
+  - Pirate 2 needs 2 votes ($2/4 = 50\%$). Needs to buy 1 vote.
+  - If Pirate 2 dies, distribution is `3: 99, 4: 0, 5: 1`.
+  - Pirate 4 gets 0 in that round. Pirate 2 buys Pirate 4 with **1 coin** (buying 5 would cost 2 coins).
+  - Proposal: `2: 98, 3: 0, 4: 1, 5: 0`. Passed by 2 and 4.
+- **Full Game: 1, 2, 3, 4, 5**
+  - Pirate 1 needs 3 votes ($3/5 = 60\% \ge 50\%$). Needs to buy 2 votes.
+  - If Pirate 1 dies, distribution is `2: 98, 3: 0, 4: 1, 5: 0`.
+  - Opportunity cost: Pirates 3 and 5 get 0 coins in the next stage.
+  - Pirate 1 offers **1 coin to Pirate 3** and **1 coin to Pirate 5**.
+  - Proposal: `1: 96, 2: 0, 3: 1, 4: 0, 5: 1`. Passed by 1, 3, and 5.
+
+$$\boxed{\text{Pirate 1 Optimal Proposal: }(96, 0, 1, 0, 1) \quad \text{Passed with 3 votes}}$$
+
+#### Scaling to Large $N$
+With $M=100$ coins:
+- For $N \le 2M = 200$, the leader survives by bribing half the pirates with 1 coin;
+- For $N > 200$, 100 coins cannot buy $\lceil N/2 \rceil$ votes. The proposer must give away all 100 coins and gets 0 coins to survive;
+- When coins are exhausted, survival depends on voting coalitions of pirates who know they will die if earlier leaders fail. Proposers only survive when $N$ takes the form $2M + 2^k$ (e.g., 201, 202, 204, 208, 216...).
+
+---
+
+### 2.2 Tigers and Sheep (Island Parity Game)
+
+**Problem**: 1 sheep and $N$ rational tigers on an island.
+Rules:
+1. Tigers prefer mutton over grass.
+2. If a tiger eats the sheep, that tiger **turns into a sheep**.
+3. Preferences: **Survival > Eating mutton**.
+4. Does the first tiger eat the sheep?
+
+**Parity Backward Induction**:
+- $N = 1$: Tiger eats the sheep, becomes a sheep, no other tigers exist. Safe. **Eats**.
+- $N = 2$: If Tiger A eats the sheep, it becomes a sheep with 1 tiger remaining. By $N=1$, Tiger B will eat it. Tiger A **does not eat**.
+- $N = 3$: If Tiger A eats the sheep, 2 tigers remain. By $N=2$, neither remaining tiger dares to eat. Tiger A is safe. **Eats**.
+- $N = 4$: By induction, eating reduces the game to $N=3$ where it will be eaten. **Does not eat**.
+
+$$\boxed{\begin{cases} N \text{ is Odd} & \implies \text{The first tiger eats the sheep immediately} \\ N \text{ is Even} & \implies \text{No tiger eats; the sheep survives safely} \end{cases}}$$
+
+---
+
+### 2.3 The Truel (3-Player Duel with Unequal Accuracies)
+
+**Problem**: Players A, B, and C duel in rounds (order A $\to$ B $\to$ C $\to$ A $\dots$). Accuracies:
+$$p_A = 1/3, \quad p_B = 2/3, \quad p_C = 1 \text{ (Never misses)}$$
+Last person alive wins. A player may shoot at any opponent or **deliberately shoot into the air (Pass)**. What is A's optimal first shot?
+
+**Step-by-Step Derivation**:
+1. **Two-Player Endgames**:
+   - **A shoots first vs. B**:
+     $$P_{AB} = \frac{1}{3} + \frac{2}{3} \times \left(1 - \frac{2}{3}\right) P_{AB} \implies P_{AB} = \frac{3}{7}$$
+   - **A shoots first vs. C**:
+     $$P_{AC} = \frac{1}{3} + \frac{2}{3} \times 0 = \frac{1}{3}$$
+2. **Target Priorities**:
+   B and C treat each other as the primary mortal threat. If B shoots, B targets C. If C shoots, C targets B.
+3. **Player A's Options**:
+   - **A shoots C and hits** (prob $1/3$): Leaves A vs. B with **B shooting first**. B hits A with prob $2/3$. A's survival rate is $(1 - 2/3) \times P_{AB} = 1/7$.
+   - **A shoots B and hits** (prob $1/3$): Leaves A vs. C with **C shooting first**. C kills A with prob $1.0$. A dies immediately.
+   - **A intentionally shoots into the air (Pass)**:
+     - Turn passes to B, who shoots at C.
+     - Case 1 (prob $2/3$): B kills C. Leaves A vs. B with **A holding the first shot**! Survival is $P_{AB} = 3/7$.
+     - Case 2 (prob $1/3$): B misses C. C kills B. Leaves A vs. C with **A holding the first shot**! Survival is $P_{AC} = 1/3$.
+     - Total survival for A:
+       $$P_A(\text{Pass}) = \frac{2}{3} \times \frac{3}{7} + \frac{1}{3} \times \frac{1}{3} = \frac{2}{7} + \frac{1}{9} = \frac{25}{63} \approx 39.7\%$$
+
+$$\boxed{\text{A's optimal strategy is to shoot into the air, achieving the highest survival rate } \frac{25}{63} \approx 39.7\%}$$
+
+---
+
+## 3 · Market Mechanisms, Adverse Selection & Auctions
+
+---
+
+### 3.1 Auction Theory: First-Price vs. Second-Price (Vickrey) Auctions
+
+$n$ bidders compete for an item with private valuations independent and uniformly distributed: $v_i \sim U[0, 1]$.
+
+#### Second-Price Sealed-Bid Auction (Vickrey Auction)
+- **Rule**: The highest bidder wins, but pays the **second-highest bid ($P_2$)**.
+- **Weakly Dominant Strategy**: **Truthful bidding $b(v) = v$ is weakly dominant**.
+  - Bidding higher $b > v$: Changes the outcome only if $v < P_2 < b$. You win but pay $P_2 > v$, suffering a net loss $v - P_2 < 0$.
+  - Bidding lower $b < v$: Changes the outcome only if $b < P_2 < v$. You forfeit a profitable purchase.
+  - Bidding exact valuation dominates all deviations.
+
+#### First-Price Sealed-Bid Auction
+- **Rule**: Highest bidder wins and pays **their own bid**.
+- **Bid Shading**: Bidding $b = v$ yields 0 profit. Bidders shade bids to balance winning probability against margin:
+  $$b(v) = \frac{n-1}{n} v$$
+  For $n=2$, bid $v/2$. As $n \to \infty$, competition forces $b(v) \to v$.
+
+#### Revenue Equivalence Theorem
+> Under standard benchmark conditions (neutral risk, independent private values), any auction mechanism that allocates the item to the highest-valuation bidder and yields zero surplus to the lowest-valuation bidder generates the exact same expected revenue for the seller:
+> $$\mathbb{E}[\text{Revenue}] = \frac{n-1}{n+1}$$
+
+---
+
+### 3.2 Target Acquisition, Adverse Selection & The Winner's Curse
+
+**Problem**: A target company's true value is $V \sim U[0, 100]$. An acquirer can manage the company better, increasing its value to $1.5 V$. The acquirer makes a take-it-or-leave-it tender offer $B$. The target accepts if $B \ge V$. What is the optimal bid $B^*$?
+
+**Derivation**:
+1. **Adverse Selection**: The target accepts only if $V \le B$.
+2. **Conditional Expectation**: Conditional on the bid being accepted, the target's expected value is truncated:
+   $$\mathbb{E}[V \mid V \le B] = \frac{B}{2}$$
+3. **Expected Value After Acquisition**:
+   $$1.5 \times \mathbb{E}[V \mid V \le B] = 1.5 \times \frac{B}{2} = 0.75 B$$
+4. **Acquirer's Expected Profit**:
+   $$\mathbb{E}[\Pi] = \mathbb{P}(V \le B) \times (0.75 B - B) = \frac{B}{100} \times (-0.25 B) = -\frac{0.25 B^2}{100} \le 0$$
+
+$$\boxed{\text{Optimal Bid } B^* = 0\text{. Any positive bid leads to guaranteed expected loss.}}$$
+
+---
+
+### 3.3 Market Making Adverse Selection (Glosten-Milgrom Framework)
+
+In electronic market making, the bid-ask spread compensates for **adverse selection risk** against informed counterparties.
+
+- Asset true value $V \in \{V_L, V_H\}$ with prior expectation $V_0$.
+- Order flow consists of two types of traders:
+  - **Informed Traders (fraction $\alpha$)**: Possess inside knowledge. Buy if $V = V_H$, sell if $V = V_L$.
+  - **Noise Traders (fraction $1 - \alpha$)**: Trade for liquidity (equal 50% probability of buying or selling).
+- **Bayesian Update on an Incoming Buy Order**:
+  $$\mathbb{P}(V = V_H \mid \text{Buy}) = \frac{\alpha \cdot 1 + (1-\alpha) \cdot 0.5}{1} = \frac{1+\alpha}{2} > 0.5$$
+- **Zero-Profit Competitive Quotes**:
+  $$\text{Ask} = \mathbb{E}[V \mid \text{Buy}] = V_0 + \frac{\alpha}{2}(V_H - V_L)$$
+  $$\text{Bid} = \mathbb{E}[V \mid \text{Sell}] = V_0 - \frac{\alpha}{2}(V_H - V_L)$$
+- **Optimal Spread**:
+  $$\text{Spread} = \text{Ask} - \text{Bid} = \alpha (V_H - V_L)$$
+
+**Quant Takeaway**:
+The spread scales directly with $\alpha$. When informed trading volume surges, market makers widen spreads to prevent toxic order flow from depleting capital.
+
+---
+
+## 4 · Combinatorial Games & Quant Brainteasers
+
+---
+
+### 4.1 Guess 2/3 of the Average (The Keynesian Beauty Contest)
+
+**Problem**: $N$ participants each pick a real number in $[0, 100]$. The winner is whoever is closest to $2/3$ of the group average.
+
+**Iterated Elimination of Strictly Dominated Strategies (IESDS)**:
+1. Max possible average is 100 $\implies$ max target is $66.67$. Numbers $> 66.67$ are strictly dominated.
+2. In $[0, 66.67]$, max possible average is $66.67 \implies$ max target is $66.67 \times 2/3 = 44.44$.
+3. At round $k$, the space contracts to $[0, 100 \times (2/3)^k]$.
+4. As $k \to \infty$, the unique Nash equilibrium collapses to:
+   $$s^* = 0$$
+
+**Trading Reality (Level-$k$ Thinking)**:
+Real market participants are not infinite-depth logicians. In practice:
+- Level-0: Random pick, avg 50;
+- Level-1: Expects Level-0, picks $50 \times 2/3 \approx 33$;
+- Level-2: Expects Level-1, picks $33 \times 2/3 \approx 22$.
+Being three steps ahead of the market is indistinguishable from being wrong; quant strategy design requires estimating counterparty sophistication depth.
+
+---
+
+### 4.2 Coins in a Line
+
+**Problem**: An even number ($2n$) of coins with arbitrary values are placed in a row. Players alternate taking one coin from either the left or right end. Can the first player always guarantee at least half the total value?
+
+**Parity Coloring Strategy**:
+Label coin positions $1, 2, 3, \dots, 2n$:
+- Odd positions sum: $S_{\text{odd}} = c_1 + c_3 + \dots + c_{2n-1}$
+- Even positions sum: $S_{\text{even}} = c_2 + c_4 + \dots + c_{2n}$
+
+**First Player's Control**:
+- If $S_{\text{odd}} \ge S_{\text{even}}$, Player 1 takes $c_1$ (odd position).
+- Both ends exposed to Player 2 are now $c_2$ and $c_{2n}$ (both even positions).
+- Player 2 is forced to take an even coin. Player 1 can then take another odd coin.
+- Player 1 guarantees at least $\max(S_{\text{odd}}, S_{\text{even}}) \ge 50\%$ of the total value.
+
+---
+
+### 4.3 Nim Game & The Sprague-Grundy Theorem
+
+**Problem**: $k$ heaps of stones with sizes $x_1, x_2, \dots, x_k$. Players alternate taking any positive number of stones from a single heap. Last player to move wins.
+
+**Bouton's Theorem**:
+Compute the XOR sum (Nim-Sum):
+$$S = x_1 \oplus x_2 \oplus \dots \oplus x_k$$
+- **$S = 0$**: Losing position (P-position, second player wins);
+- **$S \ne 0$**: Winning position (N-position, first player wins).
+
+**Winning Move Execution**:
+If $S \ne 0$, identify the most significant bit $d$ of $S$. Pick a heap $x_i$ whose $d$-th bit is 1. Reduce that heap to:
+$$x_i' = x_i \oplus S < x_i$$
+The new XOR sum becomes $S' = 0$. The first player systematically maintains $S=0$ for the opponent, guaranteeing victory.
+
+---
+
+### 4.4 Chomp & The Strategy-Stealing Argument
+
+**Problem**: An $R \times C$ grid of chocolate. Bottom-left square $(1, 1)$ is poisoned. Players alternate choosing a square and eating it along with all squares above and to its right. Whoever eats $(1, 1)$ loses. Does Player 1 have a winning strategy?
+
+**Strategy-Stealing Proof (Non-Constructive)**:
+1. Suppose Player 2 has a winning strategy.
+2. Player 1 takes only the top-right single square $(R, C)$.
+3. This transitions the board to state $S_1$. By assumption, Player 2 has a winning response, move $A$.
+4. However, move $A$ was an available legal first move from the initial board $S_0$! Player 1 could have played move $A$ on move 1.
+5. Player 1 steals the winning strategy, a contradiction.
+6. Hence Player 1 must have a winning strategy.
+
+---
+
+### 4.5 100 Prisoners Hat Puzzle
+
+**Problem**: 100 prisoners lined up single file. Each wears a red or blue hat. Each sees all hats in front, but neither their own nor those behind. Starting from Prisoner 100 at the back, each must guess their own hat color out loud. How many prisoners can be guaranteed to survive?
+
+**Parity Protocol**:
+- Encode Red $= 1$, Blue $= 0$.
+- **Prisoner 100**: Sums the red hats seen among the 99 prisoners ahead ($R_{99}$). Calls "Red" if $R_{99}$ is odd, "Blue" if even. Prisoner 100 survives with 50% probability.
+- **Prisoner 99**: Counts red hats ahead ($R_{98}$). If $R_{98}$ parity matches Prisoner 100's call, Prisoner 99's hat must be Blue; otherwise Red. Prisoner 99 survives with 100% certainty.
+- **Subsequent Prisoners (98 down to 1)**: Each deducts the known colors called behind them, surviving with 100% certainty.
+- **Outcome: 99 prisoners guaranteed to survive; expected survival is 99.5%**.
+
+---
+
+### 4.6 Russian Roulette Conditional Decision
+
+**Problem**: A 6-chamber revolver has 2 bullets. Player 1 points the gun at their own head and pulls the trigger: click, empty chamber. It is now your turn. You can: (1) Pull the trigger immediately; (2) Spin the cylinder before pulling. Which gives higher survival?
+
+- **Scenario 1: 2 Bullets are Adjacent**
+  - Player 1 survived an empty chamber, so we are at one of the 4 empty chambers.
+  - Of the 4 empty chambers, only 1 is immediately followed by a bullet.
+  - Shooting directly: Death probability is $1/4 = 25\%$.
+  - Spinning cylinder: Death probability is $2/6 = 33.3\%$.
+  - $\implies$ **Pull the trigger directly without spinning**.
+- **Scenario 2: 2 Bullets are Non-Adjacent**
+  - Of the 4 empty chambers, 2 are followed by a bullet.
+  - Shooting directly: Death probability is $2/4 = 50\%$.
+  - Spinning cylinder: Death probability is $2/6 = 33.3\%$.
+  - $\implies$ **Spin the cylinder first**.
+
+---
+
+## 5 · High-Frequency Quant Interview Tricks & Core Templates
+
+In quantitative finance interviews (Jane Street, Citadel, SIG, Optiver, etc.), game theory problems must typically be solved cleanly on a whiteboard in 5–10 minutes. Below are the 8 most essential problem-solving tricks, templates, and intuitive shortcuts:
+
+---
+
+### Trick 1: Backward Induction & The "0-to-1" Marginal Bribe Template
+- **Applicable Problems**: Sequential, finite-stage dynamic games with voting, elimination, or loot division (Pirate Game, partner voting).
+- **3-Step Execution Template**:
+  1. **Lock in the Terminal Base Case ($k=1, 2$)**: Determine the outcome when the game collapses to the final 1–2 survivors.
+  2. **Track Counterparty Opportunity Costs**: Specifically identify **who receives 0 coins in the subsequent stage**.
+  3. **Buy Votes with Minimal Marginal Cost**: The proposer never seeks to please everyone; the goal is strictly to buy the minimum coalition required for $\ge 50\%$ approval. Always offer **1 coin** to those who would otherwise receive 0 (since $1 > 0$). Never waste budget trying to buy participants who already expect large payouts in the next round.
+
+---
+
+### Trick 2: Mixed Strategy "Level Opponent Payoffs" Template
+- **Applicable Problems**: Zero-sum or non-zero-sum games without pure strategy saddle points (penalty kicks, poker bluffing, matching pennies).
+- **Core Cardinal Rule**: **Never construct the equilibrium equation using your own payoffs!**
+- **3-Step Execution Template**:
+  1. **Parameterize Your Own Probabilities**: Assume you choose Action A with probability $p$, and Action B with $1-p$.
+  2. **Compute the Counterparty's Expected Payoff**:
+     $$E_{\text{Opponent}}[\text{Action 1}] = f(p), \quad E_{\text{Opponent}}[\text{Action 2}] = g(p)$$
+  3. **Enforce Counterparty Indifference**:
+     $$f(p^*) = g(p^*)$$
+  *Intuition*: Your randomization serves strictly to level the opponent's payoff curve. If one opponent action yielded higher expected return, a rational counterparty would exploit it deterministically; flattening their expectations removes their leverage.
+
+---
+
+### Trick 3: Adverse Selection & Truncated Expectation Template
+- **Applicable Problems**: Informational asymmetry games where transactions only settle upon mutual agreement (target acquisitions, lemons markets, market-maker adverse selection).
+- **Core Pitfall**: The unconditional expectation $\mathbb{E}[V]$ is fundamentally different from the **conditional expectation given trade $\mathbb{E}[V \mid \text{Trade}]$**!
+- **3-Step Execution Template**:
+  1. **Identify the Acceptance Condition**: The seller only agrees if their private valuation is below your bid ($V \le B$).
+  2. **Compute Truncated Conditional Expectation**:
+     $$\mathbb{E}[V \mid V \le B] = \frac{B}{2} \quad (\text{assuming } V \sim U[0, 100])$$
+  3. **Evaluate Expected Profit**:
+     $$\mathbb{E}[\Pi] = \mathbb{P}(V \le B) \times (\text{Synergy} \times \mathbb{E}[V \mid V \le B] - B)$$
+  *Intuition*: Any asset the counterparty is willing to sell has its quality halved on average. If synergies cannot overcome this adverse selection penalty, the optimal choice is a **corner solution (bid $B^* = 0$, walk away)**.
+
+---
+
+### Trick 4: Parity Partitioning & Mirror Symmetry Template
+- **Applicable Problems**: Coins in a line, circular table coin placement, symmetric grid games.
+- **Two Core Patterns**:
+  1. **Parity Partitioning**:
+     Partition a 1D sequence into odd and even indexed sets. By taking an odd-indexed coin on move 1, Player 1 forces Player 2 to expose only even-indexed ends on every subsequent turn, locking in $\ge \max(S_{\text{odd}}, S_{\text{even}}) \ge 50\%$.
+  2. **Mirror Strategy**:
+     For centrally symmetric boards (e.g., circular tables), Player 1 takes the exact center on move 1. On all subsequent moves, Player 1 mirrors Player 2's placement directly across the center point, guaranteeing victory.
+
+---
+
+### Trick 5: The Strategy-Stealing Argument Template
+- **Applicable Problems**: Full-information, finite, symmetric games with no draws where adding pieces never disadvantages the player (Chomp, Hex).
+- **Standard Proof Structure**:
+  1. Assume by contradiction that Player 2 has a winning strategy.
+  2. Player 1 plays a benign, minimal move on move 1 (e.g., the isolated top-right corner square).
+  3. The board transitions to state $S_1$, where Player 2 supposedly has a winning response, Move $A$.
+  4. However, Move $A$ was an entirely legal first move from the original board $S_0$! Player 1 could have executed Move $A$ on turn 1.
+  5. Player 1 steals the winning strategy, yielding a contradiction. Hence **Player 1 must have a winning strategy**.
+
+---
+
+### Trick 6: Nim-Sum XOR Invariant Template
+- **Applicable Problems**: Multi-heap token subtraction, impartial DAG games.
+- **Quick Rules**:
+  1. Compute the bitwise XOR sum: $S = x_1 \oplus x_2 \oplus \dots \oplus x_k$.
+  2. **$S = 0 \iff$ Losing State (P-position)**; **$S \ne 0 \iff$ Winning State (N-position)**.
+  3. **Finding the Winning Move**: Locate the most significant bit $d$ of $S$. Choose any heap $x_i$ where the $d$-th bit is 1, and reduce it to $x_i' = x_i \oplus S$.
+
+---
+
+### Trick 7: Auction Bid Shading Template
+- **Applicable Problems**: First-price and second-price sealed-bid auctions.
+- **Formulas**:
+  - **Second-Price (Vickrey)**: Truthful bidding $b(v) = v$ is weakly dominant.
+  - **First-Price Auction ($n$ bidders, $v \sim U[0, 1]$)**:
+    $$b(v) = \frac{n-1}{n} v$$
+    *Intuition*: With 2 bidders, shade by half ($v/2$); with 3 bidders, bid $2/3 v$; with 100 bidders, shade to $99/100 v$. More competition forces bids closer to true value.
+
+---
+
+### Trick 8: The Truel / Weakest Player "Intentional Pass" Trick
+- **Applicable Problems**: 3-player duels, truels, multi-firm market wars.
+- **Core Rule**:
+  - The two stronger players treat each other as the primary lethal threat.
+  - If the weakest player attacks and eliminates one of the strong players, they immediately face the surviving powerhouse's lethal retaliation.
+  - **Intentionally shooting into the air (Pass)** is optimal: it lets the two giants eliminate each other while guaranteeing that the weakest player holds the decisive first shot in the final two-player showdown!
+
+---
+
+## 6 · Quick Reference Cheatsheet
+
+| Game Model | Category | Key Mechanism | Optimal Result / Equilibrium |
+|---|---|---|---|
+| **Prisoner's Dilemma** | Static Non-Zero Sum | Dominant Strategy | `(Defect, Defect)`, Pareto suboptimal |
+| **Penalty Kick** | Static Zero Sum | Indifference Principle | Match expectations to remove counterparty edge |
+| **Pirate Game** | Dynamic Finite Game | Backward Induction | 5-player solution: `(96, 0, 1, 0, 1)` |
+| **Tigers and Sheep** | Dynamic Full Information | Parity Recurrence | Odd tigers eat; even tigers starve |
+| **The Truel** | Dynamic Stochastic Duel | State Machine Reverse | Weakest player shoots into the air ($\approx 39.7\%$) |
+| **Vickrey Auction** | Incomplete Info | Weakly Dominant | Truthful bidding $b = v$ |
+| **First-Price Auction** | Incomplete Info | Bid Shading | $b(v) = \frac{n-1}{n} v$ |
+| **Target Acquisition** | Adverse Selection | Truncated Mean | $\mathbb{E}[V \mid V \le B] = B/2 \implies B^* = 0$ |
+| **Market Making** | Microstructure Spread | Adverse Selection Spread | $\text{Spread} = \alpha(V_H - V_L)$ |
+| **Beauty Contest** | Coordination Game | IESDS Contraction | Fixed point is 0 |
+| **Coins in a Line** | Combinatorial Game | Parity Coloring | First player guarantees $\ge \max(S_{\text{odd}}, S_{\text{even}})$ |
+| **Nim Game** | Impartial Game | XOR Sum Invariant | $\bigoplus x_i = 0$ is losing; $\ne 0$ is winning |
+| **Chomp** | Symmetric Finite Game | Strategy Stealing | Player 1 always has a winning strategy |
+| **100 Prisoners Hats** | Collaborative Signaling | Parity Bit Broadcast | 99 prisoners survive with 100% certainty |
+
+---
+
+## 7 · Interactive Visualizer
 
 ```game-theory-interactive-demo
 ```
 
 ---
 
-## References
+## Primary References
 
 - Osborne, M. J., & Rubinstein, A. *A Course in Game Theory*. MIT Press.
 - Zhou, J. *A Practical Guide to Quantitative Finance Interviews*.
-- Crack, T. F. *Heard on the Street*.
+- Crack, T. F. *Heard on the Street: Quantitative Questions from Wall Street Job Interviews*.
+- Glosten, L. R., & Milgrom, P. R. (1985). *Bid, ask and transaction prices in a specialist market with heterogeneously informed traders*. Journal of Financial Economics.
