@@ -81,54 +81,174 @@ Global ordering forces all traffic through a single processing node, sacrificing
 ### Dead-Letter Queue (DLQ)
 Infinite retries lead to a Retry Storm. Messages encountering permanent failures (e.g., data validation errors) should be routed to a Dead-Letter Queue (DLQ) preserving the original `event_id`, failure reason, and stack trace for subsequent manual inspection and replay.
 
-## 5 · Outbox Pattern and CDC
+## 5 · Outbox Pattern and Event Bus Paradigms
 
-In microservices, executing a raw Dual Write in business code creates an uneliminatable failure window:
+### 5.1 What is the Transactional Outbox Pattern?
+
+#### The Dual-Write Problem
+In microservices and distributed architectures, atomically persisting business domain state (writing to a database) and publishing an asynchronous event (sending to a message broker) cannot be achieved without heavyweight distributed transactions (such as 2PC/XA):
 
 ```text
-1. Execute DB transaction: UPDATE orders SET status = 'PAID'
-2. API Call: publish OrderPaid to the message broker
+Approach A (Write DB first, then publish to MQ):
+1. Local DB transaction commits: UPDATE orders SET status = 'PAID'
+2. Invoke Broker API: publish(OrderPaidEvent)
+--> Failure Window: If step 2 fails due to network partition, broker downtime, or application process crash, the DB change is permanently committed while downstream systems never receive the event, causing irrecoverable state drift.
+
+Approach B (Publish to MQ first, then write DB):
+1. Invoke Broker API: publish(OrderPaidEvent)
+2. Local DB transaction commits: UPDATE orders SET status = 'PAID'
+--> Failure Window: If step 2 fails due to unique constraint violations, deadlock aborts, or timeouts, downstream consumers process a "phantom event" that was never actually committed in the source of truth.
 ```
 
-If step 2 fails, the database is updated but downstream systems are oblivious. If the order is reversed and step 2 succeeds but step 1 rolls back, phantom events are emitted. Simple retries cannot resolve this state inconsistency.
+Distributed two-phase commit (2PC) protocols introduce high blocking latencies, single-point coordinator bottlenecks, and are rarely supported by modern cloud message brokers.
 
-### Transactional Outbox
-The correct approach is to reuse the local database transaction to commit the state change alongside the event record:
+#### Core Mechanism of Transactional Outbox
+The **Transactional Outbox Pattern** eliminates dual writes by demoting the cross-network event emission into a single local ACID transaction. Domain state mutations and the outbound event payload are committed together in one atomic database operation:
 
 ```sql
 BEGIN;
 
--- 1. Update business state
-UPDATE orders SET status = 'PAID' WHERE order_id = :order_id;
+-- 1. Mutate domain state
+UPDATE orders 
+SET status = 'PAID', updated_at = now() 
+WHERE order_id = :order_id AND status = 'PENDING';
 
--- 2. Insert event into Outbox table
-INSERT INTO outbox_events(event_id, event_type, payload) 
-VALUES (:event_id, 'order.paid', :payload);
-
-COMMIT;
-```
-
-After the transaction commits, a separate background publisher or a CDC tool (e.g., Debezium's Outbox Event Router) polls the table or parses the binlog to reliably relay the events to the broker.
-
-### Using the Database as a Queue
-At a smaller scale or with low concurrency, a relational database can be used directly to build a reliable queue:
-
-```sql
-BEGIN;
-
--- Find unprocessed tasks, using SKIP LOCKED to avoid lock contention
-SELECT job_id FROM jobs 
-WHERE status = 'READY' AND available_at <= now()
-ORDER BY available_at, job_id
-FOR UPDATE SKIP LOCKED LIMIT 10;
-
--- Mark them as running and set a lease timeout
-UPDATE jobs SET status = 'RUNNING', attempts = attempts + 1 
-WHERE job_id = ANY(:claimed_ids);
+-- 2. Insert the corresponding event into the Outbox table within the same transaction
+INSERT INTO outbox_events (
+    event_id, 
+    aggregate_type, 
+    aggregate_id, 
+    event_type, 
+    payload, 
+    created_at
+) VALUES (
+    :event_id, 
+    'order', 
+    :order_id, 
+    'order.paid', 
+    :payload_json, 
+    now()
+);
 
 COMMIT;
 ```
-When throughput scales, tables bloat, and online transactions are impacted, you can migrate to a dedicated MQ.
+
+Relying on the database's local Atomicity and Durability, the domain mutation and event record either both persist or both roll back, completely eliminating the distributed inconsistency window.
+
+#### Outbox Relay Mechanisms
+Once persisted in the Outbox table, an external relay component transfers the event to downstream consumers or the message broker. Two primary relay mechanisms are used in production:
+
+1. **Polling Publisher**:
+   A background worker periodically scans the Outbox table, claims unhandled rows, publishes them to the broker, and marks them completed or deletes them upon acknowledgment.
+   - *Pros*: Simple SQL implementation, easy to inspect and debug, no external middleware dependencies.
+   - *Cons*: High-frequency polling places extra read load on the database; poll intervals add latency; large batches cause index contention.
+2. **Log-based Change Data Capture (CDC)**:
+   A dedicated CDC engine (such as Debezium's Outbox Event Router) directly tails the database transaction write-ahead log (e.g., MySQL Binlog or PostgreSQL WAL), extracts rows appended to `outbox_events`, and streams them into Kafka.
+   - *Pros*: Zero polling SQL overhead, sub-second latency, completely decoupled from application runtime, zero read locks on the primary database.
+   - *Cons*: Requires provisioning and operating Kafka Connect / Debezium infrastructure; schema migrations require operational care.
+
+**Delivery Guarantees**: Regardless of whether Polling or CDC is used, network timeouts and worker restarts inevitably cause duplicate transmissions. The Outbox pattern provides **At-Least-Once** delivery. **Downstream consumers must implement strict idempotency using `event_id` or unique business keys.**
+
+---
+
+### 5.2 Event Bus Paradigms: DB as Bus vs. Queue / Log as Bus
+
+Once events are reliably generated via the Outbox pattern, two classic paradigms govern the event distribution bus:
+
+| Paradigm | Design & Use Case | Trade-offs & Operational Costs |
+|---|---|---|
+| **DB as bus** | Insert Outbox records within business transactions; consumers maintain durable cursors or claim tasks in short transactions with leases, executing external I/O only after commit | Requires vacuum/cleanup of history, expired lease indexing, and cursor tracking; multiple logical subscribers need independent cursors / task rows and cannot share a single status flag |
+| **Queue / log as bus** | Outbox relay / CDC publishes event_id to Kafka; Router consumes, matches subscriptions, and generates Deliveries; raw log retained for disaster recovery and replay | Introduces broker clusters, replication, and consumer lag monitoring; relay may duplicate emissions, requiring idempotent Routers and consumers |
+
+---
+
+### 5.3 Deep Dive: DB as Bus (Database as the Event Backbone)
+
+For monolithic architectures, low-to-medium throughput services, or teams wishing to avoid the operational overhead of running a dedicated Kafka cluster, using the relational database directly as the event bus and dispatch engine is an effective choice.
+
+#### Core Implementation Mechanisms
+
+1. **Job Lease Pattern via SKIP LOCKED**:
+   Multiple competing consumers claim ready tasks using short transactions and explicit row-level locking:
+   ```sql
+   BEGIN;
+
+   -- 1. Claim a batch of ready tasks, using SKIP LOCKED to avoid lock contention between consumers
+   SELECT event_id, payload 
+   FROM outbox_events 
+   WHERE status = 'READY' AND available_at <= now()
+   ORDER BY available_at, event_id
+   FOR UPDATE SKIP LOCKED 
+   LIMIT 10;
+
+   -- 2. Mark claimed rows as running and set a lease expiration
+   UPDATE outbox_events 
+   SET status = 'RUNNING', 
+       lease_expires_at = now() + INTERVAL '30 seconds', 
+       attempts = attempts + 1 
+   WHERE event_id = ANY(:claimed_ids);
+
+   COMMIT;
+   ```
+   > **Critical Engineering Rule: Execute external I/O only AFTER the transaction commits.**
+   > Never make external HTTP requests, RPC calls, or lengthy computations while holding an open database transaction. A slow downstream response will hold row locks indefinitely, exhaust the connection pool, and trigger cascading failure across the database. The correct workflow is: commit the lease transaction immediately, execute external I/O outside the transaction, and open a separate short transaction to mark `status = 'COMPLETED'`. If a worker crashes, the lease expires and other workers safely reclaim the task.
+
+2. **Durable Cursor Stream**:
+   If events are append-only without in-place updates or deletions, consumers maintain an independent cursor table tracking their highest processed `event_id` (auto-incrementing integer):
+   ```sql
+   SELECT event_id, event_type, payload 
+   FROM outbox_events 
+   WHERE event_id > :last_read_id 
+   ORDER BY event_id ASC 
+   LIMIT 100;
+   ```
+
+#### Inherent Costs and Bottlenecks
+
+- **Table Bloat and Garbage Collection**: Relational database storage engines are not optimized as queue queues. Frequent `UPDATE` and `DELETE` operations generate dead tuples (e.g., PostgreSQL MVCC churn), inducing table bloat, index fragmentation, and heavy autovacuum overhead. Systems must implement partition pruning (dropping daily partition tables) or batch archival jobs.
+- **Multi-Subscriber Fan-out Complexity**: In traditional message brokers, a single message is naturally fanned out across multiple consumer groups. In a DB-as-bus design, a single row cannot track the independent progress of 5 distinct subscribers via a single `status` column. The architecture must either maintain separate cursor records per subscriber (for append-only streams) or duplicate task rows per subscriber upon write (write amplification).
+- **Throughput Ceiling**: Constrained by ACID transaction coordination and connection pools, DB as bus is typically suited for workloads with QPS < 1,000–2,000. When throughput exceeds this scale, the bus should transition to a dedicated broker.
+
+---
+
+### 5.4 Deep Dive: Queue / Log as Bus (Partitioned Log as the Event Backbone)
+
+When microservices proliferate, throughput reaches tens of thousands of QPS, or multi-subscriber fan-out and long-term history replay are required, a partitioned append-only log (such as Kafka) serves as the event backbone.
+
+#### Core Implementation Mechanisms
+
+```text
+[Business Service] 
+    │  (Local ACID Transaction)
+    ├──► Domain Tables (orders)
+    └──► Outbox Table (outbox_events)
+            │
+            ▼ (CDC tails Binlog / WAL)
+     [Debezium / Relay]
+            │
+            ▼ (At-Least-Once Delivery)
+    [Kafka Partitioned Log]  (Topic: events.orders, Key: order_id)
+            │
+            ▼ (Batched Stream Consumption)
+     [Event Router] 
+            │
+            ├──► Evaluates subscription filters
+            ├──► Generates durable Delivery records
+            └──► Dispatches to downstream services / Webhook Workers
+```
+
+1. **CDC-Driven Pipelined Decoupling**:
+   The Outbox table serves solely as an ephemeral staging buffer. The CDC engine extracts events in sub-second intervals and streams them into Kafka partitioned by `aggregate_id`. Application database connections are completely insulated from downstream consumer latency.
+2. **Decoupled Router and Delivery State Machines**:
+   A dedicated Event Router service consumes from Kafka, evaluates tenant subscription rules (e.g., `event_type == 'order.paid' && amount > 1000`), creates isolated Delivery items per subscriber, and forwards them to execution queues or webhook dispatchers.
+3. **Log Replayability**:
+   Kafka retains raw event logs independently of consumer progress (e.g., 7 days retention). When a new microservice is deployed and needs historical backfills, or when a downstream bug requires reprocessing historical data, consumers can simply `Seek(Offset)` back to an earlier timestamp without putting any query load on the upstream primary database.
+
+#### Inherent Costs and Operational Trade-offs
+
+- **Broker Operational Overhead**: Operating Kafka or RocketMQ requires maintaining broker clusters, controller consensus (KRaft / ZooKeeper), partition sizing, rebalances, disk watermarks, and multi-replica durability configurations (`acks=all`, `min.insync.replicas=2`).
+- **Consumer Lag Monitoring**: Systems must monitor `Consumer Lag` and `Oldest unacked age` to detect processing bottlenecks and trigger auto-scaling before queue buffers saturate.
+- **End-to-End Idempotency Requirement**: Network retries across CDC relays and routers produce duplicate messages. Downstream consumers must implement idempotency (e.g., database unique constraints `ON CONFLICT DO NOTHING`, distributed deduplication locks, or state machine condition checks `WHERE status = 'PREV'`).
 
 ## 6 · How to Choose
 

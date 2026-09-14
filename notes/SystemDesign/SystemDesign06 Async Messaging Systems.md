@@ -81,54 +81,176 @@ Kafka 没有采用传统的 Queue 模式，而是将核心抽象换成了可保�
 ### 死信队列 (DLQ)
 无限重试会引发 Retry Storm。发生永久失败（如数据校验不过）的消息应进入死信队列 (DLQ)，以便保留原始 `event_id`、失败原因和堆栈，供后续人工审查（Inspect）和工具重放（Replay）。
 
-## 5 · Outbox 模式与 CDC
+## 5 · Outbox 模式与事件总线架构选型
 
-在微服务中，不能在业务代码中执行粗糙的 Dual Write，这会产生无法消除的故障窗口：
+### 5.1 什么是 Transactional Outbox 模式？
+
+#### 双写困境 (The Dual-Write Problem)
+在微服务与分布式系统中，持久化业务状态（写数据库）与异步发布事件（写消息队列）无法在缺乏重型分布式事务（如 2PC/XA）的情况下直接保持原子性：
 
 ```text
-1. 数据库事务执行：UPDATE orders SET status = 'PAID'
-2. API 调用：publish OrderPaid 到消息中间件
+方案 A (先写 DB，再发 MQ):
+1. 数据库本地事务提交: UPDATE orders SET status = 'PAID'
+2. 调用 Broker API: publish(OrderPaidEvent)
+--> 故障点: 若第 2 步因网络抖动、Broker 宕机或应用进程 OOM 崩溃，数据库变更已持久化，而下游永远丢失该事件，产生永久数据不一致。
+
+方案 B (先发 MQ，再写 DB):
+1. 调用 Broker API: publish(OrderPaidEvent)
+2. 数据库本地事务提交: UPDATE orders SET status = 'PAID'
+--> 故障点: 若第 2 步因唯一键冲突、死锁回滚或网络超时导致事务失败，下游系统已接收并消费了从未真正生效的“幽灵事件”。
 ```
 
-如果步骤 2 失败，数据库已变更而下游永远不知；若颠倒顺序，步骤 2 成功而步骤 1 回滚，下游则收到幽灵事件。简单的重试无法判断故障点在哪一步。
+分布式 2PC 协议因两阶段同步阻塞、极高延迟、单点协调者风险以及云原生中间件普遍不支持 XA，在高并发系统中已被基本弃用。
 
-### Transactional Outbox
-正确做法是复用本地数据库事务，将状态变更与事件记录一起提交：
+#### Outbox 核心机制
+**Transactional Outbox 模式**通过降维解决双写问题：将“跨网络发布事件”降级为“单机数据库事务内的一次本地表插入”。在同一个本地 ACID 事务中完成状态修改与事件持久化：
 
 ```sql
 BEGIN;
 
--- 1. 更新业务状态
-UPDATE orders SET status = 'PAID' WHERE order_id = :order_id;
+-- 1. 更新业务聚合根状态
+UPDATE orders 
+SET status = 'PAID', updated_at = now() 
+WHERE order_id = :order_id AND status = 'PENDING';
 
--- 2. 插入事件到 Outbox 表
-INSERT INTO outbox_events(event_id, event_type, payload) 
-VALUES (:event_id, 'order.paid', :payload);
-
-COMMIT;
-```
-
-事务提交后，再由独立的后台进程或 CDC 架构（如 Debezium 的 Outbox Event Router）轮询表或解析 Binlog，将事件可靠投递给 Broker。
-
-### 使用数据库作为 Queue
-如果在小规模或低并发场景下，直接使用关系型数据库也可以构建可靠的队列：
-
-```sql
-BEGIN;
-
--- 寻找未处理的任务，使用 SKIP LOCKED 避免消费者之间的锁竞争
-SELECT job_id FROM jobs 
-WHERE status = 'READY' AND available_at <= now()
-ORDER BY available_at, job_id
-FOR UPDATE SKIP LOCKED LIMIT 10;
-
--- 将其标记为运行中，并设置超时租约
-UPDATE jobs SET status = 'RUNNING', attempts = attempts + 1 
-WHERE job_id = ANY(:claimed_ids);
+-- 2. 在同一事务中插入事件记录到 Outbox 表
+INSERT INTO outbox_events (
+    event_id, 
+    aggregate_type, 
+    aggregate_id, 
+    event_type, 
+    payload, 
+    created_at
+) VALUES (
+    :event_id, 
+    'order', 
+    :order_id, 
+    'order.paid', 
+    :payload_json, 
+    now()
+);
 
 COMMIT;
 ```
-当系统吞吐量上升、表急剧膨胀并影响在线事务时，再迁移至独立 MQ。
+
+利用单机数据库的原子性（Atomicity）与持久性（Durability），保证领域状态变更与待发送事件**要么同时持久化成功，要么同时回滚**，彻底消除分布式双写的窗口不一致。
+
+#### Outbox Relay 中继投递机制
+事件落盘至 Outbox 表后，需要外部中继（Relay）将事件发布给真正的订阅者或消息系统。主要有两种实现机制：
+
+1. **轮询发布者 (Polling Publisher)**：
+   后台定时 Worker 使用长轮询或定时任务扫描 Outbox 表，拉取未发送事件并投递给 Broker，发送成功后标记状态或删除行。
+   - *优点*：纯 SQL 逻辑，易于理解与调试，无需额外依赖外部专用中间件。
+   - *缺点*：高频轮询对数据库造成额外读压力；拉取间隔引入投递延迟；大批量轮询容易引发索引争抢。
+2. **基于日志的变更数据捕获 (Log-based Change Data Capture, CDC)**：
+   利用 CDC 工具（如 Debezium Outbox Event Router）直接监听并解析数据库底层追加的事务日志（如 MySQL Binlog、PostgreSQL WAL），流式提取对 `outbox_events` 表的行插入操作并即时转发至 Kafka 等流平台。
+   - *优点*：零轮询 SQL 开销，延迟可达毫秒级，解耦应用层运行时，完全不侵入主库读写事务。
+   - *缺点*：需部署并维护 Kafka Connect / Debezium 等管道基础设施，日志格式变更时存在运维与升级成本。
+
+**投递语义规范**：无论通过 Polling 还是 CDC，Relay 在面临网络抖动、Broker 超时或节点重启时均会发起重试。因此 Outbox 模式天然只保证 **At-Least-Once（至少一次）** 交付，**下游消费者必须根据 `event_id` 或业务幂等键严格实现去重幂等**。
+
+---
+
+### 5.2 事件总线两大范式：DB as bus vs Queue / log as bus
+
+在确定了由 Outbox 产生可靠事件后，事件的传递与消费总线存在两种经典架构范式：
+
+| 方案 | 设计与适用场景 | 代价 |
+|---|---|---|
+| **DB as bus** | 业务事务内插入 Outbox；消费者维护持久游标，或以短事务领取任务并写入租约，提交后才执行外部 I/O | 需要清理历史、到期索引与消费者进度；多个逻辑订阅者要独立游标 / 任务行，不能共用一个消费标记 |
+| **Queue / log as bus** | Outbox relay / CDC 将 event_id 发布到 Kafka；Router 消费、匹配订阅并生成 Delivery；保留原始事件供恢复 | 引入 Broker、复制和 lag 运维；relay 可能重复发布，Router 必须幂等 |
+
+---
+
+### 5.3 深入剖析方案一：DB as bus（数据库作为事件总线）
+
+在单体应用、低吞吐或团队不想运维独立 MQ 集群的场景下，直接将关系型数据库作为事件总线与任务分发平台是务实的选择。
+
+#### 核心实现机制
+
+1. **基于租约与抢占的任务领取 (Job Lease Pattern)**：
+   多个消费者并发争抢消费未处理任务时，必须使用短事务和排他行锁跳过已锁定行：
+   ```sql
+   BEGIN;
+
+   -- 1. 抢占一批就绪任务，使用 SKIP LOCKED 避免消费者之间的锁等待
+   SELECT event_id, payload 
+   FROM outbox_events 
+   WHERE status = 'READY' AND available_at <= now()
+   ORDER BY available_at, event_id
+   FOR UPDATE SKIP LOCKED 
+   LIMIT 10;
+
+   -- 2. 将其标记为执行中，并设置超时租约 (Lease Expiration)
+   UPDATE outbox_events 
+   SET status = 'RUNNING', 
+       lease_expires_at = now() + INTERVAL '30 seconds', 
+       attempts = attempts + 1 
+   WHERE event_id = ANY(:claimed_ids);
+
+   COMMIT;
+   ```
+   > **关键系统规范：提交后才执行外部 I/O**。
+   > 绝对严禁在数据库事务内部发起外部 HTTP 请求、第三方 API 调用或耗时计算。若在持锁事务内发生慢网络等待，会导致数据库行锁长久不释放、连接池耗尽并引发全局雪崩。正确做法是短事务快速提交租约后，在事务外部执行 I/O，执行完毕再开启一个新短事务更新 `status = 'COMPLETED'`。若 Worker 中途崩溃，租约到期后该行自动被其他 Worker 重新抢占。
+
+2. **基于持久游标的单调追加流 (Durable Cursor Stream)**：
+   若事件只读不删，表保持纯追加。消费者在独立的元数据表记录每个订阅组当前成功消费的最大 `last_read_id`（自增主键），类似于数据库内的轻量 Offset：
+   ```sql
+   SELECT event_id, event_type, payload 
+   FROM outbox_events 
+   WHERE event_id > :last_read_id 
+   ORDER BY event_id ASC 
+   LIMIT 100;
+   ```
+
+#### 固有代价与现实瓶颈
+
+- **历史清理与表膨胀 (Table Bloat)**：关系型数据库存储引擎并非为吞吐队列设计。频繁的 `UPDATE` 和 `DELETE` 会在 PostgreSQL 中生成大量 Dead Tuples，引发表膨胀、索引分裂与 Autovacuum 剧烈抖动。系统必须实现基于日期的分区裁剪（Partition Drop）或批量物理归档机制。
+- **多订阅者拓展复杂度高**：在传统 MQ 中，一条消息可以通过不同 Consumer Group 天然广播给多个下游。而在 DB as bus 架构中，若有 5 个独立的订阅微服务，表中的一行无法简单通过单一的 `status` 字段满足所有消费者的进度标记。必须：
+  - 方案 A：为每个订阅者维护独立的游标表（仅适用于事件持久不删的流式消费）；
+  - 方案 B：在发布事件时，笛卡尔积插入 5 行独立的任务记录（写放大严重）。
+- **容量与吞吐天花板**：单机数据库的事务与连接数有限，一般适合处理 QPS < 1,000~2,000 的任务派发。当并发吞吐量继续上升时，必须将总线能力迁移至独立的消息中间件。
+
+---
+
+### 5.4 深入剖析方案二：Queue / log as bus（消息队列 / 分区日志作为事件总线）
+
+当微服务数量众多、吞吐量进入万级以上、或存在复杂多租户广播与历史数据重放需求时，应采用分区日志 / 消息队列作为中枢总线。
+
+#### 核心实现机制
+
+```text
+[业务微服务] 
+    │  (单机 ACID 事务)
+    ├──► 业务表 (orders)
+    └──► Outbox 表 (outbox_events)
+            │
+            ▼ (CDC 解析 Binlog / WAL)
+     [Debezium / Relay]
+            │
+            ▼ (At-Least-Once 发布)
+    [Kafka Partitioned Log]  (Topic: events.orders, Key: order_id)
+            │
+            ▼ (批量拉取消费)
+     [Event Router] 
+            │
+            ├──► 匹配 Subscription 过滤规则
+            ├──► 生成 Delivery 记录并持久化
+            └──► 分发至下游微服务 / Webhook Worker
+```
+
+1. **CDC 驱动的管道化解耦**：
+   Outbox 表仅作为事件在源数据库的“暂存缓冲区”，CDC 引擎在毫秒级将事件抽取并以 Key-Value 形式投递至 Kafka。业务数据库连接与外部通信彻底解耦。
+2. **Router 与 Delivery 状态机解耦**：
+   Router 负责从 Kafka 集中拉取事件，匹配多订阅者的订阅过滤条件（如 `event_type == 'order.paid' && amount > 1000`）。匹配成功后为每个订阅者生成一条 Delivery 任务，并放入下游工作队列。
+3. **保留原始事件与历史回放 (Replayability)**：
+   Kafka 的追加日志支持基于时间戳或 Offset 的持久化保留（如保留 7 天）。当下游微服务发布新特性需要回填历史全量事件，或者下游出现 Bug 修复后需重新计算时，可直接通过 `Seek(Offset)` 从过去任意位置重放事件流，完全不影响上游业务主库。
+
+#### 固有代价与运维挑战
+
+- **分布式中间件运维负担**：引入 Kafka/RocketMQ 意味着需要维护 Broker 集群、高可用选举、磁盘容量水位、以及多副本同步配置（如 `acks=all` 和 `min.insync.replicas=2`）。
+- **Lag 监控与堆积治理**：必须建立完善的 `Consumer Lag` 和 `Oldest unacked age` 告警体系。当突发流量涌入或消费者发生 GC 暂停时，需要具备动态扩容 Partition 和消费者实例的能力。
+- **端到端幂等必须强制落地**：分布式环境下网络分区、Broker 主从切换、Relay 重发以及 Router 重试均会引入重复数据。下游消费者必须在业务侧实现幂等（如使用分布式锁校验、数据库唯一索引 `ON CONFLICT DO NOTHING` 或状态机条件更新 `WHERE status = 'PREV'`）。
 
 ## 6 · 怎么选
 
