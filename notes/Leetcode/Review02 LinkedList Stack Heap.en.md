@@ -295,6 +295,54 @@ class IdempotencyManager:
   - Sharded Cache (`ConcurrentHashMap` pattern): Partition keys across $M$ distinct stripes via $	ext{hash}(key) \pmod M$. Each shard possesses its own lock and DLL, achieving lock-free concurrency across keys while yielding per-shard approximate LRU.
 - **Distributed Cache**:
   - Consistent hashing ring with virtual nodes balances partitions across physical nodes; each node executes the standard DLL+hashmap engine locally.
+#### 6. Memory Allocator with O(log m) Free Gap Indexing & Coalescing
+- **Transition from O(N) Linear Scan to O(log m) Production Tier**:
+  - Linear scanning over free gaps fails under heavy fragmentation.
+  - **Dual-Indexing Architecture**:
+    1. **Size-Keyed Balanced Tree / SortedDict**: `free_by_size: SortedDict[int, Set[BlockNode]]`. Binary search locates the leftmost block satisfying $\text{block.size} \ge size$ in $\mathcal{O}(\log m)$ time;
+    2. **Address-Ordered Doubly Linked List**: All blocks (allocated and free) are chained in ascending physical address order (`start, size, is_free, prev, next`).
+- **Four Coalescing Scenarios on Free**:
+  When `free(address, size)` executes, validation guards against double-free via `{address: size}` active allocations map, followed by physical neighbor inspection:
+  1. **No Neighbour Free**: Mark block as free and insert into `free_by_size`;
+  2. **Left Neighbour Free**: Merge left (`left.size += size`), update left block entry in `free_by_size`;
+  3. **Right Neighbour Free**: Merge right into current, remove right node from list and size index;
+  4. **Both Neighbours Free**: Collapse three blocks into one. Left block absorbs current and right, right node is deleted, left node size updated in `free_by_size`.
+
+#### 7. LRU + LFU + Pluggable Eviction Strategy Pattern
+- **Architectural Decoupling**: Separate backing storage from eviction logic.
+- **Strategy Interface**:
+  - `on_access(key)`: Hook invoked on hit to update recency, frequency buckets, or weight;
+  - `pick_victim() -> key`: Nominates next key to evict when capacity is exceeded;
+  - `on_evict(key)`: Cleans auxiliary tracking metadata.
+- **Unified Policy Implementations**:
+  - `LRUPolicy`: Single recency DLL;
+  - `LFUPolicy`: `freq_buckets: Dict[int, DLL]` + `min_freq` cursor. Ties at `min_freq` are broken by LRU within the lowest frequency bucket;
+  - `TTLWeightedPolicy` / `SizeWeightedPolicy`: Pluggable heap or skip-list indexed by weight.
+
+#### 8. Durable In-Memory Cache with WAL & Crash Recovery
+- **Deterministic Key Hashing**:
+  - `generate_key(*args, **kwargs)` fails if `kwargs` is hashed directly (`TypeError: unhashable type: 'dict'`).
+  - Canonical solution: Recursive transformation to immutable tuples, or `json.dumps(args) + json.dumps(kwargs, sort_keys=True)`.
+- **Write-Ahead Log (WAL) & Replay Ordering**:
+  - Append every mutation/access to disk: `{"op": "PUT", "key": k, "val": v, "ts": now}`.
+  - **Replay Invariant**: Simple dict assignment during recovery degrades LRU ordering to FIFO. On replay, **explicitly call `move_to_end` for previously seen keys** to rebuild exact recency positions.
+  - Trade-off: Synchronous `fsync` (zero data loss) vs Group Commit (high throughput); periodic checkpoint snapshots truncate stale WAL.
+
+#### 9. 4-Level In-Memory Database Architecture (Anthropic CodeSignal OA)
+- **Data Model**: Append-only version history per `(key, field)`: `[(set_ts, value, expiry_ts)]`.
+  - **Level 1 (Core CRUD)**: `SET`, `GET`, `DELETE`, `COMPARE_AND_SET`, `COMPARE_AND_DELETE`.
+  - **Level 2 (Lexicographical & Prefix Scan)**: `SCAN(key)` sorted by field name; `SCAN_BY_PREFIX(key, prefix)`.
+  - **Level 3 (Field TTL Expiry)**: `SET_WITH_TTL(key, field, val, ttl)`. Lifetime $[ts, ts+ttl)$. Filter lazily on read (`query_ts >= expiry_ts`).
+  - **Level 4A (Backup / Restore)**:
+    - `BACKUP(ts)`: Deep copy state. **Critical corner case**: Store **remaining-TTL delta ($\Delta = \text{expiry} - \text{backup\_ts}$)** rather than absolute timestamps so restored survivors resume counting against the new clock!
+  - **Level 4B (Look-back Time Travel GET_WHEN)**:
+    - Binary search historical version list for latest record with `set_ts <= at_ts`, verifying it was alive at `at_ts`.
+
+#### 10. Todo List OOP Design & Separation of Concerns
+- **Interface**: `add(entry) -> id`, `delete(id) -> bool`, `get_todo() -> List[str]`, `get_all() -> List[str]`. External predicate `check_todo(id) -> bool` returns completion status in $\mathcal{O}(1)$.
+- **Architectural Discipline**:
+  - `TodoList` owns sequence, ID assignment, and storage only. Completion state belongs to the external authority, preventing state drift.
+  - Structure: Hash map `id_to_node` + Doubly Linked List preserving insertion order. Monotonic auto-increment counter ensures stable, non-reusable IDs.
 
 </div>
 
@@ -397,6 +445,25 @@ if __name__ == "__main__":
 ```
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: Thread-Safe Task Queue Transformation</div>
+
+#### Concurrency Architectural Trade-off Matrix
+Transforming a shared linked list via `reverseKGroup(head, k)` under concurrent reads and tail-appends requires rigorous synchronization:
+1. **Global Mutex**:
+   - Single lock protects entire queue during transformation.
+   - Simplest correctness, but serializes all readers and destroys throughput.
+2. **Reader-Writer Lock (shared_mutex)**:
+   - Concurrent inspection acquires shared read lock; batch transformation takes exclusive write lock.
+   - Eliminates read contention, but prolonged transformation starves waiting readers.
+3. **Segmented Locking**:
+   - Independent lock per $k$-sized segment. Threads transform disjoint subsegments concurrently.
+   - Deadlock Prevention: Splice boundaries require holding locks on both adjacent segments. Locks must be acquired strictly in ascending memory address or logical sequence order.
+4. **Copy-On-Write (COW) with Atomic Pointer Swap**:
+   - Worker allocates and transforms a detached copy of the segment, then atomically publishes the new sub-head via CAS / `atomic_store`.
+   - Readers remain completely lock-free; ideal for read-heavy task dispatching.
+
+</div>
 
 </div>
 </details>
@@ -496,6 +563,27 @@ if __name__ == "__main__":
     assert vals == [1, 2, 3]
     print("✅ Card 03 (Flatten Multilevel Doubly Linked List) all tests passed!")
 ```
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: Recursive DFS vs Explicit Stack Iteration</div>
+
+- **Recursive DFS with Subtree Tail Return**:
+  - Define `dfs(node) -> tail` returning the terminal node of the flattened subsegment.
+  - When encountering `curr.child`:
+    1. Preserve `nxt = curr.next`;
+    2. Recurse to retrieve `child_tail = dfs(curr.child)`;
+    3. Splice forward: `curr.next = curr.child; curr.child.prev = curr`;
+    4. Splice backward: If `nxt`, connect `child_tail.next = nxt; nxt.prev = child_tail`;
+    5. Clear `curr.child = None`;
+    6. Continue traversal from `nxt` (or `child_tail` if `nxt` was null).
+- **Explicit Stack Iteration (Stack-Overflow Free)**:
+  - Avoids runtime recursion depth limits via an explicit stack:
+  - Traverse list; when `curr.child` is detected:
+    - Push `curr.next` (if non-null) onto stack;
+    - Redirect `curr.next = curr.child; curr.child.prev = curr`;
+    - Nullify `curr.child = None`;
+  - When reaching the end of a segment (`curr.next is None`) and the stack is non-empty, pop and splice the pending node to `curr.next`, updating its `prev`. Auxiliary space is bounded by $\mathcal{O}(\text{depth})$.
 
 </div>
 
@@ -692,6 +780,33 @@ if __name__ == "__main__":
     assert SlidingWindowMaxSolution.maxSlidingWindow([4, -2], 2) == [4]
     print("✅ Card 05 (Sliding Window Maximum) all tests passed!")
 ```
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: Sliding-Window Stream Aggregation & Bounded Dedup</div>
+
+#### 1. Message Event Aggregator with 5-Minute Window
+- **System Requirements**:
+  - Ingests events `(timestamp, user_id, chat_id, event_type)` where `event_type \in {message, react, end_chat}`.
+  - Window is $[t - 300, t]$ (inclusive 5 minutes). Output for each event in original order:
+    1. `message_count`: Number of messages in same `chat_id` within the window;
+    2. `active_chat_count`: Number of active chats for current `user_id` within the window.
+  - **Active Chat Invariant**:
+    - At least one `react` or `end_chat` occurs for `(user_id, chat_id)` within $[t - 300, t]$;
+    - **The latest state event within the window is `react`**.
+- **Out-of-Order Handling & Memory Pruning**:
+  - Maintain a deque of timestamps per `chat_id` for message count;
+  - Maintain a map `chat_state[chat_id] -> deque[(timestamp, type)]` per `user_id`;
+  - Evict entries with timestamp $< t - 300$ during window progression to keep memory strictly bounded.
+
+#### 2. Sliding-Window Duplicate Records Detection
+- **System Requirements**:
+  - Ingests `(id, text, title, timestamp)` with non-decreasing timestamps. Emit any record matching earlier content within 60 seconds ($[t - 60, t]$).
+  - Explicit requirement: Purge records older than 60 seconds to bound memory by window size, not stream length.
+- **Dual Deque + Hash Map Eviction Mechanism**:
+  - `content_to_ts: Dict[content, int]` tracks latest in-window occurrence;
+  - `order_queue: deque[(timestamp, content)]` maintains chronological order;
+  - On arrival of record at $t$, purge stale entries from `order_queue` where $timestamp < t - 60$. If the stored timestamp matches the popped timestamp, erase from hash map. Memory remains $\mathcal{O}(\text{window\_rate})$.
 
 </div>
 
@@ -1092,6 +1207,33 @@ if __name__ == "__main__":
 ```
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: Fault-Tolerant Work Queue & Round-Robin Scheduling</div>
+
+#### 1. Fault-Tolerant Work Queue with Leases, Retries & DLQ
+- **State Machine & API**:
+  - `reserve() -> Optional[(task_id, token)]`: Transitions task from `READY` to `RESERVED`, establishing a lease `deadline = now + timeout` and issuing an opaque `version_token`;
+  - `complete(task_id, token)`: Terminal transition to `COMPLETED`;
+  - `fail(task_id, token)`: Increments `attempts`. Returns task to `READY` if `attempts < max_attempts`; otherwise shifts to Dead-Letter Queue (DLQ).
+- **Fencing Token Invariant**:
+  - If a worker holding token $v$ stalls across its lease deadline, the scheduler increments the token to $v+1$ and re-enqueues the task.
+  - When the stalled worker eventually calls `complete(task_id, v)`, the stale token is rejected, preventing double-processing.
+- **Tri-Store Data Structure**:
+  - `ready_queue`: `deque` for $\mathcal{O}(1)$ FIFO dispatch;
+  - `task_store`: `Dict[task_id, TaskRecord]` authoritative state;
+  - `lease_heap`: `heapq` of `(deadline, task_id, version_token)` for $\mathcal{O}(\log N)$ expiration polling.
+
+#### 2. Round-Robin Task Scheduler (Citadel NXT)
+- **Core Loop**:
+  - Deque of runnable descriptors. Each tick pops front, executes quantum slice, and re-enqueues if incomplete.
+  - **Cooperative vs Preemptive**: Cooperative relies on voluntary yields; preemptive uses timer interrupts.
+  - **Deficit Round Robin (DRR)**: Tracks deficit credit per queue to support variable-size tasks.
+
+#### 3. Tiered Task Manager with TTL & Quota (CodeSignal OA)
+- **Progressive Architecture**:
+  - Levels 1-2: Task CRUD with auto-increment IDs, ranked search;
+  - Level 3: Per-user concurrency quotas and TTL auto-expiry;
+  - Level 4: Historical event-sourced reconstruction and overdue assignment reporting.
 
 </div>
 </details>
@@ -1407,6 +1549,18 @@ class LinkedListSubtractionSolution:
 ```
 
 </div>
+#### 3. Add Two Numbers in Forward Order (MSB First, LC 445)
+- **Constraint**: Sum two forward-order linked lists $l_1, l_2$ **without reversing the input lists**.
+- **Two-Stack Archetype**:
+  - Push node values of $l_1$ and $l_2$ onto `stack1` and `stack2`, aligning least significant digits at the top;
+  - Pop to compute digit sums with carry: $\text{total} = v_1 + v_2 + carry$;
+  - **Head Insertion**: Construct output list by prepending new nodes: `new_node.next = head; head = new_node`, naturally yielding forward order without reversal.
+
+#### 4. N-ary Tree Sum + Leaf Next Pointer (Citadel Phone Screen)
+- **Three-Stage Ladder**:
+  1. Tree sum via recursive DFS;
+  2. Connect all leaf nodes in DFS order: maintain a rolling `prev_leaf` pointer; when `not node.children` is reached, wire `prev_leaf.next = curr; prev_leaf = curr`;
+  3. $\mathcal{O}(1)$ Extra Space: Reuse pointer fields for traversal threading, eliminating recursive call stacks.
 
 </div>
 </details>
@@ -1632,6 +1786,28 @@ if __name__ == "__main__":
 
 - **MinStack**: $\mathcal{O}(1)$ time for all operations, $\mathcal{O}(N)$ auxiliary space.
 - **MedianFinder**: `addNum` in $\mathcal{O}(\log N)$, `findMedian` in $\mathcal{O}(1)$, $\mathcal{O}(N)$ space.
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: High-Frequency Limit Order Book (HFT LOB)</div>
+
+#### 1. Core API & Price-Time Priority
+- **API Surface Area**:
+  - `add_order(side, price, qty, order_id)`: Registers a resting limit order;
+  - `cancel_order(order_id)`: Removes resting order by ID in $\mathcal{O}(1)$ or $\mathcal{O}(\log P)$;
+  - `best_bid()` / `best_ask()`: Top of book quotes in $\mathcal{O}(1)$;
+  - `top_of_book_volume()`: Cumulative quantity resting at top of book.
+
+#### 2. Canonical Two-Level Storage Architecture
+- **Sorted Price Maps**:
+  - Bids: Price-keyed map sorted in **descending** order (`std::map<Price, PriceLevel, greater>`);
+  - Asks: Price-keyed map sorted in **ascending** order;
+  - `best_bid()` and `best_ask()` access root elements in $\mathcal{O}(1)$.
+- **PriceLevel FIFO Queue**:
+  - Each price level contains a doubly linked list maintaining arrival FIFO ordering.
+- **Order ID Hash Index**:
+  - `order_map: Dict[order_id, OrderLocation]` stores pointers to the side, price level, and DLL node iterator.
+  - Cancellation unlinks the node from its price level in $\mathcal{O}(1)$ time, pruning empty price levels from the map.
 
 </div>
 

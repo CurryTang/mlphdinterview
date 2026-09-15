@@ -295,6 +295,55 @@ class IdempotencyManager:
     将大缓存水平切分为 $M$ 个独立分片（Shard），依据 $	ext{hash}(key) \pmod M$ 路由到具体分片。各分片持独立的锁与双向链表，使并发写吞吐随核心数线性扩展（注意：此时退化为分片局部的近拟 LRU）。
 - **跨机器分布式缓存**：
   - 采用**一致性哈希环（Consistent Hashing with Virtual Nodes）**实现节点弹性扩缩容；单机节点内部继续运行双向链表+哈希表的纯粹 LRU 引擎。
+#### 6. 内存分配器 O(log m) 进阶与四向相邻合并 (Memory Allocator with O(log m) Treap/BST Indexing)
+- **从 O(N) 线性扫描到 O(log m) 工业级跃迁**：
+  - 在高碎片化场景下，对空闲块链表执行 $\mathcal{O}(N)$ 首次适应扫描无法满足高频分配要求。
+  - **核心双索引架构**：
+    1. **空闲块大小索引 (Size-Keyed Balanced Tree / SortedDict)**：`free_by_size: SortedDict[int, Set[BlockNode]]`。以块大小作为键，可在 $\mathcal{O}(\log m)$ 内二分找到首个满足 $\text{block.size} \ge size$ 的最佳/最左空闲块；
+    2. **全量物理地址链表 (Address-Ordered Doubly Linked List)**：所有块（无论空闲或已分配）按物理内存地址严格升序串联在一条双向链表中。每个节点维护 `start, size, is_free, prev, next`。
+- **释放内存时的四大完备合并分支 (Four Coalescing Scenarios on Free)**：
+  调用 `free(address, size)` 时，通过哈希表验证地址与尺寸合法性后，直接检查物理相邻节点：
+  1. **左右均已占用 (No Neighbour Free)**：直接将当前块标记为 `is_free = True`，插入 `free_by_size`；
+  2. **仅左邻居空闲 (Left Neighbour Free)**：左块吞并当前块（`left.size += size`），从 `free_by_size` 摘除旧大小并重新插入新大小；
+  3. **仅右邻居空闲 (Right Neighbour Free)**：当前块吞并右块，从 `free_by_size` 移除右块，并在物理链表中摘除右节点；
+  4. **左右邻居均空闲 (Both Neighbours Free)**：左块、当前块、右块三合一！左块大小累加当前与右块大小，从 `free_by_size` 与链表中彻底注销右块，更新左块索引。
+
+#### 7. LRU + LFU + 策略模式可插拔淘汰引擎 (Pluggable Eviction Strategy Pattern)
+- **架构解耦核心**：将底层键值容器存储与上层淘汰策略彻底剥离。
+- **策略接口规范**：
+  - `on_access(key)`：缓存读写命中时回调，由策略更新对应的时间戳、频次桶或权重；
+  - `pick_victim() -> key`：当容器容量溢出时，由策略提名下一个被淘汰的牺牲品键；
+  - `on_evict(key)`：执行物理淘汰后同步清理策略内部的辅助结构。
+- **策略实现在同一框架下的统一**：
+  - `LRUPolicy`：维护单条按访问时间倒序的双向链表，`on_access` 移动至表头，`pick_victim` 选表尾；
+  - `LFUPolicy`：维护 `freq_buckets: Dict[int, DLL]` 与 `min_freq` 指针。`on_access` 将节点自旧频次桶移入新频次桶并更新 `min_freq`；`pick_victim` 从 `freq_buckets[min_freq]` 的尾部选出 LRU 节点，严格保证同频次下的 LRU 二级平局打破；
+  - `TTLWeightedPolicy` / `SizeWeightedPolicy`：策略对象内部持小顶堆或按权重索引的跳表，无缝注入主缓存。
+
+#### 8. 带预写日志与崩溃恢复的持久化缓存 (Durable In-Memory Cache with WAL & Replay)
+- **函数参数规范化哈希 Bug 修复**：
+  - 针对通用装饰器 `generate_key(*args, **kwargs)`，直接 `hash((args, kwargs))` 会因 `kwargs` 是字典而抛出 `TypeError: unhashable type: 'dict'`，且字典键值对遍历顺序可能导致相同参数产生不同键。
+  - **规范化防线**：递归将参数中的 `list/dict` 转换为不可变元组，或采用标准 JSON 规范化：`json.dumps(args) + json.dumps(kwargs, sort_keys=True)`，保证入参键严格确定。
+- **预写日志 (Write-Ahead Logging, WAL) 与崩溃重放恢复**：
+  - 每次写操作或读命中，以追加写（Append-Only）方式向磁盘文件写入日志行：`{"op": "PUT", "key": k, "val": v, "ts": now}`。
+  - **重放核心防坑点**：重启恢复时，仅仅将最新值写入字典会导致 LRU 淘汰序退化为 FIFO！**在重放回放日志时，对于已存在的 key，必须显式调用 `move_to_end`**，确保按日志中最后一次出现的先后顺序完全复现崩溃前的物理 LRU 队列。
+  - **I/O 吞吐权衡**：单次写入同步 `fsync` 确保零数据丢失（金融级） vs. Group Commit 批量刷盘（吞吐优先）；周期性内存快照（Snapshot）截断并压缩（Truncate）历史 WAL。
+
+#### 9. 四层级内存数据库架构 (Anthropic CodeSignal In-Memory Database OA)
+- **数据结构总纲**：按记录维护 `{field -> [(set_ts, value, expiry_ts)]}` 的**追加写历史版本列表**与全局快照映射。
+  - **Level 1 (核心 CRUD)**：`SET`, `GET`, `DELETE`，以及 `COMPARE_AND_SET(key, field, exp, new_val)` / `COMPARE_AND_DELETE`。
+  - **Level 2 (字典序与前缀扫描)**：`SCAN(key)` 提取当前有效字段按字段名升序排列；`SCAN_BY_PREFIX(key, prefix)` 限制前缀匹配。
+  - **Level 3 (字段级 TTL 自动失效)**：`SET_WITH_TTL(key, field, val, ttl)`。字段有效期为 $[ts, ts+ttl)$。在任意 Level 1/2 命令执行时做惰性过滤：若 `query_ts >= expiry_ts` 则视为不存在。
+  - **Level 4A (快照与恢复 Backup / Restore)**：
+    - `BACKUP(ts)`：深拷贝当前数据库状态；
+    - `RESTORE(ts, at_ts)`：加载 $\le at\_ts$ 的最近一次快照。**最关键边界陷阱**：快照中必须存储**剩余 TTL 相对差值（$\Delta = \text{expiry} - \text{backup\_ts}$）**，恢复时依据新时钟重新计算过期时间 `new_expiry = current_ts + delta`，绝不能保存绝对时间戳！
+  - **Level 4B (时光旅行追溯 GET_WHEN)**：`GET_WHEN(ts, key, field, at_ts)`。在字段历史版本列表中依据 `set_ts` 执行二分查找定位版本，再校验其在 `at_ts` 时刻是否仍未过期。
+
+#### 10. 待办事项面向对象设计与职责分离 (Todo List OOP Design)
+- **接口契约**：`add(entry) -> id`，`delete(id) -> bool`，`get_todo() -> List[str]`，`get_all() -> List[str]`。外部提供 $\mathcal{O}(1)$ 判定器 `check_todo(id) -> bool` 查询任务完成状态。
+- **职责分离原则 (Separation of Concerns)**：
+  - `TodoList` 仅负责管理时序存储、ID 分配与增删，完成状态由外部源权威维护，类内部绝不缓存完成布尔值，杜绝脏数据。
+  - 结构采用哈希表 `id_to_node` + 双向链表（保留插入顺序）。`id` 采用单调递增计数器分配，严禁复用已删除 ID。
+  - `get_todo` 遍历链表并在生成时由 `check_todo` 惰性过滤，达到严格 $\mathcal{O}(1)$ 增删与 $\mathcal{O}(k)$ 输出大小遍历。
 
 </div>
 
@@ -437,6 +486,25 @@ if __name__ == "__main__":
 - 时间 $\mathcal{O}(N)$，原地反转空间 $\mathcal{O}(1)$。
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：多线程并发安全任务队列变换 (Thread-Safe Task Queue Transformation)</div>
+
+#### 并发安全重排架构权衡 (Multi-Threading Trade-off Matrix)
+在多线程生产者-消费者模型中，对链表任务队列执行批处理分组翻转 `reverseKGroup(head, k)` 时，必须防范数据竞争与死锁：
+1. **全局互斥锁 (Global Mutex)**：
+   - 机制：单个互斥锁保护整个链表，翻转期间拒绝一切读写。
+   - 优劣：实现零心智负担，但读操作被完全阻塞，吞吐量断崖式下跌。
+2. **读写锁 (Reader-Writer Lock / shared_mutex)**：
+   - 机制：并发只读扫描共享读锁；分组翻转获取独占写锁。
+   - 优劣：读者无冲突，但长时间的 $K$ 翻转会导致大量读者饥饿等待。
+3. **分段锁 (Segmented / Fine-Grained Locking)**：
+   - 机制：为每 $K$ 个节点的子链表分配独立锁。各工作线程并发翻转各自独立的 $K$ 节点区间。
+   - 关键防死锁纪律：在跨组重连（`group_prev.next = new_sub_head`）时，涉及相邻组两把锁的获取，**必须严格按照物理内存地址或节点自然序号升序加锁**，杜绝循环等待死锁。
+4. **写时复制 (Copy-On-Write / COW) 与原子指针替换**：
+   - 机制：翻转线程在私有内存中构建新翻转子链，完成后通过原子比较交换（CAS / `atomic_store`）将父节点的 `next` 指针一步切换为新头节点。
+   - 优劣：读线程完全无锁运行，零等待延迟，是工业级高频任务队列的首选方案。
+
+</div>
 
 </div>
 </details>
@@ -543,6 +611,27 @@ if __name__ == "__main__":
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
 - 时间 $\mathcal{O}(N)$，空间 $\mathcal{O}(D)$。
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：递归 DFS 展开 vs 显式栈迭代工程对比</div>
+
+- **递归深度优先下探 (Recursive DFS with Tail Return)**：
+  - 定义辅助函数 `dfs(node) -> tail`，展开子树并返回该分支的最后一个节点；
+  - 遇到 `curr.child` 时：
+    1. 暂存 `nxt = curr.next`；
+    2. 递归获取子链表尾部 `child_tail = dfs(curr.child)`；
+    3. 双向接入：`curr.next = curr.child; curr.child.prev = curr`；
+    4. 尾部回接：若 `nxt` 存在，`child_tail.next = nxt; nxt.prev = child_tail`；
+    5. 清空 `curr.child = None`；
+    6. 从 `nxt` 或 `child_tail` 继续推进。
+- **显式栈迭代解法 (Explicit Stack Iteration)**：
+  - 工业级生产环境中为规避系统调用栈溢出（Stack Overflow），改用显式数据结构 `stack`：
+  - 遍历主链表，当 `curr` 拥有 `child` 时：
+    - 若 `curr.next` 存在，将其压入 `stack`（后续等待拼接）；
+    - 将 `curr.next` 重定向至 `curr.child`，修复 `curr.child.prev = curr`；
+    - 清空 `curr.child = None`；
+  - 当 `curr.next` 为空且 `stack` 非空时，弹出待处理节点接在 `curr.next` 并修复 `prev` 指针。空间复杂度严格为 $\mathcal{O}(\text{depth})$。
 
 </div>
 
@@ -754,6 +843,33 @@ if __name__ == "__main__":
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
 - 时间 $\mathcal{O}(N)$，空间 $\mathcal{O}(k)$。
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：时间窗口流式事件聚合与有界内存去重</div>
+
+#### 1. 消息事件双向聚合器 (Message Event Aggregator with 5-Minute Window)
+- **业务场景**：
+  - 接收聊天流事件 `(timestamp, user_id, chat_id, event_type)`，`event_type \in {message, react, end_chat}`。
+  - 滑动窗口为闭区间 $[t - 300, t]$（5 分钟）。输出保持原始输入顺序：
+    1. `message_count`：同 `chat_id` 在当前窗口内的 message 事件总数；
+    2. `active_chat_count`：当前 `user_id` 在当前窗口内处于活跃状态的 chat 总数。
+  - **活跃状态精确判定法则**：
+    - 在窗口 $[t - 300, t]$ 内该 `(user_id, chat_id)` 必须至少存在一次 `react` 或 `end_chat`；
+    - **且窗口内该对的最后一次状态事件必须是 `react`**（若最后为 `end_chat` 则非活跃）。
+- **乱序与在线有界内存清理 (Bounded Memory Eviction)**：
+  - 对每个 `chat_id` 维护消息时间戳双端队列；
+  - 对每个 `user_id` 维护活跃 chat 状态字典 `chat_state[chat_id] -> deque[(timestamp, type)]`；
+  - 当窗口前进时，主动从队头弹出 $< t - 300$ 的过期条目；若队列排空则从状态字典中移除对应键，确保内存严格有界。
+
+#### 2. 时间窗口重复日志检测器 (Sliding-Window Duplicate Records Detection)
+- **业务场景**：流式日志包含 `(id, text, title, timestamp)`，时间戳单调递增。若同一内容在过去 60 秒内（$[t - 60, t]$）重复出现，立即输出该重复记录。
+- **空间优化要求**：内存不得随全量流线性膨胀，超过 60 秒的历史条目必须及时驱逐。
+- **双端队列 + 哈希表联动淘汰机制**：
+  - 维护哈希表 `content_to_ts: Dict[content, int]` 记录各内容在窗口内的最后出现时间；
+  - 维护时间序双端队列 `order_queue: deque[(timestamp, content)]`；
+  - 每次处理新日志时，循环检查 `order_queue` 队头：若 `head.timestamp < t - 60`，弹出队头；若 `content_to_ts[head.content] == head.timestamp`，从哈希表中安全移除该键；
+  - 内存占用严格受限于 60 秒窗口内的独立内容数。
 
 </div>
 
@@ -1235,6 +1351,34 @@ if __name__ == "__main__":
 ```
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：高可用容错工作队列、时间片轮转与分级任务管理</div>
+
+#### 1. 高可用容错工作队列系统 (Fault-Tolerant Work Queue with Leases, Retries & DLQ)
+- **核心契约**：
+  - `reserve() -> Optional[(task_id, token)]`：将任务状态由 `READY` 转为 `RESERVED`，授予租约时限 `lease_deadline = now + timeout` 并生成唯一防护版本 `version_token`；
+  - `complete(task_id, token)`：只有持有当前版本有效租约的 Worker 才能将其转为 `COMPLETED`；
+  - `fail(task_id, token)`：增加重试计数 `attempts`。若 `attempts < max_attempts` 重新投递回 `READY`，否则打入死信队列（Dead-Letter Queue, DLQ）。
+- **Stale Lease 防护不变量 (Fencing Token Invariant)**：
+  - 若 Worker A 遭遇长 GC 导致租约过期，调度器在检测到租约超时后，将任务版本递增为 `token + 1` 并重新投递给 Worker B；
+  - 随后 Worker A 苏醒并上报 `complete(task_id, token)`，因其携带的旧 Token 失效，请求被拒绝，杜绝重复结算！
+- **三维数据结构组合**：
+  - `ready_queue`: `deque` 维护就绪任务 ID，$\mathcal{O}(1)$ 派发；
+  - `task_store`: `Dict[task_id, TaskRecord]` 记录权威状态、重试次数与当前 Token；
+  - `lease_heap`: `heapq` 存储 `(lease_deadline, task_id, version_token)`，$\mathcal{O}(1)$ 查看最早超期任务，超时检查时惰性比对 Token 剔除已完成或已变更的幽灵节点。
+
+#### 2. 时间片轮转任务调度器 (Round-Robin Task Scheduler - Citadel NXT)
+- **核心架构**：就绪任务队列 + 固定时间配额（Time Slice Quantum）。
+- **操作循环**：
+  - 每个 Tick 弹出队头任务，赋予一个时间片；若任务执行完毕则将其销毁；若未完结则重新追加至队尾；
+  - **协作式 vs 抢占式 (Cooperative vs Preemptive)**：协作式依赖任务显式 yield，抢占式由调度器通过定时器中断强制挂起任务。
+  - **加权赤字轮转 (Deficit Round Robin / DRR)**：为不同权重任务维护赤字计数器（Credit），解决不同任务包大小/耗时不均的问题。
+
+#### 3. 分级任务管理器 (Task Manager with TTL & Quota - CodeSignal OA)
+- **四层能力递进**：
+  - Level 1-2：按用户增删查改任务，维护优先级与创建时间排序；
+  - Level 3：任务带 TTL 自动失效，以及基于用户配额（Quota）的任务分配（每个用户同时处于活动期的任务数严格受限）；
+  - Level 4：时光旅行（Time-Travel Look-back）与逾期未完成任务报告（Overdue Reporting）。
 
 </div>
 </details>
@@ -1564,6 +1708,18 @@ class LinkedListSubtractionSolution:
 ```
 
 </div>
+#### 3. 高位在前单链表加法 (Add Two Numbers - Forward Order MSB First, LC 445)
+- **核心约束**：给出两个高位在前链表 $l_1, l_2$，在**严禁翻转输入链表**的前提下求和并以高位在前的单链表返回。
+- **双栈解法 (Two-Stack Archetype)**：
+  - 将 $l_1, l_2$ 节点值依次压入 `s1, s2`，栈顶自然对齐个位数；
+  - 循环弹出栈顶求和：$\text{val} = v_1 + v_2 + carry$，更新 $carry = \text{val} // 10$，当前位为 $\text{val} \% 10$；
+  - **头插法 (Head Insertion)**：每次将新生成的节点插入结果链表的最前端：`new_node.next = head; head = new_node`，天然生成高位在前链表，无需二次反转。
+
+#### 4. N 叉树权值求和与叶子节点后继链表编织 (N-ary Tree Sum + Leaf Next Pointer)
+- **三层递进考点**：
+  1. **N 叉树求和**：后序/先序 DFS 累加所有节点权值；
+  2. **叶子节点串联**：先序 DFS 遍历树，维护 `prev_leaf` 指针。每当检测到当前节点为叶子节点（`not node.children`），执行 `prev_leaf.next = curr; prev_leaf = curr`，将所有叶子节点串接为单向链表；
+  3. **O(1) 额外空间优化 (Follow-up)**：利用节点闲置的 `next` 指针作为遍历线索（Morris-like Threading），在遍历过程中复用结构内部指针完成叶子链表组装，彻底省去递归栈或辅助收集数组。
 
 </div>
 </details>
@@ -1800,6 +1956,28 @@ if __name__ == "__main__":
 
 - **MinStack**：所有操作均为严格 $\mathcal{O}(1)$ 时间，$\mathcal{O}(N)$ 辅助空间。
 - **MedianFinder**：`addNum` 耗时 $\mathcal{O}(\log N)$，`findMedian` 耗时 $\mathcal{O}(1)$，空间复杂度 $\mathcal{O}(N)$。
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：极速限价订单簿系统 (HFT Limit Order Book - Citsec / HFT Onsite)</div>
+
+#### 1. 核心接口与价格优先-时间优先原则 (Price-Time Priority / FIFO)
+- **API 规范**：
+  - `add_order(side, price, qty, order_id)`：挂入限价委托单；
+  - `cancel_order(order_id)`：根据订单 ID 撤单，要求严格 $\mathcal{O}(1)$ 或 $\mathcal{O}(\log P)$；
+  - `best_bid()` / `best_ask()`：查询最优买卖价，要求 $\mathcal{O}(1)$；
+  - `top_of_book_volume()`：聚合最优买卖价位上的总挂单量。
+
+#### 2. 经典分层数据结构组合 (Two-Level Map + FIFO DLL)
+- **买卖盘价格索引 (Sorted Price Map)**：
+  - 买盘（Bids）：按价格**降序**排列的有序映射表（C++ `std::map<Price, PriceLevel, greater>` / Python `SortedDict`）；
+  - 卖盘（Asks）：按价格**升序**排列的有序映射表；
+  - 最优价查询直接通过 `bids.begin()` 与 `asks.begin()` 在 $\mathcal{O}(1)$ 内完成。
+- **价位内部队列 (PriceLevel FIFO DLL)**：
+  - 相同价格上的多笔订单按挂单时间严格 FIFO 排队，维护该价位总挂单量 `total_volume`。
+- **订单哈希索引表 (Order ID Index)**：
+  - 维护哈希表 `order_map: Dict[order_id, OrderLocation]`，记录该订单所属的买卖方向、价位指针以及在双向链表中的节点迭代器/句柄。
+  - **撤单常数时间保障**：撤单时通过 `order_map` 找到节点句柄，在对应价位的双向链表中执行 $\mathcal{O}(1)$ 节点摘除；若该价位订单归零，从价格索引表中注销该价位。整体撤单时间均摊 $\mathcal{O}(1)$。
 
 </div>
 
