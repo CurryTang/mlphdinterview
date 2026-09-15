@@ -1040,6 +1040,17 @@ const quantNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
+    'Quant 12 · 初等数论与不变量',
+    'Quant17 Number Theory and Invariants.md',
+    'Quant17 Number Theory and Invariants.en.md',
+    {
+      directory: 'quant',
+      titleEn: 'Quant 12 · Number theory and invariants',
+      category: '数论',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
     'C++ 1 · 面向对象与类设计',
     'QuantDevCPP01 OOP Fundamentals Class Design.md',
     null,
