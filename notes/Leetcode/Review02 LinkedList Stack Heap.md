@@ -6,6 +6,8 @@
 
 ---
 
+---
+
 ## 模块一：链表与复合哈希结构 (Linked List & Hash-Linked Structures)
 
 ### 1. LRU 缓存与其系统级演进全家桶 (LRU Cache & System-Level Extensions)
@@ -610,11 +612,468 @@ class LinkedListSubtractionSolution:
 
 ---
 
-### 3. 删除链表的倒数第 N 个节点 (Remove Nth Node From End of List)
+### 3. 合并有序链表与低位求和进位链 (Merge Two Sorted Lists & Add Two Numbers)
 
 <details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">链表 03</span>
+  <span class="review-card-title">合并有序链表与低位求和进位链 (Merge Two Sorted Lists & Add Two Numbers)</span>
+  <span class="review-card-tag">虚拟哨兵头节点 · 双指针归并 · 低位向高位进位链 · O(1) 辅助空间</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 21 · Merge Two Sorted Lists](https://leetcode.com/problems/merge-two-sorted-lists/) — `https://leetcode.com/problems/merge-two-sorted-lists/`
+> - [LeetCode 2 · Add Two Numbers](https://leetcode.com/problems/add-two-numbers/) — `https://leetcode.com/problems/add-two-numbers/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与双题合璧要求</div>
+
+**题目原文 (Problem Statement)**：
+1. **Merge Two Sorted Lists (LC 21)**: Merge two sorted singly linked lists into one sorted list by splicing together the nodes of the first two lists.
+2. **Add Two Numbers (LC 2)**: You are given two non-empty linked lists representing two non-negative integers. The digits are stored in **reverse order** (units place at head), and each of their nodes contains a single digit. Add the two numbers and return the sum as a linked list.
+
+**核心约束**：
+- 均需在线性时间 $\mathcal{O}(N + M)$ 与常数额外空间 $\mathcal{O}(1)$ 内完成；
+- 利用虚拟哨兵头节点（Dummy Sentinel）消除首节点分支判断。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class MergeAndAddSolution:
+    @staticmethod
+    def mergeTwoLists(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        # 合并两个升序单链表 (LC 21)
+        dummy = ListNode(0)
+        curr = dummy
+
+        while l1 and l2:
+            if l1.val <= l2.val:
+                curr.next = l1
+                l1 = l1.next
+            else:
+                curr.next = l2
+                l2 = l2.next
+            curr = curr.next
+
+        # 直接将非空剩余段整体拼接，O(1) 完成
+        curr.next = l1 if l1 else l2
+        return dummy.next
+
+    @staticmethod
+    def addTwoNumbers(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        # 两数相加：逆序存储/低位在先 (LC 2)
+        dummy = ListNode(0)
+        curr = dummy
+        carry = 0
+
+        p1, p2 = l1, l2
+        while p1 or p2 or carry:
+            val1 = p1.val if p1 else 0
+            val2 = p2.val if p2 else 0
+            total = val1 + val2 + carry
+
+            carry = total // 10
+            curr.next = ListNode(total % 10)
+            curr = curr.next
+
+            if p1: p1 = p1.next
+            if p2: p2 = p2.next
+
+        return dummy.next
+```
+
+```cpp
+class MergeAndAddSolution {
+public:
+    static ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
+        ListNode dummy(0);
+        ListNode* curr = &dummy;
+        while (l1 && l2) {
+            if (l1->val <= l2->val) {
+                curr->next = l1;
+                l1 = l1->next;
+            } else {
+                curr->next = l2;
+                l2 = l2->next;
+            }
+            curr = curr->next;
+        }
+        curr->next = l1 ? l1 : l2;
+        return dummy.next;
+    }
+
+    static ListNode* addTwoNumbers(ListNode* l1, ListNode* l2) {
+        ListNode dummy(0);
+        ListNode* curr = &dummy;
+        int carry = 0;
+        while (l1 || l2 || carry) {
+            int v1 = l1 ? l1->val : 0;
+            int v2 = l2 ? l2->val : 0;
+            int sum = v1 + v2 + carry;
+            carry = sum / 10;
+            curr->next = new ListNode(sum % 10);
+            curr = curr->next;
+            if (l1) l1 = l1->next;
+            if (l2) l2 = l2->next;
+        }
+        return dummy.next;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析</div>
+
+- **哨兵节点的统一指针语义**：
+  `dummy` 使得结果链表的首节点与后续追加节点享有完全相同的修改语法（`curr.next = ...`），无需在循环外部特判 `head` 初始化。
+- **剩余链表 $\mathcal{O}(1)$ 直挂**：
+  链表归并不同于数组归并！当某一条链表遍历完毕时，无需逐个拷贝剩余节点，只需将 `curr.next` 直接指向未耗尽链表的头节点指针，耗时严格 $\mathcal{O}(1)$。
+- **进位闭包循环条件**：
+  `while p1 or p2 or carry` 将链表遍历与最高位产生的进位溢出完全合并进单个循环体，杜绝在循环外部漏写 `if carry: curr.next = ListNode(1)` 的常见漏洞。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：
+  - 合并升序链表：$\mathcal{O}(N + M)$，其中 $N, M$ 分别为两链表长度；
+  - 两数相加：$\mathcal{O}(\max(N, M))$。
+- **空间复杂度**：合并为 $\mathcal{O}(1)$ 原地重排；相加为 $\mathcal{O}(1)$ 额外辅助空间（不计新链表节点）。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 4. 快慢双指针环检测与数组链表化 (Linked List Cycle & Find Duplicate Number)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 04</span>
+  <span class="review-card-title">快慢双指针环检测与数组链表化 (Linked List Cycle & Find Duplicate Number)</span>
+  <span class="review-card-tag">Floyd 判圈算法 · 环入口数学推导 · 数组下标隐式图转化 · O(1) 空间</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 141 · Linked List Cycle](https://leetcode.com/problems/linked-list-cycle/) — `https://leetcode.com/problems/linked-list-cycle/`
+> - [LeetCode 142 · Linked List Cycle II](https://leetcode.com/problems/linked-list-cycle-ii/) — `https://leetcode.com/problems/linked-list-cycle-ii/`
+> - [LeetCode 287 · Find the Duplicate Number](https://leetcode.com/problems/find-the-duplicate-number/) — `https://leetcode.com/problems/find-the-duplicate-number/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+1. **Linked List Cycle I & II (LC 141 / 142)**: Given `head`, determine if the linked list has a cycle in it. If there is a cycle, return the node where the cycle begins. Solve it using $\mathcal{O}(1)$ memory.
+2. **Find the Duplicate Number (LC 287)**: Given an array of integers `nums` containing $n + 1$ integers where each integer is in the range $[1, n]$ inclusive. There is only one repeated number in `nums`, find this repeated number **without modifying the array** and using only $\mathcal{O}(1)$ extra space.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional, List
+
+class CycleAndDuplicateSolution:
+    @staticmethod
+    def detectCycle(head: Optional[ListNode]) -> Optional[ListNode]:
+        # 寻找链表环入口 (LC 142)
+        if not head or not head.next:
+            return None
+
+        slow = head
+        fast = head
+
+        # 阶段一：判定是否存在环（快慢指针同起点推进）
+        while fast and fast.next:
+            slow = slow.next
+            fast = fast.next.next
+            if slow == fast:
+                break
+        else:
+            return None  # fast 抵达链表末尾，无环
+
+        # 阶段二：寻找环入口节点
+        # 一针归位至 head，双针等速单步向前
+        ptr1 = head
+        ptr2 = slow
+        while ptr1 != ptr2:
+            ptr1 = ptr1.next
+            ptr2 = ptr2.next
+
+        return ptr1
+
+    @staticmethod
+    def findDuplicate(nums: List[int]) -> int:
+        # 寻找数组中唯一重复数：下标隐式链表判圈 (LC 287)
+        # 数组下标作为节点地址，nums[i] 作为 next 指针
+        slow = nums[0]
+        fast = nums[0]
+
+        # 阶段一：快慢指针寻找相遇点
+        while True:
+            slow = nums[slow]
+            fast = nums[nums[fast]]
+            if slow == fast:
+                break
+
+        # 阶段二：定位环入口（即入度大于 1 的重复数值）
+        ptr1 = nums[0]
+        ptr2 = slow
+        while ptr1 != ptr2:
+            ptr1 = nums[ptr1]
+            ptr2 = nums[ptr2]
+
+        return ptr1
+```
+
+```cpp
+class CycleAndDuplicateSolution {
+public:
+    static ListNode* detectCycle(ListNode* head) {
+        if (!head || !head->next) return nullptr;
+        ListNode* slow = head;
+        ListNode* fast = head;
+        while (fast && fast->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+            if (slow == fast) break;
+        }
+        if (!fast || !fast->next) return nullptr;
+        ListNode* ptr1 = head;
+        ListNode* ptr2 = slow;
+        while (ptr1 != ptr2) {
+            ptr1 = ptr1->next;
+            ptr2 = ptr2->next;
+        }
+        return ptr1;
+    }
+
+    static int findDuplicate(const std::vector<int>& nums) {
+        int slow = nums[0];
+        int fast = nums[0];
+        do {
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+        } while (slow != fast);
+
+        int ptr1 = nums[0];
+        int ptr2 = slow;
+        while (ptr1 != ptr2) {
+            ptr1 = nums[ptr1];
+            ptr2 = nums[ptr2];
+        }
+        return ptr1;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与数学推导</div>
+
+- **Floyd 判圈算法数学证明 (Mathematical Derivation)**：
+  - 设链表头部到环入口的距离为 $a$；
+  - 环入口到快慢指针首次相遇点的距离为 $b$；
+  - 环的周长为 $C$，相遇点走完剩余环到达入口的距离为 $C - b$。
+  - 在首次相遇时：
+    $$\text{slow 走过的距离} = a + b$$
+    $$\text{fast 走过的距离} = a + b + k \cdot C \quad (k \ge 1)$$
+  - 因为 fast 速度是 slow 的 2 倍：
+    $$2(a + b) = a + b + k \cdot C \implies a + b = k \cdot C \implies a = k \cdot C - b = (k - 1)C + (C - b)$$
+  - **结论**：从链表头部出发一个指针 $ptr_1$，同时从相遇点出发一个指针 $ptr_2$，两者均以单步速度同步推移。当 $ptr_1$ 走完距离 $a$ 到达环入口时，$ptr_2$ 刚好走完 $(k-1)$ 整圈并加上剩余的 $(C - b)$ 距离，**两指针必精准在环入口相遇**！
+- **数组向链表的降维映射 (LC 287 Invariant)**：
+  - 数组长度为 $n + 1$，元素范围为 $[1, n]$。根据鸽巢原理（Pigeonhole Principle），必然存在至少一个重复数。
+  - 建立有向图：节点 $i \to nums[i]$。
+  - 因为 $nums[i] \ge 1$，所以**节点 $0$ 绝对不可能有任何入边**（入度为 0，绝对不在环内，必然是链表的起点）。
+  - 若存在重复数 $target$，意味着有多个不同的下标 $i, j$ 满足 $nums[i] = nums[j] = target$。在有向图中表现为**节点 $target$ 的入度 $\ge 2$**。
+  - 在每个节点出度为 1 的函数图中，入度大于 1 的节点正是**环的入口节点**！直接应用 Floyd 判圈算法即可在 $\mathcal{O}(1)$ 空间且不修改原数组的前提下求出重复值。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，快慢指针在环内至多循环一圈即可相遇，找入口至多 $N$ 步。
+- **空间复杂度**：$\mathcal{O}(1)$，仅需常数级别的指针变量。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 5. 链表中点截断、后半反转与交叉穿插重排 (Reorder List)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 05</span>
+  <span class="review-card-title">链表中点截断、后半反转与交叉穿插重排 (Reorder List)</span>
+  <span class="review-card-tag">快慢指针定中点 · 原地链表反转 · 双链交替穿插 · 空间 O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 143 · Reorder List](https://leetcode.com/problems/reorder-list/) — `https://leetcode.com/problems/reorder-list/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> You are given the head of a singly linked-list: $L_0 \to L_1 \to \dots \to L_{n-1} \to L_n$.
+> Reorder the list to be on the following form: $L_0 \to L_n \to L_1 \to L_{n-1} \to L_2 \to L_{n-2} \to \dots$
+> You may not modify the values in the list's nodes. Only nodes themselves may be changed. Solve in-place in $\mathcal{O}(1)$ auxiliary space.
+
+**输入输出示例**：
+- `head = [1, 2, 3, 4]` $\implies$ `[1, 4, 2, 3]`
+- `head = [1, 2, 3, 4, 5]` $\implies$ `[1, 5, 2, 4, 3]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class ReorderListSolution:
+    @staticmethod
+    def reorderList(head: Optional[ListNode]) -> None:
+        # 原地重排链表：三步经典组合拳。
+        # 时间复杂度 O(N)，额外空间复杂度 O(1)。
+        if not head or not head.next:
+            return
+
+        # 步骤 1: 快慢指针寻找中点，并将链表从中点截断为两条独立链表
+        slow, fast = head, head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        # 此时 slow 为前半部分末尾，slow.next 为后半部分起点
+        second_head = slow.next
+        slow.next = None  # 截断链表，解除环形依赖
+
+        # 步骤 2: 原地翻转后半部分单链表
+        prev = None
+        curr = second_head
+        while curr:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+        p2 = prev  # 翻转后后半部分的新头节点
+
+        # 步骤 3: 交叉穿插缝合前半段 (p1) 与后半段 (p2)
+        p1 = head
+        while p2:
+            t1 = p1.next
+            t2 = p2.next
+
+            p1.next = p2
+            p2.next = t1
+
+            p1 = t1
+            p2 = t2
+```
+
+```cpp
+class ReorderListSolution {
+public:
+    static void reorderList(ListNode* head) {
+        if (!head || !head->next) return;
+
+        // 1. 快慢指针找中点
+        ListNode* slow = head;
+        ListNode* fast = head;
+        while (fast->next && fast->next->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+        }
+
+        ListNode* second = slow->next;
+        slow->next = nullptr;
+
+        // 2. 原地反转后半部分
+        ListNode* prev = nullptr;
+        ListNode* curr = second;
+        while (curr) {
+            ListNode* nxt = curr->next;
+            curr->next = prev;
+            prev = curr;
+            curr = nxt;
+        }
+
+        // 3. 交叉缝合
+        ListNode* p1 = head;
+        ListNode* p2 = prev;
+        while (p2) {
+            ListNode* t1 = p1->next;
+            ListNode* t2 = p2->next;
+
+            p1->next = p2;
+            p2->next = t1;
+
+            p1 = t1;
+            p2 = t2;
+        }
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与三步合成律</div>
+
+- **三步合成范式 (Three-Step Composition)**：
+  本题为链表三大基本操作的经典组合，是检验指针操作基本功的试金石：
+  1. **中点探测与严密截断**：
+     条件 `fast.next and fast.next.next` 确保无论是偶数长度（如 4 个节点停在索引 1）还是奇数长度（如 5 个节点停在索引 2），前半段长度均大于等于后半段（$len(p_1) \ge len(p_2)$），截断 `slow.next = None` 保证后续遍历有清晰的终止边界；
+  2. **原地反转后半段**：
+     标准三指针原地反转，不引入数组或调用栈；
+  3. **交替穿插缝合 (Interleaving Merge)**：
+     因为前半段长度必然大于等于后半段，所以循环条件仅需 `while p2` 即可自然收尾，绝不会发生空指针异常。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，探测中点 $N/2$ 步，反转 $N/2$ 步，合并 $N/2$ 步，整体单趟线性。
+- **空间复杂度**：$\mathcal{O}(1)$，严格无任何堆/栈空间开销。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 6. 删除链表的倒数第 N 个节点 (Remove Nth Node From End of List)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 06</span>
   <span class="review-card-title">删除链表的倒数第 N 个节点 (Remove Nth Node From End of List)</span>
   <span class="review-card-tag">双指针快慢定距 · 虚拟头节点哨兵 · 单趟扫描 · 空间 O(1)</span>
 </summary>
@@ -752,11 +1211,155 @@ public:
 
 ---
 
-### 4. K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)
+### 7. 深拷贝带随机指针的链表与原地穿插拆分 (Copy List with Random Pointer)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">链表 04</span>
+  <span class="review-card-badge">链表 07</span>
+  <span class="review-card-title">深拷贝带随机指针的链表与原地穿插拆分 (Copy List with Random Pointer)</span>
+  <span class="review-card-tag">原地交织插入 · 随机指针投影映射 · 链表解耦拆分 · 空间 O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 138 · Copy List with Random Pointer](https://leetcode.com/problems/copy-list-with-random-pointer/) — `https://leetcode.com/problems/copy-list-with-random-pointer/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> A linked list of length $n$ is given such that each node contains an additional random pointer, which could point to any node in the list, or `null`.
+> Construct a **deep copy** of the list. The deep copy should consist of exactly $n$ brand new nodes, where each new node has its value set to the value of its corresponding original node. Both the `next` and `random` pointer of the new nodes should point to new nodes in the copied list such that the pointers in the original list and copied list represent the same list state.
+> Return the head of the copied linked list.
+
+**核心矛盾与解法跃迁**：
+- **哈希表基准解法**：`map[old_node] = new_node`，两趟扫描。时空均为 $\mathcal{O}(N)$。
+- **工业级最优：三趟扫描原地交织拆分法 (In-Place Interleaving)**：彻底抛弃哈希表，利用原链表节点的 `next` 字段暂存对应副本节点，将辅助空间优化至极致的严格 $\mathcal{O}(1)$！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class Node:
+    def __init__(self, x: int, next: 'Node' = None, random: 'Node' = None):
+        self.val = int(x)
+        self.next = next
+        self.random = random
+
+class CopyRandomListSolution:
+    @staticmethod
+    def copyRandomList(head: Optional[Node]) -> Optional[Node]:
+        # 三趟扫描原地交织复制法。
+        # 额外辅助空间复杂度严格 O(1)。
+        if not head:
+            return None
+
+        # 第一趟: 原地克隆节点并就地穿插: A -> A' -> B -> B' -> C -> C'
+        curr = head
+        while curr:
+            copy = Node(curr.val, curr.next)
+            curr.next = copy
+            curr = copy.next
+
+        # 第二趟: 构建新克隆节点的 random 指针
+        # 因为原节点 curr 的副本就是 curr.next，所以其 random 目标对应的副本必然是 curr.random.next
+        curr = head
+        while curr:
+            if curr.random:
+                curr.next.random = curr.random.next
+            curr = curr.next.next
+
+        # 第三趟: 拆分交织链表，恢复原链表并提取出独立深拷贝链表
+        curr = head
+        copy_head = head.next
+        while curr:
+            copy = curr.next
+            curr.next = copy.next
+            if copy.next:
+                copy.next = copy.next.next
+            curr = curr.next
+
+        return copy_head
+```
+
+```cpp
+class CopyRandomListSolution {
+public:
+    static Node* copyRandomList(Node* head) {
+        if (!head) return nullptr;
+
+        // 1. 原地复制并交织
+        Node* curr = head;
+        while (curr) {
+            Node* copy = new Node(curr->val);
+            copy->next = curr->next;
+            curr->next = copy;
+            curr = copy->next;
+        }
+
+        // 2. 映射 random 指针
+        curr = head;
+        while (curr) {
+            if (curr->random) {
+                curr->next->random = curr->random->next;
+            }
+            curr = curr->next->next;
+        }
+
+        // 3. 拆分解耦
+        curr = head;
+        Node* copyHead = head->next;
+        while (curr) {
+            Node* copy = curr->next;
+            curr->next = copy->next;
+            if (copy->next) {
+                copy->next = copy->next->next;
+            }
+            curr = curr->next;
+        }
+
+        return copyHead;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与映射不变量</div>
+
+- **原位穿插不变量 (In-Place Interleaving Invariant)**：
+  通过将每个新节点 $curr'$ 插入到原节点 $curr$ 与 $curr.next$ 之间，我们建立了一个完全物理绑定的映射关系：
+  $$\text{copy}(curr) \equiv curr.next$$
+  由此，当需要查找 $curr.random$ 的深拷贝节点时，无需哈希查表，直接通过指针寻址即可得到：
+  $$\text{copy}(curr.random) \equiv curr.random.next$$
+- **解耦分离的干净度**：
+  在第三趟扫描中，必须严密恢复原链表 `curr.next = copy.next`，防止修改原链表引发调用方不可预期的指针破损副作用。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，三趟线性扫描，每趟耗时严格 $\mathcal{O}(N)$。
+- **空间复杂度**：$\mathcal{O}(1)$，除返回值新节点外，额外辅助空间严格为常数。
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 8. K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 08</span>
   <span class="review-card-title">K 个一组翻转链表全家桶与组间重排 (Reverse Nodes in k-Group & Structural Group Inversion)</span>
   <span class="review-card-tag">虚拟头节点 · K 长度探测 · 局部反转接回 · 空间 O(1)</span>
 </summary>
@@ -911,11 +1514,11 @@ if __name__ == "__main__":
 
 ---
 
-### 5. 循环有序单链表的插入 (Insert into a Sorted Circular Linked List)
+### 9. 循环有序单链表的插入 (Insert into a Sorted Circular Linked List)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">链表 05</span>
+  <span class="review-card-badge">链表 09</span>
   <span class="review-card-title">循环有序单链表的插入 (Insert into a Sorted Circular Linked List)</span>
   <span class="review-card-tag">双指针循环遍历 · 拐点判定 · 环形边界环绕 · 空间 O(1)</span>
 </summary>
@@ -1085,11 +1688,11 @@ public:
 
 ---
 
-### 6. 扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)
+### 10. 扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">链表 06</span>
+  <span class="review-card-badge">链表 10</span>
   <span class="review-card-title">扁平化多级双向链表与空节点过滤 (Flatten Multilevel Doubly Linked List with Empty-Node Filtering)</span>
   <span class="review-card-tag">双向指针修复 · DFS 展开 · 尾节点回溯接回 · 原地操作</span>
 </summary>
@@ -1214,11 +1817,11 @@ if __name__ == "__main__":
 
 ---
 
-### 7. 常数时间随机集合与弹出容器 (Randomized Container with O(1) Insert & PopRandom)
+### 11. 常数时间随机集合与弹出容器 (Randomized Container with O(1) Insert & PopRandom)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">容器 07</span>
+  <span class="review-card-badge">容器 11</span>
   <span class="review-card-title">常数时间随机集合与弹出容器 (Randomized Container with O(1) Insert & PopRandom)</span>
   <span class="review-card-tag">连续动态数组 + 哈希索引表 · 尾部元素置换 (Swap with Last) · 等概率随机抽取 · O(1) 均摊</span>
 </summary>
@@ -1414,11 +2017,11 @@ public:
 
 ---
 
-### 8. 独立迭代器设计与共享流式缓冲区 (Python itertools.tee & Shared-State Streaming Buffer)
+### 12. 独立迭代器设计与共享流式缓冲区 (Python itertools.tee & Shared-State Streaming Buffer)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">迭代/流 08</span>
+  <span class="review-card-badge">迭代/流 12</span>
   <span class="review-card-title">独立迭代器设计与共享流式缓冲区 (Python itertools.tee & Shared-State Streaming Buffer)</span>
   <span class="review-card-tag">迭代器协议 · 共享单向链表 · 多游标追赶 · 自动引用计数垃圾回收 · 内存 O(g + n)</span>
 </summary>
@@ -1529,11 +2132,11 @@ if __name__ == "__main__":
 
 ## 模块二：栈与单调结构 (Stack & Monotonic Stack / Deque)
 
-### 9. 表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)
+### 13. 表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">栈 09</span>
+  <span class="review-card-badge">栈 13</span>
   <span class="review-card-title">表达式计算器与运算符优先级全景全家桶 (Basic Calculator & Operator Precedence Hierarchy)</span>
   <span class="review-card-tag">符号栈 · 递归下降 · 乘除即时结合 · 括号递归分治</span>
 </summary>
@@ -1658,11 +2261,11 @@ if __name__ == "__main__":
 
 ---
 
-### 10. 滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)
+### 14. 滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">双端队列 10</span>
+  <span class="review-card-badge">双端队列 14</span>
   <span class="review-card-title">滑动窗口最大值与单调双端队列全景 (Sliding Window Maximum & Monotonic Deque Pattern)</span>
   <span class="review-card-tag">单调双端队列 · 索引窗口失效淘汰 · 均摊 O(1) 转移</span>
 </summary>
@@ -1765,11 +2368,11 @@ if __name__ == "__main__":
 
 ---
 
-### 11. 柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)
+### 15. 柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">单调栈 11</span>
+  <span class="review-card-badge">单调栈 15</span>
   <span class="review-card-title">柱状图中最大的矩形与单调栈双哨兵范式 (Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern)</span>
   <span class="review-card-tag">单调递增栈 · 双哨兵 (Two-Sentinel) 技巧 · 左右边界动态判定 · 最大矩形降维扩展</span>
 </summary>
@@ -1888,11 +2491,11 @@ if __name__ == "__main__":
 
 ---
 
-### 12. 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
+### 16. 单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">单调栈 12</span>
+  <span class="review-card-badge">单调栈 16</span>
   <span class="review-card-title">单调栈去重与字典序最小子序列 (Remove Duplicate Letters via Monotonic Stack)</span>
   <span class="review-card-tag">单调递增栈 · 末次出现位置表 · 栈内存在性哈希 · O(N)</span>
 </summary>
@@ -1991,11 +2594,11 @@ if __name__ == "__main__":
 
 ---
 
-### 13. 星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)
+### 17. 星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">栈/回溯 13</span>
+  <span class="review-card-badge">栈/回溯 17</span>
   <span class="review-card-title">星号通配符括号有效性与全量展开 (Valid Parenthesis String with Wildcard & Concrete String Enumeration)</span>
   <span class="review-card-tag">区间贪心 · O(N) 双界指针 · 负下限保护 · DFS 全量分支展开 · 剪枝去重</span>
 </summary>
@@ -2148,11 +2751,11 @@ if __name__ == "__main__":
 
 ## 模块三：堆与优先队列 (Heap & Priority Queue)
 
-### 14. 数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)
+### 18. 数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆 14</span>
+  <span class="review-card-badge">堆 18</span>
   <span class="review-card-title">数据流中位数与多路归并全景 (Find Median from Data Stream & K-Way Merge)</span>
   <span class="review-card-tag">对顶双堆 · 严格平衡不变量 · 惰性删除</span>
 </summary>
@@ -2230,11 +2833,11 @@ if __name__ == "__main__":
 
 ---
 
-### 15. 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
+### 19. 双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆/系统 15</span>
+  <span class="review-card-badge">堆/系统 19</span>
   <span class="review-card-title">双堆中位数流与多维栈系统架构 (MinStack, MaxStack, Streaming Median & Extensions)</span>
   <span class="review-card-tag">对顶堆 · O(1) 极值栈 · 懒删除 · 流式高并发扩展</span>
 </summary>
@@ -2387,11 +2990,11 @@ if __name__ == "__main__":
 
 ---
 
-### 16. 多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)
+### 20. 多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆/调度 16</span>
+  <span class="review-card-badge">堆/调度 20</span>
   <span class="review-card-title">多商户分级加权轮转任务调度器 (Tiered Priority Task Scheduler)</span>
   <span class="review-card-tag">商户级小顶堆 · FIFO 时间戳序列 · 活跃商户轮转队列 · VIP 加权配额调度</span>
 </summary>
@@ -2532,11 +3135,11 @@ if __name__ == "__main__":
 
 ---
 
-### 17. 时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)
+### 21. 时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">堆/调度 17</span>
+  <span class="review-card-badge">堆/调度 21</span>
   <span class="review-card-title">时间戳任务调度器与直接 ID 淘汰 (Timestamp Task Scheduler with Direct ID Removal)</span>
   <span class="review-card-tag">复合小顶堆 · 惰性删除 · 哈希版本校验</span>
 </summary>

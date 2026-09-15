@@ -6,6 +6,8 @@ This note is the second volume of the high-frequency algorithmic interview revie
 
 ---
 
+---
+
 ## Module 1: Linked List & Hash-Linked Structures
 
 ### 1. LRU Cache & System-Level Extensions
@@ -595,11 +597,418 @@ class LinkedListSubtractionSolution:
 
 ---
 
-### 3. Remove Nth Node From End of List
+### 3. Merge Two Sorted Lists & Add Two Numbers
 
 <details class="review-card">
 <summary class="review-card-summary">
   <span class="review-card-badge">LINKED LIST 03</span>
+  <span class="review-card-title">Merge Two Sorted Lists & Add Two Numbers</span>
+  <span class="review-card-tag">Sentinel Dummy Head · Two-Pointer Merge · Low-to-High Carry Propagation · Auxiliary Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 21 · Merge Two Sorted Lists](https://leetcode.com/problems/merge-two-sorted-lists/) — `https://leetcode.com/problems/merge-two-sorted-lists/`
+> - [LeetCode 2 · Add Two Numbers](https://leetcode.com/problems/add-two-numbers/) — `https://leetcode.com/problems/add-two-numbers/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statements**:
+1. **Merge Two Sorted Lists (LC 21)**: Merge two sorted singly linked lists into one sorted list by splicing together the nodes of the first two lists.
+2. **Add Two Numbers (LC 2)**: You are given two non-empty linked lists representing two non-negative integers. The digits are stored in **reverse order** (units digit at head). Add the two numbers and return the sum as a linked list.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class MergeAndAddSolution:
+    @staticmethod
+    def mergeTwoLists(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        dummy = ListNode(0)
+        curr = dummy
+        while l1 and l2:
+            if l1.val <= l2.val:
+                curr.next = l1
+                l1 = l1.next
+            else:
+                curr.next = l2
+                l2 = l2.next
+            curr = curr.next
+        curr.next = l1 if l1 else l2
+        return dummy.next
+
+    @staticmethod
+    def addTwoNumbers(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        dummy = ListNode(0)
+        curr = dummy
+        carry = 0
+        p1, p2 = l1, l2
+        while p1 or p2 or carry:
+            val1 = p1.val if p1 else 0
+            val2 = p2.val if p2 else 0
+            total = val1 + val2 + carry
+            carry = total // 10
+            curr.next = ListNode(total % 10)
+            curr = curr.next
+            if p1: p1 = p1.next
+            if p2: p2 = p2.next
+        return dummy.next
+```
+
+```cpp
+class MergeAndAddSolution {
+public:
+    static ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
+        ListNode dummy(0);
+        ListNode* curr = &dummy;
+        while (l1 && l2) {
+            if (l1->val <= l2->val) {
+                curr->next = l1;
+                l1 = l1->next;
+            } else {
+                curr->next = l2;
+                l2 = l2->next;
+            }
+            curr = curr->next;
+        }
+        curr->next = l1 ? l1 : l2;
+        return dummy.next;
+    }
+
+    static ListNode* addTwoNumbers(ListNode* l1, ListNode* l2) {
+        ListNode dummy(0);
+        ListNode* curr = &dummy;
+        int carry = 0;
+        while (l1 || l2 || carry) {
+            int v1 = l1 ? l1->val : 0;
+            int v2 = l2 ? l2->val : 0;
+            int sum = v1 + v2 + carry;
+            carry = sum / 10;
+            curr->next = new ListNode(sum % 10);
+            curr = curr->next;
+            if (l1) l1 = l1->next;
+            if (l2) l2 = l2->next;
+        }
+        return dummy.next;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariant Analysis</div>
+
+- **Sentinel Head Uniformity**:
+  A dummy head eliminates conditional checks for head allocation, allowing `curr.next = ...` to apply universally.
+- **O(1) Remainder Splicing**:
+  Unlike array merging, unvisited remainder nodes are linked in a single constant-time assignment `curr.next = l1 if l1 else l2`.
+- **Fused Carry Loop**:
+  The condition `while p1 or p2 or carry` seamlessly accommodates trailing carries exceeding input lengths without post-loop branches.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N + M)$ for merge; $\mathcal{O}(\max(N, M))$ for addition.
+- **Space Complexity**: $\mathcal{O}(1)$ in-place for merge; $\mathcal{O}(1)$ auxiliary for addition.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 4. Linked List Cycle & Find Duplicate Number
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LINKED LIST 04</span>
+  <span class="review-card-title">Linked List Cycle & Find Duplicate Number</span>
+  <span class="review-card-tag">Floyd Tortoise and Hare · Cycle Entry Proof · Array-as-Graph Reduction · Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 141 · Linked List Cycle](https://leetcode.com/problems/linked-list-cycle/) — `https://leetcode.com/problems/linked-list-cycle/`
+> - [LeetCode 142 · Linked List Cycle II](https://leetcode.com/problems/linked-list-cycle-ii/) — `https://leetcode.com/problems/linked-list-cycle-ii/`
+> - [LeetCode 287 · Find the Duplicate Number](https://leetcode.com/problems/find-the-duplicate-number/) — `https://leetcode.com/problems/find-the-duplicate-number/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statements**:
+1. **Linked List Cycle I & II (LC 141 / 142)**: Detect if a cycle exists. If so, locate the node where the cycle begins in $\mathcal{O}(1)$ memory.
+2. **Find the Duplicate Number (LC 287)**: Given an array of $n + 1$ integers in $[1, n]$, find the repeated number **without modifying the array** and using only $\mathcal{O}(1)$ extra space.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional, List
+
+class CycleAndDuplicateSolution:
+    @staticmethod
+    def detectCycle(head: Optional[ListNode]) -> Optional[ListNode]:
+        if not head or not head.next:
+            return None
+        slow = head
+        fast = head
+        while fast and fast.next:
+            slow = slow.next
+            fast = fast.next.next
+            if slow == fast:
+                break
+        else:
+            return None
+
+        ptr1 = head
+        ptr2 = slow
+        while ptr1 != ptr2:
+            ptr1 = ptr1.next
+            ptr2 = ptr2.next
+        return ptr1
+
+    @staticmethod
+    def findDuplicate(nums: List[int]) -> int:
+        slow = nums[0]
+        fast = nums[0]
+        while True:
+            slow = nums[slow]
+            fast = nums[nums[fast]]
+            if slow == fast:
+                break
+        ptr1 = nums[0]
+        ptr2 = slow
+        while ptr1 != ptr2:
+            ptr1 = nums[ptr1]
+            ptr2 = nums[ptr2]
+        return ptr1
+```
+
+```cpp
+class CycleAndDuplicateSolution {
+public:
+    static ListNode* detectCycle(ListNode* head) {
+        if (!head || !head->next) return nullptr;
+        ListNode* slow = head;
+        ListNode* fast = head;
+        while (fast && fast->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+            if (slow == fast) break;
+        }
+        if (!fast || !fast->next) return nullptr;
+        ListNode* ptr1 = head;
+        ListNode* ptr2 = slow;
+        while (ptr1 != ptr2) {
+            ptr1 = ptr1->next;
+            ptr2 = ptr2->next;
+        }
+        return ptr1;
+    }
+
+    static int findDuplicate(const std::vector<int>& nums) {
+        int slow = nums[0];
+        int fast = nums[0];
+        do {
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+        } while (slow != fast);
+
+        int ptr1 = nums[0];
+        int ptr2 = slow;
+        while (ptr1 != ptr2) {
+            ptr1 = nums[ptr1];
+            ptr2 = nums[ptr2];
+        }
+        return ptr1;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Mathematical Derivation</div>
+
+- **Mathematical Derivation of Cycle Entry**:
+  - Let $a$ be distance from head to cycle entrance; $b$ be distance from entrance to first collision; $C$ be cycle circumference.
+  - At first collision:
+    $$\text{slow distance} = a + b$$
+    $$\text{fast distance} = a + b + k \cdot C \quad (k \ge 1)$$
+  - Since $v_{\text{fast}} = 2 \cdot v_{\text{slow}}$:
+    $$2(a + b) = a + b + k \cdot C \implies a + b = k \cdot C \implies a = (k - 1)C + (C - b)$$
+  - Walking one pointer from `head` and another from `collision` at identical speed guarantees they meet at the cycle entry after distance $a$.
+- **Array-to-Graph Mapping (LC 287 Invariant)**:
+  - Directed edge: $i \to nums[i]$.
+  - Because $nums[i] \in [1, n]$, index $0$ has in-degree $0$, serving as an authoritative head node.
+  - A duplicate number means multiple indices point to the same value $\implies$ in-degree $\ge 2$, establishing a cycle whose entry point is the duplicate value.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, meeting within $C$ steps and finding entry in $a$ steps.
+- **Space Complexity**: $\mathcal{O}(1)$, auxiliary pointers only.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 5. Reorder List (Midpoint Split, In-Place Reversal & Interleave)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LINKED LIST 05</span>
+  <span class="review-card-title">Reorder List (Midpoint Split, In-Place Reversal & Interleave)</span>
+  <span class="review-card-tag">Fast-Slow Midpoint · In-Place Reversal · Alternating Interleave · Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 143 · Reorder List](https://leetcode.com/problems/reorder-list/) — `https://leetcode.com/problems/reorder-list/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> Given the head of a singly linked-list: $L_0 \to L_1 \to \dots \to L_{n-1} \to L_n$.
+> Reorder the list in-place to: $L_0 \to L_n \to L_1 \to L_{n-1} \to L_2 \to L_{n-2} \to \dots$
+> Solve in $\mathcal{O}(N)$ time and $\mathcal{O}(1)$ auxiliary space without altering node values.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class ReorderListSolution:
+    @staticmethod
+    def reorderList(head: Optional[ListNode]) -> None:
+        if not head or not head.next:
+            return
+
+        # 1. Locate midpoint and bisect
+        slow, fast = head, head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        second_head = slow.next
+        slow.next = None
+
+        # 2. Reverse second half
+        prev = None
+        curr = second_head
+        while curr:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+        p2 = prev
+
+        # 3. Interleave halves
+        p1 = head
+        while p2:
+            t1 = p1.next
+            t2 = p2.next
+            p1.next = p2
+            p2.next = t1
+            p1 = t1
+            p2 = t2
+```
+
+```cpp
+class ReorderListSolution {
+public:
+    static void reorderList(ListNode* head) {
+        if (!head || !head->next) return;
+
+        ListNode* slow = head;
+        ListNode* fast = head;
+        while (fast->next && fast->next->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+        }
+
+        ListNode* second = slow->next;
+        slow->next = nullptr;
+
+        ListNode* prev = nullptr;
+        ListNode* curr = second;
+        while (curr) {
+            ListNode* nxt = curr->next;
+            curr->next = prev;
+            prev = curr;
+            curr = nxt;
+        }
+
+        ListNode* p1 = head;
+        ListNode* p2 = prev;
+        while (p2) {
+            ListNode* t1 = p1->next;
+            ListNode* t2 = p2->next;
+            p1->next = p2;
+            p2->next = t1;
+            p1 = t1;
+            p2 = t2;
+        }
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariant Analysis</div>
+
+- **Three-Step Composition**:
+  Combines three classical primitive operations:
+  1. Fast-slow bisection with `fast.next and fast.next.next` guarantees $len(p_1) \ge len(p_2)$;
+  2. In-place reversal of the trailing sublist;
+  3. Alternating zip-interleaving terminating naturally on `while p2`.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, three linear half-passes.
+- **Space Complexity**: $\mathcal{O}(1)$, auxiliary pointers only.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 6. Remove Nth Node From End of List
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LINKED LIST 06</span>
   <span class="review-card-title">Remove Nth Node From End of List</span>
   <span class="review-card-tag">Two-Pointer Fixed Offset · Sentinel Dummy Head · One-Pass Traversal · Space O(1)</span>
 </summary>
@@ -737,11 +1146,141 @@ public:
 
 ---
 
-### 4. Reverse Nodes in k-Group & Structural Group Inversion
+### 7. Copy List with Random Pointer (In-Place Interleaving)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">LINKED LIST 04</span>
+  <span class="review-card-badge">LINKED LIST 07</span>
+  <span class="review-card-title">Copy List with Random Pointer (In-Place Interleaving)</span>
+  <span class="review-card-tag">In-Place Interleave · Random Pointer Projection · List Decoupling · Auxiliary Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 138 · Copy List with Random Pointer](https://leetcode.com/problems/copy-list-with-random-pointer/) — `https://leetcode.com/problems/copy-list-with-random-pointer/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> Construct a **deep copy** of a linked list where each node contains an additional `random` pointer pointing to any node in the list or `null`.
+> Solve with $\mathcal{O}(1)$ auxiliary space without hash maps.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class Node:
+    def __init__(self, x: int, next: 'Node' = None, random: 'Node' = None):
+        self.val = int(x)
+        self.next = next
+        self.random = random
+
+class CopyRandomListSolution:
+    @staticmethod
+    def copyRandomList(head: Optional[Node]) -> Optional[Node]:
+        if not head:
+            return None
+
+        # Pass 1: Clone inline: A -> A' -> B -> B'
+        curr = head
+        while curr:
+            copy = Node(curr.val, curr.next)
+            curr.next = copy
+            curr = copy.next
+
+        # Pass 2: Link random pointers
+        curr = head
+        while curr:
+            if curr.random:
+                curr.next.random = curr.random.next
+            curr = curr.next.next
+
+        # Pass 3: Decouple lists
+        curr = head
+        copy_head = head.next
+        while curr:
+            copy = curr.next
+            curr.next = copy.next
+            if copy.next:
+                copy.next = copy.next.next
+            curr = curr.next
+
+        return copy_head
+```
+
+```cpp
+class CopyRandomListSolution {
+public:
+    static Node* copyRandomList(Node* head) {
+        if (!head) return nullptr;
+
+        Node* curr = head;
+        while (curr) {
+            Node* copy = new Node(curr->val);
+            copy->next = curr->next;
+            curr->next = copy;
+            curr = copy->next;
+        }
+
+        curr = head;
+        while (curr) {
+            if (curr->random) {
+                curr->next->random = curr->random->next;
+            }
+            curr = curr->next->next;
+        }
+
+        curr = head;
+        Node* copyHead = head->next;
+        while (curr) {
+            Node* copy = curr->next;
+            curr->next = copy->next;
+            if (copy->next) {
+                copy->next = copy->next->next;
+            }
+            curr = curr->next;
+        }
+        return copyHead;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariant Analysis</div>
+
+- **In-Place Interleaving Invariant**:
+  Embedding cloned nodes directly into the original chain creates an implicit physical mapping $\text{copy}(curr) \equiv curr.next$. Thus, random pointers are wired in $\mathcal{O}(1)$ time without extra memory:
+  $$\text{copy}(curr.random) \equiv curr.random.next$$
+- **Clean Decoupling**:
+  Pass 3 faithfully restores the original chain while unlinking the deep clone.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, three linear sweeps.
+- **Space Complexity**: $\mathcal{O}(1)$ auxiliary space.
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 8. Reverse Nodes in k-Group & Structural Group Inversion
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LINKED LIST 08</span>
   <span class="review-card-title">Reverse Nodes in k-Group & Structural Group Inversion</span>
   <span class="review-card-tag">Dummy Head · Lookahead K-Check · Sub-List Inversion · O(1) Space</span>
 </summary>
@@ -856,11 +1395,11 @@ Transforming a shared linked list via `reverseKGroup(head, k)` under concurrent 
 
 ---
 
-### 5. Insert into a Sorted Circular Linked List
+### 9. Insert into a Sorted Circular Linked List
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">LINKED LIST 05</span>
+  <span class="review-card-badge">LINKED LIST 09</span>
   <span class="review-card-title">Insert into a Sorted Circular Linked List</span>
   <span class="review-card-tag">Two-Pointer Cyclic Walk · Inflection Point Detection · Wrap-Around Boundary · Space O(1)</span>
 </summary>
@@ -1029,11 +1568,11 @@ public:
 
 ---
 
-### 6. Flatten Multilevel Doubly Linked List with Empty-Node Filtering
+### 10. Flatten Multilevel Doubly Linked List with Empty-Node Filtering
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">LINKED LIST 06</span>
+  <span class="review-card-badge">LINKED LIST 10</span>
   <span class="review-card-title">Flatten Multilevel Doubly Linked List with Empty-Node Filtering</span>
   <span class="review-card-tag">Pointer Relinking · DFS Traversal · Tail Backtracking · In-Place Flattening</span>
 </summary>
@@ -1151,11 +1690,11 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Randomized Container with O(1) Insert & PopRandom
+### 11. Randomized Container with O(1) Insert & PopRandom
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">CONTAINER 07</span>
+  <span class="review-card-badge">CONTAINER 11</span>
   <span class="review-card-title">Randomized Container with O(1) Insert & PopRandom</span>
   <span class="review-card-tag">Contiguous Dynamic Array + Hash Index Map · Swap-with-Last Deletion · Uniform Random Sampling · O(1) Amortized</span>
 </summary>
@@ -1349,11 +1888,11 @@ public:
 
 ---
 
-### 8. Independent Iterator Protocol & Shared Streaming Buffer (Python itertools.tee)
+### 12. Independent Iterator Protocol & Shared Streaming Buffer (Python itertools.tee)
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">STREAM 08</span>
+  <span class="review-card-badge">STREAM 12</span>
   <span class="review-card-title">Independent Iterator Protocol & Shared Streaming Buffer (Python itertools.tee)</span>
   <span class="review-card-tag">Iterator Protocol · Shared Singly-Linked Buffer · Multi-Cursor Chasing · O(1) Auto GC · Memory O(g + n)</span>
 </summary>
@@ -1463,11 +2002,11 @@ if __name__ == "__main__":
 
 ## Module 2: Stack & Monotonic Stack / Deque
 
-### 9. Basic Calculator & Operator Precedence Hierarchy
+### 13. Basic Calculator & Operator Precedence Hierarchy
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">STACK 09</span>
+  <span class="review-card-badge">STACK 13</span>
   <span class="review-card-title">Basic Calculator & Operator Precedence Hierarchy</span>
   <span class="review-card-tag">Operator Precedence · Recursive Descent · Stack Evaluation · Parentheses Scoping</span>
 </summary>
@@ -1585,11 +2124,11 @@ if __name__ == "__main__":
 
 ---
 
-### 10. Sliding Window Maximum & Monotonic Deque Pattern
+### 14. Sliding Window Maximum & Monotonic Deque Pattern
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">DEQUE 10</span>
+  <span class="review-card-badge">DEQUE 14</span>
   <span class="review-card-title">Sliding Window Maximum & Monotonic Deque Pattern</span>
   <span class="review-card-tag">Monotonic Deque · Index Expiry Eviction · Amortized O(1) Transition</span>
 </summary>
@@ -1684,11 +2223,11 @@ if __name__ == "__main__":
 
 ---
 
-### 11. Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern
+### 15. Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">MONOTONIC STACK 11</span>
+  <span class="review-card-badge">MONOTONIC STACK 15</span>
   <span class="review-card-title">Largest Rectangle in Histogram & Monotonic Stack Sentinel Pattern</span>
   <span class="review-card-tag">Monotonic Stack · Dual Sentinels · Width Calculation · 2D Reduction</span>
 </summary>
@@ -1773,11 +2312,11 @@ if __name__ == "__main__":
 
 ---
 
-### 12. Remove Duplicate Letters via Monotonic Stack
+### 16. Remove Duplicate Letters via Monotonic Stack
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">MONOTONIC STACK 12</span>
+  <span class="review-card-badge">MONOTONIC STACK 16</span>
   <span class="review-card-title">Remove Duplicate Letters via Monotonic Stack</span>
   <span class="review-card-tag">Monotonic Stack · Last Occurrence Map · Visited Bitset · O(N)</span>
 </summary>
@@ -1872,11 +2411,11 @@ if __name__ == "__main__":
 
 ---
 
-### 13. Valid Parenthesis String with Wildcard & Concrete String Enumeration
+### 17. Valid Parenthesis String with Wildcard & Concrete String Enumeration
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">STACK/DFS 13</span>
+  <span class="review-card-badge">STACK/DFS 17</span>
   <span class="review-card-title">Valid Parenthesis String with Wildcard & Concrete String Enumeration</span>
   <span class="review-card-tag">Interval Greedy · O(N) Dual Bounds · Branch-and-Bound DFS</span>
 </summary>
@@ -1982,11 +2521,11 @@ if __name__ == "__main__":
 
 ## Module 3: Heap & Priority Queue
 
-### 14. Find Median from Data Stream & K-Way Merge
+### 18. Find Median from Data Stream & K-Way Merge
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">HEAP 14</span>
+  <span class="review-card-badge">HEAP 18</span>
   <span class="review-card-title">Find Median from Data Stream & K-Way Merge</span>
   <span class="review-card-tag">Dual Heaps · Balance Invariant · Lazy Eviction</span>
 </summary>
@@ -2064,11 +2603,11 @@ if __name__ == "__main__":
 
 ---
 
-### 15. MinStack, MaxStack, Streaming Median & System Extensions
+### 19. MinStack, MaxStack, Streaming Median & System Extensions
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">HEAP/SYSTEM 15</span>
+  <span class="review-card-badge">HEAP/SYSTEM 19</span>
   <span class="review-card-title">MinStack, MaxStack, Streaming Median & System Extensions</span>
   <span class="review-card-tag">Dual Heaps · O(1) Extremum Stack · Lazy Eviction · Streaming Extensions</span>
 </summary>
@@ -2214,11 +2753,11 @@ if __name__ == "__main__":
 
 ---
 
-### 16. Tiered Priority Task Scheduler
+### 20. Tiered Priority Task Scheduler
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">HEAP/SCHEDULER 16</span>
+  <span class="review-card-badge">HEAP/SCHEDULER 20</span>
   <span class="review-card-title">Tiered Priority Task Scheduler</span>
   <span class="review-card-tag">Merchant Min-Heap · FIFO Timestamp Queues · Active Round-Robin · VIP Weighted Allocation</span>
 </summary>
@@ -2358,11 +2897,11 @@ if __name__ == "__main__":
 
 ---
 
-### 17. Timestamp Task Scheduler with Direct ID Removal
+### 21. Timestamp Task Scheduler with Direct ID Removal
 
 <details class="review-card">
 <summary class="review-card-summary">
-  <span class="review-card-badge">HEAP/SCHEDULER 17</span>
+  <span class="review-card-badge">HEAP/SCHEDULER 21</span>
   <span class="review-card-title">Timestamp Task Scheduler with Direct ID Removal</span>
   <span class="review-card-tag">Composite Min-Heap · Lazy Eviction · Hash Version Validation</span>
 </summary>
