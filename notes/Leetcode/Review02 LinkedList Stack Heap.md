@@ -115,6 +115,188 @@ if __name__ == "__main__":
 - `get` 与 `put` 严格为 $\mathcal{O}(1)$；辅助空间 $\mathcal{O}(C)$。
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：五大工业级衍生架构全家桶</div>
+
+#### 1. 餐厅候补队列匹配系统 (Restaurant Waitlist / Table Matching Queue)
+- **业务场景**：
+  - `join(user, party_size)`：顾客入队，追加到排队队列尾部，$\mathcal{O}(1)$。
+  - `delete(user)`：顾客因超时或取消排队离开队伍，可位于队列任意位置，要求 $\mathcal{O}(1)$ 删除。
+  - `find_first_match(table_size: int)`：空出一张容量为 `table_size` 的餐桌，从排队队列中检索**到达时间最早（FIFO）且 `party_size <= table_size`** 的顾客。检索不删除顾客。
+- **架构权衡与设计**：
+  - **基础双向链表 + 哈希表（LRU 结构对偶）**：
+    - `user_map: Dict[user, DLLNode]` 存储节点句柄，实现 $\mathcal{O}(1)$ 的 `delete` 与 `join`；
+    - `find_first_match(t)` 从链表头（最早排队顾客）向后线性扫描，找到第一个 `party_size <= t` 的节点。时间复杂度为 $\mathcal{O}(N)$。
+  - **分桶队列优化（Table-Size Bucket Optimization）**：
+    - 现实中顾客人数 `party_size` 通常为小整数（如 $1 \sim 10$）。
+    - 针对每个就餐人数 $s \in [1, 10]$ 分别维护一条双向队列 `buckets[s]`。
+    - `join(user, s)`：将用户追加到 `buckets[s]` 的尾部，时间 $\mathcal{O}(1)$。
+    - `delete(user)`：通过哈希表定位所属 bucket 与节点指针，从对应双向链表中 $\mathcal{O}(1)$ 摘除。
+    - `find_first_match(table_size)`：只需扫描 $s \in [1, 	ext{table\_size}]$ 的各个桶头节点，比较其进入时间戳，选取**时间戳最小（最先到达）**的顾客。时间复杂度降为严格 $\mathcal{O}(	ext{table\_size}) = \mathcal{O}(1)$。
+
+```python
+class WaitlistSystem:
+    class CustomerNode:
+        def __init__(self, user: str, size: int, ts: int):
+            self.user = user
+            self.size = size
+            self.ts = ts
+            self.prev = self.next = None
+
+    def __init__(self, max_party_size: int = 10):
+        self.max_party_size = max_party_size
+        self.user_map = {}  # user -> CustomerNode
+        self.buckets = {s: (self.CustomerNode("", 0, 0), self.CustomerNode("", 0, 0)) for s in range(1, max_party_size + 1)}
+        for s in self.buckets:
+            h, t = self.buckets[s]
+            h.next, t.prev = t, h
+        self.clock = 0
+
+    def join(self, user: str, party_size: int) -> None:
+        if user in self.user_map or party_size > self.max_party_size:
+            return
+        self.clock += 1
+        node = self.CustomerNode(user, party_size, self.clock)
+        self.user_map[user] = node
+        h, t = self.buckets[party_size]
+        # 追加至 tail 前
+        node.prev, node.next = t.prev, t
+        t.prev.next = node
+        t.prev = node
+
+    def delete(self, user: str) -> bool:
+        if user not in self.user_map:
+            return False
+        node = self.user_map.pop(user)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def find_first_match(self, table_size: int) -> Optional[str]:
+        earliest_node = None
+        limit = min(table_size, self.max_party_size)
+        for s in range(1, limit + 1):
+            h, t = self.buckets[s]
+            head_cand = h.next
+            if head_cand is not t:
+                if earliest_node is None or head_cand.ts < earliest_node.ts:
+                    earliest_node = head_cand
+        return earliest_node.user if earliest_node else None
+```
+
+#### 2. 支持乱序时间戳的日志限流器 (Robot Logger with Out-of-Order Timestamps)
+- **业务场景**：
+  - 分布式机器人或传感器上报 `(timestamp, message)`。
+  - 规则：若同一 `message` 在逻辑时间区间 $[timestamp - 10, timestamp)$ 内**已经打印过**，则拦截隐藏（返回 `False`）；否则放行打印（返回 `True`）。
+  - **核心难点（乱序上报）**：由于网络延迟，数据包可能乱序到达（例如 `(12, "foo")` 先到达，随后 `(10, "foo")` 到达）。
+  - **因果约束律**：
+    1. 后来的时间戳绝不能反向封杀早前的时间戳（$12$ 不属于 $10$ 过去 10 秒的历史，故 $10$ 必须放行）；
+    2. 同一时间戳多次调用，仅首次放行；
+    3. 未放行的拦截调用绝不能刷新时间窗口！
+- **数据结构选型**：
+  - 对每个 `message`，维护其所有**已成功放行时间戳的动态有序集合**（红黑树 / 跳表 / `SortedSet`）。
+  - 判定流程：
+    1. 在有序表中二分查找 $timestamp$ 的最大严格前驱 $pred = \max \{x \in S \mid x < timestamp\}$。
+    2. 若 $timestamp \in S$ 或 ($pred \neq \text{None}$ 且 $pred \ge timestamp - 10$)，返回 `False`；
+    3. 否则将 $timestamp$ 插入集合 $S$，返回 `True`。
+  - 单次判定开销 $\mathcal{O}(\log K)$，其中 $K$ 为该消息历史放行条数。在时间窗口滑动时，利用双向指针或 LRU 机制淘汰全局安全下限之外的历史数据。
+
+#### 3. 基于 Idempotency-Key 的幂等 API 处理器 (Idempotency API with Concurrency & TTL)
+- **核心契约**：
+  - 首次携带 Key $K$ 与请求体 $B$：正常执行并返回响应 $R$，持久化 $(K \to R)$；
+  - 相同 Key $K$ 与相同 Body $B$ 重试：直接返回缓存的 $R$，杜绝重复扣款/下单；
+  - 相同 Key $K$ 但不同 Body $B'$：抛出 `409 Conflict`（非法键复用）；
+  - **高并发竞态防护**：两个携带相同 Key $K$ 的请求并发到达时，第二个请求必须在 `threading.Condition` 上挂起等待第一个请求完成，绝不可双重执行！
+  - **TTL 回收策略**：缓存记录配置 TTL（如 24 小时），支持惰性校验与后台周期扫描。
+
+```python
+import hashlib, json, time, threading
+from enum import Enum
+from typing import Dict, Any, Tuple
+
+class RequestStatus(Enum):
+    IN_FLIGHT = 1
+    DONE = 2
+
+class IdempotencyRecord:
+    def __init__(self, body_hash: str, ttl_seconds: float):
+        self.body_hash = body_hash
+        self.status = RequestStatus.IN_FLIGHT
+        self.response = None
+        self.expires_at = time.time() + ttl_seconds
+        self.condition = threading.Condition()
+
+class IdempotencyManager:
+    def __init__(self, default_ttl: float = 86400.0):
+        self.default_ttl = default_ttl
+        self.store: Dict[str, IdempotencyRecord] = {}
+        self.lock = threading.Lock()
+
+    def _hash_body(self, body: Any) -> str:
+        canonical_json = json.dumps(body, sort_keys=True)
+        return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
+
+    def handle_request(self, idempotency_key: str, body: Any, execute_fn) -> Tuple[int, Any]:
+        body_hash = self._hash_body(body)
+        now = time.time()
+
+        with self.lock:
+            if idempotency_key in self.store:
+                rec = self.store[idempotency_key]
+                # 检查是否已过期
+                if now > rec.expires_at:
+                    del self.store[idempotency_key]
+                else:
+                    # 检查请求体冲突 (409 Conflict)
+                    if rec.body_hash != body_hash:
+                        return 409, {"error": "Idempotency key re-used with different payload"}
+                    
+                    # 若仍在处理中，等待其完成
+                    if rec.status == RequestStatus.IN_FLIGHT:
+                        rec.condition.wait()
+                        return 200, rec.response
+                    else:
+                        return 200, rec.response
+
+            # 首次进入：注册 IN_FLIGHT 记录
+            rec = IdempotencyRecord(body_hash, self.default_ttl)
+            self.store[idempotency_key] = rec
+
+        # 在锁外执行真实业务逻辑
+        try:
+            res = execute_fn(body)
+            with rec.condition:
+                rec.response = res
+                rec.status = RequestStatus.DONE
+                rec.condition.notify_all()
+            return 200, res
+        except Exception as e:
+            with self.lock:
+                self.store.pop(idempotency_key, None)
+            with rec.condition:
+                rec.condition.notify_all()
+            raise e
+```
+
+#### 4. 连续内存分配器 (First-Fit Memory Allocator with Splitting & Coalescing)
+- **业务场景**：
+  - 给定大小为 $N$ 的单一连续内存池。
+  - `allocate(size)`：寻找大小 $\ge size$ 的连续空闲块并分配，返回起始偏移；若不足返回错误。
+  - `free(offset)`：归还指定块，并与**物理相邻的空闲块合并（Coalescing）**，防止内存外部碎片化。
+- **双向链表 + 边界标记法 (Boundary Tags)**：
+  - 每个内存块节点维护：`offset, size, is_free, prev, next`。
+  - `allocate`：采用首次适应算法（First-Fit）沿双向链表扫描。若空闲块 `size > request_size`，将其切分为已分配块和剩余空闲块。
+  - `free`：将当前块标记为 `is_free = True`；若 `prev` 也是空闲块，直接向前合并；若 `next` 也是空闲块，直接向后合并。合并仅涉及双向链表常数个指针的重排，为严格 $\mathcal{O}(1)$ 操作！
+
+#### 5. 并发线程安全与分布式分片架构
+- **单机并发安全**：
+  - 粗粒度保护：全局 `threading.RLock()` 封装 `get`/`put`。
+  - 细粒度分片（Sharded Cache / ConcurrentHashMap 模式）：
+    将大缓存水平切分为 $M$ 个独立分片（Shard），依据 $	ext{hash}(key) \pmod M$ 路由到具体分片。各分片持独立的锁与双向链表，使并发写吞吐随核心数线性扩展（注意：此时退化为分片局部的近拟 LRU）。
+- **跨机器分布式缓存**：
+  - 采用**一致性哈希环（Consistent Hashing with Virtual Nodes）**实现节点弹性扩缩容；单机节点内部继续运行双向链表+哈希表的纯粹 LRU 引擎。
+
+</div>
 
 </div>
 </details>
@@ -1265,6 +1447,123 @@ if __name__ == "__main__":
 - **空间复杂度**：迭代法 $\mathcal{O}(1)$；递归法 $\mathcal{O}(N)$（递归系统调用栈深度）。
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 核心基石延伸：回文链表原状复原与高位减法全家桶</div>
+
+#### 1. 回文链表与工程级原状复原 (Palindrome Linked List - LC 234)
+- **核心契约**：
+  - 判断单链表是否为回文序列；
+  - 空间约束：$\mathcal{O}(1)$ 辅助空间（严禁将节点全量存入数组）；
+  - **工业级生产约束 (Production Follow-up)**：在函数返回前，**必须将链表恢复为其原本的物理指针结构**，防止上游调用方观察到破坏性的副作用（In-Place Mutation Side Effect）。
+- **算法实施**：
+  1. 快慢双指针探测中点：`slow` 单步推进，`fast` 双步推进。当 `fast` 抵达末尾时，`slow` 恰好停在前半段末尾，`slow.next` 为后半段起点。
+  2. 翻转后半段链表：`second_half = reverseList(slow.next)`。
+  3. 双指针平移校验：`p1 = head`, `p2 = second_half` 逐值比对。
+  4. **原状恢复 (State Restoration)**：再次翻转后半段，`slow.next = reverseList(second_half)`，无缝拼接复原。
+
+```python
+class PalindromeSolution:
+    @staticmethod
+    def isPalindrome(head: Optional[ListNode]) -> bool:
+        if not head or not head.next:
+            return True
+
+        # 1. 快慢指针找中点
+        slow, fast = head, head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        # 2. 原地翻转后半部分
+        def reverse_chain(node: Optional[ListNode]) -> Optional[ListNode]:
+            prev = None
+            curr = node
+            while curr:
+                nxt = curr.next
+                curr.next = prev
+                prev = curr
+                curr = nxt
+            return prev
+
+        second_head = reverse_chain(slow.next)
+
+        # 3. 比较前半部分与后半部分
+        p1, p2 = head, second_head
+        is_pal = True
+        while is_pal and p2:
+            if p1.val != p2.val:
+                is_pal = False
+            p1 = p1.next
+            p2 = p2.next
+
+        # 4. 【关键工程保护】：将后半段翻转接回，恢复调用方链表物理原貌
+        slow.next = reverse_chain(second_head)
+
+        return is_pal
+```
+
+#### 2. 高位在前单链表减法 (Forward-Order Linked List Subtraction $l_1 - l_2$)
+- **核心契约**：
+  - 给出两个非空单链表 $l_1, l_2$，每个节点包含一位十进制数，**高位在先（MSB First）**。
+  - 保证 $l_1 \ge l_2$，计算 $l_1 - l_2$ 并以相同的高位在前链表返回。
+  - 剔除多余前导零（结果为 0 则保留单个 0 节点）。严禁将链表整体转化为内置大整数类型（数字长度可达 $10^5$）。
+- **算法实施**：
+  - 先将两链表就地翻转为低位在先（LSB First），从而在 $\mathcal{O}(1)$ 空间内对齐个位数；
+  - 模拟小学竖式减法，维护借位量 `borrow = 0`：
+    $$	ext{diff} = val_1 - val_2 - borrow$$
+    若 $	ext{diff} < 0$，则 $	ext{diff} += 10, borrow = 1$；否则 $borrow = 0$。
+  - 得到差值链表后再次翻转回 MSB 顺序，最后快慢指针剥离前导零。
+
+```python
+class LinkedListSubtractionSolution:
+    @classmethod
+    def subtractLinkedList(cls, l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        def reverse(node):
+            prev, curr = None, node
+            while curr:
+                nxt = curr.next
+                curr.next = prev
+                prev = curr
+                curr = nxt
+            return prev
+
+        r1 = reverse(l1)
+        r2 = reverse(l2)
+
+        p1, p2 = r1, r2
+        dummy = ListNode(0)
+        curr = dummy
+        borrow = 0
+
+        while p1:
+            v1 = p1.val
+            v2 = p2.val if p2 else 0
+            diff = v1 - v2 - borrow
+            if diff < 0:
+                diff += 10
+                borrow = 1
+            else:
+                borrow = 0
+            curr.next = ListNode(diff)
+            curr = curr.next
+            p1 = p1.next
+            if p2: p2 = p2.next
+
+        # 将 r1 和 r2 恢复以保护原结构
+        reverse(r1)
+        reverse(r2)
+
+        # 结果链表翻转回高位在前
+        res = reverse(dummy.next)
+
+        # 剥离前导 0
+        while res and res.val == 0 and res.next:
+            res = res.next
+
+        return res
+```
+
+</div>
 
 </div>
 </details>
@@ -1353,7 +1652,7 @@ if __name__ == "__main__":
 <div class="review-block-label">💡 机制剖析</div>
 
 - **单调栈贪心决策律**：
-  字典序越小的字符越应靠前。遇到字符 $ch$ 时，若栈顶字符 $top > ch$，且 $top$ 在后续文本中还会再次登场（$last\_occurrence[top] > i$），则此时抛弃 $top$ 绝不会导致未来缺失该字符，同时让更小的 $ch$ 占据高位，必然能使整体字典序变小。
+  字典序越小的字符越应靠前。遇到字符 $ch$ 时，若栈顶字符 $top > ch$, 且 $top$ 在后续文本中还会再次登场（$last\_occurrence[top] > i$），则此时抛弃 $top$ 绝不会导致未来缺失该字符，同时让更小的 $ch$ 占据高位，必然能使整体字典序变小。
 - **不可挽回字符的刚性保护**：
   若 $last\_occurrence[top] \le i$，意味着这是当前字符最后一次露面的机会，此时严禁弹出，必须保留在栈中以满足“包含每个不同字符”的硬性前提。
 - **已入栈字符直接跳过**：
@@ -1506,4 +1805,677 @@ if __name__ == "__main__":
 
 </div>
 </details>
+
+---
+
+### 14. 删除链表的倒数第 N 个节点 (Remove Nth Node From End of List)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 14</span>
+  <span class="review-card-title">删除链表的倒数第 N 个节点 (Remove Nth Node From End of List)</span>
+  <span class="review-card-tag">双指针快慢定距 · 虚拟头节点哨兵 · 单趟扫描 · 空间 O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 链接**：
+> - [LeetCode 19 · Remove Nth Node From End of List](https://leetcode.com/problems/remove-nth-node-from-end-of-list/) — `https://leetcode.com/problems/remove-nth-node-from-end-of-list/`
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> Given the head of a singly linked list, remove the $n$-th node from the end of the list and return its head.
+> **Constraint**: You must solve it in a single pass with $\mathcal{O}(1)$ auxiliary space.
+
+**函数签名**：
+```python
+class Solution:
+    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -> Optional[ListNode]: ...
+```
+
+**输入输出示例**：
+- `head = [1, 2, 3, 4, 5], n = 2` $\implies$ `[1, 2, 3, 5]`
+- `head = [1], n = 1` $\implies$ `[]`
+- `head = [1, 2], n = 1` $\implies$ `[1]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class RemoveNthFromEndSolution:
+    @staticmethod
+    def removeNthFromEnd(head: Optional[ListNode], n: int) -> Optional[ListNode]:
+        # 单趟扫描删除链表倒数第 n 个节点。
+        # 使用哨兵虚拟头节点消除删除 head 的特例分支。
+        dummy = ListNode(0, head)
+        fast = dummy
+        slow = dummy
+
+        # 1. fast 指针先行前进 n + 1 步，构建长度为 n + 1 的跨步窗口
+        for _ in range(n + 1):
+            fast = fast.next
+
+        # 2. fast 与 slow 同步向前单步滑动，直到 fast 越过链表末尾变为 None
+        while fast is not None:
+            fast = fast.next
+            slow = slow.next
+
+        # 3. 此时 slow 恰好停在待删除节点的前驱节点 (Predecessor)
+        slow.next = slow.next.next
+
+        return dummy.next
+```
+
+```cpp
+#include <memory>
+
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x, ListNode* n = nullptr) : val(x), next(n) {}
+};
+
+class RemoveNthFromEndSolution {
+public:
+    static ListNode* removeNthFromEnd(ListNode* head, int n) {
+        ListNode dummy(0, head);
+        ListNode* fast = &dummy;
+        ListNode* slow = &dummy;
+
+        // 1. fast 先行推进 n + 1 步
+        for (int i = 0; i <= n; ++i) {
+            fast = fast->next;
+        }
+
+        // 2. 双指针同步推移
+        while (fast != nullptr) {
+            fast = fast->next;
+            slow = slow->next;
+        }
+
+        // 3. 跨过目标节点完成删除
+        ListNode* target = slow->next;
+        slow->next = slow->next->next;
+        delete target; // 释放堆内存避免泄漏
+
+        return dummy.next;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与不变量证明</div>
+
+- **定距滑动窗口不变量 (Fixed-Offset Invariant)**：
+  - 设链表节点总数为 $L$，虚拟头节点位于索引 $0$，链表节点位于索引 $1 \dots L$，末尾空指针位于索引 $L + 1$。
+  - 待删除的倒数第 $n$ 个节点其正向索引为 $L - n + 1$。
+  - 其前驱节点（即需要被修改 `next` 指针的节点）正向索引为 $(L - n + 1) - 1 = L - n$。
+  - 初始化时，`fast` 先从 $0$（`dummy`）走 $n + 1$ 步到达索引 $n + 1$。此时 `fast` 与 `slow` 的距离差恒为 $n + 1$。
+  - 当 `fast` 滑动至 $L + 1$（即 `fast is None`）时，`slow` 所在索引为 $(L + 1) - (n + 1) = L - n$。
+  - 不变量成立：**`slow` 必然严格停在待删除节点的前驱节点**。
+- **哨兵节点 (Sentinel / Dummy Head) 的工程价值**：
+  - 若删除原链表的头节点（$n = L$），若不设哨兵，需单独判定 `if n == length: return head.next`。
+  - 引入 `dummy` 节点后，链表头节点退化为普通内部节点，所有删除逻辑统一为 `slow.next = slow.next.next`，彻底消除边界分支。
+- **面试口述规范 (Communication Checklist)**：
+  - 面试时明确表述窗口定距不变式：“I advance the fast pointer by $n+1$ steps from a dummy node so that when fast hits null, slow is guaranteed to sit exactly at the node immediately preceding the target deletion node.”
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与边界分析</div>
+
+- **时间复杂度**：$\mathcal{O}(L)$，单趟（One-pass）遍历，`fast` 仅扫描 $L + 1$ 次。
+- **空间复杂度**：$\mathcal{O}(1)$，仅需常数级别的辅助指针。
+- **核心边界用例**：
+  1. $L = 1, n = 1$：单节点链表删除后返回空链表。
+  2. $n = L$：删除链表原首节点。
+  3. $n = 1$：删除链表尾节点。
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 15. 循环有序单链表的插入 (Insert into a Sorted Circular Linked List)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表 15</span>
+  <span class="review-card-title">循环有序单链表的插入 (Insert into a Sorted Circular Linked List)</span>
+  <span class="review-card-tag">双指针循环遍历 · 拐点判定 · 环形边界环绕 · 空间 O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **相关链接**：
+> - [LeetCode 708 · Insert into a Sorted Circular Linked List](https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/) — `https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/`
+> - [1point3acres 面经真题](https://www.1point3acres.com/interview/problems/e1081044-6f41-5139-8596-3e843a348997) — Meta 电话面试高频题
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> Given a Circular Linked List node, which is sorted in non-descending order, write a function to insert a value `insertVal` into the list such that it remains a sorted circular list.
+> The given node can be a reference to **any single node** in the list and may not necessarily be the smallest value in the circular list.
+> If the list is empty (i.e., the given node is `null`), you should create a new single circular list and return the reference to that single node. Otherwise, you should return the original given node.
+
+**函数签名**：
+```python
+class Solution:
+    def insert(self, head: Optional[Node], insertVal: int) -> Node: ...
+```
+
+**输入输出示例**：
+- `head = [3, 4, 1], insertVal = 2` $\implies$ `[3, 4, 1, 2]`
+- `head = [], insertVal = 1` $\implies$ `[1]` (自环单节点)
+- `head = [1], insertVal = 0` $\implies$ `[1, 0]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+from typing import Optional
+
+class Node:
+    def __init__(self, val: int = 0, next: Optional['Node'] = None):
+        self.val = val
+        self.next = next
+
+class InsertSortedCircularListSolution:
+    @staticmethod
+    def insert(head: Optional[Node], insertVal: int) -> Node:
+        # 向循环升序单链表中插入 insertVal，并保持环形有序。
+        # head 可以是环中任意节点。
+        # 边界情况 1: 空链表，直接创建自环单节点
+        if not head:
+            new_node = Node(insertVal)
+            new_node.next = new_node
+            return new_node
+
+        prev = head
+        curr = head.next
+
+        while True:
+            # 判定情况 2: 内部有序插入区间 (prev.val <= insertVal <= curr.val)
+            if prev.val <= insertVal <= curr.val:
+                break
+
+            # 判定情况 3: 跨越最大值到最小值的断层拐点 (Inflection Point)
+            if prev.val > curr.val:
+                # 插入值大于等于全环最大值，或小于等于全环最小值
+                if insertVal >= prev.val or insertVal <= curr.val:
+                    break
+
+            prev = curr
+            curr = curr.next
+
+            # 判定情况 4: 完整遍历环一圈回到起点 (如链表中所有节点值皆相同)
+            if prev == head:
+                break
+
+        # 将新节点插入 prev 与 curr 之间
+        new_node = Node(insertVal, curr)
+        prev.next = new_node
+
+        return head
+```
+
+```cpp
+class Node {
+public:
+    int val;
+    Node* next;
+    Node(int _val) : val(_val), next(nullptr) {}
+    Node(int _val, Node* _next) : val(_val), next(_next) {}
+};
+
+class InsertSortedCircularListSolution {
+public:
+    static Node* insert(Node* head, int insertVal) {
+        if (!head) {
+            Node* newNode = new Node(insertVal);
+            newNode->next = newNode;
+            return newNode;
+        }
+
+        Node* prev = head;
+        Node* curr = head->next;
+
+        while (true) {
+            // 情况 2: 落在常规升序区间内
+            if (prev->val <= insertVal && insertVal <= curr->val) {
+                break;
+            }
+
+            // 情况 3: 到达最大值 -> 最小值的跃变拐点
+            if (prev->val > curr->val) {
+                if (insertVal >= prev->val || insertVal <= curr->val) {
+                    break;
+                }
+            }
+
+            prev = curr;
+            curr = curr->next;
+
+            // 情况 4: 兜圈一周回到起始指针 (例如所有节点值全相等)
+            if (prev == head) {
+                break;
+            }
+        }
+
+        prev->next = new Node(insertVal, curr);
+        return head;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与四大判定分支</div>
+
+- **环形有序结构的数学分类**：
+  由于给定指针 `head` 可能指向环中任意位置，单链表包含唯一一个**最大值降至最小值的跃变拐点（Inflection Point）**（除非所有元素完全相等）。
+  整个插入决策分为完备互斥的四大分支：
+  1. **空链表初始化**：
+     若 `head == None`，构造新节点并让其指向自身（`node.next = node`），返回该节点。
+  2. **区间内部平滑插入 (Interior Ordered Segment)**：
+     若 `prev.val <= insertVal <= curr.val`，`insertVal` 恰好介于局部有序相邻两节点之间，直接插入即可。
+  3. **极值拐点环绕插入 (Inflection Wrap-Around)**：
+     当 `prev.val > curr.val` 时，`prev` 为全环局部最大值，`curr` 为全环局部最小值。
+     - 若 `insertVal >= prev.val`（新元素比全环最大值还要大或相等）；
+     - 若 `insertVal <= curr.val`（新元素比全环最小值还要小或相等）；
+     此时新元素在逻辑上必须置于最大值与最小值之间。
+  4. **全环等值或兜圈兜底 (Degenerate / Monotonous Loop)**：
+     若链表中所有节点值完全相等（例如 `[3, 3, 3]`），或遍历整整一圈回到原点（`prev == head`）仍未触发前述条件，说明新元素可插入环中任意位置。此时在 `prev` 之后直接插入均满足循环升序。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与边界分析</div>
+
+- **时间复杂度**：$\mathcal{O}(N)$，最坏情况下遍历循环链表一周（$N$ 个节点）。
+- **空间复杂度**：$\mathcal{O}(1)$，仅需常数个指针维护移动。
+- **极端用例防御**：
+  - `head = None`（空链表处理）。
+  - 单节点链表自环（`head.next == head`）。
+  - 双节点且有明显升序 `[1, 3]` 插入 `2`、`0`、`4`。
+  - 全等节点链表 `[3, 3, 3]` 插入 `1` 或 `5`。
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 16. 常数时间随机集合与弹出容器 (Randomized Container with O(1) Insert & PopRandom)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">容器 16</span>
+  <span class="review-card-title">常数时间随机集合与弹出容器 (Randomized Container with O(1) Insert & PopRandom)</span>
+  <span class="review-card-tag">连续动态数组 + 哈希索引表 · 尾部元素置换 (Swap with Last) · 等概率随机抽取 · O(1) 均摊</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **相关链接**：
+> - [LeetCode 380 · Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/) — `https://leetcode.com/problems/insert-delete-getrandom-o1/`
+> - [LeetCode 381 · Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/) — `https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/`
+> - [1point3acres 面经真题](https://www.1point3acres.com/interview/problems/company/meta/randomized-container) — Meta 工业级容器设计题
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> Design a data structure that supports all following operations in average $\mathcal{O}(1)$ time complexity:
+> 1. `insert(val)`: Inserts an item `val` to the set if not already present. Returns `true` if the item was not present, `false` otherwise.
+> 2. `remove(val)`: Removes an item `val` from the set if present. Returns `true` if the item was present, `false` otherwise.
+> 3. `getRandom()`: Returns a random element from the current set of elements. Each element must have the **same probability** of being returned.
+> 4. `popRandom()` (Meta Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
+
+**核心约束**：
+- 普通哈希表支持 $\mathcal{O}(1)$ 插入与删除，但底层存储分散，**无法在 $\mathcal{O}(1)$ 内产生真正的严格均匀等概率随机索引**。
+- 普通连续数组支持 $\mathcal{O}(1)$ 下标随机访问与尾部操作，但中间位置删除需要 $\mathcal{O}(N)$ 平移移动元素。
+- **系统目标**：将二者深度融合，在 $\mathcal{O}(1)$ 内同时达成键检索与等概率紧凑随机抽取。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码</div>
+
+```python
+import random
+from typing import Dict, List
+
+class RandomizedSet:
+    # 基础版：元素互不重复 (LeetCode 380 + Meta popRandom 扩展)
+    # 时间复杂度: 所有操作均摊 O(1)
+    def __init__(self):
+        self.vals: List[int] = []          # 紧凑连续动态数组，支持 O(1) 随机访问
+        self.val_to_index: Dict[int, int] = {}  # 哈希映射：元素值 -> 其在 vals 中的下标
+
+    def insert(self, val: int) -> bool:
+        if val in self.val_to_index:
+            return False
+        self.val_to_index[val] = len(self.vals)
+        self.vals.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        # 核心机制：尾部元素置换 (Swap with Last)
+        # 将待删除元素与数组最后一个元素互换，随后执行 O(1) 的 pop()
+        if val not in self.val_to_index:
+            return False
+
+        idx_to_remove = self.val_to_index[val]
+        last_val = self.vals[-1]
+
+        # 将尾部元素移至 idx_to_remove 位置
+        self.vals[idx_to_remove] = last_val
+        self.val_to_index[last_val] = idx_to_remove
+
+        # 弹出数组末尾并清理哈希索引
+        self.vals.pop()
+        del self.val_to_index[val]
+        return True
+
+    def getRandom(self) -> int:
+        # 均匀等概率获取随机元素
+        return random.choice(self.vals)
+
+    def popRandom(self) -> int:
+        # Meta 面经高频扩展：随机等概率弹出并移除一个元素
+        # 时间复杂度: 严格 O(1)
+        if not self.vals:
+            raise IndexError("popRandom from empty RandomizedSet")
+
+        # 1. 随机生成一个合法下标
+        rand_idx = random.randrange(len(self.vals))
+        val_to_pop = self.vals[rand_idx]
+        last_val = self.vals[-1]
+
+        # 2. 将末尾元素覆盖至 rand_idx
+        self.vals[rand_idx] = last_val
+        self.val_to_index[last_val] = rand_idx
+
+        # 3. 弹出末尾并删除被弹出元素的映射
+        self.vals.pop()
+        del self.val_to_index[val_to_pop]
+
+        return val_to_pop
+```
+
+```cpp
+#include <vector>
+#include <unordered_map>
+#include <random>
+#include <stdexcept>
+
+class RandomizedSet {
+private:
+    std::vector<int> vals;
+    std::unordered_map<int, int> valToIndex;
+    std::mt19937 rng{std::random_device{}()};
+
+public:
+    RandomizedSet() {}
+
+    bool insert(int val) {
+        if (valToIndex.count(val)) return false;
+        valToIndex[val] = vals.size();
+        vals.push_back(val);
+        return true;
+    }
+
+    bool remove(int val) {
+        auto it = valToIndex.find(val);
+        if (it == valToIndex.end()) return false;
+
+        int idxToRemove = it->second;
+        int lastVal = vals.back();
+
+        // 覆盖待删位置
+        vals[idxToRemove] = lastVal;
+        valToIndex[lastVal] = idxToRemove;
+
+        // 移除尾部
+        vals.pop_back();
+        valToIndex.erase(it);
+        return true;
+    }
+
+    int getRandom() {
+        std::uniform_int_distribution<int> dist(0, vals.size() - 1);
+        return vals[dist(rng)];
+    }
+
+    int popRandom() {
+        if (vals.empty()) {
+            throw std::out_of_range("Container is empty");
+        }
+        std::uniform_int_distribution<int> dist(0, vals.size() - 1);
+        int randIdx = dist(rng);
+        int valToPop = vals[randIdx];
+        int lastVal = vals.back();
+
+        vals[randIdx] = lastVal;
+        valToIndex[lastVal] = randIdx;
+
+        vals.pop_back();
+        valToIndex.erase(valToPop);
+        return valToPop;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与重复项进阶扩展 (LC 381)</div>
+
+- **尾置换删除律 (Swap-with-Last Invariant)**：
+  - 在数组中删除任意索引 $i$ 的元素会引发 $\mathcal{O}(N)$ 的整体内存向前平移。
+  - 由于容器本身为无序集合（Set），**元素在动态数组中的相对顺序无任何业务语义**！
+  - 因此将待删除位置 $i$ 直接由数组最末尾元素 `last_val` 填补，随后调用 `pop()` 截断尾部，使得数组物理删除开销从 $\mathcal{O}(N)$ 骤降至 $\mathcal{O}(1)$。
+- **进阶面试追问：允许重复元素时的等概率保障 (Duplicates Allowed - LC 381)**：
+  - 若输入数据允许重复，每个元素被抽中的概率必须**正比于其出现频次**（即每个实例等概率 $1/N$）。
+  - **结构演进**：将哈希表的值类型由单一整数下标升级为索引哈希集合：
+    $$	ext{val\_to\_indices}: 	ext{Dict}[val, 	ext{Set}[int]]$$
+  - **删除逻辑的严密性**：
+    1. 获取待删元素 $val$ 的任意一个下标 `idx = next(iter(val_to_indices[val]))`；
+    2. 若 `idx` 恰好是末尾下标 `len(vals) - 1`，直接 pop 并在 set 中移除；
+    3. 若 `idx` 不是末尾，将 `last_val = vals[-1]` 覆盖至 `vals[idx]`；
+    4. 从 `val_to_indices[last_val]` 中移除旧末尾下标 `len(vals) - 1`，并加入新下标 `idx`；
+    5. 从 `val_to_indices[val]` 中移除 `idx`（若 set 为空则清理 key）；
+    6. 执行 `vals.pop()`。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度分析</div>
+
+- **时间复杂度**：
+  - `insert`: 均摊 $\mathcal{O}(1)$。
+  - `remove`: $\mathcal{O}(1)$（字典查寻、数组下表置换、末尾 pop 均为 $\mathcal{O}(1)$）。
+  - `getRandom`: $\mathcal{O}(1)$（伪随机数发生器生成随机索引 + 数组直接寻址）。
+  - `popRandom`: $\mathcal{O}(1)$。
+- **空间复杂度**：$\mathcal{O}(N)$，动态数组与哈希表严格与存入元素总量成线性关系。
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 17. 独立迭代器设计与共享流式缓冲区 (Python itertools.tee & Shared-State Streaming Buffer)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">迭代/流 17</span>
+  <span class="review-card-title">独立迭代器设计与共享流式缓冲区 (Python itertools.tee & Shared-State Streaming Buffer)</span>
+  <span class="review-card-tag">迭代器协议 · 共享单向链表 · 多游标追赶 · 自动引用计数垃圾回收 · 内存 O(g + n)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **设计规范与原型**：
+> - Python 标准库 `itertools.tee(iterable, n=2)` 底层实现原理
+> - 工业级流处理（Stream Processing）多分支消费与背压解耦
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与架构演进</div>
+
+**题目原文 (Problem Statement)**：
+> Implement the behavior of Python's `itertools.tee`:
+> Accept one source iterable/iterator and an integer $n \ge 1$. Return $n$ independent iterators over the same source sequence.
+> Each returned iterator must advance independently while preserving the exact sequence order.
+> Start with a correct baseline, then optimize toward the optimal shared-state design.
+
+**架构对比与内存瓶颈**：
+- **朴素独立队列方案 (Naive Multi-Queue)**：
+  - 为 $n$ 个分支迭代器各自分配一个 `collections.deque`。
+  - 某个分支请求 `next()` 时，若其专属队列为空，则从源迭代器拉取一个新值，并**广播复制追加到全部 $n$ 个队列中**。
+  - **缺陷**：若最快消费分支与最慢消费分支相隔 $g$ 个元素，这 $g$ 个元素会在所有滞后队列中均存在副本，产生 $\mathcal{O}(n \cdot g)$ 的冗余内存浪费！
+- **最优共享单向链式缓冲区 (Optimal Shared-State Linked Buffer)**：
+  - 全局仅维护**单向共享链表**，每个节点仅存一份数据 `Node(val, next)`。
+  - 每个分支迭代器仅持有一个指向该链表节点的游标 `cursor`。
+  - 当某个游标需要向后推进且 `cursor.next is None` 时，由该游标负责从底能源拉取新元素，创建新节点挂在 `cursor.next` 上。
+  - **垃圾回收机制（Garbage Collection）**：节点只有单向 `next` 指针。当最慢的消费者游标离开某节点时，在 Python 引用计数机制下，该节点前驱的引用归零，被即时 $\mathcal{O}(1)$ 自动物理回收！
+  - **辅助内存**：严格由 $\mathcal{O}(n \cdot g)$ 优化为 $\mathcal{O}(g + n)$！
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 完整生产级实现代码</div>
+
+```python
+from typing import Any, Iterator, List
+
+class _TeeNode:
+    __slots__ = ('val', 'next')
+    def __init__(self, val: Any = None):
+        self.val = val
+        self.next: Optional['_TeeNode'] = None
+
+class _TeeIterator:
+    def __init__(self, head_node: _TeeNode, shared_source: Iterator[Any]):
+        self.cursor = head_node
+        self.source = shared_source
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # 若当前游标后方尚未拉取数据，向共享底能源拉取并追加
+        if self.cursor.next is None:
+            val = next(self.source)  # 若底能源耗尽，将在此处抛出 StopIteration
+            self.cursor.next = _TeeNode(val)
+
+        # 游标向后推进一步，并产出对应值
+        self.cursor = self.cursor.next
+        return self.cursor.val
+
+def custom_tee(iterable: Any, n: int = 2) -> List[Iterator[Any]]:
+    # 生产级 Python itertools.tee 实现：
+    共享单向链表多游标驱动，内存开销严格受限于 O(g + n)
+    if n < 0:
+        raise ValueError("n must be non-negative")
+    if n == 0:
+        return []
+
+    shared_source = iter(iterable)
+    # 创建哨兵根节点，所有 n 个分支起始游标均指向根节点
+    root = _TeeNode()
+    return [_TeeIterator(root, shared_source) for _ in range(n)]
+
+if __name__ == "__main__":
+    src = iter([10, 20, 30, 40, 50])
+    it1, it2, it3 = custom_tee(src, 3)
+
+    assert next(it1) == 10
+    assert next(it1) == 20
+    # it1 领先 2 步，it2 和 it3 滞后
+    assert next(it2) == 10
+    assert next(it3) == 10
+    assert next(it3) == 20
+    assert next(it3) == 30
+    assert next(it1) == 30
+    assert next(it2) == 20
+    print("✅ Card 17 (itertools.tee) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与工业考点</div>
+
+- **时间复杂度**：每个源元素被底能源精确生成一次；每个分支迭代器产出一个元素耗时严格 $\mathcal{O}(1)$。
+- **空间复杂度**：$\mathcal{O}(g + n)$，其中 $g$ 为最快与最慢迭代器之间的跨步差（Gap），彻底杜绝了广播式多队列的 $\mathcal{O}(n \cdot g)$ 内存膨胀。
+- **面试口述核心**：
+  *"A naive queue-per-consumer model duplicates elements $n$ times during lagging consumption, incurring $\mathcal{O}(n \cdot g)$ memory. By using a shared singly-linked stream with forward-only node pointers, each iterator operates as an independent cursor. As soon as the slowest cursor advances, Python's native reference count for earlier nodes reaches zero, reclaiming memory in $\mathcal{O}(1)$ and yielding an optimal $\mathcal{O}(g + n)$ footprint."*
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+## 模块四：NeetCode 极速速记与高频题型决策树 (NeetCode Quick-Recall Decision Framework & Mental Models)
+
+为了在面试高压环境下于 10 秒内迅速锁定最优解题范式，将链表、栈、堆领域最具代表性的核心考题沉淀为如下标准化心智模型与决策树速记矩阵：
+
+### 4.1 链表题型心智模型与 10 秒决策速查 (Linked List Decision Matrix)
+
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **快慢双指针 (Floyd)** | 环检测、求环入口、找链表中点、回文判断 | `slow = slow.next`, `fast = fast.next.next`；相遇后一针回原点单步同步走 | LC 141 (环检测), LC 142 (环入口), LC 876 (中点), LC 234 (回文) |
+| **虚拟哨兵头节点 (Dummy)** | 链表头可能被删除、被合并、链表前插入 | `dummy = ListNode(0, head)`，统一内部与头节点逻辑 | LC 19 (删倒数第 N), LC 21 (合并两链表), LC 2 (两数相加), LC 86 (分隔) |
+| **三指针局部翻转** | 反转整链、反转区间、K个一组反转 | `nxt = curr.next; curr.next = prev; prev = curr; curr = nxt` | LC 206 (反转), LC 92 (反转II), LC 25 (K个一组) |
+| **拆分/穿插指针映射** | 深拷贝带随机指针的链表、重排链表 | 原地复制 `node.next = copyNode` 后交叉拆分；快慢针截半后交替穿插 | LC 138 (复制随机指针), LC 143 (重排链表) |
+| **复合哈希双向链表** | 严格 $\mathcal{O}(1)$ 缓存插入/访问/淘汰 | 双向链表记录时间顺序 + 哈希表直指节点；头尾双哨兵四指针无分支断连 | LC 146 (LRU), LC 460 (LFU), Meta 餐厅候补 |
+| **动态数组末尾置换** | $\mathcal{O}(1)$ 插入、删除与等概率随机抽取 | 动态数组保存元素 + 哈希表记录下标；删除时与末尾元素置换后执行 `pop()` | LC 380 (O(1)集合), LC 381 (允许重复), Meta 随机容器 |
+
+---
+
+### 4.2 栈与单调结构心智模型 (Stack & Monotonic Structure Matrix)
+
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **配对与平衡检验** | 括号有效性、消除相邻重复项、回文消除 | 栈存储左半边期待，遇到右半边校验栈顶并弹出 | LC 20 (有效括号), LC 1047 (消除相邻重复) |
+| **单调递增/递减栈** | 下一个更大/更小元素、柱状图最大矩形、股票买卖天数 | 维护栈内元素严格单调；破坏单调时弹出栈顶并结算其右边界 | LC 739 (每日温度), LC 496 (下一个更大), LC 84 (柱状图最大矩形), LC 853 (车队) |
+| **单调双端队列** | 滑动窗口动态极值 (最大值/最小值) | 队头到队尾维持严格单调递减，队尾剔除较小者，队头剔除过期索引 | LC 239 (滑动窗口最大值), LC 1438 |
+| **双栈表达式求值** | 四则运算、括号嵌套、运算符优先级 | 操作数栈 + 运算符栈；乘除即时结合，遇到括号递归下降分治 | LC 150 (逆波兰), LC 224 (基础计算器), LC 227 (计算器II) |
+| **单调栈贪心去重** | 字典序最小的不重复子序列 | 单调增栈 + 字符最后出现位置哈希 + 栈内存在性集合；可后现者果断弹出 | LC 316 / LC 1081 (去重保持最小字典序) |
+
+---
+
+### 4.3 堆与优先队列心智模型 (Heap & Priority Queue Matrix)
+
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **Top-K 动态维护** | 求海量数据中最大/最小的 K 个元素 | 维持容量为 $K$ 的**小顶堆**（求最大 K 个）或大顶堆，超出容量弹出堆顶 | LC 215 (第K大), LC 347 (前K高频), LC 703 (数据流第K大) |
+| **多路归并排序** | 合并 K 个升序链表 / 数组 | 堆内始终只维护各有序序列的当前游标头部（容量为 $K$），弹出堆顶并推进后继 | LC 23 (合并K个升序链表), LC 378 (矩阵第K小) |
+| **对顶平衡双堆** | 数据流中无序插入，实时查询中位数 | 大顶堆（存放小半部）+ 小顶堆（存放大半部）；容量差严格 $\le 1$ | LC 295 (数据流中位数) |
+| **冷却调度与模拟** | 相同任务必须间隔 $N$ 时间单位冷却 | 贪心大顶堆按频次降序挑选 + 冷却队列暂存等待倒计时归零 | LC 621 (任务调度器), LC 355 (设计推特) |
 

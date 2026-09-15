@@ -115,6 +115,189 @@ if __name__ == "__main__":
 
 </div>
 
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- `get` and `put` run in strict $\mathcal{O}(1)$ time; auxiliary space $\mathcal{O}(C)$.
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: 5 Production-Grade Architectural Archetypes</div>
+
+#### 1. Restaurant Waitlist / Table Matching Queue
+- **System Requirements**:
+  - `join(user, party_size)`: Append user to waitlist tail in $\mathcal{O}(1)$.
+  - `delete(user)`: Remove user from anywhere in the queue in $\mathcal{O}(1)$ upon cancellation or timeout.
+  - `find_first_match(table_size: int)`: When a table of size `table_size` becomes vacant, return the earliest customer (FIFO) whose `party_size <= table_size` without removing them.
+- **Architectural Trade-offs**:
+  - **Baseline LRU-Style (DLL + Hash Map)**:
+    - `user_map: Dict[user, DLLNode]` provides $\mathcal{O}(1)$ `delete` and `join`;
+    - `find_first_match` performs a linear walk from the head (earliest customer), taking $\mathcal{O}(N)$.
+  - **Table-Size Bucketing Optimization**:
+    - In reality, `party_size` is bounded by small integers ($1 \sim 10$).
+    - Maintain one dedicated doubly-linked queue `buckets[s]` for each size $s \in [1, 10]$.
+    - `join(user, s)`: Appends to `buckets[s]` tail in $\mathcal{O}(1)$.
+    - `delete(user)`: Unlinks from the matching bucket in $\mathcal{O}(1)$ via hash map.
+    - `find_first_match(table_size)`: Inspects only the heads of `buckets[1 \dots table_size]` ($s \le 	ext{table\_size}$) and selects the candidate with the earliest arrival timestamp. Time drops to strict $\mathcal{O}(	ext{table\_size}) = \mathcal{O}(1)$.
+
+```python
+class WaitlistSystem:
+    class CustomerNode:
+        def __init__(self, user: str, size: int, ts: int):
+            self.user = user
+            self.size = size
+            self.ts = ts
+            self.prev = self.next = None
+
+    def __init__(self, max_party_size: int = 10):
+        self.max_party_size = max_party_size
+        self.user_map = {}  # user -> CustomerNode
+        self.buckets = {s: (self.CustomerNode("", 0, 0), self.CustomerNode("", 0, 0)) for s in range(1, max_party_size + 1)}
+        for s in self.buckets:
+            h, t = self.buckets[s]
+            h.next, t.prev = t, h
+        self.clock = 0
+
+    def join(self, user: str, party_size: int) -> None:
+        if user in self.user_map or party_size > self.max_party_size:
+            return
+        self.clock += 1
+        node = self.CustomerNode(user, party_size, self.clock)
+        self.user_map[user] = node
+        h, t = self.buckets[party_size]
+        # Append before tail sentinel
+        node.prev, node.next = t.prev, t
+        t.prev.next = node
+        t.prev = node
+
+    def delete(self, user: str) -> bool:
+        if user not in self.user_map:
+            return False
+        node = self.user_map.pop(user)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def find_first_match(self, table_size: int) -> Optional[str]:
+        earliest_node = None
+        limit = min(table_size, self.max_party_size)
+        for s in range(1, limit + 1):
+            h, t = self.buckets[s]
+            head_cand = h.next
+            if head_cand is not t:
+                if earliest_node is None or head_cand.ts < earliest_node.ts:
+                    earliest_node = head_cand
+        return earliest_node.user if earliest_node else None
+```
+
+#### 2. Robot Logger Rate Limiter with Out-of-Order Timestamps
+- **System Requirements**:
+  - Events stream in as `(timestamp, message)`.
+  - Rule: Print and return `True` if no previously printed event for the same message has timestamp in $[timestamp - 10, timestamp)$; otherwise suppress and return `False`.
+  - **Out-of-Order Semantics**: Network delays may deliver `(12, "foo")` before `(10, "foo")`.
+  - **Causal Invariants**:
+    1. A future event must never retroactively suppress an earlier event (timestamp 12 is in the future of timestamp 10, so 10 is permitted);
+    2. Identical timestamps allow only the first call;
+    3. Suppressed messages must never refresh or alter the printed window!
+- **Data Structure**:
+  - Maintain an **ordered dynamic set (Balanced BST / Skip List / `SortedSet`)** of approved timestamps for each message.
+  - Decision steps:
+    1. Search greatest strict predecessor $pred = \max \{x \in S \mid x < timestamp\}$.
+    2. If $timestamp \in S$ or ($pred \neq \text{None}$ and $pred \ge timestamp - 10$), return `False`.
+    3. Otherwise, insert $timestamp$ into $S$ and return `True`.
+  - Time complexity: $\mathcal{O}(\log K)$ per query where $K$ is the number of approved occurrences. Stale timestamps older than the maximum timestamp minus the 10-second window can be evicted via sliding LRU deque.
+
+#### 3. Idempotency-Key API Endpoint with Concurrency & TTL
+- **Contract**:
+  - First call with key $K$ and body $B$: Processes normally, stores $(K \to R)$, returns $R$;
+  - Replay with same $K$ and same $B$: Returns cached $R$ without re-execution;
+  - Replay with same $K$ but different body $B'$: Raises `409 Conflict`;
+  - **Concurrency Guard**: Concurrent in-flight requests with identical $K$ synchronize on a per-key `threading.Condition`. The follower blocks on `IN_FLIGHT` and awakens when the leader transitions to `DONE`.
+  - **TTL Eviction**: Records carry a TTL (e.g. 24h); stale entries are purged via lazy checks on access and periodic background sweeps.
+
+```python
+import hashlib, json, time, threading
+from enum import Enum
+from typing import Dict, Any, Tuple
+
+class RequestStatus(Enum):
+    IN_FLIGHT = 1
+    DONE = 2
+
+class IdempotencyRecord:
+    def __init__(self, body_hash: str, ttl_seconds: float):
+        self.body_hash = body_hash
+        self.status = RequestStatus.IN_FLIGHT
+        self.response = None
+        self.expires_at = time.time() + ttl_seconds
+        self.condition = threading.Condition()
+
+class IdempotencyManager:
+    def __init__(self, default_ttl: float = 86400.0):
+        self.default_ttl = default_ttl
+        self.store: Dict[str, IdempotencyRecord] = {}
+        self.lock = threading.Lock()
+
+    def _hash_body(self, body: Any) -> str:
+        canonical_json = json.dumps(body, sort_keys=True)
+        return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
+
+    def handle_request(self, idempotency_key: str, body: Any, execute_fn) -> Tuple[int, Any]:
+        body_hash = self._hash_body(body)
+        now = time.time()
+
+        with self.lock:
+            if idempotency_key in self.store:
+                rec = self.store[idempotency_key]
+                if now > rec.expires_at:
+                    del self.store[idempotency_key]
+                else:
+                    if rec.body_hash != body_hash:
+                        return 409, {"error": "Idempotency key re-used with different payload"}
+                    
+                    if rec.status == RequestStatus.IN_FLIGHT:
+                        rec.condition.wait()
+                        return 200, rec.response
+                    else:
+                        return 200, rec.response
+
+            rec = IdempotencyRecord(body_hash, self.default_ttl)
+            self.store[idempotency_key] = rec
+
+        try:
+            res = execute_fn(body)
+            with rec.condition:
+                rec.response = res
+                rec.status = RequestStatus.DONE
+                rec.condition.notify_all()
+            return 200, res
+        except Exception as e:
+            with self.lock:
+                self.store.pop(idempotency_key, None)
+            with rec.condition:
+                rec.condition.notify_all()
+            raise e
+```
+
+#### 4. Contiguous Memory Allocator (First-Fit with Splitting & Coalescing)
+- **Problem Statement**:
+  - Given a single contiguous pool of $N$ memory units.
+  - `allocate(size)`: Reserve a contiguous chunk $\ge size$, return handle/offset; signal OOM if no suitable block exists.
+  - `free(offset)`: Return previously allocated block, **coalescing with physically adjacent free blocks** in $\mathcal{O}(1)$ to eliminate external fragmentation.
+- **Doubly-Linked Boundary Tags Architecture**:
+  - Each block tracks: `offset, size, is_free, prev, next`.
+  - `allocate`: Walks free list using First-Fit. If `block.size > size`, splits into allocated block and remaining free block.
+  - `free`: Sets `is_free = True`. If `prev.is_free`, merge with predecessor. If `next.is_free`, merge with successor. Coalescing involves purely constant-time pointer rewiring.
+
+#### 5. Concurrency & Distributed Sharding Architecture
+- **Thread-Safety Trade-off**:
+  - Coarse-grained locking: Single `threading.RLock()` guarding all methods.
+  - Sharded Cache (`ConcurrentHashMap` pattern): Partition keys across $M$ distinct stripes via $	ext{hash}(key) \pmod M$. Each shard possesses its own lock and DLL, achieving lock-free concurrency across keys while yielding per-shard approximate LRU.
+- **Distributed Cache**:
+  - Consistent hashing ring with virtual nodes balances partitions across physical nodes; each node executes the standard DLL+hashmap engine locally.
+
+</div>
+
 </div>
 </details>
 
@@ -1118,6 +1301,112 @@ if __name__ == "__main__":
 - **Space Complexity**: $\mathcal{O}(1)$ for iterative; $\mathcal{O}(N)$ call stack for recursive.
 
 </div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: Palindrome Restoration & Forward-Order Subtraction</div>
+
+#### 1. Palindrome Linked List with State Restoration (LC 234)
+- **System Requirements**:
+  - Determine if a singly linked list is a palindrome in $\mathcal{O}(1)$ auxiliary space.
+  - **Engineering Contract (Production Follow-up)**: The function must **restore the list to its original physical structure before returning**, ensuring no mutating side-effects are observable by upstream callers.
+- **Algorithm Execution**:
+  1. Fast-slow pointers locate the midpoint ($slow$ arrives at mid).
+  2. Reverse the second half in-place: `second_half = reverseList(slow.next)`.
+  3. Compare forward and reversed halves value-by-value.
+  4. **State Restoration**: Reverse the second half once more and splice back to `slow.next = reverseList(second_half)`.
+
+```python
+class PalindromeSolution:
+    @staticmethod
+    def isPalindrome(head: Optional[ListNode]) -> bool:
+        if not head or not head.next:
+            return True
+
+        slow, fast = head, head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        def reverse_chain(node: Optional[ListNode]) -> Optional[ListNode]:
+            prev, curr = None, node
+            while curr:
+                nxt = curr.next
+                curr.next = prev
+                prev = curr
+                curr = nxt
+            return prev
+
+        second_head = reverse_chain(slow.next)
+
+        p1, p2 = head, second_head
+        is_pal = True
+        while is_pal and p2:
+            if p1.val != p2.val:
+                is_pal = False
+            p1 = p1.next
+            p2 = p2.next
+
+        # Crucial Engineering Restoration: restore original chain
+        slow.next = reverse_chain(second_head)
+
+        return is_pal
+```
+
+#### 2. Forward-Order Linked List Subtraction ($l_1 - l_2$)
+- **Problem Requirements**:
+  - Given two non-empty singly linked lists $l_1, l_2$ representing numbers in forward digit order (MSB First), $l_1 \ge l_2$.
+  - Compute $l_1 - l_2$ in the same forward order without converting to built-in arbitrary-precision integers (length up to $10^5$).
+  - Strip redundant leading zeros.
+- **Algorithm**:
+  - Reverse $l_1, l_2$ to align lower-order digits in $\mathcal{O}(1)$ space.
+  - Perform elementary subtraction with borrow propagation: $	ext{diff} = v_1 - v_2 - borrow$.
+  - Reverse result back to MSB order and trim leading zeros.
+
+```python
+class LinkedListSubtractionSolution:
+    @classmethod
+    def subtractLinkedList(cls, l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        def reverse(node):
+            prev, curr = None, node
+            while curr:
+                nxt = curr.next
+                curr.next = prev
+                prev = curr
+                curr = nxt
+            return prev
+
+        r1 = reverse(l1)
+        r2 = reverse(l2)
+
+        p1, p2 = r1, r2
+        dummy = ListNode(0)
+        curr = dummy
+        borrow = 0
+
+        while p1:
+            v1 = p1.val
+            v2 = p2.val if p2 else 0
+            diff = v1 - v2 - borrow
+            if diff < 0:
+                diff += 10
+                borrow = 1
+            else:
+                borrow = 0
+            curr.next = ListNode(diff)
+            curr = curr.next
+            p1 = p1.next
+            if p2: p2 = p2.next
+
+        reverse(r1)
+        reverse(r2)
+
+        res = reverse(dummy.next)
+        while res and res.val == 0 and res.next:
+            res = res.next
+
+        return res
+```
+
+</div>
 
 </div>
 </details>
@@ -1348,4 +1637,673 @@ if __name__ == "__main__":
 
 </div>
 </details>
+
+---
+
+### 14. Remove Nth Node From End of List
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LIST 14</span>
+  <span class="review-card-title">Remove Nth Node From End of List</span>
+  <span class="review-card-tag">Two-Pointer Fixed Offset · Sentinel Dummy Head · One-Pass Traversal · Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 19 · Remove Nth Node From End of List](https://leetcode.com/problems/remove-nth-node-from-end-of-list/) — `https://leetcode.com/problems/remove-nth-node-from-end-of-list/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> Given the head of a singly linked list, remove the $n$-th node from the end of the list and return its head.
+> **Constraint**: Solve it in a single pass with $\mathcal{O}(1)$ auxiliary space.
+
+**Function Signature**:
+```python
+class Solution:
+    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -> Optional[ListNode]: ...
+```
+
+**Examples**:
+- `head = [1, 2, 3, 4, 5], n = 2` $\implies$ `[1, 2, 3, 5]`
+- `head = [1], n = 1` $\implies$ `[]`
+- `head = [1, 2], n = 1` $\implies$ `[1]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class RemoveNthFromEndSolution:
+    @staticmethod
+    def removeNthFromEnd(head: Optional[ListNode], n: int) -> Optional[ListNode]:
+        # One-pass removal of the n-th node from the end of a singly-linked list.
+        # Uses a sentinel dummy head to eliminate edge-case branches for head deletion.
+        dummy = ListNode(0, head)
+        fast = dummy
+        slow = dummy
+
+        # 1. Advance fast pointer by n + 1 steps to create a fixed offset window
+        for _ in range(n + 1):
+            fast = fast.next
+
+        # 2. Walk fast and slow synchronously until fast reaches None
+        while fast is not None:
+            fast = fast.next
+            slow = slow.next
+
+        # 3. slow is guaranteed to sit at the predecessor of the target node
+        slow.next = slow.next.next
+
+        return dummy.next
+```
+
+```cpp
+#include <memory>
+
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x, ListNode* n = nullptr) : val(x), next(n) {}
+};
+
+class RemoveNthFromEndSolution {
+public:
+    static ListNode* removeNthFromEnd(ListNode* head, int n) {
+        ListNode dummy(0, head);
+        ListNode* fast = &dummy;
+        ListNode* slow = &dummy;
+
+        // 1. Advance fast by n + 1 steps
+        for (int i = 0; i <= n; ++i) {
+            fast = fast->next;
+        }
+
+        // 2. Synchronous advance
+        while (fast != nullptr) {
+            fast = fast->next;
+            slow = slow->next;
+        }
+
+        // 3. Unlink target node
+        ListNode* target = slow->next;
+        slow->next = slow->next->next;
+        delete target; // Avoid heap memory leak
+
+        return dummy.next;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Invariant Proof</div>
+
+- **Fixed-Offset Sliding Invariant**:
+  - Let $L$ denote the total length of the linked list. The dummy node is at index $0$, list nodes are at $1 \dots L$, and the terminal null is at index $L + 1$.
+  - The $n$-th node from the end has forward index $L - n + 1$.
+  - Its predecessor node has forward index $(L - n + 1) - 1 = L - n$.
+  - Initially, `fast` steps $n + 1$ times starting from index $0$ (`dummy`), landing on index $n + 1$. The invariant distance between `fast` and `slow` is strictly $n + 1$.
+  - When `fast` traverses past the tail to $L + 1$ (`fast is None`), `slow` resides at index $(L + 1) - (n + 1) = L - n$.
+  - Thus, **`slow` is mathematically guaranteed to halt at the predecessor of the target node**.
+- **Sentinel Head Design Utility**:
+  - If removing the original head node ($n = L$), a standard traversal requires an explicit check `if n == length: return head.next`.
+  - With a sentinel `dummy` node, the head is treated identically to an internal node, unifying the unlinking operation into `slow.next = slow.next.next`.
+- **Interview Communication Standard**:
+  - Verbalize the invariant clearly: *"I advance the fast pointer by $n+1$ steps from a dummy node so that when fast hits null, slow is guaranteed to sit exactly at the node immediately preceding the target deletion node."*
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Edge Cases</div>
+
+- **Time Complexity**: $\mathcal{O}(L)$, strict one-pass traversal where `fast` visits $L + 1$ nodes.
+- **Space Complexity**: $\mathcal{O}(1)$, auxiliary pointers only.
+- **Edge Cases**:
+  1. $L = 1, n = 1$: Single-node list becomes empty.
+  2. $n = L$: Removing original list head.
+  3. $n = 1$: Removing list tail.
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 15. Insert into a Sorted Circular Linked List
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LIST 15</span>
+  <span class="review-card-title">Insert into a Sorted Circular Linked List</span>
+  <span class="review-card-tag">Two-Pointer Cyclic Walk · Inflection Point Detection · Wrap-Around Boundary · Space O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **Related Links**:
+> - [LeetCode 708 · Insert into a Sorted Circular Linked List](https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/) — `https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/`
+> - [1point3acres Interview Problem](https://www.1point3acres.com/interview/problems/e1081044-6f41-5139-8596-3e843a348997) — Meta Phone Screen Classic
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> Given a Circular Linked List node, which is sorted in non-descending order, write a function to insert a value `insertVal` into the list such that it remains a sorted circular list.
+> The given node can be a reference to **any single node** in the list and may not necessarily be the smallest value in the circular list.
+> If the list is empty (i.e., the given node is `null`), create a new single circular list and return the reference to that single node. Otherwise, return the original given node.
+
+**Function Signature**:
+```python
+class Solution:
+    def insert(self, head: Optional[Node], insertVal: int) -> Node: ...
+```
+
+**Examples**:
+- `head = [3, 4, 1], insertVal = 2` $\implies$ `[3, 4, 1, 2]`
+- `head = [], insertVal = 1` $\implies$ `[1]` (self-referencing circular node)
+- `head = [1], insertVal = 0` $\implies$ `[1, 0]`
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+from typing import Optional
+
+class Node:
+    def __init__(self, val: int = 0, next: Optional['Node'] = None):
+        self.val = val
+        self.next = next
+
+class InsertSortedCircularListSolution:
+    @staticmethod
+    def insert(head: Optional[Node], insertVal: int) -> Node:
+        # Insert insertVal into a sorted circular singly-linked list while preserving order.
+        # head can point to any arbitrary node in the cycle.
+        # Case 1: Empty list -> return single self-loop node
+        if not head:
+            new_node = Node(insertVal)
+            new_node.next = new_node
+            return new_node
+
+        prev = head
+        curr = head.next
+
+        while True:
+            # Case 2: Interior sorted segment (prev.val <= insertVal <= curr.val)
+            if prev.val <= insertVal <= curr.val:
+                break
+
+            # Case 3: Reached inflection point where values wrap from max to min
+            if prev.val > curr.val:
+                # Value is greater than the global max OR smaller than the global min
+                if insertVal >= prev.val or insertVal <= curr.val:
+                    break
+
+            prev = curr
+            curr = curr.next
+
+            # Case 4: Full cycle completed back to start (e.g., all values identical)
+            if prev == head:
+                break
+
+        # Splice new node between prev and curr
+        new_node = Node(insertVal, curr)
+        prev.next = new_node
+
+        return head
+```
+
+```cpp
+class Node {
+public:
+    int val;
+    Node* next;
+    Node(int _val) : val(_val), next(nullptr) {}
+    Node(int _val, Node* _next) : val(_val), next(_next) {}
+};
+
+class InsertSortedCircularListSolution {
+public:
+    static Node* insert(Node* head, int insertVal) {
+        if (!head) {
+            Node* newNode = new Node(insertVal);
+            newNode->next = newNode;
+            return newNode;
+        }
+
+        Node* prev = head;
+        Node* curr = head->next;
+
+        while (true) {
+            // Case 2: Standard interior insertion
+            if (prev->val <= insertVal && insertVal <= curr->val) {
+                break;
+            }
+
+            // Case 3: Inflection point wrap-around
+            if (prev->val > curr->val) {
+                if (insertVal >= prev->val || insertVal <= curr->val) {
+                    break;
+                }
+            }
+
+            prev = curr;
+            curr = curr->next;
+
+            // Case 4: Complete loop without triggering earlier branches
+            if (prev == head) {
+                break;
+            }
+        }
+
+        prev->next = new Node(insertVal, curr);
+        return head;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & 4-Way Branch Analysis</div>
+
+- **Mathematical Topology of Sorted Cycle**:
+  Because `head` may point anywhere, a sorted circular list has exactly one **inflection drop-off point** where the global maximum wraps back around to the global minimum (unless all values are identical).
+  The algorithm exhaustively handles four mutually exclusive scenarios:
+  1. **Empty List**:
+     Create node with self-loop (`node.next = node`) and return.
+  2. **Interior Ordered Segment**:
+     If `prev.val <= insertVal <= curr.val`, `insertVal` belongs naturally between `prev` and `curr`.
+  3. **Inflection Wrap-Around**:
+     When `prev.val > curr.val`, `prev` is the global maximum and `curr` is the global minimum.
+     - If `insertVal >= prev.val` (new maximum), it must be placed right after `prev`.
+     - If `insertVal <= curr.val` (new minimum), it must also be placed right after `prev` (before `curr`).
+  4. **Degenerate Uniform Cycle**:
+     If all nodes have identical values (e.g., `[3, 3, 3]`), or traversal laps the entire list (`prev == head`) without finding an inflection, inserting at `prev` preserves correctness.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Edge Cases</div>
+
+- **Time Complexity**: $\mathcal{O}(N)$, at most one complete pass around the circular list ($N$ nodes).
+- **Space Complexity**: $\mathcal{O}(1)$, pointers only.
+- **Edge Cases**:
+  - `head = None` (empty list).
+  - Single-node cycle (`head.next == head`).
+  - Two nodes sorted `[1, 3]` inserting `2`, `0`, or `4`.
+  - All elements equal `[3, 3, 3]` inserting `1` or `5`.
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 16. Randomized Container with O(1) Insert & PopRandom
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">CONTAINER 16</span>
+  <span class="review-card-title">Randomized Container with O(1) Insert & PopRandom</span>
+  <span class="review-card-tag">Contiguous Dynamic Array + Hash Index Map · Swap-with-Last Deletion · Uniform Random Sampling · O(1) Amortized</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **Related Links**:
+> - [LeetCode 380 · Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/) — `https://leetcode.com/problems/insert-delete-getrandom-o1/`
+> - [LeetCode 381 · Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/) — `https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/`
+> - [1point3acres Interview Problem](https://www.1point3acres.com/interview/problems/company/meta/randomized-container) — Meta Production Container Design
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> Design a data structure that supports all of the following operations in average $\mathcal{O}(1)$ time complexity:
+> 1. `insert(val)`: Inserts an item `val` to the set if not already present. Returns `true` if inserted, `false` otherwise.
+> 2. `remove(val)`: Removes an item `val` from the set if present. Returns `true` if removed, `false` otherwise.
+> 3. `getRandom()`: Returns a random element from the current set of elements with uniform probability.
+> 4. `popRandom()` (Meta Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
+
+**Core Trade-off & Architectural Dilemma**:
+- Standard Hash Sets support $\mathcal{O}(1)$ insertion and deletion, but their memory buckets are sparse, making uniform random selection in $\mathcal{O}(1)$ impossible.
+- Contiguous dynamic arrays support $\mathcal{O}(1)$ random indexing via contiguous memory, but arbitrary index deletion incurs $\mathcal{O}(N)$ element shifting.
+- **Architectural Solution**: Fuse a contiguous dynamic array with a hash index table via a **swap-with-last** deletion invariant.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+import random
+from typing import Dict, List
+
+class RandomizedSet:
+    # Standard unique-element variant (LeetCode 380 + Meta popRandom extension).
+    # All operations execute in amortized O(1) time.
+    def __init__(self):
+        self.vals: List[int] = []               # Contiguous dynamic array for O(1) random lookup
+        self.val_to_index: Dict[int, int] = {}       # Hash index map: value -> index in self.vals
+
+    def insert(self, val: int) -> bool:
+        if val in self.val_to_index:
+            return False
+        self.val_to_index[val] = len(self.vals)
+        self.vals.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        # Swap-with-Last Deletion:
+        # Overwrites target index with the array tail, then pops tail in O(1).
+        if val not in self.val_to_index:
+            return False
+
+        idx_to_remove = self.val_to_index[val]
+        last_val = self.vals[-1]
+
+        # Overwrite target slot with last element
+        self.vals[idx_to_remove] = last_val
+        self.val_to_index[last_val] = idx_to_remove
+
+        # Pop trailing element and delete target mapping
+        self.vals.pop()
+        del self.val_to_index[val]
+        return True
+
+    def getRandom(self) -> int:
+        # Sample an element uniformly at random in O(1).
+        return random.choice(self.vals)
+
+    def popRandom(self) -> int:
+        # Meta Phone-Screen Extension:
+        # Uniformly sample, delete, and return an element in O(1).
+        if not self.vals:
+            raise IndexError("popRandom from empty RandomizedSet")
+
+        rand_idx = random.randrange(len(self.vals))
+        val_to_pop = self.vals[rand_idx]
+        last_val = self.vals[-1]
+
+        # Overwrite rand_idx slot with last element
+        self.vals[rand_idx] = last_val
+        self.val_to_index[last_val] = rand_idx
+
+        # Pop tail and purge index entry
+        self.vals.pop()
+        del self.val_to_index[val_to_pop]
+
+        return val_to_pop
+```
+
+```cpp
+#include <vector>
+#include <unordered_map>
+#include <random>
+#include <stdexcept>
+
+class RandomizedSet {
+private:
+    std::vector<int> vals;
+    std::unordered_map<int, int> valToIndex;
+    std::mt19937 rng{std::random_device{}()};
+
+public:
+    RandomizedSet() {}
+
+    bool insert(int val) {
+        if (valToIndex.count(val)) return false;
+        valToIndex[val] = vals.size();
+        vals.push_back(val);
+        return true;
+    }
+
+    bool remove(int val) {
+        auto it = valToIndex.find(val);
+        if (it == valToIndex.end()) return false;
+
+        int idxToRemove = it->second;
+        int lastVal = vals.back();
+
+        // Overwrite target slot
+        vals[idxToRemove] = lastVal;
+        valToIndex[lastVal] = idxToRemove;
+
+        // Pop tail
+        vals.pop_back();
+        valToIndex.erase(it);
+        return true;
+    }
+
+    int getRandom() {
+        std::uniform_int_distribution<int> dist(0, vals.size() - 1);
+        return vals[dist(rng)];
+    }
+
+    int popRandom() {
+        if (vals.empty()) {
+            throw std::out_of_range("Container is empty");
+        }
+        std::uniform_int_distribution<int> dist(0, vals.size() - 1);
+        int randIdx = dist(rng);
+        int valToPop = vals[randIdx];
+        int lastVal = vals.back();
+
+        vals[randIdx] = lastVal;
+        valToIndex[lastVal] = randIdx;
+
+        vals.pop_back();
+        valToIndex.erase(valToPop);
+        return valToPop;
+    }
+};
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Mechanism & Follow-up: Duplicates Allowed (LC 381)</div>
+
+- **Swap-with-Last Invariant**:
+  - Removing an element from an arbitrary index $i$ in an array typically requires $\mathcal{O}(N)$ memory shift.
+  - Because a set has no order constraint, **element ordering within the backing array carries no semantic weight**.
+  - Replacing the target element at slot $i$ with `vals[-1]` followed by a tail pop converts an $\mathcal{O}(N)$ operation into an $\mathcal{O}(1)$ operation.
+- **Follow-up: Handling Duplicates (LeetCode 381)**:
+  - When duplicates are allowed, the probability of returning any value must be proportional to its frequency (each instance has probability $1/N$).
+  - **Schema Evolution**: Replace integer index with a hash set of indices:
+    $$	ext{val\_to\_indices}: 	ext{Dict}[val, 	ext{Set}[int]]$$
+  - **Deletion Invariant with Duplicates**:
+    1. Extract any index `idx = next(iter(val_to_indices[val]))`.
+    2. Overwrite `vals[idx]` with `last_val = vals[-1]`.
+    3. Update `val_to_indices[last_val]`: discard `len(vals) - 1` and add `idx`.
+    4. Discard `idx` from `val_to_indices[val]`. If empty, delete key.
+    5. Execute `vals.pop()`.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- **Time Complexity**:
+  - `insert`: Amortized $\mathcal{O}(1)$.
+  - `remove`: $\mathcal{O}(1)$ (hash map lookup, array slot overwrite, tail pop).
+  - `getRandom`: $\mathcal{O}(1)$ (PRNG integer generation + direct array indexing).
+  - `popRandom`: $\mathcal{O}(1)$.
+- **Space Complexity**: $\mathcal{O}(N)$, linear in the total number of stored elements.
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+### 17. Independent Iterator Protocol & Shared Streaming Buffer (Python itertools.tee)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">STREAM 17</span>
+  <span class="review-card-title">Independent Iterator Protocol & Shared Streaming Buffer (Python itertools.tee)</span>
+  <span class="review-card-tag">Iterator Protocol · Shared Singly-Linked Buffer · Multi-Cursor Chasing · O(1) Auto GC · Memory O(g + n)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **Design Standards & Prototype**:
+> - CPython standard library `itertools.tee(iterable, n=2)` core implementation
+> - Industrial multi-consumer stream buffering with decoupled backpressure
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Architectural Evolution</div>
+
+**Problem Statement**:
+> Implement the behavior of Python's `itertools.tee`:
+> Accept one iterator and an integer $n \ge 1$, then return $n$ independent iterators over the same source sequence.
+> Each returned iterator must be able to advance independently while preserving source order.
+> Transition from a naive baseline to an optimal shared-state design.
+
+**Architecture Comparison & Memory Bottleneck**:
+- **Naive Multi-Queue Baseline**:
+  - Allocate an independent `collections.deque` for each of the $n$ iterators.
+  - When consumer $i$ calls `next()` and its queue is empty, pull one source value and **append a duplicate copy to all $n$ queues**.
+  - **Flaw**: If iterators trail across a gap of $g$ values, those queues retain $n$ distinct copies of every buffered value, consuming $\mathcal{O}(n \cdot g)$ memory!
+- **Optimal Shared-State Linked Buffer**:
+  - Maintain a **single shared singly-linked chain** of values: `Node(val, next)`.
+  - Each consumer holds an independent forward `cursor` pointing to a node in the chain.
+  - When a consumer advances past the currently materialized chain (`cursor.next is None`), it pulls from the source and appends a single new node.
+  - **Garbage Collection**: Nodes possess forward-only links. Once the slowest consumer advances past a node, all references to that node drop to zero, prompting immediate $\mathcal{O}(1)$ garbage collection by Python's reference counting runtime!
+  - **Auxiliary Space**: Strictly optimized from $\mathcal{O}(n \cdot g)$ down to $\mathcal{O}(g + n)$ where $g$ is the distance between fastest and slowest consumer.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💻 Production-Grade Implementation</div>
+
+```python
+from typing import Any, Iterator, List, Optional
+
+class _TeeNode:
+    __slots__ = ('val', 'next')
+    def __init__(self, val: Any = None):
+        self.val = val
+        self.next: Optional['_TeeNode'] = None
+
+class _TeeIterator:
+    def __init__(self, head_node: _TeeNode, shared_source: Iterator[Any]):
+        self.cursor = head_node
+        self.source = shared_source
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # If cursor's next is not yet materialized, fetch from source
+        if self.cursor.next is None:
+            val = next(self.source)  # Raises StopIteration when exhausted
+            self.cursor.next = _TeeNode(val)
+
+        # Advance cursor forward and return stored value
+        self.cursor = self.cursor.next
+        return self.cursor.val
+
+def custom_tee(iterable: Any, n: int = 2) -> List[Iterator[Any]]:
+    # Production-grade Python itertools.tee implementation:
+    # Shared singly-linked chain with independent cursors.
+    # Auxiliary space is strictly bounded by O(g + n).
+    if n < 0:
+        raise ValueError("n must be non-negative")
+    if n == 0:
+        return []
+
+    shared_source = iter(iterable)
+    root = _TeeNode()  # Sentinel head
+    return [_TeeIterator(root, shared_source) for _ in range(n)]
+
+if __name__ == "__main__":
+    src = iter([10, 20, 30, 40, 50])
+    it1, it2, it3 = custom_tee(src, 3)
+
+    assert next(it1) == 10
+    assert next(it1) == 20
+    assert next(it2) == 10
+    assert next(it3) == 10
+    assert next(it3) == 20
+    assert next(it3) == 30
+    assert next(it1) == 30
+    assert next(it2) == 20
+    print("✅ Card 17 (itertools.tee) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Communication Checklist</div>
+
+- **Time Complexity**: Each item from the underlying source is evaluated exactly once; each `next()` invocation executes in strict $\mathcal{O}(1)$ time.
+- **Space Complexity**: $\mathcal{O}(g + n)$ where $g$ is the distance between the fastest and slowest cursor.
+- **Interview Communication Standard**:
+  *"A naive queue-per-consumer model duplicates elements $n$ times during lagging consumption, incurring $\mathcal{O}(n \cdot g)$ memory. By using a shared singly-linked stream with forward-only node pointers, each iterator operates as an independent cursor. As soon as the slowest cursor advances, Python's native reference count for earlier nodes reaches zero, reclaiming memory in $\mathcal{O}(1)$ and yielding an optimal $\mathcal{O}(g + n)$ footprint."*
+
+</div>
+
+</div>
+</details>
+
+
+---
+
+## Module 4: NeetCode Quick-Recall Decision Framework & Mental Models
+
+Under high-pressure interview settings, candidates must map requirements to optimal algorithmic patterns within 10 seconds. The matrices below crystallize the foundational patterns across Linked Lists, Stacks, and Heaps into a standardized mental lookup framework:
+
+### 4.1 Linked List Mental Models & 10-Second Decision Matrix
+
+| Pattern Archetype | Trigger Keywords / Problem Characteristics | Optimal Algorithmic Archetype | Canonical Problems (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **Fast & Slow Pointers (Floyd)** | Cycle detection, cycle entry, list midpoint, palindrome test | `slow = slow.next`, `fast = fast.next.next`; upon collision reset one pointer to head | LC 141 (Cycle Detection), LC 142 (Cycle Entry), LC 876 (Middle Node), LC 234 (Palindrome) |
+| **Sentinel Dummy Head** | Head node subject to deletion, merging, or prefix insertion | `dummy = ListNode(0, head)`; unifies edge-case branches with internal nodes | LC 19 (Remove Nth), LC 21 (Merge Lists), LC 2 (Add Two Numbers), LC 86 (Partition) |
+| **Three-Pointer Inversion** | Reverse list, reverse subsegment, reverse in k-groups | `nxt = curr.next; curr.next = prev; prev = curr; curr = nxt` | LC 206 (Reverse List), LC 92 (Reverse II), LC 25 (Reverse k-Group) |
+| **Splicing & Pointer Interleaving** | Deep copy with random pointers, reorder alternating halves | In-place node cloning `node.next = cloneNode` followed by split; split & interleave | LC 138 (Copy Random List), LC 143 (Reorder List) |
+| **Composite Hash + DLL** | Strict $\mathcal{O}(1)$ cache insertion, access, and eviction | Doubly-linked list for chronological order + hash map for direct node handles | LC 146 (LRU), LC 460 (LFU), Meta Waitlist Queue |
+| **Dynamic Array Swap-with-Last** | $\mathcal{O}(1)$ insertion, deletion, and uniform random sampling | Contiguous array stores values + hash map stores indices; delete via swap with tail | LC 380 (O(1) Set), LC 381 (Duplicates Allowed), Meta Randomized Container |
+
+---
+
+### 4.2 Stack & Monotonic Structure Decision Matrix
+
+| Pattern Archetype | Trigger Keywords / Problem Characteristics | Optimal Algorithmic Archetype | Canonical Problems (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **Pair Matching & Balance** | Bracket validation, adjacent duplicate removal, palindrome pops | Stack buffers expected closing counterparts; validates and pops upon match | LC 20 (Valid Parentheses), LC 1047 (Remove Adjacent Duplicates) |
+| **Monotonic Stack** | Next Greater / Smaller element, histogram maximum rectangle | Maintain monotonic stack; pop violating elements and compute bounding interval | LC 739 (Daily Temperatures), LC 496 (Next Greater), LC 84 (Largest Rectangle in Histogram) |
+| **Monotonic Deque** | Sliding window dynamic extremum (Running Maximum / Minimum) | Deque preserves strict monotonic descending order; pop tail if smaller, pop head if expired | LC 239 (Sliding Window Maximum), LC 1438 |
+| **Operator Precedence Stacks** | Arithmetic evaluation, nested parentheses, precedence order | Operand stack + operator stack; immediate precedence reduction + recursive subexpression | LC 150 (Evaluate RPN), LC 224 (Basic Calculator), LC 227 (Basic Calculator II) |
+| **Monotonic Stack Greedy Pruning** | Smallest distinct subsequence in lexicographical order | Monotonic increasing stack + last occurrence index map + in-stack set | LC 316 / LC 1081 (Remove Duplicate Letters) |
+
+---
+
+### 4.3 Heap & Priority Queue Decision Matrix
+
+| Pattern Archetype | Trigger Keywords / Problem Characteristics | Optimal Algorithmic Archetype | Canonical Problems (NeetCode / LC) |
+| :--- | :--- | :--- | :--- |
+| **Top-K Dynamic Tracking** | K largest or smallest elements in streaming / massive data | Maintain min-heap of size $K$ (for K largest) or max-heap; pop root when exceeding capacity | LC 215 (Kth Largest Element), LC 347 (Top K Frequent), LC 703 (Kth Largest in Stream) |
+| **Multi-Way K-Merge** | Merge K sorted lists or sorted arrays | Maintain priority queue containing current heads of the $K$ sorted streams | LC 23 (Merge K Sorted Lists), LC 378 (Kth Smallest in Matrix) |
+| **Dual Balancing Heaps** | Unordered stream ingestion, $\mathcal{O}(1)$ median retrieval | Max-heap (lower half) + Min-heap (upper half); balance capacity difference $\le 1$ | LC 295 (Find Median from Data Stream) |
+| **Cooling Simulation Scheduler** | Task execution with cooldown penalty of $N$ cycles | Greedy max-heap selects highest-frequency task + waiting queue tracks cooldown | LC 621 (Task Scheduler), LC 355 (Design Twitter) |
 
