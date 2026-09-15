@@ -205,6 +205,41 @@ class WaitlistSystem:
     3. 否则将 $timestamp$ 插入集合 $S$，返回 `True`。
   - 单次判定开销 $\mathcal{O}(\log K)$，其中 $K$ 为该消息历史放行条数。在时间窗口滑动时，利用双向指针或 LRU 机制淘汰全局安全下限之外的历史数据。
 
+```python
+import bisect
+import collections
+from typing import Dict, List
+
+class RobotLogger:
+    """
+    乱序时间戳日志限流器
+    时间复杂度: 单次判定 O(log K) (K 为历史放行条数)
+    空间复杂度: O(M * K) (M 为独立 message 数量)
+    """
+    def __init__(self, window_seconds: int = 10):
+        self.window = window_seconds
+        self.approved: Dict[str, List[int]] = collections.defaultdict(list)
+
+    def should_print_message(self, timestamp: int, message: str) -> bool:
+        ts_list = self.approved[message]
+        idx = bisect.bisect_left(ts_list, timestamp)
+
+        # 同一时间戳重复调用: 拦截
+        if idx < len(ts_list) and ts_list[idx] == timestamp:
+            return False
+
+        # 因果前驱判定: 检查严格前驱 pred 是否在 [timestamp - 10, timestamp) 区间
+        if idx > 0:
+            pred = ts_list[idx - 1]
+            if timestamp - pred < self.window:
+                return False
+
+        # 放行并维持有序集合
+        ts_list.insert(idx, timestamp)
+        return True
+```
+
+
 #### 3. 基于 Idempotency-Key 的幂等 API 处理器 (Idempotency API with Concurrency & TTL)
 - **核心契约**：
   - 首次携带 Key $K$ 与请求体 $B$：正常执行并返回响应 $R$，持久化 $(K \to R)$；
@@ -299,6 +334,47 @@ class IdempotencyManager:
     将大缓存水平切分为 $M$ 个独立分片（Shard），依据 $	ext{hash}(key) \pmod M$ 路由到具体分片。各分片持独立的锁与双向链表，使并发写吞吐随核心数线性扩展（注意：此时退化为分片局部的近拟 LRU）。
 - **跨机器分布式缓存**：
   - 采用**一致性哈希环（Consistent Hashing with Virtual Nodes）**实现节点弹性扩缩容；单机节点内部继续运行双向链表+哈希表的纯粹 LRU 引擎。
+
+```python
+import hashlib
+import threading
+import collections
+from typing import Any, Optional
+
+class ShardedLRUCache:
+    """
+    细粒度分片并发安全 LRU 缓存 (Striped Locks)
+    """
+    def __init__(self, total_capacity: int, num_shards: int = 16):
+        self.num_shards = num_shards
+        self.shard_cap = max(1, total_capacity // num_shards)
+        self.shards = [collections.OrderedDict() for _ in range(num_shards)]
+        self.locks = [threading.Lock() for _ in range(num_shards)]
+
+    def _shard_index(self, key: str) -> int:
+        return int(hashlib.md5(key.encode('utf-8')).hexdigest(), 16) % self.num_shards
+
+    def get(self, key: str) -> Optional[Any]:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key not in cache:
+                return None
+            cache.move_to_end(key)
+            return cache[key]
+
+    def put(self, key: str, val: Any) -> None:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key in cache:
+                cache.move_to_end(key)
+            cache[key] = val
+            if len(cache) > self.shard_cap:
+                cache.popitem(last=False)
+```
+
+
 #### 6. 内存分配器 O(log m) 进阶与四向相邻合并 (Memory Allocator with O(log m) Treap/BST Indexing)
 - **从 O(N) 线性扫描到 O(log m) 工业级跃迁**：
   - 在高碎片化场景下，对空闲块链表执行 $\mathcal{O}(N)$ 首次适应扫描无法满足高频分配要求。
@@ -312,6 +388,74 @@ class IdempotencyManager:
   3. **仅右邻居空闲 (Right Neighbour Free)**：当前块吞并右块，从 `free_by_size` 移除右块，并在物理链表中摘除右节点；
   4. **左右邻居均空闲 (Both Neighbours Free)**：左块、当前块、右块三合一！左块大小累加当前与右块大小，从 `free_by_size` 与链表中彻底注销右块，更新左块索引。
 
+```python
+from typing import Dict, Optional
+
+class MemBlock:
+    def __init__(self, offset: int, size: int, is_free: bool = True):
+        self.offset = offset
+        self.size = size
+        self.is_free = is_free
+        self.prev: Optional['MemBlock'] = None
+        self.next: Optional['MemBlock'] = None
+
+class MemoryAllocator:
+    """
+    双向链表边界标记法连续内存分配器 (带 O(1) 物理相邻合并)
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {} # offset -> Block
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        curr = self.head
+        while curr:
+            if curr.is_free and curr.size >= size:
+                remainder = curr.size - size
+                curr.size = size
+                curr.is_free = False
+                self.allocated[curr.offset] = curr
+
+                # 切分多余空闲块
+                if remainder > 0:
+                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
+                    split_block.next = curr.next
+                    split_block.prev = curr
+                    if curr.next:
+                        curr.next.prev = split_block
+                    curr.next = split_block
+                return curr.offset
+            curr = curr.next
+        return -1 # 内存不足 (OOM)
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        # 四向相邻合并分支:
+        # 分支 1: 向右吞并空闲右邻居
+        if node.next and node.next.is_free:
+            right = node.next
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        # 分支 2: 向左被空闲左邻居吞并
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+        return True
+```
+
+
 #### 7. LRU + LFU + 策略模式可插拔淘汰引擎 (Pluggable Eviction Strategy Pattern)
 - **架构解耦核心**：将底层键值容器存储与上层淘汰策略彻底剥离。
 - **策略接口规范**：
@@ -323,6 +467,89 @@ class IdempotencyManager:
   - `LFUPolicy`：维护 `freq_buckets: Dict[int, DLL]` 与 `min_freq` 指针。`on_access` 将节点自旧频次桶移入新频次桶并更新 `min_freq`；`pick_victim` 从 `freq_buckets[min_freq]` 的尾部选出 LRU 节点，严格保证同频次下的 LRU 二级平局打破；
   - `TTLWeightedPolicy` / `SizeWeightedPolicy`：策略对象内部持小顶堆或按权重索引的跳表，无缝注入主缓存。
 
+```python
+import collections
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+
+class EvictionPolicy(ABC):
+    @abstractmethod
+    def on_access(self, key: str) -> None: ...
+    @abstractmethod
+    def pick_victim(self) -> Optional[str]: ...
+    @abstractmethod
+    def on_evict(self, key: str) -> None: ...
+
+class LRUPolicy(EvictionPolicy):
+    def __init__(self):
+        self.od = collections.OrderedDict()
+    def on_access(self, key: str) -> None:
+        self.od[key] = None; self.od.move_to_end(key)
+    def pick_victim(self) -> Optional[str]:
+        return next(iter(self.od)) if self.od else None
+    def on_evict(self, key: str) -> None:
+        self.od.pop(key, None)
+
+class LFUPolicy(EvictionPolicy):
+    """O(1) 频次桶双向链表 LFU 策略，二级平局采用 LRU 打破"""
+    def __init__(self):
+        self.key_to_freq: Dict[str, int] = {}
+        self.freq_to_keys: Dict[int, collections.OrderedDict] = collections.defaultdict(collections.OrderedDict)
+        self.min_freq = 0
+
+    def on_access(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq[key]
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+                if self.min_freq == f:
+                    self.min_freq += 1
+            new_f = f + 1
+        else:
+            new_f = 1
+            self.min_freq = 1
+        self.key_to_freq[key] = new_f
+        self.freq_to_keys[new_f][key] = None
+
+    def pick_victim(self) -> Optional[str]:
+        if not self.key_to_freq:
+            return None
+        return next(iter(self.freq_to_keys[self.min_freq]))
+
+    def on_evict(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq.pop(key)
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+
+class PluggableCache:
+    def __init__(self, capacity: int, policy: EvictionPolicy):
+        self.capacity = capacity
+        self.policy = policy
+        self.store: Dict[str, Any] = {}
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.store: return None
+        self.policy.on_access(key)
+        return self.store[key]
+
+    def put(self, key: str, val: Any) -> None:
+        if key in self.store:
+            self.store[key] = val
+            self.policy.on_access(key)
+            return
+        if len(self.store) >= self.capacity:
+            victim = self.policy.pick_victim()
+            if victim:
+                del self.store[victim]
+                self.policy.on_evict(victim)
+        self.store[key] = val
+        self.policy.on_access(key)
+```
+
+
 #### 8. 带预写日志与崩溃恢复的持久化缓存 (Durable In-Memory Cache with WAL & Replay)
 - **函数参数规范化哈希 Bug 修复**：
   - 针对通用装饰器 `generate_key(*args, **kwargs)`，直接 `hash((args, kwargs))` 会因 `kwargs` 是字典而抛出 `TypeError: unhashable type: 'dict'`，且字典键值对遍历顺序可能导致相同参数产生不同键。
@@ -331,6 +558,56 @@ class IdempotencyManager:
   - 每次写操作或读命中，以追加写（Append-Only）方式向磁盘文件写入日志行：`{"op": "PUT", "key": k, "val": v, "ts": now}`。
   - **重放核心防坑点**：重启恢复时，仅仅将最新值写入字典会导致 LRU 淘汰序退化为 FIFO！**在重放回放日志时，对于已存在的 key，必须显式调用 `move_to_end`**，确保按日志中最后一次出现的先后顺序完全复现崩溃前的物理 LRU 队列。
   - **I/O 吞吐权衡**：单次写入同步 `fsync` 确保零数据丢失（金融级） vs. Group Commit 批量刷盘（吞吐优先）；周期性内存快照（Snapshot）截断并压缩（Truncate）历史 WAL。
+
+```python
+import json, os, collections
+from typing import Any, Optional
+
+class DurableLRUCache:
+    """
+    带预写日志 (WAL) 与崩溃恢复的持久化 LRU 缓存
+    """
+    def __init__(self, capacity: int, wal_path: str):
+        self.capacity = capacity
+        self.wal_path = wal_path
+        self.cache: collections.OrderedDict = collections.OrderedDict()
+        self._recover()
+
+    def _recover(self) -> None:
+        if not os.path.exists(self.wal_path):
+            return
+        with open(self.wal_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip(): continue
+                rec = json.loads(line)
+                op, key = rec.get("op"), rec.get("key")
+                if op == "PUT":
+                    self.cache[key] = rec["val"]
+                    self.cache.move_to_end(key) # 恢复精确物理时序!
+                    if len(self.cache) > self.capacity:
+                        self.cache.popitem(last=False)
+                elif op == "ACCESS":
+                    if key in self.cache:
+                        self.cache.move_to_end(key)
+
+    def put(self, key: str, val: Any) -> None:
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "PUT", "key": key, "val": val}) + "\n")
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        self.cache[key] = val
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False)
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.cache:
+            return None
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "ACCESS", "key": key}) + "\n")
+        self.cache.move_to_end(key)
+        return self.cache[key]
+```
+
 
 #### 9. 四层级内存数据库系统实现 (Anthropic CodeSignal In-Memory Database OA)
 - **核心业务需求与四层级渐进演进**：
@@ -632,6 +909,65 @@ public:
   - `TodoList` 仅负责管理时序存储、ID 分配与增删，完成状态由外部源权威维护，类内部绝不缓存完成布尔值，杜绝脏数据。
   - 结构采用哈希表 `id_to_node` + 双向链表（保留插入顺序）。`id` 采用单调递增计数器分配，严禁复用已删除 ID。
   - `get_todo` 遍历链表并在生成时由 `check_todo` 惰性过滤，达到严格 $\mathcal{O}(1)$ 增删与 $\mathcal{O}(k)$ 输出大小遍历。
+
+```python
+from typing import Dict, List, Optional, Callable
+
+class TodoNode:
+    def __init__(self, tid: int, entry: str):
+        self.id = tid
+        self.entry = entry
+        self.prev: Optional['TodoNode'] = None
+        self.next: Optional['TodoNode'] = None
+
+class TodoList:
+    """
+    面向对象职责分离的待办事项管理系统
+    """
+    def __init__(self):
+        self.id_to_node: Dict[int, TodoNode] = {}
+        self.head = TodoNode(0, "")
+        self.tail = TodoNode(0, "")
+        self.head.next = self.tail
+        self.tail.prev = self.head
+        self._next_id = 1
+
+    def add(self, entry: str) -> int:
+        tid = self._next_id
+        self._next_id += 1
+        node = TodoNode(tid, entry)
+        self.id_to_node[tid] = node
+        node.prev, node.next = self.tail.prev, self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+        return tid
+
+    def delete(self, tid: int) -> bool:
+        if tid not in self.id_to_node:
+            return False
+        node = self.id_to_node.pop(tid)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def get_all(self) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            res.append(curr.entry)
+            curr = curr.next
+        return res
+
+    def get_todo(self, is_completed_fn: Callable[[int], bool]) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            if not is_completed_fn(curr.id):
+                res.append(curr.entry)
+            curr = curr.next
+        return res
+```
+
 
 #### 11. 带权重与变长尺寸限制的 LRU 缓存 (Weighted LRU Cache with Size-Bounded Eviction)
 - **业务场景与不变量**：

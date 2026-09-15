@@ -211,6 +211,41 @@ class WaitlistSystem:
     3. Otherwise, insert $timestamp$ into $S$ and return `True`.
   - Time complexity: $\mathcal{O}(\log K)$ per query where $K$ is the number of approved occurrences. Stale timestamps older than the maximum timestamp minus the 10-second window can be evicted via sliding LRU deque.
 
+```python
+import bisect
+import collections
+from typing import Dict, List
+
+class RobotLogger:
+    """
+    Robot Logger with Out-of-Order Timestamps
+    Time: O(log K) per check (K = approved timestamp count)
+    Space: O(M * K) (M = unique messages)
+    """
+    def __init__(self, window_seconds: int = 10):
+        self.window = window_seconds
+        self.approved: Dict[str, List[int]] = collections.defaultdict(list)
+
+    def should_print_message(self, timestamp: int, message: str) -> bool:
+        ts_list = self.approved[message]
+        idx = bisect.bisect_left(ts_list, timestamp)
+
+        # Duplicate timestamp check
+        if idx < len(ts_list) and ts_list[idx] == timestamp:
+            return False
+
+        # Predecessor causality check
+        if idx > 0:
+            pred = ts_list[idx - 1]
+            if timestamp - pred < self.window:
+                return False
+
+        # Approve and maintain sorted order
+        ts_list.insert(idx, timestamp)
+        return True
+```
+
+
 #### 3. Idempotency-Key API Endpoint with Concurrency & TTL
 - **Contract**:
   - First call with key $K$ and body $B$: Processes normally, stores $(K \to R)$, returns $R$;
@@ -299,6 +334,47 @@ class IdempotencyManager:
   - Sharded Cache (`ConcurrentHashMap` pattern): Partition keys across $M$ distinct stripes via $	ext{hash}(key) \pmod M$. Each shard possesses its own lock and DLL, achieving lock-free concurrency across keys while yielding per-shard approximate LRU.
 - **Distributed Cache**:
   - Consistent hashing ring with virtual nodes balances partitions across physical nodes; each node executes the standard DLL+hashmap engine locally.
+
+```python
+import hashlib
+import threading
+import collections
+from typing import Any, Optional
+
+class ShardedLRUCache:
+    """
+    Sharded Concurrent LRU Cache with Striped Locks
+    """
+    def __init__(self, total_capacity: int, num_shards: int = 16):
+        self.num_shards = num_shards
+        self.shard_cap = max(1, total_capacity // num_shards)
+        self.shards = [collections.OrderedDict() for _ in range(num_shards)]
+        self.locks = [threading.Lock() for _ in range(num_shards)]
+
+    def _shard_index(self, key: str) -> int:
+        return int(hashlib.md5(key.encode('utf-8')).hexdigest(), 16) % self.num_shards
+
+    def get(self, key: str) -> Optional[Any]:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key not in cache:
+                return None
+            cache.move_to_end(key)
+            return cache[key]
+
+    def put(self, key: str, val: Any) -> None:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key in cache:
+                cache.move_to_end(key)
+            cache[key] = val
+            if len(cache) > self.shard_cap:
+                cache.popitem(last=False)
+```
+
+
 #### 6. Memory Allocator with O(log m) Free Gap Indexing & Coalescing
 - **Transition from O(N) Linear Scan to O(log m) Production Tier**:
   - Linear scanning over free gaps fails under heavy fragmentation.
@@ -312,6 +388,74 @@ class IdempotencyManager:
   3. **Right Neighbour Free**: Merge right into current, remove right node from list and size index;
   4. **Both Neighbours Free**: Collapse three blocks into one. Left block absorbs current and right, right node is deleted, left node size updated in `free_by_size`.
 
+```python
+from typing import Dict, Optional
+
+class MemBlock:
+    def __init__(self, offset: int, size: int, is_free: bool = True):
+        self.offset = offset
+        self.size = size
+        self.is_free = is_free
+        self.prev: Optional['MemBlock'] = None
+        self.next: Optional['MemBlock'] = None
+
+class MemoryAllocator:
+    """
+    Memory Allocator with Boundary Tags and O(1) Coalescing
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {} # offset -> Block
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        curr = self.head
+        while curr:
+            if curr.is_free and curr.size >= size:
+                remainder = curr.size - size
+                curr.size = size
+                curr.is_free = False
+                self.allocated[curr.offset] = curr
+
+                # Split remaining free block
+                if remainder > 0:
+                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
+                    split_block.next = curr.next
+                    split_block.prev = curr
+                    if curr.next:
+                        curr.next.prev = split_block
+                    curr.next = split_block
+                return curr.offset
+            curr = curr.next
+        return -1 # Out of memory
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        # Coalescing branches:
+        # Branch 1: Coalesce right
+        if node.next and node.next.is_free:
+            right = node.next
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        # Branch 2: Coalesce left
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+        return True
+```
+
+
 #### 7. LRU + LFU + Pluggable Eviction Strategy Pattern
 - **Architectural Decoupling**: Separate backing storage from eviction logic.
 - **Strategy Interface**:
@@ -323,6 +467,89 @@ class IdempotencyManager:
   - `LFUPolicy`: `freq_buckets: Dict[int, DLL]` + `min_freq` cursor. Ties at `min_freq` are broken by LRU within the lowest frequency bucket;
   - `TTLWeightedPolicy` / `SizeWeightedPolicy`: Pluggable heap or skip-list indexed by weight.
 
+```python
+import collections
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+
+class EvictionPolicy(ABC):
+    @abstractmethod
+    def on_access(self, key: str) -> None: ...
+    @abstractmethod
+    def pick_victim(self) -> Optional[str]: ...
+    @abstractmethod
+    def on_evict(self, key: str) -> None: ...
+
+class LRUPolicy(EvictionPolicy):
+    def __init__(self):
+        self.od = collections.OrderedDict()
+    def on_access(self, key: str) -> None:
+        self.od[key] = None; self.od.move_to_end(key)
+    def pick_victim(self) -> Optional[str]:
+        return next(iter(self.od)) if self.od else None
+    def on_evict(self, key: str) -> None:
+        self.od.pop(key, None)
+
+class LFUPolicy(EvictionPolicy):
+    """O(1) LFU Policy with frequency buckets, tie-broken by LRU"""
+    def __init__(self):
+        self.key_to_freq: Dict[str, int] = {}
+        self.freq_to_keys: Dict[int, collections.OrderedDict] = collections.defaultdict(collections.OrderedDict)
+        self.min_freq = 0
+
+    def on_access(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq[key]
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+                if self.min_freq == f:
+                    self.min_freq += 1
+            new_f = f + 1
+        else:
+            new_f = 1
+            self.min_freq = 1
+        self.key_to_freq[key] = new_f
+        self.freq_to_keys[new_f][key] = None
+
+    def pick_victim(self) -> Optional[str]:
+        if not self.key_to_freq:
+            return None
+        return next(iter(self.freq_to_keys[self.min_freq]))
+
+    def on_evict(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq.pop(key)
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+
+class PluggableCache:
+    def __init__(self, capacity: int, policy: EvictionPolicy):
+        self.capacity = capacity
+        self.policy = policy
+        self.store: Dict[str, Any] = {}
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.store: return None
+        self.policy.on_access(key)
+        return self.store[key]
+
+    def put(self, key: str, val: Any) -> None:
+        if key in self.store:
+            self.store[key] = val
+            self.policy.on_access(key)
+            return
+        if len(self.store) >= self.capacity:
+            victim = self.policy.pick_victim()
+            if victim:
+                del self.store[victim]
+                self.policy.on_evict(victim)
+        self.store[key] = val
+        self.policy.on_access(key)
+```
+
+
 #### 8. Durable In-Memory Cache with WAL & Crash Recovery
 - **Deterministic Key Hashing**:
   - `generate_key(*args, **kwargs)` fails if `kwargs` is hashed directly (`TypeError: unhashable type: 'dict'`).
@@ -331,6 +558,56 @@ class IdempotencyManager:
   - Append every mutation/access to disk: `{"op": "PUT", "key": k, "val": v, "ts": now}`.
   - **Replay Invariant**: Simple dict assignment during recovery degrades LRU ordering to FIFO. On replay, **explicitly call `move_to_end` for previously seen keys** to rebuild exact recency positions.
   - Trade-off: Synchronous `fsync` (zero data loss) vs Group Commit (high throughput); periodic checkpoint snapshots truncate stale WAL.
+
+```python
+import json, os, collections
+from typing import Any, Optional
+
+class DurableLRUCache:
+    """
+    Durable In-Memory LRU Cache with WAL & Replay
+    """
+    def __init__(self, capacity: int, wal_path: str):
+        self.capacity = capacity
+        self.wal_path = wal_path
+        self.cache: collections.OrderedDict = collections.OrderedDict()
+        self._recover()
+
+    def _recover(self) -> None:
+        if not os.path.exists(self.wal_path):
+            return
+        with open(self.wal_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip(): continue
+                rec = json.loads(line)
+                op, key = rec.get("op"), rec.get("key")
+                if op == "PUT":
+                    self.cache[key] = rec["val"]
+                    self.cache.move_to_end(key) # Preserve exact replay recency order
+                    if len(self.cache) > self.capacity:
+                        self.cache.popitem(last=False)
+                elif op == "ACCESS":
+                    if key in self.cache:
+                        self.cache.move_to_end(key)
+
+    def put(self, key: str, val: Any) -> None:
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "PUT", "key": key, "val": val}) + "\n")
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        self.cache[key] = val
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False)
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.cache:
+            return None
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "ACCESS", "key": key}) + "\n")
+        self.cache.move_to_end(key)
+        return self.cache[key]
+```
+
 
 #### 9. 4-Level In-Memory Database Implementation (Anthropic CodeSignal OA)
 - **Functional Requirements Across 4 Levels**:
@@ -631,6 +908,65 @@ public:
 - **Architectural Discipline**:
   - `TodoList` owns sequence, ID assignment, and storage only. Completion state belongs to the external authority, preventing state drift.
   - Structure: Hash map `id_to_node` + Doubly Linked List preserving insertion order. Monotonic auto-increment counter ensures stable, non-reusable IDs.
+
+```python
+from typing import Dict, List, Optional, Callable
+
+class TodoNode:
+    def __init__(self, tid: int, entry: str):
+        self.id = tid
+        self.entry = entry
+        self.prev: Optional['TodoNode'] = None
+        self.next: Optional['TodoNode'] = None
+
+class TodoList:
+    """
+    Todo List System with Separation of Concerns
+    """
+    def __init__(self):
+        self.id_to_node: Dict[int, TodoNode] = {}
+        self.head = TodoNode(0, "")
+        self.tail = TodoNode(0, "")
+        self.head.next = self.tail
+        self.tail.prev = self.head
+        self._next_id = 1
+
+    def add(self, entry: str) -> int:
+        tid = self._next_id
+        self._next_id += 1
+        node = TodoNode(tid, entry)
+        self.id_to_node[tid] = node
+        node.prev, node.next = self.tail.prev, self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+        return tid
+
+    def delete(self, tid: int) -> bool:
+        if tid not in self.id_to_node:
+            return False
+        node = self.id_to_node.pop(tid)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def get_all(self) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            res.append(curr.entry)
+            curr = curr.next
+        return res
+
+    def get_todo(self, is_completed_fn: Callable[[int], bool]) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            if not is_completed_fn(curr.id):
+                res.append(curr.entry)
+            curr = curr.next
+        return res
+```
+
 
 #### 11. Weighted LRU Cache with Size-Bounded Eviction
 - **Problem Context & Invariant Definition**:
