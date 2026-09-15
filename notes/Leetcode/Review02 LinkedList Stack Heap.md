@@ -332,15 +332,299 @@ class IdempotencyManager:
   - **重放核心防坑点**：重启恢复时，仅仅将最新值写入字典会导致 LRU 淘汰序退化为 FIFO！**在重放回放日志时，对于已存在的 key，必须显式调用 `move_to_end`**，确保按日志中最后一次出现的先后顺序完全复现崩溃前的物理 LRU 队列。
   - **I/O 吞吐权衡**：单次写入同步 `fsync` 确保零数据丢失（金融级） vs. Group Commit 批量刷盘（吞吐优先）；周期性内存快照（Snapshot）截断并压缩（Truncate）历史 WAL。
 
-#### 9. 四层级内存数据库架构 (Anthropic CodeSignal In-Memory Database OA)
-- **数据结构总纲**：按记录维护 `{field -> [(set_ts, value, expiry_ts)]}` 的**追加写历史版本列表**与全局快照映射。
-  - **Level 1 (核心 CRUD)**：`SET`, `GET`, `DELETE`，以及 `COMPARE_AND_SET(key, field, exp, new_val)` / `COMPARE_AND_DELETE`。
-  - **Level 2 (字典序与前缀扫描)**：`SCAN(key)` 提取当前有效字段按字段名升序排列；`SCAN_BY_PREFIX(key, prefix)` 限制前缀匹配。
-  - **Level 3 (字段级 TTL 自动失效)**：`SET_WITH_TTL(key, field, val, ttl)`。字段有效期为 $[ts, ts+ttl)$。在任意 Level 1/2 命令执行时做惰性过滤：若 `query_ts >= expiry_ts` 则视为不存在。
-  - **Level 4A (快照与恢复 Backup / Restore)**：
-    - `BACKUP(ts)`：深拷贝当前数据库状态；
-    - `RESTORE(ts, at_ts)`：加载 $\le at\_ts$ 的最近一次快照。**最关键边界陷阱**：快照中必须存储**剩余 TTL 相对差值（$\Delta = \text{expiry} - \text{backup\_ts}$）**，恢复时依据新时钟重新计算过期时间 `new_expiry = current_ts + delta`，绝不能保存绝对时间戳！
-  - **Level 4B (时光旅行追溯 GET_WHEN)**：`GET_WHEN(ts, key, field, at_ts)`。在字段历史版本列表中依据 `set_ts` 执行二分查找定位版本，再校验其在 `at_ts` 时刻是否仍未过期。
+#### 9. 四层级内存数据库系统实现 (Anthropic CodeSignal In-Memory Database OA)
+- **核心业务需求与四层级渐进演进**：
+  - **Level 1 (基础键值对存储)**：每个顶层 `key` 映射多个 `field -> value` 键值对（均为字符串）。提供基础 CRUD 接口：`set(key, field, value)`，`get(key, field)`，`delete(key, field) -> bool`。
+  - **Level 2 (字典序与前缀扫描)**：`scan(key)` 按 `field` 的字典序升序返回所有有效字段及值 `["field(value)", ...]`；`scan_by_prefix(key, prefix)` 在字典序基础上增加前缀匹配过滤。
+  - **Level 3 (时序与 TTL 字段失效)**：所有操作扩展为 `_at` 时序变体。`set_at_with_ttl(key, field, value, timestamp, ttl)` 定义有效生命周期闭开区间 $[timestamp, timestamp + ttl)$。过期字段在读取时自动对外部不可见并惰性清理。
+  - **Level 4 (快照备份与时钟重定位恢复)**：
+    - `backup(timestamp)`：对数据库当前所有未过期的活跃字段创建深拷贝（Deep Copy）快照，保存每个字段相对于当前时刻的**剩余生存时间 (Remaining TTL)**：$\Delta = (ts_{set} + ttl) - timestamp$；
+    - `restore(timestamp, timestamp_to_restore)`：查找满足 $ts_{backup} \le timestamp\_to\_restore$ 的最近一份历史快照，在当前时刻 $timestamp$ 恢复该快照。**生命周期重定位**：所有带 TTL 字段的过期时间被重新计算为 $new\_expiry = timestamp + \Delta$！
+- **关键架构陷阱与不变量设计**：
+  1. **禁止持久化绝对过期时间戳**：若在快照中直接存储绝对过期时间戳 $ts_{expiry}$，则在跨越较长时间恢复快照时，原本未过期的记录会被错误判定为已过期。通过存储相对剩余时长 $\Delta$，恢复时以新时间轴重新起算，严格保证数据恢复的时钟隔离性。
+  2. **深拷贝防污染**：快照必须完全复制值与元数据，切忌引用原字典，防止后续的实时写操作脏污历史备份。
+
+```python
+import collections
+from typing import Dict, List, Optional, Tuple
+
+class FieldRecord:
+    __slots__ = ('val', 'remaining_ttl', 'absolute_expiry')
+    def __init__(self, val: str, remaining_ttl: Optional[int] = None, absolute_expiry: Optional[int] = None):
+        self.val = val
+        self.remaining_ttl = remaining_ttl
+        self.absolute_expiry = absolute_expiry
+
+class InMemoryDatabase:
+    """
+    四层级内存数据库完整参考实现
+    Level 1: set, get, delete
+    Level 2: scan, scan_by_prefix (字典序排列)
+    Level 3: _at 时序接口与 TTL 失效 [ts, ts + ttl)
+    Level 4: backup(ts) 与 restore(ts, ts_to_restore) 相对 TTL 恢复
+    """
+    def __init__(self):
+        self.store: Dict[str, Dict[str, FieldRecord]] = collections.defaultdict(dict)
+        self.backups: List[Tuple[int, Dict[str, Dict[str, Tuple[str, Optional[int]]]]]] = []
+
+    def _is_alive(self, rec: FieldRecord, ts: Optional[int]) -> bool:
+        if rec.absolute_expiry is None or ts is None:
+            return True
+        return ts < rec.absolute_expiry
+
+    # --- Level 1 ---
+    def set(self, key: str, field: str, value: str) -> None:
+        self.store[key][field] = FieldRecord(value)
+
+    def get(self, key: str, field: str) -> Optional[str]:
+        if key in self.store and field in self.store[key]:
+            return self.store[key][field].val
+        return None
+
+    def delete(self, key: str, field: str) -> bool:
+        if key in self.store and field in self.store[key]:
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+            return True
+        return False
+
+    # --- Level 2 ---
+    def scan(self, key: str) -> List[str]:
+        if key not in self.store:
+            return []
+        return [f"{f}({self.store[key][f].val})" for f in sorted(self.store[key].keys())]
+
+    def scan_by_prefix(self, key: str, prefix: str) -> List[str]:
+        if key not in self.store:
+            return []
+        return [f"{f}({self.store[key][f].val})" for f in sorted(self.store[key].keys()) if f.startswith(prefix)]
+
+    # --- Level 3 ---
+    def set_at(self, key: str, field: str, value: str, timestamp: int) -> None:
+        self.store[key][field] = FieldRecord(value)
+
+    def set_at_with_ttl(self, key: str, field: str, value: str, timestamp: int, ttl: int) -> None:
+        self.store[key][field] = FieldRecord(value, remaining_ttl=ttl, absolute_expiry=timestamp + ttl)
+
+    def get_at(self, key: str, field: str, timestamp: int) -> Optional[str]:
+        if key in self.store and field in self.store[key]:
+            rec = self.store[key][field]
+            if self._is_alive(rec, timestamp):
+                return rec.val
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+        return None
+
+    def delete_at(self, key: str, field: str, timestamp: int) -> bool:
+        if key in self.store and field in self.store[key]:
+            alive = self._is_alive(self.store[key][field], timestamp)
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+            return alive
+        return False
+
+    def scan_at(self, key: str, timestamp: int) -> List[str]:
+        if key not in self.store:
+            return []
+        items = []
+        expired_fields = []
+        for f in sorted(self.store[key].keys()):
+            rec = self.store[key][f]
+            if self._is_alive(rec, timestamp):
+                items.append(f"{f}({rec.val})")
+            else:
+                expired_fields.append(f)
+        for f in expired_fields:
+            del self.store[key][f]
+        if not self.store[key]:
+            del self.store[key]
+        return items
+
+    def scan_by_prefix_at(self, key: str, prefix: str, timestamp: int) -> List[str]:
+        if key not in self.store:
+            return []
+        items = []
+        expired_fields = []
+        for f in sorted(self.store[key].keys()):
+            rec = self.store[key][f]
+            if self._is_alive(rec, timestamp):
+                if f.startswith(prefix):
+                    items.append(f"{f}({rec.val})")
+            else:
+                expired_fields.append(f)
+        for f in expired_fields:
+            del self.store[key][f]
+        if not self.store[key]:
+            del self.store[key]
+        return items
+
+    # --- Level 4 ---
+    def backup(self, timestamp: int) -> int:
+        snapshot: Dict[str, Dict[str, Tuple[str, Optional[int]]]] = collections.defaultdict(dict)
+        saved_count = 0
+        for key, fields in list(self.store.items()):
+            for field, rec in list(fields.items()):
+                if self._is_alive(rec, timestamp):
+                    rem = (rec.absolute_expiry - timestamp) if rec.absolute_expiry is not None else None
+                    snapshot[key][field] = (rec.val, rem)
+                    saved_count += 1
+                else:
+                    del fields[field]
+            if not fields:
+                del self.store[key]
+        self.backups.append((timestamp, snapshot))
+        return saved_count
+
+    def restore(self, timestamp: int, timestamp_to_restore: int) -> None:
+        idx = -1
+        for i in range(len(self.backups) - 1, -1, -1):
+            if self.backups[i][0] <= timestamp_to_restore:
+                idx = i
+                break
+        if idx == -1:
+            return
+
+        target_backup = self.backups[idx][1]
+        self.store.clear()
+        for key, fields in target_backup.items():
+            for field, (val, rem) in fields.items():
+                abs_exp = (timestamp + rem) if rem is not None else None
+                self.store[key][field] = FieldRecord(val=val, remaining_ttl=rem, absolute_expiry=abs_exp)
+```
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <map>
+#include <vector>
+#include <optional>
+
+class InMemoryDatabase {
+private:
+    struct FieldRecord {
+        std::string val;
+        std::optional<long long> remaining_ttl;
+        std::optional<long long> absolute_expiry;
+    };
+    struct SnapshotField {
+        std::string val;
+        std::optional<long long> remaining_ttl;
+    };
+
+    std::unordered_map<std::string, std::map<std::string, FieldRecord>> store_;
+    std::vector<std::pair<long long, std::unordered_map<std::string, std::map<std::string, SnapshotField>>>> backups_;
+
+    bool isAlive(const FieldRecord& rec, std::optional<long long> ts) const {
+        if (!rec.absolute_expiry.has_value() || !ts.has_value()) return true;
+        return ts.value() < rec.absolute_expiry.value();
+    }
+
+public:
+    void set(const std::string& key, const std::string& field, const std::string& val) {
+        store_[key][field] = FieldRecord{val, std::nullopt, std::nullopt};
+    }
+
+    std::optional<std::string> get(const std::string& key, const std::string& field) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return std::nullopt;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return std::nullopt;
+        return fit->second.val;
+    }
+
+    bool del(const std::string& key, const std::string& field) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return false;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return false;
+        kit->second.erase(fit);
+        if (kit->second.empty()) store_.erase(kit);
+        return true;
+    }
+
+    std::vector<std::string> scan(const std::string& key) {
+        std::vector<std::string> res;
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return res;
+        for (const auto& [f, rec] : kit->second) {
+            res.push_back(f + "(" + rec.val + ")");
+        }
+        return res;
+    }
+
+    std::vector<std::string> scanByPrefix(const std::string& key, const std::string& prefix) {
+        std::vector<std::string> res;
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return res;
+        for (const auto& [f, rec] : kit->second) {
+            if (f.rfind(prefix, 0) == 0) res.push_back(f + "(" + rec.val + ")");
+        }
+        return res;
+    }
+
+    void setAtWithTtl(const std::string& key, const std::string& field, const std::string& val, long long ts, long long ttl) {
+        store_[key][field] = FieldRecord{val, ttl, ts + ttl};
+    }
+
+    std::optional<std::string> getAt(const std::string& key, const std::string& field, long long ts) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return std::nullopt;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return std::nullopt;
+        if (isAlive(fit->second, ts)) return fit->second.val;
+        kit->second.erase(fit);
+        if (kit->second.empty()) store_.erase(kit);
+        return std::nullopt;
+    }
+
+    int backup(long long ts) {
+        std::unordered_map<std::string, std::map<std::string, SnapshotField>> snapshot;
+        int count = 0;
+        for (auto kit = store_.begin(); kit != store_.end(); ) {
+            for (auto fit = kit->second.begin(); fit != kit->second.end(); ) {
+                if (isAlive(fit->second, ts)) {
+                    std::optional<long long> rem = fit->second.absolute_expiry.has_value() ?
+                        std::make_optional(fit->second.absolute_expiry.value() - ts) : std::nullopt;
+                    snapshot[kit->first][fit->first] = SnapshotField{fit->second.val, rem};
+                    count++;
+                    ++fit;
+                } else {
+                    fit = kit->second.erase(fit);
+                }
+            }
+            if (kit->second.empty()) kit = store_.erase(kit);
+            else ++kit;
+        }
+        backups_.push_back({ts, std::move(snapshot)});
+        return count;
+    }
+
+    void restore(long long ts, long long ts_to_restore) {
+        int idx = -1;
+        for (int i = (int)backups_.size() - 1; i >= 0; --i) {
+            if (backups_[i].first <= ts_to_restore) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx == -1) return;
+        store_.clear();
+        for (const auto& [key, fields] : backups_[idx].second) {
+            for (const auto& [field, item] : fields) {
+                FieldRecord rec;
+                rec.val = item.val;
+                rec.remaining_ttl = item.remaining_ttl;
+                rec.absolute_expiry = item.remaining_ttl.has_value() ? std::make_optional(ts + item.remaining_ttl.value()) : std::nullopt;
+                store_[key][field] = rec;
+            }
+        }
+    }
+};
+```
 
 #### 10. 待办事项面向对象设计与职责分离 (Todo List OOP Design)
 - **接口契约**：`add(entry) -> id`，`delete(id) -> bool`，`get_todo() -> List[str]`，`get_all() -> List[str]`。外部提供 $\mathcal{O}(1)$ 判定器 `check_todo(id) -> bool` 查询任务完成状态。
@@ -348,6 +632,218 @@ class IdempotencyManager:
   - `TodoList` 仅负责管理时序存储、ID 分配与增删，完成状态由外部源权威维护，类内部绝不缓存完成布尔值，杜绝脏数据。
   - 结构采用哈希表 `id_to_node` + 双向链表（保留插入顺序）。`id` 采用单调递增计数器分配，严禁复用已删除 ID。
   - `get_todo` 遍历链表并在生成时由 `check_todo` 惰性过滤，达到严格 $\mathcal{O}(1)$ 增删与 $\mathcal{O}(k)$ 输出大小遍历。
+
+#### 11. 带权重与变长尺寸限制的 LRU 缓存 (Weighted LRU Cache with Size-Bounded Eviction)
+- **业务场景与不变量**：
+  - 经典 LRU 仅统计条目数量（Count），每个键值对等价计为 1。
+  - 在工业级对象缓存与显存张量缓存中，条目具有**异构尺寸（Size / Weight）**。总容量限制 `capacity` 表示驻留对象的总字节数或总权重，而非条目数量。
+  - **核心不变量**：$\sum_{x \in Cache} x.size \le capacity$。
+- **级联驱逐循环 (Multi-Item Cascade Eviction)**：
+  - 在写入新元素 `put(key, value, size)` 时，若当前总占用 `current_size + size > capacity`，可能需要**连续淘汰多个 LRU 尾部元素**才能腾出充足空间；
+  - **键值更新的不变量调整**：当更新已存在的键时，必须先自 `current_size` 扣减旧尺寸 `current_size -= old_size`，再执行空间富余度检查与驱逐循环，最后累加新尺寸并移至 MRU 表头，杜绝统计漂移。
+- **严密边界防御 (Edge Cases)**：
+  1. **单对象尺寸超出全局总容量 (`size > capacity`)**：即便将缓存完全清空亦无法容纳。标准契约：若键已存在先将其彻底剔除，随后直接放弃插入（或抛出异常），保证不变量不被击穿；
+  2. **非正数非法尺寸 (`size <= 0`)**：校验并抛出参数异常；
+  3. **精确贴合容积 (`current_size + size == capacity`)**：循环直接终止，无多余淘汰。
+
+```python
+from typing import Dict, Optional
+
+class DLinkedNode:
+    def __init__(self, key: str = "", val: int = 0, size: int = 0):
+        self.key = key
+        self.val = val
+        self.size = size
+        self.prev: Optional['DLinkedNode'] = None
+        self.next: Optional['DLinkedNode'] = None
+
+class WeightedLRUCache:
+    """
+    带权重/尺寸限制的 LRU 缓存 (Weighted LRU Cache)
+    时间复杂度: get O(1), put 均摊 O(1)
+    空间复杂度: O(N) (N 为常驻键总数)
+    """
+    def __init__(self, capacity: int):
+        if capacity < 0:
+            raise ValueError("Capacity must be non-negative")
+        self.capacity = capacity
+        self.current_size = 0
+        self.cache: Dict[str, DLinkedNode] = {}
+        # 哨兵头尾节点 (Head 为 MRU 端，Tail 为 LRU 端)
+        self.head = DLinkedNode()
+        self.tail = DLinkedNode()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _add_to_head(self, node: DLinkedNode) -> None:
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def _remove_node(self, node: DLinkedNode) -> None:
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _move_to_head(self, node: DLinkedNode) -> None:
+        self._remove_node(node)
+        self._add_to_head(node)
+
+    def _pop_tail(self) -> Optional[DLinkedNode]:
+        res = self.tail.prev
+        if res is self.head:
+            return None
+        self._remove_node(res)
+        return res
+
+    def get(self, key: str) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._move_to_head(node)
+        return node.val
+
+    def put(self, key: str, value: int, size: int) -> None:
+        if size <= 0:
+            raise ValueError("Item size must be strictly positive")
+        
+        # 边界 1: 单个元素尺寸直接超过总容量，绝不可能驻留
+        if size > self.capacity:
+            if key in self.cache:
+                old = self.cache.pop(key)
+                self._remove_node(old)
+                self.current_size -= old.size
+            return
+
+        if key in self.cache:
+            node = self.cache[key]
+            # 扣减旧尺寸
+            self.current_size -= node.size
+            node.val = value
+            node.size = size
+            self._move_to_head(node)
+        else:
+            node = DLinkedNode(key, value, size)
+            self.cache[key] = node
+            self._add_to_head(node)
+
+        self.current_size += size
+
+        # 核心级联驱逐循环: 只要空间溢出且链表非空，持续驱逐 LRU 尾部
+        while self.current_size > self.capacity and self.tail.prev is not self.head:
+            victim = self._pop_tail()
+            if victim:
+                del self.cache[victim.key]
+                self.current_size -= victim.size
+```
+
+```cpp
+#include <string>
+#include <unordered_map>
+
+class WeightedLRUCache {
+private:
+    struct Node {
+        std::string key;
+        int val;
+        int size;
+        Node* prev{nullptr};
+        Node* next{nullptr};
+        Node(std::string k = "", int v = 0, int s = 0) : key(std::move(k)), val(v), size(s) {}
+    };
+
+    int capacity_;
+    int current_size_{0};
+    std::unordered_map<std::string, Node*> cache_;
+    Node* head_;
+    Node* tail_;
+
+    void addToHead(Node* node) {
+        node->prev = head_;
+        node->next = head_->next;
+        head_->next->prev = node;
+        head_->next = node;
+    }
+
+    void removeNode(Node* node) {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+    }
+
+    void moveToHead(Node* node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    Node* popTail() {
+        Node* res = tail_->prev;
+        if (res == head_) return nullptr;
+        removeNode(res);
+        return res;
+    }
+
+public:
+    explicit WeightedLRUCache(int capacity) : capacity_(capacity) {
+        head_ = new Node();
+        tail_ = new Node();
+        head_->next = tail_;
+        tail_->prev = head_;
+    }
+
+    ~WeightedLRUCache() {
+        Node* curr = head_;
+        while (curr) {
+            Node* next = curr->next;
+            delete curr;
+            curr = next;
+        }
+    }
+
+    int get(const std::string& key) {
+        auto it = cache_.find(key);
+        if (it == cache_.end()) return -1;
+        moveToHead(it->second);
+        return it->second->val;
+    }
+
+    void put(const std::string& key, int value, int size) {
+        if (size <= 0) return;
+        if (size > capacity_) {
+            auto it = cache_.find(key);
+            if (it != cache_.end()) {
+                current_size_ -= it->second->size;
+                removeNode(it->second);
+                delete it->second;
+                cache_.erase(it);
+            }
+            return;
+        }
+
+        auto it = cache_.find(key);
+        if (it != cache_.end()) {
+            Node* node = it->second;
+            current_size_ -= node->size;
+            node->val = value;
+            node->size = size;
+            moveToHead(node);
+        } else {
+            Node* node = new Node(key, value, size);
+            cache_[key] = node;
+            addToHead(node);
+        }
+        current_size_ += size;
+
+        while (current_size_ > capacity_ && tail_->prev != head_) {
+            Node* victim = popTail();
+            if (victim) {
+                cache_.erase(victim->key);
+                current_size_ -= victim->size;
+                delete victim;
+            }
+        }
+    }
+};
+```
 
 </div>
 
@@ -2825,6 +3321,177 @@ if __name__ == "__main__":
     assert mf.findMedian() == 2.0
     print("✅ Card 08 (Find Median from Data Stream) all tests passed!")
 ```
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与工业延伸</div>
+
+- **双堆动态天平不变量证明 (Dual-Heap Invariant)**：
+  - 数据流元素被动态划分为左右两个等势区间：较小半区为大顶堆 $lo$（存储相反数），较大半区为小顶堆 $hi$。
+  - **排序关系不变量**：$\max(lo) \le \min(hi)$。
+  - **容量平衡不变量**：$|lo| \ge |hi|$ 且 $|lo| - |hi| \le 1$。
+  - 插入新元素时，新元素先进入 $lo$，弹出最大值注入 $hi$；若此时 $|hi| > |lo|$，将 $hi$ 的最小值回流至 $lo$。中位数始终可在 $\mathcal{O}(1)$ 提取：奇数时直接取 $\max(lo)$，偶数时取 $(\max(lo) + \min(hi)) / 2$。
+
+#### 1. 合并 K 个升序链表 (LeetCode 23: Merge k Sorted Lists)
+- **多路归并双解法**：
+  1. **最小堆优先队列法**：维护大小为 $k$ 的小顶堆。首轮将 $k$ 条链表的头节点推入堆中；每次弹出最小节点接入输出链表，并将其 `next` 节点推入堆。总时间复杂度 $\mathcal{O}(N \log k)$，空间复杂度 $\mathcal{O}(k)$；
+  2. **分治两两归并法 (Divide and Conquer)**：将 $k$ 条链表两两配对合并，每轮规模减半，总轮数为 $\lceil \log_2 k \rceil$。空间复杂度 $\mathcal{O}(1)$（迭代版），在无堆开销下更具缓存局部性。
+
+```python
+import heapq
+from typing import List, Optional
+
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+def mergeKLists(lists: List[Optional[ListNode]]) -> Optional[ListNode]:
+    dummy = ListNode(0)
+    curr = dummy
+    heap = []
+    for i, l in enumerate(lists):
+        if l:
+            heapq.heappush(heap, (l.val, i, l))
+    
+    while heap:
+        val, i, node = heapq.heappop(heap)
+        curr.next = node
+        curr = curr.next
+        if node.next:
+            heapq.heappush(heap, (node.next.val, i, node.next))
+            
+    return dummy.next
+```
+
+#### 2. 内存受限的滑动时间窗口 K 阶元素统计器 (K-th Element on a Streaming Time Window under Hard Memory Bound)
+- **业务场景与硬性限制**：
+  - 数据流以时序元组 $(timestamp, value)$ 持续高速涌入。
+  - **查询目标**：在任意时刻 $now$，实时返回最近时间窗口 $[now - W, now]$ 内的所有活跃数值中的**第 $K$ 小（或第 $K$ 大）元素**。
+  - **内存硬性约束 (Hard Memory Bound)**：严禁无上限存储历史数据；内存占用必须严格受限于窗口长度 $W$ 与事件发生率 $R$ 的物理上限。
+- **架构方案 1：有界整数值域 $[V_{min}, V_{max}]$ (FIFO 窗口队列 + 频次桶数组)**：
+  - 若数值在固定离散值域内（如网络延迟 $0 \sim 1000\text{ ms}$，量化微秒级跳价值）：
+  - **数据结构**：
+    1. 时间窗口双端队列 `queue: Deque[Tuple[ts, val]]` 记录窗口内的活跃事件物理时序；
+    2. 频次计数桶数组 `buckets: List[int]`，长度 $B = V_{max} - V_{min} + 1$。
+  - **操作复杂度**：
+    - 入队 `add(ts, val)`：剔除 $ts' < ts - W$ 的过期元素（从对应桶中扣减计数），将新事件压入队列，`buckets[val - min_val] += 1`，均摊 $\mathcal{O}(1)$；
+    - 查询 `find_kth(now, k)`：线性扫描桶数组累加前缀和，首个累积频次 $\ge k$ 的桶索引即为答案，时间复杂度严格 $\mathcal{O}(B)$。
+  - **内存空间上限**：$\le R \cdot W \times 16\text{ 字节} + B \times 4\text{ 字节}$，严格有界且完全规避堆重平衡。
+
+- **架构方案 2：无界任意实数域 (FIFO 窗口队列 + 树状数组 / 动态平衡树)**：
+  - 当数值范围巨大或为浮点数时，采用树状数组 (Fenwick Tree) 对离散化坐标进行动态秩统计，或结合 `SortedList` / 双堆延迟删除。
+  - 入队与过期剔除均为 $\mathcal{O}(\log M)$，查询第 $K$ 阶元素耗时 $\mathcal{O}(\log M)$（倍增二分），其中 $M = R \cdot W$ 为窗口活跃元素总数。
+
+```python
+import collections
+from typing import Optional
+
+class StreamingWindowKthBounded:
+    """
+    有界值域时间窗口 K 阶元素统计器
+    时间复杂度: add 均摊 O(1), find_kth O(B) (B = max_val - min_val + 1)
+    空间复杂度: O(R * W + B) 内存严格有界
+    """
+    def __init__(self, window_seconds: int, min_val: int, max_val: int):
+        self.w = window_seconds
+        self.min_val = min_val
+        self.max_val = max_val
+        self.num_buckets = max_val - min_val + 1
+        self.buckets = [0] * self.num_buckets
+        self.queue = collections.deque() # (timestamp, val)
+        self.total_count = 0
+
+    def _evict_expired(self, current_time: int) -> None:
+        threshold = current_time - self.w
+        while self.queue and self.queue[0][0] < threshold:
+            _, val = self.queue.popleft()
+            self.buckets[val - self.min_val] -= 1
+            self.total_count -= 1
+
+    def add(self, timestamp: int, value: int) -> None:
+        if not (self.min_val <= value <= self.max_val):
+            raise ValueError(f"Value {value} out of bounded range [{self.min_val}, {self.max_val}]")
+        self._evict_expired(timestamp)
+        self.queue.append((timestamp, value))
+        self.buckets[value - self.min_val] += 1
+        self.total_count += 1
+
+    def find_kth_smallest(self, current_time: int, k: int) -> Optional[int]:
+        """返回 [current_time - W, current_time] 窗口内的第 k 小元素 (1-indexed)"""
+        self._evict_expired(current_time)
+        if k < 1 or k > self.total_count:
+            return None
+        cum = 0
+        for i in range(self.num_buckets):
+            cum += self.buckets[i]
+            if cum >= k:
+                return self.min_val + i
+        return None
+
+    def find_kth_largest(self, current_time: int, k: int) -> Optional[int]:
+        """返回 [current_time - W, current_time] 窗口内的第 k 大元素 (1-indexed)"""
+        self._evict_expired(current_time)
+        if k < 1 or k > self.total_count:
+            return None
+        cum = 0
+        for i in range(self.num_buckets - 1, -1, -1):
+            cum += self.buckets[i]
+            if cum >= k:
+                return self.min_val + i
+        return None
+```
+
+```cpp
+#include <vector>
+#include <deque>
+#include <optional>
+#include <cstdint>
+
+class StreamingWindowKthBounded {
+private:
+    int64_t w_;
+    int min_val_;
+    int max_val_;
+    std::vector<int> buckets_;
+    std::deque<std::pair<int64_t, int>> queue_;
+    int total_count_{0};
+
+    void evictExpired(int64_t current_time) {
+        int64_t threshold = current_time - w_;
+        while (!queue_.empty() && queue_.front().first < threshold) {
+            int v = queue_.front().second;
+            queue_.pop_front();
+            buckets_[v - min_val_]--;
+            total_count_--;
+        }
+    }
+
+public:
+    StreamingWindowKthBounded(int64_t window_seconds, int min_val, int max_val)
+        : w_(window_seconds), min_val_(min_val), max_val_(max_val),
+          buckets_(max_val - min_val + 1, 0) {}
+
+    void add(int64_t ts, int value) {
+        evictExpired(ts);
+        queue_.push_back({ts, value});
+        buckets_[value - min_val_]++;
+        total_count_++;
+    }
+
+    std::optional<int> findKthSmallest(int64_t current_time, int k) {
+        evictExpired(current_time);
+        if (k < 1 || k > total_count_) return std::nullopt;
+        int cum = 0;
+        for (size_t i = 0; i < buckets_.size(); ++i) {
+            cum += buckets_[i];
+            if (cum >= k) return min_val_ + static_cast<int>(i);
+        }
+        return std::nullopt;
+    }
+};
+```
+
+</div>
 
 </div>
 
