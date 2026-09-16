@@ -4288,25 +4288,9 @@ if __name__ == "__main__":
 
 </div>
 <div class="review-block">
-<div class="review-block-label">🌐 核心基石延伸：极速限价订单簿系统 (HFT Limit Order Book System)</div>
+<div class="review-block-label">🌐 关联工程卡片</div>
 
-#### 1. 核心接口与价格优先-时间优先原则 (Price-Time Priority / FIFO)
-- **API 规范**：
-  - `add_order(side, price, qty, order_id)`：挂入限价委托单；
-  - `cancel_order(order_id)`：根据订单 ID 撤单，要求严格 $\mathcal{O}(1)$ 或 $\mathcal{O}(\log P)$；
-  - `best_bid()` / `best_ask()`：查询最优买卖价，要求 $\mathcal{O}(1)$；
-  - `top_of_book_volume()`：聚合最优买卖价位上的总挂单量。
-
-#### 2. 经典分层数据结构组合 (Two-Level Map + FIFO DLL)
-- **买卖盘价格索引 (Sorted Price Map)**：
-  - 买盘（Bids）：按价格**降序**排列的有序映射表（C++ `std::map<Price, PriceLevel, greater>` / Python `SortedDict`）；
-  - 卖盘（Asks）：按价格**升序**排列的有序映射表；
-  - 最优价查询直接通过 `bids.begin()` 与 `asks.begin()` 在 $\mathcal{O}(1)$ 内完成。
-- **价位内部队列 (PriceLevel FIFO DLL)**：
-  - 相同价格上的多笔订单按挂单时间严格 FIFO 排队，维护该价位总挂单量 `total_volume`。
-- **订单哈希索引表 (Order ID Index)**：
-  - 维护哈希表 `order_map: Dict[order_id, OrderLocation]`，记录该订单所属的买卖方向、价位指针以及在双向链表中的节点迭代器/句柄。
-  - **撤单常数时间保障**：撤单时通过 `order_map` 找到节点句柄，在对应价位的双向链表中执行 $\mathcal{O}(1)$ 节点摘除；若该价位订单归零，从价格索引表中注销该价位。整体撤单时间均摊 $\mathcal{O}(1)$。
+限价委托与时间优先的复杂复合数据结构实现，详见 [第 22 题：极速限价订单簿系统](#22-极速限价订单簿系统-limit-order-book-system-with-price-time-priority)。
 
 </div>
 
@@ -4543,6 +4527,399 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 22. 极速限价订单簿系统 (Limit Order Book System with Price-Time Priority)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">链表/系统 22</span>
+  <span class="review-card-title">极速限价订单簿系统 (Limit Order Book System with Price-Time Priority)</span>
+  <span class="review-card-tag">分层有序映射 · 双向链表 FIFO 队列 · 哈希句柄直指 · 价格优先-时间优先 · O(1) 撤单与深度聚合</span>
+</summary>
+<div class="review-card-content">
+
+> 💡 **题目类型**：独立工业级系统与复合数据结构设计（无直接对应单一 LeetCode 原题，为金融交易与订单匹配引擎的核心基础组件，请直接使用卡片内置完整测试桩在本地运行验证）
+
+<div class="review-block">
+<div class="review-block-label">📌 题目定义与要求</div>
+
+**题目原文 (Problem Statement)**：
+> **Limit Order Book (LOB) System**:
+> Design a low-latency Limit Order Book maintaining resting limit orders with **Price-Time Priority (FIFO)**:
+> - `add_order(side: str, price: float, qty: int, order_id: str) -> bool`: Inserts a resting limit order. Rejects invalid quantity ($\le 0$), invalid price ($\le 0$), or duplicate `order_id`.
+> - `cancel_order(order_id: str) -> bool`: Cancels and evicts an order by `order_id` in amortized $\mathcal{O}(1)$ time. Returns `False` if the order does not exist.
+> - `best_bid() -> Optional[float]`: Returns the current highest buy price, or `None` if the bid book is empty ($\mathcal{O}(1)$ time).
+> - `best_ask() -> Optional[float]`: Returns the current lowest sell price, or `None` if the ask book is empty ($\mathcal{O}(1)$ time).
+> - `top_of_book_volume() -> Tuple[int, int]`: Returns the total aggregate resting volume at the top-of-book `(best_bid_volume, best_ask_volume)` in $\mathcal{O}(1)$ time.
+>
+> **Execution & Priority Rules**:
+> 1. **Price Priority**: Higher buy orders precede lower buy orders; lower sell orders precede higher sell orders.
+> 2. **Time Priority (FIFO)**: Orders placed at the same price level must be queued and filled strictly in order of arrival.
+> 3. **Fast Cancellation**: Order eviction must unlink the target order directly without scanning other orders at that price level.
+
+**接口定义**：
+```python
+class LimitOrderBook:
+    def __init__(self): ...
+    def add_order(self, side: str, price: float, qty: int, order_id: str) -> bool: ...
+    def cancel_order(self, order_id: str) -> bool: ...
+    def best_bid(self) -> Optional[float]: ...
+    def best_ask(self) -> Optional[float]: ...
+    def top_of_book_volume(self) -> Tuple[int, int]: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">🎯 架构设计与核心机制</div>
+
+订单簿的核心难点在于兼顾**全局价格极值快速查询**、**单价位内部严格时间先后排队**与**任意订单的即时注销**：
+
+1. **两层分级存储结构 (Two-Level Map + FIFO Doubly Linked List)**：
+   - **第一层：价格有序索引 (Sorted Price Map)**：
+     - 买盘（Bids）：维护价格从高到低的有序表。最优买价始终位于首位；
+     - 卖盘（Asks）：维护价格从低到高的有序表。最优卖价始终位于首位；
+     - 在 C++ 中使用 `std::map<double, PriceLevel, std::greater<double>>`（买盘）与 `std::map<double, PriceLevel, std::less<double>>`（卖盘）；在 Python 中通过二分维护有序价格列表 `sorted_bid_prices` 与 `sorted_ask_prices`。
+   - **第二层：价位内部双向链表 (PriceLevel FIFO Queue)**：
+     - 每个价位包含一个带有虚拟头尾哨兵的双向链表（Doubly Linked List），新订单追加至链表尾部，满足严格 FIFO 时间优先；
+     - 价位对象维护一个标量字段 `total_volume`，在订单添加与撤销时增减，使 `top_of_book_volume()` 聚合查询能在 $\mathcal{O}(1)$ 内返回，无需遍历链表。
+
+2. **订单哈希索引表实现 $\mathcal{O}(1)$ 快速撤单 (Order Location Map)**：
+   - 维护全局哈希表 `order_map: Dict[order_id, OrderNode]`（C++ 中存储节点迭代器 `std::list<Order>::iterator`）；
+   - 撤单时通过 `order_id` 直接定位到该节点所属的 `PriceLevel` 与链表节点，执行双向链表常数时间摘除：
+     $$\text{node.prev.next} = \text{node.next}, \quad \text{node.next.prev} = \text{node.prev}$$
+   - 若该价位链表为空（`total_volume == 0` 或 `is_empty()`），从第一层的有序价格表中同步移除该价位，保证盘口查询不命中空价位。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码 (Python 3)</div>
+
+```python
+import bisect
+from typing import Dict, List, Optional, Tuple
+
+class OrderNode:
+    """双向链表节点：维护单笔委托订单的生命周期与位置句柄"""
+    def __init__(self, order_id: str, side: str, price: float, qty: int):
+        self.order_id = order_id
+        self.side = side.upper()
+        self.price = price
+        self.qty = qty
+        self.prev: Optional['OrderNode'] = None
+        self.next: Optional['OrderNode'] = None
+        self.level: Optional['PriceLevel'] = None
+
+class PriceLevel:
+    """双向链表维护同一价位上的订单，严格保证时间优先 (FIFO)"""
+    def __init__(self, price: float):
+        self.price = price
+        self.total_volume = 0
+        self.head = OrderNode("", "", 0.0, 0)
+        self.tail = OrderNode("", "", 0.0, 0)
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def append(self, order: OrderNode) -> None:
+        order.prev = self.tail.prev
+        order.next = self.tail
+        self.tail.prev.next = order
+        self.tail.prev = order
+        order.level = self
+        self.total_volume += order.qty
+
+    def remove(self, order: OrderNode) -> None:
+        order.prev.next = order.next
+        order.next.prev = order.prev
+        self.total_volume -= order.qty
+        order.prev = None
+        order.next = None
+        order.level = None
+
+    def is_empty(self) -> bool:
+        return self.head.next is self.tail
+
+class LimitOrderBook:
+    """
+    极速限价订单簿系统 (Limit Order Book)
+    结构组合: 有序价格表 (Bids 降序 / Asks 升序) + 内部 FIFO 双向链表 + 订单哈希句柄表
+    """
+    def __init__(self):
+        self.bids: Dict[float, PriceLevel] = {}
+        self.sorted_bid_prices: List[float] = []  # 降序维护: 存相反数或按降序二分
+
+        self.asks: Dict[float, PriceLevel] = {}
+        self.sorted_ask_prices: List[float] = []  # 升序维护
+
+        self.order_map: Dict[str, OrderNode] = {}
+
+    def _add_price_level(self, side: str, price: float) -> PriceLevel:
+        level = PriceLevel(price)
+        if side == "BUY":
+            self.bids[price] = level
+            idx = bisect.bisect_left([-p for p in self.sorted_bid_prices], -price)
+            self.sorted_bid_prices.insert(idx, price)
+        else:
+            self.asks[price] = level
+            idx = bisect.bisect_left(self.sorted_ask_prices, price)
+            self.sorted_ask_prices.insert(idx, price)
+        return level
+
+    def _remove_price_level(self, side: str, price: float) -> None:
+        if side == "BUY":
+            if price in self.bids:
+                del self.bids[price]
+                idx = bisect.bisect_left([-p for p in self.sorted_bid_prices], -price)
+                if idx < len(self.sorted_bid_prices) and self.sorted_bid_prices[idx] == price:
+                    self.sorted_bid_prices.pop(idx)
+        else:
+            if price in self.asks:
+                del self.asks[price]
+                idx = bisect.bisect_left(self.sorted_ask_prices, price)
+                if idx < len(self.sorted_ask_prices) and self.sorted_ask_prices[idx] == price:
+                    self.sorted_ask_prices.pop(idx)
+
+    def add_order(self, side: str, price: float, qty: int, order_id: str) -> bool:
+        if order_id in self.order_map or qty <= 0 or price <= 0:
+            return False
+        side = side.upper()
+        if side not in ("BUY", "SELL"):
+            return False
+
+        price_map = self.bids if side == "BUY" else self.asks
+        if price not in price_map:
+            level = self._add_price_level(side, price)
+        else:
+            level = price_map[price]
+
+        node = OrderNode(order_id, side, price, qty)
+        level.append(node)
+        self.order_map[order_id] = node
+        return True
+
+    def cancel_order(self, order_id: str) -> bool:
+        if order_id not in self.order_map:
+            return False
+        node = self.order_map.pop(order_id)
+        level = node.level
+        level.remove(node)
+
+        # 若当前价位订单清空，从价格索引表中注销该价位
+        if level.is_empty():
+            self._remove_price_level(node.side, node.price)
+        return True
+
+    def best_bid(self) -> Optional[float]:
+        return self.sorted_bid_prices[0] if self.sorted_bid_prices else None
+
+    def best_ask(self) -> Optional[float]:
+        return self.sorted_ask_prices[0] if self.sorted_ask_prices else None
+
+    def top_of_book_volume(self) -> Tuple[int, int]:
+        bid_vol = self.bids[self.sorted_bid_prices[0]].total_volume if self.sorted_bid_prices else 0
+        ask_vol = self.asks[self.sorted_ask_prices[0]].total_volume if self.sorted_ask_prices else 0
+        return bid_vol, ask_vol
+
+if __name__ == "__main__":
+    lob = LimitOrderBook()
+    # 1. 挂入多笔委托，包含相同价位不同时间戳的排队
+    assert lob.add_order("BUY", 100.5, 10, "ord_1") is True
+    assert lob.add_order("BUY", 100.5, 20, "ord_2") is True  # 同价位排在 ord_1 之后
+    assert lob.add_order("BUY", 100.0, 50, "ord_3") is True
+    assert lob.add_order("SELL", 101.0, 15, "ord_4") is True
+    assert lob.add_order("SELL", 102.0, 30, "ord_5") is True
+
+    # 2. 校验盘口最优价与挂单量
+    assert lob.best_bid() == 100.5
+    assert lob.best_ask() == 101.0
+    bid_v, ask_v = lob.top_of_book_volume()
+    assert bid_v == 30  # 10 + 20
+    assert ask_v == 15
+
+    # 3. 撤销排在队首的 ord_1 (最优价不变，挂单量缩减为 20)
+    assert lob.cancel_order("ord_1") is True
+    bid_v, _ = lob.top_of_book_volume()
+    assert bid_v == 20
+    assert lob.best_bid() == 100.5
+
+    # 4. 撤销同价位剩余的 ord_2 (该价位清空，最优买价自动下移至次优价 100.0)
+    assert lob.cancel_order("ord_2") is True
+    assert lob.best_bid() == 100.0
+    bid_v, _ = lob.top_of_book_volume()
+    assert bid_v == 50
+
+    # 5. 重复撤单校验幂等与不存在处理
+    assert lob.cancel_order("ord_1") is False
+    print("✅ LimitOrderBook Python all test cases passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 生产级 C++ 实现 (C++17 / C++20)</div>
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <map>
+#include <list>
+#include <optional>
+#include <cassert>
+
+struct Order {
+    std::string order_id;
+    std::string side;
+    double price;
+    int qty;
+};
+
+struct PriceLevel {
+    double price{0.0};
+    int total_volume{0};
+    std::list<Order> orders;
+};
+
+class LimitOrderBook {
+private:
+    struct OrderLocation {
+        std::string side;
+        double price;
+        std::list<Order>::iterator it;
+    };
+
+    // 买盘降序排列（最高买价优先），卖盘升序排列（最低卖价优先）
+    std::map<double, PriceLevel, std::greater<double>> bids_;
+    std::map<double, PriceLevel, std::less<double>> asks_;
+    std::unordered_map<std::string, OrderLocation> order_map_;
+
+public:
+    bool addOrder(const std::string& side, double price, int qty, const std::string& order_id) {
+        if (order_map_.count(order_id) || qty <= 0 || price <= 0.0) return false;
+
+        if (side == "BUY") {
+            auto& level = bids_[price];
+            level.price = price;
+            level.total_volume += qty;
+            level.orders.push_back({order_id, side, price, qty});
+            auto it = std::prev(level.orders.end());
+            order_map_[order_id] = {side, price, it};
+        } else if (side == "SELL") {
+            auto& level = asks_[price];
+            level.price = price;
+            level.total_volume += qty;
+            level.orders.push_back({order_id, side, price, qty});
+            auto it = std::prev(level.orders.end());
+            order_map_[order_id] = {side, price, it};
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool cancelOrder(const std::string& order_id) {
+        auto it = order_map_.find(order_id);
+        if (it == order_map_.end()) return false;
+
+        const auto& loc = it->second;
+        if (loc.side == "BUY") {
+            auto bit = bids_.find(loc.price);
+            if (bit != bids_.end()) {
+                bit->second.total_volume -= loc.it->qty;
+                bit->second.orders.erase(loc.it);
+                if (bit->second.orders.empty()) {
+                    bids_.erase(bit);
+                }
+            }
+        } else {
+            auto ait = asks_.find(loc.price);
+            if (ait != asks_.end()) {
+                ait->second.total_volume -= loc.it->qty;
+                ait->second.orders.erase(loc.it);
+                if (ait->second.orders.empty()) {
+                    asks_.erase(ait);
+                }
+            }
+        }
+        order_map_.erase(it);
+        return true;
+    }
+
+    std::optional<double> bestBid() const {
+        if (bids_.empty()) return std::nullopt;
+        return bids_.begin()->first;
+    }
+
+    std::optional<double> bestAsk() const {
+        if (asks_.empty()) return std::nullopt;
+        return asks_.begin()->first;
+    }
+
+    std::pair<int, int> topOfBookVolume() const {
+        int bid_vol = bids_.empty() ? 0 : bids_.begin()->second.total_volume;
+        int ask_vol = asks_.empty() ? 0 : asks_.begin()->second.total_volume;
+        return {bid_vol, ask_vol};
+    }
+};
+
+int main() {
+    LimitOrderBook lob;
+    assert(lob.addOrder("BUY", 100.5, 10, "ord_1"));
+    assert(lob.addOrder("BUY", 100.5, 20, "ord_2"));
+    assert(lob.addOrder("BUY", 100.0, 50, "ord_3"));
+    assert(lob.addOrder("SELL", 101.0, 15, "ord_4"));
+    assert(lob.addOrder("SELL", 102.0, 30, "ord_5"));
+
+    assert(lob.bestBid().value() == 100.5);
+    assert(lob.bestAsk().value() == 101.0);
+    auto [bv1, av1] = lob.topOfBookVolume();
+    assert(bv1 == 30);
+    assert(av1 == 15);
+
+    assert(lob.cancelOrder("ord_1"));
+    auto [bv2, av2] = lob.topOfBookVolume();
+    assert(bv2 == 20);
+    assert(lob.bestBid().value() == 100.5);
+
+    assert(lob.cancelOrder("ord_2"));
+    assert(lob.bestBid().value() == 100.0);
+    auto [bv3, av3] = lob.topOfBookVolume();
+    assert(bv3 == 50);
+
+    assert(!lob.cancelOrder("ord_1"));
+    std::cout << "✅ LimitOrderBook C++ all test cases passed!\n";
+    return 0;
+}
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 复杂度与系统权衡分析</div>
+
+| 操作方法 | 时间复杂度 | 空间复杂度 | 关键路径开销来源 |
+| :--- | :--- | :--- | :--- |
+| `best_bid()` / `best_ask()` | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | 直接读取有序价格表根节点/首元素指针 |
+| `top_of_book_volume()` | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | 增量维护标量字段，直接返回无需遍历订单链表 |
+| `cancel_order(order_id)` | 均摊 $\mathcal{O}(1)$ 或 $\mathcal{O}(\log P)$ | $\mathcal{O}(1)$ | 哈希索引定位 $\mathcal{O}(1)$ + 双向链表节点解引用摘除 $\mathcal{O}(1)$；当价位清空注销时需自平衡树删除 $\mathcal{O}(\log P)$ |
+| `add_order(side, ...)` | $\mathcal{O}(\log P)$ | $\mathcal{O}(1)$ | 有序红黑树价位检索/插入 $\mathcal{O}(\log P)$ + 双向链表尾部追加 $\mathcal{O}(1)$（$P$ 为活跃价位总数） |
+
+- **高频低延迟工程演进 (High-Frequency Engineering Considerations)**：
+  1. **固定步长离散化与直接数组寻址 (Tick Discretization via Flat Array)**：
+     - 若标的资产报价区间有界且最小跳动单位（Tick Size）固定（例如价格在 $[1.00, 1000.00]$ 且 step 为 $0.01$），生产系统会废除红黑树，改用预分配的扁平连续数组 `PriceLevel levels[100000]`；
+     - 价格通过公式 $\text{index} = \lfloor \frac{\text{price} - \text{min\_price}}{\text{tick\_size}} \rfloor$ 直接寻址，将挂单开销从 $\mathcal{O}(\log P)$ 骤降至严格 $\mathcal{O}(1)$，彻底消除红黑树指针跳转导致的 CPU Cache Miss。
+  2. **内存池与零堆分配 (Memory Arena / Zero-Allocation Pool)**：
+     - 在关键交易链路中，禁止使用系统级动态分配器（`malloc` / `new`）；
+     - 采用预分配固定容量的循环对象池（Object Pool）或环形缓冲区（Ring Buffer），订单节点的分配与归还仅涉及数组下标的原子递增，避免内存碎片与缺页中断。
+  3. **并发模型与单线程撮合 (Single-Threaded Actor Model)**：
+     - 现代撮合引擎核心通常绑定独立物理 CPU 核（CPU Pinning），采用单线程纯内存无锁循环，输入网络事件通过无锁单生产者单消费者队列（SPSC Ring Buffer）排队注入，消除互斥锁上下文切换与缓存一致性风暴。
+
+</div>
+
+</div>
+</details>
+
+---
+
 ---
 
 ## 模块四：NeetCode 极速速记与高频题型决策树 (NeetCode Quick-Recall Decision Framework & Mental Models)
@@ -4559,6 +4936,7 @@ if __name__ == "__main__":
 | **拆分/穿插指针映射** | 深拷贝带随机指针的链表、重排链表 | 原地复制 `node.next = copyNode` 后交叉拆分；快慢针截半后交替穿插 | LC 138 (复制随机指针), LC 143 (重排链表) |
 | **复合哈希双向链表** | 严格 $\mathcal{O}(1)$ 缓存插入/访问/淘汰 | 双向链表记录时间顺序 + 哈希表直指节点；头尾双哨兵四指针无分支断连 | LC 146 (LRU), LC 460 (LFU), 餐厅候补队列 |
 | **动态数组末尾置换** | $\mathcal{O}(1)$ 插入、删除与等概率随机抽取 | 动态数组保存元素 + 哈希表记录下标；删除时与末尾元素置换后执行 `pop()` | LC 380 (O(1)集合), LC 381 (允许重复), O(1) 随机容器 |
+| **分层有序映射 + 双向链表** | 价格优先与时间优先、$\mathcal{O}(1)$ 撤单与深度查询 | 有序价格表 (`std::map`/二分) 维护盘口极值 + 双向链表维护时间优先队列 + 哈希表记录节点指针 | 卡片 22 (极速限价订单簿系统) |
 
 ---
 

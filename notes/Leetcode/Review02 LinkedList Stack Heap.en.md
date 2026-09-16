@@ -4048,25 +4048,9 @@ if __name__ == "__main__":
 
 </div>
 <div class="review-block">
-<div class="review-block-label">🌐 Foundational Extensions: High-Frequency Limit Order Book (HFT LOB)</div>
+<div class="review-block-label">🌐 Related Engineering Design</div>
 
-#### 1. Core API & Price-Time Priority
-- **API Surface Area**:
-  - `add_order(side, price, qty, order_id)`: Registers a resting limit order;
-  - `cancel_order(order_id)`: Removes resting order by ID in $\mathcal{O}(1)$ or $\mathcal{O}(\log P)$;
-  - `best_bid()` / `best_ask()`: Top of book quotes in $\mathcal{O}(1)$;
-  - `top_of_book_volume()`: Cumulative quantity resting at top of book.
-
-#### 2. Canonical Two-Level Storage Architecture
-- **Sorted Price Maps**:
-  - Bids: Price-keyed map sorted in **descending** order (`std::map<Price, PriceLevel, greater>`);
-  - Asks: Price-keyed map sorted in **ascending** order;
-  - `best_bid()` and `best_ask()` access root elements in $\mathcal{O}(1)$.
-- **PriceLevel FIFO Queue**:
-  - Each price level contains a doubly linked list maintaining arrival FIFO ordering.
-- **Order ID Hash Index**:
-  - `order_map: Dict[order_id, OrderLocation]` stores pointers to the side, price level, and DLL node iterator.
-  - Cancellation unlinks the node from its price level in $\mathcal{O}(1)$ time, pruning empty price levels from the map.
+For full composite data structure implementation supporting price-time priority and constant-time eviction, refer to [Card 22: Limit Order Book System with Price-Time Priority](#22-limit-order-book-system-with-price-time-priority).
 
 </div>
 
@@ -4302,6 +4286,398 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 22. Limit Order Book System with Price-Time Priority
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">List/System 22</span>
+  <span class="review-card-title">Limit Order Book System with Price-Time Priority</span>
+  <span class="review-card-tag">Two-Level Sorted Map · Doubly-Linked FIFO Queue · Hash Handle Index · Price-Time Priority · O(1) Cancellation</span>
+</summary>
+<div class="review-card-content">
+
+> 💡 **Problem Category**: Standalone Industrial System & Composite Data Structure Design (Foundational matching engine infrastructure component; test directly using embedded assertions in local environments).
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
+**Problem Statement**:
+> **Limit Order Book (LOB) System**:
+> Design a low-latency Limit Order Book maintaining resting limit orders with **Price-Time Priority (FIFO)**:
+> - `add_order(side: str, price: float, qty: int, order_id: str) -> bool`: Inserts a resting limit order. Rejects invalid quantity ($\le 0$), invalid price ($\le 0$), or duplicate `order_id`.
+> - `cancel_order(order_id: str) -> bool`: Cancels and evicts an order by `order_id` in amortized $\mathcal{O}(1)$ time. Returns `False` if the order does not exist.
+> - `best_bid() -> Optional[float]`: Returns the current highest buy price, or `None` if the bid book is empty ($\mathcal{O}(1)$ time).
+> - `best_ask() -> Optional[float]`: Returns the current lowest sell price, or `None` if the ask book is empty ($\mathcal{O}(1)$ time).
+> - `top_of_book_volume() -> Tuple[int, int]`: Returns the total aggregate resting volume at the top-of-book `(best_bid_volume, best_ask_volume)` in $\mathcal{O}(1)$ time.
+>
+> **Execution & Priority Rules**:
+> 1. **Price Priority**: Higher buy orders precede lower buy orders; lower sell orders precede higher sell orders.
+> 2. **Time Priority (FIFO)**: Orders placed at the same price level must be queued and filled strictly in order of arrival.
+> 3. **Fast Cancellation**: Order eviction must unlink the target order directly without scanning other orders at that price level.
+
+**Interface Definition**:
+```python
+class LimitOrderBook:
+    def __init__(self): ...
+    def add_order(self, side: str, price: float, qty: int, order_id: str) -> bool: ...
+    def cancel_order(self, order_id: str) -> bool: ...
+    def best_bid(self) -> Optional[float]: ...
+    def best_ask(self) -> Optional[float]: ...
+    def top_of_book_volume(self) -> Tuple[int, int]: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">🎯 Architecture Design & Core Mechanics</div>
+
+An optimal Limit Order Book balances **instant top-of-book extreme price queries**, **strict FIFO arrival queuing per price level**, and **constant-time arbitrary order cancellation**:
+
+1. **Two-Level Storage Architecture (Sorted Map + FIFO DLL)**:
+   - **Level 1: Sorted Price Map**:
+     - Bids: Maintained in descending price order (`std::map<double, PriceLevel, std::greater<double>>` in C++). The top element is always the highest buying quote.
+     - Asks: Maintained in ascending price order (`std::map<double, PriceLevel, std::less<double>>` in C++). The top element is always the lowest selling quote.
+     - In Python, maintained via price dictionary and bisect-sorted price arrays.
+   - **Level 2: PriceLevel FIFO Queue**:
+     - Each price level contains a doubly-linked list with sentinel dummy head and tail nodes. Newly arrived orders append to the tail in strict FIFO order.
+     - Aggregates `total_volume` as orders arrive or cancel, enabling $\mathcal{O}(1)$ `top_of_book_volume()` queries without iterating over resting orders.
+
+2. **Order Hash Map for $\mathcal{O}(1)$ Order Eviction (Handle Index)**:
+   - Global hash table `order_map: Dict[order_id, OrderNode]` (or `std::list<Order>::iterator` in C++) stores direct references to the order node in memory.
+   - Cancellation unlinks the target node in constant time:
+     $$\text{node.prev.next} = \text{node.next}, \quad \text{node.next.prev} = \text{node.prev}$$
+   - If the price level becomes empty (`is_empty()`), prune that price entry from the sorted price map to guarantee that `best_bid()` and `best_ask()` always reference populated levels.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Production-Grade Python 3 Implementation</div>
+
+```python
+import bisect
+from typing import Dict, List, Optional, Tuple
+
+class OrderNode:
+    """Doubly-linked list node tracking order metadata and memory location."""
+    def __init__(self, order_id: str, side: str, price: float, qty: int):
+        self.order_id = order_id
+        self.side = side.upper()
+        self.price = price
+        self.qty = qty
+        self.prev: Optional['OrderNode'] = None
+        self.next: Optional['OrderNode'] = None
+        self.level: Optional['PriceLevel'] = None
+
+class PriceLevel:
+    """Doubly linked list maintaining FIFO execution priority per price level."""
+    def __init__(self, price: float):
+        self.price = price
+        self.total_volume = 0
+        self.head = OrderNode("", "", 0.0, 0)
+        self.tail = OrderNode("", "", 0.0, 0)
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def append(self, order: OrderNode) -> None:
+        order.prev = self.tail.prev
+        order.next = self.tail
+        self.tail.prev.next = order
+        self.tail.prev = order
+        order.level = self
+        self.total_volume += order.qty
+
+    def remove(self, order: OrderNode) -> None:
+        order.prev.next = order.next
+        order.next.prev = order.prev
+        self.total_volume -= order.qty
+        order.prev = None
+        order.next = None
+        order.level = None
+
+    def is_empty(self) -> bool:
+        return self.head.next is self.tail
+
+class LimitOrderBook:
+    """
+    High-performance Limit Order Book.
+    Architecture: Sorted Price Index + PriceLevel FIFO DLL + Hash Handle Map.
+    """
+    def __init__(self):
+        self.bids: Dict[float, PriceLevel] = {}
+        self.sorted_bid_prices: List[float] = []  # Maintained descending
+
+        self.asks: Dict[float, PriceLevel] = {}
+        self.sorted_ask_prices: List[float] = []  # Maintained ascending
+
+        self.order_map: Dict[str, OrderNode] = {}
+
+    def _add_price_level(self, side: str, price: float) -> PriceLevel:
+        level = PriceLevel(price)
+        if side == "BUY":
+            self.bids[price] = level
+            idx = bisect.bisect_left([-p for p in self.sorted_bid_prices], -price)
+            self.sorted_bid_prices.insert(idx, price)
+        else:
+            self.asks[price] = level
+            idx = bisect.bisect_left(self.sorted_ask_prices, price)
+            self.sorted_ask_prices.insert(idx, price)
+        return level
+
+    def _remove_price_level(self, side: str, price: float) -> None:
+        if side == "BUY":
+            if price in self.bids:
+                del self.bids[price]
+                idx = bisect.bisect_left([-p for p in self.sorted_bid_prices], -price)
+                if idx < len(self.sorted_bid_prices) and self.sorted_bid_prices[idx] == price:
+                    self.sorted_bid_prices.pop(idx)
+        else:
+            if price in self.asks:
+                del self.asks[price]
+                idx = bisect.bisect_left(self.sorted_ask_prices, price)
+                if idx < len(self.sorted_ask_prices) and self.sorted_ask_prices[idx] == price:
+                    self.sorted_ask_prices.pop(idx)
+
+    def add_order(self, side: str, price: float, qty: int, order_id: str) -> bool:
+        if order_id in self.order_map or qty <= 0 or price <= 0:
+            return False
+        side = side.upper()
+        if side not in ("BUY", "SELL"):
+            return False
+
+        price_map = self.bids if side == "BUY" else self.asks
+        if price not in price_map:
+            level = self._add_price_level(side, price)
+        else:
+            level = price_map[price]
+
+        node = OrderNode(order_id, side, price, qty)
+        level.append(node)
+        self.order_map[order_id] = node
+        return True
+
+    def cancel_order(self, order_id: str) -> bool:
+        if order_id not in self.order_map:
+            return False
+        node = self.order_map.pop(order_id)
+        level = node.level
+        level.remove(node)
+
+        # Prune empty price levels from the price map
+        if level.is_empty():
+            self._remove_price_level(node.side, node.price)
+        return True
+
+    def best_bid(self) -> Optional[float]:
+        return self.sorted_bid_prices[0] if self.sorted_bid_prices else None
+
+    def best_ask(self) -> Optional[float]:
+        return self.sorted_ask_prices[0] if self.sorted_ask_prices else None
+
+    def top_of_book_volume(self) -> Tuple[int, int]:
+        bid_vol = self.bids[self.sorted_bid_prices[0]].total_volume if self.sorted_bid_prices else 0
+        ask_vol = self.asks[self.sorted_ask_prices[0]].total_volume if self.sorted_ask_prices else 0
+        return bid_vol, ask_vol
+
+if __name__ == "__main__":
+    lob = LimitOrderBook()
+    # 1. Add orders across various sides and levels
+    assert lob.add_order("BUY", 100.5, 10, "ord_1") is True
+    assert lob.add_order("BUY", 100.5, 20, "ord_2") is True  # Queued behind ord_1
+    assert lob.add_order("BUY", 100.0, 50, "ord_3") is True
+    assert lob.add_order("SELL", 101.0, 15, "ord_4") is True
+    assert lob.add_order("SELL", 102.0, 30, "ord_5") is True
+
+    # 2. Check top quotes and aggregate depth
+    assert lob.best_bid() == 100.5
+    assert lob.best_ask() == 101.0
+    bid_v, ask_v = lob.top_of_book_volume()
+    assert bid_v == 30  # 10 + 20
+    assert ask_v == 15
+
+    # 3. Cancel top-priority order ord_1
+    assert lob.cancel_order("ord_1") is True
+    bid_v, _ = lob.top_of_book_volume()
+    assert bid_v == 20
+    assert lob.best_bid() == 100.5
+
+    # 4. Cancel trailing order ord_2 (level pruned, best bid moves to 100.0)
+    assert lob.cancel_order("ord_2") is True
+    assert lob.best_bid() == 100.0
+    bid_v, _ = lob.top_of_book_volume()
+    assert bid_v == 50
+
+    # 5. Verify non-existent cancel returns False
+    assert lob.cancel_order("ord_1") is False
+    print("✅ LimitOrderBook Python all test cases passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Production-Grade C++ Implementation (C++17 / C++20)</div>
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <map>
+#include <list>
+#include <optional>
+#include <cassert>
+
+struct Order {
+    std::string order_id;
+    std::string side;
+    double price;
+    int qty;
+};
+
+struct PriceLevel {
+    double price{0.0};
+    int total_volume{0};
+    std::list<Order> orders;
+};
+
+class LimitOrderBook {
+private:
+    struct OrderLocation {
+        std::string side;
+        double price;
+        std::list<Order>::iterator it;
+    };
+
+    // Bids descending (highest price first), Asks ascending (lowest price first)
+    std::map<double, PriceLevel, std::greater<double>> bids_;
+    std::map<double, PriceLevel, std::less<double>> asks_;
+    std::unordered_map<std::string, OrderLocation> order_map_;
+
+public:
+    bool addOrder(const std::string& side, double price, int qty, const std::string& order_id) {
+        if (order_map_.count(order_id) || qty <= 0 || price <= 0.0) return false;
+
+        if (side == "BUY") {
+            auto& level = bids_[price];
+            level.price = price;
+            level.total_volume += qty;
+            level.orders.push_back({order_id, side, price, qty});
+            auto it = std::prev(level.orders.end());
+            order_map_[order_id] = {side, price, it};
+        } else if (side == "SELL") {
+            auto& level = asks_[price];
+            level.price = price;
+            level.total_volume += qty;
+            level.orders.push_back({order_id, side, price, qty});
+            auto it = std::prev(level.orders.end());
+            order_map_[order_id] = {side, price, it};
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool cancelOrder(const std::string& order_id) {
+        auto it = order_map_.find(order_id);
+        if (it == order_map_.end()) return false;
+
+        const auto& loc = it->second;
+        if (loc.side == "BUY") {
+            auto bit = bids_.find(loc.price);
+            if (bit != bids_.end()) {
+                bit->second.total_volume -= loc.it->qty;
+                bit->second.orders.erase(loc.it);
+                if (bit->second.orders.empty()) {
+                    bids_.erase(bit);
+                }
+            }
+        } else {
+            auto ait = asks_.find(loc.price);
+            if (ait != asks_.end()) {
+                ait->second.total_volume -= loc.it->qty;
+                ait->second.orders.erase(loc.it);
+                if (ait->second.orders.empty()) {
+                    asks_.erase(ait);
+                }
+            }
+        }
+        order_map_.erase(it);
+        return true;
+    }
+
+    std::optional<double> bestBid() const {
+        if (bids_.empty()) return std::nullopt;
+        return bids_.begin()->first;
+    }
+
+    std::optional<double> bestAsk() const {
+        if (asks_.empty()) return std::nullopt;
+        return asks_.begin()->first;
+    }
+
+    std::pair<int, int> topOfBookVolume() const {
+        int bid_vol = bids_.empty() ? 0 : bids_.begin()->second.total_volume;
+        int ask_vol = asks_.empty() ? 0 : asks_.begin()->second.total_volume;
+        return {bid_vol, ask_vol};
+    }
+};
+
+int main() {
+    LimitOrderBook lob;
+    assert(lob.addOrder("BUY", 100.5, 10, "ord_1"));
+    assert(lob.addOrder("BUY", 100.5, 20, "ord_2"));
+    assert(lob.addOrder("BUY", 100.0, 50, "ord_3"));
+    assert(lob.addOrder("SELL", 101.0, 15, "ord_4"));
+    assert(lob.addOrder("SELL", 102.0, 30, "ord_5"));
+
+    assert(lob.bestBid().value() == 100.5);
+    assert(lob.bestAsk().value() == 101.0);
+    auto [bv1, av1] = lob.topOfBookVolume();
+    assert(bv1 == 30);
+    assert(av1 == 15);
+
+    assert(lob.cancelOrder("ord_1"));
+    auto [bv2, av2] = lob.topOfBookVolume();
+    assert(bv2 == 20);
+    assert(lob.bestBid().value() == 100.5);
+
+    assert(lob.cancelOrder("ord_2"));
+    assert(lob.bestBid().value() == 100.0);
+    auto [bv3, av3] = lob.topOfBookVolume();
+    assert(bv3 == 50);
+
+    assert(!lob.cancelOrder("ord_1"));
+    std::cout << "✅ LimitOrderBook C++ all test cases passed!\n";
+    return 0;
+}
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity & Systems Engineering Trade-offs</div>
+
+| Method | Time Complexity | Auxiliary Space | Bottleneck Source |
+| :--- | :--- | :--- | :--- |
+| `best_bid()` / `best_ask()` | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | Reads root/begin pointer of sorted price map |
+| `top_of_book_volume()` | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | Directly returns scalar `total_volume` without traversing order list |
+| `cancel_order(order_id)` | Amortized $\mathcal{O}(1)$ or $\mathcal{O}(\log P)$ | $\mathcal{O}(1)$ | Hash lookup $\mathcal{O}(1)$ + DLL unlink $\mathcal{O}(1)$; balanced tree deletion on level prune is $\mathcal{O}(\log P)$ |
+| `add_order(side, ...)` | $\mathcal{O}(\log P)$ | $\mathcal{O}(1)$ | Balanced tree search/insertion $\mathcal{O}(\log P)$ + DLL tail append $\mathcal{O}(1)$ ($P$ is active price count) |
+
+- **Low-Latency Production Optimizations**:
+  1. **Direct Array Indexing via Tick Discretization**:
+     - In real-world asset trading with bounded price bands and fixed tick sizes (e.g. $[1.00, 1000.00]$ with $0.01$ ticks), replace red-black trees with flat arrays `PriceLevel levels[100000]`.
+     - Direct index math $\lfloor (\text{price} - \text{min\_price}) / \text{tick\_size} \rfloor$ achieves strict $\mathcal{O}(1)$ order insertion and avoids CPU cache misses from pointer-chasing trees.
+  2. **Memory Arena & Zero Heap Allocations**:
+     - Pre-allocate fixed-size circular object pools to completely avoid `malloc` / `new` on the latency-sensitive critical path.
+  3. **Single-Threaded Actor Model & Lock-Free Ring Buffers**:
+     - Matching engines typically bind to a dedicated core (CPU pinning) running a single-threaded loop, ingesting events through Single-Producer Single-Consumer (SPSC) lock-free ring buffers to eliminate mutex contention and cache coherency overhead.
+
+</div>
+
+</div>
+</details>
+
+---
+
 ---
 
 ## Module 4: NeetCode Quick-Recall Decision Framework & Mental Models
@@ -4318,6 +4694,7 @@ Under high-pressure interview settings, candidates must map requirements to opti
 | **Splicing & Pointer Interleaving** | Deep copy with random pointers, reorder alternating halves | In-place node cloning `node.next = cloneNode` followed by split; split & interleave | LC 138 (Copy Random List), LC 143 (Reorder List) |
 | **Composite Hash + DLL** | Strict $\mathcal{O}(1)$ cache insertion, access, and eviction | Doubly-linked list for chronological order + hash map for direct node handles | LC 146 (LRU), LC 460 (LFU), Restaurant Waitlist Queue |
 | **Dynamic Array Swap-with-Last** | $\mathcal{O}(1)$ insertion, deletion, and uniform random sampling | Contiguous array stores values + hash map stores indices; delete via swap with tail | LC 380 (O(1) Set), LC 381 (Duplicates Allowed), Randomized Container |
+| **Two-Level Sorted Map + DLL** | Price-Time priority, $\mathcal{O}(1)$ cancellation, depth aggregation | Sorted map for price bounds + DLL for FIFO queue + hash map for node pointer | Card 22 (Limit Order Book System) |
 
 ---
 
