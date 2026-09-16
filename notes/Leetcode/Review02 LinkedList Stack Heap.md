@@ -261,12 +261,20 @@ if __name__ == "__main__":
 
 
 #### 3. 基于 Idempotency-Key 的幂等 API 处理器 (Idempotency API with Concurrency & TTL)
-- **核心契约**：
-  - 首次携带 Key $K$ 与请求体 $B$：正常执行并返回响应 $R$，持久化 $(K \to R)$；
-  - 相同 Key $K$ 与相同 Body $B$ 重试：直接返回缓存的 $R$，杜绝重复扣款/下单；
-  - 相同 Key $K$ 但不同 Body $B'$：抛出 `409 Conflict`（非法键复用）；
-  - **高并发竞态防护**：两个携带相同 Key $K$ 的请求并发到达时，第二个请求必须在 `threading.Condition` 上挂起等待第一个请求完成，绝不可双重执行！
-  - **TTL 回收策略**：缓存记录配置 TTL（如 24 小时），支持惰性校验与后台周期扫描。
+- **核心业务契约与防重约束**：
+  - **首次执行**：携带唯一 Key $K$ 与请求载荷 $B$，正常执行耗时业务函数并返回响应 $R$，持久化映射 $(K \to R)$；
+  - **重试命中**：相同 Key $K$ 与相同 Payload $B$ 再次请求时，直接返回已持久化的缓存响应 $R$，杜绝重复下单或二次扣款；
+  - **Payload 篡改拦截**：相同 Key $K$ 但携带不同 Body $B'$，必须严格拦截并抛出 `409 Conflict`（防止重放与键非法复用）；
+  - **TTL 自动驱逐**：记录配置生存时间（如 24 小时），过期后自动失效，支持惰性校验与周期清理。
+- **并发控制的两阶段锁架构 (Two-Phase Lock Protocol)**：
+  - **常见致命缺陷**：若在持全局锁 `with self.lock:` 内部直接调用 `rec.condition.wait()`，会引发两大灾难：
+    1. **未获底层锁异常**：Python `threading.Condition` 默认持独立的递归锁，未进入 `with rec.condition:` 直接调用 `wait()` 将抛出 `RuntimeError: cannot wait on un-acquired lock`；
+    2. **全局锁饥饿与死锁 (Deadlock)**：持全局锁挂起会导致所有其他完全不相干 Key 的并发请求被全量阻塞；若执行线程抛出异常尝试获取 `self.lock` 清理缓存，将发生死锁！
+  - **工业级两阶段协作设计**：
+    - **阶段 1（全局状态登记，持有全局锁）**：在 `self.lock` 保护下只做轻量状态查询、过期清理与 `IN_FLIGHT` 占位登记，完成状态交接后**立即释放全局锁**；
+    - **阶段 2（记录级细粒度等待与执行，全局锁外）**：
+      - 领头者线程（Leader）：在无锁状态下执行耗时业务逻辑 `execute_fn(body)`，完成后在记录专属的 `rec.condition` 上置为 `DONE` 并唤醒所有等待者；
+      - 追随者线程（Follower）：在记录专属的 `with rec.condition:` 上挂起等待（`while status == IN_FLIGHT: wait()`），绝不占用全局锁。
 
 ```python
 import hashlib, json, time, threading
@@ -276,6 +284,7 @@ from typing import Dict, Any, Tuple
 class RequestStatus(Enum):
     IN_FLIGHT = 1
     DONE = 2
+    FAILED = 3
 
 class IdempotencyRecord:
     def __init__(self, body_hash: str, ttl_seconds: float):
@@ -283,9 +292,12 @@ class IdempotencyRecord:
         self.status = RequestStatus.IN_FLIGHT
         self.response = None
         self.expires_at = time.time() + ttl_seconds
-        self.condition = threading.Condition()
+        self.condition = threading.Condition() # 每条记录独立的条件变量
 
 class IdempotencyManager:
+    """
+    两阶段细粒度并发安全幂等管理器
+    """
     def __init__(self, default_ttl: float = 86400.0):
         self.default_ttl = default_ttl
         self.store: Dict[str, IdempotencyRecord] = {}
@@ -299,29 +311,39 @@ class IdempotencyManager:
         body_hash = self._hash_body(body)
         now = time.time()
 
+        # 阶段 1: 在全局锁保护下原子化登记/读取状态，极速释放全局锁
         with self.lock:
             if idempotency_key in self.store:
                 rec = self.store[idempotency_key]
-                # 检查是否已过期
                 if now > rec.expires_at:
                     del self.store[idempotency_key]
+                elif rec.body_hash != body_hash:
+                    return 409, {"error": "Idempotency key re-used with different payload"}
+                elif rec.status == RequestStatus.DONE:
+                    return 200, rec.response
                 else:
-                    # 检查请求体冲突 (409 Conflict)
-                    if rec.body_hash != body_hash:
-                        return 409, {"error": "Idempotency key re-used with different payload"}
-                    
-                    # 若仍在处理中，等待其完成
-                    if rec.status == RequestStatus.IN_FLIGHT:
-                        rec.condition.wait()
-                        return 200, rec.response
-                    else:
-                        return 200, rec.response
+                    # 正在处理中 (IN_FLIGHT)：记录引用，移至全局锁外等待
+                    wait_rec = rec
+                    is_leader = False
 
-            # 首次进入：注册 IN_FLIGHT 记录
-            rec = IdempotencyRecord(body_hash, self.default_ttl)
-            self.store[idempotency_key] = rec
+            if idempotency_key not in self.store:
+                rec = IdempotencyRecord(body_hash, self.default_ttl)
+                self.store[idempotency_key] = rec
+                wait_rec = None
+                is_leader = True
 
-        # 在锁外执行真实业务逻辑
+        # 阶段 2: 全局锁外协作
+        if not is_leader:
+            # 追随者线程：释放全局锁后，仅在专属记录条件变量上等待，绝不阻塞其他不相干 Key
+            with wait_rec.condition:
+                while wait_rec.status == RequestStatus.IN_FLIGHT:
+                    wait_rec.condition.wait()
+                if wait_rec.status == RequestStatus.DONE:
+                    return 200, wait_rec.response
+                else:
+                    return 500, {"error": "Upstream request failed, please retry"}
+
+        # 领头者线程：在无锁状态下执行耗时业务逻辑
         try:
             res = execute_fn(body)
             with rec.condition:
@@ -333,26 +355,43 @@ class IdempotencyManager:
             with self.lock:
                 self.store.pop(idempotency_key, None)
             with rec.condition:
+                rec.status = RequestStatus.FAILED
                 rec.condition.notify_all()
             raise e
+
 if __name__ == "__main__":
     mgr = IdempotencyManager(default_ttl=10.0)
-    call_count = 0
-    def business_logic(payload):
-        nonlocal call_count
-        call_count += 1
-        return {"status": "success", "order_id": 123}
-    
-    # 首次执行
-    c1, r1 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
-    assert c1 == 200 and r1["order_id"] == 123 and call_count == 1
-    # 相同 key + 相同 body: 直接命中缓存，不重跑业务函数
-    c2, r2 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
-    assert c2 == 200 and r2["order_id"] == 123 and call_count == 1
-    # 相同 key + 不同 body: 409 Conflict
-    c3, r3 = mgr.handle_request("key_1", {"amount": 200}, business_logic)
-    assert c3 == 409
-    print("✅ IdempotencyManager tests passed!")
+    exec_count = 0
+    test_lock = threading.Lock()
+
+    def slow_business(payload):
+        nonlocal exec_count
+        with test_lock:
+            exec_count += 1
+        time.sleep(0.05) # 模拟 I/O 耗时
+        return {"status": "success", "order_id": 999}
+
+    # 测试并发 5 个相同 Key 请求
+    results = []
+    def worker():
+        code, res = mgr.handle_request("order_key_1", {"amount": 100}, slow_business)
+        results.append((code, res))
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    # 验证 5 个并发请求仅执行 1 次业务函数，其余全部安全等待并获取缓存结果
+    assert exec_count == 1
+    assert len(results) == 5
+    for code, res in results:
+        assert code == 200
+        assert res["order_id"] == 999
+
+    # 测试 Payload 篡改防御 (409 Conflict)
+    c_conflict, _ = mgr.handle_request("order_key_1", {"amount": 200}, slow_business)
+    assert c_conflict == 409
+    print("✅ IdempotencyManager concurrent tests passed!")
 ```
 
 

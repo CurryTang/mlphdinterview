@@ -267,12 +267,20 @@ if __name__ == "__main__":
 
 
 #### 3. Idempotency-Key API Endpoint with Concurrency & TTL
-- **Contract**:
-  - First call with key $K$ and body $B$: Processes normally, stores $(K \to R)$, returns $R$;
-  - Replay with same $K$ and same $B$: Returns cached $R$ without re-execution;
-  - Replay with same $K$ but different body $B'$: Raises `409 Conflict`;
-  - **Concurrency Guard**: Concurrent in-flight requests with identical $K$ synchronize on a per-key `threading.Condition`. The follower blocks on `IN_FLIGHT` and awakens when the leader transitions to `DONE`.
-  - **TTL Eviction**: Records carry a TTL (e.g. 24h); stale entries are purged via lazy checks on access and periodic background sweeps.
+- **Core Requirements & Guarantees**:
+  - **Initial Ingress**: With unique key $K$ and payload $B$, execute operation once, persist mapping $(K \to R)$, return $R$;
+  - **Idempotent Re-execution**: Identical key $K$ and identical body $B$ returns cached $R$ directly without re-invoking business logic;
+  - **Payload Tampering Defense**: Identical key $K$ with conflicting body $B'$ must return `409 Conflict`;
+  - **TTL Cleanup**: Records expire after specified TTL, evaluated lazily or periodically.
+- **Two-Phase Lock Protocol (Preventing Deadlock & RuntimeError)**:
+  - **Fatal Pitfall in Naive Locking**: Calling `rec.condition.wait()` inside `with self.lock:` causes two critical failures:
+    1. **Unacquired Lock Exception**: Python's `threading.Condition` maintains an internal lock. Calling `wait()` without entering `with rec.condition:` raises `RuntimeError: cannot wait on un-acquired lock`;
+    2. **Global Lock Starvation & Deadlock**: Blocking inside `self.lock` starves all concurrent requests for unrelated keys. If the worker encounters an exception and requests `self.lock` to clean up, a deadlock occurs.
+  - **Two-Phase Coordination Protocol**:
+    - **Phase 1 (Global State Registration, with `self.lock`)**: Lightweight lookup, expired eviction, and `IN_FLIGHT` registration under `self.lock`. Releases global lock immediately;
+    - **Phase 2 (Fine-Grained Record-Level Wait/Execution, Outside `self.lock`)**:
+      - Leader: Executes business logic outside any lock (`execute_fn(body)`). Updates `DONE` and broadcasts via `rec.condition.notify_all()`;
+      - Followers: Wait on record-specific condition (`with wait_rec.condition: while IN_FLIGHT: wait()`), freeing the global lock for other keys.
 
 ```python
 import hashlib, json, time, threading
@@ -282,6 +290,7 @@ from typing import Dict, Any, Tuple
 class RequestStatus(Enum):
     IN_FLIGHT = 1
     DONE = 2
+    FAILED = 3
 
 class IdempotencyRecord:
     def __init__(self, body_hash: str, ttl_seconds: float):
@@ -289,9 +298,12 @@ class IdempotencyRecord:
         self.status = RequestStatus.IN_FLIGHT
         self.response = None
         self.expires_at = time.time() + ttl_seconds
-        self.condition = threading.Condition()
+        self.condition = threading.Condition() # Per-record dedicated condition
 
 class IdempotencyManager:
+    """
+    Two-Phase Concurrency-Safe Idempotency Manager
+    """
     def __init__(self, default_ttl: float = 86400.0):
         self.default_ttl = default_ttl
         self.store: Dict[str, IdempotencyRecord] = {}
@@ -305,24 +317,39 @@ class IdempotencyManager:
         body_hash = self._hash_body(body)
         now = time.time()
 
+        # Phase 1: Atomic registration under global lock, quick release
         with self.lock:
             if idempotency_key in self.store:
                 rec = self.store[idempotency_key]
                 if now > rec.expires_at:
                     del self.store[idempotency_key]
+                elif rec.body_hash != body_hash:
+                    return 409, {"error": "Idempotency key re-used with different payload"}
+                elif rec.status == RequestStatus.DONE:
+                    return 200, rec.response
                 else:
-                    if rec.body_hash != body_hash:
-                        return 409, {"error": "Idempotency key re-used with different payload"}
-                    
-                    if rec.status == RequestStatus.IN_FLIGHT:
-                        rec.condition.wait()
-                        return 200, rec.response
-                    else:
-                        return 200, rec.response
+                    # IN_FLIGHT: Save reference, wait outside global lock
+                    wait_rec = rec
+                    is_leader = False
 
-            rec = IdempotencyRecord(body_hash, self.default_ttl)
-            self.store[idempotency_key] = rec
+            if idempotency_key not in self.store:
+                rec = IdempotencyRecord(body_hash, self.default_ttl)
+                self.store[idempotency_key] = rec
+                wait_rec = None
+                is_leader = True
 
+        # Phase 2: Coordination outside global lock
+        if not is_leader:
+            # Followers wait on the record-specific condition
+            with wait_rec.condition:
+                while wait_rec.status == RequestStatus.IN_FLIGHT:
+                    wait_rec.condition.wait()
+                if wait_rec.status == RequestStatus.DONE:
+                    return 200, wait_rec.response
+                else:
+                    return 500, {"error": "Upstream request failed, please retry"}
+
+        # Leader executes long-running business logic lock-free
         try:
             res = execute_fn(body)
             with rec.condition:
@@ -334,26 +361,42 @@ class IdempotencyManager:
             with self.lock:
                 self.store.pop(idempotency_key, None)
             with rec.condition:
+                rec.status = RequestStatus.FAILED
                 rec.condition.notify_all()
             raise e
+
 if __name__ == "__main__":
     mgr = IdempotencyManager(default_ttl=10.0)
-    call_count = 0
-    def business_logic(payload):
-        nonlocal call_count
-        call_count += 1
-        return {"status": "success", "order_id": 123}
-    
-    # 首次执行
-    c1, r1 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
-    assert c1 == 200 and r1["order_id"] == 123 and call_count == 1
-    # 相同 key + 相同 body: 直接命中缓存，不重跑业务函数
-    c2, r2 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
-    assert c2 == 200 and r2["order_id"] == 123 and call_count == 1
-    # 相同 key + 不同 body: 409 Conflict
-    c3, r3 = mgr.handle_request("key_1", {"amount": 200}, business_logic)
-    assert c3 == 409
-    print("✅ IdempotencyManager tests passed!")
+    exec_count = 0
+    test_lock = threading.Lock()
+
+    def slow_business(payload):
+        nonlocal exec_count
+        with test_lock:
+            exec_count += 1
+        time.sleep(0.05)
+        return {"status": "success", "order_id": 999}
+
+    results = []
+    def worker():
+        code, res = mgr.handle_request("order_key_1", {"amount": 100}, slow_business)
+        results.append((code, res))
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    # Verify exactly 1 execution for 5 concurrent threads
+    assert exec_count == 1
+    assert len(results) == 5
+    for code, res in results:
+        assert code == 200
+        assert res["order_id"] == 999
+
+    # Conflict check
+    c_conflict, _ = mgr.handle_request("order_key_1", {"amount": 200}, slow_business)
+    assert c_conflict == 409
+    print("✅ IdempotencyManager concurrent tests passed!")
 ```
 
 
