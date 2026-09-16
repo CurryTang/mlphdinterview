@@ -192,7 +192,19 @@ class WaitlistSystem:
                 if earliest_node is None or head_cand.ts < earliest_node.ts:
                     earliest_node = head_cand
         return earliest_node.user if earliest_node else None
+if __name__ == "__main__":
+    rw = RestaurantWaitlist(max_party_size=10)
+    rw.join("Alice", 2)
+    rw.join("Bob", 4)
+    rw.join("Carol", 6)
+    assert rw.find_first_match(3) == "Alice"
+    assert rw.find_first_match(5) == "Alice"
+    assert rw.delete("Alice") is True
+    assert rw.find_first_match(5) == "Bob"
+    assert rw.find_first_match(2) is None
+    print("✅ RestaurantWaitlist tests passed!")
 ```
+
 
 #### 2. Robot Logger Rate Limiter with Out-of-Order Timestamps
 - **System Requirements**:
@@ -243,7 +255,15 @@ class RobotLogger:
         # Approve and maintain sorted order
         ts_list.insert(idx, timestamp)
         return True
+if __name__ == "__main__":
+    logger = RobotLogger(10)
+    assert logger.should_print_message(12, "foo") is True
+    assert logger.should_print_message(10, "foo") is True # 乱序 10 判定前驱，不被后来的 12 封杀
+    assert logger.should_print_message(15, "foo") is False # 15 - 12 < 10 拦截
+    assert logger.should_print_message(25, "foo") is True
+    print("✅ RobotLogger tests passed!")
 ```
+
 
 
 #### 3. Idempotency-Key API Endpoint with Concurrency & TTL
@@ -316,17 +336,115 @@ class IdempotencyManager:
             with rec.condition:
                 rec.condition.notify_all()
             raise e
+if __name__ == "__main__":
+    mgr = IdempotencyManager(default_ttl=10.0)
+    call_count = 0
+    def business_logic(payload):
+        nonlocal call_count
+        call_count += 1
+        return {"status": "success", "order_id": 123}
+    
+    # 首次执行
+    c1, r1 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
+    assert c1 == 200 and r1["order_id"] == 123 and call_count == 1
+    # 相同 key + 相同 body: 直接命中缓存，不重跑业务函数
+    c2, r2 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
+    assert c2 == 200 and r2["order_id"] == 123 and call_count == 1
+    # 相同 key + 不同 body: 409 Conflict
+    c3, r3 = mgr.handle_request("key_1", {"amount": 200}, business_logic)
+    assert c3 == 409
+    print("✅ IdempotencyManager tests passed!")
 ```
 
+
 #### 4. Contiguous Memory Allocator (First-Fit with Splitting & Coalescing)
-- **Problem Statement**:
-  - Given a single contiguous pool of $N$ memory units.
-  - `allocate(size)`: Reserve a contiguous chunk $\ge size$, return handle/offset; signal OOM if no suitable block exists.
-  - `free(offset)`: Return previously allocated block, **coalescing with physically adjacent free blocks** in $\mathcal{O}(1)$ to eliminate external fragmentation.
-- **Doubly-Linked Boundary Tags Architecture**:
-  - Each block tracks: `offset, size, is_free, prev, next`.
-  - `allocate`: Walks free list using First-Fit. If `block.size > size`, splits into allocated block and remaining free block.
-  - `free`: Sets `is_free = True`. If `prev.is_free`, merge with predecessor. If `next.is_free`, merge with successor. Coalescing involves purely constant-time pointer rewiring.
+- **Business Scenario**:
+  - Given a single contiguous memory pool of size $N$.
+  - `allocate(size)`: Locate first free block with size $\ge size$, allocate and return start offset; if insufficient return -1.
+  - `free(offset)`: Reclaim block and coalesce with physically adjacent free neighbors in $\mathcal{O}(1)$ time.
+- **Doubly Linked List + Boundary Tags**:
+  - Each block node maintains `offset, size, is_free, prev, next`.
+  - `allocate`: Scans DLL via First-Fit; splits when `block.size > request_size`.
+  - `free`: Sets `is_free = True`; immediately merges with `prev` and/or `next` if free.
+
+```python
+from typing import Dict, Optional
+
+class MemBlock:
+    def __init__(self, offset: int, size: int, is_free: bool = True):
+        self.offset = offset
+        self.size = size
+        self.is_free = is_free
+        self.prev: Optional['MemBlock'] = None
+        self.next: Optional['MemBlock'] = None
+
+class FirstFitMemoryAllocator:
+    """
+    First-Fit Contiguous Memory Allocator
+    Time Complexity: allocate O(N), free strict O(1) via adjacent DLL coalescing
+    Space Complexity: O(N) block metadata
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {}
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        curr = self.head
+        while curr:
+            if curr.is_free and curr.size >= size:
+                remainder = curr.size - size
+                curr.size = size
+                curr.is_free = False
+                self.allocated[curr.offset] = curr
+
+                if remainder > 0:
+                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
+                    split_block.next = curr.next
+                    split_block.prev = curr
+                    if curr.next:
+                        curr.next.prev = split_block
+                    curr.next = split_block
+                return curr.offset
+            curr = curr.next
+        return -1 # Out of memory
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        # Coalesce right
+        if node.next and node.next.is_free:
+            right = node.next
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        # Coalesce left
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+        return True
+
+if __name__ == "__main__":
+    alloc = FirstFitMemoryAllocator(100)
+    p1 = alloc.allocate(30)
+    p2 = alloc.allocate(40)
+    assert p1 == 0 and p2 == 30
+    assert alloc.free(p1) is True
+    assert alloc.free(p2) is True
+    p3 = alloc.allocate(90)
+    assert p3 == 0
+    print("✅ FirstFitMemoryAllocator tests passed!")
+```
+
 
 #### 5. Concurrency & Distributed Sharding Architecture
 - **Thread-Safety Trade-off**:
@@ -372,63 +490,87 @@ class ShardedLRUCache:
             cache[key] = val
             if len(cache) > self.shard_cap:
                 cache.popitem(last=False)
+if __name__ == "__main__":
+    sc = ShardedLRUCache(total_capacity=16, num_shards=4)
+    sc.put("k1", 100)
+    sc.put("k2", 200)
+    assert sc.get("k1") == 100
+    assert sc.get("k2") == 200
+    assert sc.get("nonexistent") is None
+    print("✅ ShardedLRUCache tests passed!")
 ```
 
 
+
 #### 6. Memory Allocator with O(log m) Free Gap Indexing & Coalescing
-- **Transition from O(N) Linear Scan to O(log m) Production Tier**:
-  - Linear scanning over free gaps fails under heavy fragmentation.
-  - **Dual-Indexing Architecture**:
-    1. **Size-Keyed Balanced Tree / SortedDict**: `free_by_size: SortedDict[int, Set[BlockNode]]`. Binary search locates the leftmost block satisfying $\text{block.size} \ge size$ in $\mathcal{O}(\log m)$ time;
-    2. **Address-Ordered Doubly Linked List**: All blocks (allocated and free) are chained in ascending physical address order (`start, size, is_free, prev, next`).
+- **Transition from Linear Scan to O(log m) Indexing**:
+  - In highly fragmented heaps, linear First-Fit degrades allocation throughput.
+  - **Dual-Index Architecture**:
+    1. **Size-Keyed Index**: Binary search over available chunk sizes in $\mathcal{O}(\log m)$ to extract optimal Best-Fit blocks;
+    2. **Physical Address Doubly Linked List**: All blocks linked in strict memory address order for $\mathcal{O}(1)$ adjacent coalescing.
 - **Four Coalescing Scenarios on Free**:
-  When `free(address, size)` executes, validation guards against double-free via `{address: size}` active allocations map, followed by physical neighbor inspection:
-  1. **No Neighbour Free**: Mark block as free and insert into `free_by_size`;
-  2. **Left Neighbour Free**: Merge left (`left.size += size`), update left block entry in `free_by_size`;
-  3. **Right Neighbour Free**: Merge right into current, remove right node from list and size index;
-  4. **Both Neighbours Free**: Collapse three blocks into one. Left block absorbs current and right, right node is deleted, left node size updated in `free_by_size`.
+  1. **No Neighbour Free**: Mark free, insert to size index;
+  2. **Left Neighbour Free**: Left merges current block, update size index;
+  3. **Right Neighbour Free**: Current merges right block, remove right from size index;
+  4. **Both Neighbours Free**: Tri-merge into left block, deregister right block.
 
 ```python
-from typing import Dict, Optional
+import bisect
+from typing import Dict, List, Optional, Set
 
-class MemBlock:
-    def __init__(self, offset: int, size: int, is_free: bool = True):
-        self.offset = offset
-        self.size = size
-        self.is_free = is_free
-        self.prev: Optional['MemBlock'] = None
-        self.next: Optional['MemBlock'] = None
-
-class MemoryAllocator:
+class SizeIndexedMemoryAllocator:
     """
-    Memory Allocator with Boundary Tags and O(1) Coalescing
+    Size-Indexed Memory Allocator (O(log m) Best-Fit + O(1) DLL Physical Coalescing)
     """
     def __init__(self, total_size: int):
         self.head = MemBlock(0, total_size, is_free=True)
-        self.allocated: Dict[int, MemBlock] = {} # offset -> Block
+        self.allocated: Dict[int, MemBlock] = {}
+        self.free_by_size: Dict[int, Set[MemBlock]] = {total_size: {self.head}}
+        self.sorted_sizes: List[int] = [total_size]
+
+    def _add_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s not in self.free_by_size:
+            self.free_by_size[s] = set()
+            bisect.insort(self.sorted_sizes, s)
+        self.free_by_size[s].add(block)
+
+    def _remove_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s in self.free_by_size and block in self.free_by_size[s]:
+            self.free_by_size[s].remove(block)
+            if not self.free_by_size[s]:
+                del self.free_by_size[s]
+                idx = bisect.bisect_left(self.sorted_sizes, s)
+                if idx < len(self.sorted_sizes) and self.sorted_sizes[idx] == s:
+                    self.sorted_sizes.pop(idx)
 
     def allocate(self, size: int) -> int:
         if size <= 0:
             return -1
-        curr = self.head
-        while curr:
-            if curr.is_free and curr.size >= size:
-                remainder = curr.size - size
-                curr.size = size
-                curr.is_free = False
-                self.allocated[curr.offset] = curr
+        idx = bisect.bisect_left(self.sorted_sizes, size)
+        if idx >= len(self.sorted_sizes):
+            return -1
 
-                # Split remaining free block
-                if remainder > 0:
-                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
-                    split_block.next = curr.next
-                    split_block.prev = curr
-                    if curr.next:
-                        curr.next.prev = split_block
-                    curr.next = split_block
-                return curr.offset
-            curr = curr.next
-        return -1 # Out of memory
+        target_size = self.sorted_sizes[idx]
+        block = next(iter(self.free_by_size[target_size]))
+        self._remove_free_index(block)
+
+        remainder = block.size - size
+        block.size = size
+        block.is_free = False
+        self.allocated[block.offset] = block
+
+        if remainder > 0:
+            split = MemBlock(block.offset + size, remainder, is_free=True)
+            split.next = block.next
+            split.prev = block
+            if block.next:
+                block.next.prev = split
+            block.next = split
+            self._add_free_index(split)
+
+        return block.offset
 
     def free(self, offset: int) -> bool:
         if offset not in self.allocated:
@@ -436,23 +578,35 @@ class MemoryAllocator:
         node = self.allocated.pop(offset)
         node.is_free = True
 
-        # Coalescing branches:
-        # Branch 1: Coalesce right
         if node.next and node.next.is_free:
             right = node.next
+            self._remove_free_index(right)
             node.size += right.size
             node.next = right.next
             if right.next:
                 right.next.prev = node
 
-        # Branch 2: Coalesce left
         if node.prev and node.prev.is_free:
             left = node.prev
+            self._remove_free_index(left)
             left.size += node.size
             left.next = node.next
             if node.next:
                 node.next.prev = left
+            node = left
+
+        self._add_free_index(node)
         return True
+
+if __name__ == "__main__":
+    sia = SizeIndexedMemoryAllocator(100)
+    b1 = sia.allocate(20)
+    b2 = sia.allocate(50)
+    assert b1 == 0 and b2 == 20
+    assert sia.free(b1) is True
+    assert sia.free(b2) is True
+    assert sia.allocate(95) == 0
+    print("✅ SizeIndexedMemoryAllocator tests passed!")
 ```
 
 
@@ -547,7 +701,25 @@ class PluggableCache:
                 self.policy.on_evict(victim)
         self.store[key] = val
         self.policy.on_access(key)
+if __name__ == "__main__":
+    # 1. 测试 LRU 策略
+    lru_cache = PluggableCache(capacity=2, policy=LRUPolicy())
+    lru_cache.put("a", 1); lru_cache.put("b", 2)
+    assert lru_cache.get("a") == 1 # a 变为 MRU
+    lru_cache.put("c", 3) # 驱逐 b
+    assert lru_cache.get("b") is None
+    assert lru_cache.get("a") == 1
+
+    # 2. 测试 LFU 策略 (二级平局用 LRU 打破)
+    lfu_cache = PluggableCache(capacity=2, policy=LFUPolicy())
+    lfu_cache.put("x", 10); lfu_cache.put("y", 20)
+    lfu_cache.get("x"); lfu_cache.get("x") # freq(x)=3, freq(y)=1
+    lfu_cache.put("z", 30) # 驱逐最低频次 y
+    assert lfu_cache.get("y") is None
+    assert lfu_cache.get("x") == 10
+    print("✅ PluggableCache tests passed!")
 ```
+
 
 
 #### 8. Durable In-Memory Cache with WAL & Crash Recovery
@@ -606,10 +778,26 @@ class DurableLRUCache:
             f.write(json.dumps({"op": "ACCESS", "key": key}) + "\n")
         self.cache.move_to_end(key)
         return self.cache[key]
+if __name__ == "__main__":
+    import tempfile
+    wal_f = tempfile.mktemp()
+    w1 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    w1.put("k1", "v1")
+    w1.put("k2", "v2")
+    w1.get("k1") # k1 变为 MRU
+    w1.put("k3", "v3") # 空间不足驱逐 k2
+    # 崩溃重启回放
+    w2 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    assert w2.get("k2") is None # 确认 k2 已被物理淘汰
+    assert w2.get("k1") == "v1"
+    assert w2.get("k3") == "v3"
+    if os.path.exists(wal_f): os.remove(wal_f)
+    print("✅ DurableLRUCache tests passed!")
 ```
 
 
-#### 9. 4-Level In-Memory Database Implementation (Anthropic CodeSignal OA)
+
+#### 9. 4-Level In-Memory Database Implementation (Multi-Level In-Memory Database Engine)
 - **Functional Requirements Across 4 Levels**:
   - **Level 1 (Core Key-Field Storage)**: Each top-level `key` maps multiple `field -> value` string pairs. Core operations: `set(key, field, value)`, `get(key, field)`, `delete(key, field) -> bool`.
   - **Level 2 (Lexicographical & Prefix Scan)**: `scan(key)` returns all valid fields formatted as `["field(value)", ...]` in strictly ascending lexicographical order of field names. `scan_by_prefix(key, prefix)` applies prefix filtering over sorted fields.
@@ -770,7 +958,26 @@ class InMemoryDatabase:
             for field, (val, rem) in fields.items():
                 abs_exp = (timestamp + rem) if rem is not None else None
                 self.store[key][field] = FieldRecord(val=val, remaining_ttl=rem, absolute_expiry=abs_exp)
+if __name__ == "__main__":
+    db = InMemoryDatabase()
+    # Level 1
+    db.set("user1", "name", "Alice"); db.set("user1", "age", "30")
+    assert db.get("user1", "name") == "Alice"
+    # Level 2 字典序扫描
+    assert db.scan("user1") == ["age(30)", "name(Alice)"]
+    # Level 3 TTL
+    db.set_at_with_ttl("u2", "token", "abc", timestamp=100, ttl=50) # 有效期 [100, 150)
+    assert db.get_at("u2", "token", 120) == "abc"
+    assert db.get_at("u2", "token", 150) is None
+    # Level 4 相对 TTL 快照恢复
+    db.set_at_with_ttl("u3", "session", "s1", timestamp=200, ttl=100) # 300 过期，在 240 时剩余 60
+    db.backup(240)
+    db.restore(timestamp=500, timestamp_to_restore=240) # 恢复到新时钟 500: 新过期时间为 560
+    assert db.get_at("u3", "session", 550) == "s1"
+    assert db.get_at("u3", "session", 560) is None
+    print("✅ InMemoryDatabase tests passed!")
 ```
+
 
 ```cpp
 #include <iostream>
@@ -965,7 +1172,18 @@ class TodoList:
                 res.append(curr.entry)
             curr = curr.next
         return res
+if __name__ == "__main__":
+    tl = TodoList()
+    t1 = tl.add("Review code")
+    t2 = tl.add("Write tests")
+    assert tl.get_all() == ["Review code", "Write tests"]
+    completed = {t1: True} # 外部维护权威状态
+    assert tl.get_todo(lambda tid: completed.get(tid, False)) == ["Write tests"]
+    assert tl.delete(t2) is True
+    assert tl.get_all() == ["Review code"]
+    print("✅ TodoList tests passed!")
 ```
+
 
 
 #### 11. Weighted LRU Cache with Size-Bounded Eviction
@@ -1068,7 +1286,29 @@ class WeightedLRUCache:
             if victim:
                 del self.cache[victim.key]
                 self.current_size -= victim.size
+if __name__ == "__main__":
+    cache = WeightedLRUCache(capacity=10)
+    cache.put("a", 1, 3)     # total = 3
+    cache.put("b", 2, 4)     # total = 7
+    cache.put("c", 3, 5)     # 7+5 > 10 -> 驱逐 "a" (3) -> total = 4+5 = 9
+    assert cache.get("a") == -1
+    assert cache.get("b") == 2
+    assert cache.current_size == 9
+    cache.put("d", 4, 3)     # 9+3 > 10 -> 驱逐 "c" (LRU, b刚被访问) -> total = 4+3 = 7
+    assert cache.get("c") == -1
+    assert cache.get("b") == 2
+    assert cache.get("d") == 4
+    # 更新已有 key 并缩放尺寸
+    cache.put("b", 20, 6)    # 旧尺寸 4 -> 新尺寸 6, total = 7 - 4 + 6 = 9 <= 10
+    assert cache.get("b") == 20
+    assert cache.current_size == 9
+    # 超额尺寸直接拦截
+    cache.put("oversized", 99, 15)
+    assert cache.get("oversized") == -1
+    assert cache.current_size == 9
+    print("✅ WeightedLRUCache tests passed!")
 ```
+
 
 ```cpp
 #include <string>
@@ -1416,7 +1656,7 @@ class LinkedListSubtractionSolution:
   - Pop to compute digit sums with carry: $\text{total} = v_1 + v_2 + carry$;
   - **Head Insertion**: Construct output list by prepending new nodes: `new_node.next = head; head = new_node`, naturally yielding forward order without reversal.
 
-#### 4. N-ary Tree Sum + Leaf Next Pointer (Citadel Phone Screen)
+#### 4. N-ary Tree Sum + Leaf Next Pointer
 - **Three-Stage Ladder**:
   1. Tree sum via recursive DFS;
   2. Connect all leaf nodes in DFS order: maintain a rolling `prev_leaf` pointer; when `not node.children` is reached, wire `prev_leaf.next = curr; prev_leaf = curr`;
@@ -2237,7 +2477,6 @@ Transforming a shared linked list via `reverseKGroup(head, k)` under concurrent 
 
 > 🔗 **Related Links**:
 > - [LeetCode 708 · Insert into a Sorted Circular Linked List](https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/) — `https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/`
-> - [1point3acres Interview Problem](https://www.1point3acres.com/interview/problems/e1081044-6f41-5139-8596-3e843a348997) — Meta Phone Screen Classic
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -2533,7 +2772,6 @@ if __name__ == "__main__":
 > 🔗 **Related Links**:
 > - [LeetCode 380 · Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/) — `https://leetcode.com/problems/insert-delete-getrandom-o1/`
 > - [LeetCode 381 · Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/) — `https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/`
-> - [1point3acres Interview Problem](https://www.1point3acres.com/interview/problems/company/meta/randomized-container) — Meta Production Container Design
 
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
@@ -2543,7 +2781,7 @@ if __name__ == "__main__":
 > 1. `insert(val)`: Inserts an item `val` to the set if not already present. Returns `true` if inserted, `false` otherwise.
 > 2. `remove(val)`: Removes an item `val` from the set if present. Returns `true` if removed, `false` otherwise.
 > 3. `getRandom()`: Returns a random element from the current set of elements with uniform probability.
-> 4. `popRandom()` (Meta Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
+> 4. `popRandom()` (Random Pop Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
 
 **Core Trade-off & Architectural Dilemma**:
 - Standard Hash Sets support $\mathcal{O}(1)$ insertion and deletion, but their memory buckets are sparse, making uniform random selection in $\mathcal{O}(1)$ impossible.
@@ -2560,7 +2798,7 @@ import random
 from typing import Dict, List
 
 class RandomizedSet:
-    # Standard unique-element variant (LeetCode 380 + Meta popRandom extension).
+    # Standard unique-element variant (LeetCode 380 + popRandom extension).
     # All operations execute in amortized O(1) time.
     def __init__(self):
         self.vals: List[int] = []               # Contiguous dynamic array for O(1) random lookup
@@ -2596,7 +2834,7 @@ class RandomizedSet:
         return random.choice(self.vals)
 
     def popRandom(self) -> int:
-        # Meta Phone-Screen Extension:
+        # Core Extension: Pop random element uniformly and remove it in O(1)
         # Uniformly sample, delete, and return an element in O(1).
         if not self.vals:
             raise IndexError("popRandom from empty RandomizedSet")
@@ -3465,7 +3703,30 @@ def mergeKLists(lists: List[Optional[ListNode]]) -> Optional[ListNode]:
             heapq.heappush(heap, (node.next.val, i, node.next))
             
     return dummy.next
+if __name__ == "__main__":
+    def build_list(vals):
+        dummy = ListNode(0)
+        curr = dummy
+        for v in vals:
+            curr.next = ListNode(v)
+            curr = curr.next
+        return dummy.next
+
+    def to_list(node):
+        res = []
+        while node:
+            res.append(node.val)
+            node = node.next
+        return res
+
+    l1 = build_list([1, 4, 5])
+    l2 = build_list([1, 3, 4])
+    l3 = build_list([2, 6])
+    merged = mergeKLists([l1, l2, l3])
+    assert to_list(merged) == [1, 1, 2, 3, 4, 4, 5, 6]
+    print("✅ mergeKLists tests passed!")
 ```
+
 
 #### 2. K-th Element on a Streaming Time Window under Hard Memory Bound
 - **Problem Requirements & Constraints**:
@@ -3543,7 +3804,24 @@ class StreamingWindowKthBounded:
             if cum >= k:
                 return self.min_val + i
         return None
+if __name__ == "__main__":
+    sk = StreamingWindowKthBounded(window_seconds=5, min_val=0, max_val=100)
+    sk.add(1, 10)
+    sk.add(2, 30)
+    sk.add(3, 20)
+    sk.add(4, 50)
+    sk.add(5, 40)
+    # 当前窗口 [0, 5]: 包含 [10, 20, 30, 40, 50]
+    assert sk.find_kth_smallest(5, 1) == 10
+    assert sk.find_kth_smallest(5, 3) == 30
+    assert sk.find_kth_smallest(5, 5) == 50
+    assert sk.find_kth_largest(5, 1) == 50
+    # 前进到时刻 7，窗口 [2, 7]: 时刻 1 (10) 过期淘汰，剩余 [20, 30, 40, 50]
+    assert sk.find_kth_smallest(7, 1) == 20
+    assert sk.find_kth_smallest(7, 2) == 30
+    print("✅ StreamingWindowKthBounded tests passed!")
 ```
+
 
 ```cpp
 #include <vector>
@@ -3881,13 +4159,13 @@ if __name__ == "__main__":
   - `task_store`: `Dict[task_id, TaskRecord]` authoritative state;
   - `lease_heap`: `heapq` of `(deadline, task_id, version_token)` for $\mathcal{O}(\log N)$ expiration polling.
 
-#### 2. Round-Robin Task Scheduler (Citadel NXT)
+#### 2. Round-Robin Task Scheduler
 - **Core Loop**:
   - Deque of runnable descriptors. Each tick pops front, executes quantum slice, and re-enqueues if incomplete.
   - **Cooperative vs Preemptive**: Cooperative relies on voluntary yields; preemptive uses timer interrupts.
   - **Deficit Round Robin (DRR)**: Tracks deficit credit per queue to support variable-size tasks.
 
-#### 3. Tiered Task Manager with TTL & Quota (CodeSignal OA)
+#### 3. Tiered Task Manager with TTL & Quota
 - **Progressive Architecture**:
   - Levels 1-2: Task CRUD with auto-increment IDs, ranked search;
   - Level 3: Per-user concurrency quotas and TTL auto-expiry;
@@ -3995,8 +4273,8 @@ Under high-pressure interview settings, candidates must map requirements to opti
 | **Sentinel Dummy Head** | Head node subject to deletion, merging, or prefix insertion | `dummy = ListNode(0, head)`; unifies edge-case branches with internal nodes | LC 19 (Remove Nth), LC 21 (Merge Lists), LC 2 (Add Two Numbers), LC 86 (Partition) |
 | **Three-Pointer Inversion** | Reverse list, reverse subsegment, reverse in k-groups | `nxt = curr.next; curr.next = prev; prev = curr; curr = nxt` | LC 206 (Reverse List), LC 92 (Reverse II), LC 25 (Reverse k-Group) |
 | **Splicing & Pointer Interleaving** | Deep copy with random pointers, reorder alternating halves | In-place node cloning `node.next = cloneNode` followed by split; split & interleave | LC 138 (Copy Random List), LC 143 (Reorder List) |
-| **Composite Hash + DLL** | Strict $\mathcal{O}(1)$ cache insertion, access, and eviction | Doubly-linked list for chronological order + hash map for direct node handles | LC 146 (LRU), LC 460 (LFU), Meta Waitlist Queue |
-| **Dynamic Array Swap-with-Last** | $\mathcal{O}(1)$ insertion, deletion, and uniform random sampling | Contiguous array stores values + hash map stores indices; delete via swap with tail | LC 380 (O(1) Set), LC 381 (Duplicates Allowed), Meta Randomized Container |
+| **Composite Hash + DLL** | Strict $\mathcal{O}(1)$ cache insertion, access, and eviction | Doubly-linked list for chronological order + hash map for direct node handles | LC 146 (LRU), LC 460 (LFU), Restaurant Waitlist Queue |
+| **Dynamic Array Swap-with-Last** | $\mathcal{O}(1)$ insertion, deletion, and uniform random sampling | Contiguous array stores values + hash map stores indices; delete via swap with tail | LC 380 (O(1) Set), LC 381 (Duplicates Allowed), Randomized Container |
 
 ---
 

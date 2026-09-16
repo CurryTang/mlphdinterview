@@ -186,7 +186,19 @@ class WaitlistSystem:
                 if earliest_node is None or head_cand.ts < earliest_node.ts:
                     earliest_node = head_cand
         return earliest_node.user if earliest_node else None
+if __name__ == "__main__":
+    rw = RestaurantWaitlist(max_party_size=10)
+    rw.join("Alice", 2)
+    rw.join("Bob", 4)
+    rw.join("Carol", 6)
+    assert rw.find_first_match(3) == "Alice"
+    assert rw.find_first_match(5) == "Alice"
+    assert rw.delete("Alice") is True
+    assert rw.find_first_match(5) == "Bob"
+    assert rw.find_first_match(2) is None
+    print("✅ RestaurantWaitlist tests passed!")
 ```
+
 
 #### 2. 支持乱序时间戳的日志限流器 (Robot Logger with Out-of-Order Timestamps)
 - **业务场景**：
@@ -237,7 +249,15 @@ class RobotLogger:
         # 放行并维持有序集合
         ts_list.insert(idx, timestamp)
         return True
+if __name__ == "__main__":
+    logger = RobotLogger(10)
+    assert logger.should_print_message(12, "foo") is True
+    assert logger.should_print_message(10, "foo") is True # 乱序 10 判定前驱，不被后来的 12 封杀
+    assert logger.should_print_message(15, "foo") is False # 15 - 12 < 10 拦截
+    assert logger.should_print_message(25, "foo") is True
+    print("✅ RobotLogger tests passed!")
 ```
+
 
 
 #### 3. 基于 Idempotency-Key 的幂等 API 处理器 (Idempotency API with Concurrency & TTL)
@@ -315,7 +335,26 @@ class IdempotencyManager:
             with rec.condition:
                 rec.condition.notify_all()
             raise e
+if __name__ == "__main__":
+    mgr = IdempotencyManager(default_ttl=10.0)
+    call_count = 0
+    def business_logic(payload):
+        nonlocal call_count
+        call_count += 1
+        return {"status": "success", "order_id": 123}
+    
+    # 首次执行
+    c1, r1 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
+    assert c1 == 200 and r1["order_id"] == 123 and call_count == 1
+    # 相同 key + 相同 body: 直接命中缓存，不重跑业务函数
+    c2, r2 = mgr.handle_request("key_1", {"amount": 100}, business_logic)
+    assert c2 == 200 and r2["order_id"] == 123 and call_count == 1
+    # 相同 key + 不同 body: 409 Conflict
+    c3, r3 = mgr.handle_request("key_1", {"amount": 200}, business_logic)
+    assert c3 == 409
+    print("✅ IdempotencyManager tests passed!")
 ```
+
 
 #### 4. 连续内存分配器 (First-Fit Memory Allocator with Splitting & Coalescing)
 - **业务场景**：
@@ -326,6 +365,86 @@ class IdempotencyManager:
   - 每个内存块节点维护：`offset, size, is_free, prev, next`。
   - `allocate`：采用首次适应算法（First-Fit）沿双向链表扫描。若空闲块 `size > request_size`，将其切分为已分配块和剩余空闲块。
   - `free`：将当前块标记为 `is_free = True`；若 `prev` 也是空闲块，直接向前合并；若 `next` 也是空闲块，直接向后合并。合并仅涉及双向链表常数个指针的重排，为严格 $\mathcal{O}(1)$ 操作！
+
+```python
+from typing import Dict, Optional
+
+class MemBlock:
+    def __init__(self, offset: int, size: int, is_free: bool = True):
+        self.offset = offset
+        self.size = size
+        self.is_free = is_free
+        self.prev: Optional['MemBlock'] = None
+        self.next: Optional['MemBlock'] = None
+
+class FirstFitMemoryAllocator:
+    """
+    首次适应连续内存分配器 (First-Fit Allocator)
+    时间复杂度: allocate O(N), free 严格 O(1) 双向链表相邻合并
+    空间复杂度: O(N) 块元数据
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {}
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        curr = self.head
+        while curr:
+            if curr.is_free and curr.size >= size:
+                remainder = curr.size - size
+                curr.size = size
+                curr.is_free = False
+                self.allocated[curr.offset] = curr
+
+                # 切分空闲块
+                if remainder > 0:
+                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
+                    split_block.next = curr.next
+                    split_block.prev = curr
+                    if curr.next:
+                        curr.next.prev = split_block
+                    curr.next = split_block
+                return curr.offset
+            curr = curr.next
+        return -1 # 空间不足 (OOM)
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        # 向右合并空闲块
+        if node.next and node.next.is_free:
+            right = node.next
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        # 向左合并空闲块
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+        return True
+
+if __name__ == "__main__":
+    alloc = FirstFitMemoryAllocator(100)
+    p1 = alloc.allocate(30)
+    p2 = alloc.allocate(40)
+    assert p1 == 0 and p2 == 30
+    assert alloc.free(p1) is True # 释放 [0, 30]
+    assert alloc.free(p2) is True # 释放 [30, 70]，向左合并为 [0, 100]
+    p3 = alloc.allocate(90)
+    assert p3 == 0
+    print("✅ FirstFitMemoryAllocator tests passed!")
+```
+
 
 #### 5. 并发线程安全与分布式分片架构
 - **单机并发安全**：
@@ -372,63 +491,89 @@ class ShardedLRUCache:
             cache[key] = val
             if len(cache) > self.shard_cap:
                 cache.popitem(last=False)
+if __name__ == "__main__":
+    sc = ShardedLRUCache(total_capacity=16, num_shards=4)
+    sc.put("k1", 100)
+    sc.put("k2", 200)
+    assert sc.get("k1") == 100
+    assert sc.get("k2") == 200
+    assert sc.get("nonexistent") is None
+    print("✅ ShardedLRUCache tests passed!")
 ```
 
 
-#### 6. 内存分配器 O(log m) 进阶与四向相邻合并 (Memory Allocator with O(log m) Treap/BST Indexing)
+
+#### 6. 内存分配器 O(log m) 进阶与四向相邻合并 (Memory Allocator with O(log m) Size Indexing)
 - **从 O(N) 线性扫描到 O(log m) 工业级跃迁**：
   - 在高碎片化场景下，对空闲块链表执行 $\mathcal{O}(N)$ 首次适应扫描无法满足高频分配要求。
   - **核心双索引架构**：
-    1. **空闲块大小索引 (Size-Keyed Balanced Tree / SortedDict)**：`free_by_size: SortedDict[int, Set[BlockNode]]`。以块大小作为键，可在 $\mathcal{O}(\log m)$ 内二分找到首个满足 $\text{block.size} \ge size$ 的最佳/最左空闲块；
-    2. **全量物理地址链表 (Address-Ordered Doubly Linked List)**：所有块（无论空闲或已分配）按物理内存地址严格升序串联在一条双向链表中。每个节点维护 `start, size, is_free, prev, next`。
+    1. **空闲块大小索引 (Size-Keyed Balanced Tree / Sorted Sizes)**：以块大小作为键，可在 $\mathcal{O}(\log m)$ 内二分定位首个满足 $\text{block.size} \ge size$ 的最佳空闲块（Best-Fit）；
+    2. **全量物理地址链表 (Address-Ordered Doubly Linked List)**：所有块（无论空闲或已分配）按物理内存地址严格升序串联在一条双向链表中。
 - **释放内存时的四大完备合并分支 (Four Coalescing Scenarios on Free)**：
-  调用 `free(address, size)` 时，通过哈希表验证地址与尺寸合法性后，直接检查物理相邻节点：
-  1. **左右均已占用 (No Neighbour Free)**：直接将当前块标记为 `is_free = True`，插入 `free_by_size`；
-  2. **仅左邻居空闲 (Left Neighbour Free)**：左块吞并当前块（`left.size += size`），从 `free_by_size` 摘除旧大小并重新插入新大小；
-  3. **仅右邻居空闲 (Right Neighbour Free)**：当前块吞并右块，从 `free_by_size` 移除右块，并在物理链表中摘除右节点；
-  4. **左右邻居均空闲 (Both Neighbours Free)**：左块、当前块、右块三合一！左块大小累加当前与右块大小，从 `free_by_size` 与链表中彻底注销右块，更新左块索引。
+  调用 `free(offset)` 时，检查物理相邻节点：
+  1. **左右均已占用 (No Neighbour Free)**：直接将当前块标记为 `is_free = True`，插入大小索引；
+  2. **仅左邻居空闲 (Left Neighbour Free)**：左块吞并当前块，从大小索引更新左块大小；
+  3. **仅右邻居空闲 (Right Neighbour Free)**：当前块吞并右块，从大小索引注销右块；
+  4. **左右邻居均空闲 (Both Neighbours Free)**：左块、当前块、右块三合一！左块大小累加三者总和，彻底注销右块。
 
 ```python
-from typing import Dict, Optional
+import bisect
+from typing import Dict, List, Optional, Set
 
-class MemBlock:
-    def __init__(self, offset: int, size: int, is_free: bool = True):
-        self.offset = offset
-        self.size = size
-        self.is_free = is_free
-        self.prev: Optional['MemBlock'] = None
-        self.next: Optional['MemBlock'] = None
-
-class MemoryAllocator:
+class SizeIndexedMemoryAllocator:
     """
-    双向链表边界标记法连续内存分配器 (带 O(1) 物理相邻合并)
+    带大小索引的工业级内存分配器 (O(log m) 最佳适应查找 + O(1) 双向链表物理合并)
     """
     def __init__(self, total_size: int):
         self.head = MemBlock(0, total_size, is_free=True)
-        self.allocated: Dict[int, MemBlock] = {} # offset -> Block
+        self.allocated: Dict[int, MemBlock] = {}
+        self.free_by_size: Dict[int, Set[MemBlock]] = {total_size: {self.head}}
+        self.sorted_sizes: List[int] = [total_size]
+
+    def _add_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s not in self.free_by_size:
+            self.free_by_size[s] = set()
+            bisect.insort(self.sorted_sizes, s)
+        self.free_by_size[s].add(block)
+
+    def _remove_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s in self.free_by_size and block in self.free_by_size[s]:
+            self.free_by_size[s].remove(block)
+            if not self.free_by_size[s]:
+                del self.free_by_size[s]
+                idx = bisect.bisect_left(self.sorted_sizes, s)
+                if idx < len(self.sorted_sizes) and self.sorted_sizes[idx] == s:
+                    self.sorted_sizes.pop(idx)
 
     def allocate(self, size: int) -> int:
         if size <= 0:
             return -1
-        curr = self.head
-        while curr:
-            if curr.is_free and curr.size >= size:
-                remainder = curr.size - size
-                curr.size = size
-                curr.is_free = False
-                self.allocated[curr.offset] = curr
+        # 二分查找最佳适应块 (Best-Fit)
+        idx = bisect.bisect_left(self.sorted_sizes, size)
+        if idx >= len(self.sorted_sizes):
+            return -1
 
-                # 切分多余空闲块
-                if remainder > 0:
-                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
-                    split_block.next = curr.next
-                    split_block.prev = curr
-                    if curr.next:
-                        curr.next.prev = split_block
-                    curr.next = split_block
-                return curr.offset
-            curr = curr.next
-        return -1 # 内存不足 (OOM)
+        target_size = self.sorted_sizes[idx]
+        block = next(iter(self.free_by_size[target_size]))
+        self._remove_free_index(block)
+
+        remainder = block.size - size
+        block.size = size
+        block.is_free = False
+        self.allocated[block.offset] = block
+
+        if remainder > 0:
+            split = MemBlock(block.offset + size, remainder, is_free=True)
+            split.next = block.next
+            split.prev = block
+            if block.next:
+                block.next.prev = split
+            block.next = split
+            self._add_free_index(split)
+
+        return block.offset
 
     def free(self, offset: int) -> bool:
         if offset not in self.allocated:
@@ -436,23 +581,37 @@ class MemoryAllocator:
         node = self.allocated.pop(offset)
         node.is_free = True
 
-        # 四向相邻合并分支:
-        # 分支 1: 向右吞并空闲右邻居
+        # 合并右侧
         if node.next and node.next.is_free:
             right = node.next
+            self._remove_free_index(right)
             node.size += right.size
             node.next = right.next
             if right.next:
                 right.next.prev = node
 
-        # 分支 2: 向左被空闲左邻居吞并
+        # 合并左侧
         if node.prev and node.prev.is_free:
             left = node.prev
+            self._remove_free_index(left)
             left.size += node.size
             left.next = node.next
             if node.next:
                 node.next.prev = left
+            node = left
+
+        self._add_free_index(node)
         return True
+
+if __name__ == "__main__":
+    sia = SizeIndexedMemoryAllocator(100)
+    b1 = sia.allocate(20)
+    b2 = sia.allocate(50)
+    assert b1 == 0 and b2 == 20
+    assert sia.free(b1) is True
+    assert sia.free(b2) is True
+    assert sia.allocate(95) == 0
+    print("✅ SizeIndexedMemoryAllocator tests passed!")
 ```
 
 
@@ -547,7 +706,25 @@ class PluggableCache:
                 self.policy.on_evict(victim)
         self.store[key] = val
         self.policy.on_access(key)
+if __name__ == "__main__":
+    # 1. 测试 LRU 策略
+    lru_cache = PluggableCache(capacity=2, policy=LRUPolicy())
+    lru_cache.put("a", 1); lru_cache.put("b", 2)
+    assert lru_cache.get("a") == 1 # a 变为 MRU
+    lru_cache.put("c", 3) # 驱逐 b
+    assert lru_cache.get("b") is None
+    assert lru_cache.get("a") == 1
+
+    # 2. 测试 LFU 策略 (二级平局用 LRU 打破)
+    lfu_cache = PluggableCache(capacity=2, policy=LFUPolicy())
+    lfu_cache.put("x", 10); lfu_cache.put("y", 20)
+    lfu_cache.get("x"); lfu_cache.get("x") # freq(x)=3, freq(y)=1
+    lfu_cache.put("z", 30) # 驱逐最低频次 y
+    assert lfu_cache.get("y") is None
+    assert lfu_cache.get("x") == 10
+    print("✅ PluggableCache tests passed!")
 ```
+
 
 
 #### 8. 带预写日志与崩溃恢复的持久化缓存 (Durable In-Memory Cache with WAL & Replay)
@@ -606,10 +783,26 @@ class DurableLRUCache:
             f.write(json.dumps({"op": "ACCESS", "key": key}) + "\n")
         self.cache.move_to_end(key)
         return self.cache[key]
+if __name__ == "__main__":
+    import tempfile
+    wal_f = tempfile.mktemp()
+    w1 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    w1.put("k1", "v1")
+    w1.put("k2", "v2")
+    w1.get("k1") # k1 变为 MRU
+    w1.put("k3", "v3") # 空间不足驱逐 k2
+    # 崩溃重启回放
+    w2 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    assert w2.get("k2") is None # 确认 k2 已被物理淘汰
+    assert w2.get("k1") == "v1"
+    assert w2.get("k3") == "v3"
+    if os.path.exists(wal_f): os.remove(wal_f)
+    print("✅ DurableLRUCache tests passed!")
 ```
 
 
-#### 9. 四层级内存数据库系统实现 (Anthropic CodeSignal In-Memory Database OA)
+
+#### 9. 四层级内存数据库系统实现 (Multi-Level In-Memory Database Engine)
 - **核心业务需求与四层级渐进演进**：
   - **Level 1 (基础键值对存储)**：每个顶层 `key` 映射多个 `field -> value` 键值对（均为字符串）。提供基础 CRUD 接口：`set(key, field, value)`，`get(key, field)`，`delete(key, field) -> bool`。
   - **Level 2 (字典序与前缀扫描)**：`scan(key)` 按 `field` 的字典序升序返回所有有效字段及值 `["field(value)", ...]`；`scan_by_prefix(key, prefix)` 在字典序基础上增加前缀匹配过滤。
@@ -770,7 +963,26 @@ class InMemoryDatabase:
             for field, (val, rem) in fields.items():
                 abs_exp = (timestamp + rem) if rem is not None else None
                 self.store[key][field] = FieldRecord(val=val, remaining_ttl=rem, absolute_expiry=abs_exp)
+if __name__ == "__main__":
+    db = InMemoryDatabase()
+    # Level 1
+    db.set("user1", "name", "Alice"); db.set("user1", "age", "30")
+    assert db.get("user1", "name") == "Alice"
+    # Level 2 字典序扫描
+    assert db.scan("user1") == ["age(30)", "name(Alice)"]
+    # Level 3 TTL
+    db.set_at_with_ttl("u2", "token", "abc", timestamp=100, ttl=50) # 有效期 [100, 150)
+    assert db.get_at("u2", "token", 120) == "abc"
+    assert db.get_at("u2", "token", 150) is None
+    # Level 4 相对 TTL 快照恢复
+    db.set_at_with_ttl("u3", "session", "s1", timestamp=200, ttl=100) # 300 过期，在 240 时剩余 60
+    db.backup(240)
+    db.restore(timestamp=500, timestamp_to_restore=240) # 恢复到新时钟 500: 新过期时间为 560
+    assert db.get_at("u3", "session", 550) == "s1"
+    assert db.get_at("u3", "session", 560) is None
+    print("✅ InMemoryDatabase tests passed!")
 ```
+
 
 ```cpp
 #include <iostream>
@@ -966,7 +1178,18 @@ class TodoList:
                 res.append(curr.entry)
             curr = curr.next
         return res
+if __name__ == "__main__":
+    tl = TodoList()
+    t1 = tl.add("Review code")
+    t2 = tl.add("Write tests")
+    assert tl.get_all() == ["Review code", "Write tests"]
+    completed = {t1: True} # 外部维护权威状态
+    assert tl.get_todo(lambda tid: completed.get(tid, False)) == ["Write tests"]
+    assert tl.delete(t2) is True
+    assert tl.get_all() == ["Review code"]
+    print("✅ TodoList tests passed!")
 ```
+
 
 
 #### 11. 带权重与变长尺寸限制的 LRU 缓存 (Weighted LRU Cache with Size-Bounded Eviction)
@@ -1071,7 +1294,29 @@ class WeightedLRUCache:
             if victim:
                 del self.cache[victim.key]
                 self.current_size -= victim.size
+if __name__ == "__main__":
+    cache = WeightedLRUCache(capacity=10)
+    cache.put("a", 1, 3)     # total = 3
+    cache.put("b", 2, 4)     # total = 7
+    cache.put("c", 3, 5)     # 7+5 > 10 -> 驱逐 "a" (3) -> total = 4+5 = 9
+    assert cache.get("a") == -1
+    assert cache.get("b") == 2
+    assert cache.current_size == 9
+    cache.put("d", 4, 3)     # 9+3 > 10 -> 驱逐 "c" (LRU, b刚被访问) -> total = 4+3 = 7
+    assert cache.get("c") == -1
+    assert cache.get("b") == 2
+    assert cache.get("d") == 4
+    # 更新已有 key 并缩放尺寸
+    cache.put("b", 20, 6)    # 旧尺寸 4 -> 新尺寸 6, total = 7 - 4 + 6 = 9 <= 10
+    assert cache.get("b") == 20
+    assert cache.current_size == 9
+    # 超额尺寸直接拦截
+    cache.put("oversized", 99, 15)
+    assert cache.get("oversized") == -1
+    assert cache.current_size == 9
+    print("✅ WeightedLRUCache tests passed!")
 ```
+
 
 ```cpp
 #include <string>
@@ -2358,7 +2603,6 @@ if __name__ == "__main__":
 
 > 🔗 **相关链接**：
 > - [LeetCode 708 · Insert into a Sorted Circular Linked List](https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/) — `https://leetcode.com/problems/insert-into-a-sorted-circular-linked-list/`
-> - [1point3acres 面经真题](https://www.1point3acres.com/interview/problems/e1081044-6f41-5139-8596-3e843a348997) — Meta 电话面试高频题
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -2662,7 +2906,6 @@ if __name__ == "__main__":
 > 🔗 **相关链接**：
 > - [LeetCode 380 · Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/) — `https://leetcode.com/problems/insert-delete-getrandom-o1/`
 > - [LeetCode 381 · Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/) — `https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/`
-> - [1point3acres 面经真题](https://www.1point3acres.com/interview/problems/company/meta/randomized-container) — Meta 工业级容器设计题
 
 <div class="review-block">
 <div class="review-block-label">📌 题目定义与要求</div>
@@ -2672,7 +2915,7 @@ if __name__ == "__main__":
 > 1. `insert(val)`: Inserts an item `val` to the set if not already present. Returns `true` if the item was not present, `false` otherwise.
 > 2. `remove(val)`: Removes an item `val` from the set if present. Returns `true` if the item was present, `false` otherwise.
 > 3. `getRandom()`: Returns a random element from the current set of elements. Each element must have the **same probability** of being returned.
-> 4. `popRandom()` (Meta Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
+> 4. `popRandom()` (Random Pop Extension): Removes and returns a random element from the container in $\mathcal{O}(1)$ time with uniform probability.
 
 **核心约束**：
 - 普通哈希表支持 $\mathcal{O}(1)$ 插入与删除，但底层存储分散，**无法在 $\mathcal{O}(1)$ 内产生真正的严格均匀等概率随机索引**。
@@ -2689,7 +2932,7 @@ import random
 from typing import Dict, List
 
 class RandomizedSet:
-    # 基础版：元素互不重复 (LeetCode 380 + Meta popRandom 扩展)
+    # 基础版：元素互不重复 (LeetCode 380 + popRandom 扩展)
     # 时间复杂度: 所有操作均摊 O(1)
     def __init__(self):
         self.vals: List[int] = []          # 紧凑连续动态数组，支持 O(1) 随机访问
@@ -2725,7 +2968,7 @@ class RandomizedSet:
         return random.choice(self.vals)
 
     def popRandom(self) -> int:
-        # Meta 面经高频扩展：随机等概率弹出并移除一个元素
+        # 核心扩展：随机等概率弹出并移除一个元素
         # 时间复杂度: 严格 O(1)
         if not self.vals:
             raise IndexError("popRandom from empty RandomizedSet")
@@ -3697,7 +3940,30 @@ def mergeKLists(lists: List[Optional[ListNode]]) -> Optional[ListNode]:
             heapq.heappush(heap, (node.next.val, i, node.next))
             
     return dummy.next
+if __name__ == "__main__":
+    def build_list(vals):
+        dummy = ListNode(0)
+        curr = dummy
+        for v in vals:
+            curr.next = ListNode(v)
+            curr = curr.next
+        return dummy.next
+
+    def to_list(node):
+        res = []
+        while node:
+            res.append(node.val)
+            node = node.next
+        return res
+
+    l1 = build_list([1, 4, 5])
+    l2 = build_list([1, 3, 4])
+    l3 = build_list([2, 6])
+    merged = mergeKLists([l1, l2, l3])
+    assert to_list(merged) == [1, 1, 2, 3, 4, 4, 5, 6]
+    print("✅ mergeKLists tests passed!")
 ```
+
 
 #### 2. 内存受限的滑动时间窗口 K 阶元素统计器 (K-th Element on a Streaming Time Window under Hard Memory Bound)
 - **业务场景与硬性限制**：
@@ -3775,7 +4041,24 @@ class StreamingWindowKthBounded:
             if cum >= k:
                 return self.min_val + i
         return None
+if __name__ == "__main__":
+    sk = StreamingWindowKthBounded(window_seconds=5, min_val=0, max_val=100)
+    sk.add(1, 10)
+    sk.add(2, 30)
+    sk.add(3, 20)
+    sk.add(4, 50)
+    sk.add(5, 40)
+    # 当前窗口 [0, 5]: 包含 [10, 20, 30, 40, 50]
+    assert sk.find_kth_smallest(5, 1) == 10
+    assert sk.find_kth_smallest(5, 3) == 30
+    assert sk.find_kth_smallest(5, 5) == 50
+    assert sk.find_kth_largest(5, 1) == 50
+    # 前进到时刻 7，窗口 [2, 7]: 时刻 1 (10) 过期淘汰，剩余 [20, 30, 40, 50]
+    assert sk.find_kth_smallest(7, 1) == 20
+    assert sk.find_kth_smallest(7, 2) == 30
+    print("✅ StreamingWindowKthBounded tests passed!")
 ```
+
 
 ```cpp
 #include <vector>
@@ -3966,7 +4249,7 @@ if __name__ == "__main__":
 
 </div>
 <div class="review-block">
-<div class="review-block-label">🌐 核心基石延伸：极速限价订单簿系统 (HFT Limit Order Book - Citsec / HFT Onsite)</div>
+<div class="review-block-label">🌐 核心基石延伸：极速限价订单簿系统 (HFT Limit Order Book System)</div>
 
 #### 1. 核心接口与价格优先-时间优先原则 (Price-Time Priority / FIFO)
 - **API 规范**：
@@ -4120,14 +4403,14 @@ if __name__ == "__main__":
   - `task_store`: `Dict[task_id, TaskRecord]` 记录权威状态、重试次数与当前 Token；
   - `lease_heap`: `heapq` 存储 `(lease_deadline, task_id, version_token)`，$\mathcal{O}(1)$ 查看最早超期任务，超时检查时惰性比对 Token 剔除已完成或已变更的幽灵节点。
 
-#### 2. 时间片轮转任务调度器 (Round-Robin Task Scheduler - Citadel NXT)
+#### 2. 时间片轮转任务调度器 (Round-Robin Task Scheduler)
 - **核心架构**：就绪任务队列 + 固定时间配额（Time Slice Quantum）。
 - **操作循环**：
   - 每个 Tick 弹出队头任务，赋予一个时间片；若任务执行完毕则将其销毁；若未完结则重新追加至队尾；
   - **协作式 vs 抢占式 (Cooperative vs Preemptive)**：协作式依赖任务显式 yield，抢占式由调度器通过定时器中断强制挂起任务。
   - **加权赤字轮转 (Deficit Round Robin / DRR)**：为不同权重任务维护赤字计数器（Credit），解决不同任务包大小/耗时不均的问题。
 
-#### 3. 分级任务管理器 (Task Manager with TTL & Quota - CodeSignal OA)
+#### 3. 分级任务管理器 (Task Manager with TTL & Quota)
 - **四层能力递进**：
   - Level 1-2：按用户增删查改任务，维护优先级与创建时间排序；
   - Level 3：任务带 TTL 自动失效，以及基于用户配额（Quota）的任务分配（每个用户同时处于活动期的任务数严格受限）；
@@ -4229,20 +4512,20 @@ if __name__ == "__main__":
 
 ### 4.1 链表题型心智模型与 10 秒决策速查 (Linked List Decision Matrix)
 
-| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表题型 (NeetCode / LC) |
 | :--- | :--- | :--- | :--- |
 | **快慢双指针 (Floyd)** | 环检测、求环入口、找链表中点、回文判断 | `slow = slow.next`, `fast = fast.next.next`；相遇后一针回原点单步同步走 | LC 141 (环检测), LC 142 (环入口), LC 876 (中点), LC 234 (回文) |
 | **虚拟哨兵头节点 (Dummy)** | 链表头可能被删除、被合并、链表前插入 | `dummy = ListNode(0, head)`，统一内部与头节点逻辑 | LC 19 (删倒数第 N), LC 21 (合并两链表), LC 2 (两数相加), LC 86 (分隔) |
 | **三指针局部翻转** | 反转整链、反转区间、K个一组反转 | `nxt = curr.next; curr.next = prev; prev = curr; curr = nxt` | LC 206 (反转), LC 92 (反转II), LC 25 (K个一组) |
 | **拆分/穿插指针映射** | 深拷贝带随机指针的链表、重排链表 | 原地复制 `node.next = copyNode` 后交叉拆分；快慢针截半后交替穿插 | LC 138 (复制随机指针), LC 143 (重排链表) |
-| **复合哈希双向链表** | 严格 $\mathcal{O}(1)$ 缓存插入/访问/淘汰 | 双向链表记录时间顺序 + 哈希表直指节点；头尾双哨兵四指针无分支断连 | LC 146 (LRU), LC 460 (LFU), Meta 餐厅候补 |
-| **动态数组末尾置换** | $\mathcal{O}(1)$ 插入、删除与等概率随机抽取 | 动态数组保存元素 + 哈希表记录下标；删除时与末尾元素置换后执行 `pop()` | LC 380 (O(1)集合), LC 381 (允许重复), Meta 随机容器 |
+| **复合哈希双向链表** | 严格 $\mathcal{O}(1)$ 缓存插入/访问/淘汰 | 双向链表记录时间顺序 + 哈希表直指节点；头尾双哨兵四指针无分支断连 | LC 146 (LRU), LC 460 (LFU), 餐厅候补队列 |
+| **动态数组末尾置换** | $\mathcal{O}(1)$ 插入、删除与等概率随机抽取 | 动态数组保存元素 + 哈希表记录下标；删除时与末尾元素置换后执行 `pop()` | LC 380 (O(1)集合), LC 381 (允许重复), O(1) 随机容器 |
 
 ---
 
 ### 4.2 栈与单调结构心智模型 (Stack & Monotonic Structure Matrix)
 
-| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表题型 (NeetCode / LC) |
 | :--- | :--- | :--- | :--- |
 | **配对与平衡检验** | 括号有效性、消除相邻重复项、回文消除 | 栈存储左半边期待，遇到右半边校验栈顶并弹出 | LC 20 (有效括号), LC 1047 (消除相邻重复) |
 | **单调递增/递减栈** | 下一个更大/更小元素、柱状图最大矩形、股票买卖天数 | 维护栈内元素严格单调；破坏单调时弹出栈顶并结算其右边界 | LC 739 (每日温度), LC 496 (下一个更大), LC 84 (柱状图最大矩形), LC 853 (车队) |
@@ -4254,7 +4537,7 @@ if __name__ == "__main__":
 
 ### 4.3 堆与优先队列心智模型 (Heap & Priority Queue Matrix)
 
-| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表真题 (NeetCode / LC) |
+| 场景模式 (Pattern) | 触发关键词 / 题型特征 | 黄金解法架构 (Optimal Archetype) | 代表题型 (NeetCode / LC) |
 | :--- | :--- | :--- | :--- |
 | **Top-K 动态维护** | 求海量数据中最大/最小的 K 个元素 | 维持容量为 $K$ 的**小顶堆**（求最大 K 个）或大顶堆，超出容量弹出堆顶 | LC 215 (第K大), LC 347 (前K高频), LC 703 (数据流第K大) |
 | **多路归并排序** | 合并 K 个升序链表 / 数组 | 堆内始终只维护各有序序列的当前游标头部（容量为 $K$），弹出堆顶并推进后继 | LC 23 (合并K个升序链表), LC 378 (矩阵第K小) |
