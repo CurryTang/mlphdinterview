@@ -695,11 +695,149 @@ Observing that the opponent hit an empty chamber does not change the ratio of ad
 
 $$\boxed{33.33\% < 40\% \implies \text{Under uniformly random loading, you should strictly choose to SPIN}}$$
 
+### 4.7 Congestion Game & Queue Splitting Threshold Equilibrium
+
+#### 1. Problem Paraphrase & Mathematical Formalization
+> **The Dual-Queue Congestion Game**:
+> Consider an unknown number of rational agents $x$ originally waiting in a single-file queue at Service Window 1, indexed strictly in order of arrival as $i \in \{1, 2, \dots, x\}$ (with agent $1$ at the front and agent $x$ at the tail).
+> A newly constructed Service Window 2 opens concurrently. All $x$ agents must simultaneously and independently select an action $a_i \in \{\text{Stay}, \text{Move}\}$:
+> - **Stay ($S$)**: Remain at Window 1, where all stayers preserve their relative original order intact;
+> - **Move ($M$)**: Migrate to Window 2, where all migrants are randomly permuted and assigned queue positions **uniformly at random**.
+>
+> All agents are risk-neutral and perfectly rational, aiming strictly to **minimize their expected service queue position** (positions are positive integers, where position 1 is served first; lower position yields higher utility).
+> Characterize the pure-strategy Nash equilibrium and derive each agent's optimal decision rule as a function of the total population parameter $x$.
+
+---
+
+#### 2. Core Intuition: Establishing Monotonicity & Threshold Structure
+When analyzing a game with $x$ players, setting up simultaneous probability response equations over $x$ dimensions triggers severe combinatorial complexity.
+The key to solving congestion games lies **not in solving systems of equations, but in recognizing payoff monotonicity with respect to initial ranks to establish a single threshold structure**:
+
+1. **Deterministic Position Monotonicity of Stayers**:
+   Let $I_S$ denote the set of stayers, and $I_M$ the set of movers ($|I_S| + |I_M| = x$).
+   For any agent $i \in I_S$, since relative order is preserved, their position in Queue 1 depends entirely on how many preceding agents chose to stay:
+   $$\text{pos}_1(i) = \sum_{j \in I_S} \mathbf{1}_{\{j \le i\}} = 1 + |\{j \in I_S \setminus \{i\} : j < i\}|$$
+   For any fixed strategy profile of other players, $\text{pos}_1(i)$ is **strictly increasing in the initial index $i$**—agents starting further back in line suffer strictly worse positions if they stay.
+
+2. **Rank Invariance of Migrants**:
+   For any agent $i \in I_M$, because Window 2 permutes all movers uniformly at random, every migrant is equally likely to occupy any position from $1$ to $|I_M|$:
+   $$\mathbb{E}[\text{pos}_2(i)] = \frac{1 + |I_M|}{2} = \frac{x - |I_S| + 1}{2}$$
+   **Crucial Insight**: The expected position at Window 2 **depends solely on the aggregate headcount of migrants $|I_M|$, and is completely independent of the agent's initial position $i$**!
+
+3. **Strict Monotonicity of Migration Incentive**:
+   Define the relative position improvement from migrating compared to staying for agent $i$:
+   $$\Delta(i) = \text{pos}_1(i) - \mathbb{E}[\text{pos}_2(i)]$$
+   Since agents minimize their position, migrating is preferred when $\Delta(i) > 0$, and staying is preferred when $\Delta(i) < 0$.
+   Because $\text{pos}_1(i)$ is strictly increasing in $i$ while $\mathbb{E}[\text{pos}_2(i)]$ is constant with respect to $i$:
+   $$\Delta(i) \text{ is strictly increasing in } i$$
+   **Threshold Structure Established**: If some agent $i$ finds migration advantageous ($\Delta(i) \ge 0$), then for any trailing agent $j > i$, their Queue 1 position is worse, yielding a strictly higher incentive to migrate ($\Delta(j) > \Delta(i) \ge 0$). Thus, all agents behind $i$ strictly prefer to move as well!
+   Conversely, if agent $i$ prefers staying, all preceding agents strictly prefer staying.
+   Therefore, any pure-strategy Nash equilibrium must possess a **single threshold partition (Prefix Stayers, Suffix Movers)**:
+   There exists an integer threshold $k^* \in \{0, 1, \dots, x\}$ such that:
+   $$\begin{cases} a_i = \text{Stay} & \forall i \le k^* \\ a_i = \text{Move} & \forall i > k^* \end{cases}$$
+   where $k^*$ agents stay at Window 1, and the remaining $x - k^*$ agents move to Window 2.
+
+---
+
+#### 3. Derivation via Marginal Unilateral Deviation
+With the threshold structure established, determining $k^*$ requires checking stability against unilateral deviation for only the two **marginal agents** straddling the threshold:
+
+1. **Marginal Stayer Stability (Agent $k^*$)**:
+   - In equilibrium, the first $k^*$ agents stay. Agent $k^*$ is the last stayer in Queue 1:
+     $$\text{pos}_1(k^*) = k^*$$
+   - **Deviation Condition**: If agent $k^*$ unilaterally deviates by moving to Window 2:
+     - Window 2 population grows from $x - k^*$ to $(x - k^*) + 1 = x - k^* + 1$;
+     - Agent $k^*$'s expected position in Queue 2 becomes:
+       $$\mathbb{E}[\text{pos}_2 \mid k^* \text{ unilaterally deviates}] = \frac{(x - k^* + 1) + 1}{2} = \frac{x - k^* + 2}{2}$$
+   - **Nash Stability Requirement**: Staying must be no worse than deviating to move:
+     $$\text{pos}_1(k^*) \le \mathbb{E}[\text{pos}_2 \mid k^* \text{ unilaterally deviates}]$$
+     $$k^* \le \frac{x - k^* + 2}{2} \iff 2k^* \le x - k^* + 2 \iff 3k^* \le x + 2 \iff k^* \le \frac{x + 2}{3}$$
+
+2. **Marginal Mover Stability (Agent $k^* + 1$)**:
+   - In equilibrium, agents $k^* + 1$ through $x$ move to Window 2 ($x - k^*$ migrants). Agent $k^* + 1$'s expected position in Queue 2 is:
+     $$\mathbb{E}[\text{pos}_2(k^* + 1)] = \frac{(x - k^*) + 1}{2} = \frac{x - k^* + 1}{2}$$
+   - **Deviation Condition**: If agent $k^* + 1$ unilaterally deviates by staying at Window 1:
+     - Since agents $1 \dots k^*$ are staying, agent $k^* + 1$ falls behind them as position $k^* + 1$:
+       $$\text{pos}_1(k^* + 1 \mid k^* + 1 \text{ unilaterally deviates}) = k^* + 1$$
+   - **Nash Stability Requirement**: Moving must be no worse than deviating to stay:
+     $$\mathbb{E}[\text{pos}_2(k^* + 1)] \le \text{pos}_1(k^* + 1 \mid k^* + 1 \text{ unilaterally deviates})$$
+     $$\frac{x - k^* + 1}{2} \le k^* + 1 \iff x - k^* + 1 \le 2k^* + 2 \iff 3k^* \ge x - 1 \iff k^* \ge \frac{x - 1}{3}$$
+
+---
+
+#### 4. Analytical Squeeze Interval & Parameter Modulo Classification
+Combining both marginal stability conditions yields the **necessary and sufficient squeeze interval** for equilibrium threshold $k^*$:
+$$\boxed{\frac{x - 1}{3} \le k^* \le \frac{x + 2}{3}}$$
+
+The width of this interval is constant:
+$$\text{Interval Width} = \frac{x + 2}{3} - \frac{x - 1}{3} = \frac{3}{3} = 1$$
+Any closed interval $[L, L+1]$ of length 1 contains at least one integer. Classifying by $x \pmod 3$:
+
+| Configuration | Algebraic Form ($m \in \mathbb{N}$) | Squeeze Interval $\left[\frac{x-1}{3}, \frac{x+2}{3}\right]$ | Threshold $k^*$ | Equilibrium State & Structure |
+| :--- | :--- | :--- | :--- | :--- |
+| **$x \equiv 0 \pmod 3$** | $x = 3m$ | $\left[m - \frac{1}{3}, \ m + \frac{2}{3}\right]$ | **Unique**: $k^* = \frac{x}{3}$ | The first $\frac{x}{3}$ stay, remaining $\frac{2x}{3}$ move. Both groups hold strict best responses. |
+| **$x \equiv 2 \pmod 3$** | $x = 3m + 2$ | $\left[m + \frac{1}{3}, \ m + \frac{4}{3}\right]$ | **Unique**: $k^* = \frac{x + 1}{3}$ | The first $\frac{x+1}{3}$ stay, remaining $\frac{2x-1}{3}$ move. Ceiling uniquely determines threshold. |
+| **$x \equiv 1 \pmod 3$** | $x = 3m + 1$ | $\left[m, \ m + 1\right]$ | **Dual Equilibria**: $k_1^* = \frac{x-1}{3}$ or $k_2^* = \frac{x+2}{3}$ | Both endpoints are integers. Marginal agent $\frac{x+2}{3}$ is **strictly indifferent** between staying and moving. |
+
+**Universal Closed Form**:
+In all cases, $k^* = \left\lfloor \frac{x + 2}{3} \right\rfloor$ is an exact pure-strategy Nash equilibrium (with $k^* = \frac{x-1}{3}$ also valid when $x \equiv 1 \pmod 3$).
+
+---
+
+#### 5. Congestion Mechanism Insights
+1. **Why is the macro splitting ratio $1 : 2$ rather than $1 : 1$?**
+   - If both queues preserved original ordering symmetrically, the equilibrium would split the population in half ($x/2$ each);
+   - But Window 2 introduces **uniform random shuffling**:
+     - Window 1 retains **deterministic rank degradation** for trailing agents;
+     - Window 2 guarantees an **average rank of half the migrant count** ($\approx \frac{N_{\text{move}}}{2}$);
+     - Even when Window 2 absorbs twice as many people as Window 1 ($N_{\text{move}} \approx \frac{2}{3}x$), its expected rank is still $\frac{\frac{2}{3}x}{2} \approx \frac{x}{3}$, exactly matching the final stayer in Window 1!
+     - Randomization arbitrage drives approximately two-thirds of the population to migrate.
+2. **Negative Externality & Price of Anarchy**:
+   Each additional mover imposes an external cost of $0.5$ on all other migrants. Individual optimization drives migrations until marginal arbitrage is eliminated, exemplifying a classical **Wardrop user equilibrium**.
+
+---
+
+#### 6. Executable Python Verification & Assertions
+```python
+def solve_queue_congestion_equilibrium(x: int):
+    """
+    Solves pure-strategy Nash equilibrium stayer thresholds for population x.
+    """
+    assert x >= 2, "Population x must be at least 2"
+    valid_thresholds = []
+    
+    for k in range(0, x + 1):
+        # Marginal stayer (agent k): rank k <= (x - k + 2) / 2
+        stayer_stable = (k == 0) or (k <= (x - k + 2) / 2.0)
+        # Marginal mover (agent k + 1): (x - k + 1) / 2 <= k + 1
+        mover_stable = (k == x) or ((x - k + 1) / 2.0 <= k + 1)
+        
+        if stayer_stable and mover_stable:
+            valid_thresholds.append(k)
+            
+    return valid_thresholds
+
+if __name__ == "__main__":
+    for x_val in range(2, 200):
+        actual = solve_queue_congestion_equilibrium(x_val)
+        rem = x_val % 3
+        if rem == 0:
+            assert actual == [x_val // 3], f"Mismatch at x={x_val}"
+        elif rem == 2:
+            assert actual == [(x_val + 1) // 3], f"Mismatch at x={x_val}"
+        elif rem == 1:
+            assert actual == [(x_val - 1) // 3, (x_val + 2) // 3], f"Mismatch at x={x_val}"
+            
+    print("✅ Queue Congestion Game theoretical solutions passed all verification assertions!")
+```
+
+---
+
 ---
 
 ## 5 · High-Frequency Quant Interview Tricks & Core Templates
 
-In quantitative finance interviews (Jane Street, Citadel, SIG, Optiver, etc.), game theory problems must typically be solved cleanly on a whiteboard in 5–10 minutes. Below are the 8 most essential problem-solving tricks, templates, and intuitive shortcuts:
+In quantitative research and strategic decision-making, game theory problems require rapidly establishing foundational structures and evaluating marginal trade-offs. Below are the 8 most essential problem-solving tricks, templates, and intuitive shortcuts:
 
 ---
 
@@ -844,6 +982,20 @@ The global infimum (minimum) of a convex V-shaped envelope occurs precisely at t
 
 ---
 
+### Trick 9: Congestion Threshold & Marginal Deviation Template
+- **Applicable Problems**: Multi-agent queue splitting, network traffic routing, shared resource pool allocation, and congestion games with negative externalities.
+- **3-Step Solution Template**:
+  1. **Establish Monotonicity to Deduce Threshold Structure**:
+     Avoid complex high-dimensional systems of simultaneous equations. Calculate the net payoff delta $\Delta(i) = \text{Payoff}_A(i) - \text{Payoff}_B(i)$. If $\Delta(i)$ is monotonic with respect to index $i$, all pure-strategy equilibria must follow a **single threshold partition** (prefix chooses $A$, suffix chooses $B$);
+  2. **Isolate Marginal Agent Deviation Equations**:
+     Compress equilibrium stability checks down to the two boundary agents:
+     - **Marginal Stayer $k$**: Write out expected return under unilateral deviation to option $B$; enforce $\text{Current Payoff} \ge \text{Deviated Payoff}$;
+     - **Marginal Mover $k+1$**: Write out expected return under unilateral deviation back to option $A$; enforce $\text{Current Payoff} \ge \text{Deviated Payoff}$;
+  3. **Two-Sided Squeeze for Exact Closed Form**:
+     Solve the two linear inequalities to obtain squeeze interval $[L(x), R(x)]$ (of length 1). Deduce the closed-form integer solution directly via parameter modularity.
+
+---
+
 ## 6 · Quick Reference Cheatsheet
 
 | Game Model | Category | Key Mechanism | Optimal Result / Equilibrium |
@@ -862,6 +1014,7 @@ The global infimum (minimum) of a convex V-shaped envelope occurs precisely at t
 | **Nim Game** | Impartial Game | XOR Sum Invariant | $\bigoplus x_i = 0$ is losing; $\ne 0$ is winning |
 | **Chomp** | Symmetric Finite Game | Strategy Stealing | Player 1 always has a winning strategy |
 | **100 Prisoners Hats** | Collaborative Signaling | Parity Bit Broadcast | 99 prisoners survive with 100% certainty |
+| **Queue Congestion Splitting** | Congestion Game with Negative Externality | Monotonicity Threshold + Marginal Deviation | Pure Nash equilibrium satisfies $\frac{x-1}{3} \le k^* \le \frac{x+2}{3}$; splitting ratio $\approx 1 : 2$ |
 
 ---
 
