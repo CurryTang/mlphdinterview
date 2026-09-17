@@ -799,58 +799,9 @@ $$\text{区间宽度} = \frac{x + 2}{3} - \frac{x - 1}{3} = \frac{3}{3} = 1$$
 
 ---
 
-#### 6. 算法模拟验证与全覆盖自动化断言 (Python 3)
-```python
-def solve_queue_congestion_equilibrium(x: int):
-    """
-    求解未知人数 x 下的双窗口排队博弈纯策略纳什均衡留守阈值集合
-    """
-    assert x >= 2, "Total population x must be at least 2"
-    
-    # 理论双边闭区间: (x - 1) / 3 <= k <= (x + 2) / 3
-    lower_bound = (x - 1) / 3.0
-    upper_bound = (x + 2) / 3.0
-    
-    valid_thresholds = []
-    # 穷举所有可能的留守前缀阈值 k in [0, x]
-    for k in range(0, x + 1):
-        # 1. 检验边缘留守者 (第 k 人): 当前排位 k, 偏离转移期望 = (x - k + 2) / 2
-        stayer_stable = (k == 0) or (k <= (x - k + 2) / 2.0)
-        
-        # 2. 检验边缘转移者 (第 k + 1 人): 当前转移期望 = (x - k + 1) / 2, 偏离留守排位 = k + 1
-        mover_stable = (k == x) or ((x - k + 1) / 2.0 <= k + 1)
-        
-        if stayer_stable and mover_stable:
-            valid_thresholds.append(k)
-            
-    return valid_thresholds
-
-if __name__ == "__main__":
-    # 覆盖检验大范围未知数 x 及其模 3 余数的所有数学分支
-    for x_val in range(2, 200):
-        actual = solve_queue_congestion_equilibrium(x_val)
-        rem = x_val % 3
-        
-        if rem == 0:
-            # x = 3m -> 唯一均衡 k* = x / 3
-            assert actual == [x_val // 3], f"Mismatch at x={x_val}"
-        elif rem == 2:
-            # x = 3m + 2 -> 唯一均衡 k* = (x + 1) / 3
-            assert actual == [(x_val + 1) // 3], f"Mismatch at x={x_val}"
-        elif rem == 1:
-            # x = 3m + 1 -> 双重均衡 k* in {(x - 1) / 3, (x + 2) / 3}
-            assert actual == [(x_val - 1) // 3, (x_val + 2) // 3], f"Mismatch at x={x_val}"
-            
-    print("✅ 双窗口拥挤排队博弈 (Queue Congestion Game) 数学理论解全量断言通过！")
-```
-
----
-
----
-
 ## 5 · 量化面试高频解题 Trick 与核心解题模板
 
-在量化研究与策略决策中，博弈论题目通常要求你在 5~10 分钟内白板给出清晰的逻辑链条。以下是 8 个最常考察的解题模板与思维直觉：
+在量化研究与策略决策中，博弈论题目通常要求你在 5~10 分钟内白板给出清晰的逻辑链条。以下是 9 个最常考察的解题模板与思维直觉：
 
 ---
 

@@ -797,47 +797,9 @@ In all cases, $k^* = \left\lfloor \frac{x + 2}{3} \right\rfloor$ is an exact pur
 
 ---
 
-#### 6. Executable Python Verification & Assertions
-```python
-def solve_queue_congestion_equilibrium(x: int):
-    """
-    Solves pure-strategy Nash equilibrium stayer thresholds for population x.
-    """
-    assert x >= 2, "Population x must be at least 2"
-    valid_thresholds = []
-    
-    for k in range(0, x + 1):
-        # Marginal stayer (agent k): rank k <= (x - k + 2) / 2
-        stayer_stable = (k == 0) or (k <= (x - k + 2) / 2.0)
-        # Marginal mover (agent k + 1): (x - k + 1) / 2 <= k + 1
-        mover_stable = (k == x) or ((x - k + 1) / 2.0 <= k + 1)
-        
-        if stayer_stable and mover_stable:
-            valid_thresholds.append(k)
-            
-    return valid_thresholds
-
-if __name__ == "__main__":
-    for x_val in range(2, 200):
-        actual = solve_queue_congestion_equilibrium(x_val)
-        rem = x_val % 3
-        if rem == 0:
-            assert actual == [x_val // 3], f"Mismatch at x={x_val}"
-        elif rem == 2:
-            assert actual == [(x_val + 1) // 3], f"Mismatch at x={x_val}"
-        elif rem == 1:
-            assert actual == [(x_val - 1) // 3, (x_val + 2) // 3], f"Mismatch at x={x_val}"
-            
-    print("✅ Queue Congestion Game theoretical solutions passed all verification assertions!")
-```
-
----
-
----
-
 ## 5 · High-Frequency Quant Interview Tricks & Core Templates
 
-In quantitative research and strategic decision-making, game theory problems require rapidly establishing foundational structures and evaluating marginal trade-offs. Below are the 8 most essential problem-solving tricks, templates, and intuitive shortcuts:
+In quantitative research and strategic decision-making, game theory problems require rapidly establishing foundational structures and evaluating marginal trade-offs. Below are the 9 most essential problem-solving tricks, templates, and intuitive shortcuts:
 
 ---
 
