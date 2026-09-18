@@ -1594,18 +1594,18 @@ if __name__ == "__main__":
 
 </div>
 <div class="review-block">
-<div class="review-block-label">🌐 核心基石延伸：回文链表原状复原与高位减法全家桶</div>
+<div class="review-block-label">🌐 核心基石延伸：回文复原、高位加减法与树链编织全家桶</div>
 
 #### 1. 回文链表与工程级原状复原 (Palindrome Linked List - LC 234)
 - **核心契约**：
   - 判断单链表是否为回文序列；
   - 空间约束：$\mathcal{O}(1)$ 辅助空间（严禁将节点全量存入数组）；
-  - **工业级生产约束 (Production Follow-up)**：在函数返回前，**必须将链表恢复为其原本的物理指针结构**，防止上游调用方观察到破坏性的副作用（In-Place Mutation Side Effect）。
+  - **工程级生产约束 (Production Follow-up)**：在函数返回前，**必须将链表恢复为其原本的物理指针结构**，防止上游调用方观察到破坏性的副作用（In-Place Mutation Side Effect）。
 - **算法实施**：
   1. 快慢双指针探测中点：`slow` 单步推进，`fast` 双步推进。当 `fast` 抵达末尾时，`slow` 恰好停在前半段末尾，`slow.next` 为后半段起点。
-  2. 翻转后半段链表：`second_half = reverseList(slow.next)`。
-  3. 双指针平移校验：`p1 = head`, `p2 = second_half` 逐值比对。
-  4. **原状恢复 (State Restoration)**：再次翻转后半段，`slow.next = reverseList(second_half)`，无缝拼接复原。
+  2. 原地翻转后半段链表：`second_head = reverse_chain(slow.next)`。
+  3. 双指针平移校验：`p1 = head`, `p2 = second_head` 逐值比对。
+  4. **原状恢复 (State Restoration)**：再次翻转后半段，`slow.next = reverse_chain(second_head)`，无缝拼接复原。
 
 ```python
 class PalindromeSolution:
@@ -1656,8 +1656,8 @@ class PalindromeSolution:
 - **算法实施**：
   - 先将两链表就地翻转为低位在先（LSB First），从而在 $\mathcal{O}(1)$ 空间内对齐个位数；
   - 模拟小学竖式减法，维护借位量 `borrow = 0`：
-    $$	ext{diff} = val_1 - val_2 - borrow$$
-    若 $	ext{diff} < 0$，则 $	ext{diff} += 10, borrow = 1$；否则 $borrow = 0$。
+    $$\text{diff} = val_1 - val_2 - borrow$$
+    若 $\text{diff} < 0$，则 $\text{diff} += 10, borrow = 1$；否则 $borrow = 0$。
   - 得到差值链表后再次翻转回 MSB 顺序，最后快慢指针剥离前导零。
 
 ```python
@@ -1709,19 +1709,148 @@ class LinkedListSubtractionSolution:
         return res
 ```
 
-</div>
 #### 3. 高位在前单链表加法 (Add Two Numbers - Forward Order MSB First, LC 445)
-- **核心约束**：给出两个高位在前链表 $l_1, l_2$，在**严禁翻转输入链表**的前提下求和并以高位在前的单链表返回。
-- **双栈解法 (Two-Stack Archetype)**：
-  - 将 $l_1, l_2$ 节点值依次压入 `s1, s2`，栈顶自然对齐个位数；
-  - 循环弹出栈顶求和：$\text{val} = v_1 + v_2 + carry$，更新 $carry = \text{val} // 10$，当前位为 $\text{val} \% 10$；
-  - **头插法 (Head Insertion)**：每次将新生成的节点插入结果链表的最前端：`new_node.next = head; head = new_node`，天然生成高位在前链表，无需二次反转。
+- **核心约束与契约**：
+  - 给出两个高位在前链表 $l_1, l_2$（MSB First），求两数之和；
+  - **严禁翻转输入链表**（Immutable Constraint，模拟输入数据不可修改的工业并发只读场景）；
+  - 结果必须以相同的高位在前链表返回。
+- **算法实施（双栈对齐 + 结果链表头插法）**：
+  1. **双栈自然倒序**：由于两数位数可能不同（如 $7243 + 564$），高位对齐无法直接进位；将 $l_1, l_2$ 节点值依次压入 `s1, s2`，此时两个栈顶自然对齐为**个位数**。
+  2. **双指针弹栈进位求和**：
+     - 维护进位标量 `carry = 0`，循环直至 `s1`、`s2`、`carry` 均为空；
+     - 每次弹出两栈顶值求和：$\text{total} = v_1 + v_2 + carry$；
+     - 更新进位 $carry = \text{total} // 10$，当前位数值为 $\text{total} \% 10$。
+  3. **头插法 (Head Insertion / Prepending)**：
+     - 每次新建节点 `new_node = ListNode(total % 10)`；
+     - 将新节点直接插入结果链表的最前端：`new_node.next = head; head = new_node`；
+     - **核心优势**：低位先计算出来被推向链表尾部，高位后计算出来插入头部，**天然生成高位在前单链表，彻底省去二次反转操作**。
+- **复杂度**：时间复杂度严格 $\mathcal{O}(M + N)$，辅助空间 $\mathcal{O}(M + N)$（用于双栈，严格满足输入链表只读约束）。
+
+```python
+class AddTwoNumbersForwardSolution:
+    @staticmethod
+    def addTwoNumbers(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        s1, s2 = [], []
+        curr1, curr2 = l1, l2
+        while curr1:
+            s1.append(curr1.val)
+            curr1 = curr1.next
+        while curr2:
+            s2.append(curr2.val)
+            curr2 = curr2.next
+
+        head: Optional[ListNode] = None
+        carry = 0
+
+        while s1 or s2 or carry:
+            v1 = s1.pop() if s1 else 0
+            v2 = s2.pop() if s2 else 0
+            total = v1 + v2 + carry
+            carry = total // 10
+
+            # 头插法：新节点直接作为当前 head 的前驱，天然保持高位在前的正确顺序
+            new_node = ListNode(total % 10)
+            new_node.next = head
+            head = new_node
+
+        return head
+```
 
 #### 4. N 叉树权值求和与叶子节点后继链表编织 (N-ary Tree Sum + Leaf Next Pointer)
 - **三层递进考点**：
-  1. **N 叉树求和**：后序/先序 DFS 累加所有节点权值；
+  1. **N 叉树求和**：先序/后序 DFS 累加所有节点权值；
   2. **叶子节点串联**：先序 DFS 遍历树，维护 `prev_leaf` 指针。每当检测到当前节点为叶子节点（`not node.children`），执行 `prev_leaf.next = curr; prev_leaf = curr`，将所有叶子节点串接为单向链表；
-  3. **O(1) 额外空间优化 (Follow-up)**：利用节点闲置的 `next` 指针作为遍历线索（Morris-like Threading），在遍历过程中复用结构内部指针完成叶子链表组装，彻底省去递归栈或辅助收集数组。
+  3. **空间优化**：在先序 DFS 中只使用 $\mathcal{O}(H)$ 递归栈（$H$ 为树高），就地编织指针，不额外分配任何数组收集容器。
+
+```python
+class NaryTreeNode:
+    def __init__(self, val: int = 0, children: Optional[list] = None):
+        self.val = val
+        self.children = children if children is not None else []
+        self.next: Optional['NaryTreeNode'] = None
+
+class NaryTreeLeafWeaveSolution:
+    @classmethod
+    def sumAndWeaveLeaves(cls, root: Optional[NaryTreeNode]) -> tuple:
+        if not root:
+            return 0, None
+
+        total_sum = 0
+        leaf_head: Optional[NaryTreeNode] = None
+        prev_leaf: Optional[NaryTreeNode] = None
+
+        def dfs(node: NaryTreeNode):
+            nonlocal total_sum, leaf_head, prev_leaf
+            total_sum += node.val
+
+            if not node.children:
+                # 命中叶子节点：串联入单链表
+                if leaf_head is None:
+                    leaf_head = node
+                else:
+                    prev_leaf.next = node
+                prev_leaf = node
+            else:
+                for child in node.children:
+                    dfs(child)
+
+        dfs(root)
+        return total_sum, leaf_head
+
+if __name__ == "__main__":
+    def build_test_list(vals):
+        d = ListNode(0); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def extract_vals(node):
+        r = []
+        while node: r.append(node.val); node = node.next
+        return r
+
+    # 1. 验证回文原状复原
+    h_pal = build_test_list([1, 2, 2, 1])
+    assert PalindromeSolution.isPalindrome(h_pal) is True
+    assert extract_vals(h_pal) == [1, 2, 2, 1]
+
+    # 2. 验证高位在前减法
+    sub_res = LinkedListSubtractionSolution.subtractLinkedList(
+        build_test_list([1, 0, 0, 0]), build_test_list([1])
+    )
+    assert extract_vals(sub_res) == [9, 9, 9]
+
+    # 3. 验证高位在前加法 (LC 445: 7243 + 564 = 7807)
+    l1 = build_test_list([7, 2, 4, 3])
+    l2 = build_test_list([5, 6, 4])
+    add_res = AddTwoNumbersForwardSolution.addTwoNumbers(l1, l2)
+    assert extract_vals(add_res) == [7, 8, 0, 7]
+    assert extract_vals(l1) == [7, 2, 4, 3]  # 输入链表严格只读无破坏
+    assert extract_vals(l2) == [5, 6, 4]
+    # 进位测试: 5 + 5 = 10
+    carry_res = AddTwoNumbersForwardSolution.addTwoNumbers(build_test_list([5]), build_test_list([5]))
+    assert extract_vals(carry_res) == [1, 0]
+
+    # 4. 验证 N 叉树求和与叶子编织
+    leaf4 = NaryTreeNode(4)
+    leaf5 = NaryTreeNode(5)
+    leaf6 = NaryTreeNode(6)
+    branch2 = NaryTreeNode(2, [leaf4, leaf5])
+    branch3 = NaryTreeNode(3, [leaf6])
+    tree_root = NaryTreeNode(1, [branch2, branch3])
+
+    t_sum, leaves = NaryTreeLeafWeaveSolution.sumAndWeaveLeaves(tree_root)
+    assert t_sum == 21  # 1 + 2 + 3 + 4 + 5 + 6
+    cur_leaf = leaves
+    leaf_order = []
+    while cur_leaf:
+        leaf_order.append(cur_leaf.val)
+        cur_leaf = cur_leaf.next
+    assert leaf_order == [4, 5, 6]
+
+    print("Card 02 extensions tests passed.")
+```
+
+</div>
 
 </div>
 </details>

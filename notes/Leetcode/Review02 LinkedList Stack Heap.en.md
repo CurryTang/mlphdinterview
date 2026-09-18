@@ -1587,7 +1587,7 @@ if __name__ == "__main__":
 
 </div>
 <div class="review-block">
-<div class="review-block-label">🌐 Foundational Extensions: Palindrome Restoration & Forward-Order Subtraction</div>
+<div class="review-block-label">🌐 Foundational Extensions: Palindrome Restoration, Forward Arithmetic & Tree Leaf Weaving</div>
 
 #### 1. Palindrome Linked List with State Restoration (LC 234)
 - **System Requirements**:
@@ -1595,9 +1595,9 @@ if __name__ == "__main__":
   - **Engineering Contract (Production Follow-up)**: The function must **restore the list to its original physical structure before returning**, ensuring no mutating side-effects are observable by upstream callers.
 - **Algorithm Execution**:
   1. Fast-slow pointers locate the midpoint ($slow$ arrives at mid).
-  2. Reverse the second half in-place: `second_half = reverseList(slow.next)`.
+  2. Reverse the second half in-place: `second_head = reverse_chain(slow.next)`.
   3. Compare forward and reversed halves value-by-value.
-  4. **State Restoration**: Reverse the second half once more and splice back to `slow.next = reverseList(second_half)`.
+  4. **State Restoration**: Reverse the second half once more and splice back to `slow.next = reverse_chain(second_head)`.
 
 ```python
 class PalindromeSolution:
@@ -1612,7 +1612,8 @@ class PalindromeSolution:
             fast = fast.next.next
 
         def reverse_chain(node: Optional[ListNode]) -> Optional[ListNode]:
-            prev, curr = None, node
+            prev = None
+            curr = node
             while curr:
                 nxt = curr.next
                 curr.next = prev
@@ -1643,7 +1644,9 @@ class PalindromeSolution:
   - Strip redundant leading zeros.
 - **Algorithm**:
   - Reverse $l_1, l_2$ to align lower-order digits in $\mathcal{O}(1)$ space.
-  - Perform elementary subtraction with borrow propagation: $	ext{diff} = v_1 - v_2 - borrow$.
+  - Perform elementary subtraction with borrow propagation:
+    $$\text{diff} = val_1 - val_2 - borrow$$
+    If $\text{diff} < 0$, $\text{diff} += 10, borrow = 1$; otherwise $borrow = 0$.
   - Reverse result back to MSB order and trim leading zeros.
 
 ```python
@@ -1681,6 +1684,7 @@ class LinkedListSubtractionSolution:
             p1 = p1.next
             if p2: p2 = p2.next
 
+        # Restore input lists to preserve caller invariants
         reverse(r1)
         reverse(r2)
 
@@ -1691,19 +1695,146 @@ class LinkedListSubtractionSolution:
         return res
 ```
 
-</div>
 #### 3. Add Two Numbers in Forward Order (MSB First, LC 445)
-- **Constraint**: Sum two forward-order linked lists $l_1, l_2$ **without reversing the input lists**.
-- **Two-Stack Archetype**:
-  - Push node values of $l_1$ and $l_2$ onto `stack1` and `stack2`, aligning least significant digits at the top;
-  - Pop to compute digit sums with carry: $\text{total} = v_1 + v_2 + carry$;
-  - **Head Insertion**: Construct output list by prepending new nodes: `new_node.next = head; head = new_node`, naturally yielding forward order without reversal.
+- **Core Constraints**:
+  - Given two non-empty linked lists $l_1, l_2$ representing numbers with most significant digit first.
+  - **Strictly prohibit reversing the input lists** (simulates immutable inputs in concurrent read-only systems).
+  - Return the sum as a linked list in the same forward order.
+- **Two-Stack Archetype + Head Insertion**:
+  1. **Two Stacks for Alignment**: Push node values of $l_1$ and $l_2$ onto `s1` and `s2`, naturally aligning the least significant digits at the top of the stacks.
+  2. **Digit-by-Digit Addition**:
+     - Loop while `s1`, `s2`, or `carry` is non-empty:
+       $$\text{total} = v_1 + v_2 + carry, \quad carry = \text{total} // 10$$
+  3. **Head Insertion (Prepending)**:
+     - Prepend each newly created node to the front of the result list: `new_node.next = head; head = new_node`.
+     - Low-order digits calculated first are pushed towards the tail; high-order digits calculated last remain at the front.
+     - Naturally generates the MSB-first result without needing a secondary reversal.
+- **Complexity**: $\mathcal{O}(M + N)$ time, $\mathcal{O}(M + N)$ auxiliary space for the stacks.
+
+```python
+class AddTwoNumbersForwardSolution:
+    @staticmethod
+    def addTwoNumbers(l1: Optional[ListNode], l2: Optional[ListNode]) -> Optional[ListNode]:
+        s1, s2 = [], []
+        curr1, curr2 = l1, l2
+        while curr1:
+            s1.append(curr1.val)
+            curr1 = curr1.next
+        while curr2:
+            s2.append(curr2.val)
+            curr2 = curr2.next
+
+        head: Optional[ListNode] = None
+        carry = 0
+
+        while s1 or s2 or carry:
+            v1 = s1.pop() if s1 else 0
+            v2 = s2.pop() if s2 else 0
+            total = v1 + v2 + carry
+            carry = total // 10
+
+            # Head insertion prepends nodes, naturally maintaining forward MSB order
+            new_node = ListNode(total % 10)
+            new_node.next = head
+            head = new_node
+
+        return head
+```
 
 #### 4. N-ary Tree Sum + Leaf Next Pointer
 - **Three-Stage Ladder**:
-  1. Tree sum via recursive DFS;
-  2. Connect all leaf nodes in DFS order: maintain a rolling `prev_leaf` pointer; when `not node.children` is reached, wire `prev_leaf.next = curr; prev_leaf = curr`;
-  3. $\mathcal{O}(1)$ Extra Space: Reuse pointer fields for traversal threading, eliminating recursive call stacks.
+  1. **Tree Sum**: Pre-order / post-order DFS accumulating all node values;
+  2. **Leaf Pointer Weaving**: Maintain a rolling `prev_leaf` pointer; when a leaf (`not node.children`) is reached, wire `prev_leaf.next = curr; prev_leaf = curr`;
+  3. **Space Optimization**: $\mathcal{O}(H)$ call stack space without storing nodes in auxiliary arrays.
+
+```python
+class NaryTreeNode:
+    def __init__(self, val: int = 0, children: Optional[list] = None):
+        self.val = val
+        self.children = children if children is not None else []
+        self.next: Optional['NaryTreeNode'] = None
+
+class NaryTreeLeafWeaveSolution:
+    @classmethod
+    def sumAndWeaveLeaves(cls, root: Optional[NaryTreeNode]) -> tuple:
+        if not root:
+            return 0, None
+
+        total_sum = 0
+        leaf_head: Optional[NaryTreeNode] = None
+        prev_leaf: Optional[NaryTreeNode] = None
+
+        def dfs(node: NaryTreeNode):
+            nonlocal total_sum, leaf_head, prev_leaf
+            total_sum += node.val
+
+            if not node.children:
+                if leaf_head is None:
+                    leaf_head = node
+                else:
+                    prev_leaf.next = node
+                prev_leaf = node
+            else:
+                for child in node.children:
+                    dfs(child)
+
+        dfs(root)
+        return total_sum, leaf_head
+
+if __name__ == "__main__":
+    def build_test_list(vals):
+        d = ListNode(0); c = d
+        for v in vals: c.next = ListNode(v); c = c.next
+        return d.next
+
+    def extract_vals(node):
+        r = []
+        while node: r.append(node.val); node = node.next
+        return r
+
+    # 1. Test Palindrome with physical state restoration
+    h_pal = build_test_list([1, 2, 2, 1])
+    assert PalindromeSolution.isPalindrome(h_pal) is True
+    assert extract_vals(h_pal) == [1, 2, 2, 1]
+
+    # 2. Test Subtraction
+    sub_res = LinkedListSubtractionSolution.subtractLinkedList(
+        build_test_list([1, 0, 0, 0]), build_test_list([1])
+    )
+    assert extract_vals(sub_res) == [9, 9, 9]
+
+    # 3. Test Addition (LC 445: 7243 + 564 = 7807)
+    l1 = build_test_list([7, 2, 4, 3])
+    l2 = build_test_list([5, 6, 4])
+    add_res = AddTwoNumbersForwardSolution.addTwoNumbers(l1, l2)
+    assert extract_vals(add_res) == [7, 8, 0, 7]
+    assert extract_vals(l1) == [7, 2, 4, 3]  # Inputs untouched
+    assert extract_vals(l2) == [5, 6, 4]
+    # Carry propagation: 5 + 5 = 10
+    carry_res = AddTwoNumbersForwardSolution.addTwoNumbers(build_test_list([5]), build_test_list([5]))
+    assert extract_vals(carry_res) == [1, 0]
+
+    # 4. Test N-ary Tree
+    leaf4 = NaryTreeNode(4)
+    leaf5 = NaryTreeNode(5)
+    leaf6 = NaryTreeNode(6)
+    branch2 = NaryTreeNode(2, [leaf4, leaf5])
+    branch3 = NaryTreeNode(3, [leaf6])
+    tree_root = NaryTreeNode(1, [branch2, branch3])
+
+    t_sum, leaves = NaryTreeLeafWeaveSolution.sumAndWeaveLeaves(tree_root)
+    assert t_sum == 21
+    cur_leaf = leaves
+    leaf_order = []
+    while cur_leaf:
+        leaf_order.append(cur_leaf.val)
+        cur_leaf = cur_leaf.next
+    assert leaf_order == [4, 5, 6]
+
+    print("Card 02 extensions tests passed.")
+```
+
+</div>
 
 </div>
 </details>
