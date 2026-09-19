@@ -1662,15 +1662,38 @@ In subsegment reversal (LC 92), moving pointers forward across the sublist sever
 
 ---
 
-#### 3. Why Head Insertion is Superior for Subsegment Reversals
-1. **One-Pass, Zero Dangling Pointers**:
-   Traditional cut-and-stitch reversal requires unlinking `left-1` and `right+1`, reversing the isolated sublist, and stitching 4 endpoints back (`p_before.next = sub_tail; sub_head.next = p_after`). This is notoriously error-prone. Head Insertion **keeps the entire linked list unbroken and valid at every single intermediate iteration**.
-2. **Sentinel Dummy Head Eliminates Edge Cases**:
-   Initializing `dummy = ListNode(0, head)` ensures `prev = dummy` gracefully handles `left = 1` without branching logic.
-3. **Single-Pass Efficiency**:
-   Scans strictly up to `right` in $\mathcal{O}(N)$ time with strictly $\mathcal{O}(1)$ auxiliary memory.
+#### 3. Why Head Insertion is Superior: Three Failure Cases of Reusing Two-Pointer Sliding
 
----
+Attempting to apply the LC 206 two-pointer sliding template (`curr.next = prev; prev = curr; curr = nxt`) directly to a subsegment triggers three structural failure modes:
+
+- **Failure Case 1: Silent Data Truncation (Disconnected Sublist)**:
+  Initializing `prev = None` within the subsegment:
+  ```text
+  Initial State: [1] -> [2] -> [3] -> [4] -> [5] -> None (reverse [2, 4])
+  Execution:
+    Prefix retains old link: [1] -> [2]
+    Node 2 points to None:   [2] -> None  (Main chain severed here!)
+    Reversed subsegment:     [4] -> [3] -> [2] -> None (Floating without incoming link)
+    Remaining suffix:        [5] -> None  (Dropped tail without incoming link)
+  Result: Returning head traverses only [1, 2]; nodes 3, 4, and 5 are silently dropped!
+  ```
+
+- **Failure Case 2: Deadly Pointer Cycle (Infinite Traversal Loop)**:
+  Attempting to anchor `prev` at node 1 (`prev = 1, curr = 2`) and executing `curr.next = prev` (i.e. `2.next = 1`) in step 1:
+  ```text
+  Initial State: [1] -> [2] -> [3] -> ... (1.next originally points to 2)
+  Pointer Wire:  2.next = 1
+  Memory Graph:  [1] <===> [2] (Mutual bidirectional circular lock!)
+  Result: Any subsequent traversal immediately deadlocks into an infinite loop (TLE / OOM).
+  ```
+
+- **Failure Case 3: Four-Pointer Reconnection Fragility & NullPointer Crashes**:
+  Salvaging two-pointer reversal requires manually managing 4 boundary pointers: `p_before` (1), `sub_tail` (2), `sub_head` (4), `p_after` (5), followed by manual re-stitching:
+  `p_before.next = sub_head; sub_tail.next = p_after`.
+  When `left = 1`, `p_before` is `None`, and calling `p_before.next` throws a fatal `NullPointerException`, requiring messy `if/else` branching patches.
+
+**The Foundational Superiority of Head Insertion**:
+At every intermediate step of Head Insertion, **the entire linked list remains 100% connected and structurally valid**. It never unlinks or cuts the subsegment away; it simply shifts nodes forward like cards in a deck. It is **mathematically immune to truncation, cycles, and manual reconnection bugs**. Paired with `dummy = ListNode(0, head)`, even `left = 1` requires zero special branching.
 
 #### 4. Memory Models: Two Pointers vs. Head Insertion
 
