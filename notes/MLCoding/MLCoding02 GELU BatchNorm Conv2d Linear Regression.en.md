@@ -84,6 +84,140 @@ assert np.abs(rms(x) - rms(x + 100.0)).max() > 0.5
 
 </details>
 
+<details>
+<summary>Deep Dive: Normalization Evolution and Systems Architecture in Modern LLMs (Pre-RMSNorm, Q-K Norm, Zero-Bias)</summary>
+
+#### 1. Architectural Survey: Normalization Schemes in Frontier Open-Weight LLMs
+
+| Model Family | Backbone Normalization | Q-K Normalization | Auxiliary / Intra-Layer Norm | Bias Policy | Architectural Rationale |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LLaMA 2 / 3** | Pre-RMSNorm | None | None | Strict `bias=False` | Standard pre-norm, relies on attention scaling factor and soft-capping |
+| **Mistral / Mixtral** | Pre-RMSNorm | None | None | Strict `bias=False` | High operator throughput with minimalist backbone |
+| **Qwen 2 / 2.5** | Pre-RMSNorm | **Per-Head RMSNorm** | None | Strict `bias=False` | Eliminates attention logit explosion over 128k ultra-long context |
+| **Kimi k1.5** | Pre-RMSNorm | **Per-Head RMSNorm** | None | Strict `bias=False` | Stabilizes 200k+ context pre-training and high-variance RL exploration |
+| **GLM-4** | Pre-RMSNorm | **Per-Head RMSNorm** | Evolved from early DeepNorm to Pre-RMSNorm | Strict `bias=False` | High-throughput bilingual stability across long-context inference |
+| **Gemma 2** | Pre-RMSNorm | **Per-Head RMSNorm** | **Post-Attention Norm & Post-FFN Norm (Dual-Norm)** | Strict `bias=False` | Dual normalization bounds residual stream variance in deep (27B) models |
+| **DeepSeek V2 / V3** | Pre-RMSNorm | **Decoupled MLA Norm** | Normalization on compressed latent vectors and decoupled RoPE keys | Strict `bias=False` | Low-rank KV compression stability and massive MoE routing control |
+
+---
+
+#### 2. Key Driver 1: Statistical Assumptions and Systems Rationale for RMSNorm over LayerNorm
+
+1. **Residual Dynamics & Statistical Invariance**:
+   Standard LayerNorm across hidden dimension $x \in \mathbb{R}^d$ computes:
+   $$\mu = \frac{1}{d}\sum_{i=1}^d x_i, \quad \sigma = \sqrt{\frac{1}{d}\sum_{i=1}^d (x_i - \mu)^2 + \epsilon}, \quad y = \frac{x - \mu}{\sigma} \odot \gamma + \beta$$
+   RMSNorm (Root Mean Square Normalization) omits mean centering:
+   $$\text{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^d x_i^2 + \epsilon}, \quad y = \frac{x}{\text{RMS}(x)} \odot \gamma$$
+   In 60–128 layer Pre-Norm Transformers, residual streams accumulate activation energy, leading to linearly increasing $\ell_2$ norms. However, due to zero-mean weight initializations (He / Xavier normal) and symmetric non-linearities (SwiGLU / GeGLU), the true mean $\mu$ across feature channels fluctuates narrowly around zero ($\mu \approx 0$). Consequently:
+   $$\sigma^2 = \frac{1}{d}\sum_{i=1}^d (x_i - \mu)^2 \approx \frac{1}{d}\sum_{i=1}^d x_i^2 = \text{RMS}(x)^2$$
+   The shift invariance introduced by subtracting the mean offers virtually zero statistical regularization benefit in deep residual networks. Training stability is governed almost entirely by scale invariance (energy bounding).
+
+2. **Memory-Bound GPU Kernel Optimization**:
+   Normalization layers are memory-bandwidth-bound operators with low arithmetic intensity.
+   - LayerNorm requires tracking both $\mu$ and $\sigma^2$, necessitating either two global reduction passes over memory or Welford's algorithm within a single CUDA block, increasing on-chip SRAM register pressure;
+   - RMSNorm requires only a single sum-of-squares reduction pass, cutting register footprint by ~30%. In Triton or CUDA kernels, it fuses seamlessly with the preceding residual addition (Fused Residual + RMSNorm), cutting operator latency by 30%–50% on modern GPU architectures (A100 / H100).
+
+---
+
+#### 3. Key Driver 2: Q-K Normalization Dynamics (Adopted by Qwen, Kimi, GLM-4)
+
+1. **Failure Mode: Attention Logit Explosion & Entropy Collapse**:
+   In standard multi-head attention:
+   $$S = \frac{Q K^T}{\sqrt{d_k}}, \quad A = \text{softmax}(S)$$
+   During long-context pre-training (32k–128k+ in Qwen2.5 and Kimi) or high-variance RL exploration (RLVR / PPO / GRPO):
+   - Unconstrained $Q$ and $K$ vector norms grow unchecked with accumulated gradients: $\Vert q\Vert_2 \cdot \Vert k\Vert_2 \gg d_k$;
+   - Logit scores $S_{ij} = \frac{q_i^T k_j}{\sqrt{d_k}}$ reach large values ($80 \sim 100+$);
+   - **Numerical Saturation**: In FP16 / BF16 mixed-precision, $\exp(S_{ij} - \max S)$ encounters severe numerical saturation and exponent underflow;
+   - **Entropy Collapse & Gradient Vanishing**: The Softmax distribution collapses into an extreme one-hot spike with zero entropy. The Softmax derivative:
+     $$\frac{\partial A_{im}}{\partial S_{ij}} = A_{im} (\delta_{jm} - A_{ij})$$
+     vanishes entirely when $A_{ii} \to 1$ and other $A_{ij} \to 0$. Attention heads freeze permanently, triggering irreversible loss spikes.
+
+2. **Cauchy-Schwarz Bounded Logits**:
+   By applying per-head RMSNorm to $Q$ and $K$ prior to dot-product computation:
+   $$\hat{q} = \frac{q}{\text{RMS}(q)}, \quad \hat{k} = \frac{k}{\text{RMS}(k)}$$
+   each head's vector $\ell_2$ norm is clamped to $\sqrt{d_k}$:
+   $$\Vert \hat{q} \Vert_2 = \sqrt{d_k}, \quad \Vert \hat{k} \Vert_2 = \sqrt{d_k}$$
+   By the Cauchy-Schwarz inequality:
+   $$|\hat{q}^T \hat{k}| \le \Vert \hat{q} \Vert_2 \cdot \Vert \hat{k} \Vert_2 = d_k$$
+   Dividing by the attention scaling factor:
+   $$\left| \frac{\hat{q}^T \hat{k}}{\sqrt{d_k}} \right| \le \frac{d_k}{\sqrt{d_k}} = \sqrt{d_k}$$
+   For a standard head dimension $d_k = 128$, the maximum possible logit magnitude is strictly bounded by $\sqrt{128} \approx 11.31$. Logit explosion and exponential overflow become mathematically impossible.
+
+---
+
+#### 4. Key Driver 3: Systematic Omission of Bias (`bias=False`) Across All Layers
+
+Frontier models (LLaMA 3, Qwen 2.5, GLM-4) set `bias=False` across all Linear and Normalization layers:
+1. **Residual Drift Prevention**: Across 80+ sequential residual blocks, even small non-zero bias vectors $b$ accumulate linearly along the residual stream, breaking zero-mean channel symmetry;
+2. **Optimizer Memory Footprint**: AdamW allocates 8 bytes per parameter (fp32 first and second moments). Eliminating thousands of small bias vectors simplifies parameter management and trims memory fragmentation;
+3. **Symmetric Low-Bit Quantization (INT8 / FP8)**: Symmetric quantization assumes zero-centered distributions, mapping activations onto integer grids via a single scale factor. Eliminating bias maintains zero-point symmetry, bypassing costly asymmetric zero-point compensation on tensor cores.
+
+---
+
+#### 5. Key Driver 4: Gemma 2 Dual-Norm and GLM DeepNorm Evolution
+
+1. **Gemma 2 Dual-Norm (Pre-Norm + Post-Norm)**:
+   In 27B-scale models, Gemma 2 observed that even under Pre-RMSNorm, the variance of residual sublayer outputs can expand relative to the main residual highway. It introduces an extra **Post-Norm** immediately after Attention and FFN projections before adding back into the residual stream:
+   $$x_{l+1} = x_l + \text{RMSNorm}_{\text{post}}(\text{Sublayer}(\text{RMSNorm}_{\text{pre}}(x_l)))$$
+   This dual-bounding structure stabilizes deep residual branches without aggressive learning rate decays.
+2. **Convergence of the GLM Architecture**:
+   Early GLM-130B relied on DeepNorm (mathematically derived residual scaling $\alpha$ with scaled initialization). With the industry-wide transition to native BF16 training and the maturation of **Pre-RMSNorm + Q-K Norm**, GLM-4 fully converged to the modern standard.
+
+---
+
+#### 6. Numerical Verification of Q-K Norm Stability
+
+The following script simulates a 50x magnitude drift in unnormalized representations and verifies the Cauchy-Schwarz bound and entropy stability via NumPy assertions:
+
+```python
+import numpy as np
+
+def np_rmsnorm(x: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    """Single-pass RMSNorm reduction"""
+    rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + eps)
+    return x / rms
+
+def verify_qknorm_stability():
+    np.random.seed(42)
+    B, H, S, D = 2, 4, 16, 64  # head_dim = 64, sqrt(D) = 8.0
+    
+    # Simulate a 50x magnitude drift during long-context training
+    q_drift = np.random.randn(B, H, S, D) * 50.0
+    k_drift = np.random.randn(B, H, S, D) * 50.0
+    scale = 1.0 / np.sqrt(D)
+
+    # 1. Unnormalized Attention: Logits explode severely
+    logits_unnorm = np.matmul(q_drift, k_drift.swapaxes(-1, -2)) * scale
+    max_logit_unnorm = np.max(np.abs(logits_unnorm))
+    assert max_logit_unnorm > 500.0, "Unnormalized logits should exhibit extreme scale explosion"
+
+    # 2. Q-K Norm applied: Bounded by sqrt(D) = 8.0
+    q_norm = np_rmsnorm(q_drift)
+    k_norm = np_rmsnorm(k_drift)
+    logits_norm = np.matmul(q_norm, k_norm.swapaxes(-1, -2)) * scale
+    max_logit_norm = np.max(np.abs(logits_norm))
+    theoretical_bound = np.sqrt(D)
+    assert max_logit_norm <= theoretical_bound + 1e-4, "Q-K Norm must strictly adhere to Cauchy-Schwarz bound"
+
+    # 3. Softmax entropy check: Prevents one-hot collapse
+    def calc_entropy(logits):
+        shifted = logits - np.max(logits, axis=-1, keepdims=True)
+        exp_l = np.exp(shifted)
+        probs = exp_l / np.sum(exp_l, axis=-1, keepdims=True)
+        return -np.sum(probs * np.log(probs + 1e-12), axis=-1).mean()
+
+    ent_unnorm = calc_entropy(logits_unnorm)
+    ent_norm = calc_entropy(logits_norm)
+    assert ent_unnorm < 0.05, "Unnormalized softmax collapses to zero entropy (one-hot distribution)"
+    assert ent_norm > 1.5, "Q-K Norm maintains healthy attention information entropy"
+
+if __name__ == "__main__":
+    verify_qknorm_stability()
+    print("All Q-K Norm stability and Cauchy-Schwarz assertions passed.")
+```
+
+</details>
+
 ### Exercise 3 · GELU
 
 The intuition behind GELU is "weight the input by its own quantile": `GELU(x) = x * Φ(x)`, where `Φ` is the standard normal CDF. Written out with the error function, that's the exact form:

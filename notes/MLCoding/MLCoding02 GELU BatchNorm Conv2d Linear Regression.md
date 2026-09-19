@@ -84,6 +84,140 @@ assert np.abs(rms(x) - rms(x + 100.0)).max() > 0.5
 
 </details>
 
+<details>
+<summary>深度解析：现代 LLM 架构中的归一化演进与系统设计 (Pre-RMSNorm · Q-K Norm · 零偏置)</summary>
+
+#### 1. 现代前沿开源大模型 Normalization 方案对照
+
+| 模型系列 | 主干归一化 (Backbone Norm) | Q-K Normalization | 辅助/层内 Normalization | 偏置设计 (Bias Policy) | 核心设计诉求 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LLaMA 2 / 3** | Pre-RMSNorm | 无 | 无 | 全层 `bias=False` | 标准预归一化，依赖缩放因子与注意力截断 |
+| **Mistral / Mixtral** | Pre-RMSNorm | 无 | 无 | 全层 `bias=False` | 高算子吞吐，极简主干 |
+| **Qwen 2 / 2.5** | Pre-RMSNorm | **Per-Head RMSNorm** | 无 | 全层 `bias=False` | 阻断 128k 超长序列下的 Attention Logit 爆炸 |
+| **Kimi k1.5** | Pre-RMSNorm | **Per-Head RMSNorm** | 无 | 全层 `bias=False` | 稳定 200k+ 超长上下文预训练与高方差强化学习探索 |
+| **GLM-4** | Pre-RMSNorm | **Per-Head RMSNorm** | 从早期 DeepNorm 演进至 Pre-RMSNorm | 全层 `bias=False` | 兼顾多语言海量训练稳定性与长文本推理 |
+| **Gemma 2** | Pre-RMSNorm | **Per-Head RMSNorm** | **Post-Attention Norm & Post-FFN Norm (Dual-Norm)** | 全层 `bias=False` | 双重归一化抑制极深网络 (27B) 残差流方差发散 |
+| **DeepSeek V2 / V3** | Pre-RMSNorm | **Decoupled MLA Norm** | 压缩潜在表示向量与解耦 RoPE 处归一化 | 全层 `bias=False` | 适配低秩 KV 压缩与极大规模 MoE 路由稳定 |
+
+---
+
+#### 2. 演进动力一：全行业以 RMSNorm 替代 LayerNorm 的统计与硬件动因
+
+1. **残差动力学与统计假设 (Residual Dynamics)**：
+   标准 LayerNorm 对隐藏维度向量 $x \in \mathbb{R}^d$ 的公式为：
+   $$\mu = \frac{1}{d}\sum_{i=1}^d x_i, \quad \sigma = \sqrt{\frac{1}{d}\sum_{i=1}^d (x_i - \mu)^2 + \epsilon}, \quad y = \frac{x - \mu}{\sigma} \odot \gamma + \beta$$
+   RMSNorm (Root Mean Square Normalization) 舍弃了均值中心化：
+   $$\text{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^d x_i^2 + \epsilon}, \quad y = \frac{x}{\text{RMS}(x)} \odot \gamma$$
+   在 60~128 层的 Pre-Norm Transformer 中，残差流随着层数加深不断累积，其激活能量（$\ell_2$ 范数）呈线性递增趋势。然而，由于模型广泛采用零均值权重初始化（如 He / Xavier 正态分布）以及对称非线性激活（如 SwiGLU / GeGLU），激活向量在隐藏维度上的真实均值 $\mu$ 始终在 $0$ 附近微小振荡（$\mu \approx 0$）。因此：
+   $$\sigma^2 = \frac{1}{d}\sum_{i=1}^d (x_i - \mu)^2 \approx \frac{1}{d}\sum_{i=1}^d x_i^2 = \text{RMS}(x)^2$$
+   LayerNorm 引入的平移不变性（Shift Invariance）在实际残差流中几乎不产生统计增益，真正稳定梯度的核心机制是能量缩放约束（Scale Invariance）。
+
+2. **显存受限算子优化 (Memory-Bound Kernel Efficiency)**：
+   Normalization 是典型的 Memory-bound（计算访存比极低）算子。
+   - LayerNorm 需要维护均值 $\mu$ 与方差 $\sigma^2$，通常需要两趟全局规约（Two-pass Reduction），或者在单个 CUDA 线程块内使用复杂的 Welford 算法维护在线统计量，增加片上 SRAM 寄存器占用；
+   - RMSNorm 仅需执行一趟单一的平方和规约（Single-pass Reduction），寄存器使用量减少约 30%，在 Triton 或 CUDA 算子编写中极易与上一层的残差加法（Residual Addition）进行算子融合（Kernel Fusion），在现代 GPU（如 A100 / H100）上可降低 30%~50% 的访存耗时。
+
+---
+
+#### 3. 演进动力二：Q-K Norm 的理论机制与数值防线 (Qwen / Kimi / GLM 的共同选择)
+
+1. **核心痛点：Attention Logit 爆炸与 Softmax 熵坍塌 (Entropy Collapse)**：
+   在标准的多头注意力计算中：
+   $$S = \frac{Q K^T}{\sqrt{d_k}}, \quad A = \text{softmax}(S)$$
+   随着模型深度增加、训练进入数万亿 token 阶段、上下文长度扩展至 32k~128k+，或者在强化学习（RLVR / PPO / GRPO）高探索方差场景下：
+   - 未经尺度钳制的 $Q$ 与 $K$ 投影向量范数随梯度更新不断膨胀，$\Vert q\Vert_2 \cdot \Vert k\Vert_2 \gg d_k$；
+   - 注意力得分 $S_{ij} = \frac{q_i^T k_j}{\sqrt{d_k}}$ 的峰值迅速突破 $80 \sim 100+$；
+   - **数值下溢/溢出**：在 FP16/BF16 混合精度下，$\exp(S_{ij} - \max S)$ 会遭遇剧烈截断或溢出；
+   - **熵坍塌与梯度弥散**：Softmax 转化为近乎完全的 One-Hot 尖刺，分布熵趋近于 0。此时 Softmax 导数：
+     $$\frac{\partial A_{im}}{\partial S_{ij}} = A_{im} (\delta_{jm} - A_{ij})$$
+     当 $A_{ii} \to 1$ 且其他 $A_{ij} \to 0$ 时，梯度全量归零。模型注意力头永久“失活”或引发突发性的 Loss Spike，导致超大模型预训练中途报废。
+
+2. **柯西-施瓦茨数学硬约束 (Cauchy-Schwarz Bounded Logits)**：
+   在每个注意力头内部对 $Q$ 和 $K$ 分别执行 RMSNorm（不带学习参数或仅带轻量标量）：
+   $$\hat{q} = \frac{q}{\text{RMS}(q)}, \quad \hat{k} = \frac{k}{\text{RMS}(k)}$$
+   此时向量在特征维度的二范数被严格约束在 $\sqrt{d_k}$ 附近：
+   $$\Vert \hat{q} \Vert_2 = \sqrt{d_k}, \quad \Vert \hat{k} \Vert_2 = \sqrt{d_k}$$
+   根据柯西-施瓦茨不等式（Cauchy-Schwarz Inequality），点积的绝对值上限被严格锁死：
+   $$|\hat{q}^T \hat{k}| \le \Vert \hat{q} \Vert_2 \cdot \Vert \hat{k} \Vert_2 = d_k$$
+   代入 Scaled Dot-Product 缩放因子：
+   $$\left| \frac{\hat{q}^T \hat{k}}{\sqrt{d_k}} \right| \le \frac{d_k}{\sqrt{d_k}} = \sqrt{d_k}$$
+   对于主流 Head 维度 $d_k = 128$，最大理论 Logit 被数学硬性限制在 $\sqrt{128} \approx 11.31$ 以内，彻底在数学底层杜绝了 Logit 爆炸与数值溢出的可能。
+
+---
+
+#### 4. 演进动力三：现代 LLM 全量去除 Bias（零偏置设计）的工程权衡
+
+主流模型（LLaMA 3, Qwen 2.5, GLM-4）在全部 Linear 和 Norm 层中默认将 `bias` 设为 `False`：
+1. **防止多层残差线性积分漂移 (Residual Drift)**：在 80+ 层网络中，若残差流分支存在微小的常数偏置向量 $b$，多层累加会在特定隐藏维度上形成单调累积漂移，破坏层间输入的零均值对称性；
+2. **优化器显存节约 (Optimizer Memory Footprint)**：AdamW 需要为每个参数维护 32 位的 First Moment 与 Second Moment（每参数 8 bytes）。去除全模型成百上千个微小 Bias 张量，显著降低了参数元数据开销与显存碎片；
+3. **硬件量化亲和性 (Symmetric Quantization Friendly)**：在 INT8 / FP8 PTQ（训练后量化）中，对称量化假设数据均值为 0，仅需一个标量缩放因子即可对齐 Tensor Core 计算。去除 Bias 保证了隐藏状态在原点对称，无需引入复杂的非零偏移补偿（Zero-Point Offset）。
+
+---
+
+#### 5. 演进动力四：Gemma 2 的 Dual-Norm 与 GLM-130B 的 DeepNorm 演进
+
+1. **Gemma 2 的 Dual-Norm (Pre-Norm + Post-Norm)**：
+   Gemma 2 发现，随着网络宽度扩展到 27B，即使采用 Pre-RMSNorm，残差分支在经过复杂 Attention 与 FFN 计算后输出的方差依然存在相对主干残差流逐步放大的现象。因此它在 Attention/FFN 子层计算完毕后、加入残差流之前，额外插入了一道 **Post-Norm**：
+   $$x_{l+1} = x_l + \text{RMSNorm}_{\text{post}}(\text{Sublayer}(\text{RMSNorm}_{\text{pre}}(x_l)))$$
+   通过输入与输出双重约束，锁定了残差分支的输出能量幅度。
+2. **GLM 架构路线的收敛**：
+   在早期 GLM-130B 阶段，针对 1300 亿密集参数训练不稳的问题，团队提出了 DeepNorm（理论推导残差分支系数 $\alpha$ 缩放与初始化方差控制）。但随着 BF16 硬件原生支持以及 **Pre-RMSNorm + Q-K Norm** 范式的确立，GLM-4 最终全面收敛至当下的主流标准方案。
+
+---
+
+#### 6. 模块实现与数值稳定性验证
+
+以下给出现代大模型标准的 Q-K Norm 注意力层实现，并使用 NumPy 模拟 50 倍输入能量漂移下的稳定性断言：
+
+```python
+import numpy as np
+
+def np_rmsnorm(x: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    """RMSNorm 单维规约实现"""
+    rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + eps)
+    return x / rms
+
+def verify_qknorm_stability():
+    np.random.seed(42)
+    B, H, S, D = 2, 4, 16, 64  # head_dim = 64, sqrt(D) = 8.0
+    
+    # 模拟长序列训练中激活值模长膨胀 50 倍的极端漂移场景
+    q_drift = np.random.randn(B, H, S, D) * 50.0
+    k_drift = np.random.randn(B, H, S, D) * 50.0
+    scale = 1.0 / np.sqrt(D)
+
+    # 1. 未加 Q-K Norm: Logit 剧烈爆炸
+    logits_unnorm = np.matmul(q_drift, k_drift.swapaxes(-1, -2)) * scale
+    max_logit_unnorm = np.max(np.abs(logits_unnorm))
+    assert max_logit_unnorm > 500.0, "未规范化时 Logit 应发生严重尺度膨胀"
+
+    # 2. 施加 Q-K Norm: 理论上界 sqrt(D) = 8.0
+    q_norm = np_rmsnorm(q_drift)
+    k_norm = np_rmsnorm(k_drift)
+    logits_norm = np.matmul(q_norm, k_norm.swapaxes(-1, -2)) * scale
+    max_logit_norm = np.max(np.abs(logits_norm))
+    theoretical_bound = np.sqrt(D)
+    assert max_logit_norm <= theoretical_bound + 1e-4, "Q-K Norm 必须严格满足柯西-施瓦茨理论上界"
+
+    # 3. Softmax 熵检验 (防止极端尖刺 One-Hot)
+    def calc_entropy(logits):
+        shifted = logits - np.max(logits, axis=-1, keepdims=True)
+        exp_l = np.exp(shifted)
+        probs = exp_l / np.sum(exp_l, axis=-1, keepdims=True)
+        return -np.sum(probs * np.log(probs + 1e-12), axis=-1).mean()
+
+    ent_unnorm = calc_entropy(logits_unnorm)
+    ent_norm = calc_entropy(logits_norm)
+    assert ent_unnorm < 0.05, "未规范化的 Softmax 发生熵坍塌 (退化为 One-Hot)"
+    assert ent_norm > 1.5, "Q-K Norm 成功维持了健康的注意力信息分布熵"
+
+if __name__ == "__main__":
+    verify_qknorm_stability()
+    print("Q-K Norm 数值稳定性与柯西-施瓦茨上界断言全部通过。")
+```
+
+</details>
+
 ### Exercise 3 · GELU
 
 GELU 的直觉是"用输入自身的分位数去加权自己":`GELU(x) = x * Φ(x)`,其中 `Φ` 是标准正态分布的累积分布函数。展开成误差函数就是精确形式：
