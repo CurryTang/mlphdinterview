@@ -84,8 +84,9 @@ assert np.abs(rms(x) - rms(x + 100.0)).max() > 0.5
 
 </details>
 
-<details>
-<summary>深度解析：现代 LLM 架构中的归一化演进与系统设计 (Pre-RMSNorm · Q-K Norm · 零偏置)</summary>
+<details class="technical-deep-dive">
+<summary><span class="deep-dive-badge">架构深度解析</span><span class="deep-dive-title">现代 LLM 架构中的归一化演进与系统设计 (Pre-RMSNorm · Q-K Norm · 零偏置)</span></summary>
+<div class="deep-dive-content">
 
 #### 1. 现代前沿开源大模型 Normalization 方案对照
 
@@ -216,6 +217,7 @@ if __name__ == "__main__":
     print("Q-K Norm 数值稳定性与柯西-施瓦茨上界断言全部通过。")
 ```
 
+</div>
 </details>
 
 ### Exercise 3 · GELU
@@ -315,8 +317,9 @@ def batch_norm(x, gamma, beta, running_mean, running_var, eps=1e-5, momentum=0.1
 
 </details>
 
-<details>
-<summary>深度解析：正则化与归一化的理论机制演进 —— 从经典深度学习到大模型时代 (Dropout · BatchNorm · LayerNorm · RMSNorm)</summary>
+<details class="technical-deep-dive">
+<summary><span class="deep-dive-badge">理论深度解析</span><span class="deep-dive-title">正则化与归一化的理论机制演进 —— 从经典深度学习到大模型时代 (Dropout · BatchNorm · LayerNorm · RMSNorm)</span></summary>
+<div class="deep-dive-content">
 
 ### 1. 正则化与归一化全景对比矩阵
 
@@ -510,6 +513,7 @@ if __name__ == "__main__":
     print("正则化与归一化全套理论推导与数值断言全部通过。")
 ```
 
+</div>
 </details>
 
 ### Exercise 5 · Kaiming(He)Init

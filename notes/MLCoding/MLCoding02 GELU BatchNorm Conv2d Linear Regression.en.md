@@ -84,8 +84,9 @@ assert np.abs(rms(x) - rms(x + 100.0)).max() > 0.5
 
 </details>
 
-<details>
-<summary>Deep Dive: Normalization Evolution and Systems Architecture in Modern LLMs (Pre-RMSNorm, Q-K Norm, Zero-Bias)</summary>
+<details class="technical-deep-dive">
+<summary><span class="deep-dive-badge">Architecture Deep Dive</span><span class="deep-dive-title">Normalization Evolution and Systems Architecture in Modern LLMs (Pre-RMSNorm, Q-K Norm, Zero-Bias)</span></summary>
+<div class="deep-dive-content">
 
 #### 1. Architectural Survey: Normalization Schemes in Frontier Open-Weight LLMs
 
@@ -216,6 +217,7 @@ if __name__ == "__main__":
     print("All Q-K Norm stability and Cauchy-Schwarz assertions passed.")
 ```
 
+</div>
 </details>
 
 ### Exercise 3 · GELU
@@ -315,8 +317,9 @@ In training mode, normalization uses the current batch's mean and variance while
 
 </details>
 
-<details>
-<summary>Deep Dive: Theoretical Evolution of Regularization & Normalization — From Classical Deep Learning to Modern LLMs (Dropout, BatchNorm, LayerNorm, RMSNorm)</summary>
+<details class="technical-deep-dive">
+<summary><span class="deep-dive-badge">Theoretical Deep Dive</span><span class="deep-dive-title">Theoretical Evolution of Regularization & Normalization — From Classical Deep Learning to Modern LLMs (Dropout, BatchNorm, LayerNorm, RMSNorm)</span></summary>
+<div class="deep-dive-content">
 
 ### 1. Comparative Matrix & Statistical Properties
 
@@ -510,6 +513,7 @@ if __name__ == "__main__":
     print("All theoretical derivations and numerical assertions passed successfully.")
 ```
 
+</div>
 </details>
 
 ### Exercise 5 · Kaiming (He) Init

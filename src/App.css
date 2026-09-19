@@ -1544,66 +1544,183 @@
 
 /* Technical Deep-Dive Collapsible Details */
 .markdown-body details.technical-deep-dive {
-  margin: 1.6rem 0;
-  border: 1px solid rgba(24, 49, 63, 0.16);
+  margin: 1.8rem 0;
+  border: 1px solid rgba(2, 132, 199, 0.28);
+  border-left: 4px solid #0284c7;
   border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(24, 49, 63, 0.06);
+  background: #f4f8fb;
+  box-shadow: 0 4px 18px rgba(15, 80, 115, 0.08);
   overflow: hidden;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .markdown-body details.technical-deep-dive[open] {
-  border-color: rgba(2, 132, 199, 0.4);
-  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.45);
+  border-left-color: #0284c7;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.12);
+  background: #f4f8fb;
 }
 
 .markdown-body details.technical-deep-dive > summary {
   padding: 0.95rem 1.25rem;
-  background: rgba(248, 250, 252, 0.9);
+  background: rgba(234, 244, 252, 0.95);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
   font-size: 0.96rem;
-  color: #0f172a;
+  color: #0c4a6e;
+  list-style: none;
   user-select: none;
   border-bottom: 1px solid transparent;
   transition: background 0.18s ease, color 0.18s ease;
 }
 
+.markdown-body details.technical-deep-dive > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-body details.technical-deep-dive > summary::before {
+  content: '▶';
+  display: inline-block;
+  font-size: 0.72rem;
+  color: #0284c7;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .markdown-body details.technical-deep-dive[open] > summary {
-  border-bottom-color: rgba(24, 49, 63, 0.12);
-  background: rgba(240, 249, 255, 0.75);
+  border-bottom-color: rgba(2, 132, 199, 0.2);
+  background: rgba(224, 240, 252, 0.95);
   color: #0369a1;
 }
 
+.markdown-body details.technical-deep-dive[open] > summary::before {
+  transform: rotate(90deg);
+}
+
 .markdown-body details.technical-deep-dive > summary:hover {
-  background: rgba(241, 245, 249, 1);
+  background: rgba(218, 236, 250, 1);
+  color: #0284c7;
 }
 
 .markdown-body details.technical-deep-dive .deep-dive-badge {
   background: #0284c7;
   color: #ffffff;
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2.5px 8px;
   border-radius: 6px;
   letter-spacing: 0.04em;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
 }
 
 .markdown-body details.technical-deep-dive .deep-dive-title {
   flex: 1;
+  line-height: 1.45;
 }
 
 .markdown-body details.technical-deep-dive .deep-dive-content {
-  padding: 1.25rem 1.4rem 1.5rem;
-  background: #ffffff;
+  padding: 1.25rem 1.4rem 1.6rem;
+  background: #f4f8fb;
   line-height: 1.65;
+}
+
+.markdown-body details.technical-deep-dive > *:not(summary):not(.deep-dive-content) {
+  margin-left: 1.4rem;
+  margin-right: 1.4rem;
+}
+
+.markdown-body details.technical-deep-dive > summary + *:not(.deep-dive-content) {
+  margin-top: 1.2rem;
+}
+
+.markdown-body details.technical-deep-dive > :last-child:not(.deep-dive-content) {
+  margin-bottom: 1.4rem;
+}
+
+/* ── Base Collapsible Details (Fallback for unclassified details) ── */
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) {
+  margin: 1.5rem 0;
+  border: 1px solid rgba(2, 132, 199, 0.22);
+  border-left: 4px solid #0284c7;
+  border-radius: 9px;
+  background: #f4f8fb;
+  box-shadow: 0 4px 14px rgba(15, 80, 115, 0.06);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive)[open] {
+  border-color: rgba(2, 132, 199, 0.4);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.09);
+  background: #f4f8fb;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1.2rem;
+  cursor: pointer;
+  list-style: none;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0c4a6e;
+  background: #e8f2f8;
+  border-bottom: 1px solid transparent;
+  user-select: none;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > summary::before {
+  content: '▶';
+  display: inline-block;
+  font-size: 0.72rem;
+  color: #0284c7;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive)[open] > summary {
+  background: #ddedf6;
+  border-bottom-color: rgba(2, 132, 199, 0.18);
+  color: #0369a1;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive)[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > summary:hover {
+  background: #dbeaf4;
+  color: #0284c7;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > *:not(summary) {
+  margin-left: 1.25rem;
+  margin-right: 1.25rem;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > summary + * {
+  margin-top: 1.15rem;
+}
+
+.markdown-body details:not(.solution):not(.exercise):not(.review-card):not(.technical-deep-dive) > :last-child {
+  margin-bottom: 1.35rem;
+}
+
+.markdown-body details table {
+  background: #ffffff;
 }
 
 .markdown-body .quant-svg-figure {
