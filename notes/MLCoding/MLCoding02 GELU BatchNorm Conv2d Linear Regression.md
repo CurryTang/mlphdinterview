@@ -480,6 +480,165 @@ assert all(v < 1e-4 for v in xavier)     # 指数级塌缩到接近 0
 
 </details>
 
+### Exercise 5A · 极大更新参数化初始化 (muP / Maximal Update Parametrization)
+
+在深度方向上，Kaiming 和 Xavier 初始化成功解决了信号随层数衰减或爆炸的问题；但在**宽度方向（Width $d$）**上，PyTorch 默认的标准参数化（Standard Parametrization, SP）存在严重的动力学失配。
+
+在 SP 架构下，当模型宽度从百兆小模型（如 $d_{\text{base}} = 256$）扩展至百亿甚至千亿大模型（如 $d = 4096, 8192$）时：
+1. **更新量尺度漂移**：在 Adam 或 SGD 优化器下，中间层特征更新量 $\Delta h = \Delta W \cdot x$ 和最终输出 Logits 更新量 $\Delta y = \Delta W_{\text{out}} \cdot h$ 随宽度 $d$ 的增大以 $O(\sqrt{d})$ 或 $O(d)$ 速度剧烈膨胀；
+2. **超参数不可迁移**：在小模型上耗费算力网格搜索（Grid Search）得到的最优学习率 $\eta^*$、初始化尺度和 Weight Decay，直接搬到大模型上会导致训练迅速发散（Loss Spike）或陷入不可学习的懒惰状态（Lazy Training）；
+3. **$\mu\text{P}$ 解决方案 (Yang et al., 2022)**：通过协调设置各层的初始化方差、前向输出倍率（Output Multiplier）与优化器学习率缩放（LR Scale），使得每一层的前向激活 $h$、反向梯度 $\nabla_h \mathcal{L}$ 以及参数更新特征变化量 $\Delta h$ 在 $d \to \infty$ 时严格稳定在 $\Theta(1)$。由此实现 **Zero-shot 超参数跨尺寸无损迁移（Zero-shot Hyperparameter Transfer）**——在秒级训练的小基准模型上扫出的最优超参数，可直接无缝部署到全量千亿模型上。
+
+下表总结了 $\mu\text{P}$ 相对标准参数化 (SP) 的核心缩放规则（设基准隐藏层宽度为 $d_{\text{base}}$，当前隐藏宽度为 $d$，宽度扩展比为 $c = \frac{d}{d_{\text{base}}}$）：
+
+| 模块层级 (Layer Role) | 初始化标准差 $\sigma$ | 前向输出乘子 (Output Mult) | 优化器学习率缩放 (LR Scale) | 机制目的与物理意义 |
+| :--- | :--- | :--- | :--- | :--- |
+| **输入层 (Input / Embedding)** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $1.0$ | $1.0$ | 维持初始输入特征方差 $\Theta(1)$ |
+| **隐藏层 (Hidden Linear)** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $1.0$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | 抵消宽度增加导致的特征更新量累加，保持 $\Delta h \sim \Theta(1)$ |
+| **输出预测头 (Output / Readout)** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | 抑制输出 Logits 随宽度发散，稳定 Softmax 交叉熵损失梯度 |
+| **Attention 点积缩放** | — | $\frac{1}{d_k}$ (取代 SP 的 $\frac{1}{\sqrt{d_k}}$) | — | 阻止大宽度下注意力 Logits 尺度爆炸，防止 Softmax 熵塌缩 |
+
+#### Quick Coding：`mup_init_and_configure`
+
+```python
+def mup_init_and_configure(
+    weight: torch.Tensor,
+    role: str,
+    d_base: int,
+    std_base: float = 1.0,
+) -> tuple[float, float]:
+    """
+    根据 muP (Maximal Update Parametrization) 规则初始化线性层权重，
+    并返回该层推荐的前向输出乘子 (output_mult) 与优化器学习率缩放倍率 (lr_scale)。
+
+    参数:
+        weight: (d_out, d_in) 的权重张量
+        role: 层的角色，可选 'input'、'hidden'、'output'
+        d_base: 基准模型隐藏层宽度 (Base Width)
+        std_base: 基准初始标准差基数 (默认 1.0)
+
+    返回:
+        (output_mult, lr_scale) 元组:
+            output_mult: 该层前向传播时输出应乘上的标量因子 (float)
+            lr_scale: 该层在优化器 param_groups 中绑定的学习率缩放倍率 (float)
+    """
+    ...
+```
+
+<details>
+<summary>参考答案</summary>
+
+```python
+import math
+import torch
+import torch.nn as nn
+
+def mup_init_and_configure(
+    weight: torch.Tensor,
+    role: str,
+    d_base: int,
+    std_base: float = 1.0,
+) -> tuple[float, float]:
+    d_out, d_in = weight.shape
+
+    if role == "input":
+        c = 1.0
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0
+        lr_scale = 1.0
+    elif role == "hidden":
+        c = d_in / d_base
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0
+        lr_scale = 1.0 / c
+    elif role == "output":
+        c = d_in / d_base
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0 / c
+        lr_scale = 1.0 / c
+    else:
+        raise ValueError(f"Unknown role: {role}, expected 'input', 'hidden', or 'output'")
+
+    with torch.no_grad():
+        weight.normal_(mean=0.0, std=std)
+
+    return float(output_mult), float(lr_scale)
+
+class MuPLinear(nn.Module):
+    """基础 muP 线性层封装：前向自动应用 output_mult，并暴露 lr_scale 供优化器分组。"""
+    def __init__(self, in_features: int, out_features: int, role: str, d_base: int, bias: bool = False):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.role = role
+        self.weight = nn.Parameter(torch.empty(out_features, in_features))
+        self.bias = nn.Parameter(torch.zeros(out_features)) if bias else None
+        self.output_mult, self.lr_scale = mup_init_and_configure(self.weight, role, d_base)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = torch.nn.functional.linear(x, self.weight, self.bias)
+        return out * self.output_mult
+
+def create_mup_param_groups(model: nn.Module, base_lr: float) -> list[dict]:
+    """为优化器按 muP 规则划分不同的学习率参数组 (Param Groups)。"""
+    param_groups = []
+    for module in model.modules():
+        if isinstance(module, MuPLinear):
+            group = {
+                "params": [module.weight],
+                "lr": base_lr * module.lr_scale,
+            }
+            if module.bias is not None:
+                group["params"].append(module.bias)
+            param_groups.append(group)
+    return param_groups
+```
+
+数值验证 (NumPy, 验证不同宽度下 SP 更新量随 $\sqrt{d}$ 爆炸，而 $\mu\text{P}$ 稳定受控)：
+
+```python
+import numpy as np
+
+# 验证随宽度扩展 (d = 256, 1024, 4096)，SP 特征更新步长膨胀，而 muP 保持稳定
+np.random.seed(42)
+d_base = 256
+base_lr = 1e-3
+prev_sp_rel = None
+
+for d in [256, 1024, 4096]:
+    c = d / d_base
+    std_h = 1.0 / np.sqrt(d)
+    w_h = np.random.normal(0.0, std_h, size=(d, d))
+    x = np.random.randn(64, d) / np.sqrt(d)  # 单位范数特征输入
+
+    # 前向输出
+    h = x @ w_h.T
+    h_norm = np.linalg.norm(h, axis=-1).mean()
+
+    # 模拟 Adam 优化器单步更新 (梯度坐标归一化，更新量模长 ~ lr)
+    # 1. SP 规则: 学习率恒定 base_lr
+    sp_dw = np.random.choice([-1.0, 1.0], size=(d, d)) * base_lr
+    sp_dh = x @ sp_dw.T
+    sp_rel_update = np.linalg.norm(sp_dh, axis=-1).mean() / h_norm
+
+    # 2. muP 规则: 学习率缩放 base_lr / c
+    mup_dw = np.random.choice([-1.0, 1.0], size=(d, d)) * (base_lr / c)
+    mup_dh = x @ mup_dw.T
+    mup_rel_update = np.linalg.norm(mup_dh, axis=-1).mean() / h_norm
+
+    # 断言: SP 的相对更新步长随 sqrt(d) 线性翻倍爆炸
+    if d == 1024:
+        assert 1.8 < sp_rel_update / prev_sp_rel < 2.2, "SP 更新量随 sqrt(d) 成倍放大"
+    elif d == 4096:
+        assert 1.8 < sp_rel_update / prev_sp_rel < 2.2, "SP 更新量持续发散"
+    
+    # 断言: muP 的特征相对更新量在宽度增大时有效收缩，绝不随宽度爆炸
+    assert mup_rel_update <= 0.02, "muP 确保大宽度下特征更新步长受控"
+    prev_sp_rel = sp_rel_update
+```
+
+</details>
+
 ### Exercise 6 · Dropout
 
 Dropout 的核心机制是"训练时随机丢弃,推理时不丢弃",但工程实现几乎都用 inverted dropout:训练阶段按概率 `p` 把一部分单元置零,同时把剩下的单元放大 `1/(1-p)` 倍,这样存活单元的期望值和原始输入保持一致;推理阶段什么都不用做,直接原样输出。如果不做这个放大,就必须在推理时把输出整体乘以 `(1-p)` 才能保持期望一致。Inverted dropout 把这个麻烦挪到了训练阶段一次性解决，换来推理路径的零开销。另一个容易在面试里漏掉的点是 `self.training` 的切换:`model.train()` / `model.eval()` 修改的正是 `nn.Module.training` 这个标志位,Dropout 和 BatchNorm 的行为分支都靠它判断。

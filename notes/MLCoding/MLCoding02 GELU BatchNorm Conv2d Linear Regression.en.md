@@ -480,6 +480,165 @@ assert all(v < 1e-4 for v in xavier)     # collapses exponentially toward 0
 
 </details>
 
+### Exercise 5A · Maximal Update Parametrization Init (muP)
+
+Along the depth dimension, Kaiming and Xavier initializations successfully prevent signals from exploding or vanishing across stacked layers. However, along the **width dimension (Width $d$)**, standard parameterization (SP, the default in PyTorch) suffers from severe dynamical misalignments as models grow.
+
+Under SP, when scaling model width from small exploration baselines (e.g., $d_{\text{base}} = 256$) to frontier foundation models (e.g., $d = 4096, 8192$):
+1. **Update Scale Drift**: Under Adam or SGD, intermediate feature updates $\Delta h = \Delta W \cdot x$ and output logit updates $\Delta y = \Delta W_{\text{out}} \cdot h$ scale as $O(\sqrt{d})$ or $O(d)$, blowing up with model width;
+2. **Hyperparameter Transfer Failure**: Optimal learning rates $\eta^*$, initialization scales, and weight decays discovered via expensive grid search on small proxy models fail completely when applied to large models, leading to immediate training divergence (loss spikes) or collapse into the unlearnable lazy training (NTK) regime;
+3. **The muP Solution (Yang et al., 2022)**: By coordinating initialization variances, forward output multipliers, and optimizer learning rate scalings across layers, $\mu\text{P}$ guarantees that hidden activations $h$, loss gradients $\nabla_h \mathcal{L}$, and feature updates $\Delta h$ remain strictly $\Theta(1)$ as $d \to \infty$. This unlocks **zero-shot hyperparameter transfer across model widths**: optimal hyperparameters swept on a tiny, fast-running baseline model can be transferred directly to a multi-billion-parameter model without re-tuning.
+
+The table below contrasts the core scaling rules of $\mu\text{P}$ against standard parameterization (SP), where $d_{\text{base}}$ is the base width, $d$ is the target width, and $c = \frac{d}{d_{\text{base}}}$ is the width multiplier:
+
+| Layer Role | Init Std $\sigma$ | Output Multiplier | Optimizer LR Scale | Theoretical Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| **Input / Embedding** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $1.0$ | $1.0$ | Preserves initial input feature variance at $\Theta(1)$ |
+| **Hidden Linear** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $1.0$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | Counters feature update variance growth with width, keeping $\Delta h \sim \Theta(1)$ |
+| **Output / Readout** | $\frac{1}{\sqrt{d_{\text{in}}}}$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | $\frac{1}{c} = \frac{d_{\text{base}}}{d}$ | Suppresses logit variance explosion, stabilizing cross-entropy gradients |
+| **Attention Dot-Product** | — | $\frac{1}{d_k}$ (replaces SP's $\frac{1}{\sqrt{d_k}}$) | — | Prevents attention logits from exploding with head dimension, halting entropy collapse |
+
+#### Quick Coding: `mup_init_and_configure`
+
+```python
+def mup_init_and_configure(
+    weight: torch.Tensor,
+    role: str,
+    d_base: int,
+    std_base: float = 1.0,
+) -> tuple[float, float]:
+    """
+    Initializes a linear layer's weights following muP (Maximal Update Parametrization),
+    returning the recommended forward output multiplier and optimizer learning rate scale.
+
+    Parameters:
+        weight: Weight tensor of shape (d_out, d_in)
+        role: Layer role, one of 'input', 'hidden', or 'output'
+        d_base: Hidden dimension of the base proxy model (Base Width)
+        std_base: Base initialization standard deviation (default 1.0)
+
+    Returns:
+        tuple (output_mult, lr_scale):
+            output_mult: Scalar multiplier applied to layer outputs in forward pass (float)
+            lr_scale: Multiplier for this layer's learning rate in optimizer param_groups (float)
+    """
+    ...
+```
+
+<details>
+<summary>Reference solution</summary>
+
+```python
+import math
+import torch
+import torch.nn as nn
+
+def mup_init_and_configure(
+    weight: torch.Tensor,
+    role: str,
+    d_base: int,
+    std_base: float = 1.0,
+) -> tuple[float, float]:
+    d_out, d_in = weight.shape
+
+    if role == "input":
+        c = 1.0
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0
+        lr_scale = 1.0
+    elif role == "hidden":
+        c = d_in / d_base
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0
+        lr_scale = 1.0 / c
+    elif role == "output":
+        c = d_in / d_base
+        std = std_base / math.sqrt(d_in)
+        output_mult = 1.0 / c
+        lr_scale = 1.0 / c
+    else:
+        raise ValueError(f"Unknown role: {role}, expected 'input', 'hidden', or 'output'")
+
+    with torch.no_grad():
+        weight.normal_(mean=0.0, std=std)
+
+    return float(output_mult), float(lr_scale)
+
+class MuPLinear(nn.Module):
+    """Basic muP linear layer: automatically applies output_mult in forward and exposes lr_scale."""
+    def __init__(self, in_features: int, out_features: int, role: str, d_base: int, bias: bool = False):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.role = role
+        self.weight = nn.Parameter(torch.empty(out_features, in_features))
+        self.bias = nn.Parameter(torch.zeros(out_features)) if bias else None
+        self.output_mult, self.lr_scale = mup_init_and_configure(self.weight, role, d_base)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = torch.nn.functional.linear(x, self.weight, self.bias)
+        return out * self.output_mult
+
+def create_mup_param_groups(model: nn.Module, base_lr: float) -> list[dict]:
+    """Configures optimizer param groups with layer-specific muP learning rate scalings."""
+    param_groups = []
+    for module in model.modules():
+        if isinstance(module, MuPLinear):
+            group = {
+                "params": [module.weight],
+                "lr": base_lr * module.lr_scale,
+            }
+            if module.bias is not None:
+                group["params"].append(module.bias)
+            param_groups.append(group)
+    return param_groups
+```
+
+Numerical check (NumPy: confirms SP feature update magnitude explodes with $\sqrt{d}$ while $\mu\text{P}$ remains bounded):
+
+```python
+import numpy as np
+
+# Verify that as width expands (d = 256, 1024, 4096), SP update steps explode while muP stays bounded
+np.random.seed(42)
+d_base = 256
+base_lr = 1e-3
+prev_sp_rel = None
+
+for d in [256, 1024, 4096]:
+    c = d / d_base
+    std_h = 1.0 / np.sqrt(d)
+    w_h = np.random.normal(0.0, std_h, size=(d, d))
+    x = np.random.randn(64, d) / np.sqrt(d)  # unit-norm feature input
+
+    # Forward pass
+    h = x @ w_h.T
+    h_norm = np.linalg.norm(h, axis=-1).mean()
+
+    # Simulate single Adam update step (coordinate-wise normalized, update magnitude ~ lr)
+    # 1. SP rule: constant learning rate base_lr
+    sp_dw = np.random.choice([-1.0, 1.0], size=(d, d)) * base_lr
+    sp_dh = x @ sp_dw.T
+    sp_rel_update = np.linalg.norm(sp_dh, axis=-1).mean() / h_norm
+
+    # 2. muP rule: learning rate scaled by base_lr / c
+    mup_dw = np.random.choice([-1.0, 1.0], size=(d, d)) * (base_lr / c)
+    mup_dh = x @ mup_dw.T
+    mup_rel_update = np.linalg.norm(mup_dh, axis=-1).mean() / h_norm
+
+    # Assertion: SP relative update doubles predictably with sqrt(d)
+    if d == 1024:
+        assert 1.8 < sp_rel_update / prev_sp_rel < 2.2, "SP update scales with sqrt(d)"
+    elif d == 4096:
+        assert 1.8 < sp_rel_update / prev_sp_rel < 2.2, "SP update continues to diverge"
+
+    # Assertion: muP keeps relative update magnitude strictly bounded across widths
+    assert mup_rel_update <= 0.02, "muP ensures bounded feature updates at large width"
+    prev_sp_rel = sp_rel_update
+```
+
+</details>
+
 ### Exercise 6 · Dropout
 
 The core mechanism is "drop randomly during training, keep everything during inference," but the standard implementation is inverted dropout: at training time, zero out units with probability `p` and scale the survivors by `1/(1-p)`, keeping their expected value equal to the un-dropped input; at inference time, do nothing and pass the input through unchanged. Skip that scaling step and you'd instead have to multiply the entire output by `(1-p)` at inference to keep the expectation consistent. Inverted dropout moves that cost to training once, so inference stays free. The other detail that's easy to miss in an interview is the `self.training` switch: `model.train()` / `model.eval()` are exactly what flip `nn.Module.training`, and both Dropout's and BatchNorm's behavior branch on that flag.
