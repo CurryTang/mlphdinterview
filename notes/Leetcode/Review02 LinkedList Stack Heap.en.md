@@ -27,6 +27,1464 @@ This note is the second volume of the high-frequency algorithmic interview revie
 <div class="review-block">
 <div class="review-block-label">📌 Problem Statement & Requirements</div>
 
+**Original Problem Statement**:
+> **LRU Cache & System-Level Extensions (LeetCode 146 / 460)**:
+> Design a data structure that follows the constraints of a Least Recently Used (LRU) cache with strict $\mathcal{O}(1)$ average time complexity for both `get` and `put`.
+>
+> **Reported Follow-ups**:
+> 1. **Add TTL**: Each entry has an expiry time. `get` returns -1 if expired; expired entries must not occupy capacity.
+> 2. **Add LFU**: A secondary eviction round where ties on usage frequency are broken by recency.
+> 3. **4-End List**: Support `rpush`, `rpop`, `lpush`, `lpop` plus indexed access in $\mathcal{O}(1)$.
+> 4. **Print / Iterate**: Walk cache from least-recent to most-recent.
+> 5. **High Miss-Rate Tuning**: Capacity growth, ARC/2Q policies, prefetching, and consistent hash sharding.
+
+**Interface Definition**:
+```python
+class LRUCache:
+    def __init__(self, capacity: int): ...
+    def get(self, key: int) -> int: ...
+    def put(self, key: int, value: int) -> None: ...
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Core Implementation</div>
+
+```python
+import time
+from typing import Dict, Optional
+
+class DLLNode:
+    __slots__ = ('key', 'val', 'prev', 'next', 'expiry')
+    def __init__(self, key: int = 0, val: int = 0, expiry: float = float('inf')):
+        self.key, self.val, self.expiry = key, val, expiry
+        self.prev = self.next = None
+
+class LRUCacheWithTTL:
+    def __init__(self, capacity: int):
+        if capacity <= 0: raise ValueError("Capacity must be positive")
+        self.capacity = capacity
+        self.map: Dict[int, DLLNode] = {}
+        self.head, self.tail = DLLNode(), DLLNode()
+        self.head.next, self.tail.prev = self.tail, self.head
+
+    def _remove(self, node: DLLNode) -> None:
+        node.prev.next, node.next.prev = node.next, node.prev
+
+    def _append_to_tail(self, node: DLLNode) -> None:
+        node.prev, node.next = self.tail.prev, self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+
+    def _evict_node(self, node: DLLNode) -> None:
+        self._remove(node)
+        self.map.pop(node.key, None)
+
+    def get(self, key: int) -> int:
+        if key not in self.map: return -1
+        node = self.map[key]
+        if time.time() > node.expiry:
+            self._evict_node(node)
+            return -1
+        self._remove(node)
+        self._append_to_tail(node)
+        return node.val
+
+    def put(self, key: int, value: int, ttl: Optional[float] = None) -> None:
+        expiry = time.time() + ttl if ttl is not None else float('inf')
+        if key in self.map:
+            node = self.map[key]
+            node.val, node.expiry = value, expiry
+            self._remove(node)
+            self._append_to_tail(node)
+            return
+        if len(self.map) >= self.capacity:
+            self._evict_node(self.head.next)
+        new_node = DLLNode(key, value, expiry)
+        self.map[key] = new_node
+        self._append_to_tail(new_node)
+
+if __name__ == "__main__":
+    lru = LRUCacheWithTTL(2)
+    lru.put(1, 10, ttl=100)
+    lru.put(2, 20, ttl=100)
+    assert lru.get(1) == 10
+    lru.put(3, 30, ttl=100)  # 淘汰 key 2
+    assert lru.get(2) == -1
+    assert lru.get(3) == 30
+    assert lru.get(1) == 10
+    print("✅ Card 01 (LRU Cache with TTL) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Complexity Analysis</div>
+
+- `get` and `put` run in strict $\mathcal{O}(1)$ time; auxiliary space $\mathcal{O}(C)$.
+
+</div>
+<div class="review-block">
+<div class="review-block-label">🌐 Foundational Extensions: 5 Production-Grade Architectural Archetypes</div>
+
+#### 1. Restaurant Waitlist / Table Matching Queue
+- **System Requirements**:
+  - `join(user, party_size)`: Append user to waitlist tail in $\mathcal{O}(1)$.
+  - `delete(user)`: Remove user from anywhere in the queue in $\mathcal{O}(1)$ upon cancellation or timeout.
+  - `find_first_match(table_size: int)`: When a table of size `table_size` becomes vacant, return the earliest customer (FIFO) whose `party_size <= table_size` without removing them.
+- **Architectural Trade-offs**:
+  - **Baseline LRU-Style (DLL + Hash Map)**:
+    - `user_map: Dict[user, DLLNode]` provides $\mathcal{O}(1)$ `delete` and `join`;
+    - `find_first_match` performs a linear walk from the head (earliest customer), taking $\mathcal{O}(N)$.
+  - **Table-Size Bucketing Optimization**:
+    - In reality, `party_size` is bounded by small integers ($1 \sim 10$).
+    - Maintain one dedicated doubly-linked queue `buckets[s]` for each size $s \in [1, 10]$.
+    - `join(user, s)`: Appends to `buckets[s]` tail in $\mathcal{O}(1)$.
+    - `delete(user)`: Unlinks from the matching bucket in $\mathcal{O}(1)$ via hash map.
+    - `find_first_match(table_size)`: Inspects only the heads of `buckets[1 \dots table_size]` ($s \le 	ext{table\_size}$) and selects the candidate with the earliest arrival timestamp. Time drops to strict $\mathcal{O}(	ext{table\_size}) = \mathcal{O}(1)$.
+
+```python
+class WaitlistSystem:
+    class CustomerNode:
+        def __init__(self, user: str, size: int, ts: int):
+            self.user = user
+            self.size = size
+            self.ts = ts
+            self.prev = self.next = None
+
+    def __init__(self, max_party_size: int = 10):
+        self.max_party_size = max_party_size
+        self.user_map = {}  # user -> CustomerNode
+        self.buckets = {s: (self.CustomerNode("", 0, 0), self.CustomerNode("", 0, 0)) for s in range(1, max_party_size + 1)}
+        for s in self.buckets:
+            h, t = self.buckets[s]
+            h.next, t.prev = t, h
+        self.clock = 0
+
+    def join(self, user: str, party_size: int) -> None:
+        if user in self.user_map or party_size > self.max_party_size:
+            return
+        self.clock += 1
+        node = self.CustomerNode(user, party_size, self.clock)
+        self.user_map[user] = node
+        h, t = self.buckets[party_size]
+        # Append before tail sentinel
+        node.prev, node.next = t.prev, t
+        t.prev.next = node
+        t.prev = node
+
+    def delete(self, user: str) -> bool:
+        if user not in self.user_map:
+            return False
+        node = self.user_map.pop(user)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def find_first_match(self, table_size: int) -> Optional[str]:
+        earliest_node = None
+        limit = min(table_size, self.max_party_size)
+        for s in range(1, limit + 1):
+            h, t = self.buckets[s]
+            head_cand = h.next
+            if head_cand is not t:
+                if earliest_node is None or head_cand.ts < earliest_node.ts:
+                    earliest_node = head_cand
+        return earliest_node.user if earliest_node else None
+if __name__ == "__main__":
+    rw = RestaurantWaitlist(max_party_size=10)
+    rw.join("Alice", 2)
+    rw.join("Bob", 4)
+    rw.join("Carol", 6)
+    assert rw.find_first_match(3) == "Alice"
+    assert rw.find_first_match(5) == "Alice"
+    assert rw.delete("Alice") is True
+    assert rw.find_first_match(5) == "Bob"
+    assert rw.find_first_match(2) is None
+    print("✅ RestaurantWaitlist tests passed!")
+```
+
+
+#### 2. Robot Logger Rate Limiter with Out-of-Order Timestamps
+- **System Requirements**:
+  - Events stream in as `(timestamp, message)`.
+  - Rule: Print and return `True` if no previously printed event for the same message has timestamp in $[timestamp - 10, timestamp)$; otherwise suppress and return `False`.
+  - **Out-of-Order Semantics**: Network delays may deliver `(12, "foo")` before `(10, "foo")`.
+  - **Causal Invariants**:
+    1. A future event must never retroactively suppress an earlier event (timestamp 12 is in the future of timestamp 10, so 10 is permitted);
+    2. Identical timestamps allow only the first call;
+    3. Suppressed messages must never refresh or alter the printed window!
+- **Data Structure**:
+  - Maintain an **ordered dynamic set (Balanced BST / Skip List / `SortedSet`)** of approved timestamps for each message.
+  - Decision steps:
+    1. Search greatest strict predecessor $pred = \max \{x \in S \mid x < timestamp\}$.
+    2. If $timestamp \in S$ or ($pred \neq \text{None}$ and $pred \ge timestamp - 10$), return `False`.
+    3. Otherwise, insert $timestamp$ into $S$ and return `True`.
+  - Time complexity: $\mathcal{O}(\log K)$ per query where $K$ is the number of approved occurrences. Stale timestamps older than the maximum timestamp minus the 10-second window can be evicted via sliding LRU deque.
+
+```python
+import bisect
+import collections
+from typing import Dict, List
+
+class RobotLogger:
+    """
+    Robot Logger with Out-of-Order Timestamps
+    Time: O(log K) per check (K = approved timestamp count)
+    Space: O(M * K) (M = unique messages)
+    """
+    def __init__(self, window_seconds: int = 10):
+        self.window = window_seconds
+        self.approved: Dict[str, List[int]] = collections.defaultdict(list)
+
+    def should_print_message(self, timestamp: int, message: str) -> bool:
+        ts_list = self.approved[message]
+        idx = bisect.bisect_left(ts_list, timestamp)
+
+        # Duplicate timestamp check
+        if idx < len(ts_list) and ts_list[idx] == timestamp:
+            return False
+
+        # Predecessor causality check
+        if idx > 0:
+            pred = ts_list[idx - 1]
+            if timestamp - pred < self.window:
+                return False
+
+        # Approve and maintain sorted order
+        ts_list.insert(idx, timestamp)
+        return True
+if __name__ == "__main__":
+    logger = RobotLogger(10)
+    assert logger.should_print_message(12, "foo") is True
+    assert logger.should_print_message(10, "foo") is True # 乱序 10 判定前驱，不被后来的 12 封杀
+    assert logger.should_print_message(15, "foo") is False # 15 - 12 < 10 拦截
+    assert logger.should_print_message(25, "foo") is True
+    print("✅ RobotLogger tests passed!")
+```
+
+
+
+#### 3. Idempotency-Key API Endpoint with Concurrency & TTL
+- **Core Requirements & Guarantees**:
+  - **Initial Ingress**: With unique key $K$ and payload $B$, execute operation once, persist mapping $(K \to R)$, return $R$;
+  - **Idempotent Re-execution**: Identical key $K$ and identical body $B$ returns cached $R$ directly without re-invoking business logic;
+  - **Payload Tampering Defense**: Identical key $K$ with conflicting body $B'$ must return `409 Conflict`;
+  - **TTL Cleanup**: Records expire after specified TTL, evaluated lazily or periodically.
+- **Two-Phase Lock Protocol (Preventing Deadlock & RuntimeError)**:
+  - **Fatal Pitfall in Naive Locking**: Calling `rec.condition.wait()` inside `with self.lock:` causes two critical failures:
+    1. **Unacquired Lock Exception**: Python's `threading.Condition` maintains an internal lock. Calling `wait()` without entering `with rec.condition:` raises `RuntimeError: cannot wait on un-acquired lock`;
+    2. **Global Lock Starvation & Deadlock**: Blocking inside `self.lock` starves all concurrent requests for unrelated keys. If the worker encounters an exception and requests `self.lock` to clean up, a deadlock occurs.
+  - **Two-Phase Coordination Protocol**:
+    - **Phase 1 (Global State Registration, with `self.lock`)**: Lightweight lookup, expired eviction, and `IN_FLIGHT` registration under `self.lock`. Releases global lock immediately;
+    - **Phase 2 (Fine-Grained Record-Level Wait/Execution, Outside `self.lock`)**:
+      - Leader: Executes business logic outside any lock (`execute_fn(body)`). Updates `DONE` and broadcasts via `rec.condition.notify_all()`;
+      - Followers: Wait on record-specific condition (`with wait_rec.condition: while IN_FLIGHT: wait()`), freeing the global lock for other keys.
+
+```python
+import hashlib, json, time, threading
+from enum import Enum
+from typing import Dict, Any, Tuple
+
+class RequestStatus(Enum):
+    IN_FLIGHT = 1
+    DONE = 2
+    FAILED = 3
+
+class IdempotencyRecord:
+    def __init__(self, body_hash: str, ttl_seconds: float):
+        self.body_hash = body_hash
+        self.status = RequestStatus.IN_FLIGHT
+        self.response = None
+        self.expires_at = time.time() + ttl_seconds
+        self.condition = threading.Condition() # Per-record dedicated condition
+
+class IdempotencyManager:
+    """
+    Two-Phase Concurrency-Safe Idempotency Manager
+    """
+    def __init__(self, default_ttl: float = 86400.0):
+        self.default_ttl = default_ttl
+        self.store: Dict[str, IdempotencyRecord] = {}
+        self.lock = threading.Lock()
+
+    def _hash_body(self, body: Any) -> str:
+        canonical_json = json.dumps(body, sort_keys=True)
+        return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
+
+    def handle_request(self, idempotency_key: str, body: Any, execute_fn) -> Tuple[int, Any]:
+        body_hash = self._hash_body(body)
+        now = time.time()
+
+        # Phase 1: Atomic registration under global lock, quick release
+        with self.lock:
+            if idempotency_key in self.store:
+                rec = self.store[idempotency_key]
+                if now > rec.expires_at:
+                    del self.store[idempotency_key]
+                elif rec.body_hash != body_hash:
+                    return 409, {"error": "Idempotency key re-used with different payload"}
+                elif rec.status == RequestStatus.DONE:
+                    return 200, rec.response
+                else:
+                    # IN_FLIGHT: Save reference, wait outside global lock
+                    wait_rec = rec
+                    is_leader = False
+
+            if idempotency_key not in self.store:
+                rec = IdempotencyRecord(body_hash, self.default_ttl)
+                self.store[idempotency_key] = rec
+                wait_rec = None
+                is_leader = True
+
+        # Phase 2: Coordination outside global lock
+        if not is_leader:
+            # Followers wait on the record-specific condition
+            with wait_rec.condition:
+                while wait_rec.status == RequestStatus.IN_FLIGHT:
+                    wait_rec.condition.wait()
+                if wait_rec.status == RequestStatus.DONE:
+                    return 200, wait_rec.response
+                else:
+                    return 500, {"error": "Upstream request failed, please retry"}
+
+        # Leader executes long-running business logic lock-free
+        try:
+            res = execute_fn(body)
+            with rec.condition:
+                rec.response = res
+                rec.status = RequestStatus.DONE
+                rec.condition.notify_all()
+            return 200, res
+        except Exception as e:
+            with self.lock:
+                self.store.pop(idempotency_key, None)
+            with rec.condition:
+                rec.status = RequestStatus.FAILED
+                rec.condition.notify_all()
+            raise e
+
+if __name__ == "__main__":
+    mgr = IdempotencyManager(default_ttl=10.0)
+    exec_count = 0
+    test_lock = threading.Lock()
+
+    def slow_business(payload):
+        nonlocal exec_count
+        with test_lock:
+            exec_count += 1
+        time.sleep(0.05)
+        return {"status": "success", "order_id": 999}
+
+    results = []
+    def worker():
+        code, res = mgr.handle_request("order_key_1", {"amount": 100}, slow_business)
+        results.append((code, res))
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    # Verify exactly 1 execution for 5 concurrent threads
+    assert exec_count == 1
+    assert len(results) == 5
+    for code, res in results:
+        assert code == 200
+        assert res["order_id"] == 999
+
+    # Conflict check
+    c_conflict, _ = mgr.handle_request("order_key_1", {"amount": 200}, slow_business)
+    assert c_conflict == 409
+    print("✅ IdempotencyManager concurrent tests passed!")
+```
+
+
+#### 4. Contiguous Memory Allocator (First-Fit with Splitting & Coalescing)
+- **Business Scenario**:
+  - Given a single contiguous memory pool of size $N$.
+  - `allocate(size)`: Locate first free block with size $\ge size$, allocate and return start offset; if insufficient return -1.
+  - `free(offset)`: Reclaim block and coalesce with physically adjacent free neighbors in $\mathcal{O}(1)$ time.
+- **Doubly Linked List + Boundary Tags**:
+  - Each block node maintains `offset, size, is_free, prev, next`.
+  - `allocate`: Scans DLL via First-Fit; splits when `block.size > request_size`.
+  - `free`: Sets `is_free = True`; immediately merges with `prev` and/or `next` if free.
+
+```python
+from typing import Dict, Optional
+
+class MemBlock:
+    def __init__(self, offset: int, size: int, is_free: bool = True):
+        self.offset = offset
+        self.size = size
+        self.is_free = is_free
+        self.prev: Optional['MemBlock'] = None
+        self.next: Optional['MemBlock'] = None
+
+class FirstFitMemoryAllocator:
+    """
+    First-Fit Contiguous Memory Allocator
+    Time Complexity: allocate O(N), free strict O(1) via adjacent DLL coalescing
+    Space Complexity: O(N) block metadata
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {}
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        curr = self.head
+        while curr:
+            if curr.is_free and curr.size >= size:
+                remainder = curr.size - size
+                curr.size = size
+                curr.is_free = False
+                self.allocated[curr.offset] = curr
+
+                if remainder > 0:
+                    split_block = MemBlock(curr.offset + size, remainder, is_free=True)
+                    split_block.next = curr.next
+                    split_block.prev = curr
+                    if curr.next:
+                        curr.next.prev = split_block
+                    curr.next = split_block
+                return curr.offset
+            curr = curr.next
+        return -1 # Out of memory
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        # Coalesce right
+        if node.next and node.next.is_free:
+            right = node.next
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        # Coalesce left
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+        return True
+
+if __name__ == "__main__":
+    alloc = FirstFitMemoryAllocator(100)
+    p1 = alloc.allocate(30)
+    p2 = alloc.allocate(40)
+    assert p1 == 0 and p2 == 30
+    assert alloc.free(p1) is True
+    assert alloc.free(p2) is True
+    p3 = alloc.allocate(90)
+    assert p3 == 0
+    print("✅ FirstFitMemoryAllocator tests passed!")
+```
+
+
+#### 5. Concurrency & Distributed Sharding Architecture
+- **Thread-Safety Trade-off**:
+  - Coarse-grained locking: Single `threading.RLock()` guarding all methods.
+  - Sharded Cache (`ConcurrentHashMap` pattern): Partition keys across $M$ distinct stripes via $	ext{hash}(key) \pmod M$. Each shard possesses its own lock and DLL, achieving lock-free concurrency across keys while yielding per-shard approximate LRU.
+- **Distributed Cache**:
+  - Consistent hashing ring with virtual nodes balances partitions across physical nodes; each node executes the standard DLL+hashmap engine locally.
+
+```python
+import hashlib
+import threading
+import collections
+from typing import Any, Optional
+
+class ShardedLRUCache:
+    """
+    Sharded Concurrent LRU Cache with Striped Locks
+    """
+    def __init__(self, total_capacity: int, num_shards: int = 16):
+        self.num_shards = num_shards
+        self.shard_cap = max(1, total_capacity // num_shards)
+        self.shards = [collections.OrderedDict() for _ in range(num_shards)]
+        self.locks = [threading.Lock() for _ in range(num_shards)]
+
+    def _shard_index(self, key: str) -> int:
+        return int(hashlib.md5(key.encode('utf-8')).hexdigest(), 16) % self.num_shards
+
+    def get(self, key: str) -> Optional[Any]:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key not in cache:
+                return None
+            cache.move_to_end(key)
+            return cache[key]
+
+    def put(self, key: str, val: Any) -> None:
+        idx = self._shard_index(key)
+        with self.locks[idx]:
+            cache = self.shards[idx]
+            if key in cache:
+                cache.move_to_end(key)
+            cache[key] = val
+            if len(cache) > self.shard_cap:
+                cache.popitem(last=False)
+if __name__ == "__main__":
+    sc = ShardedLRUCache(total_capacity=16, num_shards=4)
+    sc.put("k1", 100)
+    sc.put("k2", 200)
+    assert sc.get("k1") == 100
+    assert sc.get("k2") == 200
+    assert sc.get("nonexistent") is None
+    print("✅ ShardedLRUCache tests passed!")
+```
+
+
+
+#### 6. Memory Allocator with O(log m) Free Gap Indexing & Coalescing
+- **Transition from Linear Scan to O(log m) Indexing**:
+  - In highly fragmented heaps, linear First-Fit degrades allocation throughput.
+  - **Dual-Index Architecture**:
+    1. **Size-Keyed Index**: Binary search over available chunk sizes in $\mathcal{O}(\log m)$ to extract optimal Best-Fit blocks;
+    2. **Physical Address Doubly Linked List**: All blocks linked in strict memory address order for $\mathcal{O}(1)$ adjacent coalescing.
+- **Four Coalescing Scenarios on Free**:
+  1. **No Neighbour Free**: Mark free, insert to size index;
+  2. **Left Neighbour Free**: Left merges current block, update size index;
+  3. **Right Neighbour Free**: Current merges right block, remove right from size index;
+  4. **Both Neighbours Free**: Tri-merge into left block, deregister right block.
+
+```python
+import bisect
+from typing import Dict, List, Optional, Set
+
+class SizeIndexedMemoryAllocator:
+    """
+    Size-Indexed Memory Allocator (O(log m) Best-Fit + O(1) DLL Physical Coalescing)
+    """
+    def __init__(self, total_size: int):
+        self.head = MemBlock(0, total_size, is_free=True)
+        self.allocated: Dict[int, MemBlock] = {}
+        self.free_by_size: Dict[int, Set[MemBlock]] = {total_size: {self.head}}
+        self.sorted_sizes: List[int] = [total_size]
+
+    def _add_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s not in self.free_by_size:
+            self.free_by_size[s] = set()
+            bisect.insort(self.sorted_sizes, s)
+        self.free_by_size[s].add(block)
+
+    def _remove_free_index(self, block: MemBlock) -> None:
+        s = block.size
+        if s in self.free_by_size and block in self.free_by_size[s]:
+            self.free_by_size[s].remove(block)
+            if not self.free_by_size[s]:
+                del self.free_by_size[s]
+                idx = bisect.bisect_left(self.sorted_sizes, s)
+                if idx < len(self.sorted_sizes) and self.sorted_sizes[idx] == s:
+                    self.sorted_sizes.pop(idx)
+
+    def allocate(self, size: int) -> int:
+        if size <= 0:
+            return -1
+        idx = bisect.bisect_left(self.sorted_sizes, size)
+        if idx >= len(self.sorted_sizes):
+            return -1
+
+        target_size = self.sorted_sizes[idx]
+        block = next(iter(self.free_by_size[target_size]))
+        self._remove_free_index(block)
+
+        remainder = block.size - size
+        block.size = size
+        block.is_free = False
+        self.allocated[block.offset] = block
+
+        if remainder > 0:
+            split = MemBlock(block.offset + size, remainder, is_free=True)
+            split.next = block.next
+            split.prev = block
+            if block.next:
+                block.next.prev = split
+            block.next = split
+            self._add_free_index(split)
+
+        return block.offset
+
+    def free(self, offset: int) -> bool:
+        if offset not in self.allocated:
+            return False
+        node = self.allocated.pop(offset)
+        node.is_free = True
+
+        if node.next and node.next.is_free:
+            right = node.next
+            self._remove_free_index(right)
+            node.size += right.size
+            node.next = right.next
+            if right.next:
+                right.next.prev = node
+
+        if node.prev and node.prev.is_free:
+            left = node.prev
+            self._remove_free_index(left)
+            left.size += node.size
+            left.next = node.next
+            if node.next:
+                node.next.prev = left
+            node = left
+
+        self._add_free_index(node)
+        return True
+
+if __name__ == "__main__":
+    sia = SizeIndexedMemoryAllocator(100)
+    b1 = sia.allocate(20)
+    b2 = sia.allocate(50)
+    assert b1 == 0 and b2 == 20
+    assert sia.free(b1) is True
+    assert sia.free(b2) is True
+    assert sia.allocate(95) == 0
+    print("✅ SizeIndexedMemoryAllocator tests passed!")
+```
+
+
+#### 7. LRU + LFU + Pluggable Eviction Strategy Pattern
+- **Architectural Decoupling**: Separate backing storage from eviction logic.
+- **Strategy Interface**:
+  - `on_access(key)`: Hook invoked on hit to update recency, frequency buckets, or weight;
+  - `pick_victim() -> key`: Nominates next key to evict when capacity is exceeded;
+  - `on_evict(key)`: Cleans auxiliary tracking metadata.
+- **Unified Policy Implementations**:
+  - `LRUPolicy`: Single recency DLL;
+  - `LFUPolicy`: `freq_buckets: Dict[int, DLL]` + `min_freq` cursor. Ties at `min_freq` are broken by LRU within the lowest frequency bucket;
+  - `TTLWeightedPolicy` / `SizeWeightedPolicy`: Pluggable heap or skip-list indexed by weight.
+
+```python
+import collections
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+
+class EvictionPolicy(ABC):
+    @abstractmethod
+    def on_access(self, key: str) -> None: ...
+    @abstractmethod
+    def pick_victim(self) -> Optional[str]: ...
+    @abstractmethod
+    def on_evict(self, key: str) -> None: ...
+
+class LRUPolicy(EvictionPolicy):
+    def __init__(self):
+        self.od = collections.OrderedDict()
+    def on_access(self, key: str) -> None:
+        self.od[key] = None; self.od.move_to_end(key)
+    def pick_victim(self) -> Optional[str]:
+        return next(iter(self.od)) if self.od else None
+    def on_evict(self, key: str) -> None:
+        self.od.pop(key, None)
+
+class LFUPolicy(EvictionPolicy):
+    """O(1) LFU Policy with frequency buckets, tie-broken by LRU"""
+    def __init__(self):
+        self.key_to_freq: Dict[str, int] = {}
+        self.freq_to_keys: Dict[int, collections.OrderedDict] = collections.defaultdict(collections.OrderedDict)
+        self.min_freq = 0
+
+    def on_access(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq[key]
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+                if self.min_freq == f:
+                    self.min_freq += 1
+            new_f = f + 1
+        else:
+            new_f = 1
+            self.min_freq = 1
+        self.key_to_freq[key] = new_f
+        self.freq_to_keys[new_f][key] = None
+
+    def pick_victim(self) -> Optional[str]:
+        if not self.key_to_freq:
+            return None
+        return next(iter(self.freq_to_keys[self.min_freq]))
+
+    def on_evict(self, key: str) -> None:
+        if key in self.key_to_freq:
+            f = self.key_to_freq.pop(key)
+            del self.freq_to_keys[f][key]
+            if not self.freq_to_keys[f]:
+                del self.freq_to_keys[f]
+
+class PluggableCache:
+    def __init__(self, capacity: int, policy: EvictionPolicy):
+        self.capacity = capacity
+        self.policy = policy
+        self.store: Dict[str, Any] = {}
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.store: return None
+        self.policy.on_access(key)
+        return self.store[key]
+
+    def put(self, key: str, val: Any) -> None:
+        if key in self.store:
+            self.store[key] = val
+            self.policy.on_access(key)
+            return
+        if len(self.store) >= self.capacity:
+            victim = self.policy.pick_victim()
+            if victim:
+                del self.store[victim]
+                self.policy.on_evict(victim)
+        self.store[key] = val
+        self.policy.on_access(key)
+if __name__ == "__main__":
+    # 1. 测试 LRU 策略
+    lru_cache = PluggableCache(capacity=2, policy=LRUPolicy())
+    lru_cache.put("a", 1); lru_cache.put("b", 2)
+    assert lru_cache.get("a") == 1 # a 变为 MRU
+    lru_cache.put("c", 3) # 驱逐 b
+    assert lru_cache.get("b") is None
+    assert lru_cache.get("a") == 1
+
+    # 2. 测试 LFU 策略 (二级平局用 LRU 打破)
+    lfu_cache = PluggableCache(capacity=2, policy=LFUPolicy())
+    lfu_cache.put("x", 10); lfu_cache.put("y", 20)
+    lfu_cache.get("x"); lfu_cache.get("x") # freq(x)=3, freq(y)=1
+    lfu_cache.put("z", 30) # 驱逐最低频次 y
+    assert lfu_cache.get("y") is None
+    assert lfu_cache.get("x") == 10
+    print("✅ PluggableCache tests passed!")
+```
+
+
+
+#### 8. Durable In-Memory Cache with WAL & Crash Recovery
+- **Deterministic Key Hashing**:
+  - `generate_key(*args, **kwargs)` fails if `kwargs` is hashed directly (`TypeError: unhashable type: 'dict'`).
+  - Canonical solution: Recursive transformation to immutable tuples, or `json.dumps(args) + json.dumps(kwargs, sort_keys=True)`.
+- **Write-Ahead Log (WAL) & Replay Ordering**:
+  - Append every mutation/access to disk: `{"op": "PUT", "key": k, "val": v, "ts": now}`.
+  - **Replay Invariant**: Simple dict assignment during recovery degrades LRU ordering to FIFO. On replay, **explicitly call `move_to_end` for previously seen keys** to rebuild exact recency positions.
+  - Trade-off: Synchronous `fsync` (zero data loss) vs Group Commit (high throughput); periodic checkpoint snapshots truncate stale WAL.
+
+```python
+import json, os, collections
+from typing import Any, Optional
+
+class DurableLRUCache:
+    """
+    Durable In-Memory LRU Cache with WAL & Replay
+    """
+    def __init__(self, capacity: int, wal_path: str):
+        self.capacity = capacity
+        self.wal_path = wal_path
+        self.cache: collections.OrderedDict = collections.OrderedDict()
+        self._recover()
+
+    def _recover(self) -> None:
+        if not os.path.exists(self.wal_path):
+            return
+        with open(self.wal_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip(): continue
+                rec = json.loads(line)
+                op, key = rec.get("op"), rec.get("key")
+                if op == "PUT":
+                    self.cache[key] = rec["val"]
+                    self.cache.move_to_end(key) # Preserve exact replay recency order
+                    if len(self.cache) > self.capacity:
+                        self.cache.popitem(last=False)
+                elif op == "ACCESS":
+                    if key in self.cache:
+                        self.cache.move_to_end(key)
+
+    def put(self, key: str, val: Any) -> None:
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "PUT", "key": key, "val": val}) + "\n")
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        self.cache[key] = val
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False)
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self.cache:
+            return None
+        with open(self.wal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"op": "ACCESS", "key": key}) + "\n")
+        self.cache.move_to_end(key)
+        return self.cache[key]
+if __name__ == "__main__":
+    import tempfile
+    wal_f = tempfile.mktemp()
+    w1 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    w1.put("k1", "v1")
+    w1.put("k2", "v2")
+    w1.get("k1") # k1 变为 MRU
+    w1.put("k3", "v3") # 空间不足驱逐 k2
+    # 崩溃重启回放
+    w2 = DurableLRUCache(capacity=2, wal_path=wal_f)
+    assert w2.get("k2") is None # 确认 k2 已被物理淘汰
+    assert w2.get("k1") == "v1"
+    assert w2.get("k3") == "v3"
+    if os.path.exists(wal_f): os.remove(wal_f)
+    print("✅ DurableLRUCache tests passed!")
+```
+
+
+
+#### 9. 4-Level In-Memory Database Implementation (Multi-Level In-Memory Database Engine)
+- **Functional Requirements Across 4 Levels**:
+  - **Level 1 (Core Key-Field Storage)**: Each top-level `key` maps multiple `field -> value` string pairs. Core operations: `set(key, field, value)`, `get(key, field)`, `delete(key, field) -> bool`.
+  - **Level 2 (Lexicographical & Prefix Scan)**: `scan(key)` returns all valid fields formatted as `["field(value)", ...]` in strictly ascending lexicographical order of field names. `scan_by_prefix(key, prefix)` applies prefix filtering over sorted fields.
+  - **Level 3 (Timestamps & Field-Level TTL Expiry)**: All operations gain `_at` timestamped variants. `set_at_with_ttl(key, field, value, timestamp, ttl)` defines a valid lifetime $[timestamp, timestamp + ttl)$. Expired records are invisibly filtered on access and lazily cleaned up.
+  - **Level 4 (Snapshot Backup & Clock-Relocated Restore)**:
+    - `backup(timestamp)`: Creates an isolated deep copy of all currently unexpired fields, storing each field's **Remaining TTL**: $\Delta = (ts_{set} + ttl) - timestamp$;
+    - `restore(timestamp, timestamp_to_restore)`: Locates the latest backup snapshot with $ts_{backup} \le timestamp\_to\_restore$. Restores state to the live store at the new current $timestamp$. **Clock relocation**: Expired thresholds are recomputed as $new\_expiry = timestamp + \Delta$!
+- **Architectural Discipline & Trap Prevention**:
+  1. **Never Persist Absolute Expiry Timestamps in Backups**: Storing absolute timestamps breaks restores across time shifts; a field valid at backup time would immediately be seen as dead. Persisting relative remaining TTL $\Delta$ guarantees true clock-isolated restoration.
+  2. **Deep Copy Isolation**: Backups must clone values and mappings completely; sharing dictionary references leads to silent mutation of historical snapshots by subsequent live writes.
+
+```python
+import collections
+from typing import Dict, List, Optional, Tuple
+
+class FieldRecord:
+    __slots__ = ('val', 'remaining_ttl', 'absolute_expiry')
+    def __init__(self, val: str, remaining_ttl: Optional[int] = None, absolute_expiry: Optional[int] = None):
+        self.val = val
+        self.remaining_ttl = remaining_ttl
+        self.absolute_expiry = absolute_expiry
+
+class InMemoryDatabase:
+    """
+    Complete 4-Level In-Memory Database Implementation
+    Level 1: set, get, delete
+    Level 2: scan, scan_by_prefix (lexicographical order)
+    Level 3: _at operations with TTL [ts, ts + ttl)
+    Level 4: backup(ts) and restore(ts, ts_to_restore) with relative TTL
+    """
+    def __init__(self):
+        self.store: Dict[str, Dict[str, FieldRecord]] = collections.defaultdict(dict)
+        self.backups: List[Tuple[int, Dict[str, Dict[str, Tuple[str, Optional[int]]]]]] = []
+
+    def _is_alive(self, rec: FieldRecord, ts: Optional[int]) -> bool:
+        if rec.absolute_expiry is None or ts is None:
+            return True
+        return ts < rec.absolute_expiry
+
+    # --- Level 1 ---
+    def set(self, key: str, field: str, value: str) -> None:
+        self.store[key][field] = FieldRecord(value)
+
+    def get(self, key: str, field: str) -> Optional[str]:
+        if key in self.store and field in self.store[key]:
+            return self.store[key][field].val
+        return None
+
+    def delete(self, key: str, field: str) -> bool:
+        if key in self.store and field in self.store[key]:
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+            return True
+        return False
+
+    # --- Level 2 ---
+    def scan(self, key: str) -> List[str]:
+        if key not in self.store:
+            return []
+        return [f"{f}({self.store[key][f].val})" for f in sorted(self.store[key].keys())]
+
+    def scan_by_prefix(self, key: str, prefix: str) -> List[str]:
+        if key not in self.store:
+            return []
+        return [f"{f}({self.store[key][f].val})" for f in sorted(self.store[key].keys()) if f.startswith(prefix)]
+
+    # --- Level 3 ---
+    def set_at(self, key: str, field: str, value: str, timestamp: int) -> None:
+        self.store[key][field] = FieldRecord(value)
+
+    def set_at_with_ttl(self, key: str, field: str, value: str, timestamp: int, ttl: int) -> None:
+        self.store[key][field] = FieldRecord(value, remaining_ttl=ttl, absolute_expiry=timestamp + ttl)
+
+    def get_at(self, key: str, field: str, timestamp: int) -> Optional[str]:
+        if key in self.store and field in self.store[key]:
+            rec = self.store[key][field]
+            if self._is_alive(rec, timestamp):
+                return rec.val
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+        return None
+
+    def delete_at(self, key: str, field: str, timestamp: int) -> bool:
+        if key in self.store and field in self.store[key]:
+            alive = self._is_alive(self.store[key][field], timestamp)
+            del self.store[key][field]
+            if not self.store[key]:
+                del self.store[key]
+            return alive
+        return False
+
+    def scan_at(self, key: str, timestamp: int) -> List[str]:
+        if key not in self.store:
+            return []
+        items = []
+        expired_fields = []
+        for f in sorted(self.store[key].keys()):
+            rec = self.store[key][f]
+            if self._is_alive(rec, timestamp):
+                items.append(f"{f}({rec.val})")
+            else:
+                expired_fields.append(f)
+        for f in expired_fields:
+            del self.store[key][f]
+        if not self.store[key]:
+            del self.store[key]
+        return items
+
+    def scan_by_prefix_at(self, key: str, prefix: str, timestamp: int) -> List[str]:
+        if key not in self.store:
+            return []
+        items = []
+        expired_fields = []
+        for f in sorted(self.store[key].keys()):
+            rec = self.store[key][f]
+            if self._is_alive(rec, timestamp):
+                if f.startswith(prefix):
+                    items.append(f"{f}({rec.val})")
+            else:
+                expired_fields.append(f)
+        for f in expired_fields:
+            del self.store[key][f]
+        if not self.store[key]:
+            del self.store[key]
+        return items
+
+    # --- Level 4 ---
+    def backup(self, timestamp: int) -> int:
+        snapshot: Dict[str, Dict[str, Tuple[str, Optional[int]]]] = collections.defaultdict(dict)
+        saved_count = 0
+        for key, fields in list(self.store.items()):
+            for field, rec in list(fields.items()):
+                if self._is_alive(rec, timestamp):
+                    rem = (rec.absolute_expiry - timestamp) if rec.absolute_expiry is not None else None
+                    snapshot[key][field] = (rec.val, rem)
+                    saved_count += 1
+                else:
+                    del fields[field]
+            if not fields:
+                del self.store[key]
+        self.backups.append((timestamp, snapshot))
+        return saved_count
+
+    def restore(self, timestamp: int, timestamp_to_restore: int) -> None:
+        idx = -1
+        for i in range(len(self.backups) - 1, -1, -1):
+            if self.backups[i][0] <= timestamp_to_restore:
+                idx = i
+                break
+        if idx == -1:
+            return
+
+        target_backup = self.backups[idx][1]
+        self.store.clear()
+        for key, fields in target_backup.items():
+            for field, (val, rem) in fields.items():
+                abs_exp = (timestamp + rem) if rem is not None else None
+                self.store[key][field] = FieldRecord(val=val, remaining_ttl=rem, absolute_expiry=abs_exp)
+if __name__ == "__main__":
+    db = InMemoryDatabase()
+    # Level 1
+    db.set("user1", "name", "Alice"); db.set("user1", "age", "30")
+    assert db.get("user1", "name") == "Alice"
+    # Level 2 字典序扫描
+    assert db.scan("user1") == ["age(30)", "name(Alice)"]
+    # Level 3 TTL
+    db.set_at_with_ttl("u2", "token", "abc", timestamp=100, ttl=50) # 有效期 [100, 150)
+    assert db.get_at("u2", "token", 120) == "abc"
+    assert db.get_at("u2", "token", 150) is None
+    # Level 4 相对 TTL 快照恢复
+    db.set_at_with_ttl("u3", "session", "s1", timestamp=200, ttl=100) # 300 过期，在 240 时剩余 60
+    db.backup(240)
+    db.restore(timestamp=500, timestamp_to_restore=240) # 恢复到新时钟 500: 新过期时间为 560
+    assert db.get_at("u3", "session", 550) == "s1"
+    assert db.get_at("u3", "session", 560) is None
+    print("✅ InMemoryDatabase tests passed!")
+```
+
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <map>
+#include <vector>
+#include <optional>
+
+class InMemoryDatabase {
+private:
+    struct FieldRecord {
+        std::string val;
+        std::optional<long long> remaining_ttl;
+        std::optional<long long> absolute_expiry;
+    };
+    struct SnapshotField {
+        std::string val;
+        std::optional<long long> remaining_ttl;
+    };
+
+    std::unordered_map<std::string, std::map<std::string, FieldRecord>> store_;
+    std::vector<std::pair<long long, std::unordered_map<std::string, std::map<std::string, SnapshotField>>>> backups_;
+
+    bool isAlive(const FieldRecord& rec, std::optional<long long> ts) const {
+        if (!rec.absolute_expiry.has_value() || !ts.has_value()) return true;
+        return ts.value() < rec.absolute_expiry.value();
+    }
+
+public:
+    void set(const std::string& key, const std::string& field, const std::string& val) {
+        store_[key][field] = FieldRecord{val, std::nullopt, std::nullopt};
+    }
+
+    std::optional<std::string> get(const std::string& key, const std::string& field) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return std::nullopt;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return std::nullopt;
+        return fit->second.val;
+    }
+
+    bool del(const std::string& key, const std::string& field) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return false;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return false;
+        kit->second.erase(fit);
+        if (kit->second.empty()) store_.erase(kit);
+        return true;
+    }
+
+    std::vector<std::string> scan(const std::string& key) {
+        std::vector<std::string> res;
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return res;
+        for (const auto& [f, rec] : kit->second) {
+            res.push_back(f + "(" + rec.val + ")");
+        }
+        return res;
+    }
+
+    std::vector<std::string> scanByPrefix(const std::string& key, const std::string& prefix) {
+        std::vector<std::string> res;
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return res;
+        for (const auto& [f, rec] : kit->second) {
+            if (f.rfind(prefix, 0) == 0) res.push_back(f + "(" + rec.val + ")");
+        }
+        return res;
+    }
+
+    void setAtWithTtl(const std::string& key, const std::string& field, const std::string& val, long long ts, long long ttl) {
+        store_[key][field] = FieldRecord{val, ttl, ts + ttl};
+    }
+
+    std::optional<std::string> getAt(const std::string& key, const std::string& field, long long ts) {
+        auto kit = store_.find(key);
+        if (kit == store_.end()) return std::nullopt;
+        auto fit = kit->second.find(field);
+        if (fit == kit->second.end()) return std::nullopt;
+        if (isAlive(fit->second, ts)) return fit->second.val;
+        kit->second.erase(fit);
+        if (kit->second.empty()) store_.erase(kit);
+        return std::nullopt;
+    }
+
+    int backup(long long ts) {
+        std::unordered_map<std::string, std::map<std::string, SnapshotField>> snapshot;
+        int count = 0;
+        for (auto kit = store_.begin(); kit != store_.end(); ) {
+            for (auto fit = kit->second.begin(); fit != kit->second.end(); ) {
+                if (isAlive(fit->second, ts)) {
+                    std::optional<long long> rem = fit->second.absolute_expiry.has_value() ?
+                        std::make_optional(fit->second.absolute_expiry.value() - ts) : std::nullopt;
+                    snapshot[kit->first][fit->first] = SnapshotField{fit->second.val, rem};
+                    count++;
+                    ++fit;
+                } else {
+                    fit = kit->second.erase(fit);
+                }
+            }
+            if (kit->second.empty()) kit = store_.erase(kit);
+            else ++kit;
+        }
+        backups_.push_back({ts, std::move(snapshot)});
+        return count;
+    }
+
+    void restore(long long ts, long long ts_to_restore) {
+        int idx = -1;
+        for (int i = (int)backups_.size() - 1; i >= 0; --i) {
+            if (backups_[i].first <= ts_to_restore) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx == -1) return;
+        store_.clear();
+        for (const auto& [key, fields] : backups_[idx].second) {
+            for (const auto& [field, item] : fields) {
+                FieldRecord rec;
+                rec.val = item.val;
+                rec.remaining_ttl = item.remaining_ttl;
+                rec.absolute_expiry = item.remaining_ttl.has_value() ? std::make_optional(ts + item.remaining_ttl.value()) : std::nullopt;
+                store_[key][field] = rec;
+            }
+        }
+    }
+};
+```
+
+#### 10. Todo List OOP Design & Separation of Concerns
+- **Interface**: `add(entry) -> id`, `delete(id) -> bool`, `get_todo() -> List[str]`, `get_all() -> List[str]`. External predicate `check_todo(id) -> bool` returns completion status in $\mathcal{O}(1)$.
+- **Architectural Discipline**:
+  - `TodoList` owns sequence, ID assignment, and storage only. Completion state belongs to the external authority, preventing state drift.
+  - Structure: Hash map `id_to_node` + Doubly Linked List preserving insertion order. Monotonic auto-increment counter ensures stable, non-reusable IDs.
+
+```python
+from typing import Dict, List, Optional, Callable
+
+class TodoNode:
+    def __init__(self, tid: int, entry: str):
+        self.id = tid
+        self.entry = entry
+        self.prev: Optional['TodoNode'] = None
+        self.next: Optional['TodoNode'] = None
+
+class TodoList:
+    """
+    Todo List System with Separation of Concerns
+    """
+    def __init__(self):
+        self.id_to_node: Dict[int, TodoNode] = {}
+        self.head = TodoNode(0, "")
+        self.tail = TodoNode(0, "")
+        self.head.next = self.tail
+        self.tail.prev = self.head
+        self._next_id = 1
+
+    def add(self, entry: str) -> int:
+        tid = self._next_id
+        self._next_id += 1
+        node = TodoNode(tid, entry)
+        self.id_to_node[tid] = node
+        node.prev, node.next = self.tail.prev, self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+        return tid
+
+    def delete(self, tid: int) -> bool:
+        if tid not in self.id_to_node:
+            return False
+        node = self.id_to_node.pop(tid)
+        node.prev.next = node.next
+        node.next.prev = node.prev
+        return True
+
+    def get_all(self) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            res.append(curr.entry)
+            curr = curr.next
+        return res
+
+    def get_todo(self, is_completed_fn: Callable[[int], bool]) -> List[str]:
+        res = []
+        curr = self.head.next
+        while curr is not self.tail:
+            if not is_completed_fn(curr.id):
+                res.append(curr.entry)
+            curr = curr.next
+        return res
+if __name__ == "__main__":
+    tl = TodoList()
+    t1 = tl.add("Review code")
+    t2 = tl.add("Write tests")
+    assert tl.get_all() == ["Review code", "Write tests"]
+    completed = {t1: True} # 外部维护权威状态
+    assert tl.get_todo(lambda tid: completed.get(tid, False)) == ["Write tests"]
+    assert tl.delete(t2) is True
+    assert tl.get_all() == ["Review code"]
+    print("✅ TodoList tests passed!")
+```
+
+
+
+#### 11. Weighted LRU Cache with Size-Bounded Eviction
+- **Problem Context & Invariant Definition**:
+  - Classic LRU treats each entry with unit weight $1$, bounding entry count.
+  - In storage engines and GPU tensor caches, entries have **heterogeneous payload sizes (Size / Weight)**. Capacity represents total byte size / weight.
+  - **Core Invariant**: $\sum_{x \in Cache} x.size \le capacity$.
+- **Cascading Multi-Item Eviction**:
+  - On `put(key, value, size)`, if `current_size + size > capacity`, multiple least-recently-used nodes may be sequentially evicted to accommodate the new payload.
+  - **Key Update Invariant**: When updating an existing key, its previous size must be subtracted first (`current_size -= old_size`) prior to evaluating eviction, after which the new size is added and the node moved to MRU.
+- **Edge Cases**:
+  1. **Single item exceeds total capacity (`size > capacity`)**: Impossible to fit even if empty. If the key exists, remove it and discard insertion without breaching capacity;
+  2. **Non-positive size (`size <= 0`)**: Validate and raise exception;
+  3. **Exact fit (`current_size + size == capacity`)**: Loops terminate cleanly without eviction.
+
+```python
+from typing import Dict, Optional
+
+class DLinkedNode:
+    def __init__(self, key: str = "", val: int = 0, size: int = 0):
+        self.key = key
+        self.val = val
+        self.size = size
+        self.prev: Optional['DLinkedNode'] = None
+        self.next: Optional['DLinkedNode'] = None
+
+class WeightedLRUCache:
+    """
+    Weighted LRU Cache with byte/size capacity limit.
+    Time Complexity: get O(1), put amortized O(1)
+    Space Complexity: O(N) (N = number of active keys)
+    """
+    def __init__(self, capacity: int):
+        if capacity < 0:
+            raise ValueError("Capacity must be non-negative")
+        self.capacity = capacity
+        self.current_size = 0
+        self.cache: Dict[str, DLinkedNode] = {}
+        # Sentinel dummy nodes
+        self.head = DLinkedNode()
+        self.tail = DLinkedNode()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _add_to_head(self, node: DLinkedNode) -> None:
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def _remove_node(self, node: DLinkedNode) -> None:
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _move_to_head(self, node: DLinkedNode) -> None:
+        self._remove_node(node)
+        self._add_to_head(node)
+
+    def _pop_tail(self) -> Optional[DLinkedNode]:
+        res = self.tail.prev
+        if res is self.head:
+            return None
+        self._remove_node(res)
+        return res
+
+    def get(self, key: str) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._move_to_head(node)
+        return node.val
+
+    def put(self, key: str, value: int, size: int) -> None:
+        if size <= 0:
+            raise ValueError("Item size must be strictly positive")
+        
+        if size > self.capacity:
+            if key in self.cache:
+                old = self.cache.pop(key)
+                self._remove_node(old)
+                self.current_size -= old.size
+            return
+
+        if key in self.cache:
+            node = self.cache[key]
+            self.current_size -= node.size
+            node.val = value
+            node.size = size
+            self._move_to_head(node)
+        else:
+            node = DLinkedNode(key, value, size)
+            self.cache[key] = node
+            self._add_to_head(node)
+
+        self.current_size += size
+
+        # Cascade eviction
+        while self.current_size > self.capacity and self.tail.prev is not self.head:
+            victim = self._pop_tail()
+            if victim:
+                del self.cache[victim.key]
+                self.current_size -= victim.size
+if __name__ == "__main__":
+    cache = WeightedLRUCache(capacity=10)
+    cache.put("a", 1, 3)     # total = 3
+    cache.put("b", 2, 4)     # total = 7
+    cache.put("c", 3, 5)     # 7+5 > 10 -> 驱逐 "a" (3) -> total = 4+5 = 9
+    assert cache.get("a") == -1
+    assert cache.get("b") == 2
+    assert cache.current_size == 9
+    cache.put("d", 4, 3)     # 9+3 > 10 -> 驱逐 "c" (LRU, b刚被访问) -> total = 4+3 = 7
+    assert cache.get("c") == -1
+    assert cache.get("b") == 2
+    assert cache.get("d") == 4
+    # 更新已有 key 并缩放尺寸
+    cache.put("b", 20, 6)    # 旧尺寸 4 -> 新尺寸 6, total = 7 - 4 + 6 = 9 <= 10
+    assert cache.get("b") == 20
+    assert cache.current_size == 9
+    # 超额尺寸直接拦截
+    cache.put("oversized", 99, 15)
+    assert cache.get("oversized") == -1
+    assert cache.current_size == 9
+    print("✅ WeightedLRUCache tests passed!")
+```
+
+
+```cpp
+#include <string>
+#include <unordered_map>
+
+class WeightedLRUCache {
+private:
+    struct Node {
+        std::string key;
+        int val;
+        int size;
+        Node* prev{nullptr};
+        Node* next{nullptr};
+        Node(std::string k = "", int v = 0, int s = 0) : key(std::move(k)), val(v), size(s) {}
+    };
+
+    int capacity_;
+    int current_size_{0};
+    std::unordered_map<std::string, Node*> cache_;
+    Node* head_;
+    Node* tail_;
+
+    void addToHead(Node* node) {
+        node->prev = head_;
+        node->next = head_->next;
+        head_->next->prev = node;
+        head_->next = node;
+    }
+
+    void removeNode(Node* node) {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+    }
+
+    void moveToHead(Node* node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    Node* popTail() {
+        Node* res = tail_->prev;
+        if (res == head_) return nullptr;
+        removeNode(res);
+        return res;
+    }
+
+public:
+    explicit WeightedLRUCache(int capacity) : capacity_(capacity) {
+        head_ = new Node();
+        tail_ = new Node();
+        head_->next = tail_;
+        tail_->prev = head_;
+    }
+
+    ~WeightedLRUCache() {
+        Node* curr = head_;
+        while (curr) {
+            Node* next = curr->next;
+            delete curr;
+            curr = next;
+        }
+    }
+
+    int get(const std::string& key) {
+        auto it = cache_.find(key);
+        if (it == cache_.end()) return -1;
+        moveToHead(it->second);
+        return it->second->val;
+    }
+
+    void put(const std::string& key, int value, int size) {
+        if (size <= 0) return;
+        if (size > capacity_) {
+            auto it = cache_.find(key);
+            if (it != cache_.end()) {
+                current_size_ -= it->second->size;
+                removeNode(it->second);
+                delete it->second;
+                cache_.erase(it);
+            }
+            return;
+        }
+
+        auto it = cache_.find(key);
+        if (it != cache_.end()) {
+            Node* node = it->second;
+            current_size_ -= node->size;
+            node->val = value;
+            node->size = size;
+            moveToHead(node);
+        } else {
+            Node* node = new Node(key, value, size);
+            cache_[key] = node;
+            addToHead(node);
+        }
+        current_size_ += size;
+
+        while (current_size_ > capacity_ && tail_->prev != head_) {
+            Node* victim = popTail();
+            if (victim) {
+                cache_.erase(victim->key);
+                current_size_ -= victim->size;
+                delete victim;
+            }
+        }
+    }
+};
+```
+
+</div>
+
+</div>
+</details>
+
+---
+
+### 2. Reverse Linked List In-Place via Three Pointers
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">LINKED LIST 02</span>
+  <span class="review-card-title">Reverse Linked List In-Place via Three Pointers</span>
+  <span class="review-card-tag">Three Pointers · In-Place Reversal · Subsegment Inversion · O(1) Space</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Links**:
+> - [LeetCode 206 · Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) — `https://leetcode.com/problems/reverse-linked-list/`
+> - [LeetCode 92 · Reverse Linked List II](https://leetcode.com/problems/reverse-linked-list-ii/) — `https://leetcode.com/problems/reverse-linked-list-ii/`
+
+<div class="review-block">
+<div class="review-block-label">📌 Problem Statement & Requirements</div>
+
 **Problem Statement**:
 > **Reverse Linked List (LeetCode 206 / 92)**:
 > - **LeetCode 206**: Given the head of a singly linked list, reverse the list in-place, and return the reversed list.
