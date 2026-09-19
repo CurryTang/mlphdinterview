@@ -1491,8 +1491,9 @@ public:
 
 **题目原文 (Problem Statement)**：
 > **Reverse Linked List (LeetCode 206 / 92)**:
-> Given the head of a singly linked list, reverse the list in-place, and return the reversed list.
-> Follow-up: implement both iterative three-pointer sliding and clean recursion, maintaining $\mathcal{O}(1)$ auxiliary space in iterative mode.
+> - **LeetCode 206**: Given the head of a singly linked list, reverse the list in-place, and return the reversed list.
+> - **LeetCode 92**: Given the head of a singly linked list and two integers `left` and `right` where `left <= right`, reverse the nodes of the list from position `left` to position `right`, and return the reversed list in one-pass.
+> Follow-up: implement both iterative three-pointer sliding, clean recursion, and head-insertion subsegment reversal, maintaining $\mathcal{O}(1)$ auxiliary space in iterative mode.
 
 **函数签名**：
 ```python
@@ -1501,12 +1502,14 @@ class ReverseListSolution:
     def reverseListIterative(head: Optional[ListNode]) -> Optional[ListNode]: ...
     @staticmethod
     def reverseListRecursive(head: Optional[ListNode]) -> Optional[ListNode]: ...
+    @staticmethod
+    def reverseBetween(head: Optional[ListNode], left: int, right: int) -> Optional[ListNode]: ...
 ```
 
 **输入输出示例**：
-- `head = [1, 2, 3, 4, 5]` $\implies$ `[5, 4, 3, 2, 1]`
-- `head = [1, 2]` $\implies$ `[2, 1]`
-- `head = []` $\implies$ `[]`
+- **全量反转 (LC 206)**：`head = [1, 2, 3, 4, 5]` $\implies$ `[5, 4, 3, 2, 1]`
+- **局部反转 (LC 92)**：`head = [1, 2, 3, 4, 5], left = 2, right = 4` $\implies$ `[1, 4, 3, 2, 5]`
+- **单节点/边界**：`head = [3, 5], left = 1, right = 2` $\implies$ `[5, 3]`
 
 </div>
 
@@ -1525,7 +1528,7 @@ class ReverseListSolution:
     @classmethod
     def reverseListIterative(cls, head: Optional[ListNode]) -> Optional[ListNode]:
         """
-        三指针迭代原地反转单链表。
+        三指针迭代原地全量反转单链表 (LC 206)。
         时间 O(N)，额外空间 O(1)。
         """
         prev: Optional[ListNode] = None
@@ -1545,7 +1548,7 @@ class ReverseListSolution:
     @classmethod
     def reverseListRecursive(cls, head: Optional[ListNode]) -> Optional[ListNode]:
         """
-        递归反转单链表。
+        递归全量反转单链表 (LC 206)。
         时间 O(N)，调用栈空间 O(N)。
         """
         if head is None or head.next is None:
@@ -1555,6 +1558,29 @@ class ReverseListSolution:
         head.next.next = head
         head.next = None
         return new_head
+
+    @classmethod
+    def reverseBetween(cls, head: Optional[ListNode], left: int, right: int) -> Optional[ListNode]:
+        """
+        局部区间链表原地翻转 (LC 92) —— 虚拟头节点 + 头插法 (Head Insertion)。
+        时间 O(N)，额外空间 O(1)。
+        """
+        dummy = ListNode(0, head)
+        prev = dummy
+        # 1. 步进定位到待翻转区间的前驱节点 (固定桩位 prev)
+        for _ in range(left - 1):
+            prev = prev.next
+
+        curr = prev.next  # 反转区间的首节点（底牌/推土机，翻转后被推到子区间末尾）
+
+        # 2. 执行 (right - left) 次头插操作
+        for _ in range(right - left):
+            nxt = curr.next        # 抽牌：锁定待移动节点
+            curr.next = nxt.next  # 续接：跳过 nxt 指向后方
+            nxt.next = prev.next  # 插首：将 nxt 插入到子区间最新头部
+            prev.next = nxt       # 连桩：更新前驱指针指向最新头
+
+        return dummy.next
 
 if __name__ == "__main__":
     def build_list(vals):
@@ -1567,32 +1593,127 @@ if __name__ == "__main__":
         while h: r.append(h.val); h = h.next
         return r
 
+    # 1. LC 206 全量迭代反转
     rl_h = build_list([1, 2, 3, 4, 5])
     assert to_list(ReverseListSolution.reverseListIterative(rl_h)) == [5, 4, 3, 2, 1]
+
+    # 2. LC 206 全量递归反转
     rl_h2 = build_list([1, 2])
     assert to_list(ReverseListSolution.reverseListRecursive(rl_h2)) == [2, 1]
-    print("✅ Card 11 (Reverse Linked List) all tests passed!")
+
+    # 3. LC 92 局部区间反转 (标准用例: left=2, right=4)
+    rb_h1 = build_list([1, 2, 3, 4, 5])
+    assert to_list(ReverseListSolution.reverseBetween(rb_h1, 2, 4)) == [1, 4, 3, 2, 5]
+
+    # 4. LC 92 边界用例 (从头节点开始: left=1, right=2)
+    rb_h2 = build_list([3, 5])
+    assert to_list(ReverseListSolution.reverseBetween(rb_h2, 1, 2)) == [5, 3]
+
+    # 5. LC 92 单节点区间 (left=right)
+    rb_h3 = build_list([1, 2, 3])
+    assert to_list(ReverseListSolution.reverseBetween(rb_h3, 2, 2)) == [1, 2, 3]
+
+    print("✅ Card 02 (Reverse Linked List I & II) all tests passed!")
 ```
 
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 机制剖析</div>
+<div class="review-block-label">💡 机制剖析：头插法演化、优势与记忆模型</div>
 
-- **三指针不变量（Three-Pointer Invariant）**：
+- **三指针全量反转不变量（Three-Pointer Invariant - LC 206）**：
   在任意时刻，$prev$ 指向已反转完成的子链表头部，$curr$ 指向当前待处理节点，$nxt$ 暂存原链表剩余未处理部分。每步操作通过 `curr.next = prev` 翻转指针，绝不引入任何堆内存分配。
 - **递归版归纳基底与尾部清空**：
   在递归回溯阶段，`head.next.next = head` 让下一个节点反向指向当前节点；随后必须将 `head.next = None`，防止在原头节点处形成环形死锁。
+
+---
+
+#### 1. 什么是头插法？(Head Insertion)
+在局部区间反转（LC 92）中，若像 LC 206 那样让指针持续向前走，会导致翻转后的子链表与主链断开，需要记录 4 个边界指针最后二次重连。
+**头插法（Head Insertion / Prepending）**采取“**定点锚定，抽牌前插**”策略：
+- **`prev` 保持不动**：始终锚定在反转区间前驱节点（定海神针）；
+- **`curr` 保持不动**：始终指向反转区间的第一个原始节点（底牌/推土机）。随着后续节点不断被抽插到前面，`curr` 会被自然推到翻转区间的末端；
+- **`nxt` 动态抽取**：每一轮只将 `curr.next` 节点抽离，就地插到 `prev` 的正后方。
+
+---
+
+#### 2. 头插法全景指针演化图解 (以 head=[1,2,3,4,5], left=2, right=4 为例)
+
+```text
+【初始状态】定位 prev 到节点 1，curr 到节点 2，循环执行 (right - left = 2) 次：
+  dummy -> [1]  ->  [2]  ->  [3]  ->  [4]  ->  [5] -> None
+           prev     curr     nxt
+
+【第 1 次头插】抽取节点 3 插入 prev 之后：
+  1. 抽牌: nxt = curr.next          (锁定节点 3)
+  2. 续接: curr.next = nxt.next      (节点 2 跨过 3 指向 4: [2] -> [4])
+  3. 插首: nxt.next = prev.next      (节点 3 指向当前子头 2: [3] -> [2])
+  4. 连桩: prev.next = nxt           (节点 1 指向新子头 3:   [1] -> [3])
+  
+  指针状态更新后：
+  dummy -> [1]  ->  [3]  ->  [2]  ->  [4]  ->  [5] -> None
+           prev              curr
+
+【第 2 次头插】抽取节点 4 插入 prev 之后：
+  1. 抽牌: nxt = curr.next          (锁定节点 4)
+  2. 续接: curr.next = nxt.next      (节点 2 跨过 4 指向 5: [2] -> [5])
+  3. 插首: nxt.next = prev.next      (节点 4 指向当前子头 3: [4] -> [3])
+  4. 连桩: prev.next = nxt           (节点 1 指向新子头 4:   [1] -> [4])
+  
+  指针状态更新后：
+  dummy -> [1]  ->  [4]  ->  [3]  ->  [2]  ->  [5] -> None
+           prev                       curr
+
+【结束】返回 dummy.next 即为 [1, 4, 3, 2, 5]。
+```
+
+---
+
+#### 3. 为什么头插法好？(Why Head Insertion is Superior)
+1. **单趟扫描，彻底免除“断链与二次重连”陷阱**：
+   传统切片反转法需要先断开 `left-1` 和 `right+1`，全量反转局部链表后，再繁琐地执行 `p_before.next = sub_tail` 和 `sub_head.next = p_after`，涉及 4 个外部指针维护，极易发生空指针异常。
+   头插法在**每一步循环内部都始终维持整条链表的完整连通性**，绝无悬空指针与二次拼接开销。
+2. **虚拟头节点 (Dummy Head) 抹平边界分歧**：
+   使用 `dummy = ListNode(0, head)`，即使 `left = 1`（从首节点开始翻转），`prev = dummy` 依然完全适用，无需写任何 `if left == 1:` 的特殊逻辑。
+3. **极简常数开销**：
+   遍历次数精准控制在 $R$ 步，仅分配 1 个额外指针 `nxt`，原地常数空间 $\mathcal{O}(1)$。
+
+---
+
+#### 4. 怎么记忆双指针 vs 头插法？(Memory Models & Mnemonics)
+
+| 核心维度 | 双指针法 (LC 206 全量反转) | 头插法 (LC 92 / LC 25 局部反转) |
+| :--- | :--- | :--- |
+| **动作隐喻** | **“逐个调头，双双齐步走”** | **“定海神针，底牌不动，抽牌插前”** |
+| **指针角色** | `prev`（反转链头）、`curr`（当前处理点）、`nxt`（后继暂存） | `prev`（固定桩）、`curr`（底牌推土机）、`nxt`（机动插牌） |
+| **指针运动** | `prev` 与 `curr` **同步向前推进** | `prev` 与 `curr` **全局不向前移**，只有被插节点在变 |
+| **循环步数** | `while curr:` 循环 $N$ 次 | `for _ in range(right - left):` 循环 $R - L$ 次 |
+| **核心四步** | 1. 存后继：`nxt = curr.next`<br>2. 调车头：`curr.next = prev`<br>3. 步步移：`prev = curr`<br>4. 齐步走：`curr = nxt` | 1. 抽牌：`nxt = curr.next`<br>2. 续接：`curr.next = nxt.next`<br>3. 插首：`nxt.next = prev.next`<br>4. 连桩：`prev.next = nxt` |
+| **适用场景** | 链表全量反转 | 局部区间反转、K 个一组反转 |
+
+**头插法 4 行代码对称流动速记律**：
+```text
+nxt       = curr.next
+curr.next = nxt.next
+nxt.next  = prev.next
+prev.next = nxt
+```
+> **口诀**：“首行抓出 `nxt`；第二行 `curr.next` 跨步抓后背；第三行 `nxt.next` 插入原头顶；第四行 `prev.next` 迎娶新龙头”。前一行的被操作对象紧接着在下一行作为后继，逻辑闭环严丝合缝。
 
 </div>
 
 <div class="review-block">
 <div class="review-block-label">⏱️ 复杂度分析</div>
 
-- **时间复杂度**：$\mathcal{O}(N)$，每个节点被精确访问一次。
-- **空间复杂度**：迭代法 $\mathcal{O}(1)$；递归法 $\mathcal{O}(N)$（递归系统调用栈深度）。
+- **时间复杂度**：
+  - LC 206 全量反转：$\mathcal{O}(N)$，每个节点访问一次。
+  - LC 92 局部反转：$\mathcal{O}(N)$，精准单趟扫描至 `right` 位置，反转循环执行 $R - L$ 次。
+- **空间复杂度**：
+  - 迭代法 / 头插法：严格 $\mathcal{O}(1)$，仅使用常量指针变量。
+  - 递归法：$\mathcal{O}(N)$（递归深度调用栈开销）。
 
 </div>
+
 <div class="review-block">
 <div class="review-block-label">🌐 核心基石延伸：回文复原、高位加减法与树链编织全家桶</div>
 
