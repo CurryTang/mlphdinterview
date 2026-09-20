@@ -1753,6 +1753,23 @@ const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition)
   },
 }));
 
+const jobsNoteDefinitions = [
+  createTutorialDefinition(
+    '找工 00 · AI Neolabs（2026 年 9 月版）',
+    'Jobs00 AI Neolabs.md',
+    'Jobs00 AI Neolabs.en.md',
+    { directory: 'Jobs', titleEn: 'Jobs 00 · AI Neolabs (September 2026)' },
+  ),
+];
+
+const jobsNotes = jobsNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
 const noteSections = [
   {
     id: 'mlsys',
@@ -1789,6 +1806,12 @@ const noteSections = [
     title: 'LeetCode',
     description: 'Core data structure and algorithm interview drills',
     notes: leetcodeNotes,
+  },
+  {
+    id: 'jobs',
+    title: '找工',
+    description: 'AI Neolabs map (September 2026) and where to apply',
+    notes: jobsNotes,
   },
   ...(isDraftMode
     ? [
@@ -1909,6 +1932,10 @@ const homeSectionCopy = {
       title: 'LeetCode',
       description: '数据结构、算法模式与 LeetCode 练习',
     },
+    jobs: {
+      title: '找工',
+      description: 'AI Neolabs 地图（2026 年 9 月版）与投递方向',
+    },
     drafts: {
       title: '草稿区',
       description: '仅在本地开发环境可见的草稿',
@@ -1938,6 +1965,10 @@ const homeSectionCopy = {
     leetcode: {
       title: 'LeetCode',
       description: 'Data structures, algorithm patterns, and LeetCode practice',
+    },
+    jobs: {
+      title: 'Jobs',
+      description: 'AI Neolabs map (September 2026) and where to apply',
     },
     drafts: {
       title: 'Drafts',

@@ -259,6 +259,28 @@ describe('App', () => {
     expect(screen.getAllByText('CoreSkills16 Sliding Window.md')).toHaveLength(2);
   });
 
+  it('opens the Jobs section with the September 2026 Neolabs list', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('Jobs00')
+          ? '# 找工 00 · AI Neolabs（2026 年 9 月版）\n\nThinking Machines Lab 和 Axiom Math。'
+          : '# 中文教程',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: '找工' })[0]);
+
+    expect(await screen.findByRole('heading', { name: /AI Neolabs/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/2026 年 9 月/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Thinking Machines Lab/)).toBeInTheDocument();
+    expect(screen.getByText(/Axiom Math/)).toBeInTheDocument();
+    expect(screen.getAllByText('Jobs00 AI Neolabs.md')).toHaveLength(2);
+  });
+
   it('renders the interactive 3Sum two-pointer walkthrough', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);
