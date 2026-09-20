@@ -1,6 +1,6 @@
 # System Design 99 · 高频术语整合
 
-课程位置：[[SystemDesign11 Notification System|11 移动推送与通知系统]] → 本篇。
+课程位置：[[SystemDesign12 Crossword Solver|12 填字游戏求解器]] → 本篇。
 
 这页放在 System Design 的最后，作为查词和写 design doc 时的速查表。重点不是把词背下来，而是知道一个词在解决什么问题、什么时候值得引入、代价是什么。
 

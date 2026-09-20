@@ -1579,6 +1579,12 @@ const systemDesignNoteDefinitions = [
     'SystemDesign11 Notification System.en.md',
     { directory: 'SystemDesign', titleEn: 'System Design 11 · Notification System', category: 'Case', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'System Design 12 · 填字游戏求解器',
+    'SystemDesign12 Crossword Solver.md',
+    'SystemDesign12 Crossword Solver.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 12 · Crossword Puzzle Solver', category: 'Case', difficulty: 'Hard' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',

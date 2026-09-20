@@ -64,6 +64,8 @@ describe('App', () => {
               ? '# System Design 10 · Flash Sale (秒杀)'
             : requestUrl.includes('SystemDesign11')
               ? '# System Design 11 · 移动推送与通知系统 (Notification System)'
+            : requestUrl.includes('SystemDesign12')
+              ? '# System Design 12 · 填字游戏求解器 (Crossword Puzzle Solver)'
             : requestUrl.includes('SystemDesign01D')
               ? '# System Design 01D · Redis'
             : requestUrl.includes('CoreSkills09')
@@ -618,7 +620,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('本板块共 14 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 15 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 00 · 全局架构与量化估算/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态服务/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
@@ -634,6 +636,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 10 · 秒杀/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 12 · 填字游戏求解器/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
@@ -676,6 +679,11 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /移动推送与通知系统/ })).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign11 Notification System.md')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 12 · 填字游戏求解器/i }));
+
+    expect(await screen.findByRole('heading', { name: /填字游戏求解器/ })).toBeInTheDocument();
+    expect(screen.getAllByText('SystemDesign12 Crossword Solver.md')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
 

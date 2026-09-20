@@ -1,6 +1,6 @@
 # System Design 11 · 移动推送与通知系统 (Notification System)
 
-课程位置：[[SystemDesign10 Flash Sale|10 秒杀]] → 本篇 → [[SystemDesign99 Glossary|99 术语]]
+课程位置：[[SystemDesign10 Flash Sale|10 秒杀]] → 本篇 → [[SystemDesign12 Crossword Solver|12 填字游戏求解器]]
 
 接收请求、扇出收件人、经 APNs / FCM 投递至终端，并实现端内收件箱同步。
 

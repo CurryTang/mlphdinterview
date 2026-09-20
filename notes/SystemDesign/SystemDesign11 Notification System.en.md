@@ -1,6 +1,6 @@
 # System Design 11 · Mobile Push & Notification System
 
-Course location: [[SystemDesign10 Flash Sale|10 Flash Sale]] → this note → [[SystemDesign99 Glossary|99 Glossary]]
+Course location: [[SystemDesign10 Flash Sale|10 Flash Sale]] → this note → [[SystemDesign12 Crossword Solver|12 Crossword Solver]]
 
 Ingest notification requests, fan out across recipient devices, dispatch reliably via APNs / FCM, and synchronize the in-app notification inbox.
 
