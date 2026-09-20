@@ -1,20 +1,6 @@
-# Jobs 00 · AI Neolabs (September 2026)
+# Resource 1 · Neolab list
 
-This is a transcript of a one-page *Artificial Intelligence Neolabs* graphic that circulated in **September 2026**: 50 companies, about **$200B** in combined valuation. The original image is at the bottom. Valuations and headcount move; treat this as a **job map**, not diligence.
-
-The graphic's definition of a neo-lab:
-
-> An AI research lab usually founded by elite researchers from major AI labs, professors, or post-economic entrepreneurs that are **pre–product-market-fit** and **sub-revenue scale**, but have raised at high, usually **unicorn+** valuations, to focus on long-term breakthroughs.
-
-Big labs, revenue-scale companies, hardware companies, and Chinese labs are listed under **Notable omissions**. OpenAI / Anthropic / xAI / Mistral still hire; they are just not in this bucket.
-
-Screen by **area**, not by valuation rank. Typical openings are Research Scientist / Research Engineer / pretraining / post-training / robotics / bio ML. Headcount is small and reqs close fast.
-
----
-
-## 1 · The 50 (valuation order on the graphic)
-
-| # | Company | Val. | Year | Space | Founders | Known for (from the graphic) |
+| # | Company | Val. | Year | Space | Founders | Known for |
 | ---: | --- | --- | ---: | --- | --- | --- |
 | 01 | Thinking Machines Lab | $50–60B | 2024 | Frontier lab | Mira Murati, John Schulman, Soumith Chintala | Ex-OpenAI CTO, PyTorch founder, Tinker |
 | 02 | SSI (Safe Superintelligence) | $32B | 2024 | Frontier lab | Ilya Sutskever | OpenAI founder, huge valuation, secrecy |
@@ -67,38 +53,9 @@ Screen by **area**, not by valuation rank. Typical openings are Research Scienti
 | 49 | Poetiq | <$500M | 2025 | Frameworks | Shumeet Bhakija, Ian Fischer | Ex-DeepMind team with SOTA ARC-AGI results |
 | 50 | Axiom Math | ~$300M | 2025 | Math | Carina Hong | Solving 12/12 Putnam 2025 problems |
 
-Valuation strings are copied from the graphic (`$50–60B`, `~$4B`, `<$1B`). They are not a market quote.
+## Notable omissions
 
----
-
-## 2 · Scan by area (for applications)
-
-Each company appears in the closest hiring bucket.
-
-| Area | Companies |
-| --- | --- |
-| Frontier / general research | Thinking Machines Lab, SSI, Project Prometheus, Flapping Airplanes, Recursive, AAI |
-| Coding models / agents | Poolside, Reflection AI, Magic |
-| Robotics | Skild AI, Physical Intelligence, Genesis AI |
-| World models | AMI Labs, Decart, General Intuition, World Labs |
-| Bio / materials / lab automation | Isomorphic Labs, Xaira Therapeutics, Periodic Labs, Lila Sciences, Chai Discovery, EvolutionaryScale, CuspAI |
-| Efficient / on-device | Sakana AI, Liquid AI |
-| Open-source LLMs | Reflection AI, Essential AI, Zyphra, Nous Research |
-| Math / program synthesis | Harmonic, Ndea, Axiom Math, Poetiq |
-| Multimodal / video / voice | Reka, Moonvalley, Kyutai, Elorian |
-| Agents / reasoning / RL | H Company, Humans&, Imbue, Isara |
-| Simulation / continual learning / decentralized training | Aaru, Simile, Hark, Adaption Labs, Prime Intellect |
-| Enterprise LLM | AI21 Labs, Inflection AI |
-| Interpretability | Goodfire |
-| AI compute hardware | Unconventional AI |
-| Industrial AI | Project Prometheus |
-| Diffusion LLMs | Inception Labs |
-
----
-
-## 3 · Notable omissions on the graphic
-
-| Name | Reason on the graphic |
+| | |
 | --- | --- |
 | OpenAI | big lab |
 | Anthropic | big lab |
@@ -118,12 +75,4 @@ Each company appears in the closest hiring bucket.
 | Robotics hardware cos | hardware · not model |
 | Silicon hardware cos | hardware · not model |
 
-These are still reasonable places to apply. They are just outside the neo-lab cut.
-
----
-
-## 4 · Original graphic
-
 ![Artificial Intelligence Neolabs, 2026-09](assets/ai-neolabs-2026-09.jpg)
-
-If a name is wrong, patch this note. The list will go stale; replace the graphic instead of writing stories on old valuations.

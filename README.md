@@ -18,7 +18,7 @@ Kubernetes 章节的配套实验在 [`project/LLMTrainLab/`](project/LLMTrainLab
 - **业务算法八股**：推荐、搜索、广告、排序、实验设计等，正在补充
 - **ML 八股**：机器学习基础，正在补充
 - **LeetCode Core Skills**：数据结构、DP、图、贪心、数学、区间等核心题型
-- **找工**：AI Neolabs 地图（2026 年 9 月版）与投递方向
+- **找工**：资源 1 · Neolab 列表
 
 如果你发现内容有错误、表达不清楚、公式渲染问题，或者想补充更好的例题 / 面试题，欢迎提 issue 或 PR。纠错和贡献都很欢迎。
 
@@ -36,7 +36,7 @@ The Kubernetes lab lives in [`project/LLMTrainLab/`](project/LLMTrainLab/) (stan
 - **Business Algorithms**: recommendation, search, ads, ranking, experimentation, still in progress
 - **ML Fundamentals**: core machine learning interview notes, still in progress
 - **LeetCode Core Skills**: data structures, DP, graphs, greedy, math, interval problems
-- **Jobs**: AI Neolabs map (September 2026) and where to apply
+- **Jobs**: Resource 1 · Neolab list
 
 Corrections, issue reports, and contributions are welcome. If something is wrong, unclear, outdated, or missing a useful example, feel free to open an issue or PR.
 

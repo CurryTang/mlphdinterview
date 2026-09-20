@@ -1,20 +1,6 @@
-# 找工 00 · AI Neolabs（2026 年 9 月版）
+# 资源 1 · Neolab 列表
 
-这份表是 **2026 年 9 月** 流传的一页 *Artificial Intelligence Neolabs* 名单：50 家、合计估值大约 **$200B**。下面是按原图识别的文本；原图附在文末。估值、融资轮次和人员会变，这里只当 **投递地图**，不当尽调。
-
-原图对 neo-lab 的定义：
-
-> 通常由大实验室出来的研究员、教授，或已经赚过一轮的创业者创办。还在 **pre–product-market-fit**、**sub-revenue**，但已经融到很高、经常是 unicorn+ 的估值，去做长期突破。
-
-大厂、已经有规模收入的公司、硬件公司、中国实验室被故意放在 **Notable omissions**。投 OpenAI / Anthropic / xAI / Mistral 仍然走它们自己的招聘页，不在这 50 家里。
-
-投递时按 **方向** 筛，不要按估值从高到低海投。Research Scientist / Research Engineer / pretraining / post-training / robotics / bio ML 是这些 lab 最常见的入口；编制比 FAANG 小，岗位关掉也快。
-
----
-
-## 1 · 50 家（按原图估值序）
-
-| # | 公司 | 估值 | 年 | 方向 | 创始人 | 图上的 Known for |
+| # | 公司 | 估值 | 年 | 方向 | 创始人 | Known for |
 | ---: | --- | --- | ---: | --- | --- | --- |
 | 01 | Thinking Machines Lab | $50–60B | 2024 | Frontier lab | Mira Murati, John Schulman, Soumith Chintala | 前 OpenAI CTO、PyTorch founder、Tinker |
 | 02 | SSI (Safe Superintelligence) | $32B | 2024 | Frontier lab | Ilya Sutskever | OpenAI founder，高估值，保密 |
@@ -67,38 +53,9 @@
 | 49 | Poetiq | <$500M | 2025 | Frameworks | Shumeet Bhakija, Ian Fischer | 前 DeepMind，ARC-AGI SOTA |
 | 50 | Axiom Math | ~$300M | 2025 | Math | Carina Hong | 宣称解决 Putnam 2025 的 12/12 |
 
-估值列是图上的写法（`$50–60B`、`~$4B`、`<$1B`），不是交易所报价。
+## Notable omissions
 
----
-
-## 2 · 按方向扫（投递时用）
-
-同一家公司只出现在最贴岗位的一类。
-
-| 方向 | 公司 |
-| --- | --- |
-| Frontier / 通用研究 | Thinking Machines Lab, SSI, Project Prometheus, Flapping Airplanes, Recursive, AAI |
-| Coding models / agents | Poolside, Reflection AI, Magic |
-| Robotics | Skild AI, Physical Intelligence, Genesis AI |
-| World models | AMI Labs, Decart, General Intuition, World Labs |
-| Bio / 材料 / 实验自动化 | Isomorphic Labs, Xaira Therapeutics, Periodic Labs, Lila Sciences, Chai Discovery, EvolutionaryScale, CuspAI |
-| Efficient / on-device | Sakana AI, Liquid AI |
-| Open-source LLMs | Reflection AI, Essential AI, Zyphra, Nous Research |
-| Math / program synthesis | Harmonic, Ndea, Axiom Math, Poetiq |
-| Multimodal / video / voice | Reka, Moonvalley, Kyutai, Elorian |
-| Agents / reasoning / RL | H Company, Humans&, Imbue, Isara |
-| Simulation / 持续学习 / 分布式训练 | Aaru, Simile, Hark, Adaption Labs, Prime Intellect |
-| Enterprise LLM | AI21 Labs, Inflection AI |
-| Interpretability | Goodfire |
-| AI compute hardware | Unconventional AI |
-| Industrial AI | Project Prometheus |
-| Diffusion LLMs | Inception Labs |
-
----
-
-## 3 · 图上故意没写进去的
-
-| 名字 | 图上的理由 |
+| | |
 | --- | --- |
 | OpenAI | big lab |
 | Anthropic | big lab |
@@ -118,12 +75,4 @@
 | Robotics hardware cos | hardware · not model |
 | Silicon hardware cos | hardware · not model |
 
-投这些公司仍然合理，只是不在 neo-lab 这个桶里。
-
----
-
-## 4 · 原图
-
 ![Artificial Intelligence Neolabs, 2026-09](assets/ai-neolabs-2026-09.jpg)
-
-识别有错名或漏行，直接改这篇笔记。名单本身会过期；过期了就换一版图，不要在旧估值上做故事。

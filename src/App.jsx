@@ -1755,10 +1755,10 @@ const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition)
 
 const jobsNoteDefinitions = [
   createTutorialDefinition(
-    '找工 00 · AI Neolabs（2026 年 9 月版）',
+    '资源 1 · Neolab 列表',
     'Jobs00 AI Neolabs.md',
     'Jobs00 AI Neolabs.en.md',
-    { directory: 'Jobs', titleEn: 'Jobs 00 · AI Neolabs (September 2026)' },
+    { directory: 'Jobs', titleEn: 'Resource 1 · Neolab list' },
   ),
 ];
 
@@ -1810,7 +1810,7 @@ const noteSections = [
   {
     id: 'jobs',
     title: '找工',
-    description: 'AI Neolabs map (September 2026) and where to apply',
+    description: 'Neolab 列表',
     notes: jobsNotes,
   },
   ...(isDraftMode
@@ -1934,7 +1934,7 @@ const homeSectionCopy = {
     },
     jobs: {
       title: '找工',
-      description: 'AI Neolabs 地图（2026 年 9 月版）与投递方向',
+      description: 'Neolab 列表',
     },
     drafts: {
       title: '草稿区',
@@ -1968,7 +1968,7 @@ const homeSectionCopy = {
     },
     jobs: {
       title: 'Jobs',
-      description: 'AI Neolabs map (September 2026) and where to apply',
+      description: 'Neolab list',
     },
     drafts: {
       title: 'Drafts',

@@ -265,7 +265,7 @@ describe('App', () => {
       return {
         ok: true,
         text: async () => requestUrl.includes('Jobs00')
-          ? '# 找工 00 · AI Neolabs（2026 年 9 月版）\n\nThinking Machines Lab 和 Axiom Math。'
+          ? '# 资源 1 · Neolab 列表\n\nThinking Machines Lab 和 Axiom Math。'
           : '# 中文教程',
       };
     });
@@ -274,8 +274,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: '找工' })[0]);
 
-    expect(await screen.findByRole('heading', { name: /AI Neolabs/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/2026 年 9 月/).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('heading', { name: /Neolab 列表/i })).toBeInTheDocument();
     expect(screen.getByText(/Thinking Machines Lab/)).toBeInTheDocument();
     expect(screen.getByText(/Axiom Math/)).toBeInTheDocument();
     expect(screen.getAllByText('Jobs00 AI Neolabs.md')).toHaveLength(2);
