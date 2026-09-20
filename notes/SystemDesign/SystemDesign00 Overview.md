@@ -149,6 +149,6 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 12. **[[SystemDesign11 Notification System|11 综合实战：海量移动推送与通知平台]]**
     - *架构全链路*：单日十亿级推送。Transaction Outbox 零丢失投递、Dispatcher 批量切片与偏好过滤、Durable Queues 优先级隔离削峰、APNs/FCM HTTP/2 连接池与 At-least-once 幂等去重闭环。
 13. **[[SystemDesign12 Crossword Solver|12 综合实战：分布式填字游戏求解器]]**
-    - *架构全链路*：NP-Complete 约束满足与分布式搜索调度。单机位并行位图索引优先消化 90%+ 流量，长尾任务自适应粗粒度子树切片（Coarse Subtree Splitting），租户加权公平调度（DRR），独立验题器与 CAS 竞态胜出。
+    - *架构全链路*：NP-Complete 约束满足与分布式 DFS 搜索调度。静态复杂度初筛与动态看门狗双轨准入，单机位并行索引极速消化 90%+ 流量；长尾任务接入分布式 DFS 算力池，基于最浅选择点粗粒度工作窃取、信用权重守恒屏障与 CAS 竞态胜出。
 14. **[[SystemDesign99 Glossary|99 高频术语与核心对比图谱]]**
     - *全局检索*：全专栏分布式系统关键概念、定理（CAP/BASE/Little's Law）与对比矩阵速查。
