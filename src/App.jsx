@@ -1573,6 +1573,12 @@ const systemDesignNoteDefinitions = [
     'SystemDesign10 Flash Sale.en.md',
     { directory: 'SystemDesign', titleEn: 'System Design 10 · Flash Sale', category: 'Case', difficulty: 'Hard' },
   ),
+  createTutorialDefinition(
+    'System Design 11 · 移动推送与通知系统',
+    'SystemDesign11 Notification System.md',
+    'SystemDesign11 Notification System.en.md',
+    { directory: 'SystemDesign', titleEn: 'System Design 11 · Notification System', category: 'Case', difficulty: 'Hard' },
+  ),
   // Keep the glossary as the final System Design note even when new chapters are inserted.
   createTutorialDefinition(
     'System Design 99 · 高频术语整合',

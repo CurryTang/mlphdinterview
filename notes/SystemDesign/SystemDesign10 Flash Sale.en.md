@@ -1,6 +1,6 @@
 # System Design 10 · Flash Sale
 
-Course location: [[SystemDesign08 LLM Async RL Platform|08 Async LLM RL]] → this note → [[SystemDesign99 Glossary|99 Glossary]]
+Course location: [[SystemDesign08 LLM Async RL Platform|08 Async LLM RL]] → this note → [[SystemDesign11 Notification System|11 Notification System]]
 
 One sale, one SKU. Reads hit cache. Buys hit a queue. Stock moves only inside a DB transaction.
 

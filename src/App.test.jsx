@@ -62,6 +62,8 @@ describe('App', () => {
               ? '# System Design 09 · 一致性哈希\n\n节点变化时只迁移相邻区间。'
             : requestUrl.includes('SystemDesign10')
               ? '# System Design 10 · Flash Sale (秒杀)'
+            : requestUrl.includes('SystemDesign11')
+              ? '# System Design 11 · 移动推送与通知系统 (Notification System)'
             : requestUrl.includes('SystemDesign01D')
               ? '# System Design 01D · Redis'
             : requestUrl.includes('CoreSkills09')
@@ -595,7 +597,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('本板块共 13 篇笔记')).toBeInTheDocument();
+    expect(screen.getByText('本板块共 14 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 00 · 全局架构与量化估算/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态服务/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
@@ -610,6 +612,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /System Design 08 · 异步 LLM RL/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 10 · 秒杀/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
@@ -647,6 +650,11 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /秒杀/ })).toBeInTheDocument();
     expect(screen.getAllByText('SystemDesign10 Flash Sale.md')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i }));
+
+    expect(await screen.findByRole('heading', { name: /移动推送与通知系统/ })).toBeInTheDocument();
+    expect(screen.getAllByText('SystemDesign11 Notification System.md')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
 

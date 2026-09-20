@@ -1,6 +1,6 @@
 # System Design 99 · Glossary of High-Frequency Terms
 
-Course location: [[SystemDesign10 Flash Sale|10 Flash Sale]] → this note.
+Course location: [[SystemDesign11 Notification System|11 Notification System]] → this note.
 
 This page is placed at the end of the System Design course as a quick-reference guide for looking up terms and writing design documents. The goal is not to memorize these terms, but to understand what problem each term solves, when it is worth introducing, and what the trade-offs are.
 

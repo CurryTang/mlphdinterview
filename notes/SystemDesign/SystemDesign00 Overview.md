@@ -105,6 +105,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 07  图片分享与 Feed 流系统 (大文件直传、读写扩散与 Timeline 聚合)
 08  异步 LLM 强化学习平台 (现代前沿 AI 基础设施、Actor-Learner 解耦)
 10  极端瞬态高并发秒杀系统 (Redis 准入拦截、MQ 削峰与防超卖)
+11  海量移动推送与通知平台 (事务 Outbox 零丢信、物理隔离队列、APNs/FCM 适配池)
                               │
                               ▼
 【阶段 5：总结与参考】 ──► 99 高频术语与核心对比图谱
@@ -144,5 +145,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
     - *架构全链路*：前沿现代 AI 基础设施。Rollout 生成与 Trainer 梯度反向传播异步解耦，高吞吐参数更新与大规模分布式数据管道。
 11. **[[SystemDesign10 Flash Sale|10 综合实战：极端并发秒杀系统]]**
     - *架构全链路*：微秒级突发瞬态洪峰。Redis 准入拦截、MQ 队列削峰、数据库行级悲观锁事务防超卖。
-12. **[[SystemDesign99 Glossary|99 高频术语与核心对比图谱]]**
+12. **[[SystemDesign11 Notification System|11 综合实战：海量移动推送与通知平台]]**
+    - *架构全链路*：单日十亿级推送。Transaction Outbox 零丢失投递、Dispatcher 批量切片与偏好过滤、Durable Queues 优先级隔离削峰、APNs/FCM HTTP/2 连接池与 At-least-once 幂等去重闭环。
+13. **[[SystemDesign99 Glossary|99 高频术语与核心对比图谱]]**
     - *全局检索*：全专栏分布式系统关键概念、定理（CAP/BASE/Little's Law）与对比矩阵速查。

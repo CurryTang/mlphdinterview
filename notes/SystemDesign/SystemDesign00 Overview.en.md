@@ -105,6 +105,7 @@ This 12-chapter curriculum advances systematically from **single-instance baseli
 07  Photo Sharing & Feed System (Direct S3 Uploads, Fan-out, Timeline Aggregation)
 08  Async LLM RL Training Platform (Modern AI Infrastructure, Actor-Learner Decoupling)
 10  Flash Sale Architecture (Redis Admission Filtering, MQ Leveling, Zero Overselling)
+11  Mobile Push & Notification System (Transactional Outbox, Priority Queues, APNs/FCM Adapters)
                                             │
                                             ▼
 [ Stage 5: Reference ] ──► 99 Glossary & Architectural Comparison Matrix
@@ -125,4 +126,5 @@ This 12-chapter curriculum advances systematically from **single-instance baseli
 9. **[[SystemDesign07 Photo Sharing Feed|07 Photo Sharing & Feed System]]**: 100:1 read/write ratio, CDN direct uploads, Push vs Pull fan-out, and timeline hydration.
 10. **[[SystemDesign08 LLM Async RL Platform|08 Async LLM RL Platform]]**: Asynchronous Actor-Learner decoupling, parameter synchronization, and training cluster pipelines.
 11. **[[SystemDesign10 Flash Sale|10 Flash Sale Architecture]]**: Extreme microsecond spikes, Redis fast reject admission, MQ buffering, and atomic DB inventory reservation.
-12. **[[SystemDesign99 Glossary|99 Glossary & Key Concepts]]**: Distributed systems axioms, theorems (CAP/BASE/Little's Law), and architectural decision matrices.
+12. **[[SystemDesign11 Notification System|11 Mobile Push & Notification System]]**: 1B notifs/day scale, Transactional Outbox zero drop, Dispatcher batch slicing, durable priority queues, APNs/FCM HTTP/2 connection pooling, and At-least-once idempotent feedback loops.
+13. **[[SystemDesign99 Glossary|99 Glossary & Key Concepts]]**: Distributed systems axioms, theorems (CAP/BASE/Little's Law), and architectural decision matrices.

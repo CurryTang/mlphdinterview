@@ -1,6 +1,6 @@
 # System Design 10 · 秒杀
 
-课程位置：[[SystemDesign08 LLM Async RL Platform|08 异步 LLM RL]] → 本篇 → [[SystemDesign99 Glossary|99 术语]]
+课程位置：[[SystemDesign08 LLM Async RL Platform|08 异步 LLM RL]] → 本篇 → [[SystemDesign11 Notification System|11 移动推送与通知系统]]
 
 一场活动、一个 SKU。读走 cache；买走队列；库存只在 DB 事务里扣。
 
