@@ -92,74 +92,93 @@ class SIMSequenceModel(nn.Module):
         return self.attention(combined_cand, combined_hist)
 ```
 
+---
 
-### 12.5 Time Issues in Training
-hapter 12: User Behavior Sequences
+### 12.4B SASRec (Self-Attentive Sequential Recommendation, 2018)
 
-A behavior sequence is not better simply because it is longer, and feeding every log event into a Transformer does not finish the modeling problem. The model estimates the user's current state: which interests remain active, whether a recent action changed intent, and which part of history matters to the current candidate. Storage and latency limit how it can make that estimate.
+DIN uses candidate-driven local attention (Target Attention) to activate relevant historical subsets. However, **no interaction occurs between historical items themselves**, making it impossible to capture strict temporal transitions and causal progressions (e.g., "user bought a phone $\to$ bought a phone case $\to$ now needs a charging cable").
 
-The first choices happen before the model. An accidental tap, autoplay, and an explicit save should not have equal weight. Watching ten items from one creator may not provide ten independent pieces of evidence. Behavior strength, deduplication, session boundaries, time gaps, and negative feedback often affect the result before another network layer does.
-
-Production systems commonly keep two user representations. A general user embedding is computed once per request and works well for retrieval or a large candidate set. A candidate-conditioned representation queries history with the current item and captures finer intent, but repeats work for every candidate. DIN, SIM, and longer-sequence models choose different points on this quality-cost tradeoff.
-
-### 12.1 What Does Average Pooling Lose?
-
-A user has viewed basketball, cooking, music, and travel content. Averaging all item embeddings yields a fuzzy "overall interest," but it doesn't know which part of the history is relevant to the current candidate, nor does it account for temporal order.
-
-Sequence models primarily solve three things:
-
-- Different behaviors have different weights;
-- The current candidate needs to read different parts of the history;
-- Interests evolve over time.
-
-### 12.2 Last-N
-
-The simplest approach takes the last N behaviors. It is inexpensive and often stronger than complex models suggest.
-
-One can add:
-
-- Behavioral type weights;
-- Time decay;
-- Deduplication and continuous playback compression;
-- Effective view thresholds;
-- Category or author grouping.
-
-For Last-N, bigger is not always better. Long histories introduce noise, storage, and service costs, and may re-amplify old interests.
-
-### 12.3 DIN
-
-DIN uses the candidate item `q` to query historical behaviors `h_j`:
+**SASRec** first introduced Transformer causal self-attention to sequential recommendation:
 
 ```math
-\alpha_j
-=\operatorname{MLP}
-(h_j,q,h_j-q,h_j\odot q),
+\mathbf{S} = \operatorname{Self-Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \operatorname{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^\top}{\sqrt{d}} + \mathbf{M}\right)\mathbf{V}
 ```
 
-```math
-u(q)=\sum_j\alpha_j h_j.
+#### 1. Core Architectural Innovations
+1. **Causal Triangular Mask ($\mathbf{M}$)**:
+   - Sequential recommendation is an autoregressive task. When predicting intent at step $t$, the model **must not access future actions at step $t+1$ and beyond**;
+   - The causal attention mask is defined as an upper-triangular negative infinity matrix:
+     $$M_{ij} = \begin{cases} 0, & i \ge j \\ -\infty, & i < j \end{cases}$$
+2. **Positional Embeddings**:
+   - To encode event order without recurrent bottlenecks, learnable positional embeddings $\mathbf{P} \in \mathbb{R}^{L \times d}$ are added to item vectors:
+     $$\hat{\mathbf{E}} = [\mathbf{e}_1 + \mathbf{p}_1, \mathbf{e}_2 + \mathbf{p}_2, \dots, \mathbf{e}_L + \mathbf{p}_L]$$
+3. **Pointwise Feed-Forward Network (FFN)**:
+   - Each self-attention block is followed by two dense layers with ReLU activation, residual connections, and LayerNorm.
+4. **DIN vs. SASRec: Fundamental Systems Difference**:
+   - **DIN (Ranking-Only)**: The user representation depends on a specific candidate item $v_{\text{cand}}$. Forward compute scales linearly with candidate set size $O(C \times L)$, restricting it to fine ranking over a small candidate set;
+   - **SASRec (Dual-Use for Retrieval & Ranking)**: The final hidden state $\mathbf{h}_L$ at the last sequence position encodes the user's complete dynamic intent. Because $\mathbf{h}_L$ is **candidate-independent**, it can be pushed directly into an ANN index for millisecond-scale generative sequential retrieval, or passed as a dense dynamic feature to fine ranking.
+
+#### Pseudocode: SASRec Causal Forward Implementation
+```python
+import torch
+import torch.nn as nn
+
+class SASRecBlock(nn.Module):
+    def __init__(self, hidden_dim, num_heads, dropout=0.1):
+        super().__init__()
+        self.attn = nn.MultiheadAttention(hidden_dim, num_heads, dropout=dropout, batch_first=True)
+        self.ffn = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 4),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim * 4, hidden_dim),
+            nn.Dropout(dropout)
+        )
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+
+    def forward(self, x, causal_mask):
+        # x: [batch_size, seq_len, hidden_dim]
+        # causal_mask: [seq_len, seq_len], upper triangular True mask
+        norm_x = self.norm1(x)
+        attn_out, _ = self.attn(norm_x, norm_x, norm_x, attn_mask=causal_mask)
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+class SASRec(nn.Module):
+    def __init__(self, num_items, max_len=50, hidden_dim=64, num_heads=2, num_blocks=2):
+        super().__init__()
+        self.max_len = max_len
+        self.item_embeddings = nn.Embedding(num_items + 1, hidden_dim, padding_idx=0)
+        self.pos_embeddings = nn.Embedding(max_len, hidden_dim)
+        self.blocks = nn.ModuleList([
+            SASRecBlock(hidden_dim, num_heads) for _ in range(num_blocks)
+        ])
+        self.final_norm = nn.LayerNorm(hidden_dim)
+
+    def forward(self, seq_ids):
+        # seq_ids: [batch_size, seq_len]
+        batch_size, seq_len = seq_ids.size()
+        positions = torch.arange(seq_len, device=seq_ids.device).unsqueeze(0).expand(batch_size, -1)
+        
+        # 1. Sum item embeddings and learnable position embeddings
+        x = self.item_embeddings(seq_ids) + self.pos_embeddings(positions)
+        
+        # 2. Construct upper-triangular causal mask
+        causal_mask = torch.triu(torch.ones(seq_len, seq_len, device=seq_ids.device), diagonal=1).bool()
+        
+        # 3. Stack causal self-attention blocks
+        for block in self.blocks:
+            x = block(x, causal_mask)
+            
+        final_seq = self.final_norm(x) # [batch_size, seq_len, hidden_dim]
+        # Last step state serves as the universal user sequence embedding
+        user_repr = final_seq[:, -1, :] # [batch_size, hidden_dim]
+        return user_repr
 ```
 
-The same user will get different interest representations when facing basketball shoes versus a wok. When remembering DIN, grasp that "user representation depends on the candidate"; attention is merely the implementation means.
-
-The cost is also here: every candidate must interact with the history. When there are many candidates and long sequences, the computational load rises rapidly.
-
-Serving must also pass the padding mask, behavior type, and time gap into attention. Treating padded zeros as real events, or using different truncation rules in training and serving, makes the attention weights meaningless. Requests are often bucketed by sequence length so that one unusually long history does not slow the entire batch.
-
-### 12.4 SIM
-
-SIM processes long sequences in two steps:
-
-1. Coarsely select sub-sequences related to the candidate from a very long history;
-2. Perform fine-grained attention modeling on the sub-sequences.
-
-Hard Search keeps behaviors in the candidate's category. Soft Search uses the candidate vector to retrieve top-k neighbors from the user's history. Hard search is cheap and stable; soft search is semantically flexible but needs a per-user sequence index.
-
-Long-term behavior also needs time-gap embeddings. Two clicks in the same category should not receive the same weight when one happened yesterday and the other two years ago.
-
-The logic is the same as the retrieval-ranking funnel: filter cheaply first, then interact expensively. Without efficient retrieval, long-sequence models are difficult to deploy online.
-
-The per-user history index used by Soft Search is production state. It needs an embedding version, build timestamp, and refresh-lag metric. If the index is unavailable or incompatible with the current model, fall back to Last-N or Hard Search instead of holding up the ranking request.
+---
 
 ### 12.5 Temporal Issues in Training
 

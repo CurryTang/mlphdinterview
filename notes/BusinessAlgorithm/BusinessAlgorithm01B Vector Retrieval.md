@@ -19,6 +19,14 @@ s(q,i)
 
 两边独立编码的最大好处是 item/document 向量可离线计算。线上只算 query 向量，然后做 ANN。代价是 query 与候选无法在编码阶段进行细粒度 token/feature 交互。
 
+#### 工业级原型：YouTube DNN (2016) 召回双塔与 Example Age
+YouTube 2016 奠定了现代双塔召回的基准架构：
+- **用户塔输入**：观看历史 ID 序列（平均池化 Embedding）+ 搜索词 Query 序列（平均池化 Embedding）+ 人口统计学特征与地理静态特征；
+- **时效性连续特征 Example Age**：
+  - **问题**：推荐系统存在强烈的时效性偏置（Recency Bias）。老视频上传时间久、累计播放量大，其在正样本中占据统治地位；新发布的优质视频由于没有历史播放，模型打分天然偏低，难以获得曝光机会；
+  - **训练期建模**：将样本生成时间距离视频上传时间的差值作为连续特征输入网络：$x_{\text{age}} = t_{\text{event}} - t_{\text{upload}}$；网络学习到视频热度随年龄衰减的规律；
+  - **线上推理 Trick**：在线预估候选新视频向量时，将所有候选的 `example_age` 统一人为置为 0（甚至微小负数，等价于“假设该视频刚刚上传即刻”），彻底消除了历史马太效应与时效性偏置，新视频能仅凭内容质量与用户兴趣获得公平的召回竞争力。
+
 ### 4.2 训练目标
 
 一组正样本和负样本上常用 softmax 对比目标：
@@ -42,7 +50,7 @@ s(q,i)
 常见来源：
 
 - 全库随机负样本：便宜，通常太简单；
-- 批内负样本：其他样本的正例当当前 query 的负例，吞吐高；
+- 批内负样本 (In-batch Negatives)：同 Batch 内其他用户的正样本作为当前用户的负样本，吞吐极高；
 - 曝光未点击：很难，且包含位置偏差和大量假负例；
 - hard negative：由旧模型或 BM25 召回、语义相近但不相关的候选；
 - 混合负样本：兼顾覆盖、难度和稳定性。
@@ -53,13 +61,31 @@ s(q,i)
 
 Hard negative 也会过期。模型修复一批错误后，旧难例可能已经变得太简单；长期只训练固定 mined set，又会过拟合少数错误模式。常见做法是周期性用当前 checkpoint 重挖，混入一部分稳定随机负例，并人工抽查 top hard negatives 中的假负例比例。被旧模型淘汰只说明"旧模型不选它"，不自动构成可靠负标签。
 
-采样还改变了先验分布。若物品 `j` 进入负样本的概率为 `p_j`，批内 softmax 可把 logit 修正为：
+#### 批内负采样流行度偏置与 Google logQ 修正 (Sampling-Bias Correction)
+批内负采样虽然计算极快（一个 Batch 内 $B$ 个样本无需额外计算负样本 Embedding，直接通过矩阵乘法 $\mathbf{U} \mathbf{V}^T$ 获得 $B \times B$ 的相似度矩阵），但引入了严重的**采样分布偏差**：
+- 在-batch 样本中，物品 $j$ 被选为负样本的边缘概率正比于其全站展现频次：$p_j \propto \text{frequency}_j$；
+- **病态后果**：高曝光的热门头部物品被当做负样本惩罚的概率远高于长尾冷门物品！模型为了最小化损失，会无意识地大幅压低头部物品的向量模长与内积分数，线上推理时导致热门优质物品全面失效，长尾长尾异常飙升。
+
+**Google logQ 修正的严格数学推导：**
+全库全量 Softmax 的真实交叉熵目标为：
+$$\mathcal{L} = -\sum_{i=1}^B \log \frac{\exp(s(u_i, y_i))}{\sum_{j \in \mathcal{V}} \exp(s(u_i, j))}$$
+
+利用重要性采样（Importance Sampling），当负样本从分布 $P$ 中按概率 $p_j$ 独立抽取时，分母的全库配分函数是其重要性权重的无偏估计：
+$$\sum_{j \in \mathcal{V}} \exp(s(u_i, j)) = \mathbb{E}_{j \sim P}\left[ \frac{\exp(s(u_i, j))}{p_j} \right] \approx \sum_{j \in \mathcal{B}} \exp\left(s(u_i, j) - \log p_j\right)$$
+
+因此，将批内打分 Logits 显式减去 $\log p_j$：
 
 ```math
-s'(q,j)=s(q,j)-\log p_j.
+s'(u_i, j) = s(u_i, j) - \log p_j
 ```
 
-热门物品更常进入 batch，不修正会把“被抽得多”误当成“模型应该压得更低”。反过来，对热门项过度降采样也会让线上分布失真。采样概率、损失修正和线上打分需要一起记录。
+训练损失转化为：
+
+```math
+\mathcal{L}_{\text{in-batch}} = -\sum_{i=1}^B \log \frac{\exp\left(s(u_i, y_i) - \log p_{y_i}\right)}{\exp\left(s(u_i, y_i) - \log p_{y_i}\right) + \sum_{j \in \mathcal{B}, j \ne y_i} \exp\left(s(u_i, j) - \log p_j\right)}
+```
+
+- **训练与线上服务解耦**：训练时通过 $-\log p_j$ 抵消热门物品被频繁采样的梯度惩罚；**在线检索时直接移除 $-\log p_j$ 项**，还原为纯净的向量内积 $\langle \mathbf{u}, \mathbf{v}_j \rangle$ 运行 ANN 索引，从理论上保证了在线相似度打分的无偏性。
 
 ### 4.4 ANN 与向量库
 

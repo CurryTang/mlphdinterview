@@ -19,6 +19,14 @@ On the recommendation side, `x_q` consists of user, history, and context, while 
 
 The greatest benefit of independent encoding on both sides is that item/document vectors can be calculated offline. Online, only the query vector is calculated, followed by ANN. The cost is that the query and candidates cannot perform fine-grained token/feature interaction during the encoding stage.
 
+#### Industrial Archetype: YouTube DNN (2016) Candidate Generation & Example Age
+YouTube 2016 established the structural baseline for industrial two-tower retrieval:
+- **User Tower Inputs**: Average-pooled embeddings of user watch history IDs + average-pooled embeddings of search query tokens + static demographic and geographic features;
+- **Continuous Freshness Feature: Example Age**:
+  - **The Problem**: Recommendation systems exhibit severe recency bias. Older videos have accumulated massive watch counts and dominate positive training signals; newly uploaded high-quality videos lack historical impressions and suffer from low prior scores.
+  - **Training-Time Modeling**: Feed the elapsed time between video upload and sample generation as a continuous feature: $x_{\text{age}} = t_{\text{event}} - t_{\text{upload}}$. The network explicitly learns how video engagement naturally decays with age.
+  - **Serving-Time Trick**: At online inference, clamp `example_age` to 0 (or a small negative value, simulating "just uploaded now") for all candidate videos. This strips historical Matthew effects and recency bias, allowing fresh uploads to compete fairly based purely on relevance and content quality.
+
 ### 4.2 Training Objective
 
 A softmax contrastive objective is commonly used on a set of positive and negative samples:
@@ -53,13 +61,31 @@ For a retrieval model, exposed-but-unclicked items are usually poor default nega
 
 Hard negatives also expire. Once the model fixes a class of errors, an old mined set may become too easy; training on it indefinitely overfits a few failure patterns. A common loop periodically mines again with the current checkpoint, keeps a stable fraction of random negatives, and manually audits false negatives among the hardest examples. Rejection by an old model means only that the old model did not choose the item, not that the item is a reliable negative label.
 
-Sampling changes the prior distribution. If item `j` enters the negative set with probability `p_j`, an in-batch softmax can correct its logit with:
+#### Popularity Bias in In-Batch Negatives and Google logQ Correction
+While in-batch negative sampling is computationally efficient ($B$ samples in a batch compute a $B \times B$ score matrix without extra negative embeddings), it introduces severe **sampling distribution bias**:
+- In a batch, item $j$'s marginal probability of being selected as a negative is proportional to its global impression frequency: $p_j \propto \text{frequency}_j$;
+- **Pathological consequence**: Highly popular head items are penalized as negative samples far more frequently than cold tail items! To minimize training loss, the optimizer collapses the embedding norms and inner-product scores of head items. At serving time, this suppresses high-quality popular items and induces erratic tail hallucinations.
+
+**Mathematical Derivation of Google logQ Correction:**
+The true full-vocabulary cross-entropy loss is:
+$$\mathcal{L} = -\sum_{i=1}^B \log \frac{\exp(s(u_i, y_i))}{\sum_{j \in \mathcal{V}} \exp(s(u_i, j))}$$
+
+Under Importance Sampling, when negatives are sampled from proposal distribution $P$ with probability $p_j$, the denominator partition function is estimated unbiasedly by:
+$$\sum_{j \in \mathcal{V}} \exp(s(u_i, j)) = \mathbb{E}_{j \sim P}\left[ \frac{\exp(s(u_i, j))}{p_j} \right] \approx \sum_{j \in \mathcal{B}} \exp\left(s(u_i, j) - \log p_j\right)$$
+
+Therefore, explicitly subtracting $\log p_j$ from candidate logits:
 
 ```math
-s'(q,j)=s(q,j)-\log p_j.
+s'(u_i, j) = s(u_i, j) - \log p_j
 ```
 
-Without this correction, a popular item can be penalized simply because it appears in more batches. Aggressive popularity downsampling creates the opposite mismatch. Record the sampling probability, loss correction, and serving score together.
+Transforms the training objective into:
+
+```math
+\mathcal{L}_{\text{in-batch}} = -\sum_{i=1}^B \log \frac{\exp\left(s(u_i, y_i) - \log p_{y_i}\right)}{\exp\left(s(u_i, y_i) - \log p_{y_i}\right) + \sum_{j \in \mathcal{B}, j \ne y_i} \exp\left(s(u_i, j) - \log p_j\right)}
+```
+
+- **Decoupling Training and Serving**: At training time, $-\log p_j$ neutralizes the gradient penalty caused by high sample frequency; **at serving time, the $-\log p_j$ term is completely removed**, scoring candidates by pure vector inner product $\langle \mathbf{u}, \mathbf{v}_j \rangle$ inside the ANN index, ensuring theoretically unbiased similarity retrieval.
 
 ### 4.4 ANN and Vector Databases
 

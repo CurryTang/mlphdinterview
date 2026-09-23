@@ -89,9 +89,34 @@ CTR、CVR 等 pointwise 预估先看 LogLoss：
 \left[ y_i\log p_i+(1-y_i)\log(1-p_i) \right].
 ```
 
-它关心概率本身。AUC 则衡量随机正例排在随机负例前的概率，适合观察整体区分能力，但不特别关注列表头部，也不能说明分数已经校准。
+它关心概率本身与绝对校准质量。
 
-搜索和推荐列表常看 DCG/NDCG：
+#### 全局 AUC (Global AUC) 及其在推荐中的缺陷
+AUC 衡量随机抽取一个正样本其预估得分高于随机抽取一个负样本的概率：
+$$\operatorname{AUC} = \frac{\sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left[ \mathbb{I}(p_i > p_j) + 0.5 \times \mathbb{I}(p_i = p_j) \right]}{|\mathcal{D}^+| \times |\mathcal{D}^-|}$$
+
+**为什么全局 AUC 会误导推荐排序？**
+全局 AUC 在全量测试集上混合跨用户比对正负样本。如果活跃用户 A 偏好点击（底色 CTR 30%），低活用户 B 极少点击（底色 CTR 1%），若模型单纯拟合了用户群体先验，给用户 A 的所有物品都预测高分、给用户 B 的所有物品都预测低分：
+- 跨用户比对时，用户 A 的正例会压制用户 B 的负例，**全局 AUC 可能高达 0.85+**；
+- 但在实际线上服务中，**系统永远是在单用户单次 Session 内对专属候选集排序**，不同用户的候选永远不会在同一屏竞争；
+- 若模型在用户 A 内部或用户 B 内部的排序完全随机（$\text{AUC}_A = 0.5, \text{AUC}_B = 0.5$），线上推荐给单用户的全是不相关结果，用户体验完全崩溃。
+
+#### 分组 AUC (Group AUC, GAUC) —— 工业界核心离线指标
+为了消除用户先验偏差、真实衡量模型在单个用户内的个性化调序能力，工业界推荐系统（如字节跳动、Meta、阿里）统一采用 **GAUC (Group AUC)**：
+
+```math
+\operatorname{GAUC}
+=\frac{\sum_{u \in \mathcal{U}} w_u \times \operatorname{AUC}_u}{\sum_{u \in \mathcal{U}} w_u}
+```
+
+其中：
+- $\operatorname{AUC}_u$ 表示模型仅在用户 $u$ 自己的曝光集合内计算的局部 AUC；
+- 权重 $w_u$ 通常取用户 $u$ 的曝光展现量（$\text{impressions}_u$）或点击量；
+- **边界过滤条件**：若用户 $u$ 在测试样本中**全为正样本（全点）**或**全为负样本（全未点）**，此时正负例对数为 0，$\operatorname{AUC}_u$ 无定义，累加时必须显式跳过该用户。
+
+**工业界经验法则**：在召回和粗排不变的前提下，精排模型的 $\Delta\operatorname{GAUC} \ge +0.003$（千分之三）通常可稳定支撑在线 A/B 实验产生具有统计显著性的真实 CTR、完播率或留存正向收益。
+
+搜索和推荐列表还常看 DCG/NDCG：
 
 ```math
 \operatorname{DCG@K}
@@ -173,23 +198,79 @@ def ndcg_at_k(relevances, k):
 
 </details>
 
+### Quick Coding：计算 GAUC (Group AUC)
+
+根据日志样本计算曝光加权分组 AUC。处理单用户全正/全负边界条件。
+
+```python
+def calculate_gauc(user_ids, labels, preds):
+    ...
+```
+
+<details>
+<summary>参考答案</summary>
+
+```python
+from collections import defaultdict
+
+
+def calculate_gauc(user_ids, labels, preds):
+    # 1. 按 user 分组归集 (label, pred)
+    user_data = defaultdict(lambda: ([], []))
+    for u, y, p in zip(user_ids, labels, preds):
+        user_data[u][0].append(y)
+        user_data[u][1].append(p)
+
+    total_weight = 0
+    weighted_auc_sum = 0.0
+
+    for u, (u_labels, u_preds) in user_data.items():
+        n_pos = sum(u_labels)
+        n_neg = len(u_labels) - n_pos
+
+        # 边界条件：若该用户全为正例或全为负例，AUC 无定义，过滤跳过
+        if n_pos == 0 or n_neg == 0:
+            continue
+
+        # 基于 Wilcoxon-Mann-Whitney 秩和快速计算单用户局部 AUC
+        ranked = sorted(zip(u_preds, u_labels), key=lambda x: x[0])
+        rank_sum = 0
+        for rank, (_, y) in enumerate(ranked, start=1):
+            if y == 1:
+                rank_sum += rank
+
+        auc_u = (rank_sum - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+        weight = len(u_labels)  # 以单用户曝光数作为加权依据
+        weighted_auc_sum += auc_u * weight
+        total_weight += weight
+
+    return weighted_auc_sum / total_weight if total_weight > 0 else 0.5
+```
+
+时间复杂度为 $\sum O(N_u \log N_u) \le O(N \log N)$，空间复杂度为 $O(N)$。
+
+</details>
+
 ### 9.8 本章自测
 
 1. Pointwise 分数能校准，为什么排序仍可能不好？
-2. Pairwise 的 hard negative 应该怎样产生？
-3. NDCG 为什么对列表头部更敏感？
-4. Cross-BERT 和双塔 BERT 应放在哪一层？
-5. 相关性、内容质量和最终排序分数应该怎样解耦？
-6. 搜索融合为什么常从"相关性分档 + 档内规则"开始，之后才换融合模型？
+2. 为什么在工业推荐中必须看 GAUC 而不是单纯看全局 AUC？
+3. Pairwise 的 hard negative 应该怎样产生？
+4. NDCG 为什么对列表头部更敏感？
+5. Cross-BERT 和双塔 BERT 应放在哪一层？
+6. 相关性、内容质量和最终排序分数应该怎样解耦？
+7. 搜索融合为什么常从"相关性分档 + 档内规则"开始，之后才换融合模型？
 
 <details>
 <summary>参考答案</summary>
 
 1. 校准只保证同一分数对应的平均概率接近真实频率，不保证相近候选的相对次序正确；特征不足或损失与 NDCG 不一致时仍会排错。
-2. 从同一次请求中选择旧模型排得高但标签为负的曝光候选，或从 ANN/BM25 top 结果中采样。还要过滤假负例和未成熟标签。
-3. 它使用对数折扣，越靠前的位置权重越大；高相关候选从第 1 位跌到第 2 位的损失高于尾部相同位移。
-4. 双塔 BERT 适合大规模语义召回或粗排；Cross-BERT 需要联合编码 query-document，只适合候选较少的精排或重排。
-5. 分别产出相关性、质量和业务目标分数，先校准再按场景融合，并保留可解释的硬护栏。不要让一个总分同时承担所有含义。
-6. 规则容易解释和快速纠错，适合数据少、链路还在频繁变化的阶段。融合模型能利用更多交叉关系，但需要可靠的综合满意度与行为标签，还要用相关性分档监控防止它用不相关结果换点击。
+2. 全局 AUC 跨用户混合比对正负例。高活用户底色 CTR 高、低活用户底色 CTR 低，模型若仅拟合人群先验，全局 AUC 很高，但单个用户内部排序全错。线上推荐是单用户单屏展现，GAUC 消除人群先验偏置，真实度量单用户内的个性化调序能力。
+3. 从同一次请求中选择旧模型排得高但标签为负的曝光候选，或从 ANN/BM25 top 结果中采样。还要过滤假负例和未成熟标签。
+4. 它使用对数折扣，越靠前的位置权重越大；高相关候选从第 1 位跌到第 2 位的损失高于尾部相同位移。
+5. 双塔 BERT 适合大规模语义召回或粗排；Cross-BERT 需要联合编码 query-document，只适合候选较少的精排或重排。
+6. 分别产出相关性、质量和业务目标分数，先校准再按场景融合，并保留可解释的硬护栏。不要让一个总分同时承担所有含义。
+7. 规则容易解释和快速纠错，适合数据少、链路还在频繁变化的阶段。融合模型能利用更多交叉关系，但需要可靠的综合满意度与行为标签，还要用相关性分档监控防止它用不相关结果换点击。
 
 </details>

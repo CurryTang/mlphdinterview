@@ -86,6 +86,110 @@ For `d` features and latent dimension `m`, time is `O(dm)` and auxiliary space i
 
 </details>
 
+---
+
+### 11.2B Wide & Deep (Google 2016)
+
+Wide & Deep established the industrial paradigm of decoupling and jointly learning "Memorization" and "Generalization" in deep recommendation systems:
+
+```math
+P(Y=1|\mathbf{x}) = \sigma\left( \mathbf{w}_{\text{wide}}^\top [\mathbf{x}, \phi(\mathbf{x})] + \mathbf{w}_{\text{deep}}^\top a^{(L)} + b \right)
+```
+
+1. **Wide Component (Memorization)**:
+   - Formulated as a generalized linear model with cross-product feature transformations: $\phi_k(\mathbf{x}) = \prod_{j=1}^d x_j^{c_{kj}}, c_{kj} \in \{0, 1\}$;
+   - Example feature: `AND(user_installed_app="Netflix", impression_app="Hulu")`;
+   - Optimizer: **FTRL-Proximal (Follow-the-Regularized-Leader)** with $L_1$ regularization, yielding sparse, highly interpretable weights that lock in deterministic historical rules.
+2. **Deep Component (Generalization)**:
+   - High-dimensional sparse categorical IDs are mapped to continuous, low-dimensional Dense Embeddings (e.g., dimension 32), concatenated, and fed into an MLP (3-layer ReLU);
+   - Optimizer: **AdaGrad / Adam**; leverages Euclidean proximity in latent dense space to generalize to unseen feature combinations (e.g., recommending a car rental app to a user with travel apps).
+3. **Joint Training vs Model Ensemble**:
+   - Ensemble: Independent models trained separately and combined only at inference via weighted averaging; the Wide side requires massive feature engineering and a huge parameter budget to fit the data independently;
+   - Joint Training: Gradients backpropagate through a single unified Sigmoid objective to update both sub-networks simultaneously. The Wide side only needs to learn residual exceptions that the Deep side misses, drastically reducing feature engineering overhead.
+
+---
+
+### 11.2C DeepFM (Huawei 2017)
+
+While Wide & Deep achieved impressive performance, its Wide side remained constrained by expensive manual feature engineering. **DeepFM** replaced the Wide component with an end-to-end learnable **FM Component**:
+
+```math
+\hat{y} = \sigma\left( y_{\text{FM}} + y_{\text{Deep}} \right)
+```
+
+#### 1. Architecture and Shared Embeddings
+DeepFM comprises parallel FM and Deep sub-networks sharing the exact same input features and Embedding lookup table:
+- **FM Component**: Computes 1st-order linear terms and 2nd-order feature interactions, automatically learning the interaction strength between any pair of feature fields via vector dot products:
+  $$y_{\text{FM}} = \langle \mathbf{w}, \mathbf{x} \rangle + \sum_{i=1}^d \sum_{j=i+1}^d \langle \mathbf{v}_i, \mathbf{v}_j \rangle x_i x_j$$
+  Thanks to FM's algebraic simplification, the 2nd-order interaction runs in $O(kd)$ without explicit Cartesian products.
+- **Deep Component**: Concatenates field embeddings $[\mathbf{e}_1, \dots, \mathbf{e}_m]$ and routes them through a feed-forward network to capture high-order non-linear feature interactions.
+- **Dual Advantages of Shared Embeddings**:
+  1. Gradients from both low-order interactions and high-order non-linearities jointly supervise the same embedding representations;
+  2. Completely eliminates manual cross-feature engineering on the Wide side, realizing true End-to-End training.
+
+#### Pseudocode: DeepFM Forward Implementation
+```python
+import torch
+import torch.nn as nn
+
+class DeepFM(nn.Module):
+    def __init__(self, field_dims, embed_dim=16, mlp_dims=(128, 64)):
+        super().__init__()
+        self.num_fields = len(field_dims)
+        # 1. Shared Embedding Table (independent embedding table per field)
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, embed_dim) for num_classes in field_dims
+        ])
+        # 2. FM 1st-order linear weights
+        self.linear_embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, 1) for num_classes in field_dims
+        ])
+        self.bias = nn.Parameter(torch.zeros(1))
+        
+        # 3. Deep MLP
+        in_dim = self.num_fields * embed_dim
+        layers = []
+        for hidden_dim in mlp_dims:
+            layers.extend([nn.Linear(in_dim, hidden_dim), nn.BatchNorm1d(hidden_dim), nn.ReLU()])
+            in_dim = hidden_dim
+        layers.append(nn.Linear(in_dim, 1))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x):
+        # x: [batch_size, num_fields], categorical field indices
+        batch_size = x.size(0)
+        
+        # --- FM 1st-order linear term ---
+        linear_part = torch.sum(
+            torch.stack([self.linear_embeddings[i](x[:, i]) for i in range(self.num_fields)], dim=1),
+            dim=1
+        ) + self.bias # [batch_size, 1]
+        
+        # --- Shared Embedding Lookup ---
+        # embeds: [batch_size, num_fields, embed_dim]
+        embeds = torch.stack([self.embeddings[i](x[:, i]) for i in range(self.num_fields)], dim=1)
+        
+        # --- FM 2nd-order vectorization O(k * d) ---
+        # 1/2 * [ (sum_i v_i)^2 - sum_i (v_i^2) ]
+        summed_embeds = torch.sum(embeds, dim=1)             # [batch_size, embed_dim]
+        summed_embeds_squared = torch.square(summed_embeds)
+        
+        squared_embeds = torch.square(embeds)                 # [batch_size, num_fields, embed_dim]
+        squared_sum_embeds = torch.sum(squared_embeds, dim=1) # [batch_size, embed_dim]
+        
+        fm_2nd = 0.5 * torch.sum(summed_embeds_squared - squared_sum_embeds, dim=1, keepdim=True) # [batch_size, 1]
+        
+        # --- Deep Component High-Order Non-Linearity ---
+        flat_embeds = embeds.view(batch_size, -1)             # [batch_size, num_fields * embed_dim]
+        deep_out = self.mlp(flat_embeds)                      # [batch_size, 1]
+        
+        # --- Final Logit Fusion ---
+        logits = linear_part + fm_2nd + deep_out
+        return torch.sigmoid(logits)
+```
+
+---
+
 ### 11.3 DCN & DCN-v2 (Deep & Cross Network)
 
 The standard Cross Layer in DCN is defined as:

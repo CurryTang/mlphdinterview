@@ -100,7 +100,29 @@ During training, only values that existed before the event occurred can be read.
 
 Handling of missing values online must also be consistent with training. If missing samples are deleted during training but filled with zeros during service, the model will encounter a new input distribution after deployment.
 
-### 2.7 Datasets Are Split by Time
+### 2.7 Large-Scale Sparse Embedding Systems & Infrastructure
+
+Industrial recommendation models exhibit extreme architectural heterogeneity:
+- **Sparse Embedding Side (Memory-Bound)**: Categorical ID cardinalities (user IDs, item IDs, queries, historical sequence IDs) reach hundreds of billions, scaling parameters from hundreds of gigabytes to tens of terabytes. Operations are computationally trivial (table lookups and pooling) but far exceed GPU VRAM capacities;
+- **Dense MLP Side (Compute-Bound)**: Dense feed-forward and multi-head attention components contain only tens of megabytes to a few gigabytes of parameters. Compute is heavily matrix-multiplication intensive, ideally suited for GPU Tensor Cores.
+
+#### 1. Hybrid Parallelism: Parameter Server (PS) vs GPU Table Sharding
+To train terabyte-scale recommendation models (e.g., Meta DLRM, ByteDance Monolith, Alibaba WDL), modern distributed training couples **Model Parallelism** with **Data Parallelism**:
+- **Model Parallelism (Table Sharding)**: Enormous embedding tables are partitioned across workers (via consistent hashing or domain-based sharding) across distributed CPU host memory (Parameter Server) or high-memory GPU clusters;
+- **Data Parallelism (Dense Layers)**: Every worker replica maintains an identical copy of the dense neural network, processing independent micro-batches of training instances;
+- **All-to-All Collective Bottleneck**: After workers look up local embedding shards, an `All-to-All` collective communication pass (over NVLink or RoCE) must transpose and route embedding slices to the respective dense GPU worker responsible for forward-pass feature concatenation.
+
+#### 2. Terabyte-Scale Dynamic Feature Admission and Eviction
+Unbounded feature growth inevitably causes Out-Of-Memory (OOM) crashes and severe overfitting on tail noise:
+- **Admission Control**:
+  - The overwhelming majority of tail IDs (one-time visitors or transient items) represent random noise; allocating parameters to them wastes capacity and overfits;
+  - Systems maintain probabilistic sketches (**Bloom Filters** or **Count-Min Sketches**) to track ID occurrence frequencies in sliding windows;
+  - An embedding vector is formally allocated in persistent memory only after an ID's observation count crosses a threshold (e.g., $k \ge 5$).
+- **Eviction Policy**:
+  - Combined with **$L_2$ Weight Decay**: Inactive or cold IDs experience continuous norm shrinkage toward zero over training epochs;
+  - Asynchronous background sweeps run **LRU / LFU cache eviction**, reclaiming memory from dormant embeddings whose norms fall below an $\epsilon$ threshold (e.g., collision-free dynamic hash tables in Monolith), enforcing fixed memory bounds.
+
+### 2.8 Datasets Are Split by Time
 
 Recommendation and search logs have a clear chronological order. Random shuffling will leak future popular items, subsequent user behavior, or new feature versions into the training set.
 
@@ -112,13 +134,14 @@ Training Window      Validation Window     Test Window
 
 Each experiment should be able to answer: Which log segment was used, when labels matured, how negative samples were collected, which version of feature snapshots was used, and which strategy generated the candidates. Without this information, offline results are difficult to reproduce.
 
-### 2.8 Chapter Self-Test
+### 2.9 Chapter Self-Test
 
 1. Why must `request_id` persist throughout the entire online pipeline?
 2. What recall and pre-ranking issues are missed if only the final exposure is recorded?
 3. Why do 7-day conversion labels require a maturity window?
-4. Under what conditions is an exposure without a click suitable as a negative example?
-5. What problem does a point-in-time join solve?
+4. Why do large-scale recommendation systems require a hybrid "Embedding Model Parallelism + MLP Data Parallelism" architecture?
+5. What core engineering challenges do dynamic feature admission and eviction solve?
+6. What problem does a point-in-time join solve?
 
 <details>
 <summary>Reference answers</summary>
@@ -126,7 +149,8 @@ Each experiment should be able to answer: Which log segment was used, when label
 1. It joins the request, stage-by-stage candidates, final exposure, and delayed feedback into one replayable event.
 2. It loses retrieval channel, coarse-ranking false negatives, filter reasons, and rank transitions, leaving no way to localize funnel loss.
 3. A user who has not purchased on day one may still convert during days two through seven. Labeling early creates systematic false negatives.
-4. The user must have had a real chance to see the position, with position, scroll depth, and interruptions accounted for. An unexposed item is not an observed negative.
-5. It ensures a historical sample reads only feature values available at event time, preventing future behavior or newer profiles from leaking backward.
+4. Terabyte-scale sparse embedding tables are memory-bound and exceed GPU VRAM, requiring model parallelism via distributed table sharding. Dense MLPs are compute-bound and require data parallelism across GPUs. An All-to-All collective bridges the two stages.
+5. They prevent memory OOM and curb overfitting on low-frequency noise IDs. Bloom filters prevent transient tail IDs from allocating parameters, while L2 decay and LRU/LFU evict obsolete cold features.
+6. It ensures a historical sample reads only feature values available at event time, preventing future behavior or newer profiles from leaking backward.
 
 </details>

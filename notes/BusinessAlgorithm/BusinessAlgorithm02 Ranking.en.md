@@ -89,7 +89,32 @@ For pointwise estimations like CTR and CVR, first look at LogLoss:
 \left[ y_i\log p_i+(1-y_i)\log(1-p_i) \right].
 ```
 
-It focuses on the probability itself. AUC measures the probability that a random positive example is ranked higher than a random negative example, which is suitable for observing overall discriminative ability, but it does not specifically focus on the top of the list, nor does it indicate whether scores are calibrated.
+It focuses on the probability itself and absolute calibration quality.
+
+#### Global AUC and Its Pitfalls in Recommendation
+AUC measures the probability that a randomly chosen positive instance is scored higher than a randomly chosen negative instance:
+$$\operatorname{AUC} = \frac{\sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left[ \mathbb{I}(p_i > p_j) + 0.5 \times \mathbb{I}(p_i = p_j) \right]}{|\mathcal{D}^+| \times |\mathcal{D}^-|}$$
+
+**Why can Global AUC mislead recommendation systems?**
+Global AUC evaluates positive and negative pairs across different users. If active User A has a high baseline click rate (30%) while inactive User B rarely clicks (1%), a model that merely memorizes demographic priors will predict uniformly high scores for User A and low scores for User B:
+- Across users, User A's clicks easily outrank User B's impressions, driving **Global AUC as high as 0.85+**;
+- However, in production serving, **the system ranks candidate items for a single user within a single session**—items for different users never compete on the same viewport;
+- If intra-user ranking is completely random ($\text{AUC}_A = 0.5, \text{AUC}_B = 0.5$), the user experience degrades into noise despite the stellar offline Global AUC.
+
+#### Group AUC (GAUC) — The Industrial Gold Standard
+To eliminate cross-user prior biases and isolate intra-user personalized ranking performance, modern recommendation systems (e.g., ByteDance, Meta, Alibaba) standardize on **GAUC (Group AUC)**:
+
+```math
+\operatorname{GAUC}
+=\frac{\sum_{u \in \mathcal{U}} w_u \times \operatorname{AUC}_u}{\sum_{u \in \mathcal{U}} w_u}
+```
+
+Where:
+- $\operatorname{AUC}_u$ is the local AUC computed strictly over impressions served to user $u$;
+- $w_u$ is the user's weight, typically set to impression count ($\text{impressions}_u$) or click volume;
+- **Boundary condition**: If user $u$ has **only positive samples (all clicks)** or **only negative samples (zero clicks)**, positive-negative pairs count is zero and $\operatorname{AUC}_u$ is undefined; such users must be filtered out during accumulation.
+
+**Rule of Thumb in Industry**: Holding retrieval and coarse ranking fixed, a fine-ranking gain of $\Delta\operatorname{GAUC} \ge +0.003$ (+0.3%) reliably translates into statistically significant online A/B gains in CTR, watch time, or retention.
 
 Search and recommendation lists often use DCG/NDCG:
 
@@ -173,23 +198,79 @@ Sorting the ideal list costs `O(n log n)`. A small bounded relevance scale allow
 
 </details>
 
+### Quick Coding: Computing GAUC (Group AUC)
+
+Calculate impression-weighted Group AUC from offline logs, handling boundary users with all-positive or all-negative labels.
+
+```python
+def calculate_gauc(user_ids, labels, preds):
+    ...
+```
+
+<details>
+<summary>Reference answer</summary>
+
+```python
+from collections import defaultdict
+
+
+def calculate_gauc(user_ids, labels, preds):
+    # 1. Group (label, pred) by user
+    user_data = defaultdict(lambda: ([], []))
+    for u, y, p in zip(user_ids, labels, preds):
+        user_data[u][0].append(y)
+        user_data[u][1].append(p)
+
+    total_weight = 0
+    weighted_auc_sum = 0.0
+
+    for u, (u_labels, u_preds) in user_data.items():
+        n_pos = sum(u_labels)
+        n_neg = len(u_labels) - n_pos
+
+        # Boundary condition: if user has only positives or only negatives, AUC is undefined
+        if n_pos == 0 or n_neg == 0:
+            continue
+
+        # Fast intra-user AUC via Wilcoxon-Mann-Whitney rank sum
+        ranked = sorted(zip(u_preds, u_labels), key=lambda x: x[0])
+        rank_sum = 0
+        for rank, (_, y) in enumerate(ranked, start=1):
+            if y == 1:
+                rank_sum += rank
+
+        auc_u = (rank_sum - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+        weight = len(u_labels)  # Weighted by impression volume
+        weighted_auc_sum += auc_u * weight
+        total_weight += weight
+
+    return weighted_auc_sum / total_weight if total_weight > 0 else 0.5
+```
+
+Time complexity is $\sum O(N_u \log N_u) \le O(N \log N)$; auxiliary space is $O(N)$.
+
+</details>
+
 ### 9.8 Chapter Self-Test
 
 1. Pointwise scores can be calibrated; why might ranking still be poor?
-2. How should hard negatives for Pairwise be generated?
-3. Why is NDCG more sensitive to the top of the list?
-4. Where should Cross-BERT and two-tower BERT be placed?
-5. How should relevance, content quality, and final ranking scores be decoupled?
-6. Why does search fusion often start with relevance buckets and hand-written rules before a learned fusion model?
+2. Why is GAUC mandatory in industrial recsys instead of relying solely on Global AUC?
+3. How should hard negatives for Pairwise be generated?
+4. Why is NDCG more sensitive to the top of the list?
+5. Where should Cross-BERT and two-tower BERT be placed?
+6. How should relevance, content quality, and final ranking scores be decoupled?
+7. Why does search fusion often start with relevance buckets and hand-written rules before a learned fusion model?
 
 <details>
 <summary>Reference answers</summary>
 
 1. Calibration aligns probabilities with empirical frequency; it does not guarantee the relative order of nearby candidates.
-2. Use exposed candidates from the same request that an old model ranked highly but received negative feedback, or sample top ANN/BM25 results. Filter false negatives and immature labels.
-3. Logarithmic discount gives top positions more weight, so the same displacement costs more near rank one than near the tail.
-4. Two-tower BERT fits retrieval or coarse ranking. Cross-BERT jointly encodes query and document and belongs in fine ranking over a small set.
-5. Produce separate relevance, quality, and business-objective scores, calibrate them, combine them by scenario, and keep interpretable hard guardrails.
-6. Rules are easier to inspect and repair while data and the pipeline are still changing. A learned model needs trustworthy satisfaction and behavior labels, plus relevance-grade monitoring so that it cannot trade relevance for clicks.
+2. Global AUC pools positive/negative comparisons across disparate users. Highly active users have high baseline CTRs, so a model memorizing user priors yields high global AUC while intra-user rankings remain random. GAUC computes AUC strictly within each user's impressions, isolating true personalization quality.
+3. Use exposed candidates from the same request that an old model ranked highly but received negative feedback, or sample top ANN/BM25 results. Filter false negatives and immature labels.
+4. Logarithmic discount gives top positions more weight, so the same displacement costs more near rank one than near the tail.
+5. Two-tower BERT fits retrieval or coarse ranking. Cross-BERT jointly encodes query and document and belongs in fine ranking over a small set.
+6. Produce separate relevance, quality, and business-objective scores, calibrate them, combine them by scenario, and keep interpretable hard guardrails.
+7. Rules are easier to inspect and repair while data and the pipeline are still changing. A learned model needs trustworthy satisfaction and behavior labels, plus relevance-grade monitoring so that it cannot trade relevance for clicks.
 
 </details>

@@ -86,6 +86,110 @@ def fm_predict(x, bias, linear_weights, factors):
 
 </details>
 
+---
+
+### 11.2B Wide & Deep (Google 2016)
+
+Wide & Deep 奠定了现代深度推荐系统“记忆性 (Memorization) 与泛化性 (Generalization)”协同解耦的工业范式：
+
+```math
+P(Y=1|\mathbf{x}) = \sigma\left( \mathbf{w}_{\text{wide}}^\top [\mathbf{x}, \phi(\mathbf{x})] + \mathbf{w}_{\text{deep}}^\top a^{(L)} + b \right)
+```
+
+1. **Wide Component（记忆能力）**：
+   - 采用带人工交叉特征的广义线性模型：$\phi_k(\mathbf{x}) = \prod_{j=1}^d x_j^{c_{kj}}, c_{kj} \in \{0, 1\}$；
+   - 典型特征：`AND(user_installed_app="Netflix", impression_app="Hulu")`；
+   - 优化器：**FTRL-Proximal (Follow-the-Regularized-Leader)**，引入强 $L_1$ 正则化，在线产出极度稀疏、高可解释性的权重，精准锁死历史高收益强规则。
+2. **Deep Component（泛化能力）**：
+   - 离散高维稀疏 ID 映射为低维连续 Dense Embedding（如 32 维），拼接后输入多层感知机（MLP，3 层 ReLU）；
+   - 优化器：**AdaGrad / Adam**；通过低维稠密向量的连续空间距离，泛化挖掘训练集中从未共现过的相关推荐（例如已安装旅行类 App 的用户推荐租车类 App）。
+3. **联合训练 (Joint Training) vs 模型集成 (Ensemble)**：
+   - 集成学习（Ensemble）：各子模型独立训练，仅在最终推理时加权平均；Wide 侧模型为了达到可用精度必须包含海量交叉特征，参数量庞大；
+   - 联合训练（Joint Training）：梯度通过统一的 Sigmoid 损失反向传播同时更新两侧参数。Wide 部分只需通过少量特征补偿 Deep 部分的例外情况（Residual Exception），Wide 侧特征规模可大幅缩减。
+
+---
+
+### 11.2C DeepFM (Huawei 2017)
+
+Wide & Deep 极大改善了推荐效果，但其 Wide 侧依然受制于高昂的人工特征工程（在数千个特征域中人工挑选并穷举交叉积组合成本极高）。**DeepFM** 的核心突破是用端到端可学习的 **FM Component** 彻底取代 Wide 侧的人工特征工程：
+
+```math
+\hat{y} = \sigma\left( y_{\text{FM}} + y_{\text{Deep}} \right)
+```
+
+#### 1. 核心架构与共享 Embedding
+DeepFM 由 FM 和 Deep 两个并行子网络组成，二者共享完全相同的特征输入与 Embedding 查找表：
+- **FM Component**：包含一阶线性部分与二阶特征交叉部分，利用 FM 的二阶内积自动学习任意两个特征域（Field）之间的交互强度：
+  $$y_{\text{FM}} = \langle \mathbf{w}, \mathbf{x} \rangle + \sum_{i=1}^d \sum_{j=i+1}^d \langle \mathbf{v}_i, \mathbf{v}_j \rangle x_i x_j$$
+  得益于 FM 的 $O(kd)$ 快速化简，二阶交叉无需计算所有特征对的笛卡尔积。
+- **Deep Component**：将各个 Field 对应的 Embedding 向量 $[\mathbf{e}_1, \mathbf{e}_2, \dots, \mathbf{e}_m]$ 拼接成一个高维向量输入前馈神经网络，学习高阶非线性特征交叉。
+- **共享 Embedding 的双重收益**：
+  1. 同时吸收低阶二阶信号与高阶深度非线性信号更新梯度；
+  2. 彻底消除了针对 Wide 侧的人工特征交叉工程，实现真正的 End-to-End 训练。
+
+#### 伪代码实现：DeepFM 核心模块前向
+```python
+import torch
+import torch.nn as nn
+
+class DeepFM(nn.Module):
+    def __init__(self, field_dims, embed_dim=16, mlp_dims=(128, 64)):
+        super().__init__()
+        self.num_fields = len(field_dims)
+        # 1. 共享 Embedding 表 (每个域独立的 embedding)
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, embed_dim) for num_classes in field_dims
+        ])
+        # 2. FM 一阶线性权重
+        self.linear_embeddings = nn.ModuleList([
+            nn.Embedding(num_classes, 1) for num_classes in field_dims
+        ])
+        self.bias = nn.Parameter(torch.zeros(1))
+        
+        # 3. Deep 侧多层感知机
+        in_dim = self.num_fields * embed_dim
+        layers = []
+        for hidden_dim in mlp_dims:
+            layers.extend([nn.Linear(in_dim, hidden_dim), nn.BatchNorm1d(hidden_dim), nn.ReLU()])
+            in_dim = hidden_dim
+        layers.append(nn.Linear(in_dim, 1))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x):
+        # x: [batch_size, num_fields], 包含各离散特征域的类别 ID
+        batch_size = x.size(0)
+        
+        # --- FM 一阶线性项 ---
+        linear_part = torch.sum(
+            torch.stack([self.linear_embeddings[i](x[:, i]) for i in range(self.num_fields)], dim=1),
+            dim=1
+        ) + self.bias # [batch_size, 1]
+        
+        # --- 共享 Embedding 查找 ---
+        # embed_list: List of [batch_size, embed_dim] -> [batch_size, num_fields, embed_dim]
+        embeds = torch.stack([self.embeddings[i](x[:, i]) for i in range(self.num_fields)], dim=1)
+        
+        # --- FM 二阶特征交叉 (O(k * d) 向量化技巧) ---
+        # 1/2 * [ (sum_i v_i)^2 - sum_i (v_i^2) ]
+        summed_embeds = torch.sum(embeds, dim=1)             # [batch_size, embed_dim]
+        summed_embeds_squared = torch.square(summed_embeds)
+        
+        squared_embeds = torch.square(embeds)                 # [batch_size, num_fields, embed_dim]
+        squared_sum_embeds = torch.sum(squared_embeds, dim=1) # [batch_size, embed_dim]
+        
+        fm_2nd = 0.5 * torch.sum(summed_embeds_squared - squared_sum_embeds, dim=1, keepdim=True) # [batch_size, 1]
+        
+        # --- Deep 侧高阶交叉 ---
+        flat_embeds = embeds.view(batch_size, -1)             # [batch_size, num_fields * embed_dim]
+        deep_out = self.mlp(flat_embeds)                      # [batch_size, 1]
+        
+        # --- 最终输出融合 ---
+        logits = linear_part + fm_2nd + deep_out
+        return torch.sigmoid(logits)
+```
+
+---
+
 ### 11.3 DCN 与 DCN-v2 (Deep & Cross Network)
 
 DCN 的核心是显式 Cross Layer：

@@ -102,6 +102,93 @@ class SIMSequenceModel(nn.Module):
         return self.attention(combined_cand, combined_hist)
 ```
 
+---
+
+### 12.4B SASRec (Self-Attentive Sequential Recommendation, 2018)
+
+DIN 采用候选驱动的局部注意力（Target Attention），能够解决“多样兴趣激活”问题，但序列内部物品之间**没有发生任何相互交互**，无法捕捉“用户买了手机 $\to$ 买了手机壳 $\to$ 接下来需要买充电线”这类严密的时间转移与因果演化。
+
+**SASRec** 首次将 Transformer 的因果自注意力机制引入序列推荐：
+
+```math
+\mathbf{S} = \operatorname{Self-Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \operatorname{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^\top}{\sqrt{d}} + \mathbf{M}\right)\mathbf{V}
+```
+
+#### 1. 核心架构设计
+1. **因果掩码 (Causal Triangular Mask, $\mathbf{M}$)**：
+   - 推荐属于时间序列自回归预测。在预测时刻 $t$ 的下一步意图时，模型**严禁看到时刻 $t+1$ 之后的未来行为**；
+   - 掩码矩阵定义为上三角无穷小：
+     $$M_{ij} = \begin{cases} 0, & i \ge j \\ -\infty, & i < j \end{cases}$$
+2. **位置编码 (Positional Embeddings)**：
+   - 为捕捉行为先后顺序，将每个位置赋予可学习的位置向量 $\mathbf{P} \in \mathbb{R}^{L \times d}$；
+   - 序列输入表征为：$\hat{\mathbf{E}} = [\mathbf{e}_1 + \mathbf{p}_1, \mathbf{e}_2 + \mathbf{p}_2, \dots, \mathbf{e}_L + \mathbf{p}_L]$。
+3. **点式前馈网络 (Pointwise Feed-Forward Network, FFN)**：
+   - 每个自注意力层后接入两层全连接与 ReLU，赋予模型非线性建模能力，并伴随残差连接与 LayerNorm。
+4. **DIN vs SASRec 的本质区别**：
+   - **DIN（排序专属）**：用户向量依赖特定候选物品 $v_{\text{cand}}$，一次前向只能评估一个候选，计算复杂度随候选集规模线性放大，仅适合精排；
+   - **SASRec（召回与排序通用）**：序列最后一个时间步输出的隐藏状态 $\mathbf{h}_L$ 完整编码了用户到目前为止的时序上下文意图。$\mathbf{h}_L$ **与具体候选无关**，可以直接作为用户向量推入 ANN 向量库进行全库最近邻检索（极速生成式序列召回），也能作为全局动态特征直接输入精排。
+
+#### 伪代码实现：SASRec 因果自注意力前向
+```python
+import torch
+import torch.nn as nn
+
+class SASRecBlock(nn.Module):
+    def __init__(self, hidden_dim, num_heads, dropout=0.1):
+        super().__init__()
+        self.attn = nn.MultiheadAttention(hidden_dim, num_heads, dropout=dropout, batch_first=True)
+        self.ffn = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 4),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim * 4, hidden_dim),
+            nn.Dropout(dropout)
+        )
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+
+    def forward(self, x, causal_mask):
+        # x: [batch_size, seq_len, hidden_dim]
+        # causal_mask: [seq_len, seq_len], 上三角全为 True (阻止注意力流向未来)
+        norm_x = self.norm1(x)
+        attn_out, _ = self.attn(norm_x, norm_x, norm_x, attn_mask=causal_mask)
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+class SASRec(nn.Module):
+    def __init__(self, num_items, max_len=50, hidden_dim=64, num_heads=2, num_blocks=2):
+        super().__init__()
+        self.max_len = max_len
+        self.item_embeddings = nn.Embedding(num_items + 1, hidden_dim, padding_idx=0)
+        self.pos_embeddings = nn.Embedding(max_len, hidden_dim)
+        self.blocks = nn.ModuleList([
+            SASRecBlock(hidden_dim, num_heads) for _ in range(num_blocks)
+        ])
+        self.final_norm = nn.LayerNorm(hidden_dim)
+
+    def forward(self, seq_ids):
+        # seq_ids: [batch_size, seq_len]
+        batch_size, seq_len = seq_ids.size()
+        positions = torch.arange(seq_len, device=seq_ids.device).unsqueeze(0).expand(batch_size, -1)
+        
+        # 1. 词嵌入与可学习位置编码相加
+        x = self.item_embeddings(seq_ids) + self.pos_embeddings(positions)
+        
+        # 2. 构造因果掩码 (上三角布尔矩阵)
+        causal_mask = torch.triu(torch.ones(seq_len, seq_len, device=seq_ids.device), diagonal=1).bool()
+        
+        # 3. 堆叠自注意力层
+        for block in self.blocks:
+            x = block(x, causal_mask)
+            
+        final_seq = self.final_norm(x) # [batch_size, seq_len, hidden_dim]
+        # 取最后一个有效时间步作为全序列用户兴趣表征向量
+        user_repr = final_seq[:, -1, :] # [batch_size, hidden_dim]
+        return user_repr
+```
+
+---
 
 ### 12.5 训练中的时间问题
 

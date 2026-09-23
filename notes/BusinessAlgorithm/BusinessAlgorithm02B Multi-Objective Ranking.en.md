@@ -142,21 +142,51 @@ Watch time is zero-inflated and influenced by video length. Directly regressing 
 
 Optional approaches:
 
-- Predict effective views and conditional duration;
-- Log-transform or bucketize duration;
-- Predict the watch ratio;
-- Calibrate by video length;
-- Model exit using survival/hazard analysis.
+### 10.5 Watch Time Modeling & Eliminating Duration Bias
 
-One YouTube-style objective maps observed watch seconds `t` to a soft label:
+Watch time exhibits zero inflation (swipes and bounces) and is fundamentally bounded by physical video length.
+
+#### 1. Mathematical Derivation of YouTube (2016) Weighted Logistic Regression
+The YouTube 2016 ranking model proposed a clean formulation: **use weighted classification loss to directly model continuous expected watch time without bias**, avoiding the extreme sensitivity of MSE on heavy tails while retaining negative impression signals.
+
+**Weighted Sample Formulation:**
+- Positive samples (clicked impressions with watch activity): assigned weight equal to observed watch seconds $T_i$;
+- Negative samples (unclicked impressions or instant skips): assigned weight equal to 1.
+
+**Mathematical Derivation:**
+Let $N$ be total impressions, with $N_+$ positives and $N_- = N - N_+$ negatives.
+Under weighted cross-entropy optimization, the odds learned by logistic regression equals the ratio of positive and negative sample weights:
 
 ```math
-y=\frac{t}{1+t},\qquad p=\sigma(z).
+\operatorname{Odds} = \frac{p}{1-p} = \frac{\sum_{i \in \text{pos}} T_i}{\sum_{j \in \text{neg}} 1} = \frac{\sum_{i \in \text{pos}} T_i}{N - N_+} = \frac{\frac{1}{N}\sum_{i \in \text{pos}} T_i}{1 - \frac{N_+}{N}} = \frac{\mathbb{E}[T]}{1 - p_{\text{click}}}
 ```
 
-Train `p` against `y` with binary cross-entropy. When `p=y`, `e^z=t`, so `e^z` is the duration estimate at inference. Completion can instead regress watch ratio or classify an event such as "watched more than 80%." Both need length-based calibration because short videos are easier to complete.
+Because online baseline click rates are low ($p_{\text{click}} \ll 1$, e.g., $0.02 \sim 0.05$), the denominator $1 - p_{\text{click}} \approx 1$:
 
-When evaluating, bucket by content length, user activity, and scenario. An increase in average duration might just mean the system pushed more long videos.
+```math
+\operatorname{Odds} \approx \mathbb{E}[T]
+```
+
+Since logistic regression predicts $p = \sigma(z) = \frac{1}{1 + e^{-z}}$, the odds ratio is identically the exponential of the final linear logit: $\operatorname{Odds} = e^z$.
+
+**Key Systems Takeaway:**
+- **Training Stage**: Optimize standard binary cross-entropy with sample weights (`BCEWithLogitsLoss(weight=...)`);
+- **Inference Stage**: **Directly compute the exponential of the final linear activation $\hat{T} = e^z$ as the unbiased estimate of expected watch time!** No negative sample filtering, no log-transform distortion—seamlessly bridging binary classification and continuous duration prediction.
+
+#### 2. The Duration Bias Paradox in Short-Video Feeds
+In short-video feeds (TikTok, Reels, Kuaishou), directly optimizing completion rate or raw duration causes pathological ecosystem distortion:
+- **Completion Rate Trap**: A 15s video watched for 12s has an 80% completion rate (VCR); a 180s deep-dive video watched for 45s has only a 25% VCR. Optimizing purely for completion collapses the feed into homogeneous 5s trivial clips.
+- **Duration Trap**: Optimizing raw duration heavily favors 45s over 12s, driving the algorithm to promote bloated, slow-paced videos, spiking immediate swipe-away rates and destroying retention.
+
+**Production Solution: Bucket-wise Z-Score Normalization**
+Segment videos into length buckets based on physical duration $L$ (e.g., `[0, 15s)`, `[15, 30s)`, `[30, 60s)`, `[60, 180s)`, `[180s, +inf)`).
+Compute the empirical mean $\mu_L$ and standard deviation $\sigma_L$ of watch times within each bucket, normalizing the training label via Z-score:
+
+```math
+\tilde{T} = \frac{T - \mu_L}{\sigma_L}
+```
+
+By stripping away physical duration scale advantages, candidates compete on **relative outperformance within their peer length class**, maintaining healthy diversity across both snappy short clips and immersive long-form content.
 
 ### 10.6 Score Fusion
 
@@ -198,26 +228,32 @@ The additive form depends on calibrated scales. Rank fusion is more scale-robust
 
 Another path is to learn a fusion model, taking scores from each objective and context as input. However, it still requires training labels and is harder to interpret regarding objective trade-offs. Strong business constraints are best kept in the re-ranking or rule layer.
 
-### 10.7 Calibration
+### 10.7 Probability Calibration & Negative Downsampling Correction
 
-If a model says 0.2, and the samples have approximately 20% actual clicks, the score is calibrated. Common methods:
+If a model predicts 0.2, and 20% of samples in that predicted bin truly click, the score is fully calibrated.
 
-- Platt scaling;
-- Isotonic regression;
-- Temperature scaling;
-- Scenario-based or population-based calibration.
+#### 1. Why Calibration is Mission-Critical
+- **Multi-Objective Score Fusion**: Linear blending $w_1 p_{\text{click}} + w_2 p_{\text{like}}$ assumes probabilities reflect an identical physical scale. If an architecture update inflates $p_{\text{click}}$ by 50%, the fusion balance is silently destroyed;
+- **Ad Bidding (eCPM)**: Ads rank and charge by $\text{eCPM} = 1000 \times \text{pCTR} \times \text{pCVR} \times \text{bid}$. If predicted probabilities are inflated by 20%, advertiser budgets drain prematurely, triggering platform over-cost liabilities.
 
-Ranking only requires relative order, but fusion often requires comparable probabilities. Calibration changes do not necessarily change AUC, but they can significantly change the results of multi-objective fusion.
+#### 2. Calibration Metric: E/O (Expected over Observed / COP)
+```math
+\operatorname{E/O} = \frac{\sum_{i=1}^N \hat{p}_i}{\sum_{i=1}^N y_i}
+```
+$\operatorname{E/O} > 1$ denotes systematic over-prediction; $\operatorname{E/O} < 1$ denotes under-prediction. Production systems enforce overall and slice-level $\operatorname{E/O} \in [0.98, 1.02]$. Standard calibration techniques include **Platt Scaling (logistic calibration)**, **Isotonic Regression**, and **Piecewise Binning**.
 
-Negative downsampling also requires probability correction. If only an `\alpha` fraction of negatives is retained and the sampled-data estimate is `p_s`, the original-distribution probability is:
+#### 3. Mathematical Derivation of Negative Downsampling Correction
+To economize training storage and compute, industrial pipelines downsample unclicked negative impressions. If all positives are retained and negatives are retained with probability $\alpha \in (0, 1)$:
+- True data odds: $\text{Odds} = \frac{N_+}{N_-}$;
+- Sampled dataset negatives drop to $\alpha N_-$, yielding sampled odds:
+  $$\text{Odds}_s = \frac{N_+}{\alpha N_-} = \frac{1}{\alpha} \text{Odds} \implies \text{Odds} = \alpha \cdot \text{Odds}_s$$
+- With model prediction $p_s$ on the sampled data, $\text{Odds}_s = \frac{p_s}{1 - p_s}$. Substituting into true probability $p = \frac{\text{Odds}}{1 + \text{Odds}}$:
 
 ```math
-p
-=\frac{\alpha p_s}
-{1-p_s+\alpha p_s}.
+p = \frac{\alpha \frac{p_s}{1 - p_s}}{1 + \alpha \frac{p_s}{1 - p_s}} = \frac{\alpha p_s}{1 - p_s + \alpha p_s}
 ```
 
-Downsampling without this correction systematically inflates CTR and downstream rates, and makes fusion weights depend on the sampling ratio.
+Downsampling without this mathematical restoration inflates probabilities by an order of magnitude, destroying multi-objective blending and bidding integrity.
 
 ### 10.8 From Ranking Loss to Preference Optimization
 
