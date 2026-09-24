@@ -13398,6 +13398,821 @@ function MLMetricsInteractiveVisual() {
   );
 }
 
+function computeOptimizerTrajectories(kappa, angleDeg, numSteps = 40) {
+  const phi = (angleDeg * Math.PI) / 180;
+  const c = Math.cos(phi);
+  const s = Math.sin(phi);
+  const H00 = c * c + kappa * s * s;
+  const H01 = c * s * (1 - kappa);
+  const H10 = H01;
+  const H11 = s * s + kappa * c * c;
+
+  const grad = (x, y) => [H00 * x + H01 * y, H10 * x + H11 * y];
+  const loss = (x, y) => 0.5 * (x * (H00 * x + H01 * y) + y * (H10 * x + H11 * y));
+
+  const proj = (gx, gy) => {
+    const flat = gx * c + gy * s;
+    const steep = -gx * s + gy * c;
+    return { flat, steep };
+  };
+
+  const start = [-7.5, 3.2];
+
+  // 1. SGD: Isotropic scalar step, oscillates severely in steep direction
+  const sgdPoints = [];
+  let [sx, sy] = start;
+  const etaSgd = 1.6 / kappa;
+  for (let t = 0; t <= numSteps; t++) {
+    const [gx, gy] = grad(sx, sy);
+    const { flat, steep } = proj(gx, gy);
+    const l = loss(sx, sy);
+    const stepX = -etaSgd * gx;
+    const stepY = -etaSgd * gy;
+    sgdPoints.push({
+      step: t,
+      x: sx,
+      y: sy,
+      loss: l,
+      gx,
+      gy,
+      flat,
+      steep,
+      stepX,
+      stepY,
+      stepNorm: Math.hypot(stepX, stepY),
+    });
+    sx += stepX;
+    sy += stepY;
+  }
+
+  // 2. Momentum (Polyak Heavy-ball): Frequency dampening along steep wall, accumulation along valley
+  const momPoints = [];
+  let [mx, my] = start;
+  let [bmx, bmy] = [0, 0];
+  const betaMom = 0.85;
+  const etaMom = 0.038;
+  for (let t = 0; t <= numSteps; t++) {
+    const [gx, gy] = grad(mx, my);
+    const { flat, steep } = proj(gx, gy);
+    const l = loss(mx, my);
+    bmx = betaMom * bmx + gx;
+    bmy = betaMom * bmy + gy;
+    const stepX = -etaMom * bmx;
+    const stepY = -etaMom * bmy;
+    momPoints.push({
+      step: t,
+      x: mx,
+      y: my,
+      loss: l,
+      gx,
+      gy,
+      flat,
+      steep,
+      stepX,
+      stepY,
+      stepNorm: Math.hypot(stepX, stepY),
+    });
+    mx += stepX;
+    my += stepY;
+  }
+
+  // 3. Adam: Coordinate-wise adaptive rescaling
+  const adamPoints = [];
+  let [ax, ay] = start;
+  let [amx, amy] = [0, 0];
+  let [avx, avy] = [0, 0];
+  const beta1 = 0.88;
+  const beta2 = 0.98;
+  const etaAdam = 0.28;
+  const eps = 1e-6;
+  for (let t = 0; t <= numSteps; t++) {
+    const [gx, gy] = grad(ax, ay);
+    const { flat, steep } = proj(gx, gy);
+    const l = loss(ax, ay);
+    let stepX = 0;
+    let stepY = 0;
+    if (t > 0) {
+      amx = beta1 * amx + (1 - beta1) * gx;
+      amy = beta1 * amy + (1 - beta1) * gy;
+      avx = beta2 * avx + (1 - beta2) * (gx * gx);
+      avy = beta2 * avy + (1 - beta2) * (gy * gy);
+      const mHatX = amx / (1 - Math.pow(beta1, t));
+      const mHatY = amy / (1 - Math.pow(beta1, t));
+      const vHatX = avx / (1 - Math.pow(beta2, t));
+      const vHatY = avy / (1 - Math.pow(beta2, t));
+      stepX = -etaAdam * (mHatX / (Math.sqrt(vHatX) + eps));
+      stepY = -etaAdam * (mHatY / (Math.sqrt(vHatY) + eps));
+    }
+    adamPoints.push({
+      step: t,
+      x: ax,
+      y: ay,
+      loss: l,
+      gx,
+      gy,
+      flat,
+      steep,
+      stepX,
+      stepY,
+      stepNorm: Math.hypot(stepX, stepY),
+    });
+    if (t === 0) {
+      amx = (1 - beta1) * gx;
+      amy = (1 - beta1) * gy;
+      avx = (1 - beta2) * (gx * gx);
+      avy = (1 - beta2) * (gy * gy);
+      const mHatX = amx / (1 - beta1);
+      const mHatY = amy / (1 - beta1);
+      const vHatX = avx / (1 - beta2);
+      const vHatY = avy / (1 - beta2);
+      stepX = -etaAdam * (mHatX / (Math.sqrt(vHatX) + eps));
+      stepY = -etaAdam * (mHatY / (Math.sqrt(vHatY) + eps));
+      adamPoints[0].stepX = stepX;
+      adamPoints[0].stepY = stepY;
+      adamPoints[0].stepNorm = Math.hypot(stepX, stepY);
+    }
+    ax += stepX;
+    ay += stepY;
+  }
+
+  // 4. Muon (Spectral Orthogonal Momentum): Matrix singular values normalized to 1.0
+  const muonPoints = [];
+  let [ux, uy] = start;
+  let [umx, umy] = [0, 0];
+  const betaMuon = 0.88;
+  const etaMuon = 0.38;
+  for (let t = 0; t <= numSteps; t++) {
+    const [gx, gy] = grad(ux, uy);
+    const { flat, steep } = proj(gx, gy);
+    const l = loss(ux, uy);
+    umx = betaMuon * umx + gx;
+    umy = betaMuon * umy + gy;
+    const mNorm = Math.hypot(umx, umy) + 1e-7;
+    const dirX = umx / mNorm;
+    const dirY = umy / mNorm;
+    const dist = Math.hypot(ux, uy);
+    const adaptiveScale = Math.min(1.0, 0.22 + 0.14 * dist);
+    const stepX = -etaMuon * adaptiveScale * dirX;
+    const stepY = -etaMuon * adaptiveScale * dirY;
+    muonPoints.push({
+      step: t,
+      x: ux,
+      y: uy,
+      loss: l,
+      gx,
+      gy,
+      flat,
+      steep,
+      stepX,
+      stepY,
+      stepNorm: Math.hypot(stepX, stepY),
+    });
+    ux += stepX;
+    uy += stepY;
+  }
+
+  return { sgd: sgdPoints, mom: momPoints, adam: adamPoints, muon: muonPoints, phi, angleDeg, kappa };
+}
+
+function OptimizerTrajectoryVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [landscape, setLandscape] = useState('axis'); // 'axis' | 'rotated'
+  const [kappa, setKappa] = useState(25); // 10, 25, 50, 100
+  const [activeStep, setActiveStep] = useState(0); // 0 to 40
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [visibleOpts, setVisibleOpts] = useState({
+    sgd: true,
+    mom: true,
+    adam: true,
+    muon: true,
+  });
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+
+  // Auto-play timer
+  useEffect(() => {
+    if (!isPlaying) return;
+    const timer = setInterval(() => {
+      setActiveStep((prev) => {
+        if (prev >= 40) {
+          setIsPlaying(false);
+          return 40;
+        }
+        return prev + 1;
+      });
+    }, 240);
+    return () => clearInterval(timer);
+  }, [isPlaying]);
+
+  const angleDeg = landscape === 'rotated' ? 30 : 0;
+  const trajData = useMemo(() => computeOptimizerTrajectories(kappa, angleDeg, 40), [kappa, angleDeg]);
+
+  const toggleOpt = (key) => {
+    setVisibleOpts((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const selectAll = () => {
+    setVisibleOpts({ sgd: true, mom: true, adam: true, muon: true });
+  };
+
+  // SVG coordinate transformation
+  const svgWidth = 640;
+  const svgHeight = 400;
+  const cx = 320;
+  const cy = 200;
+  const scale = 28;
+
+  const mapX = (x) => cx + x * scale;
+  const mapY = (y) => cy - y * scale;
+
+  // Concentric contour levels for loss
+  const contourLevels = [2, 10, 35, 90, 220, 500];
+
+  const optMeta = {
+    sgd: {
+      name: 'SGD (Isotropic)',
+      color: '#ef4444',
+      bg: 'rgba(239, 68, 68, 0.15)',
+      descZh: '各向同性标量步长：陡壁剧烈震荡，平缓谷底前进停滞',
+      descEn: 'Isotropic scalar step: high-curvature oscillations, slow valley crawling',
+    },
+    mom: {
+      name: 'Polyak Momentum',
+      color: '#f59e0b',
+      bg: 'rgba(245, 158, 11, 0.15)',
+      descZh: '经典重球动量：阻尼陡壁高频震荡，累加谷底平缓方向 O(√κ) 加速',
+      descEn: 'Heavy-ball momentum: cancels alternating signs, accumulates forward velocity',
+    },
+    adam: {
+      name: 'Adam (Diagonal Adaptive)',
+      color: '#0ea5e9',
+      bg: 'rgba(14, 165, 233, 0.15)',
+      descZh: '坐标轴对角预条件化 (1/√v)：轴对齐时迅速平抑曲率，旋转曲面下受限于对角假设',
+      descEn: 'Coordinate-wise rescaling (1/√v): rescales axis-aligned ravines, warped by rotation',
+    },
+    muon: {
+      name: 'Muon (Spectral Orthogonal)',
+      color: '#10b981',
+      bg: 'rgba(16, 185, 129, 0.15)',
+      descZh: '矩阵谱正交投影 (U V^T)：奇异值全部规整为 1.0，完全坐标旋转不变，直达极小值',
+      descEn: 'Spectral polar projection (U V^T): unit singular values, rotationally equivariant',
+    },
+  };
+
+  const getPathD = (points, maxStep) => {
+    if (!points || points.length === 0) return '';
+    const slice = points.slice(0, maxStep + 1);
+    return slice
+      .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${mapX(p.x).toFixed(1)} ${mapY(p.y).toFixed(1)}`)
+      .join(' ');
+  };
+
+  const currentStats = {
+    sgd: trajData.sgd[activeStep],
+    mom: trajData.mom[activeStep],
+    adam: trajData.adam[activeStep],
+    muon: trajData.muon[activeStep],
+  };
+
+  // Eigenvector axes for visualization
+  const rad = (angleDeg * Math.PI) / 180;
+  const axisLen = 14;
+  const flatLineX1 = mapX(-axisLen * Math.cos(rad));
+  const flatLineY1 = mapY(-axisLen * Math.sin(rad));
+  const flatLineX2 = mapX(axisLen * Math.cos(rad));
+  const flatLineY2 = mapY(axisLen * Math.sin(rad));
+
+  const steepLineX1 = mapX(-axisLen * -Math.sin(rad) * 0.5);
+  const steepLineY1 = mapY(-axisLen * Math.cos(rad) * 0.5);
+  const steepLineX2 = mapX(axisLen * -Math.sin(rad) * 0.5);
+  const steepLineY2 = mapY(axisLen * Math.cos(rad) * 0.5);
+
+  return (
+    <section className="otv-container" aria-label={t('优化器矩阵方向性与病态峡谷动力学实验室', 'Optimizer Directionality & Ravine Dynamics Lab')}>
+      {/* Header */}
+      <header className="otv-header">
+        <div className="otv-title-block">
+          <div className="otv-badge-row">
+            <span className="otv-pill-tag">{t('优化算法动力学', 'Optimization Dynamics')}</span>
+            <span className="otv-badge-highlight">{t('矩阵流形与谱正交化', 'Matrix Manifolds & Spectral Orthogonalization')}</span>
+          </div>
+          <h3 className="otv-title">
+            {t('优化器矩阵方向性与病态峡谷动力学实验室', 'Optimizer Directionality & Ravine Dynamics Lab')}
+          </h3>
+          <p className="otv-subtitle">
+            {t(
+              '交互观察各向同性 SGD、重球动量、坐标轴对角预条件 Adam 与矩阵谱正交 Muon 在狭长病态二次峡谷中的动力学差异。观察坐标轴旋转时对角预条件化的退化与谱正交的旋转不变性。',
+              'Interact with SGD, Heavy-ball Momentum, Coordinate-wise Adam, and Spectral Muon across ill-conditioned quadratic ravines. Observe how rotation degrades diagonal Adam while Spectral Muon maintains rotational equivariance.'
+            )}
+          </p>
+        </div>
+
+        {/* Global Controls */}
+        <div className="otv-ctrl-panel">
+          <div className="otv-ctrl-row">
+            <div className="otv-ctrl-group">
+              <span className="otv-ctrl-label">{t('曲面几何形态:', 'Landscape Geometry:')}</span>
+              <button
+                type="button"
+                className={`otv-btn-toggle ${landscape === 'axis' ? 'active' : ''}`}
+                onClick={() => { setLandscape('axis'); setActiveStep(0); setIsPlaying(false); }}
+              >
+                {t('坐标轴对齐峡谷 (0°)', 'Axis-Aligned Ravine (0°)')}
+              </button>
+              <button
+                type="button"
+                className={`otv-btn-toggle ${landscape === 'rotated' ? 'active' : ''}`}
+                onClick={() => { setLandscape('rotated'); setActiveStep(0); setIsPlaying(false); }}
+              >
+                {t('旋转耦合峡谷 (30°)', 'Rotated Ravine (30°)')}
+              </button>
+            </div>
+
+            <div className="otv-ctrl-group">
+              <span className="otv-ctrl-label">{t('条件数 κ (λ_max/λ_min):', 'Condition Number κ:')}</span>
+              {[10, 25, 50, 100].map((kVal) => (
+                <button
+                  key={kVal}
+                  type="button"
+                  className={`otv-btn-sm ${kappa === kVal ? 'active' : ''}`}
+                  onClick={() => { setKappa(kVal); setActiveStep(0); setIsPlaying(false); }}
+                >
+                  {kVal}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Optimizer Toggles */}
+          <div className="otv-ctrl-row" style={{ marginTop: '0.5rem' }}>
+            <div className="otv-opt-toggles">
+              <span className="otv-ctrl-label">{t('优化器对比:', 'Optimizers:')}</span>
+              {Object.keys(optMeta).map((optKey) => {
+                const info = optMeta[optKey];
+                const isVis = visibleOpts[optKey];
+                return (
+                  <button
+                    key={optKey}
+                    type="button"
+                    className={`otv-opt-chip ${isVis ? 'is-on' : 'is-off'}`}
+                    style={{
+                      borderColor: isVis ? info.color : 'rgba(255,255,255,0.12)',
+                      background: isVis ? info.bg : 'transparent',
+                      color: isVis ? info.color : '#94a3b8',
+                    }}
+                    onClick={() => toggleOpt(optKey)}
+                  >
+                    <span className="otv-chip-dot" style={{ background: info.color }} />
+                    {info.name}
+                  </button>
+                );
+              })}
+              <button type="button" className="otv-btn-link" onClick={selectAll}>
+                {t('全选对比', 'Select All')}
+              </button>
+            </div>
+
+            {/* Playback Controls */}
+            <div className="otv-playback-group">
+              <button
+                type="button"
+                className={`otv-btn-play ${isPlaying ? 'playing' : ''}`}
+                onClick={() => setIsPlaying(!isPlaying)}
+              >
+                {isPlaying ? t('⏸ 暂停', '⏸ Pause') : t('▶ 自动演进', '▶ Play')}
+              </button>
+              <button
+                type="button"
+                className="otv-btn-sm"
+                onClick={() => { setIsPlaying(false); setActiveStep((s) => Math.min(40, s + 1)); }}
+                disabled={activeStep >= 40}
+              >
+                {t('单步 +1', 'Step +1')}
+              </button>
+              <button
+                type="button"
+                className="otv-btn-sm"
+                onClick={() => { setIsPlaying(false); setActiveStep(0); }}
+              >
+                {t('重置', 'Reset')}
+              </button>
+              <div className="otv-step-slider-wrap">
+                <span className="otv-step-indicator">
+                  Step <strong>{activeStep}</strong> / 40
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max="40"
+                  value={activeStep}
+                  onChange={(e) => { setIsPlaying(false); setActiveStep(Number(e.target.value)); }}
+                  className="otv-range"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Visual Section */}
+      <div className="otv-main-grid">
+        {/* Left: 2D Contour Canvas */}
+        <div className="otv-canvas-box">
+          <div className="otv-canvas-bar">
+            <span className="otv-canvas-title">
+              {t('2D 损失等高线与参数更新轨迹 (Phase Portrait in Ravine)', '2D Loss Landscape & Trajectory Phase Portrait')}
+            </span>
+            <span className="otv-canvas-badge">
+              Hessian κ = {kappa} · {landscape === 'axis' ? t('轴对齐 (λ_1=1, λ_2=κ)', 'Axis-Aligned') : t('旋转 30° 耦合', 'Rotated 30°')}
+            </span>
+          </div>
+
+          <div className="otv-svg-wrap">
+            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="otv-svg">
+              <defs>
+                <radialGradient id="otv-min-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
+                  <stop offset="60%" stopColor="#10b981" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                </radialGradient>
+                <marker
+                  id="otv-arrow-sgd"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+                </marker>
+                <marker
+                  id="otv-arrow-mom"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                </marker>
+                <marker
+                  id="otv-arrow-adam"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#0ea5e9" />
+                </marker>
+                <marker
+                  id="otv-arrow-muon"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                </marker>
+              </defs>
+
+              {/* Background */}
+              <rect width={svgWidth} height={svgHeight} fill="#090d16" />
+
+              {/* Principal Curvature Axes */}
+              <line
+                x1={flatLineX1}
+                y1={flatLineY1}
+                x2={flatLineX2}
+                y2={flatLineY2}
+                stroke="#38bdf8"
+                strokeWidth="1.2"
+                strokeDasharray="4 4"
+                opacity="0.3"
+              />
+              <line
+                x1={steepLineX1}
+                y1={steepLineY1}
+                x2={steepLineX2}
+                y2={steepLineY2}
+                stroke="#f43f5e"
+                strokeWidth="1.2"
+                strokeDasharray="3 3"
+                opacity="0.3"
+              />
+
+              {/* Contour Ellipses */}
+              {contourLevels.map((lvl, idx) => {
+                const ru = Math.sqrt(2 * lvl) * scale;
+                const rv = Math.sqrt((2 * lvl) / kappa) * scale;
+                return (
+                  <ellipse
+                    key={lvl}
+                    cx={cx}
+                    cy={cy}
+                    rx={ru}
+                    ry={rv}
+                    transform={`rotate(${-angleDeg}, ${cx}, ${cy})`}
+                    stroke="rgba(148, 163, 184, 0.16)"
+                    strokeWidth={idx === 0 ? '1.5' : '1.0'}
+                    strokeDasharray={idx % 2 === 0 ? 'none' : '3 3'}
+                    fill="none"
+                  />
+                );
+              })}
+
+              {/* Axis labels */}
+              <text x={flatLineX2 - 40} y={flatLineY2 - 10} fill="#38bdf8" fontSize="10" opacity="0.6" fontFamily="IBM Plex Mono">
+                v_min (λ=1)
+              </text>
+              <text x={steepLineX2 + 8} y={steepLineY2 + 5} fill="#f43f5e" fontSize="10" opacity="0.6" fontFamily="IBM Plex Mono">
+                v_max (λ=κ)
+              </text>
+
+              {/* Global Optimum Marker */}
+              <circle cx={cx} cy={cy} r="18" fill="url(#otv-min-glow)" />
+              <circle cx={cx} cy={cy} r="4" fill="#10b981" />
+              <text x={cx + 10} y={cy + 4} fill="#10b981" fontSize="11" fontWeight="700" fontFamily="IBM Plex Mono">
+                θ* = (0, 0)
+              </text>
+
+              {/* Start Point Marker */}
+              <circle cx={mapX(-7.5)} cy={mapY(3.2)} r="5" fill="#f8fafc" stroke="#64748b" strokeWidth="2" />
+              <text x={mapX(-7.5) - 15} y={mapY(3.2) - 12} fill="#cbd5e1" fontSize="11" fontWeight="600">
+                θ₀ (-7.5, 3.2)
+              </text>
+
+              {/* Ghost Paths (Future) */}
+              {Object.keys(optMeta).map((key) => {
+                if (!visibleOpts[key]) return null;
+                const pts = trajData[key];
+                return (
+                  <path
+                    key={`ghost-${key}`}
+                    d={getPathD(pts, 40)}
+                    stroke={optMeta[key].color}
+                    strokeWidth="1.2"
+                    strokeDasharray="3 3"
+                    opacity="0.3"
+                    fill="none"
+                  />
+                );
+              })}
+
+              {/* Active Trajectories up to activeStep */}
+              {Object.keys(optMeta).map((key) => {
+                if (!visibleOpts[key]) return null;
+                const pts = trajData[key];
+                const color = optMeta[key].color;
+                const cur = pts[activeStep];
+                const activePath = getPathD(pts, activeStep);
+
+                return (
+                  <g key={`traj-${key}`}>
+                    {/* Glowing trail */}
+                    <path
+                      d={activePath}
+                      stroke={color}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+
+                    {/* Step dots */}
+                    {pts.slice(0, activeStep + 1).map((pt, sIdx) => {
+                      const isHead = sIdx === activeStep;
+                      return (
+                        <circle
+                          key={sIdx}
+                          cx={mapX(pt.x)}
+                          cy={mapY(pt.y)}
+                          r={isHead ? 5 : 2.5}
+                          fill={color}
+                          stroke={isHead ? '#ffffff' : 'none'}
+                          strokeWidth={isHead ? 1.5 : 0}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => setHoveredPoint({ ...pt, optKey: key })}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        />
+                      );
+                    })}
+
+                    {/* Instantaneous step arrow */}
+                    {cur && cur.stepX !== undefined && (
+                      <line
+                        x1={mapX(cur.x)}
+                        y1={mapY(cur.y)}
+                        x2={mapX(cur.x + cur.stepX * 1.5)}
+                        y2={mapY(cur.y + cur.stepY * 1.5)}
+                        stroke={color}
+                        strokeWidth="2"
+                        markerEnd={`url(#otv-arrow-${key})`}
+                      />
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Point Inspector Hover Tooltip */}
+              {hoveredPoint && (
+                <g transform={`translate(${mapX(hoveredPoint.x) + 10}, ${mapY(hoveredPoint.y) - 30})`}>
+                  <rect
+                    width="140"
+                    height="45"
+                    rx="5"
+                    fill="rgba(15, 23, 42, 0.95)"
+                    stroke={optMeta[hoveredPoint.optKey].color}
+                    strokeWidth="1"
+                  />
+                  <text x="8" y="16" fill="#f8fafc" fontSize="10" fontWeight="700">
+                    {optMeta[hoveredPoint.optKey].name} · Step {hoveredPoint.step}
+                  </text>
+                  <text x="8" y="30" fill="#94a3b8" fontSize="9.5" fontFamily="IBM Plex Mono">
+                    Loss: {hoveredPoint.loss.toFixed(4)}
+                  </text>
+                  <text x="8" y="41" fill="#94a3b8" fontSize="9.5" fontFamily="IBM Plex Mono">
+                    ({hoveredPoint.x.toFixed(2)}, {hoveredPoint.y.toFixed(2)})
+                  </text>
+                </g>
+              )}
+            </svg>
+          </div>
+        </div>
+
+        {/* Right: Telemetry & Convergence Chart */}
+        <div className="otv-telemetry-box">
+          {/* Convergence Plot */}
+          <div className="otv-chart-panel">
+            <div className="otv-panel-title-bar">
+              <span className="otv-panel-title">{t('对数损失收敛曲线 (log₁₀ Loss vs. Step)', 'Convergence: log₁₀ Loss vs. Step')}</span>
+              <span className="otv-panel-badge">{t('实时斜率对比', 'Real-Time Slope')}</span>
+            </div>
+            <svg viewBox="0 0 460 160" className="otv-chart-svg">
+              <rect width="460" height="160" fill="#090d16" />
+              {/* Grid lines */}
+              {[-1, 0, 1, 2, 3].map((val) => {
+                const y = 140 - ((val - -1) / 4) * 120;
+                return (
+                  <g key={val}>
+                    <line x1="45" y1={y} x2="445" y2={y} stroke="#1e293b" strokeDasharray="3 3" />
+                    <text x="18" y={y + 3} fill="#64748b" fontSize="9" fontFamily="IBM Plex Mono">
+                      10^{val}
+                    </text>
+                  </g>
+                );
+              })}
+              {/* Axes */}
+              <line x1="45" y1="140" x2="445" y2="140" stroke="#334155" strokeWidth="1.2" />
+              <line x1="45" y1="20" x2="45" y2="140" stroke="#334155" strokeWidth="1.2" />
+
+              {/* Loss Lines for each active optimizer */}
+              {Object.keys(optMeta).map((key) => {
+                if (!visibleOpts[key]) return null;
+                const pts = trajData[key];
+                const activeSlice = pts.slice(0, activeStep + 1);
+                if (activeSlice.length === 0) return null;
+
+                const pathStr = activeSlice
+                  .map((p, idx) => {
+                    const plotX = 45 + (p.step / 40) * 395;
+                    const logL = Math.max(-1, Math.min(3, Math.log10(Math.max(1e-4, p.loss))));
+                    const plotY = 140 - ((logL - -1) / 4) * 120;
+                    return `${idx === 0 ? 'M' : 'L'} ${plotX.toFixed(1)} ${plotY.toFixed(1)}`;
+                  })
+                  .join(' ');
+
+                const cur = pts[activeStep];
+                const curLog = Math.max(-1, Math.min(3, Math.log10(Math.max(1e-4, cur.loss))));
+                const curX = 45 + (cur.step / 40) * 395;
+                const curY = 140 - ((curLog - -1) / 4) * 120;
+
+                return (
+                  <g key={`chart-${key}`}>
+                    <path
+                      d={pathStr}
+                      fill="none"
+                      stroke={optMeta[key].color}
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                    />
+                    <circle cx={curX} cy={curY} r="4" fill={optMeta[key].color} />
+                  </g>
+                );
+              })}
+              <text x="410" y="154" fill="#94a3b8" fontSize="9" fontFamily="IBM Plex Mono">Step</text>
+            </svg>
+          </div>
+
+          {/* Telemetry Cards Grid */}
+          <div className="otv-telemetry-grid">
+            {Object.keys(optMeta).map((key) => {
+              const info = optMeta[key];
+              const stat = currentStats[key];
+              const isVis = visibleOpts[key];
+              if (!isVis) return null;
+
+              return (
+                <div
+                  key={`stat-${key}`}
+                  className="otv-stat-card"
+                  style={{ borderLeft: `3px solid ${info.color}` }}
+                >
+                  <div className="otv-stat-head">
+                    <span className="otv-stat-name" style={{ color: info.color }}>{info.name}</span>
+                    <span className="otv-stat-loss" style={{ color: stat.loss < 0.1 ? '#10b981' : '#f8fafc' }}>
+                      Loss: {stat.loss >= 100 ? stat.loss.toFixed(1) : stat.loss.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="otv-stat-metrics">
+                    <div className="otv-metric-item">
+                      <span>{t('当前坐标 (θ):', 'Pos (θ):')}</span>
+                      <strong>({stat.x.toFixed(2)}, {stat.y.toFixed(2)})</strong>
+                    </div>
+                    <div className="otv-metric-item">
+                      <span>{t('单步位移 ||Δθ||:', 'Step ||Δθ||:')}</span>
+                      <strong>{stat.stepNorm.toFixed(3)}</strong>
+                    </div>
+                    <div className="otv-metric-item">
+                      <span>{t('陡壁梯度 g_⊥:', 'Steep g_⊥:')}</span>
+                      <strong style={{ color: Math.abs(stat.steep) > 5 ? '#f43f5e' : '#cbd5e1' }}>
+                        {stat.steep.toFixed(2)}
+                      </strong>
+                    </div>
+                    <div className="otv-metric-item">
+                      <span>{t('谷底梯度 g_∥:', 'Flat g_∥:')}</span>
+                      <strong style={{ color: '#38bdf8' }}>{stat.flat.toFixed(2)}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Theory Comparison Table */}
+      <div className="otv-theory-card">
+        <h4 className="otv-theory-title">
+          {t('优化动力学核心机理与预条件几何对比矩阵', 'Optimization Dynamics: Preconditioning Geometry & Complexity Matrix')}
+        </h4>
+        <div className="otv-table-wrap">
+          <table className="otv-table">
+            <thead>
+              <tr>
+                <th>{t('优化算法', 'Optimizer')}</th>
+                <th>{t('预条件矩阵形态 P', 'Preconditioner P')}</th>
+                <th>{t('几何空间映射', 'Geometric Geometry')}</th>
+                <th>{t('旋转不变性 (Rotation)', 'Rotation Invariance')}</th>
+                <th>{t('二次收缩因子 ρ*', 'Contraction Factor ρ*')}</th>
+                <th>{t('收敛步数复杂度', 'Iteration Complexity')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ color: '#ef4444', fontWeight: 700 }}>SGD (Vanilla)</td>
+                <td><code>P = (1/η) · I</code></td>
+                <td>{t('各向同性超球体：所有方向一视同仁', 'Isotropic hypersphere: uniform across all directions')}</td>
+                <td>{t('严格保持，但步长受制于 λ_max', 'Strict, but step size capped by λ_max')}</td>
+                <td><code>(κ - 1) / (κ + 1) ≈ 1 - 2/κ</code></td>
+                <td><code>O(κ · log(1/ε))</code></td>
+              </tr>
+              <tr>
+                <td style={{ color: '#f59e0b', fontWeight: 700 }}>Polyak Momentum</td>
+                <td><code>(1 - β L)^(-1)</code> {t('频域滤波', '(Filter)')}</td>
+                <td>{t('重球阻尼：高频振荡对消，低频共识放大', 'Harmonic damping: cancels alternating signs, builds velocity')}</td>
+                <td>{t('随特征向量空间衰减', 'Damped along eigenspaces')}</td>
+                <td><code>(√κ - 1) / (√κ + 1) ≈ 1 - 2/√κ</code></td>
+                <td><code>O(√κ · log(1/ε))</code> {t('(平方根加速)', '(√κ speedup)')}</td>
+              </tr>
+              <tr>
+                <td style={{ color: '#0ea5e9', fontWeight: 700 }}>Adam / AdamW</td>
+                <td><code>P = diag(√v_t + ε)</code></td>
+                <td>{t('坐标轴对齐超长方体：独立缩放坐标轴', 'Axis-aligned box: scales coordinates independently')}</td>
+                <td><strong style={{ color: '#f43f5e' }}>{t('破坏（依赖坐标系）', 'Breaks (Coordinate Dependent)')}</strong></td>
+                <td>{t('轴对齐时 ≈ 1；旋转时退化', '≈ 1 if aligned; degrades under rotation')}</td>
+                <td>{t('轴对齐极速；交叉耦合时有次级振荡', 'Fast on aligned; sub-oscillations if coupled')}</td>
+              </tr>
+              <tr>
+                <td style={{ color: '#10b981', fontWeight: 700 }}>Muon (2024)</td>
+                <td><code>P = O(M) = U V^T</code></td>
+                <td>{t('矩阵谱正交流形：奇异值全部规整为 1.0', 'Matrix polar projection: all singular values normalized to 1')}</td>
+                <td><strong style={{ color: '#10b981' }}>{t('流形酉变换严格不变', 'Strict Unitary Invariance')}</strong></td>
+                <td><code>κ_spectral ≡ 1.0</code></td>
+                <td>{t('矩阵维度全谱无偏加速，收敛提速 1.5~2×', 'Full spectral acceleration, 1.5~2× speedup')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const RECORD_EXAMPLE_SPEEDS = [7, 4, 6, 2, 5, 1, 3];
 
 
@@ -27143,7 +27958,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -27447,6 +28262,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'cart-partition-demo') {
     return <CARTPartitionVisual />;
+  }
+
+  if (match?.[1] === 'optimizer-trajectory-demo') {
+    return <OptimizerTrajectoryVisual />;
   }
 
   if (match) {

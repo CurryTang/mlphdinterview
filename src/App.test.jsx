@@ -1521,6 +1521,36 @@ describe('App', () => {
     expect(within(visual).getByText(/去中心化过渡态/i)).toBeInTheDocument();
   });
 
+  it('renders the Optimizer Trajectory visual and interacts with landscape and steps', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('MLCoding10')
+          ? '# Modern Optimizers\n\n```optimizer-trajectory-demo\n```'
+          : '# Default note',
+      };
+    });
+
+    window.location.hash = '#MLCoding10%20Modern%20Optimizers%20SGD%20AdamW%20Muon.md';
+    render(<App />);
+
+    const visual = await screen.findByRole('region', { name: /优化器矩阵方向性与病态峡谷动力学实验室/i });
+    expect(visual).toBeInTheDocument();
+    expect(within(visual).getByText(/2D 损失等高线与参数更新轨迹/i)).toBeInTheDocument();
+
+    // Verify initial step
+    expect(within(visual).getByText((content, element) => element?.tagName === 'SPAN' && element?.textContent?.includes('Step') && element?.textContent?.includes('0 / 40'))).toBeInTheDocument();
+
+    // Click step +1
+    fireEvent.click(within(visual).getByRole('button', { name: /单步 \+1/i }));
+    expect(within(visual).getByText((content, element) => element?.tagName === 'SPAN' && element?.textContent?.includes('Step') && element?.textContent?.includes('1 / 40'))).toBeInTheDocument();
+
+    // Switch to rotated ravine
+    fireEvent.click(within(visual).getByRole('button', { name: /旋转耦合峡谷/i }));
+    expect(within(visual).getByText(/旋转 30° 耦合/i)).toBeInTheDocument();
+  });
+
   it('routes directly to ML Coding 06B (RLHF) and ML Coding 06C (RLVR / GRPO) via URL hash', async () => {
     // 1. Test MLCoding06B
     window.location.hash = '#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md';

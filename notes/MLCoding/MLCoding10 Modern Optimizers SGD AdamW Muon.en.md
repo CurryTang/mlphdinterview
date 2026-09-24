@@ -10,107 +10,8 @@
 
 In deep neural networks and Transformer loss landscapes, curvature is severely anisotropic across different dimensions (the Hessian condition number $\kappa = \lambda_{\max}/\lambda_{\min} \gg 1$, forming narrow, steep-walled canyons). Distinct optimizers exhibit fundamentally divergent behavior within such ravines:
 
-<div style="margin: 24px 0; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; background: #0b1120; font-family: ui-monospace, monospace;">
-  <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
-    <span style="font-weight: 700; font-size: 13px; color: #94a3b8; letter-spacing: 0.05em; text-transform: uppercase;">Optimization Dynamics in Ill-Conditioned Ravine</span>
-    <div style="display: flex; gap: 14px; font-size: 12px;">
-      <span style="color: #ff4757; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ff4757; display: inline-block;"></span>SGD (Oscillating)</span>
-      <span style="color: #38bdf8; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; display: inline-block;"></span>Adam (Diagonal Rescaling)</span>
-      <span style="color: #10b981; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>Muon (Spectral Orthogonal)</span>
-    </div>
-  </div>
-  <svg viewBox="0 0 800 360" width="100%" height="360" style="display: block;">
-    <defs>
-      <linearGradient id="bg-grad-10-en" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0b1120"/>
-        <stop offset="100%" stop-color="#060913"/>
-      </linearGradient>
-      <linearGradient id="sgd-grad-10-en" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#ff4757" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#ff4757"/>
-      </linearGradient>
-      <linearGradient id="adam-grad-10-en" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#38bdf8"/>
-      </linearGradient>
-      <linearGradient id="muon-grad-10-en" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#10b981"/>
-      </linearGradient>
-    </defs>
-    <style>
-      @keyframes drawSGD10En {
-        0% { stroke-dashoffset: 1400; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes drawAdam10En {
-        0% { stroke-dashoffset: 950; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes drawMuon10En {
-        0% { stroke-dashoffset: 750; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes targetPulse10En {
-        0%, 100% { r: 6; opacity: 1; }
-        50% { r: 15; opacity: 0.3; }
-      }
-      .contour-10-en { stroke: rgba(148, 163, 184, 0.12); fill: none; stroke-width: 1.2; }
-      .axis-10-en { stroke: rgba(148, 163, 184, 0.2); stroke-dasharray: 4 4; }
-      .p-sgd-10-en {
-        stroke: url(#sgd-grad-10-en); fill: none; stroke-width: 2.2;
-        stroke-dasharray: 1400; stroke-dashoffset: 1400;
-        animation: drawSGD10En 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      }
-      .p-adam-10-en {
-        stroke: url(#adam-grad-10-en); fill: none; stroke-width: 2.6;
-        stroke-dasharray: 950; stroke-dashoffset: 950;
-        animation: drawAdam10En 4.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-      }
-      .p-muon-10-en {
-        stroke: url(#muon-grad-10-en); fill: none; stroke-width: 3.2;
-        stroke-dasharray: 750; stroke-dashoffset: 750;
-        animation: drawMuon10En 4.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-        filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5));
-      }
-      .target-ring-10-en {
-        animation: targetPulse10En 2s ease-in-out infinite;
-      }
-    </style>
-    <rect width="800" height="360" fill="url(#bg-grad-10-en)"/>
-    <!-- Contours for elongated bowl: f(x, y) = 0.5*(x^2 + 20*y^2) -->
-    <ellipse cx="680" cy="180" rx="40" ry="14" class="contour-10-en" />
-    <ellipse cx="680" cy="180" rx="90" ry="30" class="contour-10-en" />
-    <ellipse cx="680" cy="180" rx="160" ry="52" class="contour-10-en" />
-    <ellipse cx="680" cy="180" rx="250" ry="82" class="contour-10-en" />
-    <ellipse cx="680" cy="180" rx="360" ry="118" class="contour-10-en" />
-    <ellipse cx="680" cy="180" rx="490" ry="155" class="contour-10-en" />
-    <!-- Axes -->
-    <line x1="60" y1="180" x2="740" y2="180" class="axis-10-en" />
-    <line x1="680" y1="20" x2="680" y2="340" class="axis-10-en" />
-    <!-- Minimum marker -->
-    <circle cx="680" cy="180" r="10" fill="none" stroke="#10b981" stroke-width="1.5" class="target-ring-10-en"/>
-    <circle cx="680" cy="180" r="4" fill="#10b981"/>
-    <text x="696" y="175" fill="#10b981" font-size="12" font-weight="700">Global Minimum θ*</text>
-    <!-- Trajectories -->
-    <circle cx="90" cy="55" r="5" fill="#f8fafc"/>
-    <text x="75" y="40" fill="#94a3b8" font-size="11">Start θ0</text>
-    <!-- SGD: severe zig-zagging in vertical dimension -->
-    <path d="M 90 55 L 140 295 L 180 75 L 230 275 L 270 95 L 320 255 L 360 115 L 410 235 L 450 135 L 500 215 L 540 155 L 580 195 L 610 172" class="p-sgd-10-en" />
-    <!-- Adam: suppresses y-dimension rapidly, curved path into ravine -->
-    <path d="M 90 55 Q 160 205, 230 198 T 390 186 T 540 182 T 665 180" class="p-adam-10-en" />
-    <!-- Muon: orthogonal matrix momentum, optimal direct trajectory -->
-    <path d="M 90 55 Q 260 170, 680 180" class="p-muon-10-en" />
-    <!-- Labels -->
-    <text x="440" y="280" fill="#ff4757" font-size="11" font-weight="600">SGD: Severe Canyon Oscillations</text>
-    <text x="330" y="165" fill="#38bdf8" font-size="11" font-weight="600">Adam: Coordinate Rescaling (1/√v)</text>
-    <text x="290" y="105" fill="#10b981" font-size="11" font-weight="600">Muon: Orthogonal Spectral Step (σ ≡ 1)</text>
-  </svg>
-  <div style="padding: 10px 16px; background: rgba(0,0,0,0.25); border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: #64748b; display: flex; justify-content: space-between;">
-    <span>Landscape: Ill-conditioned anisotropic quadratic bowl $f(x, y) = \frac{1}{2}(x^2 + 20y^2)$</span>
-    <span>Condition Number: $\kappa = \lambda_{\max}/\lambda_{\min} = 20$</span>
-  </div>
-</div>
+```optimizer-trajectory-demo
+```
 
 ---
 
@@ -137,6 +38,233 @@ $$\theta_{t+1} = \theta_t - \eta m_t$$
 - **Frequency Filtering Effect**: Unrolling yields $m_t = \sum_{\tau=0}^{t-1} \beta^\tau g_{t-\tau}$.
   - Along high-frequency oscillating coordinates, alternating gradient signs cancel out;
   - Along the flat valley floor, consistent gradient signals accumulate constructively, multiplying effective forward velocity by $\frac{1}{1-\beta}$ ($\sim 10\times$ acceleration for $\beta=0.9$).
+
+---
+
+## 01B. Convergence Proofs via Telescoping Sums: Smoothness, Convex Bounds & Condition Numbers
+
+Analyzing the formal theoretical convergence properties of first-order gradient methods and momentum variants is a hallmark of machine learning research and interview assessments. This section provides self-contained mathematical derivations using **telescoping cancellation sums**, followed by an exact eigenvalue contraction analysis of condition number $\kappa$ bottlenecks on anisotropic quadratics.
+
+### 1. $L$-Smooth Descent Lemma & Telescoping Gradient Norm Bound ($O(1/T)$ Stationary Point)
+
+Assume the objective $f: \mathbb{R}^d \to \mathbb{R}$ is continuously differentiable and has $L$-Lipschitz continuous gradient ($L$-smoothness):
+
+$$\|\nabla f(x) - \nabla f(y)\| \le L \|x - y\|, \quad \forall x, y \in \mathbb{R}^d$$
+
+#### Derivation of the Descent Lemma
+
+By the Fundamental Theorem of Calculus along the line segment from $x$ to $y$:
+
+$$f(y) - f(x) = \int_0^1 \langle \nabla f(x + \tau(y - x)), y - x \rangle d\tau$$
+
+Adding and subtracting $\nabla f(x)$ inside the integral:
+
+$$f(y) - f(x) = \langle \nabla f(x), y - x \rangle + \int_0^1 \langle \nabla f(x + \tau(y - x)) - \nabla f(x), y - x \rangle d\tau$$
+
+Applying the Cauchy-Schwarz inequality and $L$-Lipschitz continuity:
+
+$$|f(y) - f(x) - \langle \nabla f(x), y - x \rangle| \le \int_0^1 \|\nabla f(x + \tau(y - x)) - \nabla f(x)\| \|y - x\| d\tau$$
+$$\le \int_0^1 L \tau \|y - x\|^2 d\tau = \frac{L}{2} \|y - x\|^2$$
+
+Rearranging gives the **Descent Lemma**:
+
+$$f(y) \le f(x) + \langle \nabla f(x), y - x \rangle + \frac{L}{2} \|y - x\|^2$$
+
+#### Sufficient Descent Per Step
+
+Substituting the gradient descent step $\theta_{t+1} = \theta_t - \eta \nabla f(\theta_t)$ (with $x = \theta_t, y = \theta_{t+1}, y - x = -\eta \nabla f(\theta_t)$):
+
+$$f(\theta_{t+1}) \le f(\theta_t) - \eta \|\nabla f(\theta_t)\|^2 + \frac{L \eta^2}{2} \|\nabla f(\theta_t)\|^2 = f(\theta_t) - \eta \left(1 - \frac{L\eta}{2}\right) \|\nabla f(\theta_t)\|^2$$
+
+Choosing step size $\eta \le \frac{1}{L}$ (with optimal choice $\eta = \frac{1}{L}$):
+
+$$f(\theta_{t+1}) \le f(\theta_t) - \frac{1}{2L} \|\nabla f(\theta_t)\|^2 \iff \|\nabla f(\theta_t)\|^2 \le 2L [f(\theta_t) - f(\theta_{t+1})]$$
+
+#### Telescoping Cancellation Sum
+
+Summing over iterations $t = 0, 1, \dots, T-1$:
+
+$$\sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le 2L \sum_{t=0}^{T-1} [f(\theta_t) - f(\theta_{t+1})]$$
+
+Expanding the right-hand sum reveals an exact **telescoping cancellation**:
+
+$$\sum_{t=0}^{T-1} [f(\theta_t) - f(\theta_{t+1})] = [f(\theta_0) - f(\theta_1)] + [f(\theta_1) - f(\theta_2)] + \dots + [f(\theta_{T-1}) - f(\theta_T)] = f(\theta_0) - f(\theta_T)$$
+
+Since $f$ is bounded below by $f^*$ ($f(\theta_T) \ge f^*$):
+
+$$\sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le 2L [f(\theta_0) - f^*]$$
+
+Dividing by $T$ and bounding the minimum squared gradient norm:
+
+$$\min_{0 \le t < T} \|\nabla f(\theta_t)\|^2 \le \frac{1}{T} \sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le \frac{2L (f(\theta_0) - f^*)}{T} = O\left(\frac{1}{T}\right)$$
+
+> **Core Takeaway**: For any $L$-smooth function (even non-convex neural networks), gradient descent with constant step size guarantees that squared gradient norms converge at an $O(1/T)$ rate, requiring at most $T = O(1/\epsilon^2)$ steps to find an $\epsilon$-stationary point ($\|\nabla f(\theta)\| \le \epsilon$).
+
+---
+
+### 2. Convex Distance Potential Telescoping & SGD $O(1/\sqrt{T})$ Minimax Bound
+
+Under convexity, constructing an Euclidean distance Lyapunov potential $\Phi_t = \frac{1}{2} \|\theta_t - \theta^*\|^2$ yields an $O(1/\sqrt{T})$ convergence rate for the objective gap $f(\theta) - f^*$.
+
+#### Potential Expansion
+
+Assume $f$ is convex with bounded gradients (or subgradients) $\|g_t\| \le G$. Expanding the squared distance to optimum $\theta^*$:
+
+$$\|\theta_{t+1} - \theta^*\|^2 = \|\theta_t - \eta g_t - \theta^*\|^2 = \|\theta_t - \theta^*\|^2 - 2\eta \langle g_t, \theta_t - \theta^* \rangle + \eta^2 \|g_t\|^2$$
+
+By the first-order convexity inequality $\langle g_t, \theta_t - \theta^* \rangle \ge f(\theta_t) - f^*$:
+
+$$\|\theta_{t+1} - \theta^*\|^2 \le \|\theta_t - \theta^*\|^2 - 2\eta (f(\theta_t) - f^*) + \eta^2 G^2$$
+
+Rearranging for the suboptimality gap:
+
+$$f(\theta_t) - f^* \le \frac{1}{2\eta} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) + \frac{\eta}{2} G^2$$
+
+#### Telescoping Cancellation Sum
+
+Summing from $t = 0$ to $T-1$:
+
+$$\sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{1}{2\eta} \sum_{t=0}^{T-1} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) + \frac{\eta}{2} \sum_{t=0}^{T-1} G^2$$
+
+The intermediate squared distance terms telescope to the endpoints:
+
+$$\sum_{t=0}^{T-1} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) = \|\theta_0 - \theta^*\|^2 - \|\theta_T - \theta^*\|^2 \le \|\theta_0 - \theta^*\|^2$$
+
+Letting $R = \|\theta_0 - \theta^*\|$:
+
+$$\sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{R^2}{2\eta} + \frac{\eta T G^2}{2}$$
+
+#### Jensen's Inequality and Optimal Step Size
+
+Defining the ergodic average iterate $\bar{\theta}_T = \frac{1}{T} \sum_{t=0}^{T-1} \theta_t$, Jensen's inequality guarantees:
+
+$$f(\bar{\theta}_T) - f^* \le \frac{1}{T} \sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{R^2}{2\eta T} + \frac{\eta G^2}{2}$$
+
+Minimizing this convex upper bound with respect to $\eta$ by setting the derivative to zero:
+
+$$\frac{\partial}{\partial \eta} \left( \frac{R^2}{2\eta T} + \frac{\eta G^2}{2} \right) = -\frac{R^2}{2\eta^2 T} + \frac{G^2}{2} = 0 \implies \eta^* = \frac{R}{G \sqrt{T}}$$
+
+Substituting $\eta^*$ back into the bound:
+
+$$f(\bar{\theta}_T) - f^* \le \frac{R^2}{2 \left(\frac{R}{G\sqrt{T}}\right) T} + \frac{\left(\frac{R}{G\sqrt{T}}\right) G^2}{2} = \frac{R G}{\sqrt{T}} = O\left(\frac{1}{\sqrt{T}}\right)$$
+
+> **Core Takeaway**: For stochastic first-order convex optimization, SGD achieves the information-theoretic minimax lower bound of $O(1/\sqrt{T})$, requiring $T = O(1/\epsilon^2)$ iterations to reach an $\epsilon$-optimal solution.
+
+---
+
+### 3. Strongly Convex Quadratics & Condition Number Contraction ($\kappa$ Bottleneck)
+
+Near local minima in deep networks, the loss is dominated by a local quadratic form:
+
+$$\mathcal{L}(\theta) = \frac{1}{2} \theta^\top H \theta$$
+
+where Hessian $H \succ 0$ with eigenvalues $\mu = \lambda_{\min} \le \dots \le \lambda_{\max} = L$, yielding condition number $\kappa = \frac{L}{\mu}$.
+
+#### Coordinate Decoupling & Contraction Factor
+
+With $\theta^* = \mathbf{0}$, vanilla SGD updates via $\theta_{t+1} = (I - \eta H) \theta_t$. Under orthogonal eigendecomposition $H = Q \Lambda Q^\top$, coordinates decouple completely:
+
+$$\theta_{t+1}^{(i)} = (1 - \eta \lambda_i) \theta_t^{(i)}$$
+
+Stability requires spectral radius $< 1$ for all dimensions:
+
+$$|1 - \eta \lambda_{\max}| < 1 \implies \eta < \frac{2}{\lambda_{\max}} = \frac{2}{L}$$
+
+The system contraction rate is dictated by the extreme eigenvalues:
+
+$$\rho(\eta) = \max_{\lambda \in [\mu, L]} |1 - \eta \lambda| = \max(|1 - \eta \mu|, |1 - \eta L|)$$
+
+Equating both boundary rates yields the optimal step size:
+
+$$1 - \eta^* \mu = \eta^* L - 1 \implies \eta^* = \frac{2}{L + \mu}$$
+
+Substituting $\eta^*$ yields the optimal contraction factor for vanilla SGD:
+
+$$\rho_{\text{SGD}}^* = \frac{L - \mu}{L + \mu} = \frac{\kappa - 1}{\kappa + 1} = 1 - \frac{2}{\kappa + 1} \approx 1 - \frac{2}{\kappa}$$
+
+#### Iteration Complexity
+
+To achieve error reduction $\|\theta_T - \theta^*\| \le \epsilon \|\theta_0 - \theta^*\|$:
+
+$$\left(1 - \frac{2}{\kappa}\right)^T \le \epsilon \implies T \ge \frac{\kappa}{2} \ln\left(\frac{1}{\epsilon}\right) = O\left(\kappa \log \frac{1}{\epsilon}\right)$$
+
+> **Physical Dilemma**: If $\kappa = 10,000$, $\rho^* = 0.9998$. Each step eliminates only $0.02\%$ of residual error, stalling progress along the flat canyon axis.
+
+---
+
+### 4. Polyak Heavy-Ball Momentum: Accelerating from $\kappa$ to $\sqrt{\kappa}$
+
+Polyak momentum updates $m_t = \beta m_{t-1} + H \theta_t$, $\theta_{t+1} = \theta_t - \eta m_t$. Eliminating $m_t$ produces a second-order recurrence:
+
+$$\theta_{t+1} = (1 + \beta - \eta H) \theta_t - \beta \theta_{t-1}$$
+
+#### Augmented State Transfer Matrix & Characteristic Roots
+
+In augmented state-space form:
+
+$$\begin{bmatrix} \theta_{t+1} \\ \theta_t \end{bmatrix} = \begin{bmatrix} (1 + \beta)I - \eta H & -\beta I \\ I & 0 \end{bmatrix} \begin{bmatrix} \theta_t \\ \theta_{t-1} \end{bmatrix}$$
+
+For any eigenvalue $\lambda \in [\mu, L]$, the characteristic polynomial is:
+
+$$\det \begin{bmatrix} (1 + \beta - \eta \lambda) - \rho & -\beta \\ 1 & -\rho \end{bmatrix} = \rho^2 - (1 + \beta - \eta \lambda) \rho + \beta = 0$$
+
+with discriminant $\Delta(\lambda) = (1 + \beta - \eta \lambda)^2 - 4\beta$.
+
+#### Complex Conjugate Roots and Curvature-Independent Decay
+
+When parameters enforce $\Delta(\lambda) \le 0$ across the entire spectrum $\lambda \in [\mu, L]$, the roots form a complex conjugate pair:
+
+$$\rho_{1, 2} = \frac{(1 + \beta - \eta \lambda) \pm i \sqrt{4\beta - (1 + \beta - \eta \lambda)^2}}{2}$$
+
+The modulus of the roots is strictly independent of $\lambda$:
+
+$$|\rho| = \sqrt{\rho_1 \rho_2} = \sqrt{\beta}$$
+
+> **Algebraic Miracle**: Within the complex root regime, the spectral radius of the transition matrix is **strictly decoupled from curvature $\lambda$**! All eigenspaces contract at the uniform rate $\sqrt{\beta}$.
+
+Matching the boundary roots at $\mu$ and $L$:
+
+$$1 + \beta - \eta \mu = 2\sqrt{\beta}, \quad 1 + \beta - \eta L = -2\sqrt{\beta}$$
+
+Solving this system yields optimal hyperparameters:
+
+$$\beta^* = \left( \frac{\sqrt{L} - \sqrt{\mu}}{\sqrt{L} + \sqrt{\mu}} \right)^2 = \left( \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \right)^2$$
+$$\eta^* = \frac{4}{(\sqrt{L} + \sqrt{\mu})^2}$$
+
+#### Accelerated Contraction Rate
+
+$$\rho_{\text{Mom}}^* = \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \approx 1 - \frac{2}{\sqrt{\kappa}}$$
+
+Iteration complexity drops to:
+
+$$T_{\text{Mom}} = O\left(\sqrt{\kappa} \log \frac{1}{\epsilon}\right)$$
+
+| Optimizer | Contraction Factor $\rho^*$ | Contraction at $\kappa = 10,000$ | Relative Steps |
+| :--- | :--- | :--- | :--- |
+| **Vanilla SGD** | $\frac{\kappa - 1}{\kappa + 1} \approx 1 - \frac{2}{\kappa}$ | $0.9998$ | $O(\kappa \log(1/\epsilon)) \approx 10,000$ steps |
+| **Polyak Momentum** | $\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \approx 1 - \frac{2}{\sqrt{\kappa}}$ | $0.9802$ | $O(\sqrt{\kappa} \log(1/\epsilon)) \approx 100$ steps (**$100\times$ faster**) |
+
+---
+
+### 5. Coordinate Preconditioning (Adam) vs. Spectral Orthogonalization (Muon) on Rotated Manifolds
+
+#### Diagonal Preconditioning (Adam) and Coordinate Bias
+
+Adam approximates curvature via diagonal second moments $v_t \approx \text{diag}(g_t^2)$:
+
+$$\Delta \theta = -P_{\text{Adam}}^{-1} g_t, \quad P_{\text{Adam}} = \text{diag}(\sqrt{v_t} + \epsilon)$$
+
+- **Axis-Aligned Ravines**: When Hessian $H$ is diagonal, $P_{\text{Adam}} \approx \text{diag}(H)^{1/2}$ scales coordinates independently, reshaping elongated ellipses into isotropic spheres ($\kappa_{\text{eff}} \approx 1.0$).
+- **Rotated Ravines (Cross-Coupling)**: When $H = R_\phi \Lambda R_\phi^\top$ has off-diagonal entries, a diagonal preconditioner cannot rotate the coordinate axes. Updates degenerate into diamond-shaped ($L_\infty$-norm) trajectories, overshooting along coupled sub-axes.
+
+#### Muon Spectral Polar Projection and Unitary Invariance
+
+For 2D weight matrices $W \in \mathbb{R}^{m \times n}$ dominant in Transformers, Muon computes the polar orthogonal factor of momentum:
+
+$$\mathcal{O}(M) = U V^\top = M (M^\top M)^{-1/2}$$
+
+- **Strict Unitary Invariance**: For any orthogonal matrices $Q_1, Q_2$, $\mathcal{O}(Q_1 M Q_2) = Q_1 \mathcal{O}(M) Q_2$. Muon's optimization geometry is coordinate-free.
+- **Singular Value Equalization**: SVD unrolling $M = \sum \sigma_i u_i v_i^\top \implies \mathcal{O}(M) = \sum 1.0 \cdot u_i v_i^\top$. Every orthogonal spectral direction receives unit gain, resolving matrix ill-conditioning.
 
 ---
 
@@ -455,3 +583,18 @@ def setup_hybrid_optimizers(model: nn.Module, lr_muon: float = 0.02, lr_adam: fl
 ### Q7: Why does Muon outperform AdamW by $1.5\times \sim 2\times$ on 2D weight matrices?
 - **Core Takeaway**:
   Adam flattens 2D matrices into 1D coordinate vectors, ignoring matrix spectral structure. Muon computes the polar orthogonal factor $\mathcal{O}(M) = U V^\top$, where all singular values are normalized to 1.0. This ensures perfectly isotropic energy transmission across all orthogonal spectral directions. Using a 5-step quintic Newton-Schulz polynomial iteration, Muon runs at near-peak Tensor Core GEMM throughput.
+---
+
+### Q8: How are the O(1/T) and O(1/√T) convergence bounds derived using telescoping sums?
+- **Core Takeaway**:
+  1. **Smooth Descent Lemma**: Integrating $L$-Lipschitz gradients gives $f(\theta_{t+1}) \le f(\theta_t) - \frac{1}{2L} \|\nabla f(\theta_t)\|^2 \implies \|\nabla f(\theta_t)\|^2 \le 2L[f(\theta_t) - f(\theta_{t+1})]$.
+  2. **Gradient Norm Telescoping**: Summing over $t = 0 \dots T-1$ causes intermediate terms $[f(\theta_0) - f(\theta_1)] + \dots + [f(\theta_{T-1}) - f(\theta_T)]$ to telescope down to $f(\theta_0) - f^*$. Dividing by $T$ yields $\min_t \|\nabla f(\theta_t)\|^2 \le \frac{2L(f(\theta_0) - f^*)}{T} = O(1/T)$.
+  3. **Convex Distance Potential Telescoping**: Expanding $\|\theta_{t+1} - \theta^*\|^2 \le \|\theta_t - \theta^*\|^2 - 2\eta (f(\theta_t) - f^*) + \eta^2 G^2$. Telescoping distance terms over $T$ steps produces $\sum (f(\theta_t) - f^*) \le \frac{R^2}{2\eta} + \frac{\eta T G^2}{2}$. Minimizing over $\eta$ yields optimal step size $\eta^* = \frac{R}{G\sqrt{T}}$, resulting in $f(\bar{\theta}_T) - f^* \le \frac{RG}{\sqrt{T}} = O(1/\sqrt{T})$.
+
+---
+
+### Q9: Why does Polyak momentum accelerate convergence from O(κ) to O(√κ), and why does Adam degrade on rotated ravines?
+- **Core Takeaway**:
+  1. **SGD Condition Number Trap**: Quadratic updates $\theta_{t+1} = (I - \eta H)\theta_t$ yield contraction factor $\rho = \frac{\kappa-1}{\kappa+1} \approx 1 - \frac{2}{\kappa}$, needing $O(\kappa \log(1/\epsilon))$ steps.
+  2. **Momentum Complex Conjugate Roots**: Augmented state matrix characteristic roots satisfy $\rho^2 - (1+\beta-\eta\lambda)\rho + \beta = 0$. When $\Delta \le 0$, roots are complex conjugates with constant magnitude $|\rho| = \sqrt{\beta}$, decoupling contraction from curvature $\lambda$. Optimal tuning yields $\beta^* = (\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^2$ and contraction $1 - \frac{2}{\sqrt{\kappa}}$, achieving $O(\sqrt{\kappa} \log(1/\epsilon))$ complexity.
+  3. **Adam's Diagonal Defect**: Adam scales coordinates independently via $\text{diag}(\sqrt{v})^{-1}$. On rotated ravines ($H = R_\phi \Lambda R_\phi^\top$), diagonal matrices cannot rotate axes, causing stair-step overshooting. Muon computes polar decomposition $\mathcal{O}(M) = U V^\top$, which is unitarily invariant and normalizes all singular values to 1.0, preserving peak convergence regardless of rotation.

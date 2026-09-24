@@ -10,107 +10,8 @@
 
 在真实的深度神经网络与 Transformer 损失曲面中，不同维度的曲率通常极度不均衡（Hessian 矩阵的条件数 $\kappa = \lambda_{\max}/\lambda_{\min} \gg 1$，形成狭窄的“病态峡谷”）。不同优化器在峡谷中的寻优行为存在本质分歧：
 
-<div style="margin: 24px 0; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; background: #0b1120; font-family: ui-monospace, monospace;">
-  <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
-    <span style="font-weight: 700; font-size: 13px; color: #94a3b8; letter-spacing: 0.05em; text-transform: uppercase;">Optimization Dynamics in Ill-Conditioned Ravine</span>
-    <div style="display: flex; gap: 14px; font-size: 12px;">
-      <span style="color: #ff4757; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ff4757; display: inline-block;"></span>SGD (Oscillating)</span>
-      <span style="color: #38bdf8; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; display: inline-block;"></span>Adam (Diagonal Rescaling)</span>
-      <span style="color: #10b981; display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>Muon (Spectral Orthogonal)</span>
-    </div>
-  </div>
-  <svg viewBox="0 0 800 360" width="100%" height="360" style="display: block;">
-    <defs>
-      <linearGradient id="bg-grad-10" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0b1120"/>
-        <stop offset="100%" stop-color="#060913"/>
-      </linearGradient>
-      <linearGradient id="sgd-grad-10" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#ff4757" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#ff4757"/>
-      </linearGradient>
-      <linearGradient id="adam-grad-10" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#38bdf8"/>
-      </linearGradient>
-      <linearGradient id="muon-grad-10" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#10b981"/>
-      </linearGradient>
-    </defs>
-    <style>
-      @keyframes drawSGD10 {
-        0% { stroke-dashoffset: 1400; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes drawAdam10 {
-        0% { stroke-dashoffset: 950; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes drawMuon10 {
-        0% { stroke-dashoffset: 750; }
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes targetPulse10 {
-        0%, 100% { r: 6; opacity: 1; }
-        50% { r: 15; opacity: 0.3; }
-      }
-      .contour-10 { stroke: rgba(148, 163, 184, 0.12); fill: none; stroke-width: 1.2; }
-      .axis-10 { stroke: rgba(148, 163, 184, 0.2); stroke-dasharray: 4 4; }
-      .p-sgd-10 {
-        stroke: url(#sgd-grad-10); fill: none; stroke-width: 2.2;
-        stroke-dasharray: 1400; stroke-dashoffset: 1400;
-        animation: drawSGD10 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      }
-      .p-adam-10 {
-        stroke: url(#adam-grad-10); fill: none; stroke-width: 2.6;
-        stroke-dasharray: 950; stroke-dashoffset: 950;
-        animation: drawAdam10 4.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-      }
-      .p-muon-10 {
-        stroke: url(#muon-grad-10); fill: none; stroke-width: 3.2;
-        stroke-dasharray: 750; stroke-dashoffset: 750;
-        animation: drawMuon10 4.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-        filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5));
-      }
-      .target-ring-10 {
-        animation: targetPulse10 2s ease-in-out infinite;
-      }
-    </style>
-    <rect width="800" height="360" fill="url(#bg-grad-10)"/>
-    <!-- Contours for elongated bowl: f(x, y) = 0.5*(x^2 + 20*y^2) -->
-    <ellipse cx="680" cy="180" rx="40" ry="14" class="contour-10" />
-    <ellipse cx="680" cy="180" rx="90" ry="30" class="contour-10" />
-    <ellipse cx="680" cy="180" rx="160" ry="52" class="contour-10" />
-    <ellipse cx="680" cy="180" rx="250" ry="82" class="contour-10" />
-    <ellipse cx="680" cy="180" rx="360" ry="118" class="contour-10" />
-    <ellipse cx="680" cy="180" rx="490" ry="155" class="contour-10" />
-    <!-- Axes -->
-    <line x1="60" y1="180" x2="740" y2="180" class="axis-10" />
-    <line x1="680" y1="20" x2="680" y2="340" class="axis-10" />
-    <!-- Minimum marker -->
-    <circle cx="680" cy="180" r="10" fill="none" stroke="#10b981" stroke-width="1.5" class="target-ring-10"/>
-    <circle cx="680" cy="180" r="4" fill="#10b981"/>
-    <text x="696" y="175" fill="#10b981" font-size="12" font-weight="700">Global Minimum θ*</text>
-    <!-- Trajectories -->
-    <circle cx="90" cy="55" r="5" fill="#f8fafc"/>
-    <text x="75" y="40" fill="#94a3b8" font-size="11">Start θ0</text>
-    <!-- SGD: severe zig-zagging in vertical dimension -->
-    <path d="M 90 55 L 140 295 L 180 75 L 230 275 L 270 95 L 320 255 L 360 115 L 410 235 L 450 135 L 500 215 L 540 155 L 580 195 L 610 172" class="p-sgd-10" />
-    <!-- Adam: suppresses y-dimension rapidly, curved path into ravine -->
-    <path d="M 90 55 Q 160 205, 230 198 T 390 186 T 540 182 T 665 180" class="p-adam-10" />
-    <!-- Muon: orthogonal matrix momentum, optimal direct trajectory -->
-    <path d="M 90 55 Q 260 170, 680 180" class="p-muon-10" />
-    <!-- Labels -->
-    <text x="440" y="280" fill="#ff4757" font-size="11" font-weight="600">SGD: Severe Canyon Oscillations</text>
-    <text x="330" y="165" fill="#38bdf8" font-size="11" font-weight="600">Adam: Coordinate Rescaling (1/√v)</text>
-    <text x="290" y="105" fill="#10b981" font-size="11" font-weight="600">Muon: Orthogonal Spectral Step (σ ≡ 1)</text>
-  </svg>
-  <div style="padding: 10px 16px; background: rgba(0,0,0,0.25); border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: #64748b; display: flex; justify-content: space-between;">
-    <span>曲面模型：各向异性病态二次曲面 $f(x, y) = \frac{1}{2}(x^2 + 20y^2)$</span>
-    <span>Hessian 条件数：$\kappa = \lambda_{\max}/\lambda_{\min} = 20$</span>
-  </div>
-</div>
+```optimizer-trajectory-demo
+```
 
 ---
 
@@ -137,6 +38,242 @@ $$\theta_{t+1} = \theta_t - \eta m_t$$
 - **频域滤波效应**：展开递推式可知 $m_t = \sum_{\tau=0}^{t-1} \beta^\tau g_{t-\tau}$。
   - 在高频震荡维度上，连续步的梯度方向不断反向（$g_t$ 与 $g_{t-1}$ 异号），累加时相互抵消；
   - 在谷底低频平缓维度上，梯度方向持续一致，动量不断同向叠加，速度放大为约 $\frac{1}{1-\beta}$ 倍（当 $\beta=0.9$ 时加速 10 倍）。
+
+---
+
+## 01B. 凸优化与梯度下降的收敛性推导：裂项相消 (Telescoping Sum) 与上界证明
+
+在优化理论与深度学习系统的面试考核中，对梯度下降及其动量变体的理论性质分析往往直击本质。本节给出基于**裂项相消（Telescoping Sum）**技巧的经典收敛率严格数学推导，并推导病态二次曲面下条件数 $\kappa$ 对 SGD 与动量加速的根本制约。
+
+### 1. $L$-光滑函数的下降引理 (Descent Lemma) 与梯度范数裂项求和
+
+设目标函数 $f: \mathbb{R}^d \to \mathbb{R}$ 连续可微，且其梯度为 $L$-Lipschitz 连续（即 $L$-光滑）：
+
+$$\|\nabla f(x) - \nabla f(y)\| \le L \|x - y\|, \quad \forall x, y \in \mathbb{R}^d$$
+
+#### 下降引理（Descent Lemma）推导
+
+由微积分基本定理，沿线段积分可得：
+
+$$f(y) - f(x) = \int_0^1 \langle \nabla f(x + \tau(y - x)), y - x \rangle d\tau$$
+
+在积分内部加减 $\nabla f(x)$：
+
+$$f(y) - f(x) = \langle \nabla f(x), y - x \rangle + \int_0^1 \langle \nabla f(x + \tau(y - x)) - \nabla f(x), y - x \rangle d\tau$$
+
+应用 Cauchy-Schwarz 不等式及梯度的 $L$-Lipschitz 连续性：
+
+$$|f(y) - f(x) - \langle \nabla f(x), y - x \rangle| \le \int_0^1 \|\nabla f(x + \tau(y - x)) - \nabla f(x)\| \|y - x\| d\tau$$
+$$\le \int_0^1 L \tau \|y - x\|^2 d\tau = \frac{L}{2} \|y - x\|^2$$
+
+移项即得**下降引理（Descent Lemma）**：
+
+$$f(y) \le f(x) + \langle \nabla f(x), y - x \rangle + \frac{L}{2} \|y - x\|^2$$
+
+#### 单步充分下降量
+
+代入一阶梯度下降更新步 $\theta_{t+1} = \theta_t - \eta \nabla f(\theta_t)$，令 $x = \theta_t, y = \theta_{t+1}$，则位移向量 $y - x = -\eta \nabla f(\theta_t)$：
+
+$$f(\theta_{t+1}) \le f(\theta_t) - \eta \|\nabla f(\theta_t)\|^2 + \frac{L \eta^2}{2} \|\nabla f(\theta_t)\|^2 = f(\theta_t) - \eta \left(1 - \frac{L\eta}{2}\right) \|\nabla f(\theta_t)\|^2$$
+
+选取步长 $\eta \le \frac{1}{L}$（当选取最优步长 $\eta = \frac{1}{L}$ 时，下降量最大）：
+
+$$f(\theta_{t+1}) \le f(\theta_t) - \frac{1}{2L} \|\nabla f(\theta_t)\|^2 \iff \|\nabla f(\theta_t)\|^2 \le 2L [f(\theta_t) - f(\theta_{t+1})]$$
+
+#### 裂项相消求和 (Telescoping Sum)
+
+对所有迭代步 $t = 0, 1, \dots, T-1$ 累加求和：
+
+$$\sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le 2L \sum_{t=0}^{T-1} [f(\theta_t) - f(\theta_{t+1})]$$
+
+展开右侧累加式，所有中间项首尾正负相消（Telescoping Cancellation）：
+
+$$\sum_{t=0}^{T-1} [f(\theta_t) - f(\theta_{t+1})] = [f(\theta_0) - f(\theta_1)] + [f(\theta_1) - f(\theta_2)] + \dots + [f(\theta_{T-1}) - f(\theta_T)] = f(\theta_0) - f(\theta_T)$$
+
+若目标函数存在全局下界 $f^*$（即 $f(\theta_T) \ge f^*$）：
+
+$$\sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le 2L [f(\theta_0) - f^*]$$
+
+两边同除以 $T$，并取迭代过程中的最小梯度范数平方：
+
+$$\min_{0 \le t < T} \|\nabla f(\theta_t)\|^2 \le \frac{1}{T} \sum_{t=0}^{T-1} \|\nabla f(\theta_t)\|^2 \le \frac{2L (f(\theta_0) - f^*)}{T} = O\left(\frac{1}{T}\right)$$
+
+> **核心结论**：对于任意 $L$-光滑函数（无需凸性假设），常数步长梯度下降必然在 $T$ 步内以 $O(1/T)$ 速率使梯度范数平方收敛，即达到 $\|\nabla f(\theta)\| \le \epsilon$ 的驻点最多需要 $T = O(1/\epsilon^2)$ 步。
+
+---
+
+### 2. 凸函数距离势函数裂项相消与 SGD 的 $O(1/\sqrt{T})$ 上界证明
+
+在凸优化设定下，通过构造到最优解 $\theta^*$ 的距离势函数（Lyapunov Potential），可利用裂项相消推导出函数值误差 $f(\theta) - f^*$ 的收敛上界。
+
+#### 势函数展开
+
+设目标函数 $f$ 为凸函数，且梯度（或次梯度）有界：$\|g_t\| \le G$。
+定义势函数 $\Phi_t = \frac{1}{2} \|\theta_t - \theta^*\|^2$。考察更新步 $\theta_{t+1} = \theta_t - \eta g_t$：
+
+$$\|\theta_{t+1} - \theta^*\|^2 = \|\theta_t - \eta g_t - \theta^*\|^2 = \|\theta_t - \theta^*\|^2 - 2\eta \langle g_t, \theta_t - \theta^* \rangle + \eta^2 \|g_t\|^2$$
+
+由凸性一阶充要条件 $\langle g_t, \theta_t - \theta^* \rangle \ge f(\theta_t) - f(\theta^*) = f(\theta_t) - f^*$：
+
+$$\|\theta_{t+1} - \theta^*\|^2 \le \|\theta_t - \theta^*\|^2 - 2\eta (f(\theta_t) - f^*) + \eta^2 G^2$$
+
+移项整理出瞬时次优差距（Suboptimality Gap）：
+
+$$f(\theta_t) - f^* \le \frac{1}{2\eta} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) + \frac{\eta}{2} G^2$$
+
+#### 裂项相消求和 (Telescoping Sum)
+
+对 $t = 0, 1, \dots, T-1$ 累加求和：
+
+$$\sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{1}{2\eta} \sum_{t=0}^{T-1} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) + \frac{\eta}{2} \sum_{t=0}^{T-1} G^2$$
+
+中间所有距离项发生**首尾裂项相消**：
+
+$$\sum_{t=0}^{T-1} \left( \|\theta_t - \theta^*\|^2 - \|\theta_{t+1} - \theta^*\|^2 \right) = \|\theta_0 - \theta^*\|^2 - \|\theta_T - \theta^*\|^2 \le \|\theta_0 - \theta^*\|^2$$
+
+代入得总误差上界（记初始距离 $R = \|\theta_0 - \theta^*\|$）：
+
+$$\sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{R^2}{2\eta} + \frac{\eta T G^2}{2}$$
+
+#### Jensen 不等式与最优步长选取
+
+定义历次参数的遍历平均解（Ergodic Average / Polyak-Ruppert 平均）$\bar{\theta}_T = \frac{1}{T} \sum_{t=0}^{T-1} \theta_t$。由凸函数性质与 Jensen 不等式：
+
+$$f(\bar{\theta}_T) - f^* \le \frac{1}{T} \sum_{t=0}^{T-1} (f(\theta_t) - f^*) \le \frac{R^2}{2\eta T} + \frac{\eta G^2}{2}$$
+
+右侧关于学习率 $\eta$ 为凸函数。对其求导并令导数为 0：
+
+$$\frac{\partial}{\partial \eta} \left( \frac{R^2}{2\eta T} + \frac{\eta G^2}{2} \right) = -\frac{R^2}{2\eta^2 T} + \frac{G^2}{2} = 0 \implies \eta^* = \frac{R}{G \sqrt{T}}$$
+
+代入最优步长 $\eta^*$：
+
+$$f(\bar{\theta}_T) - f^* \le \frac{R^2}{2 \left(\frac{R}{G\sqrt{T}}\right) T} + \frac{\left(\frac{R}{G\sqrt{T}}\right) G^2}{2} = \frac{R G}{2\sqrt{T}} + \frac{R G}{2\sqrt{T}} = \frac{R G}{\sqrt{T}} = O\left(\frac{1}{\sqrt{T}}\right)$$
+
+> **核心结论**：对于仅有一阶梯度信息的随机凸优化，SGD 的全局收敛速率界为 $O(1/\sqrt{T})$。达到 $\epsilon$ 精度所需迭代步数为 $T = O(1/\epsilon^2)$，这是信息论下不可逾越的极小极大下界（Minimax Rate）。
+
+---
+
+### 3. 强凸二次型条件数 $\kappa$ 与收缩率严格推导 ($\kappa$ 瓶颈)
+
+在真实的深度神经网络损失局部极小值附近，函数常被局部二次逼近所支配：
+
+$$\mathcal{L}(\theta) = \frac{1}{2} \theta^\top H \theta$$
+
+其中 Hessian 矩阵对称正定 $H \succ 0$，特征值谱为 $\mu = \lambda_{\min} \le \dots \le \lambda_{\max} = L$，定义曲率条件数 $\kappa = \frac{L}{\mu}$。
+
+#### 坐标解耦与单步收缩率
+
+设最优点为 $\theta^* = \mathbf{0}$。SGD 更新式为：
+
+$$\theta_{t+1} = \theta_t - \eta H \theta_t = (I - \eta H) \theta_t$$
+
+利用 $H$ 的正交特征分解 $H = Q \Lambda Q^\top$，在特征向量坐标系下各维度完全解耦：
+
+$$\theta_{t+1}^{(i)} = (1 - \eta \lambda_i) \theta_t^{(i)}$$
+
+为了保证所有特征维度均不发散，必须满足谱半径约束：
+
+$$|1 - \eta \lambda_i| < 1, \quad \forall i \iff -1 < 1 - \eta \lambda_{\max} < 1 \implies \eta < \frac{2}{\lambda_{\max}} = \frac{2}{L}$$
+
+整个系统的最差单步收缩因子（Contraction Factor）由极端特征值决定：
+
+$$\rho(\eta) = \max_{\lambda \in [\mu, L]} |1 - \eta \lambda| = \max(|1 - \eta \mu|, |1 - \eta L|)$$
+
+最优步长必须平衡陡峭维度的下界与平缓维度的上界：
+
+$$1 - \eta^* \mu = \eta^* L - 1 \implies \eta^* = \frac{2}{L + \mu}$$
+
+代入最优步长，得到 SGD 在二次型下的最优单步收缩因子：
+
+$$\rho_{\text{SGD}}^* = \frac{L - \mu}{L + \mu} = \frac{\kappa - 1}{\kappa + 1} = 1 - \frac{2}{\kappa + 1} \approx 1 - \frac{2}{\kappa}$$
+
+#### 步数复杂度
+
+要使误差缩小到原始的 $\epsilon$（即 $\|\theta_T - \theta^*\| \le \epsilon \|\theta_0 - \theta^*\|$）：
+
+$$\left(1 - \frac{2}{\kappa}\right)^T \le \epsilon \implies T \ln\left(1 - \frac{2}{\kappa}\right) \le \ln \epsilon \implies T \ge \frac{\kappa}{2} \ln\left(\frac{1}{\epsilon}\right) = O\left(\kappa \log \frac{1}{\epsilon}\right)$$
+
+> **物理困境**：当条件数 $\kappa = 10,000$ 时，SGD 单步收缩率仅为 $0.9998$，每步只能消除万分之二的残差，需要上万步才能完成收敛。
+
+---
+
+### 4. Polyak 重球动量加速推导：从 $\kappa$ 到 $\sqrt{\kappa}$ 的平方根加速
+
+Polyak 重球法引入动量缓冲 $m_t = \beta m_{t-1} + H \theta_t$，$\theta_{t+1} = \theta_t - \eta m_t$。消去中间变量 $m_t$ 得二阶差分方程：
+
+$$\theta_{t+1} = (1 + \beta - \eta H) \theta_t - \beta \theta_{t-1}$$
+
+#### 增广状态转移矩阵与特征多项式
+
+将二阶递推写为状态空间矩阵形式：
+
+$$\begin{bmatrix} \theta_{t+1} \\ \theta_t \end{bmatrix} = \begin{bmatrix} (1 + \beta)I - \eta H & -\beta I \\ I & 0 \end{bmatrix} \begin{bmatrix} \theta_t \\ \theta_{t-1} \end{bmatrix}$$
+
+对于任意特征值 $\lambda \in [\mu, L]$，该转移矩阵的特征方程为：
+
+$$\det \begin{bmatrix} (1 + \beta - \eta \lambda) - \rho & -\beta \\ 1 & -\rho \end{bmatrix} = \rho^2 - (1 + \beta - \eta \lambda) \rho + \beta = 0$$
+
+判别式为：
+
+$$\Delta(\lambda) = (1 + \beta - \eta \lambda)^2 - 4\beta$$
+
+#### 共轭复根与全谱等距衰减
+
+当参数使得对于全谱 $\lambda \in [\mu, L]$ 均有 $\Delta(\lambda) \le 0$ 时，特征根为一对**共轭复数**：
+
+$$\rho_{1, 2} = \frac{(1 + \beta - \eta \lambda) \pm i \sqrt{4\beta - (1 + \beta - \eta \lambda)^2}}{2}$$
+
+其复模长精确等于：
+
+$$|\rho| = \sqrt{\rho_1 \rho_2} = \sqrt{\beta}$$
+
+> **代数本质**：在共轭复根区域内，转移矩阵的谱半径**与具体的曲率 $\lambda$ 完全无关**，所有特征维度的能量衰减率被强行拉平成完全相等的常数 $\sqrt{\beta}$！
+
+为使 $\Delta(\lambda) \le 0$ 在整个区间 $[\mu, L]$ 恒成立，最优参数选取使得区间两端点刚好触碰判别式零点：
+
+$$1 + \beta - \eta \mu = 2\sqrt{\beta}, \quad 1 + \beta - \eta L = -2\sqrt{\beta}$$
+
+解此二元一次方程组，解得最优阻尼 $\beta^*$ 与最优学习率 $\eta^*$：
+
+$$\beta^* = \left( \frac{\sqrt{L} - \sqrt{\mu}}{\sqrt{L} + \sqrt{\mu}} \right)^2 = \left( \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \right)^2$$
+$$\eta^* = \frac{4}{(\sqrt{L} + \sqrt{\mu})^2}$$
+
+#### 加速收敛率
+
+Polyak 动量的最优收缩因子为：
+
+$$\rho_{\text{Mom}}^* = \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \approx 1 - \frac{2}{\sqrt{\kappa}}$$
+
+所需步数复杂度为：
+
+$$T_{\text{Mom}} = O\left(\sqrt{\kappa} \log \frac{1}{\epsilon}\right)$$
+
+| 算法 | 收缩因子 $\rho^*$ | $\kappa = 10,000$ 时的收缩因子 | 相对步数复杂度 |
+| :--- | :--- | :--- | :--- |
+| **SGD** | $\frac{\kappa - 1}{\kappa + 1} \approx 1 - \frac{2}{\kappa}$ | $0.9998$ | $O(\kappa \log(1/\epsilon)) \approx 10,000$ 步 |
+| **Polyak 动量** | $\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} \approx 1 - \frac{2}{\sqrt{\kappa}}$ | $0.9802$ | $O(\sqrt{\kappa} \log(1/\epsilon)) \approx 100$ 步 (**提速 100 倍**) |
+
+---
+
+### 5. 对角预条件 (Adam) 与矩阵谱正交 (Muon) 在旋转曲面下的几何分歧
+
+#### 对角预条件化 (Adam) 的坐标依赖局限
+
+Adam 维护二阶矩 $v_t \approx \text{diag}(g_t^2)$，通过对角矩阵预条件化参数更新：
+
+$$\Delta \theta = -P_{\text{Adam}}^{-1} g_t, \quad P_{\text{Adam}} = \text{diag}(\sqrt{v_t} + \epsilon)$$
+
+- **坐标轴对齐时**：若 Hessian 矩阵为对角阵（各参数坐标正交无关），对角预条件矩阵 $P_{\text{Adam}} \approx \text{diag}(H)^{1/2}$ 能完美拉伸各个坐标轴，将狭长椭圆等高线压缩为各向同性正圆，此时有效条件数 $\kappa_{\text{eff}} \approx 1.0$。
+- **旋转曲面退化（交叉耦合项存在）**：若 Hessian 矩阵包含非对角耦合元素（$H = R_\phi \Lambda R_\phi^\top$），由于对角矩阵无法表达坐标系的旋转基底，Adam 仅能沿固定的直角坐标轴进行独立缩放。这导致更新轨迹退化为类似 $L_\infty$ 范数超立方体的锯齿状折线，在旋转峡谷的次级方向来回超调。
+
+#### Muon 谱正交投影的代数优势
+
+针对 Transformer 中占据主导参数量的 2D 线性层矩阵权重 $W \in \mathbb{R}^{m \times n}$，Muon 通过极分解直接计算动量矩阵的正交因子：
+
+$$\mathcal{O}(M) = U V^\top = M (M^\top M)^{-1/2}$$
+
+- **严格酉旋转不变性 (Unitary Invariance)**：对任意正交旋转矩阵 $Q_1, Q_2$，均有 $\mathcal{O}(Q_1 M Q_2) = Q_1 \mathcal{O}(M) Q_2$。Muon 的更新几何由矩阵本身的算子结构决定，彻底免疫坐标轴选取偏差。
+- **奇异值全谱规整**：奇异值分解为 $M = \sum \sigma_i u_i v_i^\top$。经过极分解后，$\mathcal{O}(M) = \sum 1.0 \cdot u_i v_i^\top$，所有正交特征方向的能量增益严格恒等于 1.0，从根本上消除了矩阵参数空间内部的谱病态性。
 
 ---
 
@@ -494,3 +631,18 @@ def setup_hybrid_optimizers(model: nn.Module, lr_muon: float = 0.02, lr_adam: fl
   1. **矩阵流形视角**：Adam 把二维矩阵拉平成一维数组做独立坐标缩放，破坏了矩阵变换的代数特征；Muon 针对 2D 权重矩阵，通过极分解将其动量投影到正交流形 $\mathcal{O}(M) = U V^\top$。
   2. **奇异值恒等归一**：极分解矩阵的所有奇异值精确等于 1.0，保证更新在所有特征正交方向上能量完全均等传播，无任何主方向塌缩或爆炸。
   3. **硬件极致优化**：无需昂贵的 SVD，纯粹依靠 5 次五阶 Newton-Schulz 矩阵乘法迭代（GEMM）在 Tensor Core 上极速逼近正交投影，实测大模型预训练耗时削减 30%~50%。
+---
+
+### Q8：如何利用裂项相消（Telescoping Sum）推导梯度下降的 O(1/T) 与凸优化 SGD 的 O(1/√T) 收敛率界？
+- **答题核心**：
+  1. **光滑函数的下降引理**：由梯度 $L$-Lipschitz 条件积分展开得 $f(\theta_{t+1}) \le f(\theta_t) - \frac{1}{2L} \|\nabla f(\theta_t)\|^2$。移项得 $\|\nabla f(\theta_t)\|^2 \le 2L[f(\theta_t) - f(\theta_{t+1})]$。
+  2. **梯度范数裂项相消**：累加 $t=0 \dots T-1$，右侧 $[f(\theta_0) - f(\theta_1)] + \dots + [f(\theta_{T-1}) - f(\theta_T)]$ 裂项相消为 $f(\theta_0) - f(\theta_T) \le f(\theta_0) - f^*$。两边除以 $T$ 得 $\min_{t} \|\nabla f(\theta_t)\|^2 \le \frac{2L(f(\theta_0)-f^*)}{T} = O(1/T)$。
+  3. **凸优化距离势函数裂项**：展开欧氏距离 $\|\theta_{t+1} - \theta^*\|^2 \le \|\theta_t - \theta^*\|^2 - 2\eta (f(\theta_t) - f^*) + \eta^2 G^2$。累加 $T$ 步后中间距离项裂项相消，得到 $\sum (f(\theta_t) - f^*) \le \frac{R^2}{2\eta} + \frac{\eta T G^2}{2}$。由 Jensen 不等式并令关于 $\eta$ 导数为 0，解得最优步长 $\eta^* = \frac{R}{G\sqrt{T}}$，代入即得 $f(\bar{\theta}_T) - f^* \le \frac{RG}{\sqrt{T}} = O(1/\sqrt{T})$。
+
+---
+
+### Q9：从特征值角度严格推导，为什么 Polyak 动量能把病态二次曲面的收敛步数从 O(κ) 加速到 O(√κ)？为什么 Adam 在旋转曲面上会退化？
+- **答题核心**：
+  1. **SGD 的条件数瓶颈**：二次型更新 $\theta_{t+1} = (I - \eta H)\theta_t$。最优步长 $\eta = \frac{2}{L+\mu}$ 决定单步收缩因子 $\rho = \frac{\kappa-1}{\kappa+1} \approx 1 - \frac{2}{\kappa}$，步数复杂度为 $O(\kappa \log(1/\epsilon))$。
+  2. **动量的共轭复根神迹**：增广状态转移矩阵的特征方程为 $\rho^2 - (1+\beta-\eta\lambda)\rho + \beta = 0$。当判别式 $\Delta \le 0$ 时，两根为共轭复根，模长恒等于常数 $|\rho| = \sqrt{\beta}$（与具体曲率 $\lambda$ 完全解耦）。令区间端点重合解得最优 $\beta^* = (\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^2$，收缩率提升为 $1 - \frac{2}{\sqrt{\kappa}}$，复杂度降为 $O(\sqrt{\kappa} \log(1/\epsilon))$。
+  3. **Adam 的对角旋转缺陷**：Adam 仅用对角阵 $\text{diag}(\sqrt{v})$ 预条件化，本质是沿直角坐标系缩放。当 Hessian 存在旋转耦合（非对角非零）时，对角矩阵无法旋转坐标基底，更新轨迹在交叉方向产生锯齿超调；而 Muon 的极分解 $\mathcal{O}(M) = U V^\top$ 具备严格的酉旋转不变性，全谱奇异值归一化为 1.0，彻底消除矩阵空间的病态旋转干扰。
