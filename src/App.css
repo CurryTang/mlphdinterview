@@ -25155,34 +25155,56 @@ button.overview-support-card.active {
   overflow-x: auto;
 }
 
+.markdown-body .otv-table,
 .otv-table {
+  display: table;
   width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   text-align: left;
 }
 
-.otv-table th {
-  padding: 0.55rem 0.75rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  font-weight: 700;
-  white-space: nowrap;
+.markdown-body .otv-table th,
+.markdown-body .otv-table td,
+.otv-table th,
+.otv-table td {
+  min-width: 0;
+  border-right: 0;
 }
 
-.otv-table td {
+.otv-table th,
+.markdown-body .otv-table th {
+  padding: 0.55rem 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.otv-table td,
+.markdown-body .otv-table td {
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #f1f5f9;
   vertical-align: middle;
 }
 
-.otv-table code {
+.otv-table code,
+.markdown-body .otv-table code {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.74rem;
-  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.1);
   padding: 0.15rem 0.35rem;
   border-radius: 4px;
-  color: #38bdf8;
+  color: #f8fafc;
 }
