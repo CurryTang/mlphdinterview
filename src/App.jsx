@@ -13875,6 +13875,7 @@ function OptimizerTrajectoryVisual() {
   const steepLineY2 = mapY(axisLen * Math.cos(rad) * 0.5);
 
   return (
+    <>
     <section className="otv-container" aria-label={t('优化器矩阵方向性与病态峡谷动力学实验室', 'Optimizer Directionality & Ravine Dynamics Lab')}>
       {/* Header */}
       <header className="otv-header">
@@ -14401,9 +14402,9 @@ function OptimizerTrajectoryVisual() {
           </div>
         </div>
       </div>
+    </section>
 
-      {/* Theory Comparison Table */}
-      <div className="otv-theory-card">
+    <div className="otv-theory-card">
         <h4 className="otv-theory-title">
           {t('优化动力学核心机理与预条件几何对比矩阵', 'Optimization Dynamics: Preconditioning Geometry & Complexity Matrix')}
         </h4>
@@ -14421,7 +14422,7 @@ function OptimizerTrajectoryVisual() {
             </thead>
             <tbody>
               <tr>
-                <td style={{ color: OPT_COLORS.sgd, fontWeight: 700 }}>SGD (Vanilla)</td>
+                <td style={{ color: '#9a5b12', fontWeight: 700 }}>SGD (Vanilla)</td>
                 <td><code>P = (1/η) · I</code></td>
                 <td>{t('各向同性超球体：所有方向一视同仁', 'Isotropic hypersphere: uniform across all directions')}</td>
                 <td>{t('严格保持，但步长受制于 λ_max', 'Strict, but step size capped by λ_max')}</td>
@@ -14429,7 +14430,7 @@ function OptimizerTrajectoryVisual() {
                 <td><code>O(κ · log(1/ε))</code></td>
               </tr>
               <tr>
-                <td style={{ color: OPT_COLORS.mom, fontWeight: 700 }}>Polyak Momentum</td>
+                <td style={{ color: '#7a5b10', fontWeight: 700 }}>Polyak Momentum</td>
                 <td><code>(1 - β L)^(-1)</code> {t('频域滤波', '(Filter)')}</td>
                 <td>{t('重球阻尼：高频振荡对消，低频共识放大', 'Harmonic damping: cancels alternating signs, builds velocity')}</td>
                 <td>{t('随特征向量空间衰减', 'Damped along eigenspaces')}</td>
@@ -14437,18 +14438,18 @@ function OptimizerTrajectoryVisual() {
                 <td><code>O(√κ · log(1/ε))</code> {t('(平方根加速)', '(√κ speedup)')}</td>
               </tr>
               <tr>
-                <td style={{ color: OPT_COLORS.adam, fontWeight: 700 }}>Adam / AdamW</td>
+                <td style={{ color: '#1d4e89', fontWeight: 700 }}>Adam / AdamW</td>
                 <td><code>P = diag(√v_t + ε)</code></td>
                 <td>{t('坐标轴对齐超长方体：独立缩放坐标轴', 'Axis-aligned box: scales coordinates independently')}</td>
-                <td><strong style={{ color: '#f43f5e' }}>{t('破坏（依赖坐标系）', 'Breaks (Coordinate Dependent)')}</strong></td>
+                <td><strong>{t('破坏（依赖坐标系）', 'Breaks (Coordinate Dependent)')}</strong></td>
                 <td>{t('轴对齐时 ≈ 1；旋转时退化', '≈ 1 if aligned; degrades under rotation')}</td>
                 <td>{t('轴对齐极速；交叉耦合时有次级振荡', 'Fast on aligned; sub-oscillations if coupled')}</td>
               </tr>
               <tr>
-                <td style={{ color: OPT_COLORS.muon, fontWeight: 700 }}>Muon (2024)</td>
+                <td style={{ color: '#8d3d5c', fontWeight: 700 }}>Muon (2024)</td>
                 <td><code>P = O(M) = U V^T</code></td>
                 <td>{t('矩阵谱正交流形：奇异值全部规整为 1.0', 'Matrix polar projection: all singular values normalized to 1')}</td>
-                <td><strong style={{ color: OPT_COLORS.muon }}>{t('流形酉变换严格不变', 'Strict Unitary Invariance')}</strong></td>
+                <td><strong>{t('流形酉变换严格不变', 'Strict Unitary Invariance')}</strong></td>
                 <td><code>κ_spectral ≡ 1.0</code></td>
                 <td>{t('矩阵维度全谱无偏加速，收敛提速 1.5~2×', 'Full spectral acceleration, 1.5~2× speedup')}</td>
               </tr>
@@ -14456,7 +14457,7 @@ function OptimizerTrajectoryVisual() {
           </table>
         </div>
       </div>
-    </section>
+    </>
   );
 }
 

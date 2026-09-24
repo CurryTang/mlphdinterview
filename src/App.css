@@ -25136,18 +25136,19 @@ button.overview-support-card.active {
   color: #e2e8f0;
 }
 
-/* Theory Matrix */
+/* Theory Matrix — sits on the note, not inside the dark panel */
 .otv-theory-card {
-  padding: 1.1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.015);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 1.25rem 0 0;
+  padding: 0;
+  background: none;
+  border: 0;
 }
 
 .otv-theory-title {
   margin: 0 0 0.75rem 0;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #102735;
 }
 
 .otv-table-wrap {
@@ -25178,12 +25179,19 @@ button.overview-support-card.active {
   border-right: 0;
 }
 
+.markdown-body .otv-theory-card .otv-table,
+.otv-theory-card .otv-table {
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
 .otv-table th,
-.markdown-body .otv-table th {
+.markdown-body .otv-theory-card .otv-table th {
   padding: 0.55rem 0.75rem;
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
-  color: #f8fafc;
+  background: none;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.16);
+  color: #102735;
   font-weight: 700;
   white-space: nowrap;
   text-transform: none;
@@ -25191,20 +25199,20 @@ button.overview-support-card.active {
 }
 
 .otv-table td,
-.markdown-body .otv-table td {
+.markdown-body .otv-theory-card .otv-table td {
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
-  color: #f1f5f9;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.1);
+  background: none;
+  color: #1f3847;
   vertical-align: middle;
 }
 
 .otv-table code,
-.markdown-body .otv-table code {
+.markdown-body .otv-theory-card .otv-table code {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.78rem;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.15rem 0.35rem;
-  border-radius: 4px;
-  color: #f8fafc;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: #102735;
 }
