@@ -13581,15 +13581,18 @@ const OPT_COLORS = {
   muon: '#E08AAB',
 };
 
-function ravineHeightColor(t) {
+function ravineHeightColor(t, steepShare) {
   const u = Math.max(0, Math.min(1, t));
-  const r = Math.round(16 + u * 210);
-  const g = Math.round(28 + u * 156);
-  const b = Math.round(52 + u * 92);
-  return `rgb(${r},${g},${b})`;
+  const s = Math.max(0, Math.min(1, steepShare));
+  const floor = [14, 32, 58];
+  const flatHigh = [214, 196, 150];
+  const steepHigh = [196, 96, 112];
+  const high = flatHigh.map((channel, index) => channel * (1 - s) + steepHigh[index] * s);
+  const rgb = floor.map((channel, index) => Math.round(channel + (high[index] - channel) * u));
+  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
-function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleDeg, colors }) {
+function drawRavineSurface(canvas, { kappa, trajData, activeStep, visible, angleDeg, colors }) {
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || 640;
   const h = canvas.clientHeight || 420;
@@ -13615,29 +13618,34 @@ function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleD
     ];
   };
 
-  const nx = 36;
-  const ny = 22;
-  const x0 = -10.5;
-  const x1 = 10.5;
-  const y0 = -4.2;
-  const y1 = 4.2;
-  const sampleLoss = (x, y) => Math.log1p(Math.max(0, loss(x, y)));
+  const rad = (angleDeg * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const toXY = (u, v) => [u * c - v * s, u * s + v * c];
+  const nx = 42;
+  const ny = 18;
+  const u0 = -9;
+  const u1 = 9;
+  const v0 = -1.7;
+  const v1 = 1.7;
+  const quadLoss = (u, v) => 0.5 * (u * u + kappa * v * v);
   let zMax = 1;
   for (let j = 0; j <= ny; j += 1) {
     for (let i = 0; i <= nx; i += 1) {
-      const x = x0 + ((x1 - x0) * i) / nx;
-      const y = y0 + ((y1 - y0) * j) / ny;
-      zMax = Math.max(zMax, sampleLoss(x, y));
+      const u = u0 + ((u1 - u0) * i) / nx;
+      const v = v0 + ((v1 - v0) * j) / ny;
+      zMax = Math.max(zMax, quadLoss(u, v));
     }
   }
-  const zOf = (x, y) => (sampleLoss(x, y) / zMax) * 7.2;
+  const zOfUV = (u, v) => (quadLoss(u, v) / zMax) * 8.4;
   const grid = [];
   for (let j = 0; j <= ny; j += 1) {
     const row = [];
     for (let i = 0; i <= nx; i += 1) {
-      const x = x0 + ((x1 - x0) * i) / nx;
-      const y = y0 + ((y1 - y0) * j) / ny;
-      row.push({ x, y, z: zOf(x, y) });
+      const u = u0 + ((u1 - u0) * i) / nx;
+      const v = v0 + ((v1 - v0) * j) / ny;
+      const [x, y] = toXY(u, v);
+      row.push({ x, y, u, v, z: zOfUV(u, v), steep: (kappa * v * v) / (u * u + kappa * v * v + 1e-6) });
     }
     grid.push(row);
   }
@@ -13650,7 +13658,11 @@ function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleD
       const c = grid[j + 1][i + 1];
       const d = grid[j + 1][i];
       const depth = (a.x + b.x + c.x + d.x) * Math.sin(yaw) + (a.y + b.y + c.y + d.y) * Math.cos(yaw);
-      quads.push({ a, b, c, d, depth, z: (a.z + b.z + c.z + d.z) / 4 });
+      quads.push({
+        a, b, c, d, depth,
+        z: (a.z + b.z + c.z + d.z) / 4,
+        steep: (a.steep + b.steep + c.steep + d.steep) / 4,
+      });
     }
   }
   quads.sort((p, q) => q.depth - p.depth);
@@ -13661,26 +13673,37 @@ function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleD
     ctx.moveTo(pts[0][0], pts[0][1]);
     pts.slice(1).forEach(([px, py]) => ctx.lineTo(px, py));
     ctx.closePath();
-    ctx.fillStyle = ravineHeightColor(quad.z / 7.2);
+    ctx.fillStyle = ravineHeightColor(quad.z / 8.4, quad.steep);
     ctx.fill();
   });
 
   const floor = (x, y) => project(x, y, 0);
-  ctx.save();
-  ctx.strokeStyle = 'rgba(232, 220, 196, 0.28)';
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1.2;
-  const rad = (angleDeg * Math.PI) / 180;
-  const axis = (dx, dy) => {
-    const p1 = floor(-11 * dx, -4 * dy);
-    const p2 = floor(11 * dx, 4 * dy);
-    ctx.beginPath();
-    ctx.moveTo(p1[0], p1[1]);
-    ctx.lineTo(p2[0], p2[1]);
-    ctx.stroke();
+  const zOfXY = (x, y) => {
+    const u = x * c + y * s;
+    const v = -x * s + y * c;
+    return zOfUV(u, v);
   };
-  axis(Math.cos(rad), Math.sin(rad));
-  axis(-Math.sin(rad), Math.cos(rad));
+  ctx.save();
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([5, 4]);
+  const flatEnds = [toXY(-9, 0), toXY(9, 0)].map(([x, y]) => floor(x, y));
+  ctx.strokeStyle = 'rgba(120, 170, 220, 0.85)';
+  ctx.beginPath();
+  ctx.moveTo(flatEnds[0][0], flatEnds[0][1]);
+  ctx.lineTo(flatEnds[1][0], flatEnds[1][1]);
+  ctx.stroke();
+  const steepEnds = [toXY(0, -1.7), toXY(0, 1.7)].map(([x, y]) => floor(x, y));
+  ctx.strokeStyle = 'rgba(210, 110, 120, 0.9)';
+  ctx.beginPath();
+  ctx.moveTo(steepEnds[0][0], steepEnds[0][1]);
+  ctx.lineTo(steepEnds[1][0], steepEnds[1][1]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '12px IBM Plex Mono, monospace';
+  ctx.fillStyle = '#8eb4dc';
+  ctx.fillText('λmin = 1', flatEnds[1][0] - 62, flatEnds[1][1] - 8);
+  ctx.fillStyle = '#e09aa4';
+  ctx.fillText(`λmax = ${kappa}`, steepEnds[1][0] + 6, steepEnds[1][1]);
   ctx.restore();
 
   Object.keys(colors).forEach((key) => {
@@ -13698,7 +13721,7 @@ function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleD
 
     ctx.beginPath();
     pts.forEach((p, idx) => {
-      const [px, py] = project(p.x, p.y, zOf(p.x, p.y) + 0.18);
+      const [px, py] = project(p.x, p.y, zOfXY(p.x, p.y) + 0.18);
       if (idx === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     });
@@ -13708,7 +13731,7 @@ function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleD
     ctx.stroke();
     const head = pts[pts.length - 1];
     if (!head) return;
-    const [hx, hy] = project(head.x, head.y, zOf(head.x, head.y) + 0.18);
+    const [hx, hy] = project(head.x, head.y, zOfXY(head.x, head.y) + 0.18);
     ctx.beginPath();
     ctx.fillStyle = colors[key];
     ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
@@ -13762,14 +13785,14 @@ function OptimizerTrajectoryVisual() {
     const canvas = surfaceRef.current;
     if (!canvas) return;
     drawRavineSurface(canvas, {
-      loss: trajData.loss,
+      kappa,
       trajData,
       activeStep,
       visible: visibleOpts,
       angleDeg,
       colors: OPT_COLORS,
     });
-  }, [trajData, activeStep, visibleOpts, angleDeg]);
+  }, [trajData, activeStep, visibleOpts, angleDeg, kappa]);
 
   const toggleOpt = (key) => {
     setVisibleOpts((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -13983,10 +14006,10 @@ function OptimizerTrajectoryVisual() {
         <div className="otv-canvas-box">
           <div className="otv-canvas-bar">
             <span className="otv-canvas-title">
-              {t('3D 病态峡谷：轨迹贴在损失面上', '3D ravine: trajectories sit on the loss surface')}
+              {t('3D：λmin 是长谷，λmax 是两侧陡壁', '3D: λmin is the long valley, λmax is the two walls')}
             </span>
             <span className="otv-canvas-badge">
-              {t('高度 = log(1+loss)', 'height = log(1+loss)')}
+              {t('蓝 = 平缓方向，红 = 陡峭方向', 'blue = flat direction, red = steep direction')}
             </span>
           </div>
           <div className="otv-surface-wrap">
@@ -14223,26 +14246,48 @@ function OptimizerTrajectoryVisual() {
         <div className="otv-telemetry-box">
           <div className="otv-chart-panel">
             <div className="otv-panel-title-bar">
-              <span className="otv-panel-title">{t('本步位移：谷底方向 vs 陡壁方向', 'This step: valley axis vs steep wall')}</span>
+              <span className="otv-panel-title">{t('同一段位移，两个特征值给出的坡度', 'Same displacement, two eigenvalues, two slopes')}</span>
             </div>
-            <svg viewBox="0 0 460 120" className="otv-chart-svg">
-              <rect width="460" height="120" fill="#090d16" />
-              <line x1="230" y1="16" x2="230" y2="104" stroke="#334155" />
-              <text x="8" y="14" fill="#8aa0b4" fontSize="10">{t('← 谷底', '← valley')}</text>
-              <text x="360" y="14" fill="#c47a7a" fontSize="10">{t('陡壁 →', 'wall →')}</text>
-              {Object.keys(optMeta).map((key, index) => {
-                if (!visibleOpts[key]) return null;
-                const stat = currentStats[key];
+            <svg viewBox="0 0 460 150" className="otv-chart-svg">
+              <rect width="460" height="150" fill="#090d16" />
+              {[
+                { title: 'λmin = 1', axis: 'u', scale: 1, x0: 16, color: '#8eb4dc' },
+                { title: `λmax = ${kappa}`, axis: 'v', scale: kappa, x0: 240, color: '#e09aa4' },
+              ].map((slice) => {
                 const rad = (angleDeg * Math.PI) / 180;
-                const along = stat.stepX * Math.cos(rad) + stat.stepY * Math.sin(rad);
-                const across = -stat.stepX * Math.sin(rad) + stat.stepY * Math.cos(rad);
-                const y = 28 + index * 22;
-                const scaleBar = 42;
+                const samples = Array.from({ length: 41 }, (_, index) => {
+                  const t = -1 + (2 * index) / 40;
+                  const coord = slice.axis === 'u' ? t * 8 : t * 1.6;
+                  const height = 0.5 * slice.scale * coord * coord;
+                  return { coord, height };
+                });
+                const maxH = samples[0].height;
+                const plot = (coord, height) => {
+                  const span = slice.axis === 'u' ? 8 : 1.6;
+                  const px = slice.x0 + ((coord + span) / (2 * span)) * 190;
+                  const py = 118 - (height / maxH) * 78;
+                  return [px, py];
+                };
+                const d = samples.map((sample, index) => {
+                  const [px, py] = plot(sample.coord, sample.height);
+                  return `${index === 0 ? 'M' : 'L'} ${px.toFixed(1)} ${py.toFixed(1)}`;
+                }).join(' ');
                 return (
-                  <g key={`eig-${key}`}>
-                    <text x="8" y={y + 4} fill={optMeta[key].color} fontSize="10">{optMeta[key].name.split(' ')[0]}</text>
-                    <line x1={230} y1={y} x2={230 + along * scaleBar} y2={y} stroke={optMeta[key].color} strokeWidth="6" strokeLinecap="round" />
-                    <line x1={230} y1={y + 8} x2={230 + across * scaleBar} y2={y + 8} stroke={optMeta[key].color} strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+                  <g key={slice.axis}>
+                    <text x={slice.x0} y="16" fill={slice.color} fontSize="11">{slice.title}</text>
+                    <path d={d} fill="none" stroke={slice.color} strokeWidth="2" />
+                    {Object.keys(optMeta).map((key) => {
+                      if (!visibleOpts[key]) return null;
+                      const stat = currentStats[key];
+                      const u = stat.x * Math.cos(rad) + stat.y * Math.sin(rad);
+                      const v = -stat.x * Math.sin(rad) + stat.y * Math.cos(rad);
+                      const coord = slice.axis === 'u' ? u : v;
+                      const span = slice.axis === 'u' ? 8 : 1.6;
+                      const clamped = Math.max(-span, Math.min(span, coord));
+                      const height = 0.5 * slice.scale * clamped * clamped;
+                      const [px, py] = plot(clamped, height);
+                      return <circle key={key} cx={px} cy={py} r="4" fill={optMeta[key].color} />;
+                    })}
                   </g>
                 );
               })}
