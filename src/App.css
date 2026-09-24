@@ -24725,19 +24725,19 @@ button.overview-support-card.active {
 
 .otv-container {
   margin: 2rem 0;
-  background: #080d1a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  border: 1px solid rgba(24, 49, 63, 0.16);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #f1f5f9;
+  color: #102735;
 }
 
 .otv-header {
   padding: 1.25rem 1.5rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.1);
 }
 
 .otv-badge-row {
@@ -24754,9 +24754,9 @@ button.overview-support-card.active {
   letter-spacing: 0.06em;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(12, 110, 138, 0.1);
+  color: #0c6e8a;
+  border: 1px solid rgba(12, 110, 138, 0.28);
 }
 
 .otv-badge-highlight {
@@ -24764,31 +24764,33 @@ button.overview-support-card.active {
   font-weight: 600;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  border: 1px solid rgba(15, 118, 110, 0.28);
 }
 
+.markdown-body .otv-container .otv-title,
 .otv-title {
   margin: 0.25rem 0 0.4rem 0;
   font-size: 1.25rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #102735;
   letter-spacing: -0.01em;
 }
 
+.markdown-body .otv-container .otv-subtitle,
 .otv-subtitle {
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.5;
-  color: #94a3b8;
+  color: #3d5563;
   max-width: 960px;
 }
 
 .otv-ctrl-panel {
   margin-top: 1rem;
   padding-top: 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(24, 49, 63, 0.1);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -24812,7 +24814,7 @@ button.overview-support-card.active {
 .otv-ctrl-label {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #3d5563;
   margin-right: 0.2rem;
 }
 
@@ -24821,22 +24823,22 @@ button.overview-support-card.active {
   font-size: 0.78rem;
   font-weight: 600;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: #cbd5e1;
+  border: 1px solid rgba(24, 49, 63, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  color: #1f3847;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .otv-btn-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.9);
+  color: #102735;
 }
 
 .otv-btn-toggle.active {
-  background: #38bdf8;
-  border-color: #38bdf8;
-  color: #041226;
+  background: #0c6e8a;
+  border-color: #0c6e8a;
+  color: #f7f5ee;
   font-weight: 700;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
 }
@@ -24847,22 +24849,22 @@ button.overview-support-card.active {
   font-weight: 600;
   font-family: "IBM Plex Mono", monospace;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: #cbd5e1;
+  border: 1px solid rgba(24, 49, 63, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  color: #1f3847;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .otv-btn-sm:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.9);
+  color: #102735;
 }
 
 .otv-btn-sm.active {
-  background: #10b981;
-  border-color: #10b981;
-  color: #041a12;
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #f7f5ee;
   font-weight: 700;
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
 }
@@ -24905,7 +24907,7 @@ button.overview-support-card.active {
 .otv-btn-link {
   background: none;
   border: none;
-  color: #38bdf8;
+  color: #0c6e8a;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -24925,16 +24927,16 @@ button.overview-support-card.active {
   font-size: 0.78rem;
   font-weight: 700;
   border-radius: 6px;
-  border: 1px solid #10b981;
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  border: 1px solid #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .otv-btn-play:hover {
-  background: #10b981;
-  color: #03140e;
+  background: #0f766e;
+  color: #f7f5ee;
 }
 
 .otv-btn-play.playing {
@@ -24947,26 +24949,26 @@ button.overview-support-card.active {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.55);
   padding: 0.25rem 0.6rem;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(24, 49, 63, 0.12);
 }
 
 .otv-step-indicator {
   font-size: 0.75rem;
   font-family: "IBM Plex Mono", monospace;
-  color: #94a3b8;
+  color: #3d5563;
   white-space: nowrap;
 }
 
 .otv-step-indicator strong {
-  color: #f8fafc;
+  color: #102735;
 }
 
 .otv-range {
   width: 90px;
-  accent-color: #38bdf8;
+  accent-color: #0c6e8a;
   cursor: pointer;
 }
 
@@ -24975,7 +24977,7 @@ button.overview-support-card.active {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(24, 49, 63, 0.12);
 }
 
 @media (max-width: 992px) {
@@ -24985,15 +24987,15 @@ button.overview-support-card.active {
 }
 
 .otv-canvas-box {
-  background: #060913;
+  background: transparent;
   display: flex;
   flex-direction: column;
 }
 
 .otv-canvas-bar {
   padding: 0.65rem 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.1);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -25002,19 +25004,19 @@ button.overview-support-card.active {
 
 .otv-canvas-title {
   font-weight: 700;
-  color: #cbd5e1;
+  color: #102735;
 }
 
 .otv-canvas-badge {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.72rem;
-  color: #38bdf8;
+  color: #0c6e8a;
 }
 
 .otv-surface-wrap {
   width: 100%;
   aspect-ratio: 16 / 10;
-  background: #0c121c;
+  background: #f6f3ec;
 }
 
 .otv-surface {
@@ -25027,7 +25029,7 @@ button.overview-support-card.active {
   width: 100%;
   aspect-ratio: 16 / 10;
   position: relative;
-  background: #070b14;
+  background: #f6f3ec;
 }
 
 .otv-svg {
@@ -25037,7 +25039,7 @@ button.overview-support-card.active {
 }
 
 .otv-telemetry-box {
-  background: #090d18;
+  background: transparent;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -25045,8 +25047,8 @@ button.overview-support-card.active {
 }
 
 .otv-chart-panel {
-  background: #060913;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border: 1px solid rgba(24, 49, 63, 0.12);
   border-radius: 8px;
   padding: 0.65rem;
 }
@@ -25061,12 +25063,12 @@ button.overview-support-card.active {
 .otv-panel-title {
   font-size: 0.76rem;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #102735;
 }
 
 .otv-panel-badge {
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: #3d5563;
   font-family: "IBM Plex Mono", monospace;
 }
 
@@ -25089,8 +25091,8 @@ button.overview-support-card.active {
 }
 
 .otv-stat-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(24, 49, 63, 0.1);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
   display: flex;
@@ -25104,7 +25106,7 @@ button.overview-support-card.active {
   align-items: center;
   font-size: 0.75rem;
   font-weight: 700;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(24, 49, 63, 0.1);
   padding-bottom: 0.25rem;
 }
 
@@ -25126,14 +25128,14 @@ button.overview-support-card.active {
 }
 
 .otv-metric-item span {
-  color: #64748b;
+  color: #5b717b;
   font-size: 0.66rem;
 }
 
 .otv-metric-item strong {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.72rem;
-  color: #e2e8f0;
+  color: #102735;
 }
 
 /* Theory Matrix — sits on the note, not inside the dark panel */

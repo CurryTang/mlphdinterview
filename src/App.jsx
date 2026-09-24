@@ -13576,7 +13576,7 @@ function computeOptimizerTrajectories(kappa, angleDeg, numSteps = 40) {
 
 const OPT_COLORS = {
   sgd: '#E6A23C',
-  mom: '#F2D48A',
+  mom: '#A6842A',
   adam: '#6AA6F2',
   muon: '#E08AAB',
 };
@@ -13602,7 +13602,7 @@ function drawRavineSurface(canvas, { kappa, trajData, activeStep, visible, angle
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#0c121c';
+  ctx.fillStyle = '#f6f3ec';
   ctx.fillRect(0, 0, w, h);
 
   const yaw = -0.72;
@@ -13700,9 +13700,9 @@ function drawRavineSurface(canvas, { kappa, trajData, activeStep, visible, angle
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.font = '12px IBM Plex Mono, monospace';
-  ctx.fillStyle = '#8eb4dc';
+  ctx.fillStyle = '#1d4e89';
   ctx.fillText('λmin = 1', flatEnds[1][0] - 62, flatEnds[1][1] - 8);
-  ctx.fillStyle = '#e09aa4';
+  ctx.fillStyle = '#8d3d5c';
   ctx.fillText(`λmax = ${kappa}`, steepEnds[1][0] + 6, steepEnds[1][1]);
   ctx.restore();
 
@@ -13946,7 +13946,7 @@ function OptimizerTrajectoryVisual() {
                     style={{
                       borderColor: isVis ? info.color : 'rgba(255,255,255,0.12)',
                       background: isVis ? info.bg : 'transparent',
-                      color: isVis ? info.color : '#94a3b8',
+                      color: isVis ? info.color : '#5b717b',
                     }}
                     onClick={() => toggleOpt(optKey)}
                   >
@@ -14029,9 +14029,9 @@ function OptimizerTrajectoryVisual() {
             <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="otv-svg">
               <defs>
                 <radialGradient id="otv-min-glow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#f4efe6" stopOpacity="0.85" />
-                  <stop offset="60%" stopColor="#f4efe6" stopOpacity="0.18" />
-                  <stop offset="100%" stopColor="#f4efe6" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#102735" stopOpacity="0.28" />
+                  <stop offset="60%" stopColor="#102735" stopOpacity="0.08" />
+                  <stop offset="100%" stopColor="#102735" stopOpacity="0" />
                 </radialGradient>
                 <marker
                   id="otv-arrow-sgd"
@@ -14080,7 +14080,7 @@ function OptimizerTrajectoryVisual() {
               </defs>
 
               {/* Background */}
-              <rect width={svgWidth} height={svgHeight} fill="#090d16" />
+              <rect width={svgWidth} height={svgHeight} fill="#f6f3ec" />
 
               {/* Principal Curvature Axes */}
               <line
@@ -14116,7 +14116,7 @@ function OptimizerTrajectoryVisual() {
                     rx={ru}
                     ry={rv}
                     transform={`rotate(${-angleDeg}, ${cx}, ${cy})`}
-                    stroke="rgba(148, 163, 184, 0.16)"
+                    stroke="rgba(24, 49, 63, 0.28)"
                     strokeWidth={idx === 0 ? '1.5' : '1.0'}
                     strokeDasharray={idx % 2 === 0 ? 'none' : '3 3'}
                     fill="none"
@@ -14125,23 +14125,23 @@ function OptimizerTrajectoryVisual() {
               })}
 
               {/* Axis labels */}
-              <text x={flatLineX2 - 40} y={flatLineY2 - 10} fill="#38bdf8" fontSize="10" opacity="0.6" fontFamily="IBM Plex Mono">
+              <text x={flatLineX2 - 40} y={flatLineY2 - 10} fill="#1d4e89" fontSize="10" fontFamily="IBM Plex Mono">
                 v_min (λ=1)
               </text>
-              <text x={steepLineX2 + 8} y={steepLineY2 + 5} fill="#f43f5e" fontSize="10" opacity="0.6" fontFamily="IBM Plex Mono">
+              <text x={steepLineX2 + 8} y={steepLineY2 + 5} fill="#8d3d5c" fontSize="10" fontFamily="IBM Plex Mono">
                 v_max (λ=κ)
               </text>
 
               {/* Global Optimum Marker */}
               <circle cx={cx} cy={cy} r="18" fill="url(#otv-min-glow)" />
               <circle cx={cx} cy={cy} r="4" fill="#f4efe6" />
-              <text x={cx + 10} y={cy + 4} fill="#f4efe6" fontSize="11" fontWeight="700" fontFamily="IBM Plex Mono">
+              <text x={cx + 10} y={cy + 4} fill="#102735" fontSize="11" fontWeight="700" fontFamily="IBM Plex Mono">
                 θ* = (0, 0)
               </text>
 
               {/* Start Point Marker */}
-              <circle cx={mapX(-7.5)} cy={mapY(3.2)} r="5" fill="#f8fafc" stroke="#64748b" strokeWidth="2" />
-              <text x={mapX(-7.5) - 15} y={mapY(3.2) - 12} fill="#cbd5e1" fontSize="11" fontWeight="600">
+              <circle cx={mapX(-7.5)} cy={mapY(3.2)} r="5" fill="#102735" stroke="#5b717b" strokeWidth="2" />
+              <text x={mapX(-7.5) - 15} y={mapY(3.2) - 12} fill="#102735" fontSize="11" fontWeight="600">
                 θ₀ (-7.5, 3.2)
               </text>
 
@@ -14250,10 +14250,10 @@ function OptimizerTrajectoryVisual() {
               <span className="otv-panel-title">{t('同一段位移，两个特征值给出的坡度', 'Same displacement, two eigenvalues, two slopes')}</span>
             </div>
             <svg viewBox="0 0 460 150" className="otv-chart-svg">
-              <rect width="460" height="150" fill="#090d16" />
+              <rect width="460" height="150" fill="#f6f3ec" />
               {[
-                { title: 'λmin = 1', axis: 'u', scale: 1, x0: 16, color: '#8eb4dc' },
-                { title: `λmax = ${kappa}`, axis: 'v', scale: kappa, x0: 240, color: '#e09aa4' },
+                { title: 'λmin = 1', axis: 'u', scale: 1, x0: 16, color: '#1d4e89' },
+                { title: `λmax = ${kappa}`, axis: 'v', scale: kappa, x0: 240, color: '#8d3d5c' },
               ].map((slice) => {
                 const rad = (angleDeg * Math.PI) / 180;
                 const samples = Array.from({ length: 41 }, (_, index) => {
@@ -14301,22 +14301,22 @@ function OptimizerTrajectoryVisual() {
               <span className="otv-panel-badge">{t('实时斜率对比', 'Real-Time Slope')}</span>
             </div>
             <svg viewBox="0 0 460 160" className="otv-chart-svg">
-              <rect width="460" height="160" fill="#090d16" />
+              <rect width="460" height="160" fill="#f6f3ec" />
               {/* Grid lines */}
               {[-1, 0, 1, 2, 3].map((val) => {
                 const y = 140 - ((val - -1) / 4) * 120;
                 return (
                   <g key={val}>
-                    <line x1="45" y1={y} x2="445" y2={y} stroke="#1e293b" strokeDasharray="3 3" />
-                    <text x="18" y={y + 3} fill="#64748b" fontSize="9" fontFamily="IBM Plex Mono">
+                    <line x1="45" y1={y} x2="445" y2={y} stroke="rgba(24, 49, 63, 0.16)" strokeDasharray="3 3" />
+                    <text x="18" y={y + 3} fill="#5b717b" fontSize="9" fontFamily="IBM Plex Mono">
                       10^{val}
                     </text>
                   </g>
                 );
               })}
               {/* Axes */}
-              <line x1="45" y1="140" x2="445" y2="140" stroke="#334155" strokeWidth="1.2" />
-              <line x1="45" y1="20" x2="45" y2="140" stroke="#334155" strokeWidth="1.2" />
+              <line x1="45" y1="140" x2="445" y2="140" stroke="rgba(24, 49, 63, 0.35)" strokeWidth="1.2" />
+              <line x1="45" y1="20" x2="45" y2="140" stroke="rgba(24, 49, 63, 0.35)" strokeWidth="1.2" />
 
               {/* Loss Lines for each active optimizer */}
               {Object.keys(optMeta).map((key) => {
@@ -14352,7 +14352,7 @@ function OptimizerTrajectoryVisual() {
                   </g>
                 );
               })}
-              <text x="410" y="154" fill="#94a3b8" fontSize="9" fontFamily="IBM Plex Mono">Step</text>
+              <text x="410" y="154" fill="#5b717b" fontSize="9" fontFamily="IBM Plex Mono">Step</text>
             </svg>
           </div>
 
@@ -14372,7 +14372,7 @@ function OptimizerTrajectoryVisual() {
                 >
                   <div className="otv-stat-head">
                     <span className="otv-stat-name" style={{ color: info.color }}>{info.name}</span>
-                    <span className="otv-stat-loss" style={{ color: stat.loss < 0.1 ? '#10b981' : '#f8fafc' }}>
+                    <span className="otv-stat-loss" style={{ color: stat.loss < 0.1 ? '#0f766e' : '#102735' }}>
                       Loss: {stat.loss >= 100 ? stat.loss.toFixed(1) : stat.loss.toFixed(4)}
                     </span>
                   </div>
@@ -14387,13 +14387,13 @@ function OptimizerTrajectoryVisual() {
                     </div>
                     <div className="otv-metric-item">
                       <span>{t('陡壁梯度 g_⊥:', 'Steep g_⊥:')}</span>
-                      <strong style={{ color: Math.abs(stat.steep) > 5 ? '#f43f5e' : '#cbd5e1' }}>
+                      <strong style={{ color: Math.abs(stat.steep) > 5 ? '#9f1239' : '#102735' }}>
                         {stat.steep.toFixed(2)}
                       </strong>
                     </div>
                     <div className="otv-metric-item">
                       <span>{t('谷底梯度 g_∥:', 'Flat g_∥:')}</span>
-                      <strong style={{ color: '#38bdf8' }}>{stat.flat.toFixed(2)}</strong>
+                      <strong style={{ color: '#1d4e89' }}>{stat.flat.toFixed(2)}</strong>
                     </div>
                   </div>
                 </div>
