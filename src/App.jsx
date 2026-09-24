@@ -13571,7 +13571,158 @@ function computeOptimizerTrajectories(kappa, angleDeg, numSteps = 40) {
     uy += stepY;
   }
 
-  return { sgd: sgdPoints, mom: momPoints, adam: adamPoints, muon: muonPoints, phi, angleDeg, kappa };
+  return { sgd: sgdPoints, mom: momPoints, adam: adamPoints, muon: muonPoints, phi, angleDeg, kappa, loss };
+}
+
+const OPT_COLORS = {
+  sgd: '#E6A23C',
+  mom: '#F2D48A',
+  adam: '#6AA6F2',
+  muon: '#E08AAB',
+};
+
+function ravineHeightColor(t) {
+  const u = Math.max(0, Math.min(1, t));
+  const r = Math.round(16 + u * 210);
+  const g = Math.round(28 + u * 156);
+  const b = Math.round(52 + u * 92);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawRavineSurface(canvas, { loss, trajData, activeStep, visible, angleDeg, colors }) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 640;
+  const h = canvas.clientHeight || 420;
+  canvas.width = Math.max(1, Math.floor(w * dpr));
+  canvas.height = Math.max(1, Math.floor(h * dpr));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#0c121c';
+  ctx.fillRect(0, 0, w, h);
+
+  const yaw = -0.72;
+  const pitch = 0.58;
+  const xScale = w * 0.034;
+  const yScale = h * 0.062;
+  const project = (x, y, z) => {
+    const xr = x * Math.cos(yaw) - y * Math.sin(yaw);
+    const yr = x * Math.sin(yaw) + y * Math.cos(yaw);
+    return [
+      w * 0.5 + xr * xScale,
+      h * 0.62 + yr * Math.sin(pitch) * yScale - z * Math.cos(pitch) * yScale,
+    ];
+  };
+
+  const nx = 36;
+  const ny = 22;
+  const x0 = -10.5;
+  const x1 = 10.5;
+  const y0 = -4.2;
+  const y1 = 4.2;
+  const sampleLoss = (x, y) => Math.log1p(Math.max(0, loss(x, y)));
+  let zMax = 1;
+  for (let j = 0; j <= ny; j += 1) {
+    for (let i = 0; i <= nx; i += 1) {
+      const x = x0 + ((x1 - x0) * i) / nx;
+      const y = y0 + ((y1 - y0) * j) / ny;
+      zMax = Math.max(zMax, sampleLoss(x, y));
+    }
+  }
+  const zOf = (x, y) => (sampleLoss(x, y) / zMax) * 7.2;
+  const grid = [];
+  for (let j = 0; j <= ny; j += 1) {
+    const row = [];
+    for (let i = 0; i <= nx; i += 1) {
+      const x = x0 + ((x1 - x0) * i) / nx;
+      const y = y0 + ((y1 - y0) * j) / ny;
+      row.push({ x, y, z: zOf(x, y) });
+    }
+    grid.push(row);
+  }
+
+  const quads = [];
+  for (let j = 0; j < ny; j += 1) {
+    for (let i = 0; i < nx; i += 1) {
+      const a = grid[j][i];
+      const b = grid[j][i + 1];
+      const c = grid[j + 1][i + 1];
+      const d = grid[j + 1][i];
+      const depth = (a.x + b.x + c.x + d.x) * Math.sin(yaw) + (a.y + b.y + c.y + d.y) * Math.cos(yaw);
+      quads.push({ a, b, c, d, depth, z: (a.z + b.z + c.z + d.z) / 4 });
+    }
+  }
+  quads.sort((p, q) => q.depth - p.depth);
+
+  quads.forEach((quad) => {
+    const pts = [quad.a, quad.b, quad.c, quad.d].map((p) => project(p.x, p.y, p.z));
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    pts.slice(1).forEach(([px, py]) => ctx.lineTo(px, py));
+    ctx.closePath();
+    ctx.fillStyle = ravineHeightColor(quad.z / 7.2);
+    ctx.fill();
+  });
+
+  const floor = (x, y) => project(x, y, 0);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(232, 220, 196, 0.28)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1.2;
+  const rad = (angleDeg * Math.PI) / 180;
+  const axis = (dx, dy) => {
+    const p1 = floor(-11 * dx, -4 * dy);
+    const p2 = floor(11 * dx, 4 * dy);
+    ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]);
+    ctx.stroke();
+  };
+  axis(Math.cos(rad), Math.sin(rad));
+  axis(-Math.sin(rad), Math.cos(rad));
+  ctx.restore();
+
+  Object.keys(colors).forEach((key) => {
+    if (!visible[key]) return;
+    const pts = trajData[key].slice(0, activeStep + 1);
+    ctx.beginPath();
+    pts.forEach((p, idx) => {
+      const [px, py] = floor(p.x, p.y);
+      if (idx === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = `${colors[key]}55`;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    pts.forEach((p, idx) => {
+      const [px, py] = project(p.x, p.y, zOf(p.x, p.y) + 0.18);
+      if (idx === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = colors[key];
+    ctx.lineWidth = 2.4;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    const head = pts[pts.length - 1];
+    if (!head) return;
+    const [hx, hy] = project(head.x, head.y, zOf(head.x, head.y) + 0.18);
+    ctx.beginPath();
+    ctx.fillStyle = colors[key];
+    ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f4efe6';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  });
+
+  const [ox, oy] = project(0, 0, 0.05);
+  ctx.beginPath();
+  ctx.fillStyle = '#f4efe6';
+  ctx.arc(ox, oy, 3.5, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function OptimizerTrajectoryVisual() {
@@ -13587,6 +13738,7 @@ function OptimizerTrajectoryVisual() {
     muon: true,
   });
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const surfaceRef = useRef(null);
 
   // Auto-play timer
   useEffect(() => {
@@ -13605,6 +13757,19 @@ function OptimizerTrajectoryVisual() {
 
   const angleDeg = landscape === 'rotated' ? 30 : 0;
   const trajData = useMemo(() => computeOptimizerTrajectories(kappa, angleDeg, 40), [kappa, angleDeg]);
+
+  useEffect(() => {
+    const canvas = surfaceRef.current;
+    if (!canvas) return;
+    drawRavineSurface(canvas, {
+      loss: trajData.loss,
+      trajData,
+      activeStep,
+      visible: visibleOpts,
+      angleDeg,
+      colors: OPT_COLORS,
+    });
+  }, [trajData, activeStep, visibleOpts, angleDeg]);
 
   const toggleOpt = (key) => {
     setVisibleOpts((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -13630,29 +13795,29 @@ function OptimizerTrajectoryVisual() {
   const optMeta = {
     sgd: {
       name: 'SGD (Isotropic)',
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.15)',
+      color: OPT_COLORS.sgd,
+      bg: 'rgba(230, 162, 60, 0.16)',
       descZh: '各向同性标量步长：陡壁剧烈震荡，平缓谷底前进停滞',
       descEn: 'Isotropic scalar step: high-curvature oscillations, slow valley crawling',
     },
     mom: {
       name: 'Polyak Momentum',
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.15)',
+      color: OPT_COLORS.mom,
+      bg: 'rgba(242, 212, 138, 0.16)',
       descZh: '经典重球动量：阻尼陡壁高频震荡，累加谷底平缓方向 O(√κ) 加速',
       descEn: 'Heavy-ball momentum: cancels alternating signs, accumulates forward velocity',
     },
     adam: {
       name: 'Adam (Diagonal Adaptive)',
-      color: '#0ea5e9',
-      bg: 'rgba(14, 165, 233, 0.15)',
+      color: OPT_COLORS.adam,
+      bg: 'rgba(106, 166, 242, 0.16)',
       descZh: '坐标轴对角预条件化 (1/√v)：轴对齐时迅速平抑曲率，旋转曲面下受限于对角假设',
       descEn: 'Coordinate-wise rescaling (1/√v): rescales axis-aligned ravines, warped by rotation',
     },
     muon: {
       name: 'Muon (Spectral Orthogonal)',
-      color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.15)',
+      color: OPT_COLORS.muon,
+      bg: 'rgba(224, 138, 171, 0.16)',
       descZh: '矩阵谱正交投影 (U V^T)：奇异值全部规整为 1.0，完全坐标旋转不变，直达极小值',
       descEn: 'Spectral polar projection (U V^T): unit singular values, rotationally equivariant',
     },
@@ -13815,8 +13980,18 @@ function OptimizerTrajectoryVisual() {
 
       {/* Main Visual Section */}
       <div className="otv-main-grid">
-        {/* Left: 2D Contour Canvas */}
         <div className="otv-canvas-box">
+          <div className="otv-canvas-bar">
+            <span className="otv-canvas-title">
+              {t('3D 病态峡谷：轨迹贴在损失面上', '3D ravine: trajectories sit on the loss surface')}
+            </span>
+            <span className="otv-canvas-badge">
+              {t('高度 = log(1+loss)', 'height = log(1+loss)')}
+            </span>
+          </div>
+          <div className="otv-surface-wrap">
+            <canvas ref={surfaceRef} className="otv-surface" aria-label={t('三维损失峡谷', '3D loss ravine')} />
+          </div>
           <div className="otv-canvas-bar">
             <span className="otv-canvas-title">
               {t('2D 损失等高线与参数更新轨迹 (Phase Portrait in Ravine)', '2D Loss Landscape & Trajectory Phase Portrait')}
@@ -13830,9 +14005,9 @@ function OptimizerTrajectoryVisual() {
             <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="otv-svg">
               <defs>
                 <radialGradient id="otv-min-glow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                  <stop offset="60%" stopColor="#10b981" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#f4efe6" stopOpacity="0.85" />
+                  <stop offset="60%" stopColor="#f4efe6" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#f4efe6" stopOpacity="0" />
                 </radialGradient>
                 <marker
                   id="otv-arrow-sgd"
@@ -13843,7 +14018,7 @@ function OptimizerTrajectoryVisual() {
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill={OPT_COLORS.sgd} />
                 </marker>
                 <marker
                   id="otv-arrow-mom"
@@ -13854,7 +14029,7 @@ function OptimizerTrajectoryVisual() {
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill={OPT_COLORS.mom} />
                 </marker>
                 <marker
                   id="otv-arrow-adam"
@@ -13865,7 +14040,7 @@ function OptimizerTrajectoryVisual() {
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#0ea5e9" />
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill={OPT_COLORS.adam} />
                 </marker>
                 <marker
                   id="otv-arrow-muon"
@@ -13876,7 +14051,7 @@ function OptimizerTrajectoryVisual() {
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill={OPT_COLORS.muon} />
                 </marker>
               </defs>
 
@@ -13935,8 +14110,8 @@ function OptimizerTrajectoryVisual() {
 
               {/* Global Optimum Marker */}
               <circle cx={cx} cy={cy} r="18" fill="url(#otv-min-glow)" />
-              <circle cx={cx} cy={cy} r="4" fill="#10b981" />
-              <text x={cx + 10} y={cy + 4} fill="#10b981" fontSize="11" fontWeight="700" fontFamily="IBM Plex Mono">
+              <circle cx={cx} cy={cy} r="4" fill="#f4efe6" />
+              <text x={cx + 10} y={cy + 4} fill="#f4efe6" fontSize="11" fontWeight="700" fontFamily="IBM Plex Mono">
                 θ* = (0, 0)
               </text>
 
@@ -14046,6 +14221,33 @@ function OptimizerTrajectoryVisual() {
 
         {/* Right: Telemetry & Convergence Chart */}
         <div className="otv-telemetry-box">
+          <div className="otv-chart-panel">
+            <div className="otv-panel-title-bar">
+              <span className="otv-panel-title">{t('本步位移：谷底方向 vs 陡壁方向', 'This step: valley axis vs steep wall')}</span>
+            </div>
+            <svg viewBox="0 0 460 120" className="otv-chart-svg">
+              <rect width="460" height="120" fill="#090d16" />
+              <line x1="230" y1="16" x2="230" y2="104" stroke="#334155" />
+              <text x="8" y="14" fill="#8aa0b4" fontSize="10">{t('← 谷底', '← valley')}</text>
+              <text x="360" y="14" fill="#c47a7a" fontSize="10">{t('陡壁 →', 'wall →')}</text>
+              {Object.keys(optMeta).map((key, index) => {
+                if (!visibleOpts[key]) return null;
+                const stat = currentStats[key];
+                const rad = (angleDeg * Math.PI) / 180;
+                const along = stat.stepX * Math.cos(rad) + stat.stepY * Math.sin(rad);
+                const across = -stat.stepX * Math.sin(rad) + stat.stepY * Math.cos(rad);
+                const y = 28 + index * 22;
+                const scaleBar = 42;
+                return (
+                  <g key={`eig-${key}`}>
+                    <text x="8" y={y + 4} fill={optMeta[key].color} fontSize="10">{optMeta[key].name.split(' ')[0]}</text>
+                    <line x1={230} y1={y} x2={230 + along * scaleBar} y2={y} stroke={optMeta[key].color} strokeWidth="6" strokeLinecap="round" />
+                    <line x1={230} y1={y + 8} x2={230 + across * scaleBar} y2={y + 8} stroke={optMeta[key].color} strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
           {/* Convergence Plot */}
           <div className="otv-chart-panel">
             <div className="otv-panel-title-bar">
@@ -14174,7 +14376,7 @@ function OptimizerTrajectoryVisual() {
             </thead>
             <tbody>
               <tr>
-                <td style={{ color: '#ef4444', fontWeight: 700 }}>SGD (Vanilla)</td>
+                <td style={{ color: OPT_COLORS.sgd, fontWeight: 700 }}>SGD (Vanilla)</td>
                 <td><code>P = (1/η) · I</code></td>
                 <td>{t('各向同性超球体：所有方向一视同仁', 'Isotropic hypersphere: uniform across all directions')}</td>
                 <td>{t('严格保持，但步长受制于 λ_max', 'Strict, but step size capped by λ_max')}</td>
@@ -14182,7 +14384,7 @@ function OptimizerTrajectoryVisual() {
                 <td><code>O(κ · log(1/ε))</code></td>
               </tr>
               <tr>
-                <td style={{ color: '#f59e0b', fontWeight: 700 }}>Polyak Momentum</td>
+                <td style={{ color: OPT_COLORS.mom, fontWeight: 700 }}>Polyak Momentum</td>
                 <td><code>(1 - β L)^(-1)</code> {t('频域滤波', '(Filter)')}</td>
                 <td>{t('重球阻尼：高频振荡对消，低频共识放大', 'Harmonic damping: cancels alternating signs, builds velocity')}</td>
                 <td>{t('随特征向量空间衰减', 'Damped along eigenspaces')}</td>
@@ -14190,7 +14392,7 @@ function OptimizerTrajectoryVisual() {
                 <td><code>O(√κ · log(1/ε))</code> {t('(平方根加速)', '(√κ speedup)')}</td>
               </tr>
               <tr>
-                <td style={{ color: '#0ea5e9', fontWeight: 700 }}>Adam / AdamW</td>
+                <td style={{ color: OPT_COLORS.adam, fontWeight: 700 }}>Adam / AdamW</td>
                 <td><code>P = diag(√v_t + ε)</code></td>
                 <td>{t('坐标轴对齐超长方体：独立缩放坐标轴', 'Axis-aligned box: scales coordinates independently')}</td>
                 <td><strong style={{ color: '#f43f5e' }}>{t('破坏（依赖坐标系）', 'Breaks (Coordinate Dependent)')}</strong></td>
@@ -14198,10 +14400,10 @@ function OptimizerTrajectoryVisual() {
                 <td>{t('轴对齐极速；交叉耦合时有次级振荡', 'Fast on aligned; sub-oscillations if coupled')}</td>
               </tr>
               <tr>
-                <td style={{ color: '#10b981', fontWeight: 700 }}>Muon (2024)</td>
+                <td style={{ color: OPT_COLORS.muon, fontWeight: 700 }}>Muon (2024)</td>
                 <td><code>P = O(M) = U V^T</code></td>
                 <td>{t('矩阵谱正交流形：奇异值全部规整为 1.0', 'Matrix polar projection: all singular values normalized to 1')}</td>
-                <td><strong style={{ color: '#10b981' }}>{t('流形酉变换严格不变', 'Strict Unitary Invariance')}</strong></td>
+                <td><strong style={{ color: OPT_COLORS.muon }}>{t('流形酉变换严格不变', 'Strict Unitary Invariance')}</strong></td>
                 <td><code>κ_spectral ≡ 1.0</code></td>
                 <td>{t('矩阵维度全谱无偏加速，收敛提速 1.5~2×', 'Full spectral acceleration, 1.5~2× speedup')}</td>
               </tr>

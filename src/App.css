@@ -25011,6 +25011,18 @@ button.overview-support-card.active {
   color: #38bdf8;
 }
 
+.otv-surface-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #0c121c;
+}
+
+.otv-surface {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .otv-svg-wrap {
   width: 100%;
   aspect-ratio: 16 / 10;
