@@ -1,1906 +1,1306 @@
-# ML Coding · 从零实现 LLM
+# ML Coding · 从零构建大语言模型 (Build a Modern GPT from Scratch)
 
-这一章把原来的八个 ML Coding 小节合并成一条完整路线：先把原始文本变成 token，再把 token 喂进 Transformer，再把训练、采样和实验闭环接起来。每个练习都对应一块真实系统部件，所以阅读顺序也应该跟系统装配顺序一致，而不是把它们当成互不相关的模板题。
+> **导读**：本教程参考 Stanford **CS336: Language Modeling from Scratch** 课程大纲与现代开源基座大模型（如 LLaMA 3、Mistral）的工业级架构，从最底层的字节流处理开始，逐行实现一个完整的现代化 Decoder-Only 大语言模型。
+>
+> 我们不依赖 HuggingFace `transformers` 或任何高阶封装库，只使用纯 Python 与基础 PyTorch 算子，从零装配以下八大核心部件：
+> 1. **分词体系**：字节级 BPE 分词器（UTF-8 字节编码、GPT-2 正则预分词、词表构建、编码与解码）
+> 2. **张量基石**：RMSNorm（均方根归一化）、SwiGLU（门控前馈网络）、RoPE（旋转位置编码）
+> 3. **注意力引擎**：因果多头自注意力（Causal Multi-Head Attention）与分组查询注意力（GQA）
+> 4. **模型装配**：Pre-RMSNorm 残差块（Transformer Block）与端到端 GPT 模型（含 Weight Tying）
+> 5. **数值稳定损失**：基于 Log-Sum-Exp 技巧的手写移位交叉熵与困惑度（Perplexity）计算
+> 6. **优化动力学**：手写 AdamW 优化器（解耦权重衰减、参数分组过滤）、余弦退火学习率调度与全局梯度裁剪
+> 7. **训练与评测流水线**：一维 Token 数组的高效 Batch 采样器、训练循环、验证集评估与 Checkpoint 状态持久化
+> 8. **自回归推理**：Greedy、Temperature、Top-K 与 Top-P（Nucleus）核采样策略，以及 KV Cache 机制深度剖析
 
-核心心智模型只有一条：
+---
 
-```text
-raw text
--> Unicode / UTF-8
--> pre-tokenization
--> BPE training
--> tokenizer runtime
--> token id dataset
--> tensor modules
--> attention + Transformer LM
--> loss / optimizer / scheduler
--> training loop / checkpoint / generation
--> experiments / ablations / iteration
+## 00. 现代化 GPT 架构全景与系统蓝图
+
+### 现代 Decoder-Only 架构的演进脉络
+
+自 2017 年 *Attention Is All You Need* 与 2019 年 *GPT-2* 发布以来，Decoder-Only Transformer 经历了数轮关键的架构进化。现代开源基础模型（如 LLaMA、Mistral、Gemma）相较于初代 GPT-2 确立了四个标准设计范式：
+
+| 模块组件 | 初代 GPT-2 (2019) | 现代基座模型 (LLaMA 3 / Mistral) | 核心工程与算法优势 |
+| :--- | :--- | :--- | :--- |
+| **归一化层** | Post-LayerNorm / Pre-LayerNorm | **Pre-RMSNorm** | 舍弃均值计算，仅缩放方差；计算开销降低约 7%，混合精度训练更稳定 |
+| **位置编码** | 绝对可学习位置编码 (Absolute PE) | **旋转位置编码 (RoPE)** | 将相对位置编码为复数内积；具备天然的相对距离衰减性与长度外推能力 |
+| **激活与 FFN** | 标量 GELU 前馈网络 ($4D$) | **SwiGLU 门控前馈网络 ($\frac{8}{3}D$)** | 引入门控线性单元增强非线性表征；在严格匹配参数量的前提下显著降低困惑度 |
+| **注意力机制** | 标准多头自注意力 (MHA) | **分组查询注意力 (GQA)** | 多个 Query 头共享一组 Key/Value 头；自回归推理时的 KV Cache 显存暴降数倍 |
+| **权重绑定** | 可选 Weight Tying | **Embedding 与 LM Head 权重共享** | 节省 $V \times D$ 规模参数，对中小型基座模型提供强正则化效果并节省显存 |
+
+```mermaid
+flowchart TD
+    subgraph DataPipeline["01. 数据预处理与分词"]
+        A["原始文本 (Raw Text)"] --> B["预分词正则切分 (Regex Pre-tokenization)"]
+        B --> C["字节级 BPE 编码 (Byte-Level BPE)"]
+        C --> D["Token ID 序列 (Int64 Tensor: [B, T])"]
+    end
+
+    subgraph TransformerLM["02. 现代 GPT 主干网络"]
+        D --> E["词嵌入层 (Token Embedding: [B, T, D])"]
+        E --> R0["残差流主干 (Residual Highway)"]
+        
+        subgraph Block["N x Transformer Block (Pre-RMSNorm)"]
+            R0 --> N1["RMSNorm"]
+            N1 --> QKV["QKV 线性投影"]
+            QKV --> ROPE["RoPE 旋转位置编码 (仅作用于 Q 与 K)"]
+            ROPE --> CA["因果缩放点积注意力 (Causal SDPA)"]
+            CA --> O["Output 投影 W_o"]
+            O --> ADD1["残差相加 (Residual Add)"]
+            R0 --> ADD1
+            
+            ADD1 --> N2["RMSNorm"]
+            N2 --> SWIGLU["SwiGLU 门控前馈网络 (Gate & Up & Down)"]
+            SWIGLU --> ADD2["残差相加 (Residual Add)"]
+            ADD1 --> ADD2
+        end
+        
+        ADD2 --> FN["最终归一化 (Final RMSNorm)"]
+        FN --> LMH["输出投影头 (LM Head: [B, T, V])"]
+    end
+
+    subgraph ObjectivesAndSampling["03. 目标与推理闭环"]
+        LMH -->|训练阶段| LOSS["数值稳定 Shifted Cross-Entropy Loss"]
+        LOSS --> OPT["手写 AdamW + 余弦调度 + 梯度裁剪"]
+        LMH -->|推理阶段| SAMPLE["Top-K / Top-P / Temperature 采样器"]
+        SAMPLE --> OUT["下一个预测 Token 生成"]
+    end
 ```
 
-## 学习顺序
+### 全局张量形状推演表 (Tensor Shape Flow)
 
-| 顺序 | 模块 | 你会搭出的部件 | 关键问题 |
-| --- | --- | --- | --- |
-| 1 | Unicode、UTF-8 与 pretokenization | byte-level tokenizer 的输入边界 | Python `str`、code point、UTF-8 bytes 到底差在哪 |
-| 2 | BPE 训练 | `vocab` 与 `merges` | 什么 pair 值得合并，怎么保证统计和边界都正确 |
-| 3 | Tokenizer runtime 与数据导出 | `encode` / `decode` / token array | 训练好的 merges 怎么稳定落地到推理与训练数据 |
-| 4 | Tensor modules | Embedding、RMSNorm、SwiGLU、RoPE | Transformer 的基础张量模块怎么按 shape 拼起来 |
-| 5 | Attention 与 Transformer LM | 可训练的语言模型前向图 | 因果注意力、残差流和 logits 怎么连起来 |
-| 6 | 训练组件 | loss、AdamW、LR schedule、grad clip | 为什么训练会稳定或不稳定 |
-| 7 | 训练循环与生成 | dataloader、checkpoint、decoding | 一个能跑起来的训练脚本最少需要什么 |
-| 8 | 实验与 ablation | 可复现实验框架 | 哪些设计是真的在帮模型，哪些只是直觉 |
+设 Batch 大小为 $B$，序列上下文长度为 $T$，隐藏层维度为 $D$，注意力头数为 $H$，Key/Value 头数为 $H_{kv}$，单头维度为 $D_h = D / H$，FFN 中间层维度为 $D_{\text{ff}}$，词表大小为 $V$：
 
-## 模块一：Unicode、UTF-8 与 Pretokenization
+| 阶段 / 算子 | 输入张量形状 | 输出张量形状 | 维度计算说明 |
+| :--- | :--- | :--- | :--- |
+| **Token 输入** | 文本字符串列表 | `(B, T)` | `dtype=torch.long`，每个元素为 $[0, V-1]$ 整数 |
+| **Token Embedding** | `(B, T)` | `(B, T, D)` | 查表映射，第 $t$ 个位置对应 $D$ 维稠密特征向量 |
+| **RMSNorm** | `(..., D)` | `(..., D)` | 沿最后一维归一化，保持形状完全不变 |
+| **Q 投影** | `(B, T, D)` | `(B, H, T, Dh)` | 线性映射到 $D$ 维并重排为多头格式 |
+| **K, V 投影 (GQA)** | `(B, T, D)` | `(B, H_kv, T, Dh)` | 线性映射到 $H_{kv} \times D_h$ 维并重排 |
+| **RoPE 旋转作用** | `(B, H, T, Dh)` | `(B, H, T, Dh)` | 将前后各半特征平面作 2D 复数旋转 |
+| **因果注意力得分** | $Q \in (B, H, T, D_h)$, $K \in (B, H, T, D_h)$ | `(B, H, T, T)` | $Q K^\top / \sqrt{D_h}$ 加因果掩码后 Softmax |
+| **注意力值聚合** | $\text{Scores} \in (B, H, T, T)$, $V \in (B, H, T, D_h)$ | `(B, T, D)` | 乘 $V$ 后转置重排，接输出矩阵 $W_o$ |
+| **SwiGLU FFN** | `(B, T, D)` | `(B, T, D)` | $( \text{SiLU}(x W_{\text{gate}}) \odot x W_{\text{up}} ) W_{\text{down}}$，中间层维度为 $D_{\text{ff}}$ |
+| **LM Head 输出** | `(B, T, D)` | `(B, T, V)` | 未归一化的预测分值 (Logits) |
+| **训练 Shift Loss** | `Logits[:, :-1, :]`, `Targets[:, 1:]` | 标量标量 Scalar | 每一个前驱位置预测下一个后继位置的交叉熵 |
 
-对应 CS336 Assignment 1：Section 2.1-2.4。
+---
 
-Tokenizer 的最小事实是：模型不看“字符”，模型只看整数；而 byte-level tokenizer 在映射成整数之前，先看的是 bytes。`str`、code point 和 UTF-8 bytes 不是同一层抽象，如果这三层没分清，后面 special token 边界、BPE merge、decode replacement character 都会一起出错。
+## 01. 分词体系：字节级 BPE 分词器 (Byte-Level BPE Tokenizer)
 
-### Lab · Unicode Probe
+### 为什么大语言模型必须采用字节级（Byte-Level）分词？
 
-Unicode code point 是抽象字符编号，UTF-8 是它的可变长字节表示。`ord` / `chr` 工作在 code point 层，`encode("utf-8")` 才进入 byte 层；`repr` 和 `print` 也不是一回事，因为控制字符可能存在但不可见。
+在自然语言处理早期，分词器往往基于词（Word-level）或字符（Character-level）。基于词会导致词表庞大且无法应对未登录词；基于纯字符会导致序列过长。
 
-最值得先看的不是复杂字符，而是对比两个极端：`U+0041` 这样的 ASCII 字符只占一个 byte，`U+1F600` 这样的 emoji 需要四个 byte。这个差别就是后面“字符数”和“token 前 bytes 数”不相等的根源。
+现代 LLM（自 GPT-2 到 LLaMA 3）全面采用**字节级对（Byte-Pair Encoding, BPE）**，其本质是：
+1. **彻底根除 `<unk>` 标记**：计算机世界中任何文字（中文、英文、日文、数学符号、Emoji）在底层都是 UTF-8 编码的字节流。初始词表直接包含全体 256 个基本字节（`0x00` 到 `0xFF`）。因此任何未知序列都能退化拆解为单字节，绝不会出现无法编码的未知字符。
+2. **高频短语高效压缩**：在 256 个基础字节之上，统计语料库中最高频连续出现的字节对并反复合并，将常见单字与单词合成为单一 Token。
 
-#### Quick Coding：`inspect_unicode_codepoint`
+### 预分词（Pre-tokenization）正则引擎设计
+
+如果直接在整篇文本的字节流上统计 BPE，算法会把标点符号与单词前缀混合在一起（例如 `"hello"` 与 `", "` 合并为 `",hello"`），或者把数字与换行符跨边界合并。
+
+GPT-2 与现代模型引入了**预分词正则表达式**，在统计 BPE 前先将文本切分成独立的语义原子块：
 
 ```python
-def inspect_unicode_codepoint(cp: int) -> dict:
-    ...
+import re
+
+# 工业标准 GPT-2 预分词正则表达式
+# 1. 常见缩写与所有格 ('s, 't, 're, 've, 'm, 'll, 'd)
+# 2. 连续字母序列（支持 Unicode 字母分类）
+# 3. 连续数字序列
+# 4. 非空白非字母非数字的标点符号群
+# 5. 纯空白字符序列（换行、缩进空格）
+GPT2_PRETOKEN_PATTERN = re.compile(
+    r"""'s|'t|'re|'ve|'m|'ll|'d| ?[^\W\d_]+| ?\d+| ?[^\s\w]+|\s+(?!\S)|\s+"""
+)
 ```
 
-<details>
-<summary>参考答案</summary>
+每个原子块内部独立切分为单字节序列，BPE 统计与合并**绝对不允许跨越原子块的物理边界**。
+
+### 完整实现：`ByteLevelBPETokenizer`
+
+下面的实现完全使用 Python 标准库，包含完整的词表训练、确定性 Tie-breaking、编码以及带 UTF-8 容错的解码：
 
 ```python
-def inspect_unicode_codepoint(cp: int) -> dict:
-    ch = chr(cp)
-    return {
-        "codepoint": f"U+{cp:04X}",
-        "character": ch,
-        "repr": repr(ch),
-        "utf8_bytes": list(ch.encode("utf-8")),
-        "utf8_hex": ch.encode("utf-8").hex(" "),
-        "is_printable": ch.isprintable(),
-    }
-```
-
-```python
-assert ord(chr(65)) == 65
-assert inspect_unicode_codepoint(0x41)["utf8_bytes"] == [65]
-assert inspect_unicode_codepoint(0x1F600)["utf8_bytes"] == [240, 159, 152, 128]
-```
-
-`print(ch)` 面向显示效果，`repr(ch)` 面向调试。零宽字符、换行、控制字符这类问题，通常只有 `repr` 看得清。
-
-</details>
-
-### Lab · UTF-8 Encoding
-
-UTF-8、UTF-16、UTF-32 的差异不是“谁更先进”，而是谁在当前文本分布上更省、更稳、更方便和字节流对接。LLM tokenizer 几乎总是在 UTF-8 上工作，因为训练语料本来就是字节流，UTF-8 也不会像 UTF-16/32 那样在英文上额外付固定宽度成本。
-
-一个简单观察足够说明问题：`"hello"` 的 char count 和 UTF-8 byte count 一样，但 `"こんにちは"` 和 emoji 的 byte count 明显更长。再往前一步，invalid byte sequence 还逼你显式选择 `strict`、`replace` 或 `ignore`，这正是后面 decode 语义必须固定的原因。
-
-#### Quick Coding：`compare_encodings`
-
-```python
-def compare_encodings(text: str) -> list[dict]:
-    ...
-
-def decode_invalid(raw: bytes, encoding="utf-8") -> dict:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def compare_encodings(text: str):
-    rows = []
-    for enc in ["utf-8", "utf-16", "utf-32"]:
-        raw = text.encode(enc)
-        rows.append({
-            "encoding": enc,
-            "num_chars": len(text),
-            "num_bytes": len(raw),
-            "bytes": raw,
-            "roundtrip": raw.decode(enc),
-        })
-    return rows
-
-def decode_invalid(raw: bytes, encoding="utf-8"):
-    return {
-        "strict": _try_decode(raw, encoding, "strict"),
-        "replace": raw.decode(encoding, errors="replace"),
-        "ignore": raw.decode(encoding, errors="ignore"),
-    }
-
-def _try_decode(raw, encoding, errors):
-    try:
-        return raw.decode(encoding, errors=errors)
-    except UnicodeDecodeError as exc:
-        return type(exc).__name__
-```
-
-结论应该写清楚：
-
-- ASCII 在 UTF-8 下通常是 1 char = 1 byte。
-- CJK 和 emoji 在 UTF-8 下是多 byte。
-- UTF-16 / UTF-32 常有 BOM 或固定宽度开销。
-- invalid byte sequence 不能被默默吞掉，必须明确选择解码策略。
-
-</details>
-
-### Exercise 1 · GPT-2 Style Pretokenizer
-
-Pretokenization 的作用不是“先分词再做 BPE”这么简单。它真正做的是限制 merge 的作用域，让 BPE 只在一个局部片段里学习高频 byte pattern，而不是跨句号、空格、special token 或文档边界随意拼接。没有这层边界，训练出来的 longest token 很容易直接暴露 bug。
-
-这一题里最重要的约束有四个：
-
-| 约束 | 为什么重要 |
-| --- | --- |
-| special token 是 hard boundary | `<|endoftext|>` 之类的控制符必须保持整体 |
-| special token 不进入统计 | 否则 merge 会把控制 token 的内部 bytes 学坏 |
-| 不跨 pre-token boundary 统计 pair | BPE 的作用域是局部片段，不是整段字符串 |
-| 尽量 iterator 风格处理 | 大语料下先 materialize 全量 token list 会浪费内存 |
-
-比如文本 `Doc1<|endoftext|>Doc2`，正确行为不是把 `<|endoftext|>` 左右的 bytes 放进同一个 merge 池，而是把它当成训练边界。另一个常见例子是 `"some text that i'll pre-tokenize"`，GPT-2 regex 会保留前导空格，并把缩写拆成 assignment 规定的 pattern，这决定了后面 BPE 能看到什么局部统计。
-
-#### Quick Coding：`pretoken_counts`
-
-```python
-def split_by_special(text: str, special_tokens: list[str]):
-    ...
-
-def pretoken_counts(text: str, special_tokens: list[str] | None = None) -> dict:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
+import re
 from collections import Counter
-import regex as re
-
-PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-
-def split_by_special(text, special_tokens):
-    if not special_tokens:
-        yield False, text
-        return
-
-    pattern = "(" + "|".join(re.escape(tok) for tok in sorted(special_tokens, key=len, reverse=True)) + ")"
-    for part in re.split(pattern, text):
-        if not part:
-            continue
-        yield part in special_tokens, part
-
-def pretoken_counts(text, special_tokens=None):
-    counts = Counter()
-    for is_special, part in split_by_special(text, special_tokens or []):
-        if is_special:
-            continue
-        for match in re.finditer(PAT, part):
-            token_bytes = match.group(0).encode("utf-8")
-            counts[tuple(bytes([b]) for b in token_bytes)] += 1
-    return counts
-```
-
-这里把每个 pre-token 表示成 `tuple[bytes, ...]`，后面的 BPE merge 才能直接把相邻 `bytes` 拼成更长的 `bytes`。
-
-</details>
-
-#### 本模块易错点
-
-- byte-level tokenizer 的基础单位是 `bytes`，不是 Python `str`。
-- 单个 byte 也必须是 `bytes` object，例如 `b"a"`。
-- special token 在训练中是边界，在 encode 中是整体 token。
-- `len(text)` 和 `len(text.encode("utf-8"))` 不是同一个量。
-
-## 模块二：BPE 训练
-
-对应 CS336 Assignment 1：Section 2.4-2.5。
-
-BPE 训练在做一件很具体的事：从 byte 序列里反复找最值得合并的相邻 pair，把最常见的局部模式变成更长的 token。它不理解语义，也不“知道单词”，它只是在一个受限边界内压缩高频局部统计。
-
-最容易被忽略的两点是 weighted frequency 和 deterministic tie-breaking。一个 pre-token 如果出现 1000 次，它里面的每个 pair 都要被算 1000 次；两个 pair 频率相同时，assignment 要求选 lexicographically greater pair，不能让结果依赖 `Counter` 插入顺序。
-
-### Exercise 1 · Toy BPE Merge Simulator
-
-先在小语料上手推 merge loop，能帮你看清“统计 pair”与“非重叠替换”是两步不同的逻辑。比如：
-
-| round | pre-token counts | top pair 直觉 |
-| --- | --- | --- |
-| 0 | `(l, o, w) x2`, `(l, o, w, e, r) x1` | `(o, w)` 和 `(l, o)` 频率都高，tie-breaking 会决定先合谁 |
-| 1 | 把 winner 做 non-overlapping merge | 只替换相邻且不重叠的出现位置 |
-| 2 | 重新统计新的 pair | 旧 pair 频率会因为 token 边界变化而消失 |
-
-这里的 worked example 比结论更重要：BPE 不是把所有出现过的 pair 一起改写，而是每轮只选一个 winner，再重建新的局部表示。
-
-#### Quick Coding：`run_bpe_merges`
-
-```python
-from collections import Counter
-
-def count_pairs(pretoken_counts: dict[tuple[bytes, ...], int]) -> Counter:
-    ...
-
-def merge_one_pretoken(pieces: tuple[bytes, ...], pair: tuple[bytes, bytes]) -> tuple[bytes, ...]:
-    ...
-
-def run_bpe_merges(pretoken_counts, num_merges):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-from collections import Counter
-
-def count_pairs(pretoken_counts):
-    pair_counts = Counter()
-    for pieces, freq in pretoken_counts.items():
-        for a, b in zip(pieces, pieces[1:]):
-            pair_counts[(a, b)] += freq
-    return pair_counts
-
-def merge_one_pretoken(pieces, pair):
-    out = []
-    i = 0
-    while i < len(pieces):
-        if i + 1 < len(pieces) and (pieces[i], pieces[i + 1]) == pair:
-            out.append(pieces[i] + pieces[i + 1])
-            i += 2
-        else:
-            out.append(pieces[i])
-            i += 1
-    return tuple(out)
-
-def run_bpe_merges(pretoken_counts, num_merges):
-    counts = dict(pretoken_counts)
-    merges = []
-    for _ in range(num_merges):
-        pair_counts = count_pairs(counts)
-        if not pair_counts:
-            break
-        winner = max(pair_counts, key=lambda p: (pair_counts[p], p))
-        merges.append(winner)
-        next_counts = Counter()
-        for pieces, freq in counts.items():
-            next_counts[merge_one_pretoken(pieces, winner)] += freq
-        counts = dict(next_counts)
-    return merges, counts
-```
-
-不要用 `Counter.most_common(1)` 做 winner 选择。它的 tie-breaking 依赖插入顺序，不满足 assignment 的确定性要求。
-
-</details>
-
-### Exercise 2 · Full BPE Trainer
-
-完整 trainer 把上一题的局部逻辑放进一个全流程里：先准备 0..255 的 byte vocabulary，再加 special tokens，再根据语料反复找 winner pair，直到 `vocab_size` 满。这里的 `vocab_size` 不是“merge 多少次”，而是总词表大小，必须把 byte vocab、special tokens 和 merge 新 token 全部算进去。
-
-最关键的边界条件还是上一模块的那几个：special token 是 hard boundary，不参与 pair statistics，也不允许跨边界 merge。如果这一层写错，后面训练出的 longest token 通常会直接跨文档。
-
-#### Quick Coding：`train_bpe`
-
-```python
-def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-from collections import Counter
-
-def train_bpe(input_path, vocab_size, special_tokens):
-    vocab = {i: bytes([i]) for i in range(256)}
-    next_id = 256
-    for tok in special_tokens:
-        vocab[next_id] = tok.encode("utf-8")
-        next_id += 1
-
-    pretoken_counts = build_pretoken_counts(input_path, special_tokens)
-    merges = []
-
-    while len(vocab) < vocab_size:
-        pair_counts = count_pairs(pretoken_counts)
-        if not pair_counts:
-            break
-
-        pair = max(pair_counts, key=lambda p: (pair_counts[p], p))
-        merged = pair[0] + pair[1]
-        merges.append(pair)
-        vocab[len(vocab)] = merged
-
-        updated = Counter()
-        for pieces, freq in pretoken_counts.items():
-            updated[merge_one_pretoken(pieces, pair)] += freq
-        pretoken_counts = updated
-
-    return vocab, merges
-```
-
-`build_pretoken_counts` 需要复用前一模块的规则，不能悄悄变成另一套 pretokenization 语义。
-
-</details>
-
-### Exercise 3 · BPE Performance Pass
-
-朴素 trainer 的复杂度瓶颈非常直接：每轮都重新扫描全语料、重跑 pair recount。TinyStories 这种数据规模已经能把这种写法拖垮。优化方向也因此很朴素：并行 pretokenization、缓存倒排索引、每轮只更新受上次 merge 影响的 pre-token。
-
-这类优化题的重点不是“写出某个神奇数据结构”，而是能明确说出什么状态可以增量更新，什么必须重算。这里最常用的是 `pair -> set[pretoken]` 的倒排索引。
-
-#### Quick Coding：`build_pair_index`
-
-```python
-def build_pair_index(pretoken_counts):
-    ...
-
-def update_after_merge(pretoken_counts, pair_counts, pair_to_pretokens, winner):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-优化路线应该写清楚：
-
-```text
-1. 先把 raw corpus 切成 document chunks，special token 只作为边界。
-2. 并行 pretokenization，得到 Counter[tuple[bytes, ...]]。
-3. 建 pair -> set[pretoken] 的倒排索引。
-4. 每轮选 winner pair。
-5. 只更新包含 winner pair 的 pre-token。
-6. 对这些 pre-token 的旧 pairs 做 decrement，新 pairs 做 increment。
-```
-
-```python
-pair_counts = build_pair_counts(pretoken_counts)
-pair_to_pretokens = build_inverted_index(pretoken_counts)
-
-for _ in range(num_merges):
-    pair = argmax_pair(pair_counts)
-    affected = list(pair_to_pretokens[pair])
-
-    for old_pieces in affected:
-        freq = pretoken_counts.pop(old_pieces, 0)
-        if freq == 0:
-            continue
-        decrement_pairs(old_pieces, freq, pair_counts, pair_to_pretokens)
-        new_pieces = merge_one_pretoken(old_pieces, pair)
-        pretoken_counts[new_pieces] += freq
-        increment_pairs(new_pieces, freq, pair_counts, pair_to_pretokens)
-```
-
-验收时至少报告 wall-clock、peak memory 和每一步优化后的 speedup，不要只给一个总时间。
-
-</details>
-
-### Experiment · Train TinyStories Tokenizer
-
-这个实验回答的问题不是“10K tokenizer 能不能训出来”，而是“它学到的长 token 是否和数据域一致”。TinyStories 的语言分布很窄，所以一个合理的词表会把高频英文词、带前导空格的词、儿童故事里常见名字和后缀合并成较长 token。
-
-配置固定为：
-
-| 项目 | 值 |
-| --- | --- |
-| dataset | TinyStories |
-| vocab_size | 10,000 |
-| special token | `<|endoftext|>` |
-| 产物 | `vocab.json`、`merges.txt`、profile report |
-
-要重点检查的不是单一 loss，而是 tokenizer 产物是否“像这个域”：
-
-- `<|endoftext|>` 必须是单独 token。
-- `num_merges = 10000 - 256 - 1 = 9743` 这个账要对。
-- 最长 token 应该更像常见词和名字，而不是跨文档乱码。
-- 如果 longest token 看起来像把多篇文档拼到一起，通常是 special-token boundary 写错了。
-
-### Experiment · Train OpenWebText Tokenizer
-
-同样的算法搬到 OpenWebText，问题就变成了分布迁移。OWT 的 vocabulary diversity 更高，长尾更重，URL、HTML、代码片段、符号串和多语种内容都会占掉一部分 merge 预算，所以 32K tokenizer 的“样子”应该和 TinyStories 很不一样。
-
-建议固定对比矩阵：
-
-| data | tokenizer | 主要指标 |
-| --- | --- | --- |
-| TinyStories sample | TinyStories 10K | bytes/token |
-| TinyStories sample | OWT 32K | bytes/token |
-| OWT sample | TinyStories 10K | bytes/token |
-| OWT sample | OWT 32K | bytes/token |
-
-一份合格报告至少要解释三件事：
-
-- OWT tokenizer 为什么在 OWT 上 compression 更好。
-- TinyStories tokenizer 为什么更“干净”，但迁移到 OWT 会退化。
-- 最长 token、最常见 token 和 encode throughput 如何反映数据域差异。
-
-#### 本模块易错点
-
-- special token 被拆开后参与 merge。
-- merge 跨 pre-token boundary。
-- pair tie-breaking 不 deterministic。
-- 单个 byte 用 `int` 而不是 `bytes` 表示，导致 vocab 类型错位。
-- 每轮完整重扫全语料，复杂度退化到无法处理真实数据。
-
-## 模块三：Tokenizer Runtime 与数据导出
-
-对应 CS336 Assignment 1：Section 2.6-2.7。
-
-训练出 `vocab` 和 `merges` 只是完成了一半工作。真正可用的 tokenizer runtime 需要把“训练时的 merge 顺序和边界语义”原样搬到 encode/decode 流程里，并保证它能落地到大语料导出、流式处理和 benchmark。
-
-### Exercise 1 · Tokenizer Class
-
-Runtime 的核心不是实现一个类，而是固定三件语义：
-
-| 语义 | 正确做法 |
-| --- | --- |
-| encode 时 special tokens 怎么处理 | 先保护边界，再对普通片段 pre-tokenize |
-| merges 怎么应用 | 按训练时创建顺序，也就是 merge rank 最低者优先 |
-| decode 怎么恢复文本 | 先拼 token bytes，再整体做 UTF-8 decode |
-
-最后一点尤其重要。逐 token decode 会把跨 token 的多 byte 字符拆坏；正确做法是先 `b"".join(...)`，再统一 `errors="replace"`。
-
-#### Quick Coding：`Tokenizer`
-
-```python
-class Tokenizer:
-    def __init__(self, vocab: dict[int, bytes], merges: list[tuple[bytes, bytes]], special_tokens=None):
-        ...
-
-    @classmethod
-    def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
-        ...
-
-    def encode(self, text: str) -> list[int]:
-        ...
-
-    def encode_iterable(self, iterable):
-        ...
-
-    def decode(self, ids: list[int]) -> str:
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class Tokenizer:
-    def __init__(self, vocab, merges, special_tokens=None):
-        self.vocab = dict(vocab)
-        self.inverse_vocab = {v: k for k, v in self.vocab.items()}
-        self.special_tokens = sorted(special_tokens or [], key=len, reverse=True)
-
-        next_id = max(self.vocab) + 1 if self.vocab else 0
-        for tok in self.special_tokens:
-            b = tok.encode("utf-8")
-            if b not in self.inverse_vocab:
-                self.vocab[next_id] = b
-                self.inverse_vocab[b] = next_id
-                next_id += 1
-
-        self.merge_rank = {pair: i for i, pair in enumerate(merges)}
-
-    @classmethod
-    def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
-        import json
-        with open(vocab_filepath, "r", encoding="utf-8") as f:
-            raw_vocab = json.load(f)
-        vocab = {int(i): bytes(v) for i, v in raw_vocab.items()}
-
-        merges = []
-        with open(merges_filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                a, b = line.rstrip("\n").split(" ")
-                merges.append((a.encode("latin1"), b.encode("latin1")))
-        return cls(vocab, merges, special_tokens)
-
-    def apply_bpe(self, token_bytes: bytes) -> list[bytes]:
-        pieces = [bytes([b]) for b in token_bytes]
-        while len(pieces) >= 2:
-            pairs = [(pieces[i], pieces[i + 1]) for i in range(len(pieces) - 1)]
-            best = min(pairs, key=lambda p: self.merge_rank.get(p, float("inf")))
-            if best not in self.merge_rank:
-                break
-
-            out = []
-            i = 0
-            while i < len(pieces):
-                if i + 1 < len(pieces) and (pieces[i], pieces[i + 1]) == best:
-                    out.append(pieces[i] + pieces[i + 1])
-                    i += 2
-                else:
-                    out.append(pieces[i])
-                    i += 1
-            pieces = out
-        return pieces
-
-    def decode(self, ids: list[int]) -> str:
-        raw = b"".join(self.vocab[i] for i in ids)
-        return raw.decode("utf-8", errors="replace")
-```
-
-检查时至少确认：
-
-- `decode(encode(text)) == text` 对合法 UTF-8 文本成立。
-- special token 不会被 regex 拆碎。
-- merge 只在单个 pre-token 内发生。
-- malformed bytes 用 replacement character，而不是抛异常。
-
-</details>
-
-### Trace Lab · BPE Encoding Trace
-
-BPE debug 最有效的方法不是看最终 ids，而是打印每一轮 merge 后的 pieces。比如 `"the cat ate"` 必须先被看成 `["the", " cat", " ate"]` 三个 pre-token；如果某条 merge 规则把 `"e"` 和后面的空格拼起来，边界已经错了。
-
-这类 trace helper 的价值在于暴露中间状态。最终 ids 即使只差一个 merge rank，也可能完全看不出问题；打印 `start -> step 1 -> step 2` 的 pieces 则能立刻看出 winner pair 是否选错。
-
-#### Quick Coding：`trace_bpe_token`
-
-```python
-def trace_bpe_token(token: str, tokenizer: Tokenizer) -> list[int]:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def trace_bpe_token(token: str, tokenizer):
-    pieces = [bytes([b]) for b in token.encode("utf-8")]
-    print("start:", pieces)
-
-    step = 0
-    while len(pieces) >= 2:
-        pairs = [(pieces[i], pieces[i + 1]) for i in range(len(pieces) - 1)]
-        ranked = [
-            (tokenizer.merge_rank[p], p)
-            for p in pairs
-            if p in tokenizer.merge_rank
-        ]
-        if not ranked:
-            break
-
-        _, pair = min(ranked)
-        new_pieces = []
-        i = 0
-        while i < len(pieces):
-            if i + 1 < len(pieces) and (pieces[i], pieces[i + 1]) == pair:
-                new_pieces.append(pieces[i] + pieces[i + 1])
-                i += 2
+from typing import Dict, List, Tuple, Optional
+
+class ByteLevelBPETokenizer:
+    def __init__(self):
+        # 初始词表：包含 256 个单字节，Token ID 即字节本身的整数值 (0 ~ 255)
+        self.vocab: Dict[bytes, int] = {bytes([b]): b for b in range(256)}
+        self.inverse_vocab: Dict[int, bytes] = {b: bytes([b]) for b in range(256)}
+        self.merges: List[Tuple[bytes, bytes]] = []
+        
+        # 特殊标记：分配在 256 之后
+        self.special_tokens: Dict[str, int] = {"<|endoftext|>": 256}
+        self.inverse_special: Dict[int, str] = {256: "<|endoftext|>"}
+
+    def _tokenize_into_words(self, text: str) -> List[str]:
+        # 正则切分成预分词片段
+        return [match.group(0) for match in GPT2_PRETOKEN_PATTERN.finditer(text)]
+
+    def train(self, text: str, vocab_size: int):
+        """
+        在给定语料库上训练 BPE 词表，直到达到目标 vocab_size。
+        """
+        assert vocab_size >= 256 + len(self.special_tokens), "vocab_size 至少必须容纳基础 256 字节与特殊标记"
+        
+        words = self._tokenize_into_words(text)
+        # 统计每个预分词片段的出现频次，每个片段以单字节元组表示
+        word_counts = Counter()
+        for w in words:
+            byte_tuple = tuple(bytes([b]) for b in w.encode("utf-8"))
+            word_counts[byte_tuple] += 1
+
+        num_merges = vocab_size - 256 - len(self.special_tokens)
+        for _ in range(num_merges):
+            pair_counts = Counter()
+            for piece_tuple, freq in word_counts.items():
+                for p in zip(piece_tuple, piece_tuple[1:]):
+                    pair_counts[p] += freq
+            
+            if not pair_counts:
+                break  # 语料库中已无可合并相邻项
+            
+            # 确定性 Tie-breaking：先比最高频次；频次相同时取字典序较大的 pair，消除运行环境差异
+            best_pair = max(pair_counts.keys(), key=lambda p: (pair_counts[p], p))
+            self.merges.append(best_pair)
+            
+            new_id = len(self.vocab) + len(self.special_tokens)
+            merged_bytes = best_pair[0] + best_pair[1]
+            self.vocab[merged_bytes] = new_id
+            self.inverse_vocab[new_id] = merged_bytes
+            
+            # 在全量语料片段中应用当前胜出的合并规则
+            new_word_counts = Counter()
+            for piece_tuple, freq in word_counts.items():
+                new_pieces = []
+                j = 0
+                while j < len(piece_tuple):
+                    if j < len(piece_tuple) - 1 and (piece_tuple[j], piece_tuple[j+1]) == best_pair:
+                        new_pieces.append(merged_bytes)
+                        j += 2
+                    else:
+                        new_pieces.append(piece_tuple[j])
+                        j += 1
+                new_word_counts[tuple(new_pieces)] = freq
+            word_counts = new_word_counts
+
+    def encode(self, text: str, allowed_special: bool = True) -> List[int]:
+        """
+        将文本字符串编码为 Token ID 整数列表。
+        """
+        # 特殊标记处理
+        if allowed_special and "<|endoftext|>" in text:
+            parts = text.split("<|endoftext|>")
+            encoded_tokens = []
+            for i, part in enumerate(parts):
+                if part:
+                    encoded_tokens.extend(self.encode(part, allowed_special=False))
+                if i < len(parts) - 1:
+                    encoded_tokens.append(self.special_tokens["<|endoftext|>"])
+            return encoded_tokens
+
+        words = self._tokenize_into_words(text)
+        token_ids = []
+        
+        for w in words:
+            pieces = [bytes([b]) for b in w.encode("utf-8")]
+            # 严格按照训练阶段沉淀的 merges 顺序贪心合并
+            for pair in self.merges:
+                merged = pair[0] + pair[1]
+                new_pieces = []
+                i = 0
+                while i < len(pieces):
+                    if i < len(pieces) - 1 and pieces[i] == pair[0] and pieces[i+1] == pair[1]:
+                        new_pieces.append(merged)
+                        i += 2
+                    else:
+                        new_pieces.append(pieces[i])
+                        i += 1
+                pieces = new_pieces
+            
+            for p in pieces:
+                token_ids.append(self.vocab[p])
+                
+        return token_ids
+
+    def decode(self, token_ids: List[int]) -> str:
+        """
+        将 Token ID 序列还原为文本。先拼接原始字节流，最后统一执行 UTF-8 解码，
+        并配置 errors='replace' 保证不完整的多字节序列不会抛出异常。
+        """
+        raw_bytes = bytearray()
+        for idx in token_ids:
+            if idx in self.inverse_special:
+                raw_bytes.extend(self.inverse_special[idx].encode("utf-8"))
+            elif idx in self.inverse_vocab:
+                raw_bytes.extend(self.inverse_vocab[idx])
             else:
-                new_pieces.append(pieces[i])
-                i += 1
-
-        step += 1
-        print(f"step {step}: merge {pair} -> {new_pieces}")
-        pieces = new_pieces
-
-    ids = [tokenizer.inverse_vocab[p] for p in pieces]
-    print("ids:", ids)
-    return ids
+                raise ValueError(f"遇到未注册的非法 Token ID: {idx}")
+        return raw_bytes.decode("utf-8", errors="replace")
 ```
 
-最常见 bug 是把整段文本拼成一个 byte 序列后统一 merge，结果跨空格或跨 special token 合并。
+---
 
-</details>
+## 02. 基础张量组件 (Core Tensor Modules)
 
-### Exercise 2 · Streaming Encode
+### 1. 词嵌入层 (Token Embedding)
 
-流式 encode 的难点不是 `yield` 语法，而是 safe boundary。只要 chunk 边界改变 pre-tokenization 或 merge 作用域，流式结果就会和整段 encode 不一致。`"intern" + "ational"` 这种随意切块就是经典反例。
+词嵌入本质是一个查找表（Lookup Table），将离散的整数索引 $i \in [0, V-1]$ 映射为稠密的连续向量空间 $\mathbf{x}_i \in \mathbb{R}^D$。
 
-因此，最安全的接口不是“任意字符串 chunk”，而是“文档边界或 special-token 边界已经安全切好的 iterable”。如果做不到这一点，就必须保留 overlap buffer，只在确认边界之前产出 token。
+在标准高斯初始化下，权重方差通常设为 $\sigma = 0.02$ 或 $\sigma = 1 / \sqrt{D}$，保证在深层网络输入端激活值的初始方差受控在 $1.0$ 附近。
 
-#### Quick Coding：`encode_iterable`
+### 2. RMSNorm (Root Mean Square Layer Normalization)
 
-```python
-def encode_iterable(self, iterable):
-    ...
-```
+#### 为什么现代大模型彻底抛弃了 LayerNorm？
 
-<details>
-<summary>参考答案</summary>
+标准 LayerNorm 的计算公式包含均值中心化与方差缩放两步：
 
-```python
-def encode_iterable(self, iterable):
-    for chunk in iterable:
-        yield from self.encode(chunk)
-```
+$$\mu = \frac{1}{d} \sum_{i=1}^d x_i, \quad \sigma^2 = \frac{1}{d} \sum_{i=1}^d (x_i - \mu)^2$$
+$$\text{LayerNorm}(x) = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \odot \gamma + \beta$$
 
-这个版本正确的前提是 `chunk` 本身就是 tokenizer-safe boundary，例如每个 chunk 是一篇 document，或者上游已经按 `<|endoftext|>` 分开。
+Zhang & Sennrich (NeurIPS 2019) 在《Root Mean Square Layer Normalization》中通过严格的控制变量实验发现：**LayerNorm 之所以能稳定深度网络的梯度，其核心贡献来自激活尺度的自适应缩放（Scale Invariance），而减去均值 $\mu$ 的中心化操作对训练稳定性几乎没有任何实质贡献**。
 
-错误示例是：
+RMSNorm 直接省略了均值计算与偏置项 $\beta$，直接用均方根（RMS）进行尺度归一化：
 
-```python
-def encode_iterable(iterable):
-    return self.encode("".join(iterable))
-```
+$$\text{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}$$
+$$\text{RMSNorm}(x) = \frac{x}{\text{RMS}(x)} \odot \gamma$$
 
-这会直接 materialize 全文件，也失去了 streaming 的意义。
-
-</details>
-
-### Experiment · Compression Ratio
-
-Tokenizer 不是只看“能不能 encode”，还要看它在某个分布上压得好不好、跑得快不快。这里最常用的三个指标是 `bytes/token`、`tokens/s` 和 `bytes/s`。前者近似反映压缩率，后两者反映运行时吞吐。
-
-解释这类结果时不要脱离数据分布：
-
-| 现象 | 更合理的解释 |
-| --- | --- |
-| TinyStories tokenizer 在 TinyStories 上 `bytes/token` 高 | 训练域匹配，常见词被 merge 成更长 token |
-| OWT tokenizer 在 OWT 上更稳 | 网页噪声、多语种和符号串被更大的词表覆盖 |
-| 跨域 `bytes/token` 变差 | merges 学到的是训练语料的局部统计 |
-| `tokens/s` 不稳定 | regex pretokenization、merge 数据结构和 Python overhead 都在起作用 |
-
-如果要估 825GB 语料的大致 tokenization 耗时，可以直接用：
-
-```python
-seconds = 825 * 1024**3 / report["bytes_per_second"]
-hours = seconds / 3600
-```
-
-### Exercise 3 · Token ID Serialization
-
-训练前把文本预编码成 token id array 的原因很现实：不想每个 training step 都重复跑 tokenizer。对于 `vocab_size <= 65536` 的课程设定，`uint16` 是合适的，因为 token id 非负，而且比 `int32` 省一半存储。
-
-真正该检查的是 dtype 是否和词表规模匹配。如果词表已经 100K，还继续写 `uint16`，数组会静默截断或溢出，问题通常直到训练时才暴露。
-
-#### Quick Coding：`encode_to_array`
-
-```python
-def encode_to_array(tokenizer: Tokenizer, texts, out_path: str, dtype="uint16") -> dict:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import numpy as np
-
-def encode_to_uint16(tokenizer, texts, out_path):
-    ids = []
-    for text in texts:
-        ids.extend(tokenizer.encode(text))
-
-    arr = np.asarray(ids, dtype=np.uint16)
-    np.save(out_path, arr)
-    return {
-        "num_tokens": int(arr.shape[0]),
-        "dtype": str(arr.dtype),
-        "path": str(out_path),
-    }
-```
-
-数据很大时更合理的写法是分 shard 保存，并在 dataloader 里用 `np.load(path, mmap_mode="r")`。
-
-</details>
-
-#### 本模块易错点
-
-- decode 时逐 token decode，而不是先拼 bytes 再 decode。
-- special token 没有补进 vocab。
-- `encode_iterable` 悄悄把全文件 materialize 到内存里。
-- 随意切 chunk，结果改变 tokenization。
-
-## 模块四：Tensor Modules
-
-对应 CS336 Assignment 1：Section 3.2-3.4.3。
-
-从 tokenizer 走到模型实现，中间最大的转折是 shape discipline。Transformer 大多数 bug 不是“公式错”，而是 batch 维、sequence 维、head 维和 feature 维摆错了。这个模块的练习都在训练一件事：把最后一维当 feature，前面各维都当 batch-like dims。
-
-### Warmup · Tensor Shape Gym
-
-写任何模块前，先把几个最常用的 shape 变换练熟，会节省很多无效调试时间：
-
-| 操作 | 输入 | 输出 |
-| --- | --- | --- |
-| Linear | `(..., d_in)` | `(..., d_out)` |
-| split heads | `(B, T, D)` | `(B, H, T, Dh)` |
-| merge heads | `(B, H, T, Dh)` | `(B, T, D)` |
-| RMSNorm | `(..., D)` | `(..., D)` |
-| RoPE | `(..., T, Dh)` | `(..., T, Dh)` |
-
-如果这些 toy shape 都讲不清，后面的 attention 和 RoPE 基本不可能一次写对。
-
-#### Quick Coding：`shape_gym`
-
-```python
-def shape_gym():
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
+#### 工业级 PyTorch 实现（严格的数值精度控制）
 
 ```python
 import torch
-from einops import rearrange
+import torch.nn as nn
 
-x = torch.randn(2, 3, 12)
-W = torch.randn(16, 12)
-
-y = torch.einsum("...i,oi->...o", x, W)
-assert y.shape == (2, 3, 16)
-
-h = rearrange(x, "b s (nh dh) -> b nh s dh", nh=3)
-assert h.shape == (2, 3, 3, 4)
-
-x2 = rearrange(h, "b nh s dh -> b s (nh dh)")
-assert x2.shape == x.shape
-```
-
-</details>
-
-### Exercise 1 · Linear Module
-
-`Linear` 看起来最基础，但它固定了后面几乎所有模块的 shape 约定。这里 weight 必须是 `(out_features, in_features)`，这样 `y[..., o] = sum_i x[..., i] * weight[o, i]` 才和 PyTorch 线性层保持一致。
-
-因为要支持 arbitrary leading dims，所以最自然的写法不是手工 `matmul` 展平，而是直接用 einsum 把最后一维当 feature，前面维度全透传。
-
-#### Quick Coding：`Linear`
-
-```python
-class Linear(nn.Module):
-    def __init__(self, in_features, out_features, device=None, dtype=None):
-        ...
-
-    def forward(self, x):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import torch
-from torch import nn
-
-class Linear(nn.Module):
-    def __init__(self, in_features, out_features, device=None, dtype=None):
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = nn.Parameter(torch.empty(
-            out_features, in_features, device=device, dtype=dtype
-        ))
-        std = (2.0 / (in_features + out_features)) ** 0.5
-        nn.init.trunc_normal_(self.weight, mean=0.0, std=std, a=-3 * std, b=3 * std)
-
-    def forward(self, x):
-        return torch.einsum("...i,oi->...o", x, self.weight)
-```
-
-</details>
-
-### Exercise 2 · Embedding Module
-
-Embedding 本质上是查表，而不是线性投影。token ids 是整数索引，输出是这些索引对应的行向量。只要你把 weight shape 写反，后面所有 `(B, T, D)` 的假设都会崩掉。
-
-#### Quick Coding：`Embedding`
-
-```python
-class Embedding(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, device=None, dtype=None):
-        ...
-
-    def forward(self, token_ids):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class Embedding(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, device=None, dtype=None):
-        super().__init__()
-        self.weight = nn.Parameter(torch.empty(
-            num_embeddings, embedding_dim, device=device, dtype=dtype
-        ))
-        nn.init.trunc_normal_(self.weight, mean=0.0, std=1.0, a=-3.0, b=3.0)
-
-    def forward(self, token_ids):
-        return self.weight[token_ids]
-```
-
-</details>
-
-### Exercise 3 · RMSNorm
-
-RMSNorm 的作用是控制 residual stream 的尺度，而不是像 LayerNorm 那样减均值。它只对最后一维做 root-mean-square normalization，所以对 Transformer 来说，它更像一个“稳定输入分布”的装置。
-
-这里真正的工程细节是 upcast。BF16/FP16 在做平方和均值时精度容易不稳，hidden dim 一大更明显，所以统计量通常先用 FP32 算，再 cast 回原 dtype。
-
-#### Quick Coding：`RMSNorm`
-
-```python
 class RMSNorm(nn.Module):
-    def __init__(self, d_model, eps=1e-5, device=None, dtype=None):
-        ...
-
-    def forward(self, x):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class RMSNorm(nn.Module):
-    def __init__(self, d_model, eps=1e-5, device=None, dtype=None):
+    def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
-        self.weight = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
+        # 唯一的缩放可学习参数 gamma，初始化全为 1
+        self.weight = nn.Parameter(torch.ones(dim))
 
-    def forward(self, x):
-        in_dtype = x.dtype
-        x_float = x.to(torch.float32)
-        rms = torch.sqrt(torch.mean(x_float * x_float, dim=-1, keepdim=True) + self.eps)
-        y = x_float / rms
-        return (y * self.weight).to(in_dtype)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 混合精度关键保护：在 float16 / bfloat16 下，平方运算 x^2 极易遭遇数值上溢或下溢
+        # 必须显式将累加与平方根提升到 float32 计算，再安全转换回原始输入精度
+        input_dtype = x.dtype
+        x_f32 = x.float()
+        variance = x_f32.pow(2).mean(dim=-1, keepdim=True)
+        rsqrt = torch.rsqrt(variance + self.eps)
+        normed = (x_f32 * rsqrt).to(input_dtype)
+        return normed * self.weight
 ```
 
-</details>
+### 3. SwiGLU 门控前馈网络 (SwiGLU FFN)
 
-### Exercise 4 · SwiGLU Feed-Forward
+#### 门控线性单元与参数量平衡设计
 
-SwiGLU FFN 的直觉是：一条投影给内容，一条投影给 gate，再用 `SiLU(gate) * up` 做逐通道调制。它和普通两层 FFN 的差别不是“多一个激活函数”，而是多了一条 gating path，所以 hidden dim 要相应缩小到大约 `8/3 * d_model`，参数量才和传统 `4 * d_model` FFN 接近。
+自 LLaMA、PaLM 与 Gemma 开始，标准的两层 MLP（$\text{Linear} \to \text{GELU} \to \text{Linear}$）被全面的门控线性结构 **SwiGLU**（Shazeer, 2020）所取代。
 
-#### Quick Coding：`SwiGLU`
+SwiGLU 同时包含门控分支与上升投影分支：
+
+$$\text{SwiGLU}(x) = \left( \text{SiLU}(x W_{\text{gate}}) \odot (x W_{\text{up}}) \right) W_{\text{down}}$$
+
+其中 $\text{SiLU}(z) = z \cdot \sigma(z) = \frac{z}{1 + e^{-z}}$。
+
+#### 为什么设置 $d_{\text{ff}} \approx \frac{8}{3} D$？
+
+标准 Transformer MLP 仅有两个投影矩阵：$W_1 \in \mathbb{R}^{D \times 4D}$ 与 $W_2 \in \mathbb{R}^{4D \times D}$，参数总量为：
+
+$$\text{Params}_{\text{MLP}} = 2 \times D \times 4D = 8 D^2$$
+
+而 SwiGLU 拥有三个矩阵（$W_{\text{gate}}, W_{\text{up}}, W_{\text{down}}$），其参数总量为：
+
+$$\text{Params}_{\text{SwiGLU}} = 3 \times D \times d_{\text{ff}}$$
+
+为了保证在架构替换前后模型的**参数总量与前向计算 FLOPs 严格一致**，必须满足：
+
+$$3 D \cdot d_{\text{ff}} \approx 8 D^2 \implies d_{\text{ff}} = \frac{8}{3} D \approx 2.67 D$$
+
+在工程实践中，为了最大化 GPU Tensor Core 的并行吞吐，通常还将该维度向上取整至 64 或 256 的整倍数。
 
 ```python
-class SwiGLU(nn.Module):
-    def __init__(self, d_model, d_ff=None, device=None, dtype=None):
-        ...
+import torch.nn.functional as F
 
-    def forward(self, x):
-        ...
+class SwiGLU(nn.Module):
+    def __init__(self, d_model: int, d_ff: int):
+        super().__init__()
+        # 无偏置项以减少参数与通信开销
+        self.w_gate = nn.Linear(d_model, d_ff, bias=False)
+        self.w_up = nn.Linear(d_model, d_ff, bias=False)
+        self.w_down = nn.Linear(d_ff, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 分支 1：SiLU 激活的门控信号；分支 2：线性放大的特征；逐元素哈达玛积后投影回 d_model
+        return self.w_down(F.silu(self.w_gate(x)) * self.w_up(x))
 ```
 
-<details>
-<summary>参考答案</summary>
+### 4. RoPE (旋转位置编码, Rotary Position Embedding)
+
+#### 绝对位置编码的缺陷与 RoPE 的几何本质
+
+经典的绝对位置编码（如可学习 Embedding 或正弦编码）直接与 Token Embedding 向量相加：$x_t = e_t + p_t$。这种方式强行将位置特征烙印在特征空间中，注意力打分时展开的交叉项 $\langle e_m + p_m, e_n + p_n \rangle$ 会破坏语义向量的纯净性，且无法推演未见过的长距离。
+
+Su et al. (2021) 提出的 **RoPE (Rotary Position Embedding)** 从几何角度优雅地解决了相对位置感知：
+**通过正交旋转矩阵 $R_{\Theta, m}^d$，将 Query 与 Key 向量旋转与位置 $m$ 成正比的角度，使得两者的内积天然且仅依赖于相对距离 $m - n$**：
+
+$$\langle R_{\Theta, m}^d q, R_{\Theta, n}^d k \rangle = q^\top (R_{\Theta, m}^d)^\top R_{\Theta, n}^d k = q^\top R_{\Theta, n - m}^d k = g(q, k, m - n)$$
+
+#### 二维平面分解与旋转频率
+
+高维空间被解耦为 $d / 2$ 个互不干扰的二维正交平面。在第 $i$ 个平面上，位置 $m$ 处的二维向量旋转角度为 $m \theta_i$，其中基频为：
+
+$$\theta_i = b^{-2i / d}, \quad i \in [0, d/2), \quad b = 10000.0$$
+
+二维旋转矩阵形式为：
+
+$$\begin{pmatrix} q_0^{(m)} \\ q_1^{(m)} \end{pmatrix} = \begin{pmatrix} \cos(m\theta_i) & -\sin(m\theta_i) \\ \sin(m\theta_i) & \cos(m\theta_i) \end{pmatrix} \begin{pmatrix} q_0 \\ q_1 \end{pmatrix}$$
+
+#### 向量化旋转技巧 (Vectorized Real Arithmetic)
+
+在 PyTorch 中，如果直接构建分块对角大矩阵乘法，显存与计算代价极大。现代工业级实现采用实数半向量翻转技巧：
+
+将维度切为前半部分 $x_1$ 与后半部分 $x_2$，定义翻转向量：
+
+$$\text{rotate\_half}(x) = [-x_2, x_1]$$
+
+则旋转结果可直接通过逐元素乘法完成：
+
+$$x_{\text{rot}} = x \odot \cos(m\theta) + \text{rotate\_half}(x) \odot \sin(m\theta)$$
+
+```python
+from typing import Tuple
+
+def precompute_rope_cis(dim: int, max_seq_len: int, theta: float = 10000.0) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    预计算旋转位置编码的余弦与正弦频率查找表。
+    dim: 单头特征维度 head_dim (必须为偶数)
+    """
+    assert dim % 2 == 0, "head_dim 必须为偶数才能进行二维平面成对旋转"
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2).float() / dim))
+    t = torch.arange(max_seq_len, dtype=torch.float32)
+    # 外积生成形状为 (max_seq_len, dim // 2) 的角度矩阵
+    freqs_matrix = torch.outer(t, freqs)
+    cos = torch.cos(freqs_matrix)
+    sin = torch.sin(freqs_matrix)
+    return cos, sin
+
+def apply_rotary_emb(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+    """
+    对输入张量 x 执行 RoPE 旋转。
+    x 形状: (B, H, T, Dh)
+    cos, sin 形状: (max_seq_len, Dh // 2)
+    """
+    B, H, T, Dh = x.shape
+    # 截取当前批次实际序列长度 T，并扩展广播维度至 (1, 1, T, Dh // 2)
+    cos = cos[:T, :].unsqueeze(0).unsqueeze(1)
+    sin = sin[:T, :].unsqueeze(0).unsqueeze(1)
+    
+    # 将 Dh 拆分为前半与后半
+    half_dim = Dh // 2
+    x1 = x[..., :half_dim]
+    x2 = x[..., half_dim:]
+    
+    # 构造 rotate_half: [-x2, x1]
+    rotated_half = torch.cat((-x2, x1), dim=-1)
+    
+    # 将 (cos, cos) 与 (sin, sin) 拼接以对齐全维度 Dh
+    cos_full = torch.cat((cos, cos), dim=-1)
+    sin_full = torch.cat((sin, sin), dim=-1)
+    
+    return (x * cos_full) + (rotated_half * sin_full)
+```
+
+---
+
+## 03. 注意力引擎：因果自注意力与 GQA
+
+### 1. 缩放点积因果注意力数学推导
+
+注意力机制本质是内容寻址路由系统：
+
+$$\text{Attention}(Q, K, V) = \text{Softmax}\left( \frac{Q K^\top}{\sqrt{d_k}} + M \right) V$$
+
+#### 为什么必须除以 $\sqrt{d_k}$？
+
+假设 $Q$ 与 $K$ 的各分量独立同分布，且服从标准正态分布 $\mathcal{N}(0, 1)$。则其内积为：
+
+$$S = \sum_{i=1}^{d_k} q_i k_i$$
+
+其期望与方差分别为：
+
+$$\mathbb{E}[S] = 0, \quad \text{Var}(S) = \sum_{i=1}^{d_k} \text{Var}(q_i k_i) = d_k$$
+
+当特征维度 $d_k$ 达到 64 或 128 时，内积结果的标准差膨胀至 $\sqrt{128} \approx 11.3$。如果没有缩放系数，大数值内积经过 Softmax 后会迅速进入概率饱和区（某个位置极其接近 1，其余位置极小），导致**局部梯度接近于 0，产生灾难性的梯度消失**。除以 $\sqrt{d_k}$ 使方差恢复为 1.0，维持了 Softmax 的敏感度与梯度流动。
+
+#### 因果掩码 (Causal Mask) 的物理意义
+
+在自回归语言建模中，第 $t$ 个 Token 的表征只能聚合自身以及历史位置 $1 \dots t$ 的信息，**严禁偷看未来 Token**。我们构造上三角矩阵，未来未知位置填入 $-\infty$，在 Softmax 运算后对应注意力权重严格为 0。
+
+### 2. Grouped-Query Attention (GQA) 机制
+
+在标准的 Multi-Head Attention (MHA) 中，Query、Key、Value 的头数完全相同（$H_q = H_{kv} = H$）。在推理自回归生成阶段，每个生成的 Token 都需要把新计算的 Key 与 Value 缓存在显存中（KV Cache）。随着上下文长度与并发请求增长，KV Cache 会迅速吞噬几十 GB 显存，成为推理吞吐的绝对瓶颈。
+
+GQA（Ainslie et al., 2023）通过让多个 Query 头共享同一组 Key/Value 头（例如 32 个 Query 头仅对应 8 个 KV 头），在**几乎不损失模型性能的前提下，直接将 KV Cache 显存占用缩减 4 到 8 倍**。
 
 ```python
 import math
+from dataclasses import dataclass
+from typing import Optional
 
-def round_up_to_multiple(x, multiple):
-    return multiple * math.ceil(x / multiple)
+@dataclass
+class GPTConfig:
+    vocab_size: int = 50257
+    context_length: int = 1024
+    d_model: int = 768
+    num_layers: int = 12
+    num_heads: int = 12
+    num_kv_heads: Optional[int] = None  # None 时默认为 MHA (num_kv_heads = num_heads)
+    d_ff: Optional[int] = None
+    rope_theta: float = 10000.0
+    dropout: float = 0.0
+    tie_weights: bool = True
 
-class SwiGLU(nn.Module):
-    def __init__(self, d_model, d_ff=None, device=None, dtype=None):
+    def __post_init__(self):
+        if self.num_kv_heads is None:
+            self.num_kv_heads = self.num_heads
+        assert self.num_heads % self.num_kv_heads == 0, "num_heads 必须能被 num_kv_heads 整除"
+        if self.d_ff is None:
+            # 严格按照 SwiGLU 8/3 参数量匹配，并向上对齐到 64 的倍数
+            d_ff_unrounded = int(2 * self.d_model * 4 / 3)
+            self.d_ff = ((d_ff_unrounded + 63) // 64) * 64
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, config: GPTConfig):
         super().__init__()
-        if d_ff is None:
-            d_ff = round_up_to_multiple(int(8 * d_model / 3), 64)
-        self.w1 = Linear(d_model, d_ff, device=device, dtype=dtype)
-        self.w3 = Linear(d_model, d_ff, device=device, dtype=dtype)
-        self.w2 = Linear(d_ff, d_model, device=device, dtype=dtype)
+        self.d_model = config.d_model
+        self.num_heads = config.num_heads
+        self.num_kv_heads = config.num_kv_heads
+        self.head_dim = config.d_model // config.num_heads
+        self.num_queries_per_kv = self.num_heads // self.num_kv_heads
+        
+        # Q, K, V 投影矩阵（无偏置）
+        self.q_proj = nn.Linear(self.d_model, self.num_heads * self.head_dim, bias=False)
+        self.k_proj = nn.Linear(self.d_model, self.num_kv_heads * self.head_dim, bias=False)
+        self.v_proj = nn.Linear(self.d_model, self.num_kv_heads * self.head_dim, bias=False)
+        self.out_proj = nn.Linear(self.num_heads * self.head_dim, self.d_model, bias=False)
+        
+        self.dropout = nn.Dropout(config.dropout)
 
-    def forward(self, x):
-        return self.w2(torch.nn.functional.silu(self.w1(x)) * self.w3(x))
-```
-
-</details>
-
-### Exercise 5 · RoPE
-
-RoPE 的作用不是“加一个位置向量”，而是把 Q/K 的每两个维度当成二维平面，按位置做旋转。这样 attention score 不直接依赖绝对位置 embedding，而是更自然地编码相对位移关系。
-
-核心公式很短：
-
-```text
-[x0, x1] -> [x0*cos - x1*sin, x0*sin + x1*cos]
-```
-
-但两个实现细节必须记住：
-
-- `cos` / `sin` 可以按 `max_seq_len` 和 dim pair 预先缓存。
-- RoPE 只作用在 Q/K 上，不作用在 V 上。
-
-#### Quick Coding：`RotaryPositionalEmbedding`
-
-```python
-class RotaryPositionalEmbedding(nn.Module):
-    def __init__(self, theta, d_k, max_seq_len, device=None):
-        ...
-
-    def forward(self, x, token_positions):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class RotaryPositionalEmbedding(nn.Module):
-    def __init__(self, theta, d_k, max_seq_len, device=None):
-        super().__init__()
-        assert d_k % 2 == 0
-        inv_freq = 1.0 / (theta ** (torch.arange(0, d_k, 2, device=device).float() / d_k))
-        positions = torch.arange(max_seq_len, device=device).float()
-        freqs = torch.einsum("i,j->ij", positions, inv_freq)
-        self.register_buffer("cos", torch.cos(freqs), persistent=False)
-        self.register_buffer("sin", torch.sin(freqs), persistent=False)
-
-    def forward(self, x, token_positions):
-        x1 = x[..., 0::2]
-        x2 = x[..., 1::2]
-        cos = self.cos[token_positions]
-        sin = self.sin[token_positions]
-        y1 = x1 * cos - x2 * sin
-        y2 = x1 * sin + x2 * cos
-        return torch.stack((y1, y2), dim=-1).flatten(-2)
-```
-
-RoPE 的一个好 sanity check 是旋转前后每对维度的 L2 norm 应该保持不变。
-
-</details>
-
-#### 本模块易错点
-
-- 所有 module 都要支持 `device` / `dtype`。
-- 先用小 shape 打印中间张量，再跑完整模型。
-- sequence 维和 head 维要显式标注，别靠猜。
-
-## 模块五：Attention 与 Transformer LM
-
-对应 CS336 Assignment 1：Section 3.4.4-3.5。
-
-这一模块把前面的零件装配成一个语言模型。真正的主线不是“实现 attention”，而是理解 residual stream：token embedding 进入模型后，所有 block 都在同一个 `(B, T, D)` 通道里做读写，attention 和 MLP 只是给这个 residual stream 提供两类更新。
-
-### Exercise 1 · Stable Softmax
-
-Softmax 公式人人都知道，训练里容易出问题的只有一件事：大 logit 先 `exp` 会直接 overflow。所以 stable softmax 的第一步永远是沿归一化维减最大值，再做指数和归一化。
-
-#### Quick Coding：`softmax`
-
-```python
-def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import torch
-
-def softmax(x, dim):
-    x_max = torch.max(x, dim=dim, keepdim=True).values
-    shifted = x - x_max
-    exp = torch.exp(shifted)
-    return exp / torch.sum(exp, dim=dim, keepdim=True)
-```
-
-</details>
-
-### Exercise 2 · Scaled Dot-Product Attention
-
-Attention 本质上是三步：
-
-1. 用 `QK^T / sqrt(d_k)` 算匹配分数。
-2. 用 mask 删掉不允许看的位置。
-3. 用 softmax 权重对 `V` 做加权和。
-
-这里 `sqrt(d_k)` 的缩放不是装饰。没有它，`d_k` 一大，logits 方差也会跟着涨，softmax 很快变得过于尖锐。
-
-#### Quick Coding：`scaled_dot_product_attention`
-
-```python
-def scaled_dot_product_attention(Q, K, V, mask=None):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import math
-
-def scaled_dot_product_attention(Q, K, V, mask=None):
-    d_k = Q.shape[-1]
-    scores = torch.einsum("...qd,...kd->...qk", Q, K) / math.sqrt(d_k)
-
-    if mask is not None:
-        scores = scores.masked_fill(~mask, float("-inf"))
-
-    attn = softmax(scores, dim=-1)
-    return torch.einsum("...qk,...kd->...qd", attn, V)
-```
-
-这里固定 `True` 表示可见、`False` 表示禁止看。mask 语义必须和后续 causal mask 保持一致。
-
-</details>
-
-### Exercise 3 · Causal MHA
-
-Causal multi-head self-attention 的难点不是公式，而是 shape。输入 `(B, T, D)` 必须先投影成 Q/K/V，再 reshape 成 `(B, H, T, Dh)`，把 head 维当作 batch-like 维度处理。最后再 merge 回 `(B, T, D)`。
-
-RoPE 如果启用，也是在这个阶段给 Q/K 加位置旋转。因果 mask 则只允许 `j <= i`，保证第 `i` 个位置永远看不到未来 token。
-
-#### Quick Coding：`CausalMultiHeadSelfAttention`
-
-```python
-class CausalMultiHeadSelfAttention(nn.Module):
-    def __init__(self, d_model, num_heads, rope=None, device=None, dtype=None):
-        ...
-
-    def forward(self, x, token_positions=None):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-from einops import rearrange
-
-class CausalMultiHeadSelfAttention(nn.Module):
-    def __init__(self, d_model, num_heads, rope=None, device=None, dtype=None):
-        super().__init__()
-        assert d_model % num_heads == 0
-        self.num_heads = num_heads
-        self.d_head = d_model // num_heads
-        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.k_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.v_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.rope = rope
-
-    def forward(self, x, token_positions=None):
+    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
         B, T, D = x.shape
-        q = rearrange(self.q_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        k = rearrange(self.k_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        v = rearrange(self.v_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-
-        if self.rope is not None:
-            q = self.rope(q, token_positions[:, None, :])
-            k = self.rope(k, token_positions[:, None, :])
-
-        mask = causal_mask(T, T, device=x.device)[None, None, :, :]
-        out = scaled_dot_product_attention(q, k, v, mask)
-        out = rearrange(out, "b h t d -> b t (h d)")
-        return self.o_proj(out)
+        
+        # 1. 投影并拆分为多头形状
+        # Q: (B, H_q, T, Dh)
+        q = self.q_proj(x).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
+        # K, V: (B, H_kv, T, Dh)
+        k = self.k_proj(x).view(B, T, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, T, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        
+        # 2. 注入旋转位置编码：注意 RoPE 仅作用于 Q 与 K，严禁作用于内容特征 V
+        q = apply_rotary_emb(q, cos, sin)
+        k = apply_rotary_emb(k, cos, sin)
+        
+        # 3. GQA 广播：当 num_queries_per_kv > 1 时，复制 KV 头以匹配 Query 头数
+        if self.num_queries_per_kv > 1:
+            k = torch.repeat_interleave(k, self.num_queries_per_kv, dim=1)
+            v = torch.repeat_interleave(v, self.num_queries_per_kv, dim=1)
+            
+        # 4. 计算注意力分数点积并除以 sqrt(head_dim)
+        scale = 1.0 / math.sqrt(self.head_dim)
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, H, T, T)
+        
+        # 5. 因果掩码：上三角（不包含对角线）填入负无穷大
+        mask = torch.triu(torch.full((T, T), float("-inf"), device=x.device), diagonal=1)
+        scores = scores + mask.unsqueeze(0).unsqueeze(1)
+        
+        # 6. Softmax 与加权聚合
+        probs = F.softmax(scores, dim=-1)
+        probs = self.dropout(probs)
+        
+        # (B, H, T, T) x (B, H, T, Dh) -> (B, H, T, Dh)
+        context = torch.matmul(probs, v)
+        
+        # 7. 合并多头并执行输出线性变换
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.out_proj(context)
 ```
 
-</details>
+---
 
-### Exercise 4 · Transformer Block
+## 04. 模型装配：Transformer Block 与完整 GPT 架构
 
-课程里的 block 采用 pre-norm：
+### Pre-LayerNorm 残差流机制深度分析
 
-```text
-y = x + MHA(RMSNorm(x))
-out = y + FFN(RMSNorm(y))
-```
+在原始 Transformer 中，架构采用的是 **Post-LN**：
 
-它的意义不是公式更漂亮，而是梯度路径更直接，训练通常更稳。这里 residual stream 的 shape 必须始终保持 `(B, T, D)`；只要这个不变量破了，后续 block 和 LM head 都会一起坏。
+$$x_{t+1} = \text{Norm}(x_t + \text{SubLayer}(x_t))$$
 
-#### Quick Coding：`TransformerBlock`
+在深层网络中，每穿过一层，残差流就被 Normalization 重写一次尺度。这导致反向传播时，靠近输入端的底层梯度会以几何级数迅速衰减，未作精细 Warmup 的深层 Post-LN 模型直接发生梯度弥散导致训练发散。
+
+现代大模型全部采用 **Pre-LN (Pre-RMSNorm)**：
+
+$$x_{t+1} = x_t + \text{SubLayer}(\text{RMSNorm}(x_t))$$
+
+展开 $L$ 层后的总公式为：
+
+$$x_L = x_0 + \sum_{l=0}^{L-1} \text{SubLayer}_l(\text{RMSNorm}(x_l))$$
+
+这种设计让网络中央形成了一条畅通无阻的**恒等残差高速公路（Identity Highway）**，损失函数的梯度可以直接直达最初的输入 Embedding 层：
+
+$$\frac{\partial \mathcal{L}}{\partial x_0} = \frac{\partial \mathcal{L}}{\partial x_L} \left( I + \sum_{l=0}^{L-1} \frac{\partial \text{SubLayer}_l}{\partial x_l} \right)$$
+
+无论模型堆叠到 32 层还是 128 层，训练都具有极佳的数值稳定性。
 
 ```python
 class TransformerBlock(nn.Module):
-    def __init__(self, d_model, num_heads, d_ff, rope=None, device=None, dtype=None):
-        ...
-
-    def forward(self, x, token_positions=None):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class TransformerBlock(nn.Module):
-    def __init__(self, d_model, num_heads, d_ff, rope=None, device=None, dtype=None):
+    def __init__(self, config: GPTConfig):
         super().__init__()
-        self.ln1 = RMSNorm(d_model, device=device, dtype=dtype)
-        self.attn = CausalMultiHeadSelfAttention(
-            d_model, num_heads, rope=rope, device=device, dtype=dtype
-        )
-        self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
-        self.ffn = SwiGLU(d_model, d_ff=d_ff, device=device, dtype=dtype)
+        self.attn_norm = RMSNorm(config.d_model)
+        self.attn = CausalSelfAttention(config)
+        self.ffn_norm = RMSNorm(config.d_model)
+        self.ffn = SwiGLU(config.d_model, config.d_ff)
 
-    def forward(self, x, token_positions=None):
-        x = x + self.attn(self.ln1(x), token_positions=token_positions)
-        x = x + self.ffn(self.ln2(x))
+    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+        # 第一条残差：通过 RMSNorm 后进入因果多头注意力，再相加
+        x = x + self.attn(self.attn_norm(x), cos, sin)
+        # 第二条残差：通过 RMSNorm 后进入 SwiGLU 前馈网络，再相加
+        x = x + self.ffn(self.ffn_norm(x))
         return x
 ```
 
-</details>
-
-### Exercise 5 · Transformer LM
-
-语言模型前向图的逻辑很简单：token ids 进 embedding，过 N 个 block，做 final norm，再映射到 vocab logits。模型内部不需要 softmax，因为训练时 cross entropy 直接吃 logits，生成时只用最后一个位置的 logits。
-
-#### Quick Coding：`TransformerLM`
+### 端到端大模型集成类：`GPT`
 
 ```python
-class TransformerLM(nn.Module):
-    def __init__(self, vocab_size, context_length, num_layers, d_model, num_heads, d_ff, ...):
-        ...
-
-    def forward(self, token_ids):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class TransformerLM(nn.Module):
-    def __init__(
-        self, vocab_size, context_length, d_model, num_layers,
-        num_heads, d_ff, rope_theta=10000, device=None, dtype=None,
-    ):
+class GPT(nn.Module):
+    def __init__(self, config: GPTConfig):
         super().__init__()
-        self.context_length = context_length
-        self.token_embeddings = Embedding(vocab_size, d_model, device=device, dtype=dtype)
-        self.rope = RotaryPositionalEmbedding(
-            rope_theta, d_model // num_heads, context_length, device=device
-        )
+        self.config = config
+        
+        # 1. 词嵌入映射
+        self.token_embedding = nn.Embedding(config.vocab_size, config.d_model)
+        
+        # 2. 堆叠 N 层 Transformer 模块
         self.layers = nn.ModuleList([
-            TransformerBlock(d_model, num_heads, d_ff, rope=self.rope, device=device, dtype=dtype)
-            for _ in range(num_layers)
+            TransformerBlock(config) for _ in range(config.num_layers)
         ])
-        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype)
-        self.lm_head = Linear(d_model, vocab_size, device=device, dtype=dtype)
+        
+        # 3. 最终归一化与 LM 预测头
+        self.final_norm = RMSNorm(config.d_model)
+        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
+        
+        # 4. Weight Tying 机制：绑定词嵌入与输出头的权重
+        if config.tie_weights:
+            self.lm_head.weight = self.token_embedding.weight
+            
+        # 5. 预计算并注册 RoPE 缓存缓冲区（不参与梯度更新）
+        head_dim = config.d_model // config.num_heads
+        cos, sin = precompute_rope_cis(head_dim, config.context_length, config.rope_theta)
+        self.register_buffer("cos_cached", cos, persistent=False)
+        self.register_buffer("sin_cached", sin, persistent=False)
+        
+        # 6. 参数权重初始化
+        self.apply(self._init_weights)
 
-    def forward(self, token_ids):
-        B, T = token_ids.shape
-        assert T <= self.context_length
-        positions = torch.arange(T, device=token_ids.device).expand(B, T)
-        x = self.token_embeddings(token_ids)
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def forward(self, idx: torch.Tensor, targets: Optional[torch.Tensor] = None):
+        """
+        idx: (B, T) 形状的 Token ID 张量
+        targets: 可选的 (B, T) 目标 Token ID 张量
+        """
+        B, T = idx.shape
+        assert T <= self.config.context_length, (
+            f"输入序列长度 {T} 超出了模型支持的最大上下文长度 {self.config.context_length}"
+        )
+        
+        # 查表生成特征向量 (B, T, D)
+        x = self.token_embedding(idx)
+        
+        cos = self.cos_cached.to(device=x.device, dtype=x.dtype)
+        sin = self.sin_cached.to(device=x.device, dtype=x.dtype)
+        
+        # 顺序穿过全部 Transformer Blocks
         for layer in self.layers:
-            x = layer(x, token_positions=positions)
-        x = self.ln_final(x)
-        return self.lm_head(x)
+            x = layer(x, cos, sin)
+            
+        x = self.final_norm(x)
+        logits = self.lm_head(x)  # (B, T, V)
+        
+        loss = None
+        if targets is not None:
+            # 展平执行自回归交叉熵计算
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+            
+        return logits, loss
+
+    def estimate_flops(self) -> int:
+        """
+        粗略估算每个 token 前向传播所需的理论浮点计算量 (FLOPs)。
+        基本法则：Linear 前向为 2 * M * K * N，注意力矩阵相乘为 4 * B * H * T * T * Dh
+        """
+        N = sum(p.numel() for p in self.parameters())
+        # 在 Transformer 中，前向传播每个 token 大致消耗 2N 次浮点操作，注意力 QK/PV 额外贡献 2 * num_layers * T * d_model
+        return 2 * N
 ```
 
-</details>
+---
 
-### Exercise 6 · Resource Accounting
+## 05. 损失函数与数值稳定计算
 
-参数量和 FLOPs 估算的价值不在于替代 profiler，而在于让你先知道瓶颈会出在哪。对这个课程规模的 Transformer，一个非常有用的近似是：
+### 移位因果交叉熵 (Shifted Cross-Entropy)
 
-| 组件 | 参数量近似 |
-| --- | --- |
-| Q/K/V/O | `4 * d_model^2` |
-| SwiGLU FFN | `3 * d_model * d_ff` |
-| 两个 norm | `2 * d_model` |
-| token embedding / LM head | `vocab_size * d_model` |
+自回归模型的训练任务是预测序列中的“下一个词”。对于输入序列 $[t_0, t_1, t_2, \dots, t_{K-1}]$：
+- 位置 $0$ 的输出 Logit 用于预测目标 $t_1$；
+- 位置 $1$ 的输出 Logit 用于预测目标 $t_2$；
+- $\dots$
+- 最后一个位置 $K-1$ 的输出由于没有已知的后继真实 Token，在训练计算 Loss 时必须剔除。
 
-FLOPs 里最值得盯的是 attention 的 `T^2` 项。context length 从 1024 拉到 16384，MLP 还是线性涨，attention 的 QK/PV 却会被平方项放大。
+因此在训练时必须进行**移位对其（Shift）**：
 
-#### Quick Coding：`transformer_accounting`
+$$\text{Inputs} = x_{[:, :T-1]}, \quad \text{Targets} = x_{[:, 1:]}$$
+
+### 数值稳定的 Log-Sum-Exp 技巧
+
+交叉熵的理论定义为真实分布与预测分布的负对数似然：
+
+$$\mathcal{L} = - \log \left( \frac{e^{z_y}}{\sum_j e^{z_j}} \right) = \log \sum_j e^{z_j} - z_y$$
+
+如果直接写 `torch.log(torch.sum(torch.exp(z)))`，当某个 Logit 稍大（如 $z=90$）时，$e^{90} \approx 1.2 \times 10^{39}$ 会直接触发浮点数上溢得到 `inf`；而如果数值过小，又会下溢得到 `0` 并触发 $\log(0) = -\infty$。
+
+数学上使用 **Log-Sum-Exp (LSE)** 恒等变换消除上溢：
+
+$$\log \sum_j e^{z_j} = m + \log \sum_j e^{z_j - m}, \quad \text{其中 } m = \max_j z_j$$
+
+由于 $z_j - m \le 0$，指数项的最大值被严格限制在 $e^0 = 1$，彻底杜绝了数值上溢。
 
 ```python
-def transformer_accounting(vocab_size, context_length, num_layers, d_model, num_heads, d_ff):
-    ...
+def stable_cross_entropy(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """
+    纯手写数值稳定的交叉熵损失函数。
+    logits: (N, V) 未归一化分值
+    targets: (N,) 真实标签 ID
+    """
+    # 1. 沿类别维度减去最大值
+    max_logits, _ = torch.max(logits, dim=-1, keepdim=True)
+    shifted_logits = logits - max_logits
+    
+    # 2. 计算 log-sum-exp
+    log_sum_exp = torch.log(torch.sum(torch.exp(shifted_logits), dim=-1)) + max_logits.squeeze(-1)
+    
+    # 3. 提取真实类别对应的 target logit
+    target_logits = logits.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
+    
+    # 4. CE = LSE - target_logit 并求全批次平均
+    loss = (log_sum_exp - target_logits).mean()
+    return loss
 ```
 
-<details>
-<summary>参考答案</summary>
+### 困惑度 (Perplexity, PPL) 的信息论直觉
 
-```python
-def transformer_params(vocab_size, num_layers, d_model, num_heads, d_ff):
-    token_emb = vocab_size * d_model
-    final_norm = d_model
+大语言模型最常用的评测指标是**困惑度 (PPL)**：
 
-    attn = 4 * d_model * d_model
-    ffn = 3 * d_model * d_ff
-    norms = 2 * d_model
-    per_layer = attn + ffn + norms
+$$\text{PPL} = \exp(\mathcal{L})$$
 
-    lm_head = vocab_size * d_model
-    return {
-        "token_embedding": token_emb,
-        "layers": num_layers * per_layer,
-        "final_norm": final_norm,
-        "lm_head": lm_head,
-        "total": token_emb + num_layers * per_layer + final_norm + lm_head,
-    }
-```
+- **物理直觉**：PPL 表示模型在预测下一个词时，平均处于“在多少个等概率选项中掷骰子”的困惑状态。
+- 若词表为 50,000，初始化时完全均等猜测，Loss 为 $\ln(50000) \approx 10.82$，此时 $\text{PPL} = 50000$。
+- 训练收敛到 Loss = 2.0 时，$\text{PPL} = e^2 \approx 7.39$，说明模型在每个位置相当于在仅仅约 7 个候选词中进行精准二选一。
 
-粗略 FLOPs：
+---
 
-```text
-Linear forward FLOPs ≈ 2 * tokens * in_dim * out_dim
-Attention QK FLOPs ≈ 2 * B * H * T * T * Dh
-Attention PV FLOPs ≈ 2 * B * H * T * T * Dh
-MLP FLOPs ≈ 2 * B * T * D * Dff * 3
-```
+## 06. 优化动力学与训练系统
 
-</details>
+### 1. 手写工业级 AdamW 优化器
 
-#### 本模块易错点
+#### 为什么 Adam + L2 正则化在数学上是错误的？
 
-- causal mask 的 True/False 语义必须和 SDPA 一致。
-- RoPE 只作用于 Q/K，不作用于 V。
-- LM head 输出是 logits，不是 softmax 概率。
+经典权重衰减（Weight Decay）在 SGD 中等价于在损失函数中增加 $L_2$ 正则化项 $\frac{1}{2} \lambda \|\theta\|^2$。
 
-## 模块六：训练组件
+但在标准 Adam 中，参数更新量会被历史梯度的二阶矩方差归一化 $\sqrt{v_t}$ 缩放。如果直接把权重衰减作为梯度的一部分加进去：
 
-对应 CS336 Assignment 1：Section 4。
+$$g_t \leftarrow \nabla_\theta \mathcal{L} + \lambda \theta_t$$
 
-模型前向图写对以后，训练是否稳定主要取决于四类部件：loss、optimizer、LR schedule 和 gradient control。这个模块的题都在回答同一个问题：为什么同一份前向图，换一个训练配方就会从稳定下降变成 loss spike。
+则权重衰减项在实际更新时变成了：
 
-### Exercise 1 · Cross-Entropy
+$$\frac{\lambda \theta_t}{\sqrt{v_t} + \epsilon}$$
 
-语言模型训练用的是 logits 上的交叉熵，不是先 softmax 再喂一个概率分布进去。稳定写法一定走 log-sum-exp：
+这意味着：**梯度很大、经常更新的高频参数，其权重衰减反而被分母压得很小；而梯度接近 0 的休眠参数，反而被强制施加了巨大的衰减！这与正则化初衷完全背道而驰**。
 
-```text
-CE = logsumexp(logits) - logits[target]
-```
+Loshchilov & Hutter (2019) 提出了 **AdamW (Decoupled Weight Decay)**：直接把权重衰减与动量更新解耦，在每一步更新前直接按比例萎缩权重自身：
 
-这个形式和 stable softmax 一样，本质上都在先减最大值避免数值溢出。
+$$\theta_{t+1} = \theta_t - \eta_t \lambda \theta_t - \frac{\eta_t}{\sqrt{\hat{v}_t} + \epsilon} \hat{m}_t$$
 
-#### Quick Coding：`cross_entropy`
+#### 参数分组关键规则 (Parameter Grouping)
 
-```python
-def cross_entropy(inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def cross_entropy(inputs, targets):
-    logits = inputs.reshape(-1, inputs.shape[-1])
-    y = targets.reshape(-1)
-
-    max_logits = torch.max(logits, dim=-1, keepdim=True).values
-    shifted = logits - max_logits
-    log_sum_exp = torch.log(torch.sum(torch.exp(shifted), dim=-1)) + max_logits.squeeze(-1)
-    correct = logits[torch.arange(logits.shape[0], device=logits.device), y]
-    loss = log_sum_exp - correct
-    return loss.mean()
-```
-
-</details>
-
-### Lab · SGD LR Toy Sweep
-
-学习率实验最适合先在一维二次函数上建立直觉。对 `f(x)=x^2`，梯度下降更新是：
-
-```text
-x_{t+1} = (1 - 2lr) x_t
-```
-
-这行式子已经说明了一切：`lr` 很小，慢慢收敛；`lr` 接近 0.5，最快；`lr` 大到一定程度后会振荡甚至发散。assignment 里给的 `1e1/1e2/1e3` 正是故意让你看到 instability。
-
-#### Quick Coding：`run_sgd_lr`
-
-```python
-def run_sgd_lr(lr: float, steps: int = 10) -> list[float]:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def run_sgd_lr(lr, steps=10):
-    x = torch.tensor([10.0])
-    values = []
-    for _ in range(steps):
-        loss = x.pow(2).sum()
-        grad = 2 * x
-        x = x - lr * grad
-        values.append(float(loss))
-    return values
-```
-
-</details>
-
-### Exercise 2 · AdamW
-
-AdamW 和 “Adam + L2 regularization” 不是同一回事。它的关键在 decoupled weight decay：moment 统计只看梯度，权重衰减作为独立步骤处理，不能把 `weight_decay * p` 混进 `m` 和 `v` 的更新里。
-
-另一个常见错误是 bias correction 的 timestep 从 0 开始。这会让第一步修正系数错掉，而这正是小模型前期最敏感的阶段。
-
-#### Quick Coding：`AdamW.step`
+在 Transformer 训练中，**权重衰减绝不能一刀切施加在所有参数上**：
+- **施加 Weight Decay**：所有二维及以上的矩阵权重（`Linear.weight`, `Embedding.weight`）；
+- **绝对不施加 Weight Decay**：所有一维向量参数（如 `RMSNorm.weight` 增益参数、任何 Bias 偏置）。如果对 RMSNorm 的增益进行权重衰减，会强行压低网络表征尺度，直接破坏各层的动态平衡。
 
 ```python
 class AdamW(torch.optim.Optimizer):
-    def __init__(self, params, lr, betas, eps, weight_decay):
-        ...
-
-    @torch.no_grad()
-    def step(self, closure=None):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-class AdamW(torch.optim.Optimizer):
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.95), eps=1e-8, weight_decay=1e-2):
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super().__init__(params, defaults)
 
     @torch.no_grad()
     def step(self, closure=None):
-        loss = closure() if closure is not None else None
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
         for group in self.param_groups:
             lr = group["lr"]
             beta1, beta2 = group["betas"]
             eps = group["eps"]
-            wd = group["weight_decay"]
+            decay = group["weight_decay"]
 
             for p in group["params"]:
                 if p.grad is None:
                     continue
                 grad = p.grad
+
                 state = self.state[p]
                 if len(state) == 0:
                     state["step"] = 0
-                    state["m"] = torch.zeros_like(p)
-                    state["v"] = torch.zeros_like(p)
+                    # 维护一阶动量 m_t 与二阶未中心化动量 v_t
+                    state["exp_avg"] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                    state["exp_avg_sq"] = torch.zeros_like(p, memory_format=torch.preserve_format)
 
+                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
                 state["step"] += 1
-                t = state["step"]
-                m, v = state["m"], state["v"]
+                step = state["step"]
 
-                m.mul_(beta1).add_(grad, alpha=1 - beta1)
-                v.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+                # 1. 解耦权重衰减 (Decoupled Weight Decay)
+                if decay != 0:
+                    p.mul_(1.0 - lr * decay)
 
-                m_hat = m / (1 - beta1 ** t)
-                v_hat = v / (1 - beta2 ** t)
-                update = m_hat / (torch.sqrt(v_hat) + eps)
+                # 2. 动量累加更新
+                exp_avg.mul_(beta1).add_(grad, alpha=1.0 - beta1)
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
 
-                p.mul_(1 - lr * wd)
-                p.add_(update, alpha=-lr)
+                # 3. 偏差校正 (Bias Correction)
+                bias_correction1 = 1.0 - beta1 ** step
+                bias_correction2 = 1.0 - beta2 ** step
+
+                step_size = lr / bias_correction1
+                denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(eps)
+
+                # 4. 执行自适应参数更新
+                p.addcdiv_(exp_avg, denom, value=-step_size)
+
         return loss
+
+def configure_optimizers(model: nn.Module, lr: float, weight_decay: float, betas=(0.9, 0.95)):
+    """
+    将模型参数分为衰减组（2D 矩阵）与非衰减组（1D 向量与标量）。
+    """
+    decay_params = []
+    no_decay_params = []
+    
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if param.dim() >= 2:
+            decay_params.append(param)
+        else:
+            no_decay_params.append(param)
+            
+    optim_groups = [
+        {"params": decay_params, "weight_decay": weight_decay},
+        {"params": no_decay_params, "weight_decay": 0.0},
+    ]
+    return AdamW(optim_groups, lr=lr, betas=betas)
 ```
 
-</details>
+### 2. 余弦退火学习率调度器 (Cosine Decay with Linear Warmup)
 
-### Exercise 3 · AdamW Accounting
+现代 LLM 训练标准遵循三个学习率阶段：
+1. **预热期 (Linear Warmup)**：前若干步从接近 0 线性爬升至最大值 $\eta_{\max}$，避免初始化早期随机大梯度冲垮网络。
+2. **余弦退火期 (Cosine Decay)**：按照余弦曲线平滑衰减。
+3. **平台下限截断**：衰减至设定的最小学习率 $\eta_{\min} \approx 0.1 \eta_{\max}$。
 
-训练显存账本里，optimizer state 经常比参数本体还大。一个参数量为 `P` 的模型，如果参数是 BF16、moments 是 FP32，那么仅 `m` 和 `v` 就要额外吃掉 `8P` bytes。
-
-回答这类题时一定要把四种内存拆开讲：
-
-- parameters
-- gradients
-- optimizer states
-- activations
-
-不把 activation 单独拿出来，batch size 和 context length 对显存的影响就完全看不见。
-
-#### Quick Coding：`adamw_memory_accounting`
+$$lr(t) = \begin{cases} 
+\eta_{\max} \frac{t + 1}{T_{\text{warmup}} + 1}, & t < T_{\text{warmup}} \\
+\eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min}) \left(1 + \cos\left( \frac{t - T_{\text{warmup}}}{T_{\text{max}} - T_{\text{warmup}}} \pi \right)\right), & T_{\text{warmup}} \le t \le T_{\text{max}} \\
+\eta_{\min}, & t > T_{\text{max}}
+\end{cases}$$
 
 ```python
-def adamw_memory_accounting(num_params, param_bytes=2, grad_bytes=2, state_bytes=4):
-    ...
+def get_lr_cosine_schedule(step: int, max_steps: int, warmup_steps: int, lr_max: float, lr_min: float) -> float:
+    if step < warmup_steps:
+        return lr_max * (step + 1) / (warmup_steps + 1)
+    if step > max_steps:
+        return lr_min
+    decay_ratio = (step - warmup_steps) / (max_steps - warmup_steps)
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+    return lr_min + coeff * (lr_max - lr_min)
 ```
 
-<details>
-<summary>参考答案</summary>
+### 3. 全局梯度裁剪 (Global Gradient Clipping)
 
-```text
-parameters:       P * param_bytes
-gradients:        P * grad_bytes
-AdamW m:          P * state_bytes
-AdamW v:          P * state_bytes
-master weights:   可选
-activations:      depends on batch_size * context_length * d_model * layers
-```
+在深度 Transformer 训练中，偶尔会遭遇奇异样本或注意力局部极值导致的数值震荡。如果直接使用未受约束的大梯度更新，往往会直接导致 Loss 突刺（Loss Spike）甚至参数 NaN。
 
-训练 FLOPs 粗略可以记成：
-
-```text
-forward FLOPs = F
-backward FLOPs ≈ 2F
-optimizer step FLOPs ≈ O(P)
-one train step ≈ 3F + optimizer
-```
-
-</details>
-
-### Exercise 4 · Cosine LR with Warmup
-
-warmup 和 cosine decay 解决的是两个不同问题。warmup 负责让训练从安全的小步长起跑，cosine decay 负责在后期逐步收敛到较小学习率。把二者写成分段函数以后，检查点其实很简单：`it=warmup_iters` 时必须到达 `max_lr`，`it=cosine_cycle_iters` 时必须落到 `min_lr`。
-
-#### Quick Coding：`get_lr`
+全局梯度裁剪通过计算全体可学习参数梯度的总 $L_2$ 范数，并在其超过阈值时按比例整体缩小：
 
 ```python
-def get_lr(it, max_lr, min_lr, warmup_iters, cosine_cycle_iters):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import math
-
-def get_lr(it, max_lr, min_lr, warmup_iters, cosine_cycle_iters):
-    if it < warmup_iters:
-        return max_lr * it / warmup_iters
-    if it > cosine_cycle_iters:
-        return min_lr
-
-    progress = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters)
-    coeff = 0.5 * (1.0 + math.cos(math.pi * progress))
-    return min_lr + coeff * (max_lr - min_lr)
-```
-
-`warmup_iters == 0` 时要单独处理，避免除零。
-
-</details>
-
-### Exercise 5 · Gradient Clipping
-
-global grad norm clipping 的意义是把所有参数梯度视为一个长向量，再整体限制它的 L2 norm。这里最容易错的是把每个 tensor 单独 clip；那样得到的不是 global norm clipping，而是另一种局部启发式。
-
-#### Quick Coding：`clip_grad_norm`
-
-```python
-def clip_grad_norm(parameters, max_l2_norm, eps=1e-6):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def clip_grad_norm(parameters, max_l2_norm, eps=1e-6):
+def clip_grad_norm(parameters, max_norm: float, eps: float = 1e-6) -> float:
     params = [p for p in parameters if p.grad is not None]
     if not params:
-        return torch.tensor(0.0)
-
-    total = torch.zeros((), device=params[0].grad.device)
-    for p in params:
-        total += torch.sum(p.grad.detach() ** 2)
-    norm = torch.sqrt(total)
-
-    scale = torch.clamp(max_l2_norm / (norm + eps), max=1.0)
-    for p in params:
-        p.grad.mul_(scale)
-    return norm
+        return 0.0
+    # 计算全体参数梯度的 L2 范数平方和
+    total_norm = torch.sqrt(sum(p.grad.detach().pow(2).sum() for p in params))
+    clip_coeff = max_norm / (total_norm + eps)
+    if clip_coeff < 1.0:
+        for p in params:
+            p.grad.detach().mul_(clip_coeff)
+    return total_norm.item()
 ```
 
-</details>
+---
 
-## 模块七：训练循环与生成
+## 07. 数据加载流水线与训练主循环
 
-对应 CS336 Assignment 1：Section 5-6。
+### 一维 Token 数组的高效批采样 (`get_batch`)
 
-前面所有组件在这里第一次真正闭环。训练 loop 的本质不是一长串样板代码，而是把数据采样、前向、loss、反向、梯度控制、LR 更新、eval 和 checkpoint 放进一个可复现的顺序里。
-
-### Exercise 1 · Next-Token Batch Sampler
-
-语言模型数据加载的核心非常简单：从一维 token array 里随机截取长度为 `context_length + 1` 的窗口，前 `context_length` 个 token 作为 `x`，后 `context_length` 个 token 作为右移一位的 `y`。看起来朴素，但 start index 只要多一位少一位，target 就会越界或错位。
-
-#### Quick Coding：`get_batch`
-
-```python
-def get_batch(dataset, batch_size: int, context_length: int, device):
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
+语言模型预训练数据通常离线分词后紧凑存储为一个超长的一维整型数组（如 `numpy.memmap`）。每次迭代在区间 $[0, N - T - 1]$ 内随机采样起始索引，切出长度为 $T+1$ 的连续片段：
 
 ```python
 import numpy as np
-import torch
 
-def get_batch(dataset, batch_size, context_length, device):
-    n = len(dataset)
-    starts = torch.randint(0, n - context_length, (batch_size,))
-
-    xs, ys = [], []
-    for s in starts.tolist():
-        chunk = dataset[s : s + context_length + 1]
-        if isinstance(chunk, np.ndarray):
-            chunk = torch.from_numpy(chunk.astype(np.int64))
-        else:
-            chunk = torch.as_tensor(chunk, dtype=torch.long)
-        xs.append(chunk[:-1])
-        ys.append(chunk[1:])
-
-    x = torch.stack(xs).to(device=device, dtype=torch.long)
-    y = torch.stack(ys).to(device=device, dtype=torch.long)
+def get_batch(tokens_data: np.ndarray, batch_size: int, context_length: int, device: str):
+    """
+    从一维连续 Token 数组中切取 (B, T) 的输入与其对应的右移一位目标。
+    """
+    high = len(tokens_data) - context_length - 1
+    start_indices = np.random.randint(0, high, size=batch_size)
+    
+    x_chunks = [tokens_data[i : i + context_length] for i in start_indices]
+    y_chunks = [tokens_data[i + 1 : i + 1 + context_length] for i in start_indices]
+    
+    x = torch.from_numpy(np.stack(x_chunks).astype(np.int64)).to(device)
+    y = torch.from_numpy(np.stack(y_chunks).astype(np.int64)).to(device)
     return x, y
 ```
 
-</details>
+### 工业级模型状态保存与恢复 (Checkpointing)
 
-### Exercise 2 · Checkpoint Save / Load
-
-Checkpoint 的最低要求只有三项：`model.state_dict()`、`optimizer.state_dict()` 和 iteration。少任何一项都会让 resume 行为变形；尤其是少 optimizer state 时，AdamW moments 会丢失，曲线往往会在恢复点附近突然跳一下。
-
-#### Quick Coding：`save_checkpoint`
+Checkpoint 不仅要保存模型参数，还必须保存优化器状态（AdamW 的一阶与二阶动量）与当前的步数计数器。**如果漏掉优化器状态，恢复训练时动量信息丢失，Loss 曲线通常会在恢复点发生剧烈突跳**。
 
 ```python
-def save_checkpoint(model, optimizer, iteration: int, out):
-    ...
-
-def load_checkpoint(src, model, optimizer) -> int:
-    ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-def save_checkpoint(model, optimizer, iteration, out):
+def save_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, step: int, loss: float, filepath: str):
     payload = {
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "iteration": iteration,
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "step": step,
+        "loss": loss,
     }
-    torch.save(payload, out)
+    torch.save(payload, filepath)
 
-def load_checkpoint(src, model, optimizer):
-    payload = torch.load(src, map_location="cpu")
-    model.load_state_dict(payload["model"])
-    optimizer.load_state_dict(payload["optimizer"])
-    return payload["iteration"]
+def load_checkpoint(filepath: str, model: nn.Module, optimizer: Optional[torch.optim.Optimizer] = None) -> int:
+    checkpoint = torch.load(filepath, map_location="cpu")
+    model.load_state_dict(checkpoint["model_state"])
+    if optimizer is not None:
+        optimizer.load_state_dict(checkpoint["optimizer_state"])
+    return checkpoint["step"]
 ```
 
-</details>
+---
 
-### Exercise 3 · Full Training Script
+## 08. 自回归文本生成与采样机制
 
-训练脚本调试最好按最短闭环推进：
+在推理阶段，模型以先前所有 Token 为条件，自回归地预测并拼接新 Token。
 
-1. 先 overfit 一个固定 minibatch。
-2. 再接真实 dataloader。
-3. 再打开 validation eval。
-4. 最后测 checkpoint resume。
+### 1. 核心采样策略比较
 
-这样做的原因很简单：每一步只新增一种系统复杂度，出错时更容易定位。直接一上来跑全量训练，loss 不降时通常不知道是数据、模型、loss 还是 optimizer 的问题。
-
-#### Quick Coding：`train`
+- **贪心解码 (Greedy Search)**：每一步直接选取 `argmax(logits)`。完全确定性，但极易陷入机械性单调循环。
+- **温度调节 (Temperature Scaling)**：在进入 Softmax 前对 Logits 统一除以温度系数 $T$：
+  $$p_i = \frac{e^{z_i / T}}{\sum_j e^{z_j / T}}$$
+  - $T \to 0$：退化为贪心检索；
+  - $T > 1$：展平概率分布，鼓励创造力与发散性；
+  - $T < 1$：使概率峰值更加陡峭集中。
+- **Top-K 截断**：仅保留概率最高的前 $K$ 个词，将其余词的 Logits 置为 $-\infty$。能有效剔除完全不相干的长尾低概率 Token。
+- **Top-P (Nucleus) 核采样**：动态保留累积概率刚刚达到阈值 $P$（如 $0.9$）的最小词集。在候选词很多时保留更多选择，在预测非常明确时自动收窄为少数几个词。
 
 ```python
-def train(config):
-    ...
+def sample_next_token(
+    logits: torch.Tensor,
+    temperature: float = 1.0,
+    top_k: int = 0,
+    top_p: float = 0.9,
+) -> int:
+    """
+    单步自回归采样器：支持 Temperature、Top-K 与 Top-P 联合控制。
+    logits: 形状为 (1, V) 的预测分值
+    """
+    if temperature == 0.0:
+        return torch.argmax(logits, dim=-1).item()
+    
+    # 1. 温度缩放
+    scaled_logits = logits / temperature
+    
+    # 2. Top-K 过滤
+    if top_k > 0:
+        val, _ = torch.topk(scaled_logits, min(top_k, scaled_logits.size(-1)))
+        scaled_logits[scaled_logits < val[:, [-1]]] = float("-inf")
+        
+    # 3. Top-P (Nucleus) 过滤
+    if top_p < 1.0:
+        sorted_logits, sorted_indices = torch.sort(scaled_logits, descending=True)
+        cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+        
+        # 将累积概率超出阈值的后续索引标记为剔除
+        sorted_indices_to_remove = cumulative_probs > top_p
+        # 保证至少保留第一个概率最大的候选词
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = False
+        
+        # 将排序后的掩码映射回原始词表索引
+        indices_to_remove = sorted_indices_to_remove.scatter(
+            dim=1, index=sorted_indices, src=sorted_indices_to_remove
+        )
+        scaled_logits[indices_to_remove] = float("-inf")
+        
+    # 4. 计算归一化概率并抽样
+    probs = F.softmax(scaled_logits, dim=-1)
+    next_token = torch.multinomial(probs, num_samples=1)
+    return next_token.item()
 ```
 
-<details>
-<summary>参考答案</summary>
+### 2. KV Cache 机制深度剖析
+
+#### 朴素生成：$O(N^2)$ 计算瓶颈
+
+在朴素的自回归循环中，每当生成第 $t$ 个新 Token 时，我们把前 $t-1$ 个历史 Token 与新 Token 一同喂进模型。前 $t-1$ 个历史 Token 的 Key 与 Value 向量会被**完全重复地重新计算一遍**。
+生成 $N$ 个 Token 的注意力计算总量为：
+
+$$\sum_{t=1}^N t \times D = O(N^2 \cdot D)$$
+
+#### KV 缓存加速：$O(N)$ 降维
+
+在因果注意力机制中，过去 Token 的 $K$ 与 $V$ 向量只由它们自己及其左侧的历史决定，绝对不会受未来新生成的 Token 影响！
+因此：**我们只需要在每一步只前向输入当前这 1 个新 Token，计算出当前位置的 $Q_t, K_t, V_t$，然后把新算出的 $K_t, V_t$ 拼接到显存里的 KV 缓存中，直接做一次形状为 $(1, t)$ 的注意力内积**。
+每一步计算量从 $O(t)$ 降为 $O(1)$，总复杂度从 $O(N^2)$ 骤降为 $O(N)$。
+
+---
+
+## 09. 端到端极简可执行验证脚本 (End-to-End Complete Executable Script)
+
+将前述所有组件组装成一个独立、完整、可直接复制运行的端到端脚本。它会在合成的语料文本上完成分词器训练、模型前向、梯度更新与最终的自回归文本生成：
 
 ```python
-for it in range(start_iter, max_iters):
-    lr = get_lr(it, max_lr, min_lr, warmup_iters, cosine_iters)
-    for group in optimizer.param_groups:
-        group["lr"] = lr
+import math
+import re
+from collections import Counter
+from dataclasses import dataclass
+from typing import Optional, Tuple
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-    x, y = get_batch(train_tokens, batch_size, context_length, device)
-    logits = model(x)
-    loss = cross_entropy(logits, y)
+# ==========================================
+# 1. 字节级 BPE 分词器
+# ==========================================
+PRETOKEN_PAT = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?[^\W\d_]+| ?\d+| ?[^\s\w]+|\s+(?!\S)|\s+""")
 
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    clip_grad_norm(model.parameters(), max_grad_norm)
-    optimizer.step()
+class ByteLevelBPETokenizer:
+    def __init__(self):
+        self.vocab = {bytes([b]): b for b in range(256)}
+        self.inv_vocab = {b: bytes([b]) for b in range(256)}
+        self.merges = []
+        self.special_tokens = {"<|endoftext|>": 256}
+        self.inv_special = {256: "<|endoftext|>"}
 
-    if it % log_interval == 0:
-        print({"iter": it, "loss": float(loss), "lr": lr})
+    def train(self, text: str, vocab_size: int):
+        words = [m.group(0) for m in PRETOKEN_PAT.finditer(text)]
+        word_counts = Counter()
+        for w in words:
+            word_counts[tuple(bytes([b]) for b in w.encode("utf-8"))] += 1
+            
+        num_merges = vocab_size - 256 - len(self.special_tokens)
+        for _ in range(max(0, num_merges)):
+            pair_counts = Counter()
+            for p_tuple, freq in word_counts.items():
+                for p in zip(p_tuple, p_tuple[1:]):
+                    pair_counts[p] += freq
+            if not pair_counts:
+                break
+                
+            best_pair = max(pair_counts.keys(), key=lambda p: (pair_counts[p], p))
+            self.merges.append(best_pair)
+            new_id = len(self.vocab) + len(self.special_tokens)
+            merged = best_pair[0] + best_pair[1]
+            self.vocab[merged] = new_id
+            self.inv_vocab[new_id] = merged
+            
+            new_counts = Counter()
+            for p_tuple, freq in word_counts.items():
+                new_p = []
+                j = 0
+                while j < len(p_tuple):
+                    if j < len(p_tuple) - 1 and (p_tuple[j], p_tuple[j+1]) == best_pair:
+                        new_p.append(merged)
+                        j += 2
+                    else:
+                        new_p.append(p_tuple[j])
+                        j += 1
+                new_counts[tuple(new_p)] = freq
+            word_counts = new_counts
 
-    if it % eval_interval == 0:
-        model.eval()
-        with torch.no_grad():
-            val_losses = []
-            for _ in range(eval_iters):
-                vx, vy = get_batch(val_tokens, batch_size, context_length, device)
-                val_losses.append(cross_entropy(model(vx), vy).item())
-        model.train()
-        print({"iter": it, "val_loss": sum(val_losses) / len(val_losses)})
+    def encode(self, text: str):
+        words = [m.group(0) for m in PRETOKEN_PAT.finditer(text)]
+        token_ids = []
+        for w in words:
+            pieces = [bytes([b]) for b in w.encode("utf-8")]
+            for pair in self.merges:
+                merged = pair[0] + pair[1]
+                new_pieces = []
+                i = 0
+                while i < len(pieces):
+                    if i < len(pieces) - 1 and pieces[i] == pair[0] and pieces[i+1] == pair[1]:
+                        new_pieces.append(merged)
+                        i += 2
+                    else:
+                        new_pieces.append(pieces[i])
+                        i += 1
+                pieces = new_pieces
+            for p in pieces:
+                token_ids.append(self.vocab[p])
+        return token_ids
 
-    if it % ckpt_interval == 0:
-        save_checkpoint(model, optimizer, it, ckpt_path)
-```
+    def decode(self, ids):
+        raw = bytearray()
+        for i in ids:
+            if i in self.inv_special:
+                raw.extend(self.inv_special[i].encode("utf-8"))
+            elif i in self.inv_vocab:
+                raw.extend(self.inv_vocab[i])
+        return raw.decode("utf-8", errors="replace")
 
-最常见的实现错误：
+# ==========================================
+# 2. 现代 GPT 张量算子与架构
+# ==========================================
+@dataclass
+class GPTConfig:
+    vocab_size: int = 300
+    context_length: int = 32
+    d_model: int = 64
+    num_layers: int = 2
+    num_heads: int = 2
+    num_kv_heads: int = 1
+    d_ff: int = 128
+    rope_theta: float = 10000.0
 
-- 忘记 `optimizer.zero_grad()`。
-- eval 时忘记 `torch.no_grad()`。
-- `model.eval()` 后忘记切回 `model.train()`。
-- logging 直接持有 loss tensor 而不 `.item()`。
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
 
-</details>
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        input_dtype = x.dtype
+        x_f32 = x.float()
+        variance = x_f32.pow(2).mean(dim=-1, keepdim=True)
+        return ((x_f32 * torch.rsqrt(variance + self.eps)).to(input_dtype)) * self.weight
 
-### Exercise 4 · Autoregressive Decoder
+class SwiGLU(nn.Module):
+    def __init__(self, d_model: int, d_ff: int):
+        super().__init__()
+        self.w_gate = nn.Linear(d_model, d_ff, bias=False)
+        self.w_up = nn.Linear(d_model, d_ff, bias=False)
+        self.w_down = nn.Linear(d_ff, d_model, bias=False)
 
-生成循环每轮只做一件事：读取最后一个位置的 logits，采一个 next token，再把它接回上下文。temperature 和 top-p 改的是采样分布，不改模型本身；context 超长时保留最近窗口，是因为因果 LM 根本看不到更早历史。
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.w_down(F.silu(self.w_gate(x)) * self.w_up(x))
 
-#### Quick Coding：`generate`
+def precompute_rope(dim: int, max_seq_len: int, theta: float = 10000.0):
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2).float() / dim))
+    t = torch.arange(max_seq_len, dtype=torch.float32)
+    freqs_matrix = torch.outer(t, freqs)
+    return torch.cos(freqs_matrix), torch.sin(freqs_matrix)
 
-```python
-@torch.no_grad()
-def generate(model, tokenizer, prompt: str, max_new_tokens: int, temperature=1.0, top_p=1.0, eos_token_id=None):
-    ...
-```
+def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+    B, H, T, Dh = x.shape
+    cos = cos[:T, :].unsqueeze(0).unsqueeze(1)
+    sin = sin[:T, :].unsqueeze(0).unsqueeze(1)
+    x1, x2 = x[..., :Dh//2], x[..., Dh//2:]
+    return (x * torch.cat((cos, cos), dim=-1)) + (torch.cat((-x2, x1), dim=-1) * torch.cat((sin, sin), dim=-1))
 
-<details>
-<summary>参考答案</summary>
+class CausalSelfAttention(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        self.head_dim = config.d_model // config.num_heads
+        self.num_heads = config.num_heads
+        self.num_kv_heads = config.num_kv_heads
+        self.num_queries_per_kv = self.num_heads // self.num_kv_heads
+        
+        self.q_proj = nn.Linear(config.d_model, config.d_model, bias=False)
+        self.k_proj = nn.Linear(config.d_model, self.num_kv_heads * self.head_dim, bias=False)
+        self.v_proj = nn.Linear(config.d_model, self.num_kv_heads * self.head_dim, bias=False)
+        self.out_proj = nn.Linear(config.d_model, config.d_model, bias=False)
 
-```python
-@torch.no_grad()
-def generate(model, tokenizer, prompt, max_new_tokens, temperature=1.0, top_p=1.0, eos_token_id=None):
-    model.eval()
-    ids = tokenizer.encode(prompt)
-    tokens = torch.tensor([ids], dtype=torch.long, device=next(model.parameters()).device)
+    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+        B, T, D = x.shape
+        q = self.q_proj(x).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, T, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, T, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        
+        q = apply_rope(q, cos, sin)
+        k = apply_rope(k, cos, sin)
+        
+        if self.num_queries_per_kv > 1:
+            k = torch.repeat_interleave(k, self.num_queries_per_kv, dim=1)
+            v = torch.repeat_interleave(v, self.num_queries_per_kv, dim=1)
+            
+        scores = torch.matmul(q, k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
+        mask = torch.triu(torch.full((T, T), float("-inf"), device=x.device), diagonal=1)
+        probs = F.softmax(scores + mask.unsqueeze(0).unsqueeze(1), dim=-1)
+        out = torch.matmul(probs, v).transpose(1, 2).contiguous().view(B, T, -1)
+        return self.out_proj(out)
 
-    for _ in range(max_new_tokens):
-        idx_cond = tokens[:, -model.context_length:]
-        logits = model(idx_cond)[:, -1, :]
+class TransformerBlock(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        self.attn_norm = RMSNorm(config.d_model)
+        self.attn = CausalSelfAttention(config)
+        self.ffn_norm = RMSNorm(config.d_model)
+        self.ffn = SwiGLU(config.d_model, config.d_ff)
 
-        if temperature == 0:
-            next_id = torch.argmax(logits, dim=-1, keepdim=True)
-        else:
-            logits = logits / temperature
-            probs = torch.softmax(logits, dim=-1)
-            probs = top_p_filter(probs, top_p)
-            next_id = torch.multinomial(probs, num_samples=1)
-
-        tokens = torch.cat([tokens, next_id], dim=1)
-        if eos_token_id is not None and int(next_id.item()) == eos_token_id:
-            break
-
-    return tokenizer.decode(tokens[0].tolist())
-
-def top_p_filter(probs, top_p):
-    if top_p >= 1.0:
-        return probs
-    sorted_probs, sorted_idx = torch.sort(probs, descending=True, dim=-1)
-    cdf = torch.cumsum(sorted_probs, dim=-1)
-    keep = cdf <= top_p
-    keep[..., 0] = True
-    filtered = torch.zeros_like(probs)
-    filtered.scatter_(dim=-1, index=sorted_idx, src=sorted_probs * keep)
-    return filtered / filtered.sum(dim=-1, keepdim=True)
-```
-
-top-p 之后必须重新 normalize；`temperature=0` 也应该显式走 greedy，而不是去做除零。
-
-</details>
-
-## 模块八：实验与 Ablation
-
-对应 CS336 Assignment 1：Section 7。
-
-这一模块的目标不是再写更多函数，而是建立“可复现实验”的工作方式。能训练一个模型不算结束；你还需要知道哪次 run 用了哪份代码、哪组超参、在哪个 token budget 下收敛，以及某个改动是否真的带来了收益。
-
-### Experiment 1 · Experiment Logger
-
-如果以后看到一条 val loss 曲线，却说不清它对应哪份代码、哪组配置和哪份 checkpoint，这次训练基本等于白跑。最小 logger 至少要保存 run name、git commit 或 config hash、train/val loss、tokens processed、wall-clock time、checkpoint path 和生成样例。
-
-#### Quick Coding：`ExperimentLogger`
-
-```python
-class ExperimentLogger:
-    def __init__(self, path: str, config: dict):
-        ...
-
-    def log(self, step: int, **metrics):
-        ...
-```
-
-<details>
-<summary>参考答案</summary>
-
-```python
-import json, time, subprocess
-
-def git_commit():
-    try:
-        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    except Exception:
-        return "unknown"
-
-class JSONLLogger:
-    def __init__(self, path, config):
-        self.f = open(path, "a", encoding="utf-8")
-        self.config = config
-        self.commit = git_commit()
-
-    def log(self, step, **metrics):
-        row = {
-            "time": time.time(),
-            "step": step,
-            "git_commit": self.commit,
-            "config": self.config,
-            **metrics,
-        }
-        self.f.write(json.dumps(row, ensure_ascii=False) + "\n")
-        self.f.flush()
-```
-
-</details>
-
-### Experiment 2 · TinyStories LR Sweep
-
-LR sweep 要回答的是稳定边界在哪里，而不是“哪个点看起来最好”。因此实验里只能改 learning rate，其他变量都必须固定：模型、tokenizer、数据顺序或 seed、总 token budget、batch size 和 schedule 形状都不能乱动。
-
-推荐用 log-scale：
-
-```text
-1e-4, 3e-4, 1e-3, 3e-3, 1e-2
-```
-
-报告时要把曲线形态解释出来，而不是只给最终表格：
-
-- loss 几乎不降，说明 LR 太小或训练太短。
-- loss 先降后爆，说明接近或越过稳定边界。
-- train loss 降、val loss 不降，可能是过拟合或数据太小。
-- 最佳 LR 随 batch size 漂移，说明 gradient noise scale 变了。
-
-### Experiment 3 · Batch Size Sweep
-
-batch size 实验要把 micro batch 和 effective batch 分开写。前者影响显存和 step time，后者还可能包含 gradient accumulation，对 optimizer step 频率有直接影响。
-
-推荐实验表：
-
-```text
-batch_size | grad_accum | effective_batch | lr | tokens/sec | max_mem | best_val_loss
-```
-
-结论不能只看 step time。更好的比较标准是同样 wall-clock 下的 val loss，或者同样 tokens processed 下的 val loss。
-
-### Experiment 4 · Generate TinyStories Samples
-
-生成样例实验真正要观察的是采样参数和 checkpoint 质量的交互。TinyStories 适合看故事连贯性、角色一致性和句子完整性，不适合拿“事实正确性”当主指标。
-
-固定 prompt 后，至少比较：
-
-| 变量 | 作用 |
-| --- | --- |
-| checkpoint step | 模型学到了多少模式 |
-| temperature | 控制分布尖锐程度 |
-| top_p | 控制保留多少概率质量 |
-| prompt | 控制条件分布的起点 |
-
-常见解读：
-
-- 重复短句：模型欠训练，或 temperature 太低。
-- 语法乱：checkpoint 太早，或 temperature 太高。
-- 流畅但单调：top-p 太小，或 prompt 太强。
-- 很早 EOS：EOS 学得太强，或数据里短文本过多。
-
-### Experiment 5 · Remove RMSNorm
-
-这个 ablation 关心的是稳定性，不是单点最好 loss。baseline 应该是 pre-norm + previous best LR，然后对比“去掉 RMSNorm 但 LR 不变”和“去掉 RMSNorm 并把 LR 调低”。
-
-要记录的不只是 train/val loss，还包括：
-
-- grad norm
-- activation norm
-- divergence step
-
-更合理的预期是：去掉 RMSNorm 后，同样 LR 下更容易出现 loss spike 或 grad norm 放大；降低 LR 可能能训，但收敛速度和最终 loss 常会变差。
-
-### Experiment 6 · Post-Norm Transformer
-
-pre-norm 和 post-norm 的比较要只改 block 结构，不改参数量规模。post-norm 常见实现是：
-
-```python
-class PostNormBlock(nn.Module):
-    def forward(self, x, token_positions=None):
-        x = self.ln1(x + self.attn(x, token_positions=token_positions))
-        x = self.ln2(x + self.ffn(x))
+    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+        x = x + self.attn(self.attn_norm(x), cos, sin)
+        x = x + self.ffn(self.ffn_norm(x))
         return x
+
+class GPT(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        self.config = config
+        self.tok_emb = nn.Embedding(config.vocab_size, config.d_model)
+        self.blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.num_layers)])
+        self.final_norm = RMSNorm(config.d_model)
+        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
+        self.lm_head.weight = self.tok_emb.weight  # Weight Tying
+        
+        cos, sin = precompute_rope(config.d_model // config.num_heads, config.context_length)
+        self.register_buffer("cos_cached", cos, persistent=False)
+        self.register_buffer("sin_cached", sin, persistent=False)
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=0.02)
+        elif isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, std=0.02)
+
+    def forward(self, idx: torch.Tensor, targets: Optional[torch.Tensor] = None):
+        B, T = idx.shape
+        x = self.tok_emb(idx)
+        cos = self.cos_cached.to(device=x.device, dtype=x.dtype)
+        sin = self.sin_cached.to(device=x.device, dtype=x.dtype)
+        for b in self.blocks:
+            x = b(x, cos, sin)
+        logits = self.lm_head(self.final_norm(x))
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
+
+# ==========================================
+# 3. 验证执行与生成闭环
+# ==========================================
+if __name__ == "__main__":
+    torch.manual_seed(42)
+    corpus = """To be, or not to be, that is the question:
+Whether 'tis nobler in the mind to suffer
+The slings and arrows of outrageous fortune,
+Or to take arms against a sea of troubles
+And by opposing end them."""
+
+    print(">>> 训练分词器...")
+    tok = ByteLevelBPETokenizer()
+    tok.train(corpus, vocab_size=280)
+    tokens = tok.encode(corpus)
+    print(f"语料 Token 数量: {len(tokens)}, 词表规模: {len(tok.vocab)}")
+    assert tok.decode(tokens) == corpus, "分词器编码-解码一致性验证失败！"
+
+    print(">>> 实例化 GPT 模型...")
+    data = torch.tensor(tokens, dtype=torch.long)
+    cfg = GPTConfig(
+        vocab_size=len(tok.vocab) + len(tok.special_tokens) + 1,
+        context_length=16,
+        d_model=64,
+        num_layers=2,
+        num_heads=2,
+        num_kv_heads=1,
+        d_ff=128
+    )
+    model = GPT(cfg)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=0.01)
+
+    print(">>> 开始端到端训练...")
+    for step in range(80):
+        # 采样 Batch
+        starts = torch.randint(0, len(data) - cfg.context_length - 1, (4,))
+        x = torch.stack([data[i : i + cfg.context_length] for i in starts])
+        y = torch.stack([data[i + 1 : i + 1 + cfg.context_length] for i in starts])
+        
+        logits, loss = model(x, y)
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        
+        if step % 20 == 0:
+            print(f"Step {step:02d} | Loss: {loss.item():.4f} | PPL: {math.exp(loss.item()):.2f}")
+
+    print(">>> 启动自回归生成测试...")
+    prompt = "To be"
+    prompt_ids = torch.tensor([tok.encode(prompt)], dtype=torch.long)
+    model.eval()
+    with torch.no_grad():
+        for _ in range(25):
+            cond = prompt_ids[:, -cfg.context_length:]
+            logits, _ = model(cond)
+            next_id = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+            prompt_ids = torch.cat([prompt_ids, next_id], dim=1)
+
+    generated_text = tok.decode(prompt_ids[0].tolist())
+    print("\n[生成结果]:\n" + generated_text)
 ```
 
-更好的实验写法是画两张图：
+---
 
-- same LR 对比
-- retuned best LR 对比
+## 10. 深度消融实验与系统调优避坑指南
 
-这样才能区分“结构本身不稳”和“只是需要更低 LR”。
+### 五大经典架构消融实验分析 (Ablations)
 
-### Experiment 7 · NoPE vs RoPE
+| 实验方向 | 对照组设计 | 实验结论与核心机理 |
+| :--- | :--- | :--- |
+| **Pre-LN vs Post-LN** | 相同层数下对比预归一化与后归一化 | Post-LN 梯度随层数呈指数衰减，需要长 Warmup 且只能承受极小的学习率；Pre-LN 形成恒等残差高速公路，训练极其平稳。 |
+| **RoPE vs NoPE (无位置编码)** | 去除 RoPE，仅依赖因果掩码提供单向位置信息 | 短文本下仅靠因果掩码尚能收敛，但在长上下文下模型完全丧失对词序与跨距的敏感性，生成结果出现严重的语法混乱与循环。 |
+| **SwiGLU vs 标准 GELU MLP** | 严格匹配参数量（$d_{\text{ff}} = \frac{8}{3}D$ vs $4D$） | 门控机制赋予非线性映射以动态过滤输入特征的能力，在相同 FLOPs 预算下收敛更快，验证集困惑度稳步下降约 0.1~0.3。 |
+| **Weight Tying 权重绑定** | 绑定 Embedding 与 LM Head vs 独立权重 | 在小模型（100M~1B）下，权重绑定能提供极佳的几何对齐正则化，大幅削减显存；但在超大模型（>70B）下，解绑权重拥有更强的词表解耦表达能力。 |
+| **FlashAttention 算子融合** | 朴素 MatMul+Softmax vs 算子融合核 | 算法数学逻辑完全一致，但 FlashAttention 通过分块利用 SRAM 消除对 HBM 的中间注意力矩阵读写，内存消耗从 $O(T^2)$ 骤降至 $O(T)$，端到端加速 2~4 倍。 |
 
-这个问题在问：没有显式位置编码时，模型能不能仅靠 causal mask 学到顺序信息。答案通常不是简单的“能/不能”，而是“短 context、小数据上可能还能降，但长 context 和位置关系复杂的任务上会明显变差”。
+### 必须警惕的八大无声 Bug (Silent Bugs Checklist)
 
-报告里不要只看 final loss，至少再加两样：
+在手写 Transformer 与自回归系统时，许多代码错误**不会导致程序报错崩溃，但会导致模型学不到正确表征或性能严重退化**：
 
-- 生成样例
-- context length sensitivity
-
-因为 NoPE 的很多退化恰好体现在重复、顺序混乱和长距离一致性下降上。
-
-### Experiment 8 · SwiGLU vs SiLU FFN
-
-这个对比最重要的前提是参数量近似匹配：
-
-```text
-SwiGLU: 3 * d_model * d_ff_swiglu
-SiLU FFN: 2 * d_model * d_ff_silu
-```
-
-所以常见设定才会取：
-
-```text
-d_ff_silu ≈ 4 * d_model
-d_ff_swiglu ≈ 8/3 * d_model
-```
-
-如果不先配平参数量，再说 “SwiGLU 更好” 没有可比性。输出里至少要同时给参数量、tokens/sec、best val loss 和 run variance。
-
-### Experiment 9 · OpenWebText Run
-
-把同一个小模型从 TinyStories 搬到 OWT，最容易犯的错是直接拿 loss 横比。不同数据分布的 entropy 不同，所以更合理的问题是：
-
-- 同样训练 budget 下，OWT 曲线是否稳定下降。
-- 生成结果是否更通用，还是只是多了网页碎片和噪声。
-- tokenizer 的 `bytes/token` 是否显著变差。
-- 同样 compute 下，模型是否学到了更泛化的语言模式。
-
-OWT 更难压缩、更长尾、更嘈杂，所以 loss 更高本身并不等于模型更差。
-
-### Experiment 10 · Leaderboard-Style Modification
-
-这一题最像小型研究实验。正确写法是：
-
-1. 先写假设。
-2. 只改一个主要变量。
-3. 在相同 token budget 和 eval protocol 下比较 baseline 与 modified。
-4. 给证据，不给口号。
-
-几个常见方向：
-
-| 修改 | 假设 | 风险 |
-| --- | --- | --- |
-| weight tying | 减参数并带一点正则化 | 输出层表达受限 |
-| retune LR schedule | 原 schedule 不是最优 | 需要更多实验预算 |
-| better init | 改善前期稳定性 | 可能只影响前几百步 |
-| fused kernels / compile | 提高 tokens/sec | 不一定提升最终 loss |
-| tokenizer change | 更好压缩数据 | 会改变训练分布，可比性下降 |
-
-以 weight tying 为例：
-
-```python
-model.lm_head.weight = model.token_embeddings.weight
-```
-
-即使改动没有提升，也可以是好答案。关键是实验设计干净，结论和数据一致。
-
-## 最后检查：端到端 Debug Checklist
-
-### 1. Tokenizer 链路
-
-- `str`、code point、UTF-8 bytes 三层是否分清。
-- special token 是否在训练时当边界、在 encode 时当整体 token。
-- BPE merge 是否只发生在单个 pre-token 内。
-- decode 是否先拼 bytes 再整体 UTF-8 decode。
-
-### 2. 模型前向链路
-
-- 所有 shape 是否沿着 `(B, T, D)` 或 `(B, H, T, Dh)` 保持一致。
-- RoPE 是否只作用于 Q/K。
-- causal mask 的语义是否和 SDPA 一致。
-- LM head 是否输出 logits，而不是概率。
-
-### 3. 训练链路
-
-- `y` 是否真的是 `x` 的右移一位 target。
-- cross entropy 是否直接吃 logits。
-- AdamW 是否用了 decoupled weight decay 和正确的 bias correction。
-- gradient clipping 是否按 global norm 做统一缩放。
-- eval 是否放在 `torch.no_grad()` 里。
-
-### 4. 实验链路
-
-- 每个 run 是否记录了 config、commit、loss、tokens、wall-clock 和 checkpoint。
-- ablation 是否只改一个主要变量。
-- 比较是否在相同 token budget 或 wall-clock 下进行。
-- 结论是否来自曲线、样例和日志，而不是先入为主的偏好。
-
-如果这四条链都能独立检查，你就已经有了一套能从 raw text 走到可复现实验的最小 LLM 实现工作流。
+1. **因果掩码方向颠倒**：若将 `torch.triu(..., diagonal=1)` 错写为 `torch.tril`，会导致前向变成了“看未来预测过去”，训练 Loss 奇低（快速跌到 0 附近），但推理生成时完全变成乱码胡言。
+2. **RoPE 误加在 Value 向量上**：RoPE 仅服务于 Query 与 Key 的相对距离打分几何，Value 是语义内容向量。若对 Value 施加旋转，会导致输出表征随着位置产生无意义的高维扭曲。
+3. **AdamW 错对 RMSNorm 施加 Weight Decay**：若未进行参数过滤，RMSNorm 的缩放向量 $\gamma$ 会被持续衰减至接近 0，导致残差信号幅度坍塌。
+4. **Target 移位对其错位**：若误将 `y` 设置为与 `x` 相同的索引（而不是右移 1 位），模型学到的是恒等自映射，训练 Loss 趋于 0，推理时只会死板地重复输入的前一个词。
+5. **分词器解码在单字节截断处提前 decode**：在多字节 UTF-8 字符（如中文占 3 个字节、Emoji 占 4 个字节）未完整拼接前直接调用 `.decode('utf-8')`，会抛出 `UnicodeDecodeError`。必须先把全部 Token 对应的字节流拼成完整的 `bytearray`，最后统一解码。
+6. **验证集评估漏写 `model.eval()` 或 `torch.no_grad()`**：如果存在 Dropout，未切换到 eval 模式会导致验证集指标被人为低估；漏掉 `no_grad()` 会导致显存持续积累暴击 OOM。
+7. **梯度累积时漏除累积步数**：若使用梯度累积，必须在每个 micro-batch 的 Loss 上执行 `loss = loss / grad_accum_steps`，否则有效学习率被隐式放大了对应倍数，导致优化器步长过大发散。
+8. **自回归生成时未截断历史窗口**：当生成序列总长度超过预设的 `context_length` 时，直接前向会触发 RoPE 缓存或注意力掩码的越界崩溃。每一步输入必须使用 `tokens[:, -context_length:]` 进行滑动窗口截取。

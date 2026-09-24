@@ -109,7 +109,22 @@ Placeholder：data mixture、scaling behavior、objective、curriculum、contami
 
 ## 10. 优化器
 
-Placeholder：AdamW、learning rate schedule、weight decay、gradient clipping、stability、large-batch training。
+优化算法是大模型预训练与生产系统的“动力引擎”。面试与系统设计的核心心智模型是**预条件几何（Preconditioning Geometry）的三代跃迁**：
+
+~~~text
+SGD (各向同性标量)
+  -> 学习率受制于病态峡谷最大特征值 (λ_max)，谷底平缓方向前进停滞
+Adam / AdamW (坐标轴对角椭球)
+  -> 一阶矩估计速度，二阶未中心化矩估计能量方差 (1/√v)
+  -> 极端情况下等价于 SignSGD (有效步长严格有界，具备损失尺度不变性)
+  -> 致命陷阱：稀疏 Embedding 表的 ε 梯度爆炸与 Decay 衰减、超大 Batch 的 Sharp Minima、非平稳流式推荐的滞后刹车
+Muon (2D 矩阵谱正交投影)
+  -> 将矩阵视为算子，通过极分解 (Polar Decomposition) 将动量正交化 (O = U V^T)
+  -> 所有奇异值归一化为 1.0，杜绝任何谱方向的特征塌缩与爆炸
+  -> 五阶 Newton-Schulz 迭代纯走 GEMM，专用于 2D 线性层矩阵，收敛提速 1.5~2 倍
+~~~
+
+详见系统级专题指南与代码实现：[ML Coding 10 · 优化器全景：从 SGD 动量到 Adam/AdamW 与 Muon](notes/MLCoding/MLCoding10%20Modern%20Optimizers%20SGD%20AdamW%20Muon.md)。
 
 ## 11. Data Curation
 
@@ -1476,6 +1491,17 @@ const mlCodingNoteDefinitions = [
       directory: 'MLCoding',
       titleEn: 'ML Coding 09 · Data Science Core: Statistical Testing, Distribution Shift, Decision Trees & Random Forests',
       category: 'Data Science & Applied Statistics',
+      difficulty: 'Hard',
+    },
+  ),
+  createTutorialDefinition(
+    'ML Coding 10 · 优化器全景与面试精要：从 SGD 动量到 Adam/AdamW 与 Muon，二阶矩、稀疏陷阱与谱正交化',
+    'MLCoding10 Modern Optimizers SGD AdamW Muon.md',
+    'MLCoding10 Modern Optimizers SGD AdamW Muon.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Coding 10 · Optimizer Panorama & Interview Guide: From SGD Momentum to Adam/AdamW & Muon, Second Moments, Sparse Pitfalls & Spectral Orthogonalization',
+      category: 'Optimization & Training Dynamics',
       difficulty: 'Hard',
     },
   ),
