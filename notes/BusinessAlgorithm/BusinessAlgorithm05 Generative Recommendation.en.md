@@ -119,7 +119,75 @@ The subsequent item is conditioned on the already generated list, allowing the m
 
 These are industrial results reported by the authors; the paper was treated as a preprint during the compilation of this manual. Unified models must still address issues such as rollbacks, rules, long-tail coverage, invalid IDs, and online decoding costs.
 
-### 18.9 From Positive/Negative Samples to RL
+### 18.9 Generation Trigger: Direct Generation from Users vs. Retrieving Seeds First
+
+Generative recommendation must decide not only what to generate, but also **from what conditioning context to generate**. This issue is especially prominent in user-to-user recommendation, such as friend recommendation, following recommendations, or creator recommendation.
+
+One approach is to directly use the active user as the generation trigger:
+
+```text
+active user u
+  -> generative model
+  -> candidate users
+```
+
+The model directly learns:
+
+```math
+P(v\mid u,H_u),
+```
+
+where `H_u` represents the user profile, behavioral history, or graph neighborhood. Its advantage is direct personalization without an additional upstream retrieval bottleneck; its drawback is that generation easily collapses into the active user's strongest interest mode, potentially resulting in insufficient coverage and exploration.
+
+Another approach is to first retrieve a set of seed users from the active user, and then generate candidates around each seed:
+
+```text
+active user
+  -> retrieve seed users s1,...,sk
+  -> generate candidates around each seed
+  -> merge / dedup / rank
+```
+
+This can be understood as a generative variant of UserCF or graph-neighborhood expansion. Different seeds can correspond to different interest clusters of the user, typically expanding candidate coverage and exploration. For example, for a user concurrently interested in LLMs, Graph ML, and Systems, the system can first retrieve seeds for each of the three interest areas, and then expand candidate sets separately.
+
+The trade-off is introducing an additional layer of error propagation:
+
+```text
+active user
+  -> wrong or biased seed retrieval
+  -> biased generation
+```
+
+If the retriever is biased toward high-degree or viral users and the generator continues expanding around them, popularity bias can be further amplified.
+
+Therefore, a more practical solution is often not to let seeds completely replace the active user, but rather to perform jointly conditioned generation:
+
+```math
+P(v\mid u,s,H_u).
+```
+
+Here, the active user retains personalization, while the seed specifies a local interest direction. Multiple complementary seeds decompose a complex user requirement into multiple generation neighborhoods.
+
+When evaluating trigger strategies, one should not evaluate Recall or CTR in isolation, but also report:
+
+- personalization: Recall@K, NDCG@K, follow/conversion rate;
+- exploration: novel candidate rate, coverage across distinct interest clusters;
+- coverage: unique-user coverage, long-tail coverage;
+- popularity bias: degree distribution of recommended users, exposure concentration;
+- efficiency: retrieval latency, generation calls, cache hit rate;
+- error attribution: whether seed retrieval succeeded while generation failed, or the seed was never retrieved in the first place.
+
+At least three variants should be compared:
+
+```text
+A. active-user-only generation
+B. retrieved-seed generation
+C. active user + retrieved seed conditioned generation
+```
+
+If seed-level expansion can be precomputed offline or cached, retrieve-then-generate is not necessarily slower online; otherwise, the additional retriever and multiple generation calls will introduce extra latency and compute cost.
+
+### 18.10 From Positive/Negative Samples to RL
 
 The following methods all increase the probability of high-value actions, but their supervision signals, competitors, and sample weights differ.
 
@@ -184,7 +252,7 @@ Only when an action changes subsequent user states and the objective includes cr
 
 A common practice is to first learn representations and valid IDs using contrastive learning or CE, then learn stable generation using SFT, and only then consider DPO or online policy optimization. RL is suitable for complete slates, multiple reasonable answers, non-differentiable business metrics, or long-term states; if the goal is simply next-item Recall/NDCG and data is sufficient, CE, BPR, or InfoNCE are often more stable and significantly cheaper.
 
-### 18.10 Checklist for Preference Optimization and RL
+### 18.11 Checklist for Preference Optimization and RL
 
 Before introducing preference optimization, answer the following:
 
@@ -196,7 +264,7 @@ Before introducing preference optimization, answer the following:
 
 If these questions cannot be answered clearly, switching to DPO, PPO, or GRPO will only hide label bias within a longer training pipeline.
 
-### 18.11 Will Traditional Cascading Disappear?
+### 18.12 Will Traditional Cascading Disappear?
 
 In the short term, a hybrid system is more likely:
 
@@ -214,7 +282,7 @@ Hard rules and safety layers
 
 Generative models excel at complex intents, long sequences, and joint list modeling; classic systems are easier to satisfy high throughput, incremental updates, explainable debugging, and deterministic constraints. A hybrid architecture allows both types of modules to handle the parts they excel at.
 
-### 18.12 Chapter Self-Test
+### 18.13 Chapter Self-Test
 
 1. What is the main cost of pointwise, pairwise, and listwise LLM ranking?
 2. Why is FIRST faster than generating a complete ranking?

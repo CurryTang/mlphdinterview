@@ -265,7 +265,7 @@ p = \frac{\alpha \frac{p_s}{1 - p_s}}{1 + \alpha \frac{p_s}{1 - p_s}} = \frac{\a
 
 BCE 判断单个 pair，BPR 比较一对 item，InfoNCE 让一个正例与一组候选竞争。三者都利用正负反馈，比较粒度和负样本来源不同。
 
-生成式推荐把比较单位扩展到 token 或完整序列。next-token CE 与整个词表竞争，DPO 比较 chosen/rejected 序列，policy gradient 用 advantage 给 rollout 加权。RL 的低 advantage rollout 不能简单当成固定负样本，因为候选由当前 policy 产生，样本权重也会随训练变化。细节见 [[BusinessAlgorithm05 Generative Recommendation.md#18.9 从正负样本到 RL|生成式推荐中的偏好优化]]。
+生成式推荐把比较单位扩展到 token 或完整序列。next-token CE 与整个词表竞争，DPO 比较 chosen/rejected 序列，policy gradient 用 advantage 给 rollout 加权。RL 的低 advantage rollout 不能简单当成固定负样本，因为候选由当前 policy 产生，样本权重也会随训练变化。细节见 [[BusinessAlgorithm05 Generative Recommendation.md#18.10 从正负样本到 RL|生成式推荐中的偏好优化]]。
 
 ### 10.9 本章自测
 

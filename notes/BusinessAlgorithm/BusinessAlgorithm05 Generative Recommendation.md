@@ -119,7 +119,75 @@ P(i_t\mid i_{<t},H_u).
 
 这是作者报告的工业结果，论文在本手册整理时仍按预印本处理。统一模型还要回答回滚、规则、长尾覆盖、无效 ID 和在线解码成本等问题。
 
-### 18.9 从正负样本到 RL
+### 18.9 Generation Trigger：直接从用户生成，还是先检索 Seed
+
+生成式推荐不只要决定“生成什么”，还要决定**从什么条件开始生成**。这个问题在 user-to-user recommendation 中尤其明显，例如好友推荐、关注账号推荐或 creator recommendation。
+
+一种做法是直接使用当前用户作为 generation trigger：
+
+```text
+active user u
+  -> generative model
+  -> candidate users
+```
+
+模型直接学习：
+
+```math
+P(v\mid u,H_u),
+```
+
+其中 `H_u` 是用户画像、历史行为或图邻域。它的优点是 personalization 直接，而且没有额外的 upstream retrieval bottleneck；缺点是生成容易集中到当前用户最强的兴趣模式，coverage 和 exploration 可能不足。
+
+另一种做法是先从当前用户检索一组 seed users，再围绕这些 seed 生成候选：
+
+```text
+active user
+  -> retrieve seed users s1,...,sk
+  -> generate candidates around each seed
+  -> merge / dedup / rank
+```
+
+这可以理解为 UserCF 或 graph-neighborhood expansion 的生成式版本。不同 seed 可以对应用户的不同兴趣簇，因此通常能扩大 candidate coverage 和 exploration。例如一个同时关注 LLM、Graph ML 和 Systems 的用户，可以先检索三个不同兴趣方向的 seed，再分别扩展候选。
+
+代价是系统增加了一层误差传播：
+
+```text
+active user
+  -> wrong or biased seed retrieval
+  -> biased generation
+```
+
+如果 retriever 偏向高 degree 或热门用户，generator 又围绕这些用户继续扩展，popularity bias 还可能被进一步放大。
+
+因此更实用的方案通常不是让 seed 完全替代 active user，而是联合条件生成：
+
+```math
+P(v\mid u,s,H_u).
+```
+
+这里 active user 保留 personalization，seed 负责指定一个局部兴趣方向。多个互补 seed 可以把一个复杂用户需求拆成多个 generation neighborhoods。
+
+比较 trigger strategy 时不能只看 Recall 或点击率，还应同时报告：
+
+- personalization：Recall@K、NDCG@K、follow/conversion rate；
+- exploration：novel candidate rate、不同兴趣簇覆盖；
+- coverage：unique-user coverage、long-tail coverage；
+- popularity bias：推荐用户 degree 分布、曝光集中度；
+- efficiency：retrieval latency、generation calls、cache hit rate；
+- error attribution：seed retrieval 成功但 generation 失败，还是 seed 本身没有被检索出来。
+
+可以至少比较三个版本：
+
+```text
+A. active-user-only generation
+B. retrieved-seed generation
+C. active user + retrieved seed conditioned generation
+```
+
+如果 seed-level expansion 可以离线预计算或缓存，retrieve-then-generate 不一定在线更慢；否则额外 retriever 和多次 generation 会增加延迟与计算成本。
+
+### 18.10 从正负样本到 RL
 
 下面这些方法都会提高高价值 action 的概率，但监督信号、竞争对象和样本权重并不一样。
 
@@ -184,7 +252,7 @@ policy gradient 的核心项是：
 
 常见做法是先用对比学习或 CE 学表示和合法 ID，再用 SFT 学稳定生成，之后才考虑 DPO 或在线 policy optimization。RL 适合完整 slate、多个合理答案、不可微业务指标或长期状态；若目标只是 next-item Recall/NDCG，数据又足够，CE、BPR 或 InfoNCE 往往更稳，也便宜得多。
 
-### 18.10 偏好优化与 RL 的检查清单
+### 18.11 偏好优化与 RL 的检查清单
 
 引入偏好优化前，先回答：
 
@@ -196,7 +264,7 @@ policy gradient 的核心项是：
 
 这些问题答不清，换成 DPO、PPO 或 GRPO 只会把标签偏差藏进更长的训练链路。
 
-### 18.11 传统级联会消失吗
+### 18.12 传统级联会消失吗
 
 短期内，更可能出现混合系统：
 
@@ -214,7 +282,7 @@ LLM 或生成式列表模型处理小候选集
 
 生成式模型擅长复杂意图、长序列和列表联合建模；经典系统更容易满足高吞吐、增量更新、可解释排障和确定性约束。混合架构让两类模块分别承担自己擅长的部分。
 
-### 18.12 本章自测
+### 18.13 本章自测
 
 1. Pointwise、pairwise 和 listwise LLM 排序的主要代价分别是什么？
 2. FIRST 为什么比生成完整排序更快？

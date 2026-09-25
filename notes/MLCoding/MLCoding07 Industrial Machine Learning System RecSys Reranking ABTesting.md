@@ -417,13 +417,22 @@ class SIMRetrievalAugmentedModel(nn.Module):
 
 ### 2. 负采样下的指标不变性与重要性加权
 - **AUC / GAUC**：在均匀随机负采样下具有单调保序不变性，是真实全量 AUC 的渐近无偏估计；
-- **LogLoss**：依赖先验分布，必须引入负样本 $\frac{1}{w}$ 重要性加权才能得到无偏估计。
+- **LogLoss 与绝对校准**：依赖物理分布先验，采样率 $w \in (0, 1)$ 下必须做先验纠偏：
+  - 训练时：对保留的负样本赋予 $\frac{1}{w}$ 重要性加权损失；
+  - 推理出价时：通过几率比公式反解真实概率：$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$。
+- **NE (Normalized Cross Entropy / RIG)**：大厂（Meta/TikTok）工业标准 CTR 评价指标：
+  $$\text{NE} = \frac{\text{LogLoss}(p, y)}{H(y_{\text{base}})}, \quad \text{RIG} = 1 - \text{NE}$$
+  消除了节假日或大促背景 CTR 波动对绝对 LogLoss 的干扰。
 
 ### 3. 校准度度量（PCOC / ECE / Brier Score）
 - **PCOC（Predictive-over-Observed Ratio）**：
   $$\text{PCOC} = \frac{\sum \hat{p}_i}{\sum y_i} \quad (=1.0 \text{ 完美校准})$$
 - **ECE（Expected Calibration Error）**：
   $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+- **Brier Score**：均方概率误差 $\frac{1}{N}\sum (\hat{p}_i - y_i)^2$，可正交分解为可靠性（Reliability）、分辨力（Resolution）与不确定性（Uncertainty）。
+
+> [!NOTE] 全链路评估体系参考
+> 推荐系统从召回、粗排、精排、重排到出价的全链路 6 阶段指标矩阵及深度面试题考点，详见 [第 9 章 · 排序目标与离线评价](../BusinessAlgorithm/BusinessAlgorithm02%20Ranking.md#96-工业级推荐与搜索全链路评估指标体系)。
 
 ### 4. 工业级训练看板设计（Dashboard Instrumentation）
 

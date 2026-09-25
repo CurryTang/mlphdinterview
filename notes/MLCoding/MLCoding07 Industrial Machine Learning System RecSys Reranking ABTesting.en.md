@@ -246,12 +246,21 @@ End-to-End Generative Reranking Pipeline:
   $$\text{PCOC} = \frac{\sum \hat{p}_i}{\sum y_i} \quad (=1.0 \text{ Perfect Calibration})$$
 - **ECE**:
   $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+- **Brier Score**: $\frac{1}{N}\sum (\hat{p}_i - y_i)^2$, decomposing orthogonally into Reliability, Resolution, and Uncertainty.
+- **Odds Ratio Inversion under Negative Subsampling**: When training with negative subsampling rate $w \in (0, 1)$, recover physical probabilities via:
+  $$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$$
+- **Normalized Entropy (NE / RIG)**: Meta / TikTok industry standard CTR metric:
+  $$\text{NE} = \frac{\text{LogLoss}(p, y)}{H(y_{\text{base}})}, \quad \text{RIG} = 1 - \text{NE}$$
+  Eliminating background traffic conversion drift from raw LogLoss.
+
+> [!NOTE] End-to-End Evaluation Framework
+> For the comprehensive 6-stage metric matrix (Retrieval, Pre-ranking, Heavy Ranking, Re-ranking, Calibration, and Online A/B) and deep-dive interview trade-offs, see [Chapter 9 · Ranking Objectives and Offline Evaluation](../BusinessAlgorithm/BusinessAlgorithm02%20Ranking.en.md#96-industrial-end-to-end-evaluation-framework-for-recommendation--search).
 
 ### 3. Production Training Dashboard Layout (4-Tier Instrumentation)
-- Panel 1: Optimization Dynamics (Loss, Grad Norm, LR);
+- Panel 1: Optimization Dynamics (Train/Val Weighted LogLoss, Grad Norm, LR);
 - Panel 2: Ranking Discrimination (Request-GAUC, User-GAUC, NDCG@5);
-- Panel 3: Calibration Reliability (PCOC, ECE, Reliability Plots);
-- Panel 4: Cohort Slices & Guardrails (Cold-Start GAUC, P99 Latency SLA).
+- Panel 3: Calibration Reliability (PCOC, ECE, Reliability Plots, Raw vs Recovered CTR);
+- Panel 4: Cohort Slices & Guardrails (Cold-Start GAUC, Long-Tail GAUC, P99 Latency SLA).
 
 ---
 

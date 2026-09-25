@@ -52,27 +52,3 @@
 | 48 | CuspAI | ~$500M | 2024 | Bio (AI material discovery) | Chad Edwards, Max Welling | AI for chemistry |
 | 49 | Poetiq | <$500M | 2025 | Frameworks | Shumeet Bhakija, Ian Fischer | Ex-DeepMind team with SOTA ARC-AGI results |
 | 50 | Axiom Math | ~$300M | 2025 | Math | Carina Hong | Solving 12/12 Putnam 2025 problems |
-
-## Notable omissions
-
-| | |
-| --- | --- |
-| OpenAI | big lab |
-| Anthropic | big lab |
-| xAI | big lab |
-| AI2 | non-profit |
-| Mistral | open-source · revenue scale |
-| Cohere | enterprise · revenue scale |
-| Modular | infra · not model |
-| LMArena | benchmark · not model |
-| Cartesia | voice · revenue scale |
-| Black Forest Labs | image · revenue scale |
-| Stability | image · revenue scale |
-| Runway | video · revenue scale |
-| Luma | video · revenue scale |
-| Pika | video · revenue scale |
-| Chinese labs | separate category |
-| Robotics hardware cos | hardware · not model |
-| Silicon hardware cos | hardware · not model |
-
-![Artificial Intelligence Neolabs, 2026-09](assets/ai-neolabs-2026-09.jpg)
