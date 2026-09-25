@@ -28862,6 +28862,8 @@ function normalizeObsidianMarkdown(markdownText) {
 
   normalized = normalized.replace(/%%[\s\S]*?%%/g, '');
 
+  normalized = normalized.replace(/^```math\s*\n([\s\S]*?)\n```$/gm, (_, math) => `$$\n${math.trim()}\n$$`);
+
   normalized = normalized.replace(/^>\s*\[!([^\]\n+-]+)(?:[+-])?\](.*)$/gim, (_, type, rawTitle) => {
     const label = type.trim();
     const title = rawTitle.trim().replace(/^[-:\s]+/, '');

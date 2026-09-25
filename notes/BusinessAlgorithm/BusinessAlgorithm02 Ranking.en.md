@@ -25,10 +25,9 @@ Recommendation labels are derived from behavior. Clicks, effective views, likes,
 
 Pointwise treats each candidate as an independent classification or regression sample:
 
-```math
-\mathcal L_{\text{point}}
-=-\left[ y\log p+(1-y)\log(1-p) \right].
-```
+$$
+\mathcal{L}_{\text{point}} = -\left[ y\log p + (1-y)\log(1-p) \right]
+$$
 
 The advantage is that both sampling and training are simple, and predicted probabilities can be calibrated. The disadvantage is that it does not directly express the order between candidates under the same query/user.
 
@@ -38,10 +37,9 @@ CTR, CVR, and duration estimation often start with pointwise. If search relevanc
 
 Pairwise constructs positive-negative candidate pairs, aiming for a higher score for the positive example:
 
-```math
-\mathcal L_{\text{pair}}
-=-\log \sigma(s^+-s^-).
-```
+$$
+\mathcal{L}_{\text{pair}} = -\log \sigma(s^+ - s^-)
+$$
 
 It is closer to "which item is ranked ahead of which," but the number of pairs can explode. How negative examples are selected significantly changes training: random negatives are simple, while hard negatives—those the current model ranks incorrectly—are more informative, though they are also more likely to contain labeling noise.
 
@@ -51,9 +49,9 @@ RankNet is a pairwise approach. LambdaRank/LambdaMART adjust gradient weights ba
 
 Listwise treats the entire candidate list as the training object. A simple form is to apply softmax to the list:
 
-```math
-P(i\mid q)=\frac{e^{s_i}}{\sum_j e^{s_j}},
-```
+$$
+P(i \mid q) = \frac{e^{s_i}}{\sum_j e^{s_j}}
+$$
 
 Then use cross-entropy with the target distribution. One can also directly optimize an approximation of NDCG or generate candidate permutations.
 
@@ -85,32 +83,167 @@ In production recommendation systems (RecSys) and search engines, offline evalua
 
 #### 9.6.1 Comprehensive Pipeline Metric Matrix Across the RecSys Workflow
 
-| Stage | Metric | Mathematical Formulation | What It Measures & Typical Use Cases | How to Read & Baseline Benchmarks | Key Focus & Pitfalls (Guardrails) |
-|---|---|---|---|---|---|
-| **① Retrieval**<br>(Two-Tower / Vector / Graph) | **Recall@K** | $\frac{|\mathcal{R}_K \cap \mathcal{G}^+|}{|\mathcal{G}^+|}$ | Proportion of true positive items retrieved as the candidate pool is pruned from millions to thousands. | $0 \sim 1$. $K$ typically set to 200~1000. Higher is better on identical candidate sets. | **Funnel Ceiling**: Positives missed by retrieval can never be recovered downstream; high Recall@K does not guarantee top positions. |
-| | **HitRate@K (HR@K)** | $\mathbb{I}(|\mathcal{R}_K \cap \mathcal{G}^+| \ge 1)$ | Whether at least one relevant positive item is captured in top-K candidates. Suitable when a single hit defines success. | $0 \sim 1$. Crucial for full-screen immersive video feeds or single-card placements. | Binary indicator: ignores the total count or diversity of recovered positives; insensitive to multi-interest coverage. |
-| | **MRR@K** | $\frac{1}{|Q|}\sum_{q}\frac{1}{\text{rank}_q^{(1)}}$ | Speed and rank of surfacing the **very first relevant item** in candidate generation. | $(0, 1]$. Rank 1 yields 1.0; rank 10 yields only 0.1. | Heavily punishes missing the top slot; completely indifferent to the rank of the 2nd and 3rd positives (ideal for QA, poor for feeds). |
-| | **Catalog Coverage** | $\frac{|\bigcup_{u} \mathcal{R}_K(u)|}{|\mathcal{I}_{\text{total}}|}$ | Proportion of total catalog items activated across all users. Measures marketplace and long-tail health. | Percentage. Higher indicates cold-start and niche content receive exposure opportunities. | Must be evaluated alongside relevance/CTR; blindly maximizing coverage pollutes the candidate pool with low-quality noise. |
-| **② Pre-ranking**<br>(Lightweight / Initial Filter) | **Top-M Rank Correlation** | Kendall's $\tau$ or Spearman's $\rho$ | Relative rank consistency between lightweight pre-ranker scores and full heavy ranker outputs. | $[-1, 1]$. Pre-ranking must maintain strong positive correlation with fine ranking ($\tau > 0.6$). | Constrained by extreme SLAs (P99 $\le 5\sim 10\text{ms}$); pre-ranking's primary role is **not discarding candidates that the heavy ranker values most**. |
-| | **Recall@Top-M against Ranker** | $\frac{|\mathcal{C}_{\text{coarse\_M}} \cap \mathcal{C}_{\text{fine\_topN}}|}{N}$ | Fraction of the heavy ranker's Top-N items successfully preserved in the pre-ranker's Top-M output. | Quantifies **heavy ranker upper-bound truncation loss**. | Treats heavy ranker predictions as pseudo ground truth; if the heavy ranker is biased, the pre-ranker inherits and reinforces the bias. |
-| **③ Heavy Ranking**<br>(CTR / CVR / Multi-Task) | **Request-GAUC** | $\frac{\sum_{r} w_r \cdot \operatorname{AUC}_r}{\sum_{r} w_r}$ | **The #1 Golden Offline Ranking Metric**: Probability that positives outrank negatives within the same request/viewport. | Computed per RequestID and weighted by impression count. $\Delta\text{GAUC} \ge +0.003$ (+0.3%) reliably drives online A/B gains. | **Eliminates cross-request/cross-user confounding and Simpson's Paradox**; requests with zero clicks (all negatives) are excluded. |
-| | **User-GAUC** | $\frac{\sum_{u} w_u \cdot \operatorname{AUC}_u}{\sum_{u} w_u}$ | Evaluates whether positives outrank negatives across historical impressions for the same user. | Computed per UserID and weighted by impressions. Typically higher than Request-GAUC. | Vulnerable to diurnal intent shifts (workday vs. evening relaxation), where negatives from different sessions are conflated. |
-| | **Global ROC-AUC** | $\frac{\sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \mathbb{I}(p_i > p_j)}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|}$ | Broad discrimination power across all pooled positive and negative instances. | 0.5 is random guessing; 1.0 is perfect. Useful as a baseline sanity check. | **False Prosperity Trap**: Easily inflated by heavy power users or viral items; cross-user comparisons introduce Simpson's Paradox. |
-| | **PR-AUC (Average Precision)** | $\sum_{k} (R_k - R_{k-1})P_k$ | **Mandatory gold standard for extremely sparse conversions (CVR, high-value purchases, fraud/abuse triage)**. | Area under Precision-Recall curve. **Must be benchmarked against positive prevalence $\pi = P(Y=1)$**, not 0.5. | Immune to vast True Negatives diluting FPR; however, absolute values are not directly comparable across datasets with different priors. |
-| | **LogLoss (BCE)** | $-\frac{1}{N}\sum [y\log p + (1-y)\log(1-p)]$ | Evaluates absolute probability calibration; heavily penalizes overconfident errors. | Lower is better. Compared as relative reduction over baseline models. | Sensitive to seasonal swings in baseline CTR; under negative subsampling, importance weighting is mandatory to prevent distortion. |
-| | **NE (Normalized Cross Entropy / RIG)** | $\frac{\operatorname{LogLoss}(p, y)}{H(y_{\text{base}})}$, $\text{RIG}=1-\text{NE}$ | Industrial CTR benchmark (Meta, TikTok). Measures entropy reduction relative to baseline constant CTR entropy. | Lower NE is better; higher RIG is better (a 1% RIG lift represents a major breakthrough). | **Robust against background CTR shifts**: unaffected by promotional campaigns or diurnal fluctuations; enables fair comparison across splits. |
-| **④ Re-ranking**<br>(Whole-Slate Optimization) | **NDCG@K** | $\frac{\operatorname{DCG@K}}{\operatorname{IDCG@K}}$ | Evaluates multi-grade relevance and top-heavy list quality with **logarithmic position discounting**. | $0 \sim 1$. $K$ must strictly match the physical device viewport (e.g., $K=4 \sim 6$ for mobile double-column feeds). | Insensitive to misrankings at the tail of the slate; assumes independent item utilities without modeling item substitutability. |
-| | **ILD (Intra-List Diversity)** | $\frac{2}{K(K-1)}\sum_{i < j} \operatorname{dist}(i, j)$ | Semantic and topical diversity across items within the same recommended slate; combats filter bubbles. | Mean pairwise embedding or category distance. | Diversity trades off with immediate CTR (Pareto frontier); excessive diversity disrupts user immersion. |
-| | **Novelty / Serendipity** | $\frac{1}{K}\sum_{i=1}^K -\log_2 P(item_i)$ | Self-information of recommendations: penalizes trivial popularity bias; rewards discovering relevant niche content. | Higher self-information indicates greater novelty. | Must be bounded by user relevance; recommending bizarre or low-quality obscure items damages engagement. |
-| **⑤ Calibration & Bidding**<br>(Ad Tech / Monetization) | **PCOC** | $\frac{\sum_{i} \hat{p}_i}{\sum_{i} y_i}$ | Ratio of sum of predicted probabilities to sum of observed conversions (Predictive-over-Observed Click/Conversion Ratio). | **Perfect calibration is 1.000**. Values like 1.10 indicate 10% global overestimation; 0.90 indicates 10% underestimation. | **The lifeblood of auction bidding**: Overestimation burns advertiser budgets prematurely; underestimation loses winnable auctions. High AUC does not imply PCOC $\approx 1$. |
-| | **ECE (Expected Calibration Error)** | $\sum_{m=1}^M \frac{|B_m|}{N} |\text{acc}(B_m) - \text{conf}(B_m)|$ | Weighted mean absolute difference between predicted confidence and observed empirical frequency across binned intervals. | Lower is better (0.0 is ideal). | Monotonic scaling (e.g., temperature scaling) dramatically improves ECE without affecting AUC or NDCG. |
-| | **Reliability Diagram** | Binned calibration curve | Visualizes empirical event frequency vs. mean predicted probability across equal-width or quantile bins. | Perfect alignment follows the $y=x$ diagonal; curves above denote underestimation; curves below denote overestimation. | High-confidence bins often have tiny sample sizes, causing visual variance; evaluate alongside bin histogram. |
-| **⑥ Online A/B & Ecosystem**<br>(Ground Truth Value) | **North Star Business Metrics** | DAU, MAU, Dwell Time per User, D7/D30 Retention, GMV, eCPM. | Ultimate causal impact of algorithmic modifications on platform monetization and user retention. | Statistical significance ($p < 0.05$ with Power $\ge 80\%$). Must run 7~14 full days to cancel novelty and day-of-week effects. | Long feedback loop and high variance; requires CUPED variance reduction and holdout validation. |
-| | **Engagement & Conversion Proxies** | CTR, Long-Play Rate (VTR > 5s), Completion Rate, Social Interactions (like, share, save). | Fast-moving leading indicators of immediate user satisfaction. | Monitored across conversion funnels. | **Clickbait Trap**: Surging CTR accompanied by plunging dwell time or 7-day retention indicates deceptive clickbait recommendation. |
-| | **Guardrails** | Negative feedback rate (dislike, report, hide), P99 inference latency, timeout fallback rate. | Non-negotiable protective thresholds for system reliability and ecosystem safety. | **Zero Regression Rule**: Guardrail metrics must not deteriorate with statistical confidence. | Algorithmic gains achieved by degrading latency SLAs or increasing user annoyance are rejected. |
-| | **SRM (Sample Ratio Mismatch)** | $\chi^2 = \sum \frac{(O_i - E_i)^2}{E_i}$ | Validates whether experimental traffic allocation strictly obeys configured assignment ratios. | Chi-squared test $p < 0.001$ triggers an SRM alert. | **Foundational Validity Check**: When SRM occurs, traffic is contaminated by drops, timeouts, or leakage; **all experiment conclusions are null and void**. |
+| Stage | Core Metric | Primary Optimization Goal & Scenario | Expected Baseline & Reading Convention | Key Focus & Guardrail Pitfalls |
+|---|---|---|---|---|
+| **① Retrieval**<br>(Candidate Generation/Vector Two-Tower) | **Recall@K** | Proportion of true positive items retrieved from catalog pruning. | $0 \sim 1$, $K \in [200, 1000]$. Higher is better on identical sets. | **Funnel Ceiling**: Positives missed here are lost forever; does not ensure top slots. |
+| | **HitRate@K** | Whether at least one positive is captured in Top-$K$. Suitable when 1 hit defines success. | $0 \sim 1$. Critical for single-card placements and full-screen video feeds. | Binary metric; insensitive to the quantity or diversity of captured positives. |
+| | **MRR@K** | Rank position and speed of retrieving the **very first relevant item**. | $(0, 1]$. Rank 1 yields 1.0; rank 10 yields only 0.1. | Heavily penalizes missing top slot; ignores the ranks of 2nd and 3rd positives. |
+| | **Catalog Coverage** | Proportion of catalog items activated across all user recommendations. | Percentage. Higher indicates strong long-tail and niche discovery. | Must evaluate with CTR; blindly maximizing coverage injects low-quality noise. |
+| **② Pre-ranking**<br>(Lightweight / Filtering) | **Kendall's $\tau$ / Spearman's $\rho$** | Relative rank consistency between lightweight pre-ranker and heavy ranker. | $[-1, 1]$. Must maintain high positive correlation ($\tau > 0.6$). | Constrained by P99 $\le 5\text{ms}$; core goal is **not pruning heavy ranker top items**. |
+| | **Recall@Top-M against Ranker** | Proportion of heavy ranker's Top-$N$ items retained in pre-ranker Top-$M$. | Measures **heavy ranker upper-bound truncation loss**. | Treats heavy ranker as pseudo-truth; inherits heavy ranker biases. |
+| **③ Heavy Ranking**<br>(CTR / CVR / Multi-Task) | **Request-GAUC** | **The #1 Golden Ranking Metric**: Probability positives outrank negatives per request. | Computed per RequestID and impression-weighted. $\Delta\text{GAUC} \ge +0.003$ significant. | **Eliminates cross-request prior bias & Simpson's Paradox**; excludes zero-click slates. |
+| | **User-GAUC** | Ability to rank positives above negatives across historical user impressions. | Computed per UserID and impression-weighted. Typically higher than Request-GAUC. | Vulnerable to diurnal intent shifts (work vs. leisure), conflating different contexts. |
+| | **Global ROC-AUC** | Coarse baseline measuring global discrimination across pooled pairs. | 0.5 is random; 1.0 is perfect. Used as a baseline defense guardrail. | **False Prosperity Trap**: Easily inflated by power users or viral items; Simpson's paradox. |
+| | **PR-AUC (AP)** | **Mandatory gold standard for extremely sparse events (CVR, fraud detection)**. | Area under PR curve. **Must benchmark against positive prevalence $\pi = P(Y=1)$**. | Immune to vast True Negatives diluting FPR; absolute values not comparable across priors. |
+| | **LogLoss** | Evaluates absolute probability calibration; heavily penalizes confident errors. | Lower is better. Compared as relative reduction over baseline models. | Sensitive to seasonal swings in baseline CTR; requires importance weighting under sampling. |
+| | **NE / RIG** | Industrial CTR benchmark (Meta, TikTok). Measures entropy reduction over baseline CTR. | Lower NE is better; higher RIG is better (a 1% RIG lift is a major breakthrough). | **Robust against background CTR shifts**: unaffected by promotional campaigns or seasonality. |
+| **④ Re-ranking**<br>(Whole-Slate / Presentation) | **NDCG@K** | Multi-grade relevance and top-heavy list quality with **logarithmic discounting**. | $0 \sim 1$. $K$ must strictly match physical device viewport (e.g., $K=4 \sim 6$). | Insensitive to tail misrankings; assumes independent utilities without substitutability. |
+| | **ILD (Intra-List Diversity)** | Semantic and topical diversity across items within the same recommended slate. | Mean pairwise embedding or category distance. | Diversity trades off with immediate CTR; excessive diversity disrupts immersion. |
+| | **Novelty / Serendipity** | Self-information of recommendations: penalizes trivial popularity bias. | Higher self-information indicates greater novelty. | Must be bounded by user relevance; recommending bizarre niche items damages retention. |
+| **⑤ Calibration & Bidding**<br>(Ad Tech / Monetization) | **PCOC** | Ratio of sum of predicted probabilities to observed conversions (over/under estimation). | **Perfect calibration is 1.000**. 1.10 = 10% overestimation; 0.90 = 10% underestimation. | **Lifeblood of auction bidding**: Overestimation burns budgets prematurely; underestimation loses bids. |
+| | **ECE** | Weighted mean absolute difference between confidence and frequency across bins. | Lower is better (0.0 is ideal). | Monotonic scaling (temperature scaling) improves ECE without changing AUC. |
+| | **Brier Score** | Mean squared error between predicted probabilities and binary labels. | Lower is better. Decomposes orthogonally into Reliability, Resolution, Uncertainty. | Reflects ranking and calibration simultaneously, but less intuitive than PCOC. |
+| **⑥ Online A/B & Ecosystem**<br>(Ground Truth Value) | **North Star Business Metrics** | DAU, MAU, Dwell Time per User, D7/D30 Retention, GMV, eCPM. | Ultimate causal impact of algorithmic modifications on business and user retention. | Requires 7~14 full days to cancel day-of-week seasonality; paired with CUPED. |
+| | **Engagement & Guardrails** | CTR, Completion Rate, **Negative feedback rate (dislike/report, strictly zero regression)**. | Leading indicators and system defensive red lines. | **Clickbait Trap**: High CTR with plunging dwell time indicates deceptive content. |
+| | **SRM (Sample Ratio Mismatch)** | Validates whether experimental traffic allocation strictly obeys configured ratios. | Chi-squared test $p < 0.001$ triggers an SRM alert. | **Foundational Validity Check**: If SRM triggers, traffic is contaminated; all metrics void. |
 
-#### 9.6.2 Four In-Depth Interview Themes in Offline Evaluation
+---
+
+#### 9.6.2 Mathematical Formulations Across the Full RecSys Lifecycle
+
+##### 1. Candidate Retrieval Formulations
+
+- **Recall@K**:
+  $$
+  \operatorname{Recall@K} = \frac{\left| \mathcal{R}_K \cap \mathcal{G}^+ \right|}{\left| \mathcal{G}^+ \right|}
+  $$
+  Where $\mathcal{R}_K$ denotes the set of Top-$K$ items retrieved, and $\mathcal{G}^+$ is the ground-truth set of positive feedback items for the user.
+- **HitRate@K (HR@K)**:
+  $$
+  \operatorname{HR@K} = \mathbb{I}\left( \left| \mathcal{R}_K \cap \mathcal{G}^+ \right| \ge 1 \right)
+  $$
+  Where $\mathbb{I}(\cdot)$ is the indicator function, returning 1 if at least one positive item is present in Top-$K$, and 0 otherwise.
+- **MRR@K (Mean Reciprocal Rank)**:
+  $$
+  \operatorname{MRR@K} = \frac{1}{|Q|} \sum_{q \in Q} \frac{1}{\operatorname{rank}_q^{(1)}}
+  $$
+  Where $\operatorname{rank}_q^{(1)}$ is the position of the first hit positive candidate for query/request $q$; if no positive item appears in Top-$K$, the reciprocal rank is 0.
+- **Catalog Coverage**:
+  $$
+  \operatorname{Coverage} = \frac{\left| \bigcup_{u \in \mathcal{U}} \mathcal{R}_K(u) \right|}{\left| \mathcal{I}_{\text{total}} \right|}
+  $$
+  Measuring the union of distinct items recommended across all users $\mathcal{U}$ as a fraction of the total catalog $\mathcal{I}_{\text{total}}$.
+
+##### 2. Pre-ranking & Filtering Formulations
+
+- **Kendall's $\tau$ Rank Correlation (Pre-ranking & Fine-ranking Consistency)**:
+  $$
+  \tau = \frac{P - Q}{\frac{1}{2} M (M - 1)}
+  $$
+  Where $M$ is the candidate volume scored by the pre-ranker, $P$ is the number of concordant candidate pairs, and $Q$ is the number of discordant pairs between coarse and fine model scores.
+- **Truncation Recall (Recall@Top-M against Heavy Ranker)**:
+  $$
+  \operatorname{Recall@Top\text{-}M}_{\text{coarse}} = \frac{\left| \mathcal{C}_{\text{coarse\_M}} \cap \mathcal{C}_{\text{fine\_topN}} \right|}{N}
+  $$
+  Measuring the fraction of the heavy ranker's Top-$N$ preferred candidates successfully retained within the pre-ranker's Top-$M$ output.
+
+##### 3. Heavy Ranking & Scoring Formulations
+
+- **Request-GAUC (Within-Request Impression Grouped AUC)**:
+  $$
+  \operatorname{Request-GAUC} = \frac{\sum_{r \in \mathcal{R}, \, n_r^+ > 0, \, n_r^- > 0} w_r \cdot \operatorname{AUC}_r}{\sum_{r \in \mathcal{R}, \, n_r^+ > 0, \, n_r^- > 0} w_r}
+  $$
+  Where $\operatorname{AUC}_r$ is computed strictly over candidates exposed in request $r$, weighted by impression count $w_r = n_r$. Slates with all clicks or zero clicks have no positive-negative pairs and are filtered out.
+- **User-GAUC (User Grouped AUC)**:
+  $$
+  \operatorname{User-GAUC} = \frac{\sum_{u \in \mathcal{U}, \, n_u^+ > 0, \, n_u^- > 0} w_u \cdot \operatorname{AUC}_u}{\sum_{u \in \mathcal{U}, \, n_u^+ > 0, \, n_u^- > 0} w_u}
+  $$
+  Where $\operatorname{AUC}_u$ is computed over historical impressions served to user $u$, weighted by $w_u = n_u$.
+- **Global ROC-AUC**:
+  $$
+  \operatorname{AUC}_{\text{global}} = \frac{1}{\left| \mathcal{D}^+ \right| \cdot \left| \mathcal{D}^- \right|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(p_i > p_j) + \frac{1}{2}\mathbb{I}(p_i = p_j) \right)
+  $$
+  Evaluating pairwise discrimination pooled across the entire test set.
+- **PR-AUC (Precision-Recall AUC / Average Precision)**:
+  $$
+  \operatorname{PR-AUC} = \sum_{k=1}^N \left( \operatorname{Recall}_k - \operatorname{Recall}_{k-1} \right) \cdot \operatorname{Precision}_k
+  $$
+  Integrating precision over recall step-increments, focusing exclusively on rare positive detection quality.
+- **LogLoss (Binary Cross-Entropy Loss)**:
+  $$
+  \operatorname{LogLoss} = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \right]
+  $$
+- **NE (Normalized Cross Entropy) & RIG (Relative Information Gain)**:
+  $$
+  \operatorname{NE} = \frac{\operatorname{LogLoss}(p, y)}{H(\bar{p})} = \frac{-\frac{1}{N}\sum_{i=1}^N \left[ y_i \log p_i + (1-y_i)\log(1-p_i) \right]}{-\bar{p}\log \bar{p} - (1-\bar{p})\log(1-\bar{p})}
+  $$
+  $$
+  \operatorname{RIG} = 1 - \operatorname{NE}
+  $$
+  Where $\bar{p} = \frac{1}{N}\sum y_i$ is the empirical background positive prevalence and $H(\bar{p})$ is the background Shannon entropy.
+
+##### 4. Re-ranking & Slate Optimization Formulations
+
+- **NDCG@K (Normalized Discounted Cumulative Gain)**:
+  $$
+  \operatorname{DCG@K} = \sum_{i=1}^K \frac{2^{\operatorname{rel}_i} - 1}{\log_2(i + 1)}, \quad \operatorname{NDCG@K} = \frac{\operatorname{DCG@K}}{\operatorname{IDCG@K}}
+  $$
+  Where $\operatorname{rel}_i$ is the relevance grade at rank $i$, and $\operatorname{IDCG@K}$ is the ideal DCG obtained by sorting items in perfect descending relevance order.
+- **ILD (Intra-List Diversity)**:
+  $$
+  \operatorname{ILD} = \frac{2}{K(K - 1)} \sum_{i=1}^K \sum_{j=i+1}^K \operatorname{dist}(\text{item}_i, \text{item}_j)
+  $$
+  Where $\operatorname{dist}(i, j) = 1 - \cos(\mathbf{e}_i, \mathbf{e}_j)$ is the cosine distance between item embeddings or category indicators.
+- **Novelty (Self-Information)**:
+  $$
+  \operatorname{Novelty} = \frac{1}{K} \sum_{i=1}^K -\log_2 P(\text{item}_i)
+  $$
+  Where $P(\text{item}_i)$ is the item's historical marginal exposure probability across the platform.
+
+##### 5. Calibration & Auction Bidding Formulations
+
+- **PCOC (Predictive-over-Observed Ratio)**:
+  $$
+  \operatorname{PCOC} = \frac{\sum_{i=1}^N \hat{p}_i}{\sum_{i=1}^N y_i} \quad (\text{Perfect Calibration } = 1.000)
+  $$
+- **ECE (Expected Calibration Error)**:
+  $$
+  \operatorname{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \operatorname{acc}(B_m) - \operatorname{conf}(B_m) \right|
+  $$
+  Partitioning predictions into $M$ bins $B_m$, where $\operatorname{conf}(B_m) = \frac{1}{|B_m|}\sum_{i \in B_m}\hat{p}_i$ is the mean predicted confidence, and $\operatorname{acc}(B_m) = \frac{1}{|B_m|}\sum_{i \in B_m} y_i$ is empirical event accuracy.
+- **Brier Score Decomposition**:
+  $$
+  \operatorname{BS} = \frac{1}{N}\sum_{i=1}^N (\hat{p}_i - y_i)^2 = \operatorname{Reliability} - \operatorname{Resolution} + \operatorname{Uncertainty}
+  $$
+  Where $\operatorname{Reliability} = \sum_m \frac{|B_m|}{N}(\operatorname{conf}(B_m) - \operatorname{acc}(B_m))^2$, $\operatorname{Resolution} = \sum_m \frac{|B_m|}{N}(\operatorname{acc}(B_m) - \bar{y})^2$, and $\operatorname{Uncertainty} = \bar{y}(1 - \bar{y})$.
+- **Odds Ratio Inversion Formula under Negative Subsampling**:
+  When unclicked impressions are downsampled at rate $w \in (0, 1)$, raw model scores $p_{\text{sampled}}$ are mapped back to physical probabilities via:
+  $$
+  \operatorname{Odds}_{\text{real}} = \operatorname{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w
+  $$
+  $$
+  p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}
+  $$
+
+##### 6. Online Experimentation & Causal Inference Formulations
+
+- **SRM Chi-Square Goodness-of-Fit Test**:
+  $$
+  \chi^2 = \sum_{k=1}^C \frac{(O_k - E_k)^2}{E_k}, \quad \text{Degrees of Freedom } df = C - 1
+  $$
+  Where $O_k$ is the observed traffic allocation count in bucket $k$, and $E_k$ is the expected allocation based on hash configuration.
+- **CUPED Variance Reduction Estimator**:
+  $$
+  \hat{Y}_{\text{CUPED}} = \bar{Y} - \theta (\bar{X} - \mathbb{E}[X]), \quad \text{Optimal Coefficient } \theta^* = \frac{\operatorname{Cov}(Y, X)}{\operatorname{Var}(X)}
+  $$
+  $$
+  \operatorname{Var}\left( \hat{Y}_{\text{CUPED}} \right) = \operatorname{Var}(\bar{Y}) \cdot \left( 1 - \rho_{XY}^2 \right)
+  $$
+  Using pre-experiment user history $X$ (orthogonal to assignment) to absorb variance and shrink required sample sizes by $50\%\sim 80\%$.
+
+---
+
+#### 9.6.3 Five In-Depth Interview Themes in Offline Evaluation
 
 ##### 1. Why Does Offline Global ROC-AUC Increase While Online CTR Declines? (Simpson's Paradox & Request-GAUC)
 - **Confounding Mechanism**: Global ROC-AUC pools positive/negative comparisons across disparate users.
@@ -123,7 +256,9 @@ In production recommendation systems (RecSys) and search engines, offline evalua
 
 ##### 2. Why Is PR-AUC Mandatory for CVR and Fraud Detection While ROC-AUC Fails?
 - **FPR Denominator Dilution**:
-  $$\text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}}, \quad \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}$$
+  $$
+  \text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}}, \quad \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}
+  $$
   Under extreme skew (e.g., $1:10000$ purchase conversion or financial fraud):
   - True Negatives ($\text{TN} \approx 10^6$) dominate the denominator. Even if the model produces 5,000 false alarms for only 100 true conversions ($\text{FP} = 5000, \text{TP} = 100$), $\text{FPR} \approx \frac{5000}{1000000} = 0.005$ remains near zero!
   - The ROC curve hugs the top-left corner, displaying an **inflated ROC-AUC of 0.98+**.
@@ -134,7 +269,9 @@ In production recommendation systems (RecSys) and search engines, offline evalua
 
 ##### 3. Why Do Meta and TikTok Prioritize NE (Normalized Cross Entropy / RIG) over Raw LogLoss?
 - **Formula**:
-  $$\text{NE} = \frac{\operatorname{LogLoss}(p, y)}{- \bar{p}\log\bar{p} - (1-\bar{p})\log(1-\bar{p})}, \quad \text{RIG} = 1 - \text{NE}$$
+  $$
+  \text{NE} = \frac{\operatorname{LogLoss}(p, y)}{- \bar{p}\log\bar{p} - (1-\bar{p})\log(1-\bar{p})}, \quad \text{RIG} = 1 - \text{NE}
+  $$
   Where the denominator is the **background Shannon entropy $H(\bar{p})$** of the empirical conversion rate $\bar{p}$.
 - **Why Eliminate Background Entropy?**
   - Traffic surges during promotional campaigns shift baseline CTR from 3% to 7%. The intrinsic entropy of sample labels changes, causing absolute LogLoss to fluctuate wildly even if model parameters remain identical.
@@ -158,9 +295,13 @@ Industrial rankers frequently subsample unclicked negative impressions at rate $
 - **Probability Distortion and Odds Ratio Inversion**:
   - Subsampling inflates the effective positive ratio by $\frac{1}{w}$. Raw model outputs $p_{\text{sampled}}$ are systematically overconfident.
   - To recover true physical probabilities $p_{\text{real}}$ for auction bidding, apply the **Odds Ratio correction**:
-    $$\text{Odds}_{\text{real}} = \text{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w$$
+    $$
+    \text{Odds}_{\text{real}} = \text{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w
+    $$
     Yielding:
-    $$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$$
+    $$
+    p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}
+    $$
   - Alternatively, weight retained negatives by $\frac{1}{w}$ in the loss function during training.
 
 ### 9.7 Misalignment Between Training and Evaluation
@@ -188,9 +329,9 @@ def ndcg_at_k(relevances, k):
 
 `relevances` are already sorted by the model's predicted order, where each value is a non-negative relevance grade. Use:
 
-```math
-DCG@K=\sum_{i=1}^{K}\frac{2^{rel_i}-1}{\log_2(i+1)}.
-```
+$$
+\operatorname{DCG@K} = \sum_{i=1}^{K}\frac{2^{\operatorname{rel}_i}-1}{\log_2(i+1)}
+$$
 
 Return `0.0` if there are no relevant results, or if `k <= 0`.
 

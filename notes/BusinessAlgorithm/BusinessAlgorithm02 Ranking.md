@@ -25,10 +25,9 @@
 
 Pointwise 把每个候选当作独立分类或回归样本：
 
-```math
-\mathcal L_{\text{point}}
-=-\left[ y\log p+(1-y)\log(1-p) \right].
-```
+$$
+\mathcal{L}_{\text{point}} = -\left[ y\log p + (1-y)\log(1-p) \right]
+$$
 
 优点是样本和训练都简单，预测概率还能做校准。缺点是它没有直接表达同一个 query/user 下候选之间的顺序。
 
@@ -38,10 +37,9 @@ CTR、CVR 和时长预估多从 pointwise 开始。搜索相关性若有分档�
 
 Pairwise 构造正负候选对，希望正例分数更高：
 
-```math
-\mathcal L_{\text{pair}}
-=-\log \sigma(s^+-s^-).
-```
+$$
+\mathcal{L}_{\text{pair}} = -\log \sigma(s^+ - s^-)
+$$
 
 它更接近"谁排在谁前面"，但 pair 数量可能爆炸。负例怎么选会明显改变训练：随机负例简单，当前模型排错的 hard negative 更有信息，也更容易包含标注噪声。
 
@@ -51,9 +49,9 @@ RankNet 属于 pairwise。LambdaRank/LambdaMART 会根据交换两个候选对 N
 
 Listwise 把整个候选列表作为训练对象。一个简单形式是对列表做 softmax：
 
-```math
-P(i\mid q)=\frac{e^{s_i}}{\sum_j e^{s_j}},
-```
+$$
+P(i \mid q) = \frac{e^{s_i}}{\sum_j e^{s_j}}
+$$
 
 再用目标分布做交叉熵。也可以直接优化 NDCG 的近似目标或生成候选排列。
 
@@ -81,36 +79,171 @@ Cross-BERT 把 query 与文档一同编码，能识别深层语义和否定关�
 
 ### 9.6 工业级推荐与搜索全链路评估指标体系
 
-在工业级推荐系统（RecSys）与搜索系统中，离线评估不能只靠单一指标（如全局 AUC 或 NDCG）包打天下。完整的工业级推荐流水线呈现漏斗拓扑结构：**召回 ➔ 粗排 ➔ 精排 ➔ 重排/端排 ➔ 校准与竞价出价 ➔ 在线 A/B 实验与长期商业生态**。每一个阶段的输入规模、候选分布、算力时延预算（SLA）以及业务任务目标截然不同，对应着独特的评估维度与防坑红线。
+在工业级推荐系统（RecSys）与搜索系统中，离线评估不能只靠单一指标（如全局 AUC 或 NDCG）包打天下。完整的推荐流水线呈现多阶段漏斗结构：**召回 ➔ 粗排 ➔ 精排 ➔ 重排/端排 ➔ 校准与竞价出价 ➔ 在线 A/B 实验与长期商业生态**。每一个阶段的候选规模、特征丰富度、算力时延约束（SLA）以及任务目标截然不同，对应着独特的评估维度与防坑红线。
 
-#### 9.6.1 全链路各阶段评估维度与指标完全矩阵
+#### 9.6.1 全链路各阶段评估维度与指标速查表
 
-| 链路阶段 | 核心指标 | 数学定义 / 核心形式 | 适合看什么（业务意图与场景） | 怎么读 / 正常基准与判定 | 侧重点与核心局限（避坑指南） |
-|---|---|---|---|---|---|
-| **① 召回阶段**<br>(候选生成/双塔向量/Graph) | **Recall@K** | $\frac{|\mathcal{R}_K \cap \mathcal{G}^+|}{|\mathcal{G}^+|}$ | 候选库从千万级粗筛至数千时，真实交互正例被捞回的比例。 | $0 \sim 1$。$K$ 通常设为 200~1000。同候选基线下越高越好。 | **漏斗天花板**：召回阶段漏掉的正例，下游无法挽救；但高 Recall@K 无法保证正例排在靠前展示位。 |
-| | **HitRate@K (HR@K)** | $\mathbb{I}(|\mathcal{R}_K \cap \mathcal{G}^+| \ge 1)$ | 评估 Top-K 召回列表中是否至少包含一个正例。适合“单次只要有一个满意即算成功”的场景。 | $0 \sim 1$。对流式单内容消费或首屏大卡推荐至关重要。 | 只看“有没有”，不度量正例召回的数量和丰富度，对多兴趣场景迟钝。 |
-| | **MRR@K** | $\frac{1}{|Q|}\sum_{q}\frac{1}{\text{rank}_q^{(1)}}$ | 衡量系统捞回**首个相关正例**的速度与位置。 | $(0, 1]$。首位命中为 1.0，第 10 位命中仅 0.1。 | 强力惩罚首位未命中；但完全忽略第 2、第 3 个正例的排位（适合问答搜索，不适合连续刷视频）。 |
-| | **Catalog Coverage (覆盖率)** | $\frac{|\bigcup_{u} \mathcal{R}_K(u)|}{|\mathcal{I}_{\text{total}}|}$ | 召回池能否激活全库长尾内容，衡量推荐生态健康度。 | 百分比。越高代表小众、冷启动内容越容易获得曝光机会。 | 必须配合相关性看；单纯追求高覆盖率会拉入海量低质垃圾内容（Popularity-Relevance Dilemma）。 |
-| **② 粗排阶段**<br>(轻量网络/大规模初筛) | **Top-M 排序一致性 (Rank Correlation)** | Kendall's $\tau$ 或 Spearman's $\rho$ | 评估粗排轻量模型（如小双塔/小型蒸馏网络）与完整大精排打分排序的相对保序一致性。 | $[-1, 1]$。粗排必须与精排打分维持高正相关（通常 $\tau > 0.6$）。 | 粗排受算力（P99 $\le 5\sim 10\text{ms}$）强约束，无法堆叠重交叉特征；其使命是**不误杀精排判定的 Top 候选**。 |
-| | **Recall@Top-M against Ranker** | $\frac{|\mathcal{C}_{\text{coarse\_M}} \cap \mathcal{C}_{\text{fine\_topN}}|}{N}$ | 在完整精排预测的 Top-N 优质候选中，粗排 Top-M 捞回了百分之多少。 | 衡量粗排截断造成的**精排上限损失率**。 | 依赖“精排打分为伪真值”；若精排本身学偏，粗排会跟着同向偏离。 |
-| **③ 精排阶段**<br>(CTR / CVR / 多任务) | **Request-GAUC** | $\frac{\sum_{r} w_r \cdot \operatorname{AUC}_r}{\sum_{r} w_r}$ | **精排第一黄金离线指标**：衡量单次刷新/同一屏幕曝光请求内，正例打分高于负例的概率。 | 必须按 RequestID 独立分组计算 AUC 后按曝光量加权。$\Delta\text{GAUC} \ge +0.003$ 线上常有显著正向提升。 | **彻底消除跨请求/跨用户的基线偏倚与辛普森悖论**；若某刷内全为负例（无点击），该刷不参与分子分母累加。 |
-| | **User-GAUC** | $\frac{\sum_{u} w_u \cdot \operatorname{AUC}_u}{\sum_{u} w_u}$ | 衡量同一用户历史展现集合内，正例排在负例前面的能力。消除活跃度差异。 | 按 UserID 分组做 AUC 加权。通常数值高于 Request-GAUC。 | 易受用户早晚意图漂移（白天偏工作、夜晚偏娱乐）影响，组内负样本包含不同场景的候选。 |
-| | **Global ROC-AUC** | $\frac{\sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \mathbb{I}(p_i > p_j)}{|\mathcal{D}^+| \cdot |\mathcal{D}^-|}$ | 粗略观测模型在全量正负样本上的全局区分度。 | 0.5 为随机基线，1.0 完美。一般作为算法迭代的基础防跌底线。 | **虚假繁荣陷阱**：极易被大活跃用户或高曝光热门 Item 抬高；跨用户比对导致辛普森悖论，离线涨点线上可能大跌。 |
-| | **PR-AUC (Average Precision)** | $\sum_{k} (R_k - R_{k-1})P_k$ | **极度稀疏转化场景（如低频 CVR、大额付费、极低先验风控）的核心指标**。 | 曲线下面积。**必须与正例先验基线 $\pi = P(Y=1)$ 一并对比**，而非跟 0.5 比。 | 负例极大时，海量 True Negatives 会严重稀释 ROC-AUC 的 FPR 分母造成虚高，而 PR-AUC 仅聚焦查准率与召回率。 |
-| | **LogLoss (BCE)** | $-\frac{1}{N}\sum [y\log p + (1-y)\log(1-p)]$ | 评估预测概率值的绝对拟合精度；模型对错误预测越“自信”，受到的交叉熵惩罚越重。 | 越小越好。通常对比基线模型的 LogLoss 降幅。 | 绝对数值极易受自然流量转化率先验波动影响；负采样训练下必须引入重要性加权否则失真。 |
-| | **NE (Normalized Cross Entropy / RIG)** | $\frac{\operatorname{LogLoss}(p, y)}{H(y_{\text{base}})}$，$\text{RIG}=1-\text{NE}$ | 工业大厂（Meta/TikTok）CTR 标准指标。衡量模型相对背景转化率香农熵的不确定性压缩比率。 | NE 越小越好，RIG 越高越好（如 RIG 提升 1% 即为显著技术突破）。 | 严格剔除了大促/节假日/日夜周期等背景 CTR 波动对绝对 LogLoss 的干扰，具备跨数据集可比性。 |
-| **④ 重排与端排**<br>(全屏/序列组合优化) | **NDCG@K** | $\frac{\operatorname{DCG@K}}{\operatorname{IDCG@K}}$ | 衡量列表头部展示位的综合相关性与多级满意度，兼具**位置递减惩罚**（头部排错惩罚最重）。 | $0 \sim 1$。$K$ 必须严格对齐真实产品视窗展示坑位（如双列卡片 $K=4 \sim 6$）。 | 对列表尾部的排序颠倒完全不敏感；只考虑独立物品增益，未显式考虑候选间的相互排斥/替代效应。 |
-| | **ILD (Intra-List Diversity)** | $\frac{2}{K(K-1)}\sum_{i < j} \operatorname{dist}(i, j)$ | 屏内或单次会话推荐内容的多样性，评估是否陷入单一类目或风格的信息茧房。 | 平均语义/类目距离。越大说明同屏推荐越丰富。 | 多样性与短期单点击率存在帕累托博弈；过度多样化可能打断用户的沉浸式消费。 |
-| | **Novelty / Serendipity** | $\frac{1}{K}\sum_{i=1}^K -\log_2 P(item_i)$ | 新颖性与惊喜度：惩罚无脑推荐全站头部大热门，奖励发掘个性化冷门高质内容。 | 信息量越大说明新颖度越高。 | 必须以用户满意为前提，否则容易为了“新奇”而推怪异生僻内容。 |
-| **⑤ 校准与出价**<br>(广告/电商/变现) | **PCOC** | $\frac{\sum_{i} \hat{p}_i}{\sum_{i} y_i}$ | 预测概率与真实观测发生率的比值（全盘高低估比）。 | **完美校准为 1.000**。例如 1.08 代表整体高估 8%，0.92 代表整体低估 8%。 | **商业化出价的生命线**：高估会导致平台替广告主超扣预算（超额赔付）、低估会导致广告拿不到曝光。AUC 高不保证 PCOC 接近 1。 |
-| | **ECE (分桶校准误差)** | $\sum_{m=1}^M \frac{|B_m|}{N} |\text{acc}(B_m) - \text{conf}(B_m)|$ | 将预测概率分桶（如 10~20 桶），衡量不同置信区间内局部预估概率与真实后验的加权绝对偏差。 | 越小越好（理想为 0）。 | 仅做单调变换（如温度缩放）能显著改善 ECE，但不会改变 AUC 和 NDCG。 |
-| | **Reliability Diagram** | 动态散点图 / 折线图 | 视觉化对比各预测分桶的均值与真实正例发生率。 | 曲线越贴合 $y=x$ 对角线越理想；偏向上方为系统性低估，偏向下方为系统性高估。 | 桶内样本量极少时（如最高置信度桶）方差大，容易产生视觉噪点，需结合桶大小看。 |
-| **⑥ 在线 A/B 与生态**<br>(业务最终真值) | **长线北极星商业指标** | DAU、MAU、人均停留时长 (Dwell Time)、次日/7日留存率、GMV、eCPM。 | 衡量推荐系统对平台整体商业变现与用户心智黏性的终极因果贡献。 | 统计显著性（$p < 0.05$ 且 Power $\ge 80\%$）。需跑满 7~14 天消除星期效应与新奇效应。 | 反馈周期长、方差大；必须配合方差缩减（CUPED）与长期保持实验反转测试。 |
-| | **过程与短线消费指标** | CTR、有效播放率 (VTR > 5s)、完播率、互动率（转/评/赞/收藏）。 | 监控新算法是否提升用户即时交互欲望。 | 关注各动作漏斗的转化斜率。 | **警惕标题党陷阱**：CTR 大涨但人均停留时长或次日留存大跌，说明模型推送了欺诈诱导点击内容。 |
-| | **护栏指标 (Guardrails)** | 负反馈率（举报/拉黑/点“不感兴趣”）、P99 推理时延、超时降级率。 | 任何算法上线必须满足的**红线防御底线**。 | **零退化原则**：在核心业务指标显著上涨的同时，护栏指标绝对不允许置信恶化。 | 算法若通过损害边缘群体体验或拉高服务器负载换取主指标上涨，上线会被立即否决。 |
-| | **SRM (样本比例失衡检验)** | $\chi^2 = \sum \frac{(O_i - E_i)^2}{E_i}$ | 验证 A/B 实验分流机制是否公正、无偏。 | 卡方检验 $p < 0.001$ 判定为 SRM 污染报警。 | **实验有效性基石**：一旦触发 SRM，说明分流存在哈希碰撞、超时丢包或特征穿越，此时**所有指标结论全部作废**。 |
+| 链路阶段 | 核心指标 | 核心评估意图 / 典型业务场景 | 正常基准与读取方式 | 侧重点与核心局限（避坑指南） |
+|---|---|---|---|---|
+| **① 召回阶段**<br>(候选生成/向量双塔/Graph) | **Recall@K** | 衡量千万级全库粗筛至数千时，正反馈物品被捞回的比例。 | $0 \sim 1$，$K \in [200, 1000]$。固定候选池下越高越好。 | **漏斗天花板**：召回漏掉的样本下游无法挽救；但不保证排在顶部位。 |
+| | **HitRate@K** | Top-$K$ 列表中是否至少命中 1 个正例。适合“单次只要 1 个满意即算成功”场景。 | $0 \sim 1$。首屏大卡或单列流核心指标。 | 二值统计，对命中多个正例的丰富度不敏感，无法度量多兴趣覆盖。 |
+| | **MRR@K** | 系统找回**首个相关正例**的速度与展现位次。 | $(0, 1]$。第 1 位命中得 1.0，第 10 位仅 0.1。 | 强惩罚首位未命中；但完全忽略第 2、第 3 个正例排位（适合问答搜索）。 |
+| | **Coverage (覆盖率)** | 衡量召回池能激活全库多少比例的长尾与冷启动内容。 | 百分比。越高代表长尾挖掘越充分。 | 必须与相关性/CTR 联合看，单纯追求高覆盖会拉入大量低质噪音。 |
+| **② 粗排阶段**<br>(轻量网络/大规模初筛) | **Kendall's $\tau$ / Spearman's $\rho$** | 粗排轻量模型与大精排打分排序的相对次序一致性。 | $[-1, 1]$。要求与精排维持高正相关（通常 $\tau > 0.6$）。 | 粗排受 P99 $\le 5\text{ms}$ 强约束；使命是**不误杀精排眼中的 Top 候选**。 |
+| | **Recall@Top-M against Ranker** | 精排判定为 Top-$N$ 的优质候选，粗排 Top-$M$ 捞回了百分之多少。 | 衡量粗排截断造成的**精排上限损失率**。 | 依赖“精排打分为伪真值”；若精排本身学偏，粗排会同向偏离。 |
+| **③ 精排阶段**<br>(CTR / CVR / 多任务) | **Request-GAUC** | **精排第一黄金离线指标**：单次刷新同屏展现内正例排在负例前面的概率。 | 按 RequestID 分组计算 AUC 后按曝光加权。$\Delta\text{GAUC} \ge +0.003$ 线上显著。 | **彻底切断跨请求/跨用户先验偏倚与辛普森悖论**；单刷全负例不参与计算。 |
+| | **User-GAUC** | 同一用户历史曝光集合内正例排在负例前面的能力。 | 按 UserID 分组做 AUC 加权。通常高于 Request-GAUC。 | 易受用户早晚意图漂移（白天工作、夜晚娱乐）干扰，组内负例包含不同时段。 |
+| | **Global ROC-AUC** | 粗略观测模型在全量正负样本上的全局统计区分度。 | 0.5 为随机，1.0 完美。一般作为底线防御指标。 | **虚假繁荣陷阱**：极易被大活跃用户或热门 Item 抬高，存在辛普森悖论。 |
+| | **PR-AUC (AP)** | **极度稀疏转化场景（如大额 CVR、高危风控拦截）核心指标**。 | PR 曲线下面积。**必须与正例先验基线 $\pi = P(Y=1)$ 一起对比**。 | 负例极大时规避海量 TN 稀释 FPR 的假象；但跨先验数据集不可直接对比绝对值。 |
+| | **LogLoss** | 评估预测概率值的绝对拟合精度；对自信犯错严惩。 | 越小越好。通常看相对基线的降幅。 | 绝对值极易受大盘自然转化率波动干扰；负采样训练下必须做重要性加权。 |
+| | **NE / RIG** | Meta/TikTok 工业标准 CTR 评价指标。衡量相对背景熵的不确定性压缩比。 | NE 越小越好，RIG 越高越好（RIG 提升 1% 即为显著技术突破）。 | 严格剔除了节假日/大促等背景 CTR 波动对 Loss 的干扰，跨数据集可比。 |
+| **④ 重排与端排**<br>(整页呈现/序列决策) | **NDCG@K** | 衡量列表头部展示位的多级相关度满意度，带**位置递减对数折扣**。 | $0 \sim 1$。$K$ 必须严格对齐真实终端屏幕视窗坑位数（如 $K=4 \sim 6$）。 | 对列表尾部的排序颠倒完全不敏感；未显式考虑候选间的相互替代效应。 |
+| | **ILD (列表内多样性)** | 屏内或单次会话推荐内容在 Embedding 或类目维度的丰富度。 | 平均两两语义距离。越大说明同屏推荐越丰富。 | 多样性与短期 CTR 存在帕累托博弈；过度多样化可能打断沉浸式体验。 |
+| | **Novelty / Serendipity** | 新颖性自信息量：惩罚无脑推全站热门，奖励发掘个性化小众精品。 | 越大说明新颖度越高。 | 必须以用户满意为前提，否则容易推怪异生僻内容损伤体验。 |
+| **⑤ 校准与出价**<br>(广告/电商/变现) | **PCOC** | 预测概率和与真实观测转化数之比（全盘高低估比）。 | **完美校准为 1.000**。1.10 代表高估 10%，0.90 代表低估 10%。 | **商业化出价生命线**：高估导致广告主预算超扣赔付，低估导致跑不出量。 |
+| | **ECE (分桶校准误差)** | 将预测概率分桶，衡量不同置信区间内局部预估概率与后验频率的加权绝对差。 | 越小越好（理想为 0）。 | 仅做单调变换（如温度调节）能显著优化 ECE，但不会改变 AUC。 |
+| | **Brier Score** | 预测概率与真实二值标签之间的均方误差。 | 越小越好。可正交分解为可靠性、分辨力与不确定性。 | 综合反映排序与校准，但不如 AUC 对排序敏感，也不如 PCOC 直观。 |
+| **⑥ 在线 A/B 与生态**<br>(业务最终真值) | **长线北极星指标** | DAU、MAU、人均停留时长 (Dwell Time)、7D/30D 留存率、GMV、eCPM。 | 衡量推荐系统对平台整体商业变现与用户心智黏性的终极因果贡献。 | 需跑满 7~14 天消除星期效应与新奇效应；配合 CUPED 缩减方差。 |
+| | **过程与护栏指标** | 点击率、完播率、**负反馈率 (Dislike/举报，坚决零退化)**、P99 推理时延。 | 监控短期交互与系统红线防御底线。 | **警惕标题党陷阱**：CTR 大涨但停留时长或留存暴跌说明引入了低质诱导内容。 |
+| | **SRM (样本比例失衡)** | 检验 A/B 实验分流机制是否公正、无偏。 | 卡方检验 $p < 0.001$ 判定为 SRM 污染报警。 | **实验有效性基石**：一旦触发 SRM，说明分流受污染，所有指标结论全部作废。 |
 
-#### 9.6.2 工业级离线评价四大深水区面试考点深度辨析
+---
+
+#### 9.6.2 全链路核心数学公式与形式化推导
+
+##### 1. 召回阶段公式 (Candidate Retrieval)
+
+- **Recall@K (召回率)**：
+  $$
+  \operatorname{Recall@K} = \frac{\left| \mathcal{R}_K \cap \mathcal{G}^+ \right|}{\left| \mathcal{G}^+ \right|}
+  $$
+  其中 $\mathcal{R}_K$ 为召回模块返回的 Top-$K$ 候选集合，$\mathcal{G}^+$ 为用户真实交互过的正反馈物品全集。
+- **HitRate@K (命中率)**：
+  $$
+  \operatorname{HR@K} = \mathbb{I}\left( \left| \mathcal{R}_K \cap \mathcal{G}^+ \right| \ge 1 \right)
+  $$
+  其中 $\mathbb{I}(\cdot)$ 为指示函数，只要前 $K$ 个候选中出现至少一个正例即记为 1，否则为 0。
+- **MRR@K (Mean Reciprocal Rank，平均倒数排名)**：
+  $$
+  \operatorname{MRR@K} = \frac{1}{|Q|} \sum_{q \in Q} \frac{1}{\operatorname{rank}_q^{(1)}}
+  $$
+  其中 $\operatorname{rank}_q^{(1)}$ 为第 $q$ 个请求中首个命中正例的展示位次；若前 $K$ 位均未命中，则该项记为 0。
+- **全库覆盖率 (Catalog Coverage)**：
+  $$
+  \operatorname{Coverage} = \frac{\left| \bigcup_{u \in \mathcal{U}} \mathcal{R}_K(u) \right|}{\left| \mathcal{I}_{\text{total}} \right|}
+  $$
+  衡量全体用户测试集 $\mathcal{U}$ 在 Top-$K$ 召回中被激活的不同物品并集占全库总物品集 $\mathcal{I}_{\text{total}}$ 的比例。
+
+##### 2. 粗排阶段公式 (Pre-ranking & Lightweight Filtering)
+
+- **Kendall's $\tau$ 秩相关系数 (粗排与精排打分保序一致性)**：
+  $$
+  \tau = \frac{P - Q}{\frac{1}{2} M (M - 1)}
+  $$
+  其中 $M$ 为送入粗排的候选总量，$P$ 为粗排与精排打分顺序一致的 candidate pair 数量，$Q$ 为顺序相反的逆序对数量。
+- **截断召回率 (Recall@Top-M against Heavy Ranker)**：
+  $$
+  \operatorname{Recall@Top\text{-}M}_{\text{coarse}} = \frac{\left| \mathcal{C}_{\text{coarse\_M}} \cap \mathcal{C}_{\text{fine\_topN}} \right|}{N}
+  $$
+  衡量在完整精排模型打分最高的 Top-$N$ 黄金候选中，粗排截断 Top-$M$ 成功保留的比例。
+
+##### 3. 精排阶段公式 (Heavy Ranking & Scoring)
+
+- **Request-GAUC (一刷内请求级分组 AUC，精排第一黄金指标)**：
+  $$
+  \operatorname{Request-GAUC} = \frac{\sum_{r \in \mathcal{R}, \, n_r^+ > 0, \, n_r^- > 0} w_r \cdot \operatorname{AUC}_r}{\sum_{r \in \mathcal{R}, \, n_r^+ > 0, \, n_r^- > 0} w_r}
+  $$
+  其中 $\operatorname{AUC}_r$ 是严格在单次刷新请求 $r$ 的同屏曝光集合内部计算的局部 AUC，权重 $w_r = n_r$ 取该次请求的有效曝光展现量。单刷内全为点击或全为未点击的请求由于无正负对，分母为 0，需显式跳过。
+- **User-GAUC (用户级分组 AUC)**：
+  $$
+  \operatorname{User-GAUC} = \frac{\sum_{u \in \mathcal{U}, \, n_u^+ > 0, \, n_u^- > 0} w_u \cdot \operatorname{AUC}_u}{\sum_{u \in \mathcal{U}, \, n_u^+ > 0, \, n_u^- > 0} w_u}
+  $$
+  其中 $\operatorname{AUC}_u$ 为单用户 $u$ 历史所有曝光聚合集合内的局部 AUC，权重 $w_u$ 通常取该用户的总曝光数。
+- **全局 ROC-AUC (Global AUC)**：
+  $$
+  \operatorname{AUC}_{\text{global}} = \frac{1}{\left| \mathcal{D}^+ \right| \cdot \left| \mathcal{D}^- \right|} \sum_{i \in \mathcal{D}^+} \sum_{j \in \mathcal{D}^-} \left( \mathbb{I}(p_i > p_j) + \frac{1}{2}\mathbb{I}(p_i = p_j) \right)
+  $$
+  在整个测试集跨用户混合比对正负样本对。
+- **PR-AUC (Precision-Recall AUC / Average Precision)**：
+  $$
+  \operatorname{PR-AUC} = \sum_{k=1}^N \left( \operatorname{Recall}_k - \operatorname{Recall}_{k-1} \right) \cdot \operatorname{Precision}_k
+  $$
+  按预测得分降序排列后，以查全率步进加权查准率积分面积，专注于稀疏正例的检出质量。
+- **LogLoss (二进制交叉熵损失)**：
+  $$
+  \operatorname{LogLoss} = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \right]
+  $$
+- **NE (Normalized Cross Entropy / RIG - 相对信息增益)**：
+  $$
+  \operatorname{NE} = \frac{\operatorname{LogLoss}(p, y)}{H(\bar{p})} = \frac{-\frac{1}{N}\sum_{i=1}^N \left[ y_i \log p_i + (1-y_i)\log(1-p_i) \right]}{-\bar{p}\log \bar{p} - (1-\bar{p})\log(1-\bar{p})}
+  $$
+  $$
+  \operatorname{RIG} = 1 - \operatorname{NE}
+  $$
+  其中 $\bar{p} = \frac{1}{N}\sum y_i$ 为数据集的全局经验背景正例率，$H(\bar{p})$ 为其香农信息熵。
+
+##### 4. 重排与端排公式 (Re-ranking & Slate Optimization)
+
+- **NDCG@K (Normalized Discounted Cumulative Gain)**：
+  $$
+  \operatorname{DCG@K} = \sum_{i=1}^K \frac{2^{\operatorname{rel}_i} - 1}{\log_2(i + 1)}, \quad \operatorname{NDCG@K} = \frac{\operatorname{DCG@K}}{\operatorname{IDCG@K}}
+  $$
+  其中 $\operatorname{rel}_i$ 为排在第 $i$ 位的相关性等级分数，$\operatorname{IDCG@K}$ 是将当前候选按相关性理想降序排列计算得到的最大理论 DCG 分数。
+- **ILD (Intra-List Diversity，列表内多样性)**：
+  $$
+  \operatorname{ILD} = \frac{2}{K(K - 1)} \sum_{i=1}^K \sum_{j=i+1}^K \operatorname{dist}(\text{item}_i, \text{item}_j)
+  $$
+  其中 $\operatorname{dist}(i, j) = 1 - \cos(\mathbf{e}_i, \mathbf{e}_j)$ 为物品 Embedding 的余弦距离或类目差异指示变量。
+- **新颖度自信息量 (Novelty / Serendipity)**：
+  $$
+  \operatorname{Novelty} = \frac{1}{K} \sum_{i=1}^K -\log_2 P(\text{item}_i)
+  $$
+  其中 $P(\text{item}_i)$ 为物品在全站全局曝光中的边缘先验概率，长尾冷门物品产生更高的自信息量。
+
+##### 5. 校准度与竞价出价公式 (Calibration & Bidding)
+
+- **PCOC (Predictive-over-Observed Ratio，全盘高低估比)**：
+  $$
+  \operatorname{PCOC} = \frac{\sum_{i=1}^N \hat{p}_i}{\sum_{i=1}^N y_i} \quad (\text{完美校准 } = 1.000)
+  $$
+- **ECE (Expected Calibration Error，分桶期望校准误差)**：
+  $$
+  \operatorname{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \operatorname{acc}(B_m) - \operatorname{conf}(B_m) \right|
+  $$
+  将样本按预测概率划入 $M$ 个区间桶 $B_m$，$\operatorname{conf}(B_m) = \frac{1}{|B_m|}\sum_{i \in B_m}\hat{p}_i$ 为桶内平均预测置信度，$\operatorname{acc}(B_m) = \frac{1}{|B_m|}\sum_{i \in B_m} y_i$ 为桶内真实经验发生率。
+- **Brier Score 及其正交三项分解**：
+  $$
+  \operatorname{BS} = \frac{1}{N}\sum_{i=1}^N (\hat{p}_i - y_i)^2 = \operatorname{Reliability} - \operatorname{Resolution} + \operatorname{Uncertainty}
+  $$
+  其中 $\operatorname{Reliability} = \sum_m \frac{|B_m|}{N}(\operatorname{conf}(B_m) - \operatorname{acc}(B_m))^2$ 度量校准偏差，$\operatorname{Resolution} = \sum_m \frac{|B_m|}{N}(\operatorname{acc}(B_m) - \bar{y})^2$ 度量排序分辨力，$\operatorname{Uncertainty} = \bar{y}(1 - \bar{y})$ 为数据固有方差。
+- **负采样几率比反解公式 (Odds Ratio Inversion Formula)**：
+  在负采样率 $w \in (0, 1)$ 下，模型直接输出的得分记为 $p_{\text{sampled}}$，线上真实物理概率还原公式为：
+  $$
+  \operatorname{Odds}_{\text{real}} = \operatorname{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w
+  $$
+  $$
+  p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}
+  $$
+
+##### 6. 在线 A/B 实验与因果检验公式 (Online Experimentation & Causality)
+
+- **SRM 卡方拟合优度检验 (Sample Ratio Mismatch Test)**：
+  $$
+  \chi^2 = \sum_{k=1}^C \frac{(O_k - E_k)^2}{E_k}, \quad \text{自由度 } df = C - 1
+  $$
+  其中 $O_k$ 为第 $k$ 组实际观测进流样本数，$E_k$ 为按分流哈希配置计算的理论期望样本数。
+- **CUPED 方差缩减估计量 (Controlled-experiment Using Pre-Experiment Data)**：
+  $$
+  \hat{Y}_{\text{CUPED}} = \bar{Y} - \theta (\bar{X} - \mathbb{E}[X]), \quad \text{其中 } \theta^* = \frac{\operatorname{Cov}(Y, X)}{\operatorname{Var}(X)}
+  $$
+  $$
+  \operatorname{Var}\left( \hat{Y}_{\text{CUPED}} \right) = \operatorname{Var}(\bar{Y}) \cdot \left( 1 - \rho_{XY}^2 \right)
+  $$
+  利用实验前用户历史指标 $X$（与实验干预严格正交）吸收指标方差，等效大幅缩减所需样本量与实验运行天数。
+
+---
+
+#### 9.6.3 工业级离线评价五大深水区面试考点深度辨析
 
 ##### 1. 为什么“全局 ROC-AUC 涨了，但线上 CTR 却跌了”？（辛普森悖论与 Request-GAUC）
 - **底层因果机制**：全局 ROC-AUC 混杂了**跨用户的先验偏好差异**。
@@ -123,7 +256,9 @@ Cross-BERT 把 query 与文档一同编码，能识别深层语义和否定关�
 
 ##### 2. 为什么 CVR 与低频风控任务中，必须看 PR-AUC 而非 ROC-AUC？
 - **混淆矩阵分母的“稀释效应”数学证明**：
-  $$\text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}}, \quad \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}$$
+  $$
+  \text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}}, \quad \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}
+  $$
   在极度不平衡场景（如正负样本比 $1:10000$ 的电商购买转化或高危黑产风控）：
   - 真实负样本基数 $\text{TN}$ 极其庞大。即便模型产生了 5000 个误报（$\text{FP} = 5000$，而实际正例检出 $\text{TP} = 100$），由于分母中 $\text{TN} \approx 10^6$，$\text{FPR} \approx \frac{5000}{1000000} = 0.005$ 极度接近 0！
   - 此时绘制出的 ROC 曲线近乎完美贴合左上角，**ROC-AUC 高达 0.98+（虚假繁荣）**。
@@ -134,7 +269,9 @@ Cross-BERT 把 query 与文档一同编码，能识别深层语义和否定关�
 
 ##### 3. 为什么工业大厂（Meta/TikTok）模型监控首选 NE (Normalized Cross Entropy / RIG)？
 - **公式解析**：
-  $$\text{NE} = \frac{\operatorname{LogLoss}(p, y)}{- \bar{p}\log\bar{p} - (1-\bar{p})\log(1-\bar{p})}, \quad \text{RIG} = 1 - \text{NE}$$
+  $$
+  \text{NE} = \frac{\operatorname{LogLoss}(p, y)}{- \bar{p}\log\bar{p} - (1-\bar{p})\log(1-\bar{p})}, \quad \text{RIG} = 1 - \text{NE}
+  $$
   其中分母是整个测试集依据背景平均转化率 $\bar{p}$ 计算出的**背景香农信息熵 $H(\bar{p})$**。
 - **为什么要消除背景熵？**
   - 当周末、节假日或平台大促到来时，大盘自然点击率 $\bar{p}$ 发生天然跳变（例如从 3% 飙升至 7%）。此时即使模型参数分毫不变，由于样本标签的信息熵增加，绝对 LogLoss 也会发生剧烈波动。
@@ -157,9 +294,13 @@ Cross-BERT 把 query 与文档一同编码，能识别深层语义和否定关�
 - **概率失真与 Odds 反解校正**：
   - 下采样导致训练集中正样本比例被人为放大了 $\frac{1}{w}$ 倍。模型直接输出的打分 $p_{\text{sampled}}$ 会严重偏高。
   - 若要还原线上真实的物理点击概率 $p_{\text{real}}$，必须使用 **Odds Ratio（几率比）反解公式**：
-    $$\text{Odds}_{\text{real}} = \text{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w$$
+    $$
+    \text{Odds}_{\text{real}} = \text{Odds}_{\text{sampled}} \cdot w \implies \frac{p_{\text{real}}}{1 - p_{\text{real}}} = \frac{p_{\text{sampled}}}{1 - p_{\text{sampled}}} \cdot w
+    $$
     解得：
-    $$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$$
+    $$
+    p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}
+    $$
   - 或者在训练时，直接对保留下来的负样本赋予权重 $\frac{1}{w}$ 进行加权交叉熵训练。
 
 ### 9.7 训练和评价的错位
@@ -187,9 +328,9 @@ def ndcg_at_k(relevances, k):
 
 `relevances` 已按模型预测顺序排列，每个值是非负相关性等级。使用：
 
-```math
-DCG@K=\sum_{i=1}^{K}\frac{2^{rel_i}-1}{\log_2(i+1)}.
-```
+$$
+\operatorname{DCG@K} = \sum_{i=1}^{K}\frac{2^{\operatorname{rel}_i}-1}{\log_2(i+1)}
+$$
 
 无相关结果时返回 `0.0`，`k <= 0` 时也返回 `0.0`。
 
