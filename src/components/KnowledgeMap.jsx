@@ -46,7 +46,7 @@ export const knowledgeMapDomains = [
         type: 'code',
       },
     ],
-    sectionId: 'llm',
+    sectionId: 'mlcoding',
   },
   {
     id: 'llm-alignment',
@@ -93,7 +93,7 @@ export const knowledgeMapDomains = [
         type: 'quiz',
       },
     ],
-    sectionId: 'llm',
+    sectionId: 'mlcoding',
   },
   {
     id: 'inference-agents',
@@ -140,7 +140,7 @@ export const knowledgeMapDomains = [
         type: 'system',
       },
     ],
-    sectionId: 'llm',
+    sectionId: 'mlcoding',
   },
   {
     id: 'traditional-ml-core',
@@ -181,7 +181,7 @@ export const knowledgeMapDomains = [
         type: 'theory',
       },
     ],
-    sectionId: 'traditional-ml',
+    sectionId: 'mlcoding',
   },
   {
     id: 'trees-ensembles',
@@ -216,7 +216,7 @@ export const knowledgeMapDomains = [
         type: 'system',
       },
     ],
-    sectionId: 'traditional-ml',
+    sectionId: 'mlcoding',
   },
   {
     id: 'optimization-dynamics',
@@ -245,7 +245,7 @@ export const knowledgeMapDomains = [
         type: 'code',
       },
     ],
-    sectionId: 'traditional-ml',
+    sectionId: 'mlcoding',
   },
   {
     id: 'mlsys-infra',

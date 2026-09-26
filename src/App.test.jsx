@@ -1395,11 +1395,11 @@ describe('App', () => {
     expect(within(pssv).getByText(/总和 total = 11 为奇数/i)).toBeInTheDocument();
   });
 
-  it('opens the Traditional ML section and displays ML Basics note', async () => {
+  it('opens the ML Coding section and displays ML Basics note', async () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation', { name: '主导航' });
-    fireEvent.click(within(nav).getByRole('button', { name: /Traditional ML/i }));
+    fireEvent.click(within(nav).getByRole('button', { name: /ML Coding/i }));
     expect(screen.getByRole('button', { name: /基础知识 · 数据预处理/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /基础知识 · 数据预处理/i }));

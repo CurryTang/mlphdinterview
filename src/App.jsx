@@ -1841,19 +1841,12 @@ const jobsNotes = jobsNoteDefinitions.map((definition) => ({
   },
 }));
 
+const mlCodingNotes = [
+  ...llmNotes,
+  ...traditionalMlNotes,
+];
+
 const noteSections = [
-  {
-    id: 'llm',
-    title: 'LLM',
-    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化与智能体核心循环',
-    notes: llmNotes,
-  },
-  {
-    id: 'traditional-ml',
-    title: 'Traditional ML',
-    description: '基础知识八股（归一化、Dropout、经典损失函数）、树模型与集成算法、现代优化器动力学与经典算子从零实现',
-    notes: traditionalMlNotes,
-  },
   {
     id: 'mlsys',
     title: 'MLSYS',
@@ -1865,6 +1858,12 @@ const noteSections = [
     title: 'Quant',
     description: 'Probability, stochastic processes, markets, and C++ / systems notes',
     notes: quantNotes,
+  },
+  {
+    id: 'mlcoding',
+    title: 'ML Coding & 八股',
+    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化、传统机器学习八股、树模型与现代优化器',
+    notes: mlCodingNotes,
   },
   {
     id: 'system-design',
@@ -2004,14 +2003,6 @@ const homeCopy = {
 
 const homeSectionCopy = {
   zh: {
-    llm: {
-      title: 'LLM',
-      description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化与智能体核心循环',
-    },
-    'traditional-ml': {
-      title: 'Traditional ML',
-      description: '基础知识八股（归一化、Dropout、经典损失函数）、树模型与集成算法、现代优化器动力学与经典算子从零实现',
-    },
     mlsys: {
       title: 'MLSYS',
       description: 'GPU kernel、训练系统、推理系统与性能分析',
@@ -2019,6 +2010,10 @@ const homeSectionCopy = {
     quant: {
       title: 'Quant',
       description: '概率、随机过程、市场与 C++ / 系统笔记',
+    },
+    mlcoding: {
+      title: 'ML Coding & 八股',
+      description: '大模型核心（Transformer 基础架构、注意力算子、后训练 RLHF/RLVR/GRPO、Agent 核心循环）与传统机器学习（基础机制八股、树模型与现代优化器）从零手写实现',
     },
     'system-design': {
       title: 'System Design',
@@ -2042,14 +2037,6 @@ const homeSectionCopy = {
     },
   },
   en: {
-    llm: {
-      title: 'LLM',
-      description: 'Transformer architecture, attention operator zoo, post-training alignment (RLHF/RLVR/GRPO), inference optimization, and agent loops',
-    },
-    'traditional-ml': {
-      title: 'Traditional ML',
-      description: 'Core fundamentals (Dropout, Normalization, Loss functions), tree-based models & ensembles, modern optimizer dynamics, and from-scratch operator implementations',
-    },
     mlsys: {
       title: 'MLSYS',
       description: 'GPU kernels, training and inference systems, and performance analysis',
@@ -2057,6 +2044,10 @@ const homeSectionCopy = {
     quant: {
       title: 'Quant',
       description: 'Probability, stochastic processes, markets, and C++ / systems notes',
+    },
+    mlcoding: {
+      title: 'ML Coding & Fundamentals',
+      description: 'From-scratch implementations and interview drills across LLM core (Transformers, attention zoo, RLHF/RLVR/GRPO, agents) and Traditional ML (foundations, trees, optimizers)',
     },
     'system-design': {
       title: 'System Design',
@@ -28834,6 +28825,8 @@ const legacyRoutes = {
   'Quant08 Order Statistics Conditional Truncation.md': 'Quant03 Continuous Distribution Geometry Transform.md',
   'Quant10 Betting Risk Neutral Pricing Martingales.md': 'Quant11 Martingales Stopping Times Random Walks.md',
   'Quant15 Equivalent Martingale Measure Girsanov and FTAP.md': 'Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md',
+  llm: 'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
+  'traditional-ml': 'MLCoding02 GELU BatchNorm Conv2d Linear Regression.md',
   'CoreSkills08 Design Segment Tree.md': 'CoreSkills08 Insertion Sort.md',
   'CoreSkills09 Design Segment Tree.md': 'CoreSkills08 Insertion Sort.md',
   'CoreSkills09 Insertion Sort.md': 'CoreSkills08 Insertion Sort.md',
