@@ -124,7 +124,7 @@ Muon (2D 矩阵谱正交投影)
   -> 五阶 Newton-Schulz 迭代纯走 GEMM，专用于 2D 线性层矩阵，收敛提速 1.5~2 倍
 ~~~
 
-详见系统级专题指南与代码实现：[ML Coding 10 · 优化器全景：从 SGD 动量到 Adam/AdamW 与 Muon](notes/MLCoding/MLCoding10%20Modern%20Optimizers%20SGD%20AdamW%20Muon.md)。
+详见系统级专题指南与代码实现：[现代优化器 · 从 SGD 动量到 Adam/AdamW 与 Muon 谱正交投影](notes/MLCoding/MLCoding10%20Modern%20Optimizers%20SGD%20AdamW%20Muon.md)。
 
 ## 11. Data Curation
 
@@ -1339,186 +1339,223 @@ const quantNotes = quantNoteDefinitions.map((definition) => ({
   },
 }));
 
-const mlCodingNoteDefinitions = [
+const llmNoteDefinitions = [
+  // --- Transformer 基础 (Transformer Basics) ---
   createTutorialDefinition(
-    'ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数',
-    'MLCoding00 ML Basics Data Preprocessing Loss Functions.md',
-    'MLCoding00 ML Basics Data Preprocessing Loss Functions.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions',
-      category: 'ML Basics',
-      difficulty: 'Medium',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding 00B · LLM 基础：Decoder-Only 架构胜出原理解析、文本向量表征与混合精度训练体系',
-    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.md',
-    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 00B · LLM Basics: Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Training Systems',
-      category: 'LLM Basics',
-      difficulty: 'Medium',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding · 从零实现 LLM',
-    'MLCoding01 Unicode Pretokenization.md',
-    'MLCoding01 Unicode Pretokenization.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding · From-Scratch LLM Implementation',
-      category: 'From Scratch',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding 01B · Transformer 架构变体：MHA/MQA/GQA 算子张量维度、FLOPs 分解与 KV Cache 硬件优化',
+    'Transformer 基础 · 架构变体：MHA/MQA/GQA 算子张量维度、FLOPs 分解与 KV Cache 硬件优化',
     'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
     'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 01B · Transformer Architecture Variants: MHA/MQA/GQA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations',
-      category: 'Transformer & Attention',
+      titleEn: 'Transformer Basics · Architecture Variants: MHA/MQA/GQA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations',
+      category: 'Transformer 基础',
+      categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 02 · 基础算子补完：GELU、BatchNorm、Kaiming Init、Dropout、Conv2d、线性回归、梯度累积',
-    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.md',
-    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 02 · Fundamentals Roundup: GELU, BatchNorm, Kaiming Init, Dropout, Conv2d, Linear Regression',
-      category: 'From Scratch',
-      difficulty: 'Medium',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding 03 · 注意力机制全家桶：从 MHA 到 GQA、滑动窗口、线性注意力、KV Cache 与 Flash Attention',
+    'Transformer 基础 · 注意力机制全家桶：从 MHA 到 GQA、滑动窗口、线性注意力、KV Cache 与 Flash Attention',
     'MLCoding03 Attention Variants GQA Sliding Window KV Cache.md',
     'MLCoding03 Attention Variants GQA Sliding Window KV Cache.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 03 · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache, and Flash Attention',
-      category: 'From Scratch',
+      titleEn: 'Transformer Basics · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache & Flash Attention',
+      category: 'Transformer 基础',
+      categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 04 · 架构组件：LoRA 低秩微调、ViT Patch Embedding 与 Mixture of Experts',
+    'Transformer 基础 · 架构扩展：LoRA 低秩微调、ViT Patch Embedding 与 MoE 混合专家',
     'MLCoding04 LoRA ViT Patch Embedding MoE.md',
     'MLCoding04 LoRA ViT Patch Embedding MoE.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 04 · Architecture Extensions: LoRA, ViT Patch Embedding, and Mixture of Experts',
-      category: 'From Scratch',
+      titleEn: 'Transformer Basics · Architecture Extensions: LoRA, ViT Patch Embedding & Mixture of Experts',
+      category: 'Transformer 基础',
+      categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 05 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码',
+    'Transformer 基础 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码',
     'MLCoding05 Sampling Beam Search Speculative Decoding.md',
     'MLCoding05 Sampling Beam Search Speculative Decoding.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 05 · Decoding Strategies: Top-k/Top-p Sampling, Beam Search, and Speculative Decoding',
-      category: 'From Scratch',
+      titleEn: 'Transformer Basics · Decoding Strategies: Top-k/Top-p Sampling, Beam Search & Speculative Decoding',
+      category: 'Transformer 基础',
+      categoryEn: 'Transformer Basics',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 06 · 量化与对齐：INT8 量化和 DPO / GRPO / PPO / OPD 损失函数',
-    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.md',
-    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.en.md',
+    'Transformer 基础 · 从零手写 LLM：Unicode Pretokenization、BPE 与自回归训练循环',
+    'MLCoding01 Unicode Pretokenization.md',
+    'MLCoding01 Unicode Pretokenization.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 06 · Quantization & Alignment: INT8 Quantization and DPO / GRPO / PPO / OPD Losses',
-      category: 'From Scratch',
+      titleEn: 'Transformer Basics · Build a Modern GPT from Scratch: Tokenizer, RoPE & Autoregressive Loop',
+      category: 'Transformer 基础',
+      categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
+
+  // --- LLM 核心理论与后训练 (LLM Core & Post-Training) ---
   createTutorialDefinition(
-    'ML Coding 06B · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税',
+    'LLM 核心 · 架构选型与训练基础：Decoder-Only 优势、文本表征与混合精度训练体系',
+    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.md',
+    'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'LLM Core · Architecture & Foundations: Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Systems',
+      category: 'LLM 核心理论与后训练',
+      categoryEn: 'LLM Core & Post-Training',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
+    'LLM 核心 · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税',
     'MLCoding06B RLHF Preference Alignment PPO DPO.md',
     'MLCoding06B RLHF Preference Alignment PPO DPO.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax',
-      category: 'Post-Training & Alignment',
+      titleEn: 'LLM Core · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax',
+      category: 'LLM 核心理论与后训练',
+      categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 06C · RLVR、推理大模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与 Agent 强化学习',
+    'LLM 核心 · RLVR、推理模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与智能体强化学习',
     'MLCoding06C RLVR Reasoning GRPO Agentic RL.md',
     'MLCoding06C RLVR Reasoning GRPO Agentic RL.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL',
-      category: 'Reasoning & Agentic RL',
+      titleEn: 'LLM Core · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL',
+      category: 'LLM 核心理论与后训练',
+      categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 07 · 工业级机器学习体系：推荐精排、长序列建模、生成式重排与 A/B 测试因果推断',
-    'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.md',
-    'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 07 · Industrial ML Systems: RecSys Ranking, Long-Sequence Modeling, Generative Reranking & A/B Testing Causal Inference',
-      category: 'Industrial Machine Learning',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding 08 · 极简 Agent 系统实现：基于 Pi Agent 的 300 行核心循环、工具调用与状态机架构',
+    'LLM 核心 · 智能体架构：基于 Pi Agent 的 300 行核心循环、工具调用与状态机',
     'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.md',
     'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Coding 08 · Minimalist Agent Architecture: 300-Line Core Loop, Tool Calling & State Machine Inspired by Pi Agent',
-      category: 'Agent Engineering',
+      titleEn: 'LLM Core · Minimalist Agent Architecture: 300-Line Core Loop, Tool Calling & State Machine Inspired by Pi Agent',
+      category: 'LLM 核心理论与后训练',
+      categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'ML Coding 09 · 数据科学核心：统计检验、多元分布漂移、决策树与随机森林体系',
-    'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md',
-    'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 09 · Data Science Core: Statistical Testing, Distribution Shift, Decision Trees & Random Forests',
-      category: 'Data Science & Applied Statistics',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    'ML Coding 10 · 优化器全景与面试精要：从 SGD 动量到 Adam/AdamW 与 Muon，二阶矩、稀疏陷阱与谱正交化',
-    'MLCoding10 Modern Optimizers SGD AdamW Muon.md',
-    'MLCoding10 Modern Optimizers SGD AdamW Muon.en.md',
-    {
-      directory: 'MLCoding',
-      titleEn: 'ML Coding 10 · Optimizer Panorama & Interview Guide: From SGD Momentum to Adam/AdamW & Muon, Second Moments, Sparse Pitfalls & Spectral Orthogonalization',
-      category: 'Optimization & Training Dynamics',
-      difficulty: 'Hard',
-    },
-  ),
-  createTutorialDefinition(
-    '强化学习练习 · RL Infra 自测 35 问',
+    'LLM 核心 · 强化学习基础设施自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
     {
       directory: 'Mlsys',
-      titleEn: 'RL Practice · 35 Questions on RL Infra',
-      category: 'Reinforcement Learning',
+      titleEn: 'LLM Core · 35 Questions on RL Infra',
+      category: 'LLM 核心理论与后训练',
+      categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Medium',
+    },
+  ),
+
+  // --- LLM 代码实战 (LLM Implementation & Losses) ---
+  createTutorialDefinition(
+    'LLM 核心代码 · 量化与偏好损失函数手写：INT8 动态量化与 DPO / GRPO / PPO / OPD 损失实现',
+    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.md',
+    'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'LLM Hands-on Code · Quantization & Alignment: INT8 Quantization and DPO / GRPO / PPO / OPD Losses',
+      category: 'LLM 代码实战',
+      categoryEn: 'LLM Hands-on Code',
+      difficulty: 'Hard',
     },
   ),
 ];
 
-const mlCodingNotes = mlCodingNoteDefinitions.map((definition) => ({
+const traditionalMlNoteDefinitions = [
+  // --- 基础知识八股与原理 (ML Foundations & Core Mechanics) ---
+  createTutorialDefinition(
+    '基础知识 · 核心机制八股与算子实现：Normalization、Dropout、GELU、Conv2d 与回归',
+    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.md',
+    'MLCoding02 GELU BatchNorm Conv2d Linear Regression.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Foundations · Core Mechanics & Operators: Normalization, Dropout, GELU, Conv2d & Linear Regression',
+      category: '基础知识八股与原理',
+      categoryEn: 'ML Foundations & Core Mechanics',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
+    '基础知识 · 数据预处理、数据泄露与经典损失函数全景',
+    'MLCoding00 ML Basics Data Preprocessing Loss Functions.md',
+    'MLCoding00 ML Basics Data Preprocessing Loss Functions.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'ML Foundations · Data Preprocessing, Data Leakage Prevention & Loss Functions',
+      category: '基础知识八股与原理',
+      categoryEn: 'ML Foundations & Core Mechanics',
+      difficulty: 'Medium',
+    },
+  ),
+  createTutorialDefinition(
+    '现代优化器 · 从 SGD 动量到 Adam/AdamW 与 Muon 谱正交投影：预条件几何、二阶矩与稀疏陷阱',
+    'MLCoding10 Modern Optimizers SGD AdamW Muon.md',
+    'MLCoding10 Modern Optimizers SGD AdamW Muon.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'Modern Optimizers · From SGD Momentum to Adam/AdamW & Muon: Preconditioning Geometry, Second Moments & Sparse Pitfalls',
+      category: '基础知识八股与原理',
+      categoryEn: 'ML Foundations & Core Mechanics',
+      difficulty: 'Hard',
+    },
+  ),
+
+  // --- 树模型与统计学习 (Tree-Based Models & Statistics) ---
+  createTutorialDefinition(
+    '树模型与统计学习 · 决策树、随机森林体系与多元分布漂移检验',
+    'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md',
+    'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'Tree-Based Models & Statistics · Decision Trees, Random Forest Ensembles & Distribution Shift Testing',
+      category: '树模型与统计学习',
+      categoryEn: 'Tree-Based Models & Statistics',
+      difficulty: 'Hard',
+    },
+  ),
+
+  // --- 工业级机器学习 (Industrial Machine Learning) ---
+  createTutorialDefinition(
+    '工业级推荐排序 · 精排模型、长序列建模、生成式重排与 A/B 测试因果推断',
+    'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.md',
+    'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.en.md',
+    {
+      directory: 'MLCoding',
+      titleEn: 'Industrial RecSys · Ranking Models, Long-Sequence Modeling, Generative Reranking & A/B Testing Causal Inference',
+      category: '工业级机器学习',
+      categoryEn: 'Industrial Machine Learning',
+      difficulty: 'Hard',
+    },
+  ),
+];
+
+const llmNotes = llmNoteDefinitions.map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
+const traditionalMlNotes = traditionalMlNoteDefinitions.map((definition) => ({
   ...definition,
   variants: {
     zh: createVariant(definition.zhFileName, definition.directory),
@@ -1804,6 +1841,18 @@ const jobsNotes = jobsNoteDefinitions.map((definition) => ({
 
 const noteSections = [
   {
+    id: 'llm',
+    title: 'LLM',
+    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化与智能体核心循环',
+    notes: llmNotes,
+  },
+  {
+    id: 'traditional-ml',
+    title: 'Traditional ML',
+    description: '基础知识八股（归一化、Dropout、经典损失函数）、树模型与集成算法、现代优化器动力学与经典算子从零实现',
+    notes: traditionalMlNotes,
+  },
+  {
     id: 'mlsys',
     title: 'MLSYS',
     description: 'GPU kernels, training systems, inference systems, and performance notes',
@@ -1814,12 +1863,6 @@ const noteSections = [
     title: 'Quant',
     description: 'Probability, stochastic processes, markets, and C++ / systems notes',
     notes: quantNotes,
-  },
-  {
-    id: 'mlcoding',
-    title: 'ML Coding & 八股',
-    description: 'From-scratch machine learning implementation exercises, plus ML interview drills',
-    notes: mlCodingNotes,
   },
   {
     id: 'system-design',
@@ -1940,6 +1983,14 @@ const homeCopy = {
 
 const homeSectionCopy = {
   zh: {
+    llm: {
+      title: 'LLM',
+      description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化与智能体核心循环',
+    },
+    'traditional-ml': {
+      title: 'Traditional ML',
+      description: '基础知识八股（归一化、Dropout、经典损失函数）、树模型与集成算法、现代优化器动力学与经典算子从零实现',
+    },
     mlsys: {
       title: 'MLSYS',
       description: 'GPU kernel、训练系统、推理系统与性能分析',
@@ -1947,10 +1998,6 @@ const homeSectionCopy = {
     quant: {
       title: 'Quant',
       description: '概率、随机过程、市场与 C++ / 系统笔记',
-    },
-    mlcoding: {
-      title: 'ML Coding & 八股',
-      description: '从零实现 tokenizer、attention、训练循环等机器学习组件，附强化学习自测与面试题',
     },
     'system-design': {
       title: 'System Design',
@@ -1974,6 +2021,14 @@ const homeSectionCopy = {
     },
   },
   en: {
+    llm: {
+      title: 'LLM',
+      description: 'Transformer architecture, attention operator zoo, post-training alignment (RLHF/RLVR/GRPO), inference optimization, and agent loops',
+    },
+    'traditional-ml': {
+      title: 'Traditional ML',
+      description: 'Core fundamentals (Dropout, Normalization, Loss functions), tree-based models & ensembles, modern optimizer dynamics, and from-scratch operator implementations',
+    },
     mlsys: {
       title: 'MLSYS',
       description: 'GPU kernels, training and inference systems, and performance analysis',
@@ -1981,10 +2036,6 @@ const homeSectionCopy = {
     quant: {
       title: 'Quant',
       description: 'Probability, stochastic processes, markets, and C++ / systems notes',
-    },
-    mlcoding: {
-      title: 'ML Coding & Interview',
-      description: 'From-scratch implementations of tokenizers, attention, training loops, and other ML components, plus an RL self-test and interview questions',
     },
     'system-design': {
       title: 'System Design',
@@ -2039,6 +2090,7 @@ function createTutorialDefinition(title, zhFileName, enFileName, options = {}) {
     enFileName: resolvedEnglishFileName,
     directory,
     category: options.category ?? '',
+    categoryEn: options.categoryEn ?? options.category ?? '',
     difficulty: options.difficulty ?? '',
   };
 }
@@ -28792,6 +28844,7 @@ const legacyRoutes = {
   'CoreSkills32 Design Trie.md': 'CoreSkills19 Design Trie.md',
   'CoreSkills22 Backtracking.md': 'CoreSkills20 Backtracking.md',
   'CoreSkills33 Backtracking.md': 'CoreSkills20 Backtracking.md',
+  mlcoding: 'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
 };
 
 function parseHashRoute(rawHash) {
@@ -29959,21 +30012,39 @@ function App() {
         </label>
 
         <div className="note-list">
-          {filteredTutorials.map((tutorial) => (
-            <button
-              key={tutorial.id}
-              className={`note-button ${selectedTutorial?.id === tutorial.id ? 'active' : ''}`}
-              onClick={() => navigateToTutorial(tutorial.id)}
-              type="button"
-            >
-              <span className="note-title">
-                {language === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
-              </span>
-              <span className="note-subtitle">
-                {language === 'en' ? (tutorial.enFileName || tutorial.fileName) : tutorial.zhFileName}
-              </span>
-            </button>
-          ))}
+          {(() => {
+            let lastCategory = null;
+            return filteredTutorials.map((tutorial) => {
+              const currentCategory = language === 'en'
+                ? (tutorial.categoryEn || tutorial.category)
+                : (tutorial.category || tutorial.categoryEn);
+              const showCategoryHeader = !query.trim() && currentCategory && currentCategory !== lastCategory;
+              if (showCategoryHeader) {
+                lastCategory = currentCategory;
+              }
+              return (
+                <Fragment key={tutorial.id}>
+                  {showCategoryHeader && (
+                    <div className="note-list-category-header">
+                      {currentCategory}
+                    </div>
+                  )}
+                  <button
+                    className={`note-button ${selectedTutorial?.id === tutorial.id ? 'active' : ''}`}
+                    onClick={() => navigateToTutorial(tutorial.id)}
+                    type="button"
+                  >
+                    <span className="note-title">
+                      {language === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
+                    </span>
+                    <span className="note-subtitle">
+                      {language === 'en' ? (tutorial.enFileName || tutorial.fileName) : tutorial.zhFileName}
+                    </span>
+                  </button>
+                </Fragment>
+              );
+            });
+          })()}
           {filteredTutorials.length === 0 && (
             <p className="list-empty">{language === 'en' ? 'No notes matched your search.' : '没有匹配的笔记。'}</p>
           )}

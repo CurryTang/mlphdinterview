@@ -1,4 +1,4 @@
-# ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions
+# ML Foundations · Data Preprocessing, Data Leakage Prevention & Loss Functions
 
 In machine learning system design and production engineering, a solid statistical foundation and rigorous data pipeline practices are essential prerequisites for building dependable models. Many machine learning models exhibit stellar offline evaluation metrics only to degrade catastrophically upon production rollout. The root causes rarely lie in model architectures, but rather in insidious data leakage, flawed missing data imputation, evaluation traps under extreme class imbalance, or a misalignment between loss function assumptions and problem characteristics.
 
@@ -379,89 +379,97 @@ def compute_joint_vae_loss(
 
 ---
 
-### 2. Low-Level Vectorized Implementations (Collapsible Code Blocks)
+### 2. Quick Coding: `compute_roc_auc` / `compute_average_precision`
 
-<details>
-<summary><b>Implementation 1: ROC-AUC (Wilcoxon-Mann-Whitney U-Rank Algorithm)</b></summary>
+Implement binary **ROC-AUC** and **PR-AUC (Average Precision)**, then answer how they differ. This pairing is a staple of imbalance / fraud / CVR interviews.
 
 ```python
-import numpy as np
+from typing import List
 
-def compute_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """Computes binary ROC-AUC using the Wilcoxon-Mann-Whitney U statistic.
-    
-    Formula: AUC = (sum(rank(S_pos)) - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
-    Includes fractional tie-breaking.
-    """
-    y_true = np.asarray(y_true).ravel()
-    y_score = np.asarray(y_score).ravel()
-    
-    pos_mask = (y_true == 1)
-    neg_mask = (y_true == 0)
-    n_pos = np.sum(pos_mask)
-    n_neg = np.sum(neg_mask)
-    
-    if n_pos == 0 or n_neg == 0:
-        raise ValueError("y_true must contain both positive and negative samples")
-        
-    order = np.argsort(y_score)
-    ranks = np.empty_like(order, dtype=float)
-    ranks[order] = np.arange(1, len(y_score) + 1)
-    
-    # Handle tied scores via fractional ranking
-    sorted_scores = y_score[order]
-    unique_scores, inverse_indices, counts = np.unique(sorted_scores, return_inverse=True, return_counts=True)
-    if len(unique_scores) < len(y_score):
-        tie_ranks = np.cumsum(counts) - (counts - 1) / 2.0
-        ranks = tie_ranks[inverse_indices][np.argsort(order)]
-    
-    sum_pos_ranks = np.sum(ranks[pos_mask])
-    u_stat = sum_pos_ranks - (n_pos * (n_pos + 1)) / 2.0
-    return float(u_stat / (n_pos * n_neg))
 
-# Verification
-y_t = np.array([0, 0, 1, 1])
-y_s = np.array([0.1, 0.4, 0.35, 0.8])
-print("ROC-AUC:", compute_roc_auc(y_t, y_s))  # 0.75
+def compute_roc_auc(y_true: List[int], y_score: List[float]) -> float:
+    """ROC-AUC via Mann-Whitney U / average ranks. Ties use mean rank; one class → ValueError."""
+    ...
+
+
+def compute_average_precision(y_true: List[int], y_score: List[float]) -> float:
+    """PR-AUC / AP = sum_k (R_k - R_{k-1}) * P_k. Descending scan; no positives → 0.0."""
+    ...
 ```
-</details>
+
+**Contract**
+
+- ROC-AUC: assign ranks in **ascending** score order (1-based), average ranks on ties;
+  $\mathrm{AUC} = \big(\sum_{i:y_i=1}\mathrm{rank}(s_i) - n_+(n_++1)/2\big) / (n_+ n_-)$.
+- PR-AUC: scan scores **descending** (stable by index), weight each precision by the recall step; $R_0=0$.
+- Example: `y_true=[0,0,1,1]`, `y_score=[0.1,0.4,0.35,0.8]` → ROC-AUC `0.75`, AP `≈0.8333`.
+
+#### Verbal follow-up
+
+**What is the core difference between ROC-AUC and PR-AUC? When must you use PR-AUC?**
 
 <details>
-<summary><b>Implementation 2: PR-AUC / Average Precision (Step-Wise Trapezoidal Rule)</b></summary>
+<summary>Reference answer (code + verbal)</summary>
 
 ```python
-import numpy as np
+from typing import List
 
-def compute_average_precision(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """Computes PR-AUC / Average Precision (AP).
-    
-    Formula: AP = sum_k (R_k - R_{k-1}) * P_k
-    """
-    y_true = np.asarray(y_true).ravel()
-    y_score = np.asarray(y_score).ravel()
-    
-    order = np.argsort(-y_score)
-    y_sorted = y_true[order]
-    
-    tp = np.cumsum(y_sorted == 1)
-    fp = np.cumsum(y_sorted == 0)
-    n_pos = tp[-1]
-    
+
+def compute_roc_auc(y_true: List[int], y_score: List[float]) -> float:
+    n = len(y_true)
+    n_pos = sum(1 for y in y_true if y == 1)
+    n_neg = n - n_pos
+    if n_pos == 0 or n_neg == 0:
+        raise ValueError("y_true must contain both classes")
+    order = sorted(range(n), key=lambda i: y_score[i])
+    ranks = [0.0] * n
+    start = 0
+    while start < n:
+        end = start
+        while end + 1 < n and y_score[order[end + 1]] == y_score[order[start]]:
+            end += 1
+        avg = (start + 1 + end + 1) / 2.0
+        for k in range(start, end + 1):
+            ranks[order[k]] = avg
+        start = end + 1
+    sum_pos = sum(ranks[i] for i in range(n) if y_true[i] == 1)
+    return (sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+
+def compute_average_precision(y_true: List[int], y_score: List[float]) -> float:
+    n_pos = sum(1 for y in y_true if y == 1)
     if n_pos == 0:
         return 0.0
-        
-    precision = tp / (tp + fp)
-    recall = tp / n_pos
-    
-    recall_prev = np.concatenate(([0.0], recall[:-1]))
-    recall_diff = recall - recall_prev
-    
-    return float(np.sum(precision * recall_diff))
+    order = sorted(range(len(y_true)), key=lambda i: (-y_score[i], i))
+    tp = fp = 0
+    ap = 0.0
+    prev_recall = 0.0
+    for i in order:
+        if y_true[i] == 1:
+            tp += 1
+        else:
+            fp += 1
+        precision = tp / (tp + fp)
+        recall = tp / n_pos
+        ap += (recall - prev_recall) * precision
+        prev_recall = recall
+    return ap
 
-# Verification
-print("Average Precision:", compute_average_precision(y_t, y_s))
+
+y_t, y_s = [0, 0, 1, 1], [0.1, 0.4, 0.35, 0.8]
+assert abs(compute_roc_auc(y_t, y_s) - 0.75) < 1e-9
+assert abs(compute_average_precision(y_t, y_s) - 5.0 / 6.0) < 1e-9
 ```
+
+**Verbal points**
+
+1. **Axes**: ROC is TPR vs FPR; PR is Precision vs Recall. ROC's FPR denominator includes a huge TN pool, so false alarms are diluted under skew ("false prosperity"). PR ignores TN and directly measures how pure the positive calls are.
+2. **Random baseline**: ROC-AUC is always 0.5; PR-AUC is the positive prevalence $\pi=P(Y=1)$.
+3. **When PR-AUC is mandatory**: rare-event CVR / fraud / failure detection, or when FP cost dominates (review capacity, false blocks). ROC-AUC remains fine for balanced settings or pure global separability checks.
+
 </details>
+
+### 2b. Remaining Metric Implementations (Collapsible Code Blocks)
 
 <details>
 <summary><b>Implementation 3: F1-Score & F-beta Score (Threshold-Based Metric)</b></summary>
@@ -976,10 +984,9 @@ When a model's training loss spikes uncontrollably, explodes to infinity (`inf`)
 |---|---|---|
 | **Learning Rate / Step Size Too Large** | **Yes [Primary Root Cause]** | For objective $\frac{1}{2} x^T H x$, if step size $\eta > \frac{2}{\lambda_{\max}(H)}$, gradient updates diverge exponentially: $\|w_{t+1} - w^*\| > \|w_t - w^*\|$. |
 | **Unnormalized / Unscaled Input Features** | **Yes [Primary Root Cause]** | Severe feature scale imbalance inflates the condition number $\kappa(H) = \frac{\lambda_{\max}}{\lambda_{\min}} \gg 1$, creating pathological ravines where fixed step sizes overshoot orthogonal walls. |
-| **Numerically Unstable Loss Formulation** | **Yes [Primary Root Cause]** | Cross-entropy without probability clamping ($p \o 0 \implies \log p \o -\infty$), inducing arithmetic underflow and `NaN` propagation. |
-| **Exploding Gradients in Deep Layers** | **Yes [Primary Root Cause]** | Repeated matrix multiplication across deep layers yields unbounded gradient norms $\|
-abla_\heta \mathcal{L}\|$ without gradient clipping. |
-| **Regularization Parameter Too High** | **No [Common Misconception]** | Excessive regularization ($\lambda \o \infty$) strongly penalizes weights to zero, causing **underfitting** with high but finite, bounded loss. It never causes divergence to infinity. |
+| **Numerically Unstable Loss Formulation** | **Yes [Primary Root Cause]** | Cross-entropy without probability clamping ($p \to 0 \implies \log p \to -\infty$), inducing arithmetic underflow and `NaN` propagation. |
+| **Exploding Gradients in Deep Layers** | **Yes [Primary Root Cause]** | Repeated matrix multiplication across deep layers yields unbounded gradient norms $\|\nabla_\theta \mathcal{L}\|$ without gradient clipping. |
+| **Regularization Parameter Too High** | **No [Common Misconception]** | Excessive regularization ($\lambda \to \infty$) strongly penalizes weights to zero, causing **underfitting** with high but finite, bounded loss. It never causes divergence to infinity. |
 | **Zero Regularization on Ill-Conditioned Problems** | **Yes** | When features are multicollinear or $N < P$, the design matrix is singular. Absence of $L_2$ regularization allows weights to grow unbounded. |
 
 ---
@@ -1131,64 +1138,106 @@ assert find_local_maxima([2, 4, 4, 1], 1) == []
 
 ---
 
-### 6. k-Means Clustering from Scratch (Standard Assign-Update Loop)
+### 6. Quick Coding: `kmeans`
 
-Lloyd's algorithm implements alternating minimization over cluster assignments and centroid coordinates:
-
-#### (1) Objective Function
-
-$$\arg\min_{\mathcal{S}, \boldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - \boldsymbol{\mu}_j\|^2$$
-
-Iterative steps:
-1. **Assignment**: Assign each sample to the nearest centroid under Euclidean distance:
-   $$c_i^{(t)} = \arg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - \boldsymbol{\mu}_j^{(t)}\|^2$$
-2. **Centroid Update**: Recompute centroid as the cluster empirical mean:
-   $$\boldsymbol{\mu}_j^{(t+1)} = \frac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
-
-#### (2) Implementation
+Implement **Lloyd K-Means** from scratch (Meta / Microsoft / LinkedIn / ByteDance favorite). Do not call sklearn.
 
 ```python
-import numpy as np
-from typing import List, Union
+from typing import List, Optional, Tuple
 
-class ScratchKMeans:
-    def __init__(self, k: int, initial_centroids: Union[List[List[float]], np.ndarray], max_iters: int = 100):
-        self.k = k
-        self.centroids = np.asarray(initial_centroids, dtype=float)
-        self.max_iters = max_iters
 
-    def fit_predict(self, data: Union[List[List[float]], np.ndarray]) -> List[int]:
-        """
-        Executes standard assign-then-update loop, returning cluster label per sample.
-        """
-        X = np.asarray(data, dtype=float)
-        n_samples = len(X)
-        labels = np.zeros(n_samples, dtype=int)
-
-        for _ in range(self.max_iters):
-            # Assignment step: broadcasting pairwise distances (N, K)
-            distances = np.sum((X[:, np.newaxis, :] - self.centroids[np.newaxis, :, :]) ** 2, axis=2)
-            new_labels = np.argmin(distances, axis=1)
-
-            # Convergence termination
-            if np.array_equal(labels, new_labels) and _ > 0:
-                break
-            labels = new_labels
-
-            # Update step
-            for c in range(self.k):
-                cluster_members = X[labels == c]
-                if len(cluster_members) > 0:
-                    self.centroids[c] = np.mean(cluster_members, axis=0)
-
-        return labels.tolist()
-
-# Verification
-X_pts = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
-init_centers = [[1.0, 2.0], [8.0, 8.0]]
-kmeans = ScratchKMeans(k=2, initial_centroids=init_centers)
-assert kmeans.fit_predict(X_pts) == [0, 0, 1, 1, 0, 1]
+def kmeans(
+    X: List[List[float]],
+    k: int,
+    max_iters: int = 100,
+    tol: float = 1e-4,
+    init: Optional[List[List[float]]] = None,
+) -> Tuple[List[List[float]], List[int]]:
+    """Return (centroids, labels). Empty cluster keeps the previous centroid."""
+    ...
 ```
+
+**Constraints**
+
+- Objective: $\sum_j \sum_{x \in S_j} \|x - \mu_j\|^2$.
+- Assignment: nearest centroid by squared Euclidean distance; ties take the smaller index.
+- Update: mean of non-empty clusters; **empty clusters keep the prior centroid**.
+- If `init is None`, use the first `k` rows of `X`.
+- Stop when the Frobenius centroid shift $\le \mathrm{tol}$, or after `max_iters`.
+- `labels` are a **final** nearest-centroid assignment after the last update.
+
+#### Verbal follow-ups
+
+1. Why must you not drop empty centroids? What else can you do instead?
+2. K-Means vs GMM: hard vs soft assignment and covariance — when do you need GMM?
+3. Complexity? Why is initialization sensitive? What does K-Means++ do?
+
+<details>
+<summary>Reference solution (code + verbal)</summary>
+
+```python
+import math
+from typing import List, Optional, Tuple
+
+
+def kmeans(
+    X: List[List[float]],
+    k: int,
+    max_iters: int = 100,
+    tol: float = 1e-4,
+    init: Optional[List[List[float]]] = None,
+) -> Tuple[List[List[float]], List[int]]:
+    points = [list(map(float, row)) for row in X]
+    if not points or k <= 0:
+        return [], []
+    centroids = (
+        [list(map(float, row)) for row in init]
+        if init is not None
+        else [list(points[i]) for i in range(k)]
+    )
+
+    def assign(centers):
+        labels = []
+        for point in points:
+            best, best_d = 0, None
+            for j, c in enumerate(centers):
+                d = sum((a - b) ** 2 for a, b in zip(point, c))
+                if best_d is None or d < best_d:
+                    best, best_d = j, d
+            labels.append(best)
+        return labels
+
+    for _ in range(max_iters):
+        labels = assign(centroids)
+        updated = []
+        for j in range(k):
+            members = [points[i] for i, lab in enumerate(labels) if lab == j]
+            if members:
+                d = len(members[0])
+                updated.append([sum(p[t] for p in members) / len(members) for t in range(d)])
+            else:
+                updated.append(list(centroids[j]))
+        shift = math.sqrt(
+            sum(sum((a - b) ** 2 for a, b in zip(o, n)) for o, n in zip(centroids, updated))
+        )
+        centroids = updated
+        if shift <= tol:
+            break
+    return centroids, assign(centroids)
+
+
+X = [[0.0, 0.0], [0.3, 0.0], [0.0, 0.3], [6.0, 6.0], [6.3, 6.0], [6.0, 6.3]]
+C, y = kmeans(X, 2, 20, 1e-4, [[0.0, 0.0], [6.0, 6.0]])
+assert y == [0, 0, 0, 1, 1, 1]
+```
+
+**Verbal notes**
+
+1. Dropping a centroid shrinks $k$ and makes return shapes unstable; resample far points, restart with K-Means++, or merge-then-split.
+2. K-Means is hard assignment with spherical isotropic clusters; GMM is soft responsibilities with learnable covariance. Use GMM for elliptical / overlapping clusters or probabilistic membership.
+3. Time $\mathcal{O}(T N K D)$. Bad init → local optima; K-Means++ samples initial centers proportional to squared distance.
+
+</details>
 
 ---
 

@@ -444,6 +444,19 @@
   padding-right: 0.4rem;
 }
 
+.note-list-category-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #2f7b94;
+  padding: 0.6rem 0.35rem 0.2rem;
+  border-bottom: 1px solid rgba(47, 123, 148, 0.16);
+  margin-top: 0.35rem;
+  margin-bottom: 0.1rem;
+  user-select: none;
+}
+
 .note-button {
   text-align: left;
   border: 1px solid rgba(39, 64, 77, 0.18);

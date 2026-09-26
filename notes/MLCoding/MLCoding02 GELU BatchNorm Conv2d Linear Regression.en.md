@@ -1,4 +1,4 @@
-# ML Coding 02 · Fundamentals Roundup: GELU, BatchNorm, Kaiming Init, Dropout, Conv2d, Linear Regression
+# ML Foundations & Operators · Core Mechanics: Normalization, Dropout, GELU, Conv2d & Linear Regression
 
 MLCoding01 already builds a full path from tokenizer to training loop, but it only picked the operators that path needed (RMSNorm, SwiGLU, AdamW, Cosine LR). A batch of equally common "implement X from scratch" interview questions is still missing. This note fills that gap, in the same register as a PyTorch interview: no `torch.nn` shortcuts, write the forward pass (and the parts of the semantics that matter) yourself.
 
@@ -930,6 +930,13 @@ All three should converge to essentially the same coefficients (in the numerical
 
 ```python
 class LinearRegression:
+    # Contract:
+    # - __init__ takes no arguments: LinearRegression().
+    # - fit_* return None (do not return the weights).
+    # - After each fit_*, set self.weight with shape (d,) — a 1-D vector.
+    #   Example: self.weight = w.reshape(-1)
+    # - Aliases also accepted: self.w / self.coef_ / self.weights (same shape).
+    # - Judge reads .weight after fit; it does not use the return value.
     def fit_normal_equation(self, X: torch.Tensor, y: torch.Tensor) -> None:
         ...
 
@@ -1012,6 +1019,12 @@ Gradient accumulation solves one problem: the batch size you want doesn't fit in
 
 ```python
 def accumulated_step(model, optimizer, microbatches, loss_fn) -> float:
+    """One optimizer step with gradient accumulation over microbatches.
+
+    - zero_grad once at the start of the cycle
+    - for each (x, y): loss = loss_fn(model(x), y); backward(loss / K)
+    - step once; return sum(loss_i / K)
+    """
     ...
 ```
 

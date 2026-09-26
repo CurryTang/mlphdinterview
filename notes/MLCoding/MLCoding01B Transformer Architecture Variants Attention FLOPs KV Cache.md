@@ -1,4 +1,4 @@
-# ML Coding 01B · Transformer 架构变体：MHA 张量维度推导、FLOPs 分解与 KV Cache 硬件优化
+# Transformer 基础 · 架构变体：MHA/MQA/GQA 维度分解、FLOPs 与 KV Cache 硬件优化
 
 系统解析 Transformer 算子底层的五大核心模块：架构分类与掩码矩阵、MHA 张量流动与数学推导、FLOPs 严密分解与计算瓶颈体制转移（Regime Shift）、自回归推理与 KV Cache 显存模型、以及长序列硬件感知优化全景（FlashAttention、三大效率路线、头数压缩与工程速查清单）。
 

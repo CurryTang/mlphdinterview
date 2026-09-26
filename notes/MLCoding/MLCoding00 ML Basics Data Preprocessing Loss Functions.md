@@ -1,4 +1,4 @@
-# ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数
+# 基础知识 · 数据预处理、数据泄露与经典损失函数全景
 
 在机器学习系统设计与算法工程实践中，扎实的统计学基础与严密的数据管道工程是构建高可用模型的基石。许多模型在离线评测中指标优异，上线后效果却断崖式下跌，其根源往往不在于复杂的模型架构，而在于数据泄露（Data Leakage）、不恰当的缺失值处理（Missing Data Imputation）、样本不平衡的评估陷阱或对损失函数（Loss Functions）统计假设的认知偏差。
 
@@ -378,93 +378,97 @@ def compute_joint_vae_loss(
 
 ---
 
-### 2. 十大评估指标底层实现与解析（可折叠代码块）
+### 2. Quick Coding：`compute_roc_auc` / `compute_average_precision`
 
-<details>
-<summary><b>实现 1：ROC-AUC（基于 Wilcoxon-Mann-Whitney 秩和检验算法）</b></summary>
+手撕二分类 **ROC-AUC** 与 **PR-AUC（Average Precision）**，并口头回答二者区别。这是不平衡分类 / 风控 / CVR 面试的高频组合题。
 
 ```python
-import numpy as np
+from typing import List
 
-def compute_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """计算二分类 ROC-AUC
-    
-    数学原理：Wilcoxon-Mann-Whitney 统计量
-    AUC = (sum(rank(S_pos)) - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
-    支持平局分数（Tied Scores）的平均秩次处理。
-    """
-    y_true = np.asarray(y_true).ravel()
-    y_score = np.asarray(y_score).ravel()
-    
-    pos_mask = (y_true == 1)
-    neg_mask = (y_true == 0)
-    n_pos = np.sum(pos_mask)
-    n_neg = np.sum(neg_mask)
-    
-    if n_pos == 0 or n_neg == 0:
-        raise ValueError("y_true 必须同时包含正例与负例样本")
-        
-    # 计算升序排列索引
-    order = np.argsort(y_score)
-    ranks = np.empty_like(order, dtype=float)
-    ranks[order] = np.arange(1, len(y_score) + 1)
-    
-    # 平局分数的平均化（Fractional Ranking）
-    sorted_scores = y_score[order]
-    unique_scores, inverse_indices, counts = np.unique(sorted_scores, return_inverse=True, return_counts=True)
-    if len(unique_scores) < len(y_score):
-        tie_ranks = np.cumsum(counts) - (counts - 1) / 2.0
-        ranks = tie_ranks[inverse_indices][np.argsort(order)]
-    
-    sum_pos_ranks = np.sum(ranks[pos_mask])
-    u_stat = sum_pos_ranks - (n_pos * (n_pos + 1)) / 2.0
-    return float(u_stat / (n_pos * n_neg))
 
-# 测试验证
-y_t = np.array([0, 0, 1, 1])
-y_s = np.array([0.1, 0.4, 0.35, 0.8])
-print("ROC-AUC:", compute_roc_auc(y_t, y_s))  # 0.75
+def compute_roc_auc(y_true: List[int], y_score: List[float]) -> float:
+    """ROC-AUC：Mann-Whitney U / 平均秩。平局用平均秩；仅含一类时抛 ValueError。"""
+    ...
+
+
+def compute_average_precision(y_true: List[int], y_score: List[float]) -> float:
+    """PR-AUC / AP = sum_k (R_k - R_{k-1}) * P_k。降序扫描；无正例返回 0.0。"""
+    ...
 ```
-</details>
+
+**约束**
+
+- ROC-AUC：按分数**升序**赋秩（从 1 起），平局取平均秩；
+  $\mathrm{AUC} = \big(\sum_{i:y_i=1}\mathrm{rank}(s_i) - n_+(n_++1)/2\big) / (n_+ n_-)$。
+- PR-AUC：按分数**降序**扫一遍（同分按下标升序），用召回增量加权当前精确率；$R_0=0$。
+- 示例：`y_true=[0,0,1,1]`，`y_score=[0.1,0.4,0.35,0.8]` → ROC-AUC `0.75`，AP `≈0.8333`。
+
+#### 口头题
+
+**ROC-AUC 与 PR-AUC 的核心区别是什么？什么时候必须看 PR-AUC？**
 
 <details>
-<summary><b>实现 2：PR-AUC / Average Precision（梯步加权面积法）</b></summary>
+<summary>参考答案（代码 + 口头题）</summary>
 
 ```python
-import numpy as np
+from typing import List
 
-def compute_average_precision(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """计算 PR-AUC / Average Precision (AP)
-    
-    数学定义：AP = sum_k (R_k - R_{k-1}) * P_k
-    按预测分数降序排列，逐点计算 Precision 与 Recall 的梯步变化。
-    """
-    y_true = np.asarray(y_true).ravel()
-    y_score = np.asarray(y_score).ravel()
-    
-    order = np.argsort(-y_score)
-    y_sorted = y_true[order]
-    
-    tp = np.cumsum(y_sorted == 1)
-    fp = np.cumsum(y_sorted == 0)
-    n_pos = tp[-1]
-    
+
+def compute_roc_auc(y_true: List[int], y_score: List[float]) -> float:
+    n = len(y_true)
+    n_pos = sum(1 for y in y_true if y == 1)
+    n_neg = n - n_pos
+    if n_pos == 0 or n_neg == 0:
+        raise ValueError("y_true 必须同时包含正例与负例")
+    order = sorted(range(n), key=lambda i: y_score[i])
+    ranks = [0.0] * n
+    start = 0
+    while start < n:
+        end = start
+        while end + 1 < n and y_score[order[end + 1]] == y_score[order[start]]:
+            end += 1
+        avg = (start + 1 + end + 1) / 2.0
+        for k in range(start, end + 1):
+            ranks[order[k]] = avg
+        start = end + 1
+    sum_pos = sum(ranks[i] for i in range(n) if y_true[i] == 1)
+    return (sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+
+def compute_average_precision(y_true: List[int], y_score: List[float]) -> float:
+    n_pos = sum(1 for y in y_true if y == 1)
     if n_pos == 0:
         return 0.0
-        
-    precision = tp / (tp + fp)
-    recall = tp / n_pos
-    
-    # 前驱召回率点 (R_0 = 0)
-    recall_prev = np.concatenate(([0.0], recall[:-1]))
-    recall_diff = recall - recall_prev
-    
-    return float(np.sum(precision * recall_diff))
+    order = sorted(range(len(y_true)), key=lambda i: (-y_score[i], i))
+    tp = fp = 0
+    ap = 0.0
+    prev_recall = 0.0
+    for i in order:
+        if y_true[i] == 1:
+            tp += 1
+        else:
+            fp += 1
+        precision = tp / (tp + fp)
+        recall = tp / n_pos
+        ap += (recall - prev_recall) * precision
+        prev_recall = recall
+    return ap
 
-# 测试验证
-print("Average Precision:", compute_average_precision(y_t, y_s))
+
+y_t, y_s = [0, 0, 1, 1], [0.1, 0.4, 0.35, 0.8]
+assert abs(compute_roc_auc(y_t, y_s) - 0.75) < 1e-9
+assert abs(compute_average_precision(y_t, y_s) - 5.0 / 6.0) < 1e-9
 ```
+
+**口头题要点**
+
+1. **坐标轴**：ROC 是 TPR vs FPR；PR 是 Precision vs Recall。ROC 横轴分母含 TN，极度不平衡时假阳被稀释 → AUC 虚假繁荣；PR 不看 TN，直接刻画“报出来有多少是真的”。
+2. **随机基线**：ROC-AUC 恒为 0.5；PR-AUC 为先验 $\pi=P(Y=1)$。
+3. **何时必须看 PR-AUC**：CVR、欺诈、故障等正例极稀，或业务代价由 FP 主导（审核容量、误拦）时。均衡且只关心全局可分离度时，ROC-AUC 仍可用。
+
 </details>
+
+### 2b. 其余评估指标底层实现（可折叠代码块）
 
 <details>
 <summary><b>实现 3：F1-Score 与 F-beta 评分（阈值决策指标）</b></summary>
@@ -1018,9 +1022,8 @@ assert [m[0]['name'] for m in passed] == ['A', 'D']
 |---|---|---|
 | **学习率 / 步长过大 (Step Size / Learning Rate Too Large)** | **是 [核心主因]** | 在二次目标函数 $\frac{1}{2} x^T H x$ 中，若学习率 $\eta > \frac{2}{\lambda_{\max}(H)}$，梯度更新将在曲率最大方向发生几何级发散：$\|w_{t+1} - w^*\| > \|w_t - w^*\|$，导致损失指数级爆炸。 |
 | **未对输入特征进行归一化 / 标准化 (Unnormalized Features)** | **是 [核心主因]** | 特征尺度差异巨大导致损失曲面的 Hessian 矩阵条件数极度恶化（$\kappa(H) = \frac{\lambda_{\max}}{\lambda_{\min}} \gg 1$），形成狭长病态狭谷。固定学习率在陡峭方向震荡跳出边界。 |
-| **损失函数缺乏数值截断保护 (Unstable Loss Formulation)** | **是 [核心主因]** | 交叉熵损失中未对预测概率施加防溢出截断（如缺少 `clamp(p, eps, 1-eps)`），当 $p \o 0$ 时 $\log(p) \o -\infty$，乘法溢出直接产生 `NaN`。 |
-| **深度网络中缺乏梯度裁剪 (Exploding Gradients without Clipping)** | **是 [核心主因]** | 反向传播中长程矩阵连乘导致梯度范数 $\|
-abla_\heta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹。 |
+| **损失函数缺乏数值截断保护 (Unstable Loss Formulation)** | **是 [核心主因]** | 交叉熵损失中未对预测概率施加防溢出截断（如缺少 `clamp(p, eps, 1-eps)`），当 $p \to 0$ 时 $\log(p) \to -\infty$，乘法溢出直接产生 `NaN`。 |
+| **深度网络中缺乏梯度裁剪 (Exploding Gradients without Clipping)** | **是 [核心主因]** | 反向传播中长程矩阵连乘导致梯度范数 $\|\nabla_\theta \mathcal{L}\|$ 突破浮点数表示上限，引发参数剧烈外弹。 |
 | **正则化系数过高 (Regularization Too High)** | **否 [典型误选]** | 正则化系数 $\lambda$ 过高会把权重强行压制向 0，导致**严重欠拟合（Underfitting）**，损失维持在较大的恒定非零值，但**绝不会引起损失发散至无穷大**。 |
 | **病态问题中未施加正则化 (Zero Regularization in Ill-Posed Problems)** | **是** | 当特征高度共线性或样本数少于特征数时，$X^T X$ 不可逆或奇异，缺少 $L_2$ 正则化导致权重参数毫无约束地膨胀发散。 |
 
@@ -1180,70 +1183,106 @@ assert find_local_maxima([2, 4, 4, 1], 1) == []
 
 ---
 
-### 6. 从零纯手写 K-Means 聚类器 (k-Means from Scratch: Assign-Update Loop)
+### 6. Quick Coding：`kmeans`
 
-K-Means 是最经典的无监督聚类算法，核心遵循 Lloyd 算法的交替最小化（Alternating Minimization）框架：
-
-#### (1) 数学优化目标
-
-最小化样本点到对应聚类中心的簇内平方误差和（Inertia / WCSS）：
-
-$$\arg\min_{\mathcal{S}, \boldsymbol{\mu}} \sum_{j=1}^K \sum_{\mathbf{x} \in S_j} \|\mathbf{x} - \boldsymbol{\mu}_j\|^2$$
-
-两步迭代交替推进：
-1. **样本簇分配（Assignment Step）**：
-   $$c_i^{(t)} = \arg\min_{j \in \{1, \dots, K\}} \|\mathbf{x}_i - \boldsymbol{\mu}_j^{(t)}\|^2$$
-2. **质心重算更新（Update Step）**：
-   $$\boldsymbol{\mu}_j^{(t+1)} = \frac{1}{|S_j|} \sum_{i \in S_j} \mathbf{x}_i$$
-
-#### (2) 生产级实现
+手写 **Lloyd K-Means**（Meta / Microsoft / LinkedIn / 字节高频）。不要调用 sklearn。
 
 ```python
-import numpy as np
-from typing import List, Union
+from typing import List, Optional, Tuple
 
-class ScratchKMeans:
-    def __init__(self, k: int, initial_centroids: Union[List[List[float]], np.ndarray], max_iters: int = 100):
-        self.k = k
-        self.centroids = np.asarray(initial_centroids, dtype=float)
-        self.max_iters = max_iters
 
-    def fit_predict(self, data: Union[List[List[float]], np.ndarray]) -> List[int]:
-        """
-        执行标准交替指派-更新循环，返回各样本所属簇标签。
-        """
-        X = np.asarray(data, dtype=float)
-        n_samples = len(X)
-        labels = np.zeros(n_samples, dtype=int)
-
-        for _ in range(self.max_iters):
-            # 1. 指派步: 计算所有点到所有质心的欧氏距离平方
-            # 广播计算: X[:, None, :] shape (N, 1, D), centroids[None, :, :] shape (1, K, D)
-            distances = np.sum((X[:, np.newaxis, :] - self.centroids[np.newaxis, :, :]) ** 2, axis=2)
-            new_labels = np.argmin(distances, axis=1)
-
-            # 收敛判断：若所有样本聚类分配不再变化，提前退出
-            if np.array_equal(labels, new_labels) and _ > 0:
-                break
-            labels = new_labels
-
-            # 2. 更新步: 重算各簇质心均值
-            for c in range(self.k):
-                cluster_members = X[labels == c]
-                if len(cluster_members) > 0:
-                    self.centroids[c] = np.mean(cluster_members, axis=0)
-
-        return labels.tolist()
-
-# 验证测试
-X_pts = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
-init_centers = [[1.0, 2.0], [8.0, 8.0]]
-kmeans = ScratchKMeans(k=2, initial_centroids=init_centers)
-cluster_res = kmeans.fit_predict(X_pts)
-assert cluster_res == [0, 0, 1, 1, 0, 1]
+def kmeans(
+    X: List[List[float]],
+    k: int,
+    max_iters: int = 100,
+    tol: float = 1e-4,
+    init: Optional[List[List[float]]] = None,
+) -> Tuple[List[List[float]], List[int]]:
+    """返回 (centroids, labels)。空簇保留上一轮中心。"""
+    ...
 ```
 
-- **复杂度**：时间复杂度 $\mathcal{O}(T \cdot N \cdot K \cdot D)$，空间复杂度 $\mathcal{O}(N \cdot D + K \cdot D)$。
+**约束**
+
+- 目标：$\sum_j \sum_{x \in S_j} \|x - \mu_j\|^2$。
+- Assignment：平方欧氏距离最近中心；并列取更小下标。
+- Update：非空簇取均值；**空簇保留旧中心**。
+- `init is None` 时用 `X` 的前 `k` 行。
+- 停止：中心 Frobenius 位移 $\le \mathrm{tol}$，或达到 `max_iters`。
+- `labels` 是最后一次更新后再做一次分配。
+
+#### 口头题
+
+1. 空簇为何不能直接丢掉？还有哪些补救？
+2. K-Means vs GMM：硬分配 / 软分配与协方差，何时必须 GMM？
+3. 复杂度？为何对初始化敏感？K-Means++ 在做什么？
+
+<details>
+<summary>参考答案（代码 + 口头题）</summary>
+
+```python
+import math
+from typing import List, Optional, Tuple
+
+
+def kmeans(
+    X: List[List[float]],
+    k: int,
+    max_iters: int = 100,
+    tol: float = 1e-4,
+    init: Optional[List[List[float]]] = None,
+) -> Tuple[List[List[float]], List[int]]:
+    points = [list(map(float, row)) for row in X]
+    if not points or k <= 0:
+        return [], []
+    centroids = (
+        [list(map(float, row)) for row in init]
+        if init is not None
+        else [list(points[i]) for i in range(k)]
+    )
+
+    def assign(centers):
+        labels = []
+        for point in points:
+            best, best_d = 0, None
+            for j, c in enumerate(centers):
+                d = sum((a - b) ** 2 for a, b in zip(point, c))
+                if best_d is None or d < best_d:
+                    best, best_d = j, d
+            labels.append(best)
+        return labels
+
+    for _ in range(max_iters):
+        labels = assign(centroids)
+        updated = []
+        for j in range(k):
+            members = [points[i] for i, lab in enumerate(labels) if lab == j]
+            if members:
+                d = len(members[0])
+                updated.append([sum(p[t] for p in members) / len(members) for t in range(d)])
+            else:
+                updated.append(list(centroids[j]))
+        shift = math.sqrt(
+            sum(sum((a - b) ** 2 for a, b in zip(o, n)) for o, n in zip(centroids, updated))
+        )
+        centroids = updated
+        if shift <= tol:
+            break
+    return centroids, assign(centroids)
+
+
+X = [[0.0, 0.0], [0.3, 0.0], [0.0, 0.3], [6.0, 6.0], [6.3, 6.0], [6.0, 6.3]]
+C, y = kmeans(X, 2, 20, 1e-4, [[0.0, 0.0], [6.0, 6.0]])
+assert y == [0, 0, 0, 1, 1, 1]
+```
+
+**口头题要点**
+
+1. 丢掉中心会把 $k$ 变小、返回形状不稳定；可重采样远点、K-Means++ 重开、或合并后再分裂。
+2. K-Means 是硬分配 + 各向同性球假设；GMM 是软责任 + 可学协方差。椭圆簇、重叠簇、要概率隶属时用 GMM。
+3. 时间 $\mathcal{O}(T N K D)$。坏初始化易局部最优；K-Means++ 按距离平方采样初始中心，期望近似比随机好。
+
+</details>
 
 ---
 

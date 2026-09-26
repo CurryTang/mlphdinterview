@@ -1,4 +1,4 @@
-# ML Coding 08 · 极简 Agent 系统实现：基于 Pi Agent 的 300 行核心循环、工具调用与状态机架构
+# LLM 核心 · 智能体架构：基于 Pi Agent 的 300 行核心循环、工具调用与状态机
 
 在当下 AI Agent 领域，LangChain、CrewAI、AutoGen 等工业级框架为了追求通用性，层层堆叠了复杂的类继承、隐式 Prompt 注入与厚重的依赖树，往往导致**黑盒难以调试、上下文滥用膨胀、Token 消耗失控**。
 

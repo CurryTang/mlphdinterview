@@ -1,4 +1,4 @@
-# ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL
+# LLM Core · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL
 
 As generative AI enters the era of "System 2 Slow Thinking" and "Autonomous Agents", traditional human-preference RLHF (e.g. standard PPO and DPO) has reached fundamental scaling limits. The modern frontier—represented by **OpenAI o1 / o3**, **DeepSeek-R1**, and modern **Agentic Tool-Use RL**—shifts the reinforcement learning paradigm from "mimicking human conversational style" to **"Reinforcement Learning with Verifiable Rewards (RLVR)"**.
 

@@ -1,4 +1,4 @@
-# ML Coding 05 · Decoding Strategies: Top-k/Top-p Sampling, Beam Search, and Speculative Decoding
+# Transformer Basics · Decoding Strategies: Top-k/Top-p Sampling, Beam Search & Speculative Decoding
 
 MLCoding01's generation loop already ships the simplest version of top-p sampling. This note fills in the rest of the set that interviewers actually ask about: combining top-k with top-p, understanding beam search's length-bias trap, and the correctness argument behind speculative decoding's "lossless speedup" claim. All three problems operate on logits/probability vectors rather than model internals, so the code is plain NumPy, the same shape a whiteboard answer would take.
 

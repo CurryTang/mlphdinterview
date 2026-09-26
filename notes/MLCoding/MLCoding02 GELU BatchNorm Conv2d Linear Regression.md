@@ -1,4 +1,4 @@
-# ML Coding 02 · 基础算子补完：GELU、BatchNorm、Kaiming Init、Dropout、Conv2d、线性回归、梯度累积
+# 基础知识与算子 · 核心机制八股与手写实现：Normalization、Dropout、GELU、Conv2d 与回归
 
 MLCoding01 已经搭完了一条从 tokenizer 到训练循环的完整路线，但那条路线只挑了它需要的算子（RMSNorm、SwiGLU、AdamW、Cosine LR）。还有一批同样高频的"手写 X"面试题没有覆盖，这一篇把它们补齐，仍然按 PyTorch 面试的口径来写：不用 `torch.nn` 里现成的层，自己把 forward（以及必要的语义）实现出来。
 
@@ -932,6 +932,13 @@ assert o_naive.shape == (2, 4, 4, 4)
 
 ```python
 class LinearRegression:
+    # 约定：
+    # - __init__ 无参数：LinearRegression()。
+    # - fit_* 返回 None（不要 return 系数）。
+    # - 每次 fit 结束后把系数写到 self.weight，形状必须是 (d,) 一维向量。
+    #   例：self.weight = w.reshape(-1)
+    # - 也接受别名 self.w / self.coef_ / self.weights（同样要求 shape (d,)）。
+    # - 判题在 fit 之后读 .weight，不看返回值。
     def fit_normal_equation(self, X: torch.Tensor, y: torch.Tensor) -> None:
         ...
 
@@ -1014,6 +1021,12 @@ assert np.abs(w_normal - w).max() < 1e-10
 
 ```python
 def accumulated_step(model, optimizer, microbatches, loss_fn) -> float:
+    """One optimizer step with gradient accumulation over microbatches.
+
+    - zero_grad once at the start of the cycle
+    - for each (x, y): loss = loss_fn(model(x), y); backward(loss / K)
+    - step once; return sum(loss_i / K)
+    """
     ...
 ```
 

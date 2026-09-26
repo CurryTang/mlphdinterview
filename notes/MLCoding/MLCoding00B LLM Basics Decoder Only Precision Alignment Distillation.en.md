@@ -1,4 +1,4 @@
-# ML Coding 00B · Transformer & LLM Basics
+# LLM Core · Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Systems
 
 ## Module 1: Why Has Decoder-Only Become the Dominant LLM Architecture?
 

@@ -1,4 +1,4 @@
-# ML Coding 06C · RLVR、推理大模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与 Agent 强化学习
+# LLM 核心 · RLVR、推理模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与智能体强化学习
 
 在生成式 AI 跨入“慢思考（System 2 Reasoning）”与“自主智能体（Autonomous Agents）”的时代，传统的基于人类主观偏好的 RLHF（如 PPO / DPO）遇到了根本性的能力天花板。以 **OpenAI o1 / o3**、**DeepSeek-R1** 以及现代 **Agentic Coding / Tool-Use RL** 为代表的全新范式，将强化学习的核心从“模仿人类对话风格”推向了**“基于可验证奖励的自主推理探索（RLVR, Reinforcement Learning with Verifiable Rewards）”**。
 

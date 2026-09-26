@@ -1,4 +1,4 @@
-# ML Coding 00B · Transformer 与 LLM 基础
+# LLM 核心 · Decoder-Only 架构优势、稠密文本表征与混合精度体系
 
 ## 模块一：为什么 Decoder-Only 成为当今大模型的绝对主流？
 

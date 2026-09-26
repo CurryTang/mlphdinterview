@@ -1,4 +1,4 @@
-# ML Coding 06B · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税
+# LLM 核心 · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税
 
 在大语言模型（LLM）的生命周期中，预训练赋予了模型海量的世界知识与语言建模能力，但模型此时仍然只是一个“下一个词补全机器”。为了使模型具备指令遵循（Instruction-Following）、安全合规（Harmlessness）以及真实有用（Helpfulness & Honesty）的人类意图对齐能力，**后训练人类偏好对齐（Post-Training Alignment）** 构成了现代大模型工程最关键的技术壁垒。
 

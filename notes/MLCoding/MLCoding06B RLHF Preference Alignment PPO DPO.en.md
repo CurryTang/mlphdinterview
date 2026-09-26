@@ -1,4 +1,4 @@
-# ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax
+# LLM Core · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax
 
 In the modern large language model (LLM) lifecycle, pre-training provides vast world knowledge and next-token generation capability, but the base model remains an unaligned completion engine. To transform it into a helpful, honest, and harmless assistant, **Post-Training Preference Alignment** is the definitive cornerstone of production LLM engineering.
 

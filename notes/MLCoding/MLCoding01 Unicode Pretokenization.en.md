@@ -1,4 +1,4 @@
-# ML Coding · Build a Modern GPT from Scratch
+# Transformer Basics · Build a Modern GPT from Scratch: Tokenizer, RoPE & Autoregressive Loop
 
 > **Overview**: Inspired by Stanford's **CS336: Language Modeling from Scratch** curriculum and modern foundation model architectures (such as LLaMA 3 and Mistral), this tutorial builds a complete, modern Decoder-Only Transformer language model line-by-line from raw byte streams.
 >

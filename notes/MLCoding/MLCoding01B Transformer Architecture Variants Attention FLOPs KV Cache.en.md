@@ -1,4 +1,4 @@
-# ML Coding 01B · Transformer Architecture Variants: MHA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations
+# Transformer Basics · Architecture Variants: MHA/MQA/GQA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations
 
 Rigorous analysis of Transformer operator foundations: architectural classification and masking matrices, MHA tensor pipeline and mathematical derivations, FLOPs decomposition and regime shifts, autoregressive KV cache memory modeling, and hardware-aware long-context optimizations (FlashAttention, three efficiency trajectories, head reductions, and an executive engineering reference card).
 

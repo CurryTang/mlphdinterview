@@ -1,4 +1,4 @@
-# ML Coding 05 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码
+# Transformer 基础 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码
 
 MLCoding01 的生成循环已经给出了最简版本的 top-p 采样。这一篇把解码策略补完成面试里常问的完整集合：把 top-k 和 top-p 组合起来用，理解 beam search 的长度偏置陷阱，以及投机解码这个"无损加速"技巧背后真正的正确性论证。三道题都作用在 logits/概率向量上，不涉及模型内部结构，所以代码全部用 NumPy 写，和白板面试的形态一致。
 

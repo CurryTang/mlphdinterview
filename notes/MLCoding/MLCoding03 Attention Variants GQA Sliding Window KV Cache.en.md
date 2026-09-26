@@ -1,26 +1,44 @@
-# ML Coding 03 · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache, and Flash Attention
+# Transformer Basics · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache, and Flash Attention
 
-MLCoding01 already builds stable softmax, scaled dot-product attention, and causal multi-head self-attention with RoPE: the minimum set needed to run a GPT-style model. But interviews ask about far more attention variants than that: encoders use bidirectional MHA, translation models use cross-attention, LLaMA 2/3 use GQA to shrink the KV cache, Mistral uses sliding-window attention to cut complexity, and any inference engine needs KV caching and flash attention. This note only covers the mechanics and pitfalls of these variants; it does not repeat the softmax, mask semantics, or RoPE derivation already covered in MLCoding01.
+Interviews and production systems frequently explore attention variants:
+- **Encoder Architectures** (BERT / ViT): Bidirectional, full-visibility `MultiHeadAttention` with padding masking;
+- **Cross-Modal & Translation** (Encoder-Decoder / VLM): Asymmetric-length sequence `MultiHeadCrossAttention`;
+- **Modern Foundation LLMs** (LLaMA 2/3, Mistral, Qwen): `GroupedQueryAttention (GQA)` and `Sliding Window Attention`;
+- **Autoregressive Inference Engines** (vLLM / TensorRT-LLM): `KVCacheAttention` and `Flash Attention` (on-chip SRAM tiling & online softmax).
 
-The topic selection here follows the open-source practice set [TorchCode](https://github.com/duoan/TorchCode) (an auto-graded PyTorch interview practice repo); the explanations and code below are independently written.
+This note **does not use any opaque high-level blackbox helper** (such as `torch.nn.MultiheadAttention` or `F.scaled_dot_product_attention`). Everything is built from scratch using pure PyTorch and `einops.rearrange` to explicitly unroll linear projections, tensor rearranging, scaled dot products, key padding masks, and softmax aggregation. Theory, gotchas, and implementations are cleanly organized into collapsible blocks.
 
-## Prerequisites reused from MLCoding01
+The exercises follow the topics in the open-source [TorchCode](https://github.com/duoan/TorchCode) benchmark, with all derivations, code, and pitfall analyses independently rewritten.
 
-Every exercise below assumes you already have these pieces from MLCoding01. Only the signatures are shown here as a reminder; see MLCoding01 for the implementations:
+---
 
-```python
-def softmax(x: torch.Tensor, dim: int) -> torch.Tensor: ...
-def scaled_dot_product_attention(Q, K, V, mask=None) -> torch.Tensor: ...
-class Linear(nn.Module): ...  # y = x @ weight.T, no bias
-```
+## Core Architectures & Hands-On Attention Variants
 
-## Module 9: Attention Variants
+### Exercise 1 · MultiHeadAttention (Bidirectional, Non-Causal)
 
-### Exercise 1 · MultiHeadAttention (bidirectional, non-causal)
+In encoder models like BERT and ViT, tokens attend bidirectionally across the full sequence. There is no lower-triangular causal mask; the mask is either `None` or used to ignore padding positions.
 
-Compared with MLCoding01's `CausalMultiHeadSelfAttention`, the only real difference is the mask: encoder architectures like BERT and ViT let every position see every other position, so the mask is either `None` or used purely to block padding, never a lower-triangular matrix. Everything else (splitting heads, concatenating heads, the projections) is identical.
+<details>
+<summary><b>Deep Dive: MHA Tensor Shapes, Lifecycle & Common Interview Traps</b></summary>
 
-A common interview trap is thinking of "multi-head" as "run single-head attention H times and concatenate": conceptually correct, but the real implementation reshapes `(B, T, D)` into `(B, H, T, Dh)` and does one batched matmul, not a Python for-loop. The order of the reshape matters too: the `d_model` dimension must first split into `(H, Dh)` and then transpose into `(B, H, T, Dh)`. Transpose first and reshape second, and each head ends up mixing channels from the wrong group. Training still runs, but what it learns is wrong.
+#### 1. End-to-End Tensor Shape Trace
+- Input: $X \in \mathbb{R}^{B \times T \times D}$
+- Explicit Linear Projections: $Q = X W_Q^T, K = X W_K^T, V = X W_V^T$, shape $(B, T, D)$
+- Head Split via `rearrange`: `rearrange(x, "b t (h d) -> b h t d", h=num_heads)`, shape $(B, H, T, D_h)$ where $D_h = D / H$
+- Batched Score Matmul: $S = \frac{Q K^T}{\sqrt{D_h}} \in \mathbb{R}^{B \times H \times T \times T}$
+- Key Padding Masking: If `key_padding_mask` $(B, T)$ is given, unsqueeze to $(B, 1, 1, T)$ and fill `True` positions with $-\infty$
+- Softmax & Value Aggregation: $A = \operatorname{softmax}(S, \dim=-1)$, $O_{\text{head}} = A V \in \mathbb{R}^{B \times H \times T \times D_h}$
+- Merge Heads & Output Projection: `rearrange(out, "b h t d -> b t (h d)")` back to $(B, T, D)$, followed by $W_O$ projection
+
+#### 2. Critical Pitfalls
+1. **Reshape vs Transpose Order**:
+   Split $D$ into $(H, D_h)$ before transposing to $(B, H, T, D_h)$. If transposed first and reshaped second, heads interleave incorrect channels. The code runs without error and loss may even descend, but attention topology is scrambled.
+2. **Padding Mask Broadcasting**:
+   `key_padding_mask` has shape $(B, T)$. Because scores are $(B, H, T, T)$, the mask must be expanded to `[:, None, None, :]` to broadcast over heads and queries while masking out keys.
+3. **Convention Semantics**:
+   Under PyTorch / HuggingFace convention, `True` denotes "ignore/pad this key token (fill with $-\infty$)", and `False` denotes a valid token.
+
+</details>
 
 #### Quick Coding: `MultiHeadAttention`
 
@@ -33,45 +51,84 @@ class MultiHeadAttention(nn.Module):
         ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch MultiHeadAttention (Explicit Projections & einops)</b></summary>
 
 ```python
+import torch
+import torch.nn as nn
 from einops import rearrange
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads, device=None, dtype=None):
         super().__init__()
-        assert d_model % num_heads == 0
+
+        if d_model % num_heads != 0:
+            raise ValueError("d_model must be divisible by num_heads")
+
         self.num_heads = num_heads
-        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.k_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.v_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.head_dim = d_model // num_heads
+
+        self.W_Q = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_K = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_V = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_O = nn.Linear(d_model, d_model, device=device, dtype=dtype)
 
     def forward(self, x, key_padding_mask=None):
-        B, T, D = x.shape
-        q = rearrange(self.q_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        k = rearrange(self.k_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        v = rearrange(self.v_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
+        # x: (B, T, D)
+        q = rearrange(
+            self.W_Q(x), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        k = rearrange(
+            self.W_K(x), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        v = rearrange(
+            self.W_V(x), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        # q, k, v: (B, H, T, Dh)
 
-        mask = None
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = scores / (self.head_dim ** 0.5)
+        # scores: (B, H, T, T)
+
         if key_padding_mask is not None:
-            # key_padding_mask: (B, T), True means this position is a real token
-            mask = key_padding_mask[:, None, None, :]  # broadcast to (B, 1, 1, T)
+            # Convention: True means "ignore/mask this key position"
+            mask = key_padding_mask[:, None, None, :]  # (B, 1, 1, T)
+            scores = scores.masked_fill(mask, float("-inf"))
 
-        out = scaled_dot_product_attention(q, k, v, mask)
+        attn = torch.softmax(scores, dim=-1)
+        out = torch.matmul(attn, v)
+        # out: (B, H, T, Dh)
+
         out = rearrange(out, "b h t d -> b t (h d)")
-        return self.o_proj(out)
+        return self.W_O(out)  # (B, T, D)
 ```
 
 </details>
 
+---
+
 ### Exercise 2 · MultiHeadCrossAttention
 
-Cross-attention separates where Q comes from and where K/V come from: Q comes from the current sequence (e.g. decoder hidden states), K/V come from a different sequence (e.g. encoder outputs, or image features in a vision-language model). The two sequences can have different lengths: `T_q != T_kv` is the normal case, not an edge case.
+Cross-attention decouples Query from Key/Value sources: Q originates from the decoder sequence, while K and V come from an external sequence (e.g. encoder representations, multimodal vision embeddings).
 
-The most common trap is assuming the attention matrix is square. Its shape is `(..., T_q, T_kv)`, and any causal mask or padding mask must be shaped to match this non-square shape. Copying the `(T, T)` mask construction from self-attention leads straight to a shape mismatch.
+<details>
+<summary><b>Deep Dive: Non-Square Attention Maps & Mask Alignment</b></summary>
+
+#### 1. Non-Square Geometry
+- Decoder query length $T_q$ and encoder key length $T_{kv}$ are **rarely equal** ($T_q \ne T_{kv}$);
+- Score matrix shape: $(B, H, T_q, T_{kv})$;
+- After softmax and multiplying by $V \in (B, H, T_{kv}, D_h)$, shape returns to $(B, H, T_q, D_h)$;
+- **Golden Rule**: Output sequence length is strictly dictated by $Q$ ($T_q$), regardless of $T_{kv}$.
+
+#### 2. Key Padding Masking
+- The mask aligns with the encoder keys: shape $(B, T_{kv})$;
+- Broadcast to $(B, 1, 1, T_{kv})$ so it replicates along the query dimension $T_q$.
+
+</details>
 
 #### Quick Coding: `MultiHeadCrossAttention`
 
@@ -84,45 +141,85 @@ class MultiHeadCrossAttention(nn.Module):
         ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch MultiHeadCrossAttention (Decoupled Q & KV)</b></summary>
 
 ```python
 class MultiHeadCrossAttention(nn.Module):
     def __init__(self, d_model, num_heads, device=None, dtype=None):
         super().__init__()
-        assert d_model % num_heads == 0
+        if d_model % num_heads != 0:
+            raise ValueError("d_model must be divisible by num_heads")
+
         self.num_heads = num_heads
-        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.k_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.v_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.head_dim = d_model // num_heads
+
+        self.W_Q = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_K = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_V = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_O = nn.Linear(d_model, d_model, device=device, dtype=dtype)
 
     def forward(self, x_q, x_kv, key_padding_mask=None):
-        # x_q:  (B, T_q,  D)  from the decoder
-        # x_kv: (B, T_kv, D)  from the encoder, T_kv need not equal T_q
-        q = rearrange(self.q_proj(x_q), "b t (h d) -> b h t d", h=self.num_heads)
-        k = rearrange(self.k_proj(x_kv), "b t (h d) -> b h t d", h=self.num_heads)
-        v = rearrange(self.v_proj(x_kv), "b t (h d) -> b h t d", h=self.num_heads)
+        # x_q:  (B, T_q,  D)  from decoder
+        # x_kv: (B, T_kv, D)  from encoder / vision features
+        q = rearrange(
+            self.W_Q(x_q), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        k = rearrange(
+            self.W_K(x_kv), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        v = rearrange(
+            self.W_V(x_kv), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        # q: (B, H, T_q, Dh), k/v: (B, H, T_kv, Dh)
 
-        mask = None
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = scores / (self.head_dim ** 0.5)
+        # scores: (B, H, T_q, T_kv)
+
         if key_padding_mask is not None:
             mask = key_padding_mask[:, None, None, :]  # (B, 1, 1, T_kv)
+            scores = scores.masked_fill(mask, float("-inf"))
 
-        out = scaled_dot_product_attention(q, k, v, mask)  # (B, H, T_q, Dh)
+        attn = torch.softmax(scores, dim=-1)
+        out = torch.matmul(attn, v)
+        # out: (B, H, T_q, Dh)
+
         out = rearrange(out, "b h t d -> b t (h d)")
-        return self.o_proj(out)
+        return self.W_O(out)  # (B, T_q, D)
 ```
-
-`scores` has shape `(B, H, T_q, T_kv)`, and `attn @ V` returns to `(B, H, T_q, Dh)`. The output sequence length always follows Q, never K/V. That's the first thing worth checking when debugging a shape mismatch here.
 
 </details>
 
-### Exercise 3 · Grouped Query Attention (GQA)
+---
 
-Standard MHA gives Q, K, and V each `num_heads` heads, so at inference time you need one cached K/V per head, and KV cache memory grows linearly with the head count. GQA (used in LLaMA 2/3) cuts the number of K/V heads down to `n_kv_heads < n_q_heads`; every `group_size = n_q_heads // n_kv_heads` Q heads share one K/V head. KV cache memory shrinks by a factor of `n_q_heads / n_kv_heads` while Q's representational capacity is unchanged. The extreme case `n_kv_heads = 1` is Multi-Query Attention (MQA).
+### Exercise 3 · GroupedQueryAttention (GQA)
 
-The real trap is in how the heads get aligned. K/V only produce `n_kv_heads` heads and need to be broadcast up to `n_q_heads` before they can be batched-matmul'd against Q. This must use `repeat_interleave` (equivalent to NumPy's `repeat`: `[0, 1]` becomes `[0, 0, 0, 0, 1, 1, 1, 1]`), not `tensor.repeat` (equivalent to NumPy's `tile`: `[0, 1]` becomes `[0, 1, 0, 1, 0, 1, 0, 1]`). Both produce the same output shape, the code runs, loss still goes down, but `tile` incorrectly assigns Q heads 0, 2, 4, 6 to kv head 0 and Q heads 1, 3, 5, 7 to kv head 1. The grouping is scrambled end to end: a classic bug that runs fine but learns the wrong thing.
+Standard MHA maintains separate K/V heads for every Q head, leading to linear KV cache expansion during inference. GQA (LLaMA 2/3, Mistral, Qwen) compresses K/V head count to $n_{\text{kv\_heads}} < n_{\text{heads}}$, sharing each K/V head across a group of query heads. Setting $n_{\text{kv\_heads}} = 1$ yields Multi-Query Attention (MQA).
+
+<details>
+<summary><b>Deep Dive: KV Cache Footprint Derivation & repeat_interleave vs tile Pitfall</b></summary>
+
+#### 1. Per-Layer KV Cache Footprint (FP16, Sequence Length $T$)
+| Attention Paradigm | K/V Heads | Cache Bytes per Layer | Relative Footprint |
+|---|---|---|---|
+| **MHA** | $H_q$ | $2 \times H_q \times T \times D_h \times 2$ bytes | Baseline (100%) |
+| **GQA** | $H_{kv}$ | $2 \times H_{kv} \times T \times D_h \times 2$ bytes | Scaled to $\frac{H_{kv}}{H_q}$ (e.g. 1/8 in LLaMA-70B) |
+| **MQA** | $1$ | $2 \times 1 \times T \times D_h \times 2$ bytes | Scaled to $\frac{1}{H_q}$ |
+
+#### 2. Head Broadcasting Trap: `repeat_interleave` vs `tile`
+K and V produce $H_{kv}$ heads, which must expand to $H_q$ heads to compute dot products with Q:
+- **Correct**: `torch.repeat_interleave(k, group_size, dim=1)`
+  - Index map: $[0, 1] \to [0, 0, 0, 0, 1, 1, 1, 1]$
+  - Query heads $0 \sim 3$ map to KV head 0; heads $4 \sim 7$ map to KV head 1.
+- **Flawed**: `k.repeat(1, group_size, 1, 1)` (NumPy `tile`)
+  - Index map: $[0, 1] \to [0, 1, 0, 1, 0, 1, 0, 1]$
+  - Interleaves even/odd heads to mismatched KV slices. The tensor shapes match identically, no error is thrown, but training semantics are ruined.
+
+</details>
 
 #### Quick Coding: `GroupedQueryAttention`
 
@@ -135,57 +232,80 @@ class GroupedQueryAttention(nn.Module):
         ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch GroupedQueryAttention (Explicit repeat_interleave)</b></summary>
 
 ```python
 class GroupedQueryAttention(nn.Module):
     def __init__(self, d_model, num_heads, num_kv_heads, device=None, dtype=None):
         super().__init__()
-        assert d_model % num_heads == 0
-        assert num_heads % num_kv_heads == 0
+        if d_model % num_heads != 0:
+            raise ValueError("d_model must be divisible by num_heads")
+        if num_heads % num_kv_heads != 0:
+            raise ValueError("num_heads must be divisible by num_kv_heads")
+
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads
+        self.head_dim = d_model // num_heads
         self.group_size = num_heads // num_kv_heads
-        self.d_head = d_model // num_heads
 
-        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.k_proj = Linear(d_model, num_kv_heads * self.d_head, device=device, dtype=dtype)
-        self.v_proj = Linear(d_model, num_kv_heads * self.d_head, device=device, dtype=dtype)
-        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_Q = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_K = nn.Linear(d_model, num_kv_heads * self.head_dim, device=device, dtype=dtype)
+        self.W_V = nn.Linear(d_model, num_kv_heads * self.head_dim, device=device, dtype=dtype)
+        self.W_O = nn.Linear(d_model, d_model, device=device, dtype=dtype)
 
     def forward(self, x, mask=None):
-        B, T, D = x.shape
-        q = rearrange(self.q_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        k = rearrange(self.k_proj(x), "b t (h d) -> b h t d", h=self.num_kv_heads)
-        v = rearrange(self.v_proj(x), "b t (h d) -> b h t d", h=self.num_kv_heads)
+        # x: (B, T, D)
+        q = rearrange(
+            self.W_Q(x), "b t (h d) -> b h t d",
+            h=self.num_heads,
+        )
+        k = rearrange(
+            self.W_K(x), "b t (h d) -> b h t d",
+            h=self.num_kv_heads,
+        )
+        v = rearrange(
+            self.W_V(x), "b t (h d) -> b h t d",
+            h=self.num_kv_heads,
+        )
 
-        # the key step: repeat_interleave, so q head i maps to kv head i // group_size
+        # Broadcast KV heads to match Q groups
         k = torch.repeat_interleave(k, self.group_size, dim=1)  # (B, H, T, Dh)
         v = torch.repeat_interleave(v, self.group_size, dim=1)
 
-        out = scaled_dot_product_attention(q, k, v, mask)
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = scores / (self.head_dim ** 0.5)
+        # scores: (B, H, T, T)
+
+        if mask is not None:
+            if mask.dtype == torch.bool:
+                scores = scores.masked_fill(mask, float("-inf"))
+            else:
+                scores = scores + mask
+
+        attn = torch.softmax(scores, dim=-1)
+        out = torch.matmul(attn, v)
+        # out: (B, H, T, Dh)
+
         out = rearrange(out, "b h t d -> b t (h d)")
-        return self.o_proj(out)
+        return self.W_O(out)  # (B, T, D)
 ```
-
-KV cache memory comparison (per layer, float16, sequence length `T`):
-
-| Scheme | K/V heads | KV cache size per layer |
-| --- | --- | --- |
-| MHA | `num_heads` | `2 * num_heads * T * d_head * 2 bytes` |
-| GQA | `num_kv_heads` | `2 * num_kv_heads * T * d_head * 2 bytes` |
-| MQA | `1` | `2 * T * d_head * 2 bytes` |
-
-That `repeat_interleave` groups by `i // group_size` rather than interleaving like `tile` has been verified with NumPy (`np.repeat` matches `torch.repeat_interleave`'s semantics).
 
 </details>
 
+---
+
 ### Exercise 4 · Sliding Window Attention
 
-The local attention used in Mistral: each query only looks at the most recent `window` keys, including itself, never anything further back. The mask goes from a lower triangle to a diagonal band: position `i` may attend to `j` only if `i - window < j <= i`. Per-layer complexity drops from `O(T^2)` to `O(T * window)`.
+Mistral's localized sliding window attention constrains each query to attend only to the most recent `window` keys (including itself). Single-layer computational complexity is cut from $\mathcal{O}(T^2)$ to $\mathcal{O}(T \cdot \text{window})$.
 
-This is not an approximation that "can't see long-range information"; it delegates long-range dependencies to depth. This layer can't see beyond `window` tokens back, but after stacking `L` layers, a position at layer `L` can indirectly depend on inputs up to `L * window` away, the same idea as stacking small convolution kernels to grow a CNN's receptive field.
+<details>
+<summary><b>Deep Dive: Receptive Field Diffusion Across Layers</b></summary>
+
+#### Receptive Field Cascade
+While a single layer observes only `window` positions, stacking $L$ layers yields an effective receptive field of $L \times \text{window}$. This mirrors CNN designs where stacks of small $3 \times 3$ kernels cover wide input fields.
+
+</details>
 
 #### Quick Coding: `sliding_window_attention`
 
@@ -194,38 +314,48 @@ def sliding_window_attention(Q, K, V, window):
     ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch sliding_window_attention</b></summary>
 
 ```python
 def sliding_window_mask(T, window, device=None):
     i = torch.arange(T, device=device)[:, None]
     j = torch.arange(T, device=device)[None, :]
-    return (j <= i) & (j > i - window)  # lower triangle AND inside the window
+    # Lower triangular causal constraint AND within window distance
+    return (j <= i) & (j > i - window)
 
 def sliding_window_attention(Q, K, V, window):
+    # Q, K, V: (B, H, T, Dh)
+    d_k = Q.shape[-1]
     T = Q.shape[-2]
-    mask = sliding_window_mask(T, window, device=Q.device)
-    mask = mask[None, None, :, :]  # broadcast to (B, H, T, T)
-    return scaled_dot_product_attention(Q, K, V, mask)
-```
+    scores = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
 
-An implementation that actually saves compute doesn't build the full `(T, T)` mask and run dense attention (that only saves bandwidth, not FLOPs); it tiles by `window` and only matmuls the K/V inside each window. This definitional version is written to match `scaled_dot_product_attention`'s interface; the performance-oriented tiling idea is the same one used in flash attention below.
+    valid_mask = sliding_window_mask(T, window, device=Q.device)  # (T, T)
+    scores = scores.masked_fill(~valid_mask[None, None, :, :], float("-inf"))
+
+    attn = torch.softmax(scores, dim=-1)
+    return torch.matmul(attn, V)  # (B, H, T, Dh)
+```
 
 </details>
 
+---
+
 ### Exercise 5 · Linear Attention
 
-Softmax attention's complexity bottleneck is that it must materialize the full `(T, T)` score matrix before it can normalize. Linear attention replaces `softmax(QK^T)` with a positive feature map `φ` (e.g. `elu(x) + 1`), giving a kernel approximation whose associativity can be reordered:
+Softmax attention is bottlenecked by materializing the full $(T, T)$ score matrix. Linear attention replaces the exponential similarity kernel with a non-negative feature map $\phi(x)$ (such as $\operatorname{ELU}(x) + 1$), reordering the associative product:
 
-```text
-softmax(QK^T) V            grouped as (Q K^T) V, O(T^2 d)
-φ(Q) (φ(K)^T V)             grouped as Q (K^T V), O(T d^2)
-```
+$$\operatorname{Softmax}(Q K^T) V \quad \Longrightarrow \quad \phi(Q) \big(\phi(K)^T V\big)$$
 
-When `d << T` (long sequences, moderate head_dim), the second form is significantly faster and never needs an explicit `(T, T)` matrix. The normalizer works the same way: `sum_j exp(...)` becomes `φ(Q) · sum_j φ(K_j)`.
+- Associative reordering: Shifts from $(Q K^T) V$ at $\mathcal{O}(T^2 d)$ to $Q (K^T V)$ at $\mathcal{O}(T d^2)$. When $T \gg d$, compute and memory scale linearly.
 
-The point worth stating clearly: this is not the same kind of speedup as flash attention, which is mathematically identical to the dense computation and just reorders arithmetic. Linear attention swaps in a different similarity kernel: `φ(Q)φ(K)^T` is not equal term-by-term to `softmax(QK^T)`. It's an approximation to softmax attention via a kernel-method reparameterization, and it trades away some expressiveness and accuracy, which is why it hasn't fully replaced softmax attention.
+<details>
+<summary><b>Deep Dive: Associativity & Causal Prefix Sums</b></summary>
+
+#### Streaming Causal Recurrence
+In autoregressive mode, future steps cannot be viewed. Cumulative sums (`torch.cumsum`) over outer products $S_t = \sum_{j \le t} \phi(K_j) V_j^T$ allow token-by-token recurrence in $\mathcal{O}(d \cdot d_v)$ state without ever forming a dense $(T, T)$ matrix.
+
+</details>
 
 #### Quick Coding: `linear_attention`
 
@@ -234,12 +364,14 @@ def linear_attention(Q, K, V, causal=False):
     ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch linear_attention</b></summary>
 
 ```python
+import torch.nn.functional as F
+
 def feature_map(x):
-    return F.elu(x) + 1  # stays non-negative, doesn't zero out negative inputs like relu would
+    return F.elu(x) + 1.0  # Guarantees strictly positive values
 
 def linear_attention(Q, K, V, causal=False):
     Qp, Kp = feature_map(Q), feature_map(K)  # (..., T, d)
@@ -251,25 +383,35 @@ def linear_attention(Q, K, V, causal=False):
         den = torch.einsum("...qd,...d->...q", Qp, k_sum).unsqueeze(-1)
         return num / den
 
-    # causal variant: replace the full matmul with cumulative sums,
-    # updating an O(d * dv) running state one token at a time
+    # Causal mode: replace full matrix product with cumsum for O(d * dv) recurrence
     outer = torch.einsum("...tk,...tv->...tkv", Kp, V)  # (..., T, d, dv)
-    S_cum = torch.cumsum(outer, dim=-3)                   # running sum_{j<=t} phi(K_j) V_j^T
-    z_cum = torch.cumsum(Kp, dim=-2)                      # running sum_{j<=t} phi(K_j)
+    S_cum = torch.cumsum(outer, dim=-3)
+    z_cum = torch.cumsum(Kp, dim=-2)
     num = torch.einsum("...td,...tdv->...tv", Qp, S_cum)
     den = torch.einsum("...td,...td->...t", Qp, z_cum).unsqueeze(-1)
     return num / den
 ```
 
-The associativity identity `φ(Q)(φ(K)^T V) == (φ(Q)φ(K)^T) V`, and the equivalence between the causal variant's "loop, accumulate step by step" and "batch cumsum" forms, have both been checked numerically with NumPy, along with confirming that linear attention's output genuinely differs from softmax attention's output. They're two different similarity kernels, not two implementations of the same function.
-
 </details>
+
+---
 
 ### Exercise 6 · KV Cache Attention
 
-During autoregressive generation, step `t` only needs the Q for the new token, but it must attend over the K/V of every position `0..t`. Recomputing all historical K/V at every step costs `O(T^2)` in total; caching the K/V already computed and only adding one new position per step brings the total down to `O(T)`. This is also why inference serving splits into a prefill phase (process the whole prompt at once, filling the cache) and a decode phase (process one new token per step, growing the cache by one).
+Autoregressive inference operates in two phases:
+1. **Prefill Phase**: Ingest the entire input prompt at once, generate the first token, and save all keys and values to cache;
+2. **Decode Phase**: Generate one token at a time ($T=1$), query attending over cached historical keys/values. Cumulative compute scales as $\mathcal{O}(T)$ rather than $\mathcal{O}(T^2)$.
 
-Two details are easy to miss. First, if the model uses RoPE, what gets cached must be the K "already rotated at its own absolute position," not the raw pre-rotation K. RoPE's relative-position property comes from rotating each K individually at its absolute position; cache the unrotated K and rotate everything uniformly later, and the position information is wrong across the board. Second, the decode phase must compute the new token's position starting from `cache_len`, not from 0, or the new token collides with a position that's already in the cache.
+<details>
+<summary><b>Deep Dive: RoPE Timing & Absolute Position Offsets</b></summary>
+
+#### 1. RoPE Rotation Timing
+Cached keys **must be stored with their absolute position rotations already applied**. Rotating after concatenation destroys relative position properties.
+
+#### 2. Decode Position Offsets
+During decode, position indices for the newly generated token must start at `start_pos = cache_len`, not reset to 0.
+
+</details>
 
 #### Quick Coding: `KVCacheAttention`
 
@@ -285,18 +427,24 @@ class KVCacheAttention(nn.Module):
         ...
 ```
 
-<details>
-<summary>Reference solution</summary>
+<details open>
+<summary><b>Reference Implementation: Scratch KVCacheAttention (Explicit Causal Masking)</b></summary>
 
 ```python
 class KVCacheAttention(nn.Module):
     def __init__(self, d_model, num_heads, rope=None, device=None, dtype=None):
         super().__init__()
+        if d_model % num_heads != 0:
+            raise ValueError("d_model must be divisible by num_heads")
+
         self.num_heads = num_heads
-        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.k_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.v_proj = Linear(d_model, d_model, device=device, dtype=dtype)
-        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.head_dim = d_model // num_heads
+
+        self.W_Q = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_K = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_V = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+        self.W_O = nn.Linear(d_model, d_model, device=device, dtype=dtype)
+
         self.rope = rope
         self.cache_k = None  # (B, H, cache_len, Dh)
         self.cache_v = None
@@ -306,16 +454,16 @@ class KVCacheAttention(nn.Module):
         self.cache_v = None
 
     def forward(self, x, start_pos, use_cache=True):
-        B, T, D = x.shape  # prefill: T = prompt_len; decode: T = 1
-        q = rearrange(self.q_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        k = rearrange(self.k_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
-        v = rearrange(self.v_proj(x), "b t (h d) -> b h t d", h=self.num_heads)
+        B, T, D = x.shape  # prefill T = prompt_len; decode T = 1
+        q = rearrange(self.W_Q(x), "b t (h d) -> b h t d", h=self.num_heads)
+        k = rearrange(self.W_K(x), "b t (h d) -> b h t d", h=self.num_heads)
+        v = rearrange(self.W_V(x), "b t (h d) -> b h t d", h=self.num_heads)
 
         if self.rope is not None:
             positions = torch.arange(start_pos, start_pos + T, device=x.device)
             positions = positions[None, None, :].expand(B, 1, T)
             q = self.rope(q, positions)
-            k = self.rope(k, positions)  # must rotate before caching
+            k = self.rope(k, positions)  # Must rotate before appending to cache
 
         if use_cache:
             if self.cache_k is None:
@@ -325,26 +473,27 @@ class KVCacheAttention(nn.Module):
                 self.cache_v = torch.cat([self.cache_v, v], dim=2)
             k, v = self.cache_k, self.cache_v
 
-        # the new query only needs to see keys 0..(start_pos+T-1), which is
-        # already causal by construction; decode with T=1 needs no explicit mask.
         Tk = k.shape[2]
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = scores / (self.head_dim ** 0.5)
+
         if T > 1:
             q_idx = torch.arange(start_pos, start_pos + T, device=x.device)[:, None]
             k_idx = torch.arange(Tk, device=x.device)[None, :]
-            mask = (k_idx <= q_idx)[None, None, :, :]
-        else:
-            mask = None
+            mask = k_idx > q_idx
+            scores = scores.masked_fill(mask[None, None, :, :], float("-inf"))
 
-        out = scaled_dot_product_attention(q, k, v, mask)
+        attn = torch.softmax(scores, dim=-1)
+        out = torch.matmul(attn, v)
         out = rearrange(out, "b h t d -> b t (h d)")
-        return self.o_proj(out)
+        return self.W_O(out)
 ```
-
-A typical call sequence: `forward(prompt_embeds, start_pos=0)` for prefill, then `forward(next_token_embed, start_pos=cache_len)` per decode step, with `cache_len` incrementing by 1 each time.
 
 </details>
 
-### Exercise 7 · Flash Attention (tiling + online softmax)
+---
+
+### Exercise 7 · Flash Attention (Tiling + Online Softmax)
 
 Flash attention isn't about whether attention is computed correctly. It is about whether computing it requires holding the entire $(T, T)$ score matrix in memory. The standard implementation computes the full `scores` matrix and then softmaxes it all at once; flash attention tiles $K, V$ by `BLOCK_N`, runs local attention against the current $Q$ block, and maintains a running max and running sum inside on-chip registers that update as each block arrives, rescaling accumulated state by $\exp(m_{\text{old}} - m_{\text{new}})$. It is mathematically identical to the one-shot result, not an approximation.
 
