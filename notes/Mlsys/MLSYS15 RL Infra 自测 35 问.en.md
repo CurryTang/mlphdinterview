@@ -1,9 +1,9 @@
 # Reinforcement Learning Practice · RL 3: 35 High-Yield Questions on RL Infra & Distributed Post-Training Systems
 
 > 💡 **The Post-Training & Reinforcement Learning Trilogy**:
-> - **RL 1 (Preference Alignment)**: [[MLCoding06B RLHF Preference Alignment PPO DPO.md|ML Coding 06B · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax]]
-> - **RL 2 (Reasoning & Agents)**: [[MLCoding06C RLVR Reasoning GRPO Agentic RL.md|ML Coding 06C · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL]]
-> - **RL 3 (Systems & Distributed Infra)**: **This Note (MLSYS15)**—35 deep questions covering high-concurrency rollout scheduling, vLLM/SGLang engine decoupling, asynchronous communication topologies, and VRAM scaling.
+> - **RL 1 (Preference Alignment)**: [[MLCoding06B RLHF Preference Alignment PPO DPO.md|06B · RLHF & Preference Alignment: PPO to DPO]]
+> - **RL 2 (Reasoning & Agents)**: [[MLCoding06C RLVR Reasoning GRPO Agentic RL.md|06C · RLVR, Reasoning Models & Agentic RL]]
+> - **RL 3 (Systems & Distributed Infra)**: **This Note (Self-Check 35 Questions)**—35 deep questions covering high-concurrency rollout scheduling, vLLM/SGLang engine decoupling, asynchronous communication topologies, and VRAM scaling.
 
 ---
 

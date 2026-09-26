@@ -1874,7 +1874,7 @@ const noteSections = [
   {
     id: 'mlsys',
     title: 'MLSYS',
-    description: 'GPU kernels, training systems, inference systems, and performance notes',
+    description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, and distributed training infra',
     notes: mlsysNotes,
   },
   {
@@ -2011,7 +2011,7 @@ const homeSectionCopy = {
   zh: {
     mlsys: {
       title: 'MLSYS',
-      description: 'GPU kernel、训练系统、推理系统与性能分析',
+      description: 'GPU 硬件体系、CUDA 算子工程、高性能 Attention、推理引擎与集群并行 Infra',
     },
     quant: {
       title: 'Quant',
@@ -2041,7 +2041,7 @@ const homeSectionCopy = {
   en: {
     mlsys: {
       title: 'MLSYS',
-      description: 'GPU kernels, training and inference systems, and performance analysis',
+      description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, and distributed training infra',
     },
     quant: {
       title: 'Quant',
