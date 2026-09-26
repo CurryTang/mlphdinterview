@@ -86,15 +86,15 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: '笔记板块' })).toBeInTheDocument();
-    expect(screen.getByText(/沿一次线上请求拆解召回/)).toBeInTheDocument();
+    expect(screen.getByText(/工业业务算法（搜推广链路/)).toBeInTheDocument();
     expect(screen.getByText('板块')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
 
     expect(screen.getByRole('heading', { name: 'ML / LLM interview notes' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Browse the notes' })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Business Algorithms/ })).toHaveLength(2);
-    expect(screen.getByText(/Retrieval, ranking, list decisions/)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /ML Coding/ })).toHaveLength(2);
+    expect(screen.getByText(/Industrial Algorithms \(RecSys, search/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'About the author' })).toBeInTheDocument();
     expect(screen.getByText(/I'm currently looking for new opportunities/)).toBeInTheDocument();
     expect(screen.getByText('Languages')).toBeInTheDocument();
@@ -128,10 +128,10 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
-    fireEvent.click(await screen.findByRole('button', { name: /MLSYS1 · GPU 体系结构入门/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /01 · GPU 硬件体系/i }));
 
     const initialHeading = await screen.findByRole('heading', {
-      name: /mlsys1/i,
+      name: /01 · GPU/i,
     });
 
     expect(initialHeading).toBeInTheDocument();
@@ -140,12 +140,12 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /english/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /mlsys1/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /01 · GPU/i })).toBeInTheDocument();
     });
 
     expect(screen.getByRole('button', { name: /english/i })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('This is the English version.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /MLSYS1 · GPU Architecture Basics/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /01 · GPU Architecture/i })).toBeInTheDocument();
   });
 
   it('renders interactive multiple-choice practice blocks', async () => {
@@ -227,11 +227,11 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'MLSYS' }));
 
-    expect(await screen.findByRole('heading', { name: /MLSYS1/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /01 · GPU/i })).toBeInTheDocument();
 
     const sidebar = document.querySelector('.notes-panel');
     expect(sidebar).not.toBeNull();
-    expect(within(sidebar).getByRole('button', { name: /MLSYS1 · GPU 体系结构入门/i })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('button', { name: /01 · GPU 硬件体系/i })).toBeInTheDocument();
     expect(within(sidebar).queryByText('LLM八股')).not.toBeInTheDocument();
     expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
   });
@@ -691,7 +691,8 @@ describe('App', () => {
   it('opens the business algorithms system map and switches architecture paths', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
+    fireEvent.click(screen.getAllByRole('button', { name: /ML Coding/ })[0]);
+    fireEvent.click(await screen.findByRole('button', { name: /第 1 章 · 推荐与搜索的多阶段链路/ }));
 
     expect(await screen.findByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
@@ -747,7 +748,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
+    fireEvent.click(screen.getAllByRole('button', { name: /ML Coding/ })[0]);
     expect(screen.queryByRole('button', { name: /附录 · Quick Coding/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /第 9 章 · 排序目标与离线评价/ }));

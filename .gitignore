@@ -37,6 +37,16 @@ project/**/*.egg-info/
 # Notes publishing control: keep drafts local until ready
 notes/Mlsys/*
 !notes/Mlsys/MLSYS Overview.md
+!notes/Mlsys/MLSYS Overview.en.md
+!notes/Mlsys/MLSYS01*
+!notes/Mlsys/MLSYS02*
+!notes/Mlsys/MLSYS03*
+!notes/Mlsys/MLSYS04*
+!notes/Mlsys/MLSYS05*
+!notes/Mlsys/MLSYS06*
+!notes/Mlsys/MLSYS07*
+!notes/Mlsys/MLSYS08*
+!notes/Mlsys/MLSYS09*
 !notes/Mlsys/MLSYS1.md
 !notes/Mlsys/MLSYS1.en.md
 !notes/Mlsys/MLSYS2.md

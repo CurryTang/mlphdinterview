@@ -661,86 +661,111 @@ $$
   : '';
 
 const mlsysNoteDefinitions = [
-  createTutorialDefinition('MLSYS1 · GPU 体系结构入门', 'MLSYS1.md', 'MLSYS1.en.md', {
-    titleEn: 'MLSYS1 · GPU Architecture Basics',
-  }),
-  createTutorialDefinition('MLSYS2 · CUDA 编程模型与 GPU 组件', 'MLSYS2.md', 'MLSYS2.en.md', {
-    titleEn: 'MLSYS2 · CUDA Programming Model & GPU Architecture',
-  }),
-  createTutorialDefinition('MLSYS3 · Roofline Analysis', 'MLSYS3.md', 'MLSYS3.en.md', {
-    titleEn: 'MLSYS3 · Roofline Analysis',
-  }),
-  createTutorialDefinition('MLSYS4 · CUDA Reduce Kernel 完全指南', 'MLSYS4.md', 'MLSYS4.en.md', {
-    titleEn: 'MLSYS4 · Complete Guide to CUDA Reduce Kernels',
-  }),
-  createTutorialDefinition('MLSYS5 · CUDA Parallel Primitives: Histogram & Scan', 'MLSYS5.md', 'MLSYS5.en.md', {
-    titleEn: 'MLSYS5 · CUDA Parallel Primitives: Histogram & Scan',
-  }),
-  createTutorialDefinition('MLSYS6 · Memory-Bound Kernel 优化', 'MLSYS6.md', 'MLSYS6.en.md', {
-    titleEn: 'MLSYS6 · Memory-Bound Kernel Optimization',
-  }),
+  // --- Module 1: GPU 硬件架构与 CUDA 算子工程 ---
   createTutorialDefinition(
-    'MLSYS7 · Compute-Bound Kernel (1)',
-    'MLSYS7 Compute-Bound Kernel (1).md',
-    'MLSYS7 Compute-Bound Kernel (1).en.md',
-    { titleEn: 'MLSYS7 · Compute-Bound Kernel (1)' },
+    '01 · GPU 硬件体系、CUDA 编程模型与 Roofline 性能分析基石',
+    'MLSYS01 GPU Architecture and CUDA Programming Model.md',
+    'MLSYS01 GPU Architecture and CUDA Programming Model.en.md',
+    {
+      titleEn: '01 · GPU Architecture, CUDA Programming Model & Roofline Performance Analysis',
+      category: 'CUDA 算子工程',
+      categoryEn: 'CUDA Operator Engineering',
+      difficulty: 'Core',
+    },
   ),
   createTutorialDefinition(
-    'MLSYS8 · Compute-Bound Kernel (2)',
-    'MLSYS8 Compute-Bound Kernel (2).md',
-    'MLSYS8 Compute-Bound Kernel (2).en.md',
-    { titleEn: 'MLSYS8 · Compute-Bound Kernel (2)' },
+    '02 · 经典并行原语与 Memory-Bound 算子手撕指南',
+    'MLSYS02 Parallel Primitives and Memory-Bound Kernels.md',
+    'MLSYS02 Parallel Primitives and Memory-Bound Kernels.en.md',
+    {
+      titleEn: '02 · Parallel Primitives & Memory-Bound Operator Optimization: Reduce, Scan, Histogram & Patterns',
+      category: 'CUDA 算子工程',
+      categoryEn: 'CUDA Operator Engineering',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
-    'MLSYS9 · Compute-Bound Kernel (3)',
-    'MLSYS9 Compute-bound kernel (3).md',
-    'MLSYS9 Compute-bound kernel (3).en.md',
-    { titleEn: 'MLSYS9 · Compute-Bound Kernel (3)' },
+    '03 · Compute-Bound 算子与 GEMM 演进完全指南',
+    'MLSYS03 Compute-Bound Kernels and GEMM Optimization.md',
+    'MLSYS03 Compute-Bound Kernels and GEMM Optimization.en.md',
+    {
+      titleEn: '03 · Compute-Bound Kernels & GEMM Optimization: From Naive to Tensor Core & Triton',
+      category: 'CUDA 算子工程',
+      categoryEn: 'CUDA Operator Engineering',
+      difficulty: 'Hard',
+    },
   ),
-  createTutorialDefinition('MLSYS10 · 分布式训练并行范式', 'MLSYS10 parallelism.md', 'MLSYS10 parallelism.en.md', {
-    titleEn: 'MLSYS10 · Distributed Training Parallelism Paradigms',
-  }),
-  createTutorialDefinition('MLSYS11 · nano-vllm 精读 (1)', 'MLSYS11 nano-vllm-1.md', 'MLSYS11 nano-vllm-1.en.md', {
-    titleEn: 'MLSYS11 · nano-vllm Code Walkthrough (1)',
-  }),
-  createTutorialDefinition('MLSYS12 · nano-vllm 精读 (2)', 'MLSYS12 nano-vllm-2.md', 'MLSYS12 nano-vllm-2.en.md', {
-    titleEn: 'MLSYS12 · nano-vllm Code Walkthrough (2)',
-  }),
+
+  // --- Module 2: 高性能 Attention 算子与长上下文 ---
   createTutorialDefinition(
-    'MLSYS13 · Low-bit Quantization 核心方法详解',
-    'MLSYS13 Quantization and precision.md',
-    'MLSYS13 Quantization and precision.en.md',
-    { titleEn: 'MLSYS13 · Low-Bit Quantization Methods' },
-  ),
-  createTutorialDefinition(
-    'MLSYS14 · Post-Training Infra：从 TRL 到 Forge',
-    'MLSYS14 Post-Training Infra.md',
-    'MLSYS14 Post-Training Infra.en.md',
-    { titleEn: 'MLSYS14 · Post-Training Infra: TRL to Forge' },
+    '04 · FlashAttention 演进与长上下文算子',
+    'MLSYS04 Efficient Attention and Long Context.md',
+    'MLSYS04 Efficient Attention and Long Context.en.md',
+    {
+      titleEn: '04 · Efficient Attention Evolution & Long-Context Operators: FA1/2/3, Ring Attention & MLA',
+      category: 'Attention 与显存系统',
+      categoryEn: 'Attention & Memory Systems',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
-    'MLSYS15 · Efficient Attention：现代长上下文架构',
-    'MLSYS15 Efficient Attention Modern Architectures.md',
-    'MLSYS15 Efficient Attention Modern Architectures.en.md',
-    { titleEn: 'MLSYS15 · Efficient Attention: Modern Long-Context Architectures' },
+    '05 · KV Cache 显存管理、前缀复用与 PagedAttention',
+    'MLSYS05 KV Cache Memory Management and Prefix Caching.md',
+    'MLSYS05 KV Cache Memory Management and Prefix Caching.en.md',
+    {
+      titleEn: '05 · KV Cache Memory Management, Prefix Caching & PagedAttention',
+      category: 'Attention 与显存系统',
+      categoryEn: 'Attention & Memory Systems',
+      difficulty: 'Core',
+    },
+  ),
+
+  // --- Module 3: 大模型推理系统与服务加速 ---
+  createTutorialDefinition(
+    '06 · LLM 推理引擎内核架构：nano-vllm 源码完全解构',
+    'MLSYS06 LLM Inference Engine Architecture nano-vllm.md',
+    'MLSYS06 LLM Inference Engine Architecture nano-vllm.en.md',
+    {
+      titleEn: '06 · LLM Inference Engine Architecture: Deep Dive into nano-vllm',
+      category: '推理系统与加速',
+      categoryEn: 'Inference Systems & Acceleration',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
-    'MLSYS16 · KV Cache：内存管理与前缀复用',
-    'MLSYS15 KV Cache Prefix Caching IndexShare.md',
-    'MLSYS15 KV Cache Prefix Caching IndexShare.en.md',
-    { titleEn: 'MLSYS16 · KV Cache: Memory Management & Prefix Reuse' },
+    '07 · 推理解码加速、投机采样与低比特量化全景',
+    'MLSYS07 LLM Inference Acceleration and Quantization.md',
+    'MLSYS07 LLM Inference Acceleration and Quantization.en.md',
+    {
+      titleEn: '07 · LLM Inference Acceleration, Speculative Decoding & Quantization',
+      category: '推理系统与加速',
+      categoryEn: 'Inference Systems & Acceleration',
+      difficulty: 'Hard',
+    },
+  ),
+
+  // --- Module 4: 大规模分布式训练与集群 Infra ---
+  createTutorialDefinition(
+    '08 · 分布式训练并行范式全景与 NCCL 通信',
+    'MLSYS08 Distributed Training Parallelism and Communication.md',
+    'MLSYS08 Distributed Training Parallelism and Communication.en.md',
+    {
+      titleEn: '08 · Distributed Training Parallelism Paradigms & NCCL Communication',
+      category: '分布式与集群 Infra',
+      categoryEn: 'Distributed & Cluster Infra',
+      difficulty: 'Hard',
+    },
   ),
   createTutorialDefinition(
-    'MLSYS17 · Inference：并行解码与草稿验证',
-    'MLSYS15 LLM Inference Speculative Decoding DFlash.md',
-    'MLSYS15 LLM Inference Speculative Decoding DFlash.en.md',
-    { titleEn: 'MLSYS17 · LLM Inference: Speculative Decoding & Verification' },
-  ),
-  createTutorialDefinition(
-    'MLSYS18 · MoE Systems：路由、通信与 Kernel',
-    'MLSYS16 Modern MoE SonicMoE.md',
-    'MLSYS16 Modern MoE SonicMoE.en.md',
-    { titleEn: 'MLSYS18 · MoE Systems: Routing, Communication & Kernels' },
+    '09 · MoE 稀疏系统与后训练强化学习集群架构',
+    'MLSYS09 MoE Systems and Post-Training Cluster Infra.md',
+    'MLSYS09 MoE Systems and Post-Training Cluster Infra.en.md',
+    {
+      titleEn: '09 · MoE Systems & Post-Training RL Cluster Infrastructure',
+      category: '分布式与集群 Infra',
+      categoryEn: 'Distributed & Cluster Infra',
+      difficulty: 'Hard',
+    },
   ),
 ];
 
@@ -1540,8 +1565,8 @@ const traditionalMlNoteDefinitions = [
     {
       directory: 'MLCoding',
       titleEn: 'Industrial RecSys · Ranking Models, Long-Sequence Modeling, Generative Reranking & A/B Testing Causal Inference',
-      category: '工业级机器学习',
-      categoryEn: 'Industrial Machine Learning',
+      category: '工业算法 · 推荐精排实战',
+      categoryEn: 'Industrial Algorithms · RecSys Ranking',
       difficulty: 'Hard',
     },
   ),
@@ -1672,121 +1697,121 @@ const businessAlgorithmNoteDefinitions = [
     '第 1 章 · 推荐与搜索的多阶段链路',
     'Business Algorithm TODO.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'System Map', difficulty: 'Start Here' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 搜推广链路与特征流', categoryEn: 'Industrial Algorithms · System Pipeline & Data', difficulty: 'Start Here' },
   ),
   createTutorialDefinition(
     '第 2 章 · 数据、样本与特征流',
     'BusinessAlgorithm00 Data Foundations.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Data', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 搜推广链路与特征流', categoryEn: 'Industrial Algorithms · System Pipeline & Data', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 3 章 · 稀疏检索与协同召回',
     'BusinessAlgorithm01 Retrieval.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Retrieval', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 4 章 · 双塔、负样本与向量检索',
     'BusinessAlgorithm01B Vector Retrieval.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Vector Retrieval', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 5 章 · Query 理解与改写',
     'BusinessAlgorithm01D Query Understanding.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Query Understanding', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 6 章 · Query、内容和多路召回',
     'BusinessAlgorithm01C Multi-Channel Retrieval.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Retrieval Fusion', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 7 章 · 搜索体验与评价',
     'BusinessAlgorithm01E Search Quality.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Search Quality', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 8 章 · 搜索相关性与 BERT',
     'BusinessAlgorithm01F Search Relevance.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Search Relevance', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 召回与多路检索', categoryEn: 'Industrial Algorithms · Multi-Channel Retrieval', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 9 章 · 排序目标与离线评价',
     'BusinessAlgorithm02 Ranking.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Ranking', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 排序与精排模型', categoryEn: 'Industrial Algorithms · Ranking & User Sequences', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 10 章 · 多目标学习与分数融合',
     'BusinessAlgorithm02B Multi-Objective Ranking.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Multi-Objective', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 排序与精排模型', categoryEn: 'Industrial Algorithms · Ranking & User Sequences', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 11 章 · 特征交叉、粗排与个性化',
     'BusinessAlgorithm02C Feature Interaction.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Feature Interaction', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 排序与精排模型', categoryEn: 'Industrial Algorithms · Ranking & User Sequences', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 12 章 · 用户行为序列',
     'BusinessAlgorithm02D User Sequences.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'User Modeling', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 排序与精排模型', categoryEn: 'Industrial Algorithms · Ranking & User Sequences', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 13 章 · 重排、多样性与规则',
     'BusinessAlgorithm03 List Decision.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Reranking', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 重排决策与实验闭环', categoryEn: 'Industrial Algorithms · Reranking & Experimentation', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 14 章 · 冷启动、探索与长期反馈',
     'BusinessAlgorithm03B Exploration Cold Start.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Exploration', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 重排决策与实验闭环', categoryEn: 'Industrial Algorithms · Reranking & Experimentation', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 15 章 · 在线实验与涨指标',
     'BusinessAlgorithm03C Experimentation Growth.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Experimentation', difficulty: 'Applied' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 重排决策与实验闭环', categoryEn: 'Industrial Algorithms · Reranking & Experimentation', difficulty: 'Applied' },
   ),
   createTutorialDefinition(
     '第 16 章 · 查询词推荐',
     'BusinessAlgorithm03D Query Recommendation.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Query Recommendation', difficulty: 'Core' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 重排决策与实验闭环', categoryEn: 'Industrial Algorithms · Reranking & Experimentation', difficulty: 'Core' },
   ),
   createTutorialDefinition(
     '第 17 章 · 生成式检索与 Semantic ID',
     'BusinessAlgorithm04 Generative Algorithms.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Generative Retrieval', difficulty: 'Frontier' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 生成式前沿与系统工程', categoryEn: 'Industrial Algorithms · Generative Rec & Production', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
     '第 18 章 · LLM 排序与生成式推荐',
     'BusinessAlgorithm05 Generative Recommendation.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Generative Rec', difficulty: 'Frontier' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 生成式前沿与系统工程', categoryEn: 'Industrial Algorithms · Generative Rec & Production', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
     '第 19 章 · RAG 与 Agentic Search',
     'BusinessAlgorithm06 Agentic Search.md',
     null,
-    { directory: 'BusinessAlgorithm', category: 'Generative Search', difficulty: 'Frontier' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 生成式前沿与系统工程', categoryEn: 'Industrial Algorithms · Generative Rec & Production', difficulty: 'Frontier' },
   ),
   createTutorialDefinition(
     '第 20 章 · 系统设计与上线验证',
     'BusinessAlgorithm07 System Design.md',
     'BusinessAlgorithm07 System Design.en.md',
-    { directory: 'BusinessAlgorithm', category: 'Production', difficulty: 'Applied' },
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 生成式前沿与系统工程', categoryEn: 'Industrial Algorithms · Generative Rec & Production', difficulty: 'Applied' },
   ),
 ];
 
@@ -1842,6 +1867,7 @@ const jobsNotes = jobsNoteDefinitions.map((definition) => ({
 const mlCodingNotes = [
   ...llmNotes,
   ...traditionalMlNotes,
+  ...businessAlgorithmNotes,
 ];
 
 const noteSections = [
@@ -1860,7 +1886,7 @@ const noteSections = [
   {
     id: 'mlcoding',
     title: 'ML Coding & 八股',
-    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化、传统机器学习八股、树模型与现代优化器',
+    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化、传统机器学习八股、工业业务算法与搜推广全链路',
     notes: mlCodingNotes,
   },
   {
@@ -1868,12 +1894,6 @@ const noteSections = [
     title: 'System Design',
     description: 'Backend system design, LLM serving, agent workflows, and infra interview drills',
     notes: systemDesignNotes,
-  },
-  {
-    id: 'business-algorithm',
-    title: '业务算法',
-    description: '从一次线上请求出发，拆解召回、排序、列表决策、生成式方法与实验闭环',
-    notes: businessAlgorithmNotes,
   },
   {
     id: 'leetcode',
@@ -1999,15 +2019,11 @@ const homeSectionCopy = {
     },
     mlcoding: {
       title: 'ML Coding & 八股',
-      description: '大模型核心（Transformer 基础架构、注意力算子、后训练 RLHF/RLVR/GRPO、Agent 核心循环）与传统机器学习（基础机制八股、树模型与现代优化器）从零手写实现',
+      description: '大模型核心（Transformer 基础架构、注意力算子、后训练 RLHF/RLVR/GRPO、Agent 核心循环）、传统机器学习（基础机制八股、树模型与现代优化器）与工业业务算法（搜推广链路、召回排序、重排与生成式推荐）从零手写实现',
     },
     'system-design': {
       title: 'System Design',
       description: '后端系统设计、LLM serving、Agent workflow 与基础设施面试题',
-    },
-    'business-algorithm': {
-      title: '业务算法',
-      description: '沿一次线上请求拆解召回、排序、列表决策、生成式方法与实验闭环',
     },
     leetcode: {
       title: 'LeetCode',
@@ -2033,15 +2049,11 @@ const homeSectionCopy = {
     },
     mlcoding: {
       title: 'ML Coding & Fundamentals',
-      description: 'From-scratch implementations and interview drills across LLM core (Transformers, attention zoo, RLHF/RLVR/GRPO, agents) and Traditional ML (foundations, trees, optimizers)',
+      description: 'From-scratch implementations and interview drills across LLM core (Transformers, attention zoo, RLHF/RLVR/GRPO, agents), Traditional ML (foundations, trees, optimizers), and Industrial Algorithms (RecSys, search, multi-stage retrieval, ranking, and generative recommendation)',
     },
     'system-design': {
       title: 'System Design',
       description: 'Backend design, LLM serving, agent workflows, and infrastructure interviews',
-    },
-    'business-algorithm': {
-      title: 'Business Algorithms',
-      description: 'Retrieval, ranking, list decisions, generative methods, and experimentation along one production request',
     },
     leetcode: {
       title: 'LeetCode',
@@ -28845,6 +28857,25 @@ const legacyRoutes = {
   'CoreSkills22 Backtracking.md': 'CoreSkills20 Backtracking.md',
   'CoreSkills33 Backtracking.md': 'CoreSkills20 Backtracking.md',
   mlcoding: 'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
+  'business-algorithm': 'Business Algorithm TODO.md',
+  'MLSYS1.md': 'MLSYS01 GPU Architecture and CUDA Programming Model.md',
+  'MLSYS2.md': 'MLSYS01 GPU Architecture and CUDA Programming Model.md',
+  'MLSYS3.md': 'MLSYS01 GPU Architecture and CUDA Programming Model.md',
+  'MLSYS4.md': 'MLSYS02 Parallel Primitives and Memory-Bound Kernels.md',
+  'MLSYS5.md': 'MLSYS02 Parallel Primitives and Memory-Bound Kernels.md',
+  'MLSYS6.md': 'MLSYS02 Parallel Primitives and Memory-Bound Kernels.md',
+  'MLSYS7 Compute-Bound Kernel (1).md': 'MLSYS03 Compute-Bound Kernels and GEMM Optimization.md',
+  'MLSYS8 Compute-Bound Kernel (2).md': 'MLSYS03 Compute-Bound Kernels and GEMM Optimization.md',
+  'MLSYS9 Compute-bound kernel (3).md': 'MLSYS03 Compute-Bound Kernels and GEMM Optimization.md',
+  'MLSYS10 parallelism.md': 'MLSYS08 Distributed Training Parallelism and Communication.md',
+  'MLSYS11 nano-vllm-1.md': 'MLSYS06 LLM Inference Engine Architecture nano-vllm.md',
+  'MLSYS12 nano-vllm-2.md': 'MLSYS06 LLM Inference Engine Architecture nano-vllm.md',
+  'MLSYS13 Quantization and precision.md': 'MLSYS07 LLM Inference Acceleration and Quantization.md',
+  'MLSYS14 Post-Training Infra.md': 'MLSYS09 MoE Systems and Post-Training Cluster Infra.md',
+  'MLSYS15 Efficient Attention Modern Architectures.md': 'MLSYS04 Efficient Attention and Long Context.md',
+  'MLSYS15 KV Cache Prefix Caching IndexShare.md': 'MLSYS05 KV Cache Memory Management and Prefix Caching.md',
+  'MLSYS15 LLM Inference Speculative Decoding DFlash.md': 'MLSYS07 LLM Inference Acceleration and Quantization.md',
+  'MLSYS16 Modern MoE SonicMoE.md': 'MLSYS09 MoE Systems and Post-Training Cluster Infra.md',
 };
 
 function parseHashRoute(rawHash) {
