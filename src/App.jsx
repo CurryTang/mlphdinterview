@@ -7,8 +7,6 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import 'katex/dist/katex.min.css';
 import './App.css';
-import KnowledgeMap from './components/KnowledgeMap';
-import StudyPathTree from './components/StudyPathTree';
 
 const UiLanguageContext = createContext('zh');
 
@@ -1933,18 +1931,12 @@ const homeCopy = {
     brandSubtitle: '系统 · 基础设施 · 算法练习',
     mainNavigation: '主导航',
     home: '首页',
-    mapNav: '知识地图',
-    treeNav: '学习路径树',
-    sectionsNav: '全部板块',
     about: '关于',
     languageSelector: '首页语言',
     heroEyebrow: 'Interview Notes & Roadmap',
     heroBadge: '✦ ML PhD & 工业级算法面试技术全景',
     heroTitle: 'ML / LLM 技术复习笔记',
     heroSubtitle: '面向 LLM Infra、Agentic RL、Transformer 算子从零手撕、传统 ML 理论推导与工业级系统的全景技术笔记与面试题库。',
-    ctaMap: '🗺️ 全景知识地图',
-    ctaStudyTree: '🌳 交互学习路径树',
-    ctaNotes: '📑 浏览所有板块',
     siteSummary: '站点概览',
     stats: {
       sections: '板块',
@@ -1968,18 +1960,12 @@ const homeCopy = {
     brandSubtitle: 'systems · infrastructure · practice',
     mainNavigation: 'Main navigation',
     home: 'Home',
-    mapNav: 'Knowledge Map',
-    treeNav: 'Study Path',
-    sectionsNav: 'Sections',
     about: 'About',
     languageSelector: 'Homepage language',
     heroEyebrow: 'Interview Notes & Roadmap',
     heroBadge: '✦ ML PhD & Industry Interview Technical Base',
     heroTitle: 'ML / LLM interview notes',
     heroSubtitle: 'Full-stack technical interview notes covering LLM Infra, Agentic RL, from-scratch attention operators, classical ML theory, and production systems.',
-    ctaMap: '🗺️ Knowledge Map',
-    ctaStudyTree: '🌳 Study Path Tree',
-    ctaNotes: '📑 Browse Sections',
     siteSummary: 'Site summary',
     stats: {
       sections: 'Sections',
@@ -29709,48 +29695,6 @@ function App() {
     safeScrollTo(0);
   };
 
-  const navigateToMap = () => {
-    if (currentView !== 'home') {
-      setCurrentView('home');
-      setQuery('');
-      setPendingHeadingId(null);
-      if (window.location.hash) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    }
-    window.requestAnimationFrame(() => {
-      document.getElementById('knowledge-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
-
-  const navigateToStudyTree = () => {
-    if (currentView !== 'home') {
-      setCurrentView('home');
-      setQuery('');
-      setPendingHeadingId(null);
-      if (window.location.hash) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    }
-    window.requestAnimationFrame(() => {
-      document.getElementById('study-tree')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
-
-  const navigateToSections = () => {
-    if (currentView !== 'home') {
-      setCurrentView('home');
-      setQuery('');
-      setPendingHeadingId(null);
-      if (window.location.hash) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    }
-    window.requestAnimationFrame(() => {
-      document.getElementById('sections')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
-
   const navigateToAbout = () => {
     setCurrentView('home');
     setQuery('');
@@ -29926,20 +29870,6 @@ function App() {
           >
             {localizedHome.home}
           </button>
-          <button
-            className="top-nav-link"
-            type="button"
-            onClick={navigateToMap}
-          >
-            {localizedHome.mapNav}
-          </button>
-          <button
-            className="top-nav-link"
-            type="button"
-            onClick={navigateToStudyTree}
-          >
-            {localizedHome.treeNav}
-          </button>
           {noteSections.map((section) => {
             const sectionCopy = localizeHomeSection(section);
             return (
@@ -29989,30 +29919,6 @@ function App() {
               </div>
               <h1 className="hero-gradient-title">{localizedHome.heroTitle}</h1>
               <p className="hero-subtitle">{localizedHome.heroSubtitle}</p>
-
-              <div className="home-hero-actions">
-                <button
-                  type="button"
-                  className="hero-action-btn primary"
-                  onClick={navigateToMap}
-                >
-                  {localizedHome.ctaMap}
-                </button>
-                <button
-                  type="button"
-                  className="hero-action-btn secondary"
-                  onClick={navigateToStudyTree}
-                >
-                  {localizedHome.ctaStudyTree}
-                </button>
-                <button
-                  type="button"
-                  className="hero-action-btn ghost"
-                  onClick={navigateToSections}
-                >
-                  {localizedHome.ctaNotes}
-                </button>
-              </div>
             </div>
 
             <div className="home-hero-panel" aria-label={localizedHome.siteSummary}>
@@ -30025,18 +29931,7 @@ function App() {
             </div>
           </section>
 
-          <KnowledgeMap
-            language={language}
-            onSelectTutorial={navigateToTutorial}
-            onSelectSection={navigateToSection}
-          />
-
-          <StudyPathTree
-            language={language}
-            onSelectTutorial={navigateToTutorial}
-          />
-
-          <section className="home-sections" id="sections" aria-label={localizedHome.sectionsAria}>
+          <section className="home-sections" aria-label={localizedHome.sectionsAria}>
             <div className="section-heading">
               <p className="eyebrow">{localizedHome.sectionsEyebrow}</p>
               <h2>{localizedHome.sectionsHeading}</h2>
