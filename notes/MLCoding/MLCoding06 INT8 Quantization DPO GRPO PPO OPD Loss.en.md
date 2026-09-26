@@ -1,4 +1,4 @@
-# LLM Core Code · Quantization & Alignment: INT8 Quantization & DPO / GRPO / PPO / OPD Losses
+# 06 · Hands-on Quantization & Preference Losses
 
 This note covers two high-frequency ML coding interview clusters: inference efficiency and post-training alignment. What they share is that every one of them can be written as a pure numerical function that doesn't touch autograd internals: interviewers usually just want the forward formula and the reasoning behind it, not a full training run.
 

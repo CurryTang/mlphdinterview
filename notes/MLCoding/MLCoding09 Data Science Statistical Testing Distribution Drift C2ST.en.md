@@ -1,4 +1,4 @@
-# Tree-Based Models & Statistics · Decision Trees, Random Forest Ensembles & Distribution Shift Testing
+# 09 · Tree-Based Ensembles & Distribution Shift Testing
 
 ## Module Introduction & Knowledge Framework
 

@@ -1,4 +1,4 @@
-# Transformer 基础 · 从零手写现代化 LLM：Tokenizer、RoPE 与自回归训练循环
+# 01 · 从零手写 LLM 核心循环
 
 > **导读**：本教程参考 Stanford **CS336: Language Modeling from Scratch** 课程大纲与现代开源基座大模型（如 LLaMA 3、Mistral）的工业级架构，从最底层的字节流处理开始，逐行实现一个完整的现代化 Decoder-Only 大语言模型。
 >

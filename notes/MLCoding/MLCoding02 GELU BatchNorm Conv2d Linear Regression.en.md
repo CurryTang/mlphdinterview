@@ -1,4 +1,4 @@
-# ML Foundations & Operators · Core Mechanics: Normalization, Dropout, GELU, Conv2d & Linear Regression
+# 02 · Core ML Mechanics & Foundational Operators
 
 MLCoding01 already builds a full path from tokenizer to training loop, but it only picked the operators that path needed (RMSNorm, SwiGLU, AdamW, Cosine LR). A batch of equally common "implement X from scratch" interview questions is still missing. This note fills that gap, in the same register as a PyTorch interview: no `torch.nn` shortcuts, write the forward pass (and the parts of the semantics that matter) yourself.
 

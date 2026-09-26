@@ -1367,60 +1367,60 @@ const quantNotes = quantNoteDefinitions.map((definition) => ({
 const llmNoteDefinitions = [
   // --- Transformer 基础 (Transformer Basics) ---
   createTutorialDefinition(
-    'Transformer 基础 · 架构变体：MHA/MQA/GQA 算子张量维度、FLOPs 分解与 KV Cache 硬件优化',
+    '01B · Transformer 架构变体与算力分析',
     'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.md',
     'MLCoding01B Transformer Architecture Variants Attention FLOPs KV Cache.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Transformer Basics · Architecture Variants: MHA/MQA/GQA Tensor Shapes, FLOPs Breakdown & KV Cache Hardware Optimizations',
+      titleEn: '01B · Transformer Architecture Variants & FLOPs Analysis',
       category: 'Transformer 基础',
       categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Transformer 基础 · 注意力机制全家桶：从 MHA 到 GQA、滑动窗口、线性注意力、KV Cache 与 Flash Attention',
+    '03 · 注意力机制全家桶',
     'MLCoding03 Attention Variants GQA Sliding Window KV Cache.md',
     'MLCoding03 Attention Variants GQA Sliding Window KV Cache.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Transformer Basics · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache & Flash Attention',
+      titleEn: '03 · Attention Zoo: From MHA to Flash Attention',
       category: 'Transformer 基础',
       categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Transformer 基础 · 架构扩展：LoRA 低秩微调、ViT Patch Embedding 与 MoE 混合专家',
+    '04 · 架构扩展：LoRA、ViT 与 MoE',
     'MLCoding04 LoRA ViT Patch Embedding MoE.md',
     'MLCoding04 LoRA ViT Patch Embedding MoE.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Transformer Basics · Architecture Extensions: LoRA, ViT Patch Embedding & Mixture of Experts',
+      titleEn: '04 · Architecture Extensions: LoRA, ViT & MoE',
       category: 'Transformer 基础',
       categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'Transformer 基础 · 推理解码策略：Top-k/Top-p 采样、Beam Search 与投机解码',
+    '05 · 推理解码：采样与投机解码',
     'MLCoding05 Sampling Beam Search Speculative Decoding.md',
     'MLCoding05 Sampling Beam Search Speculative Decoding.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Transformer Basics · Decoding Strategies: Top-k/Top-p Sampling, Beam Search & Speculative Decoding',
+      titleEn: '05 · Inference Decoding: Sampling & Speculative Decoding',
       category: 'Transformer 基础',
       categoryEn: 'Transformer Basics',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'Transformer 基础 · 从零手写 LLM：Unicode Pretokenization、BPE 与自回归训练循环',
+    '01 · 从零手写 LLM 核心循环',
     'MLCoding01 Unicode Pretokenization.md',
     'MLCoding01 Unicode Pretokenization.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Transformer Basics · Build a Modern GPT from Scratch: Tokenizer, RoPE & Autoregressive Loop',
+      titleEn: '01 · Build an LLM from Scratch: Tokenizer & Loop',
       category: 'Transformer 基础',
       categoryEn: 'Transformer Basics',
       difficulty: 'Hard',
@@ -1429,60 +1429,60 @@ const llmNoteDefinitions = [
 
   // --- LLM 核心理论与后训练 (LLM Core & Post-Training) ---
   createTutorialDefinition(
-    'LLM 核心 · 架构选型与训练基础：Decoder-Only 优势、文本表征与混合精度训练体系',
+    '00B · 架构选型与混合精度训练',
     'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.md',
     'MLCoding00B LLM Basics Decoder Only Precision Alignment Distillation.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'LLM Core · Architecture & Foundations: Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Systems',
+      titleEn: '00B · Architecture Decisions & Mixed-Precision Systems',
       category: 'LLM 核心理论与后训练',
       categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    'LLM 核心 · RLHF 与偏好对齐全景：从 Reward Model、PPO 4 模型架构到 DPO/IPO/KTO/SimPO 与对齐税',
+    '06B · RLHF 与偏好对齐全景',
     'MLCoding06B RLHF Preference Alignment PPO DPO.md',
     'MLCoding06B RLHF Preference Alignment PPO DPO.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'LLM Core · RLHF & Preference Alignment: From Reward Modeling & PPO 4-Model System to DPO/IPO/KTO/SimPO & Alignment Tax',
+      titleEn: '06B · RLHF & Preference Alignment: PPO to DPO',
       category: 'LLM 核心理论与后训练',
       categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'LLM 核心 · RLVR、推理模型与 Agentic RL：DeepSeek-R1 演进路径、GRPO 算法推导、规则验证器与智能体强化学习',
+    '06C · RLVR、推理模型与 Agentic RL',
     'MLCoding06C RLVR Reasoning GRPO Agentic RL.md',
     'MLCoding06C RLVR Reasoning GRPO Agentic RL.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'LLM Core · RLVR, Reasoning Models & Agentic RL: DeepSeek-R1 Paradigm, GRPO Derivation, Rule Verifiers & Agentic RL',
+      titleEn: '06C · RLVR, Reasoning Models & Agentic RL',
       category: 'LLM 核心理论与后训练',
       categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'LLM 核心 · 智能体架构：基于 Pi Agent 的 300 行核心循环、工具调用与状态机',
+    '08 · 极简 Agent 核心循环与架构',
     'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.md',
     'MLCoding08 Minimalist Agent Loop Architecture 300 Lines Pi Agent.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'LLM Core · Minimalist Agent Architecture: 300-Line Core Loop, Tool Calling & State Machine Inspired by Pi Agent',
+      titleEn: '08 · Minimalist Agent Architecture & Core Loop',
       category: 'LLM 核心理论与后训练',
       categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Hard',
     },
   ),
   createTutorialDefinition(
-    'LLM 核心 · 强化学习基础设施自测 35 问',
+    '强化学习基础设施自测 35 问',
     'MLSYS15 RL Infra 自测 35 问.md',
     'MLSYS15 RL Infra 自测 35 问.en.md',
     {
       directory: 'Mlsys',
-      titleEn: 'LLM Core · 35 Questions on RL Infra',
+      titleEn: '35 Questions on RL Infra',
       category: 'LLM 核心理论与后训练',
       categoryEn: 'LLM Core & Post-Training',
       difficulty: 'Medium',
@@ -1491,12 +1491,12 @@ const llmNoteDefinitions = [
 
   // --- LLM 代码实战 (LLM Implementation & Losses) ---
   createTutorialDefinition(
-    'LLM 核心代码 · 量化与偏好损失函数手写：INT8 动态量化与 DPO / GRPO / PPO / OPD 损失实现',
+    '06 · 量化与偏好损失手写实战',
     'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.md',
     'MLCoding06 INT8 Quantization DPO GRPO PPO OPD Loss.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'LLM Hands-on Code · Quantization & Alignment: INT8 Quantization and DPO / GRPO / PPO / OPD Losses',
+      titleEn: '06 · Hands-on Quantization & Preference Losses',
       category: 'LLM 代码实战',
       categoryEn: 'LLM Hands-on Code',
       difficulty: 'Hard',
@@ -1507,36 +1507,36 @@ const llmNoteDefinitions = [
 const traditionalMlNoteDefinitions = [
   // --- 基础知识八股与原理 (ML Foundations & Core Mechanics) ---
   createTutorialDefinition(
-    '基础知识 · 核心机制八股与算子实现：Normalization、Dropout、GELU、Conv2d 与回归',
+    '02 · 核心机制八股与基础算子手撕',
     'MLCoding02 GELU BatchNorm Conv2d Linear Regression.md',
     'MLCoding02 GELU BatchNorm Conv2d Linear Regression.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Foundations · Core Mechanics & Operators: Normalization, Dropout, GELU, Conv2d & Linear Regression',
+      titleEn: '02 · Core ML Mechanics & Foundational Operators',
       category: '基础知识八股与原理',
       categoryEn: 'ML Foundations & Core Mechanics',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    '基础知识 · 数据预处理、数据泄露与经典损失函数全景',
+    '00 · 数据预处理与经典损失函数',
     'MLCoding00 ML Basics Data Preprocessing Loss Functions.md',
     'MLCoding00 ML Basics Data Preprocessing Loss Functions.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'ML Foundations · Data Preprocessing, Data Leakage Prevention & Loss Functions',
+      titleEn: '00 · Data Preprocessing & Loss Functions',
       category: '基础知识八股与原理',
       categoryEn: 'ML Foundations & Core Mechanics',
       difficulty: 'Medium',
     },
   ),
   createTutorialDefinition(
-    '现代优化器 · 从 SGD 动量到 Adam/AdamW 与 Muon 谱正交投影：预条件几何、二阶矩与稀疏陷阱',
+    '10 · 现代优化器：从 SGD/AdamW 到 Muon',
     'MLCoding10 Modern Optimizers SGD AdamW Muon.md',
     'MLCoding10 Modern Optimizers SGD AdamW Muon.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Modern Optimizers · From SGD Momentum to Adam/AdamW & Muon: Preconditioning Geometry, Second Moments & Sparse Pitfalls',
+      titleEn: '10 · Modern Optimizers: From SGD/AdamW to Muon',
       category: '基础知识八股与原理',
       categoryEn: 'ML Foundations & Core Mechanics',
       difficulty: 'Hard',
@@ -1545,12 +1545,12 @@ const traditionalMlNoteDefinitions = [
 
   // --- 树模型与统计学习 (Tree-Based Models & Statistics) ---
   createTutorialDefinition(
-    '树模型与统计学习 · 决策树、随机森林体系与多元分布漂移检验',
+    '09 · 树模型集成与分布漂移检验',
     'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.md',
     'MLCoding09 Data Science Statistical Testing Distribution Drift C2ST.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Tree-Based Models & Statistics · Decision Trees, Random Forest Ensembles & Distribution Shift Testing',
+      titleEn: '09 · Tree-Based Ensembles & Distribution Shift Testing',
       category: '树模型与统计学习',
       categoryEn: 'Tree-Based Models & Statistics',
       difficulty: 'Hard',
@@ -1559,12 +1559,12 @@ const traditionalMlNoteDefinitions = [
 
   // --- 工业级机器学习 (Industrial Machine Learning) ---
   createTutorialDefinition(
-    '工业级推荐排序 · 精排模型、长序列建模、生成式重排与 A/B 测试因果推断',
+    '07 · 推荐精排、重排与 A/B 实验实战',
     'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.md',
     'MLCoding07 Industrial Machine Learning System RecSys Reranking ABTesting.en.md',
     {
       directory: 'MLCoding',
-      titleEn: 'Industrial RecSys · Ranking Models, Long-Sequence Modeling, Generative Reranking & A/B Testing Causal Inference',
+      titleEn: '07 · Industrial RecSys: Ranking, Reranking & A/B Testing',
       category: '工业算法 · 推荐精排实战',
       categoryEn: 'Industrial Algorithms · RecSys Ranking',
       difficulty: 'Hard',
@@ -1886,7 +1886,7 @@ const noteSections = [
   {
     id: 'mlcoding',
     title: 'ML Coding & 八股',
-    description: 'Transformer 基础架构、注意力算子全家桶、后训练对齐（RLHF/RLVR/GRPO）、推理优化、传统机器学习八股、工业业务算法与搜推广全链路',
+    description: '大模型核心机制、传统机器学习八股与工业级搜推广业务算法从零手写实现',
     notes: mlCodingNotes,
   },
   {
@@ -2019,7 +2019,7 @@ const homeSectionCopy = {
     },
     mlcoding: {
       title: 'ML Coding & 八股',
-      description: '大模型核心（Transformer 基础架构、注意力算子、后训练 RLHF/RLVR/GRPO、Agent 核心循环）、传统机器学习（基础机制八股、树模型与现代优化器）与工业业务算法（搜推广链路、召回排序、重排与生成式推荐）从零手写实现',
+      description: '大模型核心机制、传统机器学习八股与工业级搜推广业务算法从零手写实现',
     },
     'system-design': {
       title: 'System Design',
@@ -2049,7 +2049,7 @@ const homeSectionCopy = {
     },
     mlcoding: {
       title: 'ML Coding & Fundamentals',
-      description: 'From-scratch implementations and interview drills across LLM core (Transformers, attention zoo, RLHF/RLVR/GRPO, agents), Traditional ML (foundations, trees, optimizers), and Industrial Algorithms (RecSys, search, multi-stage retrieval, ranking, and generative recommendation)',
+      description: 'From-scratch implementations across LLM core architectures, Traditional ML foundations, and Industrial RecSys & Search pipelines',
     },
     'system-design': {
       title: 'System Design',

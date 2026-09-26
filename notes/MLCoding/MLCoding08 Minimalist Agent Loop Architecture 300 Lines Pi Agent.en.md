@@ -1,4 +1,4 @@
-# LLM Core · Minimalist Agent Architecture: 300-Line Core Loop, Tool Calling & State Machine Inspired by Pi Agent
+# 08 · Minimalist Agent Architecture & Core Loop
 
 In the modern AI agent ecosystem, bloated frameworks like LangChain, AutoGen, and CrewAI introduce complex inheritance hierarchies, hidden prompt injections, and heavy dependency graphs—often leading to **untraceable bugs, context window bloat, and runaway token costs**.
 

@@ -1,4 +1,4 @@
-# Transformer 基础 · 注意力机制全家桶：从 MHA 到 GQA、滑动窗口、线性注意力、KV Cache 与 Flash Attention
+# 03 · 注意力机制全家桶
 
 面试与生产实践中被问到的注意力机制涵盖了各种变体：
 - **Encoder 架构**（BERT / ViT）：双向全可见 `MultiHeadAttention`（带 Padding 屏蔽）；

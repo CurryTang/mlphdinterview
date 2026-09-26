@@ -1,4 +1,4 @@
-# ML Foundations · Data Preprocessing, Data Leakage Prevention & Loss Functions
+# 00 · Data Preprocessing & Loss Functions
 
 In machine learning system design and production engineering, a solid statistical foundation and rigorous data pipeline practices are essential prerequisites for building dependable models. Many machine learning models exhibit stellar offline evaluation metrics only to degrade catastrophically upon production rollout. The root causes rarely lie in model architectures, but rather in insidious data leakage, flawed missing data imputation, evaluation traps under extreme class imbalance, or a misalignment between loss function assumptions and problem characteristics.
 

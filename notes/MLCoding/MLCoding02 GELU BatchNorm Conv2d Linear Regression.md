@@ -1,4 +1,4 @@
-# 基础知识与算子 · 核心机制八股与手写实现：Normalization、Dropout、GELU、Conv2d 与回归
+# 02 · 核心机制八股与基础算子手撕
 
 MLCoding01 已经搭完了一条从 tokenizer 到训练循环的完整路线，但那条路线只挑了它需要的算子（RMSNorm、SwiGLU、AdamW、Cosine LR）。还有一批同样高频的"手写 X"面试题没有覆盖，这一篇把它们补齐，仍然按 PyTorch 面试的口径来写：不用 `torch.nn` 里现成的层，自己把 forward（以及必要的语义）实现出来。
 

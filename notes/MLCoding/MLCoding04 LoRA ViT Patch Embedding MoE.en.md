@@ -1,4 +1,4 @@
-# Transformer Basics · Architecture Extensions: LoRA, ViT Patch Embedding & Mixture of Experts
+# 04 · Architecture Extensions: LoRA, ViT & MoE
 
 MLCoding01 already assembled a working Transformer block. This section doesn't rebuild the backbone; it bolts three real-world architecture extensions onto it: how to fine-tune cheaply, how to feed images into the same attention backbone, and how to swap the FFN for a pool of experts so parameter count and per-token compute decouple.
 

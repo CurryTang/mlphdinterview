@@ -1,4 +1,4 @@
-# Modern Optimizers · From SGD Momentum to Adam/AdamW & Muon: Preconditioning Geometry, Second Moments & Sparse Pitfalls
+# 10 · Modern Optimizers: From SGD/AdamW to Muon
 
 > **Overview**: Optimization algorithms serve as the physical engine of foundation model pretraining and industrial machine learning pipelines. While many practitioners treat optimizers as a one-line call to `optimizer.step()`, the underlying mathematical dynamics govern training stability, generalization, and compute efficiency in large-batch distributed pretraining, non-stationary recommender systems, and spectral matrix updates.
 >

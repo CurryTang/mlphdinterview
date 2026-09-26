@@ -1,4 +1,4 @@
-# Transformer 基础 · 架构扩展：LoRA 低秩微调、ViT Patch Embedding 与 MoE 混合专家
+# 04 · 架构扩展：LoRA、ViT 与 MoE
 
 MLCoding01 已经拼出了一个能跑的 Transformer block。这一节不再从零搭主干，而是往主干上装三个真实场景会用到的架构扩展：怎么低成本微调、怎么把图像喂进同一套 attention 主干、怎么把 FFN 换成一堆专家来扩容而不等比例扩算力。
 

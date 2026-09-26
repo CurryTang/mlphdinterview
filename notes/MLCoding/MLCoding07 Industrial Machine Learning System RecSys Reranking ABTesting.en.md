@@ -1,4 +1,4 @@
-# Industrial RecSys · Ranking Models, Long-Sequence Modeling, Generative Reranking & A/B Testing Causal Inference
+# 07 · Industrial RecSys: Ranking, Reranking & A/B Testing
 
 In large-scale industrial machine learning and recommender systems, senior ML engineers must master not only deep model architectures and loss optimization, but also **the entire production lifecycle spanning high-throughput sparse sample streams, lifelong user behavior sequences, full-slate generative reranking, multi-tier metric hierarchies, and online A/B testing causal inference**.
 

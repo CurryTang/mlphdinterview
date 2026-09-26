@@ -1,4 +1,4 @@
-# Transformer Basics · Attention Zoo: From MHA to GQA, Sliding Window, Linear Attention, KV Cache, and Flash Attention
+# 03 · Attention Zoo: From MHA to Flash Attention
 
 Interviews and production systems frequently explore attention variants:
 - **Encoder Architectures** (BERT / ViT): Bidirectional, full-visibility `MultiHeadAttention` with padding masking;

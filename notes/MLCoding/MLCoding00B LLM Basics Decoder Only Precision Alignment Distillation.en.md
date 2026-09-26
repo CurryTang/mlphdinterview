@@ -1,4 +1,4 @@
-# LLM Core · Why Decoder-Only Won, Dense Text Embeddings & Mixed-Precision Systems
+# 00B · Architecture Decisions & Mixed-Precision Systems
 
 ## Module 1: Why Has Decoder-Only Become the Dominant LLM Architecture?
 
