@@ -30146,12 +30146,10 @@ function App() {
                     className={`note-button ${selectedTutorial?.id === tutorial.id ? 'active' : ''}`}
                     onClick={() => navigateToTutorial(tutorial.id)}
                     type="button"
+                    title={language === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
                   >
                     <span className="note-title">
                       {language === 'en' ? (tutorial.titleEn ?? tutorial.title) : tutorial.title}
-                    </span>
-                    <span className="note-subtitle">
-                      {language === 'en' ? (tutorial.enFileName || tutorial.fileName) : tutorial.zhFileName}
                     </span>
                   </button>
                 </Fragment>

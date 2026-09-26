@@ -243,7 +243,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills01 Design Dynamic Array.md')).toHaveLength(2);
+    expect(screen.getByText('CoreSkills01 Design Dynamic Array.md')).toBeInTheDocument();
     expect(screen.getByText('本板块共 24 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 15 · Two Pointers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 16 · Sliding Window/i })).toBeInTheDocument();
@@ -253,12 +253,12 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 15 · Two Pointers/i }));
 
     expect(await screen.findByRole('heading', { name: /Two Pointers/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills15 Two Pointers.md')).toHaveLength(2);
+    expect(screen.getByText('CoreSkills15 Two Pointers.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Core Skills 16 · Sliding Window/i }));
 
     expect(await screen.findByRole('heading', { name: /中文教程/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills16 Sliding Window.md')).toHaveLength(2);
+    expect(screen.getByText('CoreSkills16 Sliding Window.md')).toBeInTheDocument();
   });
 
   it('opens the Jobs section with the September 2026 Neolabs list', async () => {
@@ -279,7 +279,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /Neolab 列表/i })).toBeInTheDocument();
     expect(screen.getByText(/Thinking Machines Lab/)).toBeInTheDocument();
     expect(screen.getByText(/Axiom Math/)).toBeInTheDocument();
-    expect(screen.getAllByText('Jobs00 AI Neolabs.md')).toHaveLength(2);
+    expect(screen.getByText('Jobs00 AI Neolabs.md')).toBeInTheDocument();
   });
 
   it('renders the interactive 3Sum two-pointer walkthrough', async () => {
@@ -646,49 +646,49 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /System Design 04 · 存储/i }));
 
     expect(await screen.findByRole('heading', { name: /中文教程/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign04 Storage Systems.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign04 Storage Systems.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 06 · 消息队列/i }));
 
     expect(await screen.findByRole('heading', { name: /消息队列/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign06 Async Messaging Systems.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign06 Async Messaging Systems.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i }));
 
     expect(await screen.findByRole('heading', { name: /设计图片分享与 Home Feed/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign07 Photo Sharing Feed.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign07 Photo Sharing Feed.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 08 · 异步 LLM RL/i }));
 
     expect(await screen.findByRole('heading', { name: /System Design 08 · 异步 LLM RL/ })).toBeInTheDocument();
     expect(screen.getByText(/Sample Admission QPS ~60 \/s/)).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign08 LLM Async RL Platform.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign08 LLM Async RL Platform.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i }));
 
     expect(await screen.findByRole('heading', { name: /System Design 09 · 一致性哈希/ })).toBeInTheDocument();
     expect(screen.getByText(/节点变化时只迁移相邻区间/)).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign09 Consistent Hashing.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign09 Consistent Hashing.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 10 · 秒杀/i }));
 
     expect(await screen.findByRole('heading', { name: /秒杀/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign10 Flash Sale.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign10 Flash Sale.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i }));
 
     expect(await screen.findByRole('heading', { name: /移动推送与通知系统/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign11 Notification System.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign11 Notification System.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 12 · 填字游戏求解器/i }));
 
     expect(await screen.findByRole('heading', { name: /填字游戏求解器/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign12 Crossword Solver.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign12 Crossword Solver.md')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
 
     expect(await screen.findByRole('heading', { name: /高频术语整合/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign99 Glossary.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign99 Glossary.md')).toBeInTheDocument();
   });
 
   it('opens the business algorithms system map and switches architecture paths', async () => {
@@ -876,7 +876,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /全局架构体系与量化估算基准/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign00 Overview.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign00 Overview.md')).toBeInTheDocument();
   });
 
   it('redirects renamed System Design note routes to the new chapter numbers', async () => {
@@ -885,7 +885,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /消息队列/ })).toBeInTheDocument();
-    expect(screen.getAllByText('SystemDesign06 Async Messaging Systems.md')).toHaveLength(2);
+    expect(screen.getByText('SystemDesign06 Async Messaging Systems.md')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#SystemDesign06%20Async%20Messaging%20Systems.md');
@@ -898,7 +898,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /Core Skills 20 · Backtracking/i })).toBeInTheDocument();
-    expect(screen.getAllByText('CoreSkills20 Backtracking.md')).toHaveLength(2);
+    expect(screen.getByText('CoreSkills20 Backtracking.md')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#CoreSkills20%20Backtracking.md');
@@ -1067,7 +1067,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Quant 01 · 期望/i }));
 
     expect(await screen.findByRole('heading', { name: /健忘乘客/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Quant01 Expectation Counting Multinomial.md')).toHaveLength(2);
+    expect(screen.getByText('Quant01 Expectation Counting Multinomial.md')).toBeInTheDocument();
   });
 
   it('opens Effective Modern C++ 7 for C++17 and C++20 core features', async () => {
@@ -1214,7 +1214,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /布朗运动/ })).toBeInTheDocument();
-    expect(screen.getAllByText('Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md')).toHaveLength(2);
+    expect(screen.getByText('Quant12 Brownian Motion Ito Calculus Stopping Times and Options.md')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#Quant12%20Brownian%20Motion%20Ito%20Calculus%20Stopping%20Times%20and%20Options.md');
