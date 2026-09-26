@@ -231,8 +231,7 @@ describe('App', () => {
 
     const sidebar = document.querySelector('.notes-panel');
     expect(sidebar).not.toBeNull();
-    expect(within(sidebar).getByRole('heading', { name: 'MLSYS' })).toBeInTheDocument();
-    expect(within(sidebar).getByText('本板块共 18 篇笔记')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('button', { name: /MLSYS1 · GPU 体系结构入门/i })).toBeInTheDocument();
     expect(within(sidebar).queryByText('LLM八股')).not.toBeInTheDocument();
     expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
   });
@@ -244,7 +243,6 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /Core Skills 1/i })).toBeInTheDocument();
     expect(screen.getByText('CoreSkills01 Design Dynamic Array.md')).toBeInTheDocument();
-    expect(screen.getByText('本板块共 24 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 15 · Two Pointers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 16 · Sliding Window/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Core Skills 17 · Stack & Monotonic Stack/i })).toBeInTheDocument();
@@ -620,7 +618,6 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByText('本板块共 15 篇笔记')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 00 · 全局架构与量化估算/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01 · 无状态服务/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
@@ -696,8 +693,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '业务算法' }));
 
-    expect(await screen.findByText('本板块共 20 篇笔记')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /第 2 章 · 数据、样本与特征流/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 15 章 · 在线实验与涨指标/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 18 章 · LLM 排序与生成式推荐/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /第 19 章 · RAG 与 Agentic Search/ })).toBeInTheDocument();
@@ -966,9 +962,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '草稿区' }));
 
-    expect(await screen.findByRole('heading', { name: '草稿区' })).toBeInTheDocument();
-    expect(screen.getByText('本板块共 2 篇笔记')).toBeInTheDocument();
-    expect(screen.getAllByText(/LLM八股 Overview · JD 高频主题拆解/).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: /LLM八股 Overview/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Quant 草稿 · 概率基础公式与记忆框架/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Motivation/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /7\. RLVR & Agentic RL/ })).toBeInTheDocument();
@@ -1063,7 +1057,6 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Quant' }));
 
-    expect(screen.getByText(/本板块共 \d+ 篇笔记/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quant 01 · 期望/i }));
 
     expect(await screen.findByRole('heading', { name: /健忘乘客/i })).toBeInTheDocument();

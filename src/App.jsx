@@ -30101,19 +30101,6 @@ function App() {
       ) : (
         <div className="app-shell">
       <aside className="notes-panel">
-        <header className="panel-header">
-          <p className="eyebrow">{language === 'en' ? 'Current section' : '当前板块'}</p>
-          <h1>{localizedSelectedSection.title}</h1>
-          <p className="panel-meta">
-            {language === 'en'
-              ? `${activeSectionNotes.length} notes in this section`
-              : `本板块共 ${activeSectionNotes.length} 篇笔记`}
-          </p>
-          {localizedSelectedSection.description && (
-            <p className="panel-description">{localizedSelectedSection.description}</p>
-          )}
-        </header>
-
         <label className="search">
           <span>{language === 'en' ? 'Search' : '搜索'} {localizedSelectedSection.title}</span>
           <input
