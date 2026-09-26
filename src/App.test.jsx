@@ -1402,26 +1402,26 @@ describe('App', () => {
     expect(within(pssv).getByText(/总和 total = 11 为奇数/i)).toBeInTheDocument();
   });
 
-  it('opens the ML Coding section and displays ML Coding 00 note', async () => {
+  it('opens the Traditional ML section and displays ML Basics note', async () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation', { name: '主导航' });
-    fireEvent.click(within(nav).getByRole('button', { name: /ML Coding/i }));
-    expect(screen.getByRole('button', { name: /ML Coding 00 ·/i })).toBeInTheDocument();
+    fireEvent.click(within(nav).getByRole('button', { name: /Traditional ML/i }));
+    expect(screen.getByRole('button', { name: /基础知识 · 数据预处理/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /ML Coding 00 ·/i }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /基础知识 · 数据预处理/i }));
+    expect(await screen.findByRole('heading', { name: /基础知识 · 数据预处理、数据泄露与经典损失函数全景/i })).toBeInTheDocument();
 
     // Switch to English and verify translation
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML Basics: Data Preprocessing, Data Leakage & Loss Functions/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /ML Foundations · Data Preprocessing/i })).toBeInTheDocument();
   });
 
   it('routes directly to ML Coding 00 via URL hash', async () => {
     window.location.hash = '#MLCoding00%20ML%20Basics%20Data%20Preprocessing%20Loss%20Functions.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 00 · ML 基础：数据预处理、数据泄露与经典损失函数/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /基础知识 · 数据预处理、数据泄露与经典损失函数全景/i })).toBeInTheDocument();
   });
 
   it('renders the interactive ML metrics lab in ML Coding 00 note and switches tabs', async () => {
@@ -1477,10 +1477,10 @@ describe('App', () => {
     window.location.hash = '#MLCoding00B%20LLM%20Basics%20Decoder%20Only%20Precision%20Alignment%20Distillation.md';
     const { unmount } = render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM 基础：Decoder-Only 架构胜出原理解析/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM 核心 · 架构选型与训练基础/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 00B · LLM Basics: Why Decoder-Only Won/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM Core · Architecture & Foundations/i })).toBeInTheDocument();
 
     unmount();
 
@@ -1488,7 +1488,7 @@ describe('App', () => {
     window.location.hash = '#MLCoding01B%20Transformer%20Architecture%20Variants%20Attention%20FLOPs%20KV%20Cache.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 01B · Transformer 架构变体：MHA\/MQA\/GQA/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Transformer 基础 · 架构变体/i })).toBeInTheDocument();
   });
 
   it('renders the Anisotropy Cone visual and switches modes', async () => {
@@ -1556,10 +1556,10 @@ describe('App', () => {
     window.location.hash = '#MLCoding06B%20RLHF%20Preference%20Alignment%20PPO%20DPO.md';
     const { unmount } = render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 06B · RLHF 与偏好对齐全景/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM 核心 · RLHF 与偏好对齐全景/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 06B · RLHF & Preference Alignment/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM Core · RLHF & Preference Alignment/i })).toBeInTheDocument();
 
     unmount();
 
@@ -1567,10 +1567,10 @@ describe('App', () => {
     window.location.hash = '#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 06C · RLVR、推理大模型与 Agentic RL/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM 核心 · RLVR、推理模型与 Agentic RL/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 06C · RLVR, Reasoning Models & Agentic RL/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /LLM Core · RLVR, Reasoning Models & Agentic RL/i })).toBeInTheDocument();
   });
 
 
@@ -1579,9 +1579,9 @@ describe('App', () => {
     window.location.hash = '#MLCoding07%20Industrial%20Machine%20Learning%20System%20RecSys%20Reranking%20ABTesting.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /ML Coding 07 · 工业级机器学习体系/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /工业级推荐排序 · 精排模型、长序列建模/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(await screen.findByRole('heading', { name: /ML Coding 07 · Industrial ML Systems/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Industrial RecSys · Ranking Models/i })).toBeInTheDocument();
   });
 
   it('resolves relative note links inside markdown and routes to BusinessAlgorithm02C', async () => {
