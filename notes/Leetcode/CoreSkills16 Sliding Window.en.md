@@ -74,10 +74,102 @@ left += 1
 # remove_left(state, items[left])
 ```
 
-The interactive demo below demonstrates the four-phase cycle (expand, maintain, shrink, record) for the "Longest Valid Window" archetype:
+---
 
-```sliding-window-demo
+## Core Architecture: Data Structure Selection for Window & State
+
+In sliding window algorithms, the **window boundary itself** only requires two integer pointers `left` and `right` maintaining a dynamic closed interval $[\text{left}, \text{right}]$, requiring strictly $O(1)$ spatial overhead.
+
+What truly governs algorithmic complexity, viability, and systems efficiency is the **data structure selected for the internal state (`state`)**.
+
+### First Principles of State Selection: Incremental Progress and Symmetric Reversal
+
+Whether a sliding window problem can be solved in $O(n)$ time depends directly on whether state mutations satisfy **low-cost reversibility**:
+- **`right` Enters**: Can the state be updated incrementally in $O(1)$ or $O(\log k)$ time?
+- **`left` Evicts**: Can the leftmost item be symmetrically undone/subtracted in $O(1)$ or $O(\log k)$ time?
+- **Validity Check**: Can the predicate for `while` or `if` be answered in $O(1)$ scalar time without traversing the entire state?
+
+### Five Archetypes of State Data Structures
+
+```text
+                     What must the window maintain and query?
+                                │
+        ┌───────────────────────┼────────────────────────┐
+        ▼                       ▼                        ▼
+  [Scalar Sum / Count]     [Frequencies / Keys]      [Dynamic Extremum / Order]
+        │                       │                        │
+  Algebraically Reversible? Small / Bounded Alphabet?   Only Max / Min Needed?
+  ┌─────┴─────┐           ┌─────┴─────┐           ┌──────┴──────┐
+  │ Yes       │ No        │ Yes       │ No        │ Yes         │ No (Median/Kth)
+  ▼           ▼           ▼           ▼           ▼             ▼
+Scalar Var  Prefix Sum  Fixed Array HashMap+have  Monotonic Deque Dual Heaps/BST
+ (int)      (Not Window) (int[26])  (Map+scalar)   (Index Deque)   (Multiset)
 ```
+
+#### 1. Scalar Variables (`int` / `float`)
+* **Applicability:** When the window state is an aggregatable scalar whose operations satisfy **strict algebraic reversibility** via addition and subtraction.
+* **Canonical Metrics:**
+  - **Running Interval Sum:** `curr_sum += nums[right]`, evict `curr_sum -= nums[left]` (LC 209).
+  - **Specific Element Counter:** Zero flip budget `zeros += 1`, evict `zeros -= 1` (LC 1004).
+* **Complexity:** $O(1)$ update, $O(1)$ space.
+* **Boundary Pitfall:** If the array contains **negative numbers**, the running sum loses monotonicity with respect to pointer advances; sliding window collapses and requires Prefix Sums + Monotonic Deque (LC 862).
+
+#### 2. Direct-Mapped Fixed-Size Array (`int[26]` / `int[128]`)
+* **Applicability:** Key universe is small, contiguous, and bounded (lowercase `a-z`, uppercase `A-Z`, standard ASCII `128`).
+* **Why Strictly Superior to Hash Maps:**
+  - **L1 Cache Locality:** `int count[26]` consumes only $104$ bytes, fitting entirely within a single CPU L1 cache line. Direct indexing `ord(c) - ord('a')` is a base address offset with 0 hash overhead, 0 dynamic allocation, and 0 pointer chasing.
+  - **$O(1)$ Array Equality Comparison:** In fixed windows, comparing `window == need` requires only 26 integer comparisons, vectorized automatically by modern compilers (SIMD) with near-zero latency.
+* **Representative Problems:** LC 567 (Permutation), LC 438 (Anagrams), LC 424 (Character Replacement).
+
+#### 3. Dynamic Hash Map + Scalar Counter (`defaultdict(int)` + `have`)
+* **Applicability:** Keys belong to an unbounded, arbitrary domain (arbitrary integers, Unicode characters, sparse strings).
+* **Scalar Dimension-Reduction Design:**
+  - If a hash map is used in isolation, verifying whether the window satisfies requirements on each step takes $O(|\Sigma|)$ dictionary comparison.
+  - **Scalar Anchoring:** Maintain a scalar counter alongside the hash map (e.g., `have: int` counting how many distinct characters satisfy target frequency; or `distinct: int` counting unique active keys).
+  - Mutate `have += 1` or `have -= 1` only at the exact instant a key reaches or falls below its threshold. The `while` loop condition is compressed into an $O(1)$ scalar check (`have == required`).
+* **Representative Problems:** LC 3 (Unique Substring), LC 76 (Minimum Window Substring), LC 992 (K Distinct Integers).
+
+#### 4. Monotonic Double-Ended Queue (Monotonic Deque)
+* **Applicability:** When the window dynamically queries **Extremum (Maximum / Minimum)**.
+* **Why Scalars and Hash Maps Fail for Extremum:**
+  - **Extremum operations lack algebraic reversibility**: When the maximum element leaves the window, arithmetic cannot reveal what the second-largest element was; without a deque, rescanning takes $O(k)$.
+  - Priority queues support fast queries, but arbitrary deletion in sliding windows takes $O(k)$ or heavy heap rebalancing.
+* **Core Principles:**
+  - **Must Store Indices, Never Values Alone:** Storing indices enables $O(1)$ checks on whether the extremum has slid past the left boundary (`q[0] < left`).
+  - Strict monotonic decrease from head to tail. Tail elements dominated by incoming items are permanently discarded (no future relevance); expired head elements are popped.
+* **Representative Problems:** LC 239 (Sliding Window Maximum), LC 1438 (Absolute Diff Limit Subarray).
+
+#### 5. Dual Heaps / Balanced BST (`std::multiset` / Two Heaps + Lazy Deletion)
+* **Applicability:** When the window queries **Advanced Order Statistics (Dynamic Median, Kth Largest)**.
+* **Why Monotonic Deque Fails:** A deque only tracks dominated extremes; the median sits in the middle of the sorted order, requiring all intermediate values to be precisely tracked.
+* **Implementation:**
+  - **Dual Heaps with Lazy Deletion:** Max-heap for lower half, min-heap for upper half; evicted elements are tracked in a hash map and pruned lazily upon reaching the heap top.
+  - **Balanced BST (`std::multiset`):** Native $O(\log k)$ insertion, iterator-based deletion, and median querying.
+* **Representative Problems:** LC 480 (Sliding Window Median).
+
+---
+
+### State Data Structure Decision Matrix
+
+| Query Objective | Recommended Structure (`state`) | Add Operation (`add`) | Evict Operation (`remove`) | Check Complexity | Representative Problems |
+|---|---|---|---|---|---|
+| **Interval Sum / Average** | Scalar `curr_sum: int` | `+= nums[right]` | `-= nums[left]` | $O(1)$ | LC 209, LC 643 |
+| **Filtered Element Count** | Scalar `count: int` | Match: `+ 1` | Match: `- 1` | $O(1)$ | LC 1004, LC 1248 |
+| **Fixed Alphabet Frequency** | Fixed array `int[26]` | `arr[c] += 1` | `arr[c] -= 1` | $O(1)$ array comparison | LC 567, LC 438, LC 424 |
+| **Unbounded Key Frequency** | Hash map `defaultdict(int)` | `map[x] += 1` | `map[x] -= 1` (prune on 0) | $O(1)$ hash hit | LC 3, LC 340 |
+| **Full Set Covering Predicate** | Hash map + scalar `have: int` | Threshold reached: `have += 1` | Below threshold: `have -= 1` | $O(1)$ scalar check | LC 76 |
+| **Distinct Count (Distinct $K$)** | Hash map + scalar `distinct: int` | `0 -> 1`: `+= 1` | `1 -> 0`: `-= 1` | $O(1)$ scalar check | LC 992 |
+| **Dynamic Maximum / Minimum** | Monotonic deque `deque` (indices) | Pop dominated tail elements | Expired front: `popleft()` | $O(1)$ read front | LC 239, LC 1438 |
+| **Dynamic Median / Kth Largest** | Dual heaps + lazy deletion map | Insert & rebalance heaps | Mark in lazy deletion map | $O(1)$ read, $O(\log k)$ update | LC 480 |
+
+### Three Golden Rules for Production Engineering
+
+1. **Lightweight Degradation Principle: Prefer scalars over collections, and fixed arrays over hash maps.**
+   If counting zeros, declare `int zeros = 0`, never a `set`. When alphabet is `a-z`, allocate `[0] * 26`, which executes 3x to 5x faster than `defaultdict`.
+2. **Scalar Anchoring Principle: Always pair composite state with a scalar; never perform full scans inside `while`.**
+   When verifying multi-character requirements, tie an integer counter `have` to the hash table. Loop entry conditions must be $O(1)$ scalar predicates (`have == required`), never an $O(|\Sigma|)$ full iteration.
+3. **Index Fidelity Principle: Extremum queues must store indices, never raw values.**
+   If a deque stores only values, it is impossible to determine whether the front element expired past the left boundary or remains valid inside the window. Store indices and map to values `nums[q[0]]`; expiration checks `q[0] < left` become instantaneous.
 
 ---
 
