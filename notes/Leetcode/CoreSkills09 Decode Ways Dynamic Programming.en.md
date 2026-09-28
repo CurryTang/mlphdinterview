@@ -15,7 +15,7 @@ Step 3: Analyze Dependency Radius (Space Optimization) ➔ Apply rolling variabl
 ```
 
 > [!IMPORTANT]
-> **Golden Interview Rule**: In whiteboard coding interviews, clearly communicating the State Definition, Base Cases, and Transitions to the interviewer *before* writing code is far more critical than jumping straight to implementation. Once the recurrence is rigorous, writing code is mere mechanical translation.
+> **Design Principle**: In whiteboard coding interviews, clearly communicating the State Definition, Base Cases, and Transitions to the interviewer *before* writing code is far more critical than jumping straight to implementation. Once the recurrence is rigorous, writing code is mere mechanical translation.
 
 ---
 
@@ -848,7 +848,7 @@ class Solution:
 
 #### 6. Whiteboard 30-Second Interview Takeaways
 
-> 💡 **Burst Balloons 3 Golden Rules**:
+> 💡 **Burst Balloons Key Derivations**:
 > 1. **Pad with Sentinels**: Expand `[1] + nums + [1]` to convert edge cases into pure open intervals $(0, n+1)$.
 > 2. **Reverse to the Last**: Forward bursts dynamically shift neighbors (entangling subproblems); reverse burst fixes the last survivor's neighbors to the static outer walls $a[i] \cdot a[k] \cdot a[j]$!
 > 3. **Span-Length Order**: Fill from smaller sub-intervals to larger ones ($length: 2 \to n$).
@@ -953,7 +953,7 @@ Universal Knapsack 3-Knob System:
 └───────────────────────┴────────────────────────────────────────────────────────────────────────┘
 ```
 
-##### 1. Master Parameterized Knapsack Function
+##### 1. Parameterized Knapsack Function
 
 ```python
 def universal_knapsack(
@@ -963,7 +963,7 @@ def universal_knapsack(
     # Types: "01_max" | "01_min" | "01_feas" | "01_count" | "complete_min" | "complete_combo" | "complete_perm"
 ) -> int | bool:
     """
-    Universal Knapsack Master Framework
+    Universal Knapsack Implementation Framework
     """
     # 1. Base case setup
     if problem_type in ("01_max", "complete_max"):
@@ -1207,7 +1207,7 @@ class Solution:
 
 ---
 
-### 7. Knapsack Master Decision Matrix
+### 7. Knapsack Decision Matrix
 
 | Knapsack Pattern | Canonical Problem | Loop Nesting | Traversal Direction | Core Recurrence |
 |---|---|---|---|---|

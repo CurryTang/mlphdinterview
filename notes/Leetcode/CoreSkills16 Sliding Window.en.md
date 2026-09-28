@@ -1,4 +1,4 @@
-# Sliding Window · Universal Template & Core Interview Archetypes
+# Sliding Window
 
 The sliding window technique fundamentally operates as a **two-pointer model maintaining a dynamic closed interval $[\text{left}, \text{right}]$ over a 1D sequence**. All sliding window problems share an identical loop skeleton. Any sliding window problem can be solved systematically by answering **"Three Decision Questions"** and filling **"Three Code Slots"**:
 
@@ -162,7 +162,7 @@ Scalar Var  Prefix Sum  Fixed Array HashMap+have  Monotonic Deque Dual Heaps/BST
 | **Dynamic Maximum / Minimum** | Monotonic deque `deque` (indices) | Pop dominated tail elements | Expired front: `popleft()` | $O(1)$ read front | LC 239, LC 1438 |
 | **Dynamic Median / Kth Largest** | Dual heaps + lazy deletion map | Insert & rebalance heaps | Mark in lazy deletion map | $O(1)$ read, $O(\log k)$ update | LC 480 |
 
-### Three Golden Rules for Production Engineering
+### Engineering Principles
 
 1. **Lightweight Degradation Principle: Prefer scalars over collections, and fixed arrays over hash maps.**
    If counting zeros, declare `int zeros = 0`, never a `set`. When alphabet is `a-z`, allocate `[0] * 26`, which executes 3x to 5x faster than `defaultdict`.
@@ -173,7 +173,7 @@ Scalar Var  Prefix Sum  Fixed Array HashMap+have  Monotonic Deque Dual Heaps/BST
 
 ---
 
-## Universal Template: Three Questions & Three Slots Framework
+## Template: Three Questions & Three Slots Framework
 
 What all sliding window problems truly share is not an arbitrary line of code, but a structured mental decision pipeline:
 
@@ -714,7 +714,7 @@ class Solution:
 
 ---
 
-## 9. Advanced Master Technique: Exact K via Dual Sliding Window
+## 9. Exact K via Dual Sliding Window
 
 When confronting problems like [LC 992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/) or [LC 1248. Count Number of Nice Subarrays](https://leetcode.com/problems/count-number-of-nice-subarrays/), a standard sliding window gets stuck because **"exactly $k$" is non-monotonic**: expanding the window can enter or leave the exact $k$ state intermittently.
 
@@ -819,10 +819,10 @@ Step 4: Verify the monotonicity assumption!
 
 ---
 
-## Template Quick-Memorization Card
+## Template Summary
 
 ```text
-[Universal 3-Slot Mantra]
+[Universal 3-Slot Summary]
 Add right to state upon entry,
 Shrink left to maintain the boundary,
 Record longest after loop is done,

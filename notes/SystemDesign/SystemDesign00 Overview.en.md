@@ -61,7 +61,7 @@ Where:
   $$\mathbf{1\text{ GB RAM} \approx 2,000,000 - 3,000,000\text{ stable keys}}$$
 
 > [!TIP]
-> **The Golden Rule of Caching**:
+> **Caching Principles**:
 > When a system exhibits **read-heavy traffic (Read/Write $\ge 10:1$)**, **endpoint QPS in the hundreds**, and **the database begins struggling**, introducing a cache is the single most cost-effective architectural intervention.
 
 ---

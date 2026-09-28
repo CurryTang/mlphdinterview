@@ -122,7 +122,7 @@ Cross-attention 将 Query 与 Key/Value 的来源解耦：Query 来自解码器�
 - Query 长度 $T_q$ 与 Key/Value 长度 $T_{kv}$ 通常**严格不相等**（例如：解码生成第 5 个 Token，而 Encoder 文本包含 512 个 Token）；
 - 点积矩阵形状为 $(B, H, T_q, T_{kv})$；
 - 经过 Softmax 后与 $V \in (B, H, T_{kv}, D_h)$ 相乘，结果形状回到 $(B, H, T_q, D_h)$；
-- **黄金定律**：Cross-Attention 的输出序列长度永远由 Query 决定（$T_q$），与 Key/Value 的长度 $T_{kv}$ 无关。
+- **维度对应关系**：Cross-Attention 的输出序列长度永远由 Query 决定（$T_q$），与 Key/Value 的长度 $T_{kv}$ 无关。
 
 #### 2. Key Padding Mask 的非方阵广播
 - `key_padding_mask` 的形状对应于 Encoder 序列，即 $(B, T_{kv})$；

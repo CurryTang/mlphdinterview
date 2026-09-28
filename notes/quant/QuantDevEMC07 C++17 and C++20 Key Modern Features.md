@@ -19,7 +19,7 @@ Scott Meyers 的经典著作《Effective Modern C++》止步于 C++11 和 C++14�
 
 ---
 
-## 1. 编译期分支：`if constexpr` 深度剖析与 SFINAE 终结
+## 1. 编译期分支：`if constexpr` 机制与 SFINAE 替代
 
 **核心结论**：`if constexpr` 是 C++17 引入的最重要元编程特性之一。与普通 `if` 在运行时计算条件不同，`if constexpr` 的条件表达式必须是编译期常量表达式（`constexpr bool`）。编译器在实例化模板时，**只对条件为 `true` 的分支进行模板实例化**，未命中的分支虽然需要满足基本的词法与语法检查，但其中的模板代码不会被生成，因此即使在类型上不合法也不会引发编译失败。
 

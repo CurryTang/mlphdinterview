@@ -122,7 +122,7 @@ Cross-attention decouples Query from Key/Value sources: Q originates from the de
 - Decoder query length $T_q$ and encoder key length $T_{kv}$ are **rarely equal** ($T_q \ne T_{kv}$);
 - Score matrix shape: $(B, H, T_q, T_{kv})$;
 - After softmax and multiplying by $V \in (B, H, T_{kv}, D_h)$, shape returns to $(B, H, T_q, D_h)$;
-- **Golden Rule**: Output sequence length is strictly dictated by $Q$ ($T_q$), regardless of $T_{kv}$.
+- **Sequence Length Invariant**: Output sequence length is strictly dictated by $Q$ ($T_q$), regardless of $T_{kv}$.
 
 #### 2. Key Padding Masking
 - The mask aligns with the encoder keys: shape $(B, T_{kv})$;

@@ -1045,7 +1045,7 @@ $$
 - **Odd-Degree Dominance**:
   - Moving from $d=0$ (constant) to $d=1$ (linear): boundary bias drops from $O(h)$ to $O(h^2)$ with virtually no variance inflation (a rare free lunch!).
   - Moving from $d=1$ to $d=2$ (quadratic): boundary bias order remains $O(h^2)$ while variance explodes.
-  $\implies$ **Production Golden Rule: Default to local linear regression ($d=1$) in practice**.
+  $\implies$ **Engineering Practice: Default to local linear regression ($d=1$) in practice**.
 
 ---
 

@@ -78,7 +78,7 @@ Kafka 消费端利用 Linux `sendfile()` 系统调用实现内核态直通：
 * **ISR 集合**：所有与 Leader 保持心跳并在 `replica.lag.time.max.ms` 内追上 Leader 进度的副本集合。
 * **LEO (Log End Offset)**：当前副本中下一条待写入消息的偏移量。
 * **HW (High Watermark)**：ISR 集合中所有副本最小的 LEO。**只有低于 HW 的消息才允许被 Consumer 读取**，防止 Leader 宕机导致读取已丢失的消息。
-* **零丢消息法定配置黄金组合**：
+* **零丢消息推荐生产配置**：
   $$\text{acks} = \text{all (-1)} \quad \land \quad \text{min.insync.replicas} = 2 \quad \land \quad \text{replication.factor} \ge 3$$
   确保消息必须被至少 2 个 ISR 节点成功落入 Page Cache 才能返回客户端成功。
 

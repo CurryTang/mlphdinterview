@@ -146,7 +146,7 @@ $$p = \frac{\hat{p}}{\hat{p} + \frac{1 - \hat{p}}{w}}$$
 
 ---
 
-## 模块三：工业级长行为序列建模五大架构体系深度剖析
+## 模块三：工业级长行为序列建模五大架构体系
 
 ```text
 工业级推荐序列建模五大架构演进脉络：
@@ -413,7 +413,7 @@ class SIMRetrievalAugmentedModel(nn.Module):
 - **Grouped AUC (GAUC)**：
   $$\text{GAUC} = \frac{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g \cdot \text{AUC}_g}{\sum_{g \in \mathcal{G}, \, n_g^+ > 0, \, n_g^- > 0} w_g}, \quad \text{其中 } w_g = n_g \text{ (曝光数)}$$
   - **User-Grouped GAUC**：衡量跨会话个性化偏好，受早晚/工作日意图漂移影响；
-  - **Request-Grouped GAUC**：衡量单次刷新同屏 Slate 内的相对优劣，**精排模型的第一黄金离线指标**。
+  - **Request-Grouped GAUC**：衡量单次刷新同屏 Slate 内的相对优劣，**精排模型的核心离线指标**。
 
 ### 2. 负采样下的指标不变性与重要性加权
 - **AUC / GAUC**：在均匀随机负采样下具有单调保序不变性，是真实全量 AUC 的渐近无偏估计；
@@ -823,7 +823,7 @@ $$Y_i = \beta_0 + \beta_1 \text{Color}_i + \beta_2 \text{Pos}_i + \beta_3 (\text
 初级算法工程师易犯错误：*“$p > 0.05$ 说明改版对大客户无效甚至有害。”*
 **这是极其危险的将“缺乏充分证据（Absence of Evidence）”等同于“证据证明无效（Evidence of Absence）”的统计谬误！** 当 $N=100$ 时，统计功效 $\text{Power} < 15\%$，根本不可能测出统计显著性。
 
-工业界处理小样本高价值人群的三大黄金推断方案：
+工业界处理小样本高价值人群的三种推断方案：
 
 ##### 方案 1：经验贝叶斯部分池化（Empirical Bayes Partial Pooling / Shrinkage）
 不直接信任小样本自身的噪点均值，而是将大客户层的样本均值 $\bar{Y}_{\text{small}}$ 与全盘大盘的稳定均值 $\mu_{\text{grand}}$ 进行**向心收缩（Shrinkage）**：

@@ -89,7 +89,7 @@ Wiki 词条归属：[[SystemDesign00 Overview|00 系统设计全局蓝图]] → 
 
 ---
 
-## 3 · 核心机制硬核对比矩阵
+## 3 · 核心机制对比矩阵
 
 | 评估维度 | Sharded RDBMS（如 Vitess + MySQL） | NewSQL（如 TiDB / CockroachDB） |
 | :--- | :--- | :--- |

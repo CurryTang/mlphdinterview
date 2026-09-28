@@ -1254,7 +1254,7 @@ def reverseWords(s: str) -> str: ...
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 大致思路与算法架构深度剖析</div>
+<div class="review-block-label">💡 解题思路与算法实现细节</div>
 
 #### 1. 变体 2：空格排版精确保留（Preserve Exact Spacing）算法
 - 观察输入字符串：其本质是由“空格串”与“非空格单词串”交替构成的拓扑序列。

@@ -540,7 +540,7 @@ Let $x_1 = 3, x_2 = 4, x_3 = 5$:
 
 #### 5. Misère Nim (The Last-Stone-Loser Variation)
 If rules invert: **the player who takes the last stone LOSES**.
-- **Golden Rule of Misère Play**:
+- **Misère Play Conversion Rule**:
   1. While **at least two piles have size $> 1$**: Play exactly according to standard Nim rules (keep $S = 0$ after your move);
   2. The turning point arrives when your move can leave **exactly one pile of size $> 1$ and all other piles of size 1 (state $x, 1, 1, \dots$)**:
      - Do NOT make the XOR sum 0! Instead, reduce the large pile to 0 or 1 such that **an ODD number of piles of size 1 remain**!

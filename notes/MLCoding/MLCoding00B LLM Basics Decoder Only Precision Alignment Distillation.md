@@ -61,7 +61,7 @@ $$P(X) = \prod_{i=1}^S P(x_i \mid x_1, x_2, \dots, x_{i-1})$$
 
 ```text
 Embedding 演进路线与表征范式突破：
-早期黄金时代 (2018-2022)                  痛点与瓶颈 (为什么早期 Decoder 做不好 Embedding)
+双向表征时代 (2018-2022)                  痛点与瓶颈 (为什么早期 Decoder 做不好 Embedding)
 ┌────────────────────────────────┐        ┌────────────────────────────────────────────────────────┐
 │ Encoder-Only (BERT / RoBERTa)  │        │ • 单向因果盲区: 前面 Token 看不到后面，感受野极度不均 │
 │ Encoder-Decoder (T5 / Contriever)│ ───> │ • 各向异性危机 (Anisotropy): 向量挤在狭窄圆锥，余弦失效│

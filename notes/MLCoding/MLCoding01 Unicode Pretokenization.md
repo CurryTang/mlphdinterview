@@ -10,7 +10,7 @@
 > 5. **数值稳定损失**：基于 Log-Sum-Exp 技巧的手写移位交叉熵与困惑度（Perplexity）计算
 > 6. **优化动力学**：手写 AdamW 优化器（解耦权重衰减、参数分组过滤）、余弦退火学习率调度与全局梯度裁剪
 > 7. **训练与评测流水线**：一维 Token 数组的高效 Batch 采样器、训练循环、验证集评估与 Checkpoint 状态持久化
-> 8. **自回归推理**：Greedy、Temperature、Top-K 与 Top-P（Nucleus）核采样策略，以及 KV Cache 机制深度剖析
+> 8. **自回归推理**：Greedy、Temperature、Top-K 与 Top-P（Nucleus）核采样策略，以及 KV Cache 机制原理
 
 ---
 
@@ -977,7 +977,7 @@ def sample_next_token(
     return next_token.item()
 ```
 
-### 2. KV Cache 机制深度剖析
+### 2. KV Cache 机制原理
 
 #### 朴素生成：$O(N^2)$ 计算瓶颈
 

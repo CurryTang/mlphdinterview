@@ -2,7 +2,7 @@
 
 > **导读**：优化算法是大模型预训练与工业级机器学习系统的“发动机”。很多工程师只把优化器当作一行简单的 `optimizer.step()`，但在大模型分布式预训练（超大 Batch）、推荐系统（非平稳与高维稀疏特征）以及前沿基座训练（谱正交化）中，优化器的数学机制直接决定了模型是稳定收敛还是中途发散。
 >
-> 本篇系统梳理从 **SGD**、**动量机制**、**AdaGrad**、**RMSProp**、**Adam/AdamW** 到 2024~2025 年爆火的 **Muon (Momentum Orthogonal Optimizer)** 的演进逻辑；深度剖析一阶与二阶矩、偏差修正、有效步长机制、稀疏 Embedding 陷阱与超大 Batch 泛化灾难；并给出纯 PyTorch 的生产级代码实现与面试高频深度追问答题框架。
+> 本篇系统梳理从 **SGD**、**动量机制**、**AdaGrad**、**RMSProp**、**Adam/AdamW** 到 2024~2025 年爆火的 **Muon (Momentum Orthogonal Optimizer)** 的演进逻辑；分析一阶与二阶矩、偏差修正、有效步长机制、稀疏 Embedding 陷阱与超大 Batch 泛化灾难；并给出纯 PyTorch 的生产级代码实现与面试高频深度追问答题框架。
 
 ---
 

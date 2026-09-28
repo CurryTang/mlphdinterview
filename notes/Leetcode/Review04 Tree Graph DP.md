@@ -840,7 +840,7 @@ if __name__ == "__main__":
 </div>
 
 <div class="review-block">
-<div class="review-block-label">💡 大致思路与树形 DP 贪心提升深度剖析</div>
+<div class="review-block-label">💡 解题思路与树形 DP 状态转移推导</div>
 
 #### 1. 后序遍历树形 DP 核心状态转移
 - 考虑任一节点 $u$ 及其所有子节点集合 $children(u)$：
