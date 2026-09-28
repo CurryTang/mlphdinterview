@@ -1,176 +1,183 @@
-# Sliding Window · Master the Template in 5 Problems
+# Sliding Window · Universal Template & Core Interview Archetypes
 
-Sliding window problems share a common loop skeleton. For each problem, you need to fill in three slots:
+The sliding window technique fundamentally operates as a **two-pointer model maintaining a dynamic closed interval $[\text{left}, \text{right}]$ over a 1D sequence**. All sliding window problems share an identical loop skeleton. Any sliding window problem can be solved systematically by answering **"Three Decision Questions"** and filling **"Three Code Slots"**:
 
 ```text
-state: what to maintain within the window
-shrink: when to move the left pointer
-record: when to update the answer
+[Three Decision Questions & Code Slots]
+1. state & add_right: What incremental state is maintained? How does right entering update it?
+2. shrink condition : When should left advance to restore the invariant? (while for variable, if for fixed)
+3. record answer    : When should the answer be recorded? (after shrinking for longest, inside shrinking for shortest, when full for fixed)
 ```
 
-These five problems cover the longest valid window, shortest satisfying window, fixed-length window, and monotonic queue. Each problem follows the same order to fill the slots.
+---
 
 ## Original Problems and Learning Order
 
-The problem descriptions and constraints below are summarized from the original LeetCode problems.
+This note selects 8 high-frequency problems categorized into four archetypes: **Longest Valid Window**, **Shortest Satisfying Window**, **Fixed-Size Window**, and **Monotonic Deque Window**:
 
-| Order | Original Problem | Window Type | Core State |
-|---:|---|---|---|
-| 1 | [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/description/) | Longest Valid Window | Frequency Table |
-| 2 | [424. Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/description/) | Longest Valid Window | Frequency Table + `max_freq` |
-| 3 | [567. Permutation in String](https://leetcode.com/problems/permutation-in-string/description/) | Fixed-Length Window | Two 26-bit Frequency Tables |
-| 4 | [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/description/) | Shortest Satisfying Window | `need/window` + `have` |
-| 5 | [239. Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/description/) | Fixed-Length Window | Monotonic Decreasing Queue |
+| Order | Original Problem | Window Archetype | Core Maintained State | Shrink Mechanism | Record Timing |
+|---:|---|---|---|---|---|
+| 1 | [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/description/) | Longest Valid Window | Character frequency map | `while` duplicate exists | Update `max` after shrink |
+| 2 | [1004. Max Consecutive Ones III](https://leetcode.com/problems/max-consecutive-ones-iii/description/) | Longest Valid Window | Zero counter `zeros` | `while zeros > k` | Update `max` after shrink |
+| 3 | [424. Longest Repeating Character Replacement](https://leetcode.com/problems/longest-repeating-character-replacement/description/) | Longest Valid Window | Frequency map + `max_freq` | `while len - max_freq > k` | Update `max` after shrink |
+| 4 | [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/description/) | Shortest Satisfying Window | Running sum `sum` | `while sum >= target` | Update `min` inside shrink |
+| 5 | [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/description/) | Shortest Satisfying Window | `need/window` + `have` | `while have == required` | Update `min` inside shrink |
+| 6 | [567. Permutation in String](https://leetcode.com/problems/permutation-in-string/description/) | Fixed-Size Window | Two 26-element frequency arrays | `if len > k` | Compare at full size and return bool |
+| 7 | [438. Find All Anagrams in a String](https://leetcode.com/problems/find-all-anagrams-in-a-string/description/) | Fixed-Size Window | Two 26-element frequency arrays | `if len > k` | Collect matching `left` indices at full size |
+| 8 | [239. Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/description/) | Fixed-Size Window | Decreasing monotonic index deque | `if len > k` | Read front element maximum at full size |
 
-Let's see how these five problems fit into the same skeleton:
+Compare how the core patterns map to the unified skeleton:
 
 ```sliding-window-patterns
 ```
 
+---
+
 ## First, Fix the Window Invariant
 
-The window uses a closed interval:
+The window interval is mathematically modeled as a closed interval:
 
 $$
-[left,\right], \qquad \text{length}=right-left+1.
+[\text{left}, \text{right}], \qquad \text{length} = \text{right} - \text{left} + 1.
 $$
 
-### Why the Window Length is `+ 1`
+### Why the Closed Interval Length Requires `+ 1`
 
-Both `left` and `right` point to elements within the window, so this is a **closed interval including both ends**. `right - left` calculates the number of steps between two indices, but the number of elements must include the starting point `left` itself, hence the `+ 1`.
-
-```text
-Index:     2   3   4
-Window:    [A   B   C]
-left = 2, right = 4
-Index gap: 4 - 2 = 2
-Element count: 4 - 2 + 1 = 3
-```
-
-The easiest way to verify is to look at a window with only one element: when `left == right`, the length should be 1; `right - left + 1` equals 1, whereas omitting the `+ 1` would incorrectly result in 0.
-
-This also depends on the interval notation:
-
-| Window Convention | Includes `right`? | Length |
-|---|---:|---:|
-| Closed interval `[left, \right]` | Yes | `right - left + 1` |
-| Half-open interval `[left, \right)` | No | `right - left` |
-
-In the code for this note, `right` is the index of the character currently visited by `enumerate(s)` and added to the window, so `answer = max(answer, right - left + 1)` records the number of characters in the current valid closed interval.
-
-Each round performs only three things:
+Both `left` and `right` point to valid elements currently included inside the window. The difference $\text{right} - \text{left}$ measures the **index step distance** between the two pointers. The number of elements contained in the closed interval must also count the starting index `left` itself, requiring the additional $+ 1$:
 
 ```text
-Move right to the right and add a new element
-Move left to the right and remove the old element
-Record the answer at the correct time
+Array Indices:  2   3   4
+Window Items:  [A   B   C]
+Pointers:      left = 2, right = 4
+Index Gap:     4 - 2 = 2
+Element Count: 4 - 2 + 1 = 3
 ```
 
-The state must be synchronized with the interval. The removal order is:
+Boundary check: When a single-element window has `left == right`, the closed interval length is $\text{right} - \text{left} + 1 = 1$; omitting $+ 1$ would incorrectly yield a length of 0.
+
+| Window Convention | Includes Boundary `right`? | Length Formula | Usage |
+|---|---|---|---|
+| **Closed Interval $[\text{left}, \text{right}]$** | Yes (both ends inclusive) | $\text{right} - \text{left} + 1$ | **Standard algorithmic convention (used throughout this note)** |
+| Half-open Interval $[\text{left}, \text{right})$ | No (left inclusive, right exclusive) | $\text{right} - \text{left}$ | C++ STL iterators / slicing `s[left:right]` |
+
+### Strict Timing Between State Mutation and Pointer Advance
+
+In sliding window algorithms, state updates and pointer movements must be atomically synchronized. When evicting an element from the left, you must **decrement/remove the element from the state first, before advancing the pointer**:
 
 ```python
-remove(items[left])
+# Correct order: revert state first, then increment pointer
+remove_left(state, items[left])
 left += 1
+
+# Fatal bug: advancing pointer first deletes the wrong subsequent element!
+# left += 1
+# remove_left(state, items[left])
 ```
 
-If you move `left` before removing, you will remove the wrong element.
-
-The interactive demo below uses "Longest Valid Window," showing the variable-length window branch that requires a `while` loop.
+The interactive demo below demonstrates the four-phase cycle (expand, maintain, shrink, record) for the "Longest Valid Window" archetype:
 
 ```sliding-window-demo
 ```
 
-## Common Skeleton: Distinguish Fixed vs. Variable Length
+---
 
-What "sliding window" truly shares is not a specific `while` line, but these three actions:
+## Universal Template: Three Questions & Three Slots Framework
+
+What all sliding window problems truly share is not an arbitrary line of code, but a structured mental decision pipeline:
 
 ```text
-1. right adds a new element
-2. Move left to restore the invariant required by the problem
-3. Record the answer when the window is in the correct state
+                    ┌────────────────────────────┐
+                    │  for right, item in ...:   │
+                    └─────────────┬──────────────┘
+                                  │
+                                  ▼
+                    ┌────────────────────────────┐
+                    │ 1. Enter: add_right(item)  │
+                    └─────────────┬──────────────┘
+                                  │
+                                  ▼
+                    ┌────────────────────────────┐
+                    │ 2. Is window size fixed k? │
+                    └──────┬──────────────┬──────┘
+                           │ Yes          │ No
+                           ▼              ▼
+         ┌────────────────────────┐  ┌─────────────────────────────────┐
+         │ if len > k:            │  │ while shrink condition met:     │
+         │   remove_left(left)    │  │   [Shortest: record min ans]    │
+         │   left += 1            │  │   remove_left(left)             │
+         └─────────────┬──────────┘  │   left += 1                     │
+                       │             └─────────────┬───────────────────┘
+                       │                           │
+                       ▼                           ▼
+         ┌────────────────────────┐  ┌─────────────────────────────────┐
+         │ if len == k:           │  │ [Longest: update after shrink]  │
+         │   record_answer(...)   │  │ ans = max(ans, right-left+1)    │
+         └────────────────────────┘  └─────────────────────────────────┘
 ```
 
-For step 2, you must first look at the window type to decide whether to write a `while` or an `if`.
-
-### Variable-Length Window: Use `while`
-
-The lengths of the longest valid window and shortest satisfying window vary. After adding an element, you might need to move `left` multiple times, so use `while`:
+### 1. Universal Skeleton Code
 
 ```python
-left = 0
-state = initialize_state()
-answer = initialize_answer()
+def universal_sliding_window(items, k=None):
+    left = 0
+    state = initialize_state()
+    answer = initialize_answer()
 
-for right, item in enumerate(items):
-    add_right(state, item)
+    for right, item in enumerate(items):
+        # Slot 1: Add new element and update state (add_right)
+        add_right(state, item)
 
-    while should_shrink(state, left, \right):
-        record_before_shrink(answer, state, left, \right)  # Optional
-        remove_left(state, items[left])
-        left += 1
+        # Slot 2: Window shrinkage control (shrink)
+        if k is not None:
+            # Branch A: Fixed-Size Window
+            if right - left + 1 > k:
+                remove_left(state, items[left])
+                left += 1
 
-    record_after_shrink(answer, state, left, \right)       # Optional
+            # Slot 3: Record answer when window reaches fixed size k
+            if right - left + 1 == k:
+                record_fixed(answer, state, left, right)
+        else:
+            # Branch B: Variable-Size Window
+            # Pattern I: Shortest Satisfying Window (e.g., LC 209, LC 76)
+            while is_satisfied(state):
+                record_min(answer, left, right)   # Record min before evicting
+                remove_left(state, items[left])
+                left += 1
 
-return answer
+            # Pattern II: Longest Valid Window (e.g., LC 3, LC 1004, LC 424)
+            # while is_invalid(state):
+            #     remove_left(state, items[left]) # Evict until restored to valid
+            #     left += 1
+            # record_max(answer, left, right)     # Update max once valid
+    return answer
 ```
 
-### Fixed-Length Window: Use `if`
+### 2. Decision Matrix for the Three Archetypes
 
-A fixed-length window adds only one element per round. If the previous window length was at most `k`, this round it becomes at most `k + 1`, so you only need to remove the left-end element at most once:
+| Window Archetype | Classic Problems | Shrink Condition (`shrink`) | Control Statement | Record Answer Timing (`record`) | Core Principle |
+|---|---|---|---|---|---|
+| **Longest Valid Window** | LC 3, LC 1004, LC 424 | Window violates rules (**invalid**) | `while invalid:` | **After `while` loop completes** (when restored to valid) | Expand while valid, shrink when invalid, record max outside loop |
+| **Shortest Satisfying Window** | LC 209, LC 76 | Window **satisfies** target goal | `while satisfied:` | **Inside `while` loop** (before each eviction) | Shrink when satisfied to minimize, record min inside loop |
+| **Fixed-Size Window** | LC 567, LC 438, LC 239 | Window length **exceeds $k$** | `if len > k:` | **When window length equals $k$** | At most 1 element evicted per turn, evaluate at size $k$ |
 
-```python
-left = 0
-state = initialize_state()
-
-for right, item in enumerate(items):
-    add_right(state, item)
-
-    if right - left + 1 > k:
-        remove_left(state, items[left])
-        left += 1
-
-    if right - left + 1 == k:
-        record_window(state, left, \right)
-```
-
-Therefore, `Permutation in String` and `Sliding Window Maximum` do not need to force a `while` loop. Writing it as a `while` would yield the correct result, but `if` more directly expresses "the window slides one step to the right each round."
-
-The recording timing for the two types of templates is:
-
-| Problem Type | Way to Adjust `left` | Before moving `left` | After window adjustment |
-|---|---|---|---|
-| Longest Valid Window | `while` window is invalid | Do not record | Update max value |
-| Shortest Satisfying Window | `while` window still satisfies | Update min value | Do not record |
-| Fixed-Length Window | `if` window length > `k` | Do not record | Record when length == `k` |
-
-```mermaid
-flowchart LR
-  A["right adds element"] --> B["add_right"]
-  B --> C{"Is window length fixed?"}
-  C -->|No| D["while condition met: can move left continuously"]
-  C -->|Yes| E["if length > k: move left at most once"]
-  D --> F["record at the correct time"]
-  E --> F
-  F --> G["Process next right"]
-```
+---
 
 ## 1. Longest Substring Without Repeating Characters
 
 ### Problem Description
 
-Given a string `s`, return the length of the longest continuous substring without repeating characters. `s` is at most $5\times10^4$ long; characters can be letters, numbers, symbols, or spaces.
+Given a string `s`, find the length of the **longest continuous substring** without duplicate characters. $s$ length is up to $5\times10^4$.
 
-`substring` must be continuous. The answer for `"pwwkew"` is 3, e.g., `"wke"`; `"pwke"` is not continuous and does not count.
+### Filling the Template Slots
 
-### Filling the Template
-
-| Slot | Content for this problem |
+| Slot | Concrete Implementation |
 |---|---|
-| `state` | `count[char]`, stores character frequency in the current window |
-| `add_right` | `count[s[\right]] += 1` |
-| `should_shrink` | `count[s[\right]] > 1` |
-| `remove_left` | `count[s[left]] -= 1` |
-| Record after adjustment | Update longest length |
+| `state` | `count[char]`, hash map tracking character frequencies in the current window |
+| `add_right` | `count[char] += 1` |
+| `shrink` Condition | `while count[char] > 1` (current incoming character creates a duplicate) |
+| `remove_left` | `count[s[left]] -= 1`; `left += 1` |
+| `record` Timing | After `while` finishes (window is valid without duplicates), `ans = max(ans, right - left + 1)` |
 
 ```python
 from collections import defaultdict
@@ -185,56 +192,49 @@ class Solution:
         for right, char in enumerate(s):
             count[char] += 1
 
+            # Slot 2: When duplicate occurs, shrink until valid
             while count[char] > 1:
                 count[s[left]] -= 1
                 left += 1
 
+            # Slot 3: Record max length once window is restored to valid
             answer = max(answer, right - left + 1)
 
         return answer
 ```
 
-This problem executes `add_right` first, then enters `while should_shrink`, and finally records after the window is valid again. When recording the answer, all character frequencies within the window are at most 1.
-
 ```longest-substring-demo
 ```
 
-### Why is it O(n)?
+### Complexity Analysis
 
-The outer loop makes `right` traverse $n$ times, and `left` also only moves to the right throughout the entire function, at most $n$ times. The total execution count of the nested `while` is not $n^2$, but at most $n$.
+The outer pointer `right` advances $n$ times. The inner pointer `left` only advances monotonically to the right, incrementing at most $n$ times in total. Each character enters the window once and exits at most once. Amortized time complexity is $O(n)$, and space complexity is $O(|\Sigma|) \le O(128) = O(1)$.
+
+---
 
 ## 2. Longest Repeating Character Replacement
 
 ### Problem Description
 
-Given a string `s` containing only uppercase English letters and an integer `k`. You can replace at most `k` characters; find the length of the longest substring that can become the same character. `s` is at most $10^5$ long.
+Given a string `s` consisting of uppercase English letters and an integer `k`. You can choose at most `k` characters and replace them with any other uppercase character. Return the length of the longest substring containing the same letter you can achieve. $s$ length is up to $10^5$.
 
-Whether a window can become the same character depends only on the window length and the frequency of the most frequent character:
+Whether a window can be converted into a uniform character string with at most $k$ replacements depends solely on the **window length** and the **frequency of the most frequent character**:
 
 $$
-\text{replacements}
-=
-\text{window length}-\text{max frequency}.
+\text{replacements} = \text{window\_length} - \text{max\_frequency} \le k.
 $$
 
-Keep the most frequent character and replace all other characters.
+We simply preserve the highest-frequency character and replace all other characters.
 
-```text
-window = A A B A C
-length = 5
-max_freq(A) = 3
-Need to replace B, C, total 5 - 3 = 2 times
-```
+### Filling the Template Slots
 
-### Filling the Template
-
-| Slot | Content for this problem |
+| Slot | Concrete Implementation |
 |---|---|
-| `state` | `count[char]` and window `max_freq` |
-| `add_right` | Update right-end character frequency and `max_freq` |
-| `should_shrink` | `window_len - max_freq > k` |
-| `remove_left` | Left-end character frequency minus 1 |
-| Record after adjustment | Update longest length |
+| `state` | `count[char]` and historical peak frequency `max_freq` |
+| `add_right` | `count[char] += 1`; `max_freq = max(max_freq, count[char])` |
+| `shrink` Condition | `while right - left + 1 - max_freq > k` (required replacements exceed budget $k$) |
+| `remove_left` | `count[s[left]] -= 1`; `left += 1` |
+| `record` Timing | Once valid, update `ans = max(ans, right - left + 1)` |
 
 ```python
 from collections import defaultdict
@@ -251,66 +251,43 @@ class Solution:
             count[char] += 1
             max_freq = max(max_freq, count[char])
 
+            # Slot 2: Shrink window when replacements exceed k
             while right - left + 1 - max_freq > k:
                 count[s[left]] -= 1
                 left += 1
 
+            # Slot 3: Record max window length
             answer = max(answer, right - left + 1)
 
         return answer
 ```
 
-### Why `max_freq` doesn't need to decrease
+### Why `max_freq` Does Not Need to Decrement During Shrink
 
-The `max_freq` here is the highest frequency any candidate window has reached so far. It only increases.
+This is a classic **historical proof-of-work optimization**:
+We only care whether a window can beat the historical maximum length. If after shrinking the actual highest character frequency in the current window decreases, keeping `max_freq` at its historical peak causes no false positives:
+1. If no incoming character ever breaks this historical peak, the window can never exceed our already discovered optimum anyway.
+2. Only when an incoming character's frequency strictly surpasses `max_freq` will the window legitimately expand to record a larger answer.
 
-After shrinking, it might be larger than the true `max_freq` of the current window, but it won't inflate the answer to a length that was never feasible. The window length is always limited by the `max_freq + k` that has appeared historically. The old `max_freq` is just telling the algorithm: windows with lengths less than or equal to this have already been proven feasible, so there's no need to continue shrinking to maintain an exact state.
+Thus, allowing `max_freq` to remain monotonic non-decreasing preserves mathematical correctness while eliminating the $O(26)$ search on each shrink.
 
-If you don't want to explain this optimization during an interview, you can calculate it every round:
-
-```python
-max_freq = max(count.values())
-```
-
-The alphabet is fixed at 26 characters, so the complexity remains $O(26n)=O(n)$. The code is more intuitive, but the constant is larger.
+---
 
 ## 3. Permutation in String
 
 ### Problem Description
 
-Given lowercase strings `s1` and `s2`, determine if `s2` contains a permutation of `s1`. Both strings are at most $10^4$ long.
+Given two strings `s1` and `s2`, return `True` if `s2` contains a permutation of `s1`. A permutation requires: **identical length and identical character frequencies across all 26 lowercase letters**. This is a canonical **Fixed-Size Window** problem where window size is fixed at $k = \text{len}(s1)$.
 
-A permutation has two necessary conditions:
+### Filling the Template Slots
 
-```text
-Same length
-Same frequency for each character
-```
-
-Therefore, you only need to check all windows of length `len(s1)` in `s2`.
-
-### Filling the Template
-
-| Slot | Content for this problem |
+| Slot | Concrete Implementation |
 |---|---|
-| `state` | `need[26]` and `window[26]` |
-| `add_right` | Window frequency of the right-end character + 1 |
-| Fixed window adjustment | `if` window length > `len(s1)` |
-| `remove_left` | Window frequency of the left-end character - 1 |
-| Record when window is full | Compare frequency tables when length is `len(s1)` |
-
-### Why use `if` instead of `while` here?
-
-Let `k = len(s1)`. Before each round starts, the window length is definitely no more than `k`; after adding `s2[\right]`, the length is at most `k + 1`. If it exceeds the length, removing one `s2[left]` will immediately return it to `k`, so it's impossible to need to remove multiple elements continuously.
-
-```text
-Previous round: length k
-Add right: length k + 1
-Remove left: length k
-Compare window and need
-```
-
-So this problem shares the `add → adjust → record` skeleton with variable-length windows, but the adjustment step should be written as a single `if`. Forcing a `while` loop would yield the correct result but obscure the structure of a fixed-length window "sliding one step to the right each round."
+| `state` | Two 26-element arrays: `need[26]` and `window[26]` |
+| `add_right` | `window[ord(char) - ord('a')] += 1` |
+| `shrink` Condition | `if right - left + 1 > k:` (exceeds length $k$, single eviction) |
+| `remove_left` | `window[ord(s2[left]) - ord('a')] -= 1`; `left += 1` |
+| `record` Timing | `if right - left + 1 == k and window == need: return True` |
 
 ```python
 class Solution:
@@ -330,76 +307,48 @@ class Solution:
         for right, char in enumerate(s2):
             window[ord(char) - ord('a')] += 1
 
+            # Slot 2: Fixed-size window eviction (at most 1 element)
             if right - left + 1 > k:
-                old = s2[left]
-                window[ord(old) - ord('a')] -= 1
+                window[ord(s2[left]) - ord('a')] -= 1
                 left += 1
 
+            # Slot 3: Evaluate comparison when window reaches full size k
             if right - left + 1 == k and window == need:
                 return True
 
         return False
 ```
 
-The last `if` contains two equality checks: `right - left + 1 == k` indicates the window is full, and `window == need` indicates the frequencies of all 26 characters are identical; `and` requires both to be true. The `==` here is the Python equality operator.
+Comparing two 26-element arrays takes $O(26)$. Total time complexity is strictly $O(26 \cdot n) = O(n)$.
 
-Taking `s1 = "ab"`, `s2 = "eidbaooo"` as an example:
-
-| Window of length 2 | Is frequency equal to `a:1, b:1`? |
-|---|---|
-| `ei` | No |
-| `id` | No |
-| `db` | No |
-| `ba` | Yes, return `True` immediately |
-
-Comparing two 26-bit arrays takes $O(26)$, and 26 is a constant, so the total time is $O(n)$. Write this version correctly first, then consider using `matches` to compress the comparison to strictly $O(1)$.
+---
 
 ## 4. Minimum Window Substring
 
 ### Problem Description
 
-Given strings `s` and `t`, return the shortest substring in `s` that covers all characters in `t` including duplicates. If it doesn't exist, return an empty string. Both are at most $10^5$ long; the original problem guarantees a unique answer.
+Given strings `s` and `t`, return the **minimum window substring** of `s` that covers all characters in `t` (including duplicate frequencies). If no such substring exists, return `""`.
 
-When `t = "AABC"`, the window must contain at least two `A`s. Just checking if a character appears is not enough; you must maintain frequencies.
+### Type Count Compression: Achieving $O(1)$ Validity via `have`
 
-### Using `have` to Compress Validity Checks
-
-```text
-need[c]   = how many c's t needs
-window[c] = how many c's the current window has
-required  = number of distinct characters in need
-have      = number of character types that have met the requirement
-```
-
-The window is valid if and only if:
+Directly comparing frequency dictionaries on each step takes $O(|\Sigma|)$. Instead, introduce a match counter `have`:
+- `required = len(need)`: total number of **distinct characters** in `t`.
+- `have`: number of distinct characters in the current window whose frequency has reached or exceeded `need[c]`.
+- The window is valid if and only if:
 
 $$
-have=required.
+\text{have} == \text{required}.
 $$
 
-`have` counts the number of character types that meet the requirement, not the total number of characters that meet the requirement.
+### Filling the Template Slots
 
-```mermaid
-flowchart LR
-  A["right adds character c"] --> B["window[c] += 1"]
-  B --> C{"window[c] == need[c]"}
-  C -->|Yes| D["have += 1"]
-  C -->|No| E["have remains unchanged"]
-  D --> F{"have == required"}
-  E --> F
-  F -->|Yes| G["Record current window, then move left"]
-  F -->|No| H["Continue moving right"]
-```
-
-### Filling the Template
-
-| Slot | Content for this problem |
+| Slot | Concrete Implementation |
 |---|---|
 | `state` | `need`, `window`, `have`, `required` |
-| `add_right` | Update right-end character frequency; `have += 1` when exactly met |
-| `should_shrink` | `have == required` |
-| Record before moving `left` | Update shortest window |
-| `remove_left` | If left-end character exactly met, `have -= 1` first, then decrease frequency |
+| `add_right` | `window[c] += 1`; if `window[c] == need[c]` then `have += 1` |
+| `shrink` Condition | `while have == required:` (target satisfied, shrink to minimize length) |
+| `record` Timing | **Inside `while` loop before evicting**: record candidate minimum first |
+| `remove_left` | If `window[old] == need[old]` then `have -= 1`; `window[old] -= 1`; `left += 1` |
 
 ```python
 from collections import Counter, defaultdict
@@ -424,8 +373,10 @@ class Solution:
             if char in need and window[char] == need[char]:
                 have += 1
 
+            # Slot 2: Window satisfies target, shrink to find minimum
             while have == required:
                 length = right - left + 1
+                # Slot 3: Record optimal candidate before evicting left
                 if length < best_len:
                     best_start = left
                     best_len = length
@@ -441,66 +392,46 @@ class Solution:
         return s[best_start:best_start + best_len]
 ```
 
-When removing, you must check `window[old] == need[old]` before decreasing the frequency. This order accurately expresses "after removal, it will change from exactly satisfied to insufficient."
-
-For `s = "ADOBECODEBANC"`, `t = "ABC"`:
-
-```text
-Expand right to ADOBEC: first time satisfied, start shrinking left
-Invalid after removing A at the start, continue expanding right
-Expand right to ...BANC: satisfied again
-Continuously shrink left to get the shortest window BANC
-```
+---
 
 ## 5. Sliding Window Maximum
 
 ### Problem Description
 
-Given an array `nums` and a fixed window length `k`, the window slides one step to the right each time; return the maximum value of each window. `nums` is at most $10^5$ long.
+Given an integer array `nums` and a sliding window size `k`. The window slides from left to right one position at a time. Return the max sliding window. $n \le 10^5$.
 
-Recalling `max` for each window takes $O(nk)$. A heap can achieve $O(n\log k)$, and a monotonic queue can achieve $O(n)$.
+Naive search takes $O(nk)$. A max heap takes $O(n\log k)$. Using a **Double-Ended Monotonic Queue (Monotonic Deque)** achieves optimal $O(n)$ time complexity.
 
-### Who to store in the queue?
+### Monotonic Deque Mathematical Invariants
 
-The queue stores indices and maintains:
+The deque **stores array indices only** (indices are required to determine whether an entry has expired beyond the left boundary), maintaining two strict mathematical invariants:
 
-```text
-Indices are increasing from front to back
-Corresponding nums values are decreasing from front to back
-The front index corresponds to the current window maximum
+1. **Index Monotonicity**: Indices in the deque strictly increase from head to tail:
+   $$q[0] < q[1] < \dots < q[m-1]$$
+2. **Value Monotonicity**: Corresponding values strictly decrease from head to tail:
+   $$\text{nums}[q[0]] > \text{nums}[q[1]] > \dots > \text{nums}[q[m-1]]$$
+3. **Extremum Property**: **The front element $q[0]$ is unconditionally the maximum of the current window**, accessible in $O(1)$ time.
+
+### Queue Elimination Mechanics (Why Tail and Head Evictions are Safe)
+
+- **Tail Elimination (Domination Principle)**:
+  When examining incoming element $\text{nums}[\text{right}]$, if deque tail $\text{tail} = q[-1]$ satisfies $\text{nums}[\text{tail}] \le \text{nums}[\text{right}]$, pop $\text{tail}$ from the back (`pop()`).
+  *Proof*: For any current or future window containing $\text{right}$, index $\text{tail}$ will expire earlier, and its value is no greater than $\text{nums}[\text{right}]$. Thus $\text{tail}$ can **never again become a window maximum** (it is both older and weaker). It is permanently dominated and can be discarded.
+- **Head Expiration (Expiration Principle)**:
+  When the window advances its left boundary to $\text{left}$, if the front element $q[0] < \text{left}$ (or in fixed window logic $q[0] == \text{left}$), the old maximum has fallen outside the window boundary. It must be popped from the front (`popleft()`).
+
+```sliding-window-max-demo
 ```
 
-When a new value arrives, you can remove all values from the back that are less than or equal to it:
+### Filling the Template Slots
 
-```text
-Old value is smaller
-Old value leaves the window earlier
-```
-
-The old value can never beat the new value in the future, so it is no longer a candidate maximum.
-
-```mermaid
-flowchart LR
-  A["add_right"] --> B{"back value <= nums[\right]"}
-  B -->|Yes| C["pop back"]
-  C --> B
-  B -->|No| D["append right"]
-  D --> E{"window length > k"}
-  E -->|Yes| F["if front is left, remove it"]
-  F --> G["left += 1"]
-  G --> H
-  E -->|No| H["output front when length is k"]
-```
-
-### Filling the Template
-
-| Slot | Content for this problem |
+| Slot | Concrete Implementation |
 |---|---|
-| `state` | Monotonic decreasing index deque |
-| `add_right` | Remove weak back, then add `right` |
-| Fixed window adjustment | `if` window length > `k` |
-| `remove_left` | If front equals `left`, remove front |
-| Record when window is full | Output value corresponding to front when length is `k` |
+| `state` | Double-ended queue storing indices with strictly decreasing values: `candidates = deque()` |
+| `add_right` | Pop all dominated smaller tail elements, then append `right` |
+| `shrink` Condition | `if right - left + 1 > k:` (fixed-size window exceeds $k$) |
+| `remove_left` | If the front maximum expired (`candidates[0] == left`), pop it (`popleft()`); `left += 1` |
+| `record` Timing | `if right - left + 1 == k:` append `nums[candidates[0]]` to answer |
 
 ```python
 from collections import deque
@@ -514,157 +445,295 @@ class Solution:
         left = 0
 
         for right, value in enumerate(nums):
+            # Slot 1: Add right. Pop weaker tail candidates to preserve strict monotonic decrease
             while candidates and nums[candidates[-1]] <= value:
                 candidates.pop()
+            candidates.append(right)
 
-            candidates.append(\right)
-
+            # Slot 2: Fixed window shrink. Evict front if it expired
             if right - left + 1 > k:
                 if candidates[0] == left:
                     candidates.popleft()
                 left += 1
 
+            # Slot 3: When window size reaches k, read front maximum
             if right - left + 1 == k:
                 answer.append(nums[candidates[0]])
 
         return answer
 ```
 
-### Why must we check `candidates[0] == left`?
+### Why the Nested `while` is Strictly Amortized $O(n)$
 
-`candidates` does not store all indices in the window, only those that still have a chance to be the maximum. The `while` loop above might have already eliminated some non-maximum values from the back:
+Analyzing the macro lifetime of each index $i \in [0, n-1]$:
+- Push: `candidates.append(i)` executes exactly once per index.
+- Pop: Either evicted from tail by a larger element (at most once) or evicted from head due to expiration (at most once).
 
-```python
-while candidates and nums[candidates[-1]] <= value:
-    candidates.pop()
-```
+Total push and pop operations across the entire execution cannot exceed $2n$. Thus time complexity is strictly $O(n)$, with auxiliary space $O(k)$.
 
-Therefore, there are two cases when `left` is about to leave the window:
+---
 
-1. `left` is still in the queue. Because indices in the queue are increasing and `left` is the smallest index in the window, it must be at the front. You must execute `popleft()`, otherwise, an expired element might continue to be treated as the maximum.
-2. `left` has already been eliminated by the `while` loop above. At this point `candidates[0] > left`, so do nothing; if you unconditionally execute `popleft()`, you would mistakenly delete a valid candidate that is still in the window.
+## 6. Minimum Size Subarray Sum
 
-For example, `nums = [1, 3, -1, -3]`, `k = 3`. When adding `3`, the `1` at index `0` has already been popped. After adding `-3`:
+### Problem Description
 
-```text
-left = 0
-candidates = [1, 2, 3]   # Corresponding values [3, -1, -3]
-```
+Given an array of $n$ **positive integers** `nums` and a positive integer `target`. Return the minimal length of a contiguous subarray whose sum is greater than or equal to `target`. If there is no such subarray, return 0.
 
-At this point, index `0` is about to expire, but it is no longer in the queue, so you cannot delete the front. If you unconditionally `popleft()`, you would mistakenly delete the `3` at index `1`, which is still in the new window `[1, 3]` and is indeed the maximum.
+This is the quintessential baseline for mastering the **Shortest Satisfying Window** archetype, sharing the exact same shrink and record timing as LC 76.
 
-So this check expresses:
+### Filling the Template Slots
 
-```text
-If the left-end element about to leave the window is still in the candidate queue, delete it;
-If it was already eliminated because it couldn't be the maximum, do nothing.
-```
-
-This is checked before executing `left += 1`, so the expired index is exactly equal to `left`; and because queue indices are increasing, you only need to check the front.
-
-Taking `nums = [1, 3, -1, -3, 5]`, `k = 3` as an example:
-
-| `right` | New value | Values in queue | Output |
-|---:|---:|---|---:|
-| 0 | 1 | `[1]` | Not full |
-| 1 | 3 | `[3]`, 3 eliminates 1 | Not full |
-| 2 | -1 | `[3, -1]` | 3 |
-| 3 | -3 | `[3, -1, -3]` | 3 |
-| 4 | 5 | `[5]`, 5 eliminates all old candidates at the back | 5 |
-
-### Why is the nested `while` still $O(n)$?
-
-Don't just look at the `while` of a single round; look at the lifecycle of an index throughout the entire algorithm. For any index `i`:
-
-```text
-Enqueue: candidates.append(i), exactly once
-Dequeue: eliminated from the back by a larger new element, or removed from the front after expiring, at most once
-```
-
-Once an index leaves the queue via `pop()` or `popleft()`, it will never be enqueued again. Therefore, even if many indices are popped continuously in one round, the total number of pops across all rounds still does not exceed $n$:
-
-$$
-\underbrace{n}_{\text{outer loop}}
-+\underbrace{n}_{\text{total enqueues}}
-+\underbrace{n}_{\text{total dequeues}}
-=O(n).
-$$
-
-For example, in a strictly increasing array `[1, 2, 3, 4]`, each new value pops the previous one, but each old value is popped only once. `[9, 7, 5, 3, 10]` pops four values at once when processing `10`, but these four values will never be processed again. This analysis of amortizing expensive operations across elements is called **amortized analysis**.
-
-So the time complexity is $O(n)$; the monotonic queue stores at most the candidate indices in the current window, and the auxiliary space complexity is $O(k)$. If the returned array is also counted as space, the total space is $O(n)$.
-
-## Five Problems into Two Templates
-
-| Problem | Window Type | `state` | Adjustment | Record Timing |
-|---|---|---|---|---|
-| Longest Substring | Variable | Char frequency | `while` new char freq `> 1` | Update `max` after valid |
-| Character Replacement | Variable | Freq + `max_freq` | `while len - max_freq > k` | Update `max` after valid |
-| Permutation in String | Fixed | Two freq tables | `if` length `> len(s1)` | Compare when length is `len(s1)` |
-| Minimum Window | Variable | Freq + `have` | `while have == required` | Update `min` before shrinking |
-| Sliding Window Maximum | Fixed | Decreasing index deque | `if` length `> k` | Output front when length is `k` |
-
-During an interview, write the common skeleton first, then choose the adjustment branch:
-
-```python
-for right, item in enumerate(items):
-    add_right(state, item)
-
-    adjust_left()      # Use while for variable-length; if for fixed-length
-    record_if_ready() # Record when valid, satisfied, or window is full k
-```
-
-Don't memorize `while` first. Ask if the window is fixed, then decide whether `adjust_left` is continuous adjustment or at most one adjustment.
-
-## Common Mistakes
-
-| Mistake | Correction |
+| Slot | Concrete Implementation |
 |---|---|
-| Writing variable-length window as `if` | A new element might require continuously removing multiple left-end elements; variable-length windows usually use `while` |
-| Mechanically applying `while` to fixed-length window | Each round exceeds length by at most 1, using `if` to remove one element is clearer |
-| Writing window length as `right - left` | Closed interval length is `right - left + 1` |
-| Recording longest window before shrinking | Restore validity first, then update `max` |
-| Recording shortest window after shrinking | Record the current valid window first, then remove the left end |
-| Minimum Window only checking if character appears | Duplicate characters require comparing frequencies |
-| Storing values in monotonic queue | Storing indices is necessary to determine when elements expire |
-| Rebuilding state every round | Only perform incremental updates for boundary elements entering/leaving the window |
+| `state` | `curr_sum`, running sum of elements in the window |
+| `add_right` | `curr_sum += nums[right]` |
+| `shrink` Condition | `while curr_sum >= target:` (target reached, shrink left to minimize length) |
+| `record` Timing | **Inside `while` loop before evicting**: `ans = min(ans, right - left + 1)` |
+| `remove_left` | `curr_sum -= nums[left]`; `left += 1` |
+
+```python
+from typing import List
+
+
+class Solution:
+    def minSubArrayLen(self, target: int, nums: List[int]) -> int:
+        left = 0
+        curr_sum = 0
+        ans = float('inf')
+
+        for right, val in enumerate(nums):
+            # Slot 1: Add element to window sum
+            curr_sum += val
+
+            # Slot 2: Target met, shrink left to find minimal length
+            while curr_sum >= target:
+                # Slot 3: Record min length inside loop before evicting
+                ans = min(ans, right - left + 1)
+                curr_sum -= nums[left]
+                left += 1
+
+        return 0 if ans == float('inf') else ans
+```
+
+### In-Depth Theory: Why Must Elements be Strictly Positive?
+
+Sliding window algorithms require **Monotonicity**:
+- When all elements are positive, advancing `right` strictly increases `curr_sum`, and advancing `left` strictly decreases `curr_sum`.
+- If the array contains **negative numbers**, expanding the window might decrease the sum, and shrinking the window might increase the sum. Monotonicity collapses, causing standard two-pointer sliding window to fail!
+- **Solution for Negative Numbers**: To find the shortest subarray with sum $\ge target$ on general arrays with negatives (such as [LC 862. Shortest Subarray with Sum at Least K](https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/)), one must use **Prefix Sums + Monotonic Deque** in $O(n)$ time.
+
+---
+
+## 7. Max Consecutive Ones III
+
+### Problem Description
+
+Given a binary array `nums` and an integer `k`, return the maximum number of consecutive `1`'s in the array if you can flip at most `k` `0`'s.
+
+### Problem Abstraction: Translating to Longest Valid Window
+
+"Flipping at most $k$ zeros" is equivalent to: **Find the longest contiguous subarray containing at most $k$ zeros**.
+- Valid Condition: $\text{zeros} \le k$.
+- Invalid Condition: $\text{zeros} > k$.
+
+### Filling the Template Slots
+
+| Slot | Concrete Implementation |
+|---|---|
+| `state` | `zeros`, count of zero elements within the window |
+| `add_right` | `if nums[right] == 0: zeros += 1` |
+| `shrink` Condition | `while zeros > k:` (zero count exceeds flip budget $k$) |
+| `remove_left` | `if nums[left] == 0: zeros -= 1`; `left += 1` |
+| `record` Timing | After `while` loop (restored to valid), `ans = max(ans, right - left + 1)` |
+
+```python
+from typing import List
+
+
+class Solution:
+    def longestOnes(self, nums: List[int], k: int) -> int:
+        left = 0
+        zeros = 0
+        ans = 0
+
+        for right, val in enumerate(nums):
+            # Slot 1: Update zero count
+            if val == 0:
+                zeros += 1
+
+            # Slot 2: Shrink when zero count exceeds budget k
+            while zeros > k:
+                if nums[left] == 0:
+                    zeros -= 1
+                left += 1
+
+            # Slot 3: Record max length once restored to valid
+            ans = max(ans, right - left + 1)
+
+        return ans
+```
+
+---
+
+## 8. Find All Anagrams in a String
+
+### Problem Description
+
+Given two strings `s` and `p`, return an array of all the **start indices** of `p`'s anagrams in `s`.
+
+This is isomorphic to LC 567 (Fixed-Size Window of length $k = \text{len}(p)$). The only difference is that LC 567 returns boolean `True` on the first match, whereas LC 438 appends `left` to a results list on every match.
+
+### Filling the Template Slots
+
+```python
+from typing import List
+
+
+class Solution:
+    def findAnagrams(self, s: str, p: str) -> List[int]:
+        if len(p) > len(s):
+            return []
+
+        need = [0] * 26
+        window = [0] * 26
+
+        for char in p:
+            need[ord(char) - ord('a')] += 1
+
+        k = len(p)
+        left = 0
+        result = []
+
+        for right, char in enumerate(s):
+            # Slot 1: Increment frequency of incoming character
+            window[ord(char) - ord('a')] += 1
+
+            # Slot 2: Fixed-size window eviction
+            if right - left + 1 > k:
+                window[ord(s[left]) - ord('a')] -= 1
+                left += 1
+
+            # Slot 3: Collect match index at size k
+            if right - left + 1 == k and window == need:
+                result.append(left)
+
+        return result
+```
+
+---
+
+## 9. Advanced Master Technique: Exact K via Dual Sliding Window
+
+When confronting problems like [LC 992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/) or [LC 1248. Count Number of Nice Subarrays](https://leetcode.com/problems/count-number-of-nice-subarrays/), a standard sliding window gets stuck because **"exactly $k$" is non-monotonic**: expanding the window can enter or leave the exact $k$ state intermittently.
+
+### Dimension Reduction: The Identity Decomposition
+
+Convert the non-monotonic "exactly $k$" problem into the difference of two **strictly monotonic "at most $k$" problems**:
+
+$$
+\text{Exact}(k) = \text{atMost}(k) - \text{atMost}(k - 1).
+$$
+
+For an "at most $k$ distinct elements" window, if $[\text{left}, \text{right}]$ is valid, then **all subarrays ending at $\text{right}$ with start $\ge \text{left}$ (exactly $\text{right} - \text{left} + 1$ subarrays) are unconditionally valid**!
+
+```python
+from collections import defaultdict
+from typing import List
+
+
+class Solution:
+    def subarraysWithKDistinct(self, nums: List[int], k: int) -> int:
+        def atMost(k_max: int) -> int:
+            if k_max == 0:
+                return 0
+            count = defaultdict(int)
+            left = 0
+            distinct = 0
+            total = 0
+
+            for right, num in enumerate(nums):
+                if count[num] == 0:
+                    distinct += 1
+                count[num] += 1
+
+                while distinct > k_max:
+                    count[nums[left]] -= 1
+                    if count[nums[left]] == 0:
+                        distinct -= 1
+                    left += 1
+
+                # Number of valid subarrays ending at right with <= k_max distinct elements
+                total += right - left + 1
+
+            return total
+
+        return atMost(k) - atMost(k - 1)
+```
+
+---
+
+## Complete Problem Matrix & Slot Comparison
+
+| Problem | LC # | Window Archetype | `state` Tracked | Shrink Condition & Control | Record Timing & Formula |
+|---|---|---|---|---|---|
+| **Longest Substring** | LC 3 | Longest Valid | Char frequencies | `while count[c] > 1` | Outside loop: `ans = max(ans, len)` |
+| **Max Consecutive Ones III** | LC 1004 | Longest Valid | Zero count `zeros` | `while zeros > k` | Outside loop: `ans = max(ans, len)` |
+| **Character Replacement** | LC 424 | Longest Valid | Frequencies + `max_freq` | `while len - max_freq > k` | Outside loop: `ans = max(ans, len)` |
+| **Min Size Subarray Sum** | LC 209 | Shortest Satisfying | Running sum `sum` | `while sum >= target` | Inside loop: `ans = min(ans, len)` |
+| **Minimum Window Substring** | LC 76 | Shortest Satisfying | `need/window` + `have` | `while have == required` | Inside loop: `ans = min(ans, len)` |
+| **Permutation in String** | LC 567 | Fixed-Size | 26-elem frequency array | `if len > k` (evict 1) | At size $k$: compare and return `True` |
+| **Find All Anagrams** | LC 438 | Fixed-Size | 26-elem frequency array | `if len > k` (evict 1) | At size $k$: append matching `left` |
+| **Sliding Window Maximum** | LC 239 | Fixed-Size | Monotonic index deque | `if len > k` (evict head) | At size $k$: read `nums[deque[0]]` |
+
+---
+
+## Common Pitfalls & Debugging Checklist
+
+| Common Mistake | Root Cause & Failure Mechanism | Correct Practice |
+|---|---|---|
+| **Using `if` instead of `while` in variable window** | An incoming element can cause multiple violations, requiring continuous eviction | Always use `while` for variable window invariant restoration |
+| **Using `while` blindly in fixed window** | A fixed window adds 1 element per step, exceeding by at most 1 | Use `if right - left + 1 > k` to clearly express fixed-window mechanics |
+| **Omitting `+ 1` in window length** | Confuses interval distance with element cardinality | Closed interval element count is strictly `right - left + 1` |
+| **Recording longest window before shrinking** | Window is currently in an invalid violation state, polluting the optimal answer | For longest valid windows, update `max` **after** `while` loop completes |
+| **Recording shortest window after shrinking** | The window may no longer satisfy the target after eviction, missing the minimal valid state | For shortest satisfying windows, update `min` **inside** `while` before eviction |
+| **Advancing `left` before mutating state** | Pointer increment shifts `left` to the subsequent element, corrupting state synchronization | Always subtract `items[left]` from state **first**, then `left += 1` |
+| **Storing values instead of indices in deque** | Values alone cannot indicate when an element has fallen outside window bounds | Monotonic queues must store **indices**, referencing values as needed |
+
+---
 
 ## How to Apply the Template to New Problems
 
-First, confirm that the problem requires a continuous substring or subarray. Then answer in order:
+Follow this 4-step deduction checklist on any new sliding window problem:
 
 ```text
-1. Is the window length fixed?
-2. When right adds an element, which states can be updated incrementally?
-3. What expression indicates the window is invalid or has met the requirement?
-4. When left removes an element, how is the state restored?
-5. Should the answer be recorded before moving `left`, after window adjustment, or when the window is full `k`?
+Step 1: Is the window length fixed?
+        -> Fixed length k: Control with `if len > k`, record at size k.
+        -> Variable length: Proceed to Step 2 and 3.
+
+Step 2: What is the optimization goal?
+        -> "Longest valid": while invalid shrink, update max outside loop.
+        -> "Shortest satisfying": while satisfied shrink, update min inside loop.
+        -> "Exact K count": Decompose into `atMost(K) - atMost(K-1)`.
+
+Step 3: How is state incrementally updated and reverted?
+        -> Entering items[right]: What state variables can be maintained in O(1)?
+        -> Evicting items[left]: How can the state be reversed symmetrically?
+
+Step 4: Verify the monotonicity assumption!
+        -> Does moving pointers monotonically change the validity metrics?
+        -> If negative values exist (e.g. subarray sum with negatives), sliding window fails;
+           switch to Prefix Sums + Monotonic Deque / Hash Map.
 ```
 
-If question 3 has no monotonic direction, a standard sliding window might not apply. For example, when an array contains negative numbers, expanding the window doesn't necessarily increase the interval sum, and shrinking doesn't necessarily decrease it.
+---
 
-Fill out this small table before writing code:
-
-| Slot | Content to be clear about |
-|---|---|
-| window | Accurate meaning of `[left, \right]` |
-| state | Frequency, sum, satisfied count, or monotonic queue |
-| add | How to update state after `right` enters the window |
-| adjust | `while` for variable-length, or `if length > k` for fixed-length |
-| remove | How to update state before `left` leaves the window |
-| record | Update `max`, update `min`, or output current window result |
-
-## Template Cheat Sheet
+## Template Quick-Memorization Card
 
 ```text
-Common skeleton: add → adjust → record
-
-Variable-length window: while condition met, may move left continuously
-Fixed-length window: if length > k, move left at most once
-
-Longest valid: record max after adjustment
-Shortest satisfying: record min before moving left
-Fixed-length: record when window length == k
+[Universal 3-Slot Mantra]
+Add right to state upon entry,
+Shrink left to maintain the boundary,
+Record longest after loop is done,
+Record shortest before eviction run,
+Record fixed window when size is won!
 ```
-
-Determine if it's fixed or variable length first, then fill in the state, adjustment condition, and recording timing.

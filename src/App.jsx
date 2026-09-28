@@ -1589,96 +1589,156 @@ const traditionalMlNotes = traditionalMlNoteDefinitions.map((definition) => ({
 }));
 
 const systemDesignNoteDefinitions = [
+  // ==========================================
+  // 板块一：实战 Case (End-to-End System Deep Dives)
+  // ==========================================
   createTutorialDefinition(
-    'System Design 00 · 全局架构与量化估算',
-    'SystemDesign00 Overview.md',
-    'SystemDesign00 Overview.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 00 · Blueprint & Numbers', category: 'Overview', difficulty: 'Easy' },
-  ),
-  createTutorialDefinition(
-    'System Design 01 · 无状态服务',
-    'SystemDesign01 Stateless Service.md',
-    'SystemDesign01 Stateless Service.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 01 · Stateless Service', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 01B · 虚拟化与容器',
-    'SystemDesign01B Virtualization Containers.md',
-    'SystemDesign01B Virtualization Containers.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 01B · Virtualization & Containers', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 01C · Kubernetes',
-    'SystemDesign01C Kubernetes.md',
-    'SystemDesign01C Kubernetes.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 01C · Kubernetes', category: 'Component', difficulty: 'Hard' },
-  ),
-  createTutorialDefinition(
-    'System Design 01D · Redis',
-    'SystemDesign01D Redis.md',
-    'SystemDesign01D Redis.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 01D · Redis', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 02 · 数据库',
-    'SystemDesign02 Database Paradigms.md',
-    'SystemDesign02 Database Paradigms.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 02 · Database', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 04 · 存储',
-    'SystemDesign04 Storage Systems.md',
-    'SystemDesign04 Storage Systems.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 04 · Storage', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 06 · 消息队列',
-    'SystemDesign06 Async Messaging Systems.md',
-    'SystemDesign06 Async Messaging Systems.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 06 · Message Queue', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 09 · 一致性哈希',
-    'SystemDesign09 Consistent Hashing.md',
-    'SystemDesign09 Consistent Hashing.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 09 · Consistent Hashing', category: 'Component', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'System Design 07 · 图片分享与 Feed',
+    '实战 Case · System Design 07 · 图片分享与 Feed',
     'SystemDesign07 Photo Sharing Feed.md',
     'SystemDesign07 Photo Sharing Feed.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 07 · Photo Sharing & Feed', category: 'Case', difficulty: 'Hard' },
+    { directory: 'SystemDesign', titleEn: 'Case · System Design 07 · Photo Sharing & Feed', category: 'Case', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'System Design 08 · 异步 LLM RL',
+    '实战 Case · System Design 08 · 异步 LLM RL',
     'SystemDesign08 LLM Async RL Platform.md',
     'SystemDesign08 LLM Async RL Platform.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 08 · Async LLM RL', category: 'Case', difficulty: 'Hard' },
+    { directory: 'SystemDesign', titleEn: 'Case · System Design 08 · Async LLM RL', category: 'Case', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'System Design 10 · 秒杀',
+    '实战 Case · System Design 10 · 秒杀',
     'SystemDesign10 Flash Sale.md',
     'SystemDesign10 Flash Sale.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 10 · Flash Sale', category: 'Case', difficulty: 'Hard' },
+    { directory: 'SystemDesign', titleEn: 'Case · System Design 10 · Flash Sale', category: 'Case', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'System Design 11 · 移动推送与通知系统',
+    '实战 Case · System Design 11 · 移动推送与通知系统',
     'SystemDesign11 Notification System.md',
     'SystemDesign11 Notification System.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 11 · Notification System', category: 'Case', difficulty: 'Hard' },
+    { directory: 'SystemDesign', titleEn: 'Case · System Design 11 · Notification System', category: 'Case', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'System Design 12 · 填字游戏求解器',
+    '实战 Case · System Design 12 · 填字游戏求解器',
     'SystemDesign12 Crossword Solver.md',
     'SystemDesign12 Crossword Solver.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 12 · Crossword Puzzle Solver', category: 'Case', difficulty: 'Hard' },
+    { directory: 'SystemDesign', titleEn: 'Case · System Design 12 · Crossword Puzzle Solver', category: 'Case', difficulty: 'Hard' },
   ),
-  // Keep the glossary as the final System Design note even when new chapters are inserted.
+
+  // ==========================================
+  // 板块二：Wiki 模式库 (Atomic Design Patterns & Wiki)
+  // ==========================================
   createTutorialDefinition(
-    'System Design 99 · 高频术语整合',
+    'Wiki · Event Bus (事件总线与事件驱动)',
+    'SystemDesignWiki Event Bus.md',
+    'SystemDesignWiki Event Bus.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Event Bus & Event-Driven Architecture', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · Message Queue (消息队列与点对点工作队列)',
+    'SystemDesignWiki Message Queue.md',
+    'SystemDesignWiki Message Queue.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Message Queue: Competing Consumers & Task Queues', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · NoSQL + Streaming (NoSQL 变更流与事件驱动)',
+    'SystemDesignWiki NoSQL Streaming.md',
+    'SystemDesignWiki NoSQL Streaming.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · NoSQL + Streaming: CDC & Event-Driven Pipelines', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Wiki · Kafka (分布式流平台与分区日志)',
+    'SystemDesignWiki Kafka.md',
+    'SystemDesignWiki Kafka.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Kafka: Partitioned Log & Architecture Deep Dive', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Wiki · Transactional Outbox (事务发件箱)',
+    'SystemDesignWiki Transactional Outbox.md',
+    'SystemDesignWiki Transactional Outbox.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Transactional Outbox Pattern', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · 控制面与数据面解耦 (Control & Data Plane)',
+    'SystemDesignWiki Control Data Plane.md',
+    'SystemDesignWiki Control Data Plane.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Control Plane vs Data Plane Separation', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Wiki · Pull vs Push (推拉模型与读写扩散)',
+    'SystemDesignWiki Pull vs Push.md',
+    'SystemDesignWiki Pull vs Push.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Pull vs Push Models', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · Idempotency (幂等性设计与实现模式)',
+    'SystemDesignWiki Idempotency.md',
+    'SystemDesignWiki Idempotency.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Idempotency Design Patterns & Implementations', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · NewSQL (分布式数据库架构与选型)',
+    'SystemDesignWiki NewSQL.md',
+    'SystemDesignWiki NewSQL.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · NewSQL & Distributed SQL Architecture', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 00 · 全局架构与量化估算',
+    'SystemDesign00 Overview.md',
+    'SystemDesign00 Overview.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 00 · Blueprint & Numbers', category: 'Wiki', difficulty: 'Easy' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 01 · 无状态服务',
+    'SystemDesign01 Stateless Service.md',
+    'SystemDesign01 Stateless Service.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 01 · Stateless Service', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 01B · 虚拟化与容器',
+    'SystemDesign01B Virtualization Containers.md',
+    'SystemDesign01B Virtualization Containers.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 01B · Virtualization & Containers', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 01C · Kubernetes',
+    'SystemDesign01C Kubernetes.md',
+    'SystemDesign01C Kubernetes.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 01C · Kubernetes', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 01D · Redis',
+    'SystemDesign01D Redis.md',
+    'SystemDesign01D Redis.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 01D · Redis', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 02 · 数据库',
+    'SystemDesign02 Database Paradigms.md',
+    'SystemDesign02 Database Paradigms.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 02 · Database', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 04 · 存储',
+    'SystemDesign04 Storage Systems.md',
+    'SystemDesign04 Storage Systems.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 04 · Storage', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 06 · 消息队列',
+    'SystemDesign06 Async Messaging Systems.md',
+    'SystemDesign06 Async Messaging Systems.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 06 · Message Queue', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 09 · 一致性哈希',
+    'SystemDesign09 Consistent Hashing.md',
+    'SystemDesign09 Consistent Hashing.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 09 · Consistent Hashing', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
+    'Wiki · System Design 99 · 高频术语整合',
     'SystemDesign99 Glossary.md',
     'SystemDesign99 Glossary.en.md',
-    { directory: 'SystemDesign', titleEn: 'System Design 99 · Glossary & Key Concepts', category: 'Glossary', difficulty: 'Reference' },
+    { directory: 'SystemDesign', titleEn: 'Wiki · System Design 99 · Glossary & Key Concepts', category: 'Wiki', difficulty: 'Reference' },
   ),
 ];
 
@@ -4349,6 +4409,312 @@ function SlidingWindowVisual() {
         <button
           type="button"
           onClick={() => setActiveStep((current) => Math.min(steps.length - 1, current + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const SLIDING_WINDOW_MAX_NUMS = [1, 3, -1, -3, 5, 3, 6, 7];
+const SLIDING_WINDOW_MAX_K = 3;
+
+const SLIDING_WINDOW_MAX_STEPS = [
+  {
+    phase: 'add',
+    phaseLabel: '进窗入队',
+    right: 0,
+    windowStart: 0,
+    poppedTail: [],
+    poppedHead: null,
+    deque: [{ idx: 0, val: 1 }],
+    result: [],
+    title: 'right = 0 (值 1)：新元素入队',
+    detail: '队列当前为空，直接将下标 0 (值 1) 追加到单调队列。窗口长度 1 < k=3，尚未装满，不产生输出。',
+  },
+  {
+    phase: 'eliminate',
+    phaseLabel: '淘汰弱势队尾',
+    right: 1,
+    windowStart: 0,
+    poppedTail: [{ idx: 0, val: 1 }],
+    poppedHead: null,
+    deque: [{ idx: 1, val: 3 }],
+    result: [],
+    title: 'right = 1 (值 3)：触发单调队尾淘汰',
+    detail: '新元素 3 >= 队尾元素 nums[0]=1。旧元素 0 既更早滑出窗口且数值更小，未来永无可能成为窗口最大值，直接从队尾淘汰弹出！随后下标 1 入队。',
+  },
+  {
+    phase: 'record',
+    phaseLabel: '满窗记录',
+    right: 2,
+    windowStart: 0,
+    poppedTail: [],
+    poppedHead: null,
+    deque: [{ idx: 1, val: 3 }, { idx: 2, val: -1 }],
+    result: [3],
+    title: 'right = 2 (值 -1)：窗口首满，队首即最大值',
+    detail: '新元素 -1 < 队尾 3，保持递减单调性，下标 2 直接入队。此时窗口 [0, 2] 长度恰好达到 k=3！队首下标 1 对应数值 3 即为当前窗口最大值，记录到答案。',
+  },
+  {
+    phase: 'record',
+    phaseLabel: '滑动窗口',
+    right: 3,
+    windowStart: 1,
+    poppedTail: [],
+    poppedHead: null,
+    deque: [{ idx: 1, val: 3 }, { idx: 2, val: -1 }, { idx: 3, val: -3 }],
+    result: [3, 3],
+    title: 'right = 3 (值 -3)：平移窗口至 [1, 3]',
+    detail: '下标 3 (值 -3) 进窗；左边界推进到 1。检查队首下标 1 >= left，未过期无需弹出。当前窗口 [1, 3] 最大值仍是队首 nums[1]=3。',
+  },
+  {
+    phase: 'expire_and_eliminate',
+    phaseLabel: '过期弹出 + 连续淘汰',
+    right: 4,
+    windowStart: 2,
+    poppedTail: [{ idx: 3, val: -3 }, { idx: 2, val: -1 }],
+    poppedHead: { idx: 1, val: 3 },
+    deque: [{ idx: 4, val: 5 }],
+    result: [3, 3, 5],
+    title: 'right = 4 (值 5)：队首过期滑出 + 队尾大清空',
+    detail: '左边界来到 2，队首下标 1 < left 已滑出窗口，执行 popleft()！同时新值 5 连续压制并弹出队尾的 -3 和 -1。下标 4 成为唯一霸主，记录最大值 5。',
+  },
+  {
+    phase: 'record',
+    phaseLabel: '滑动窗口',
+    right: 5,
+    windowStart: 3,
+    poppedTail: [],
+    poppedHead: null,
+    deque: [{ idx: 4, val: 5 }, { idx: 5, val: 3 }],
+    result: [3, 3, 5, 5],
+    title: 'right = 5 (值 3)：窗口平移至 [3, 5]',
+    detail: '新值 3 紧跟 5 保持单调递减入队。队首下标 4 在有效窗口 [3, 5] 内。记录当前队首 nums[4]=5。',
+  },
+  {
+    phase: 'eliminate',
+    phaseLabel: '强力淘汰',
+    right: 6,
+    windowStart: 4,
+    poppedTail: [{ idx: 5, val: 3 }, { idx: 4, val: 5 }],
+    poppedHead: null,
+    deque: [{ idx: 6, val: 6 }],
+    result: [3, 3, 5, 5, 6],
+    title: 'right = 6 (值 6)：新极大值连续清退队尾',
+    detail: '新值 6 大于队尾 3 和 5，两个旧候选均从队尾弹出！下标 6 入队独占队首。窗口 [4, 6] 记录最大值 6。',
+  },
+  {
+    phase: 'eliminate',
+    phaseLabel: '终局收官',
+    right: 7,
+    windowStart: 5,
+    poppedTail: [{ idx: 6, val: 6 }],
+    poppedHead: null,
+    deque: [{ idx: 7, val: 7 }],
+    result: [3, 3, 5, 5, 6, 7],
+    title: 'right = 7 (值 7)：处理末尾元素，全流程结束',
+    detail: '新值 7 淘汰队尾 6，下标 7 独占队列。窗口 [5, 7] 最大值 7。全数组仅遍历一遍，每个下标最多入队 1 次出队 1 次，严格 O(n) 时间！',
+  },
+];
+
+const SLIDING_WINDOW_MAX_STEPS_EN = [
+  {
+    phaseLabel: 'Push to Deque',
+    title: 'right = 0 (val 1): Push first element',
+    detail: 'Deque is currently empty; append index 0 (val 1). Window length 1 < k=3 (not full yet), no result recorded.',
+  },
+  {
+    phaseLabel: 'Tail Elimination',
+    title: 'right = 1 (val 3): Monotonic tail pop',
+    detail: 'New val 3 >= deque tail nums[0]=1. Index 0 is older and smaller, impossible to be max for any future window. Popped from tail! Then push index 1.',
+  },
+  {
+    phaseLabel: 'Window Full',
+    title: 'right = 2 (val -1): Window first full, record head',
+    detail: 'New val -1 < tail 3, preserving decreasing monotonicity; append index 2. Window [0, 2] reaches k=3! Front index 1 (val 3) is the window max.',
+  },
+  {
+    phaseLabel: 'Slide Window',
+    title: 'right = 3 (val -3): Window slides to [1, 3]',
+    detail: 'Index 3 (val -3) enters; left boundary advances to 1. Front index 1 >= left, so no eviction needed. Window [1, 3] max is front nums[1]=3.',
+  },
+  {
+    phaseLabel: 'Expire & Clean',
+    title: 'right = 4 (val 5): Front expiration + tail clean sweep',
+    detail: 'Left boundary moves to 2; front index 1 < left has expired, trigger popleft()! New val 5 dominates tails -3 and -1, popping both. Record max 5.',
+  },
+  {
+    phaseLabel: 'Slide Window',
+    title: 'right = 5 (val 3): Window slides to [3, 5]',
+    detail: 'Value 3 enters behind 5. Front index 4 is within valid window [3, 5]. Window max is front nums[4]=5.',
+  },
+  {
+    phaseLabel: 'Tail Sweep',
+    title: 'right = 6 (val 6): New dominant peak sweeps tail',
+    detail: 'New val 6 exceeds both 3 and 5, popping both older candidates from tail! Index 6 takes front. Window [4, 6] max is 6.',
+  },
+  {
+    phaseLabel: 'Final Element',
+    title: 'right = 7 (val 7): Process final element',
+    detail: 'New val 7 eliminates tail 6. Index 7 occupies front. Window [5, 7] max is 7. Every element enters and leaves deque at most once: strict O(n) amortized time!',
+  },
+];
+
+function SlidingWindowMaxVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = isEnglish
+    ? SLIDING_WINDOW_MAX_STEPS.map((step, index) => ({
+      ...step,
+      phaseLabel: SLIDING_WINDOW_MAX_STEPS_EN[index].phaseLabel,
+      title: SLIDING_WINDOW_MAX_STEPS_EN[index].title,
+      detail: SLIDING_WINDOW_MAX_STEPS_EN[index].detail,
+    }))
+    : SLIDING_WINDOW_MAX_STEPS;
+  const step = steps[activeStep];
+  const windowLength = step.right - step.windowStart + 1;
+
+  return (
+    <section className="sliding-window-max-visual" aria-label={t('单调队列滑动窗口最大值演示', 'Monotonic deque sliding window maximum walkthrough')}>
+      <header className="sliding-window-max-header">
+        <div>
+          <p className="eyebrow">{t('单调队列动态演示 · LC 239', 'Monotonic Deque Walkthrough · LC 239')}</p>
+          <h2>{t('队尾淘汰更弱者，队首按界滑出', 'Tail pops dominated candidates · Head expires by boundary')}</h2>
+          <p>{t('双端队列中下标严格递增，对应数值严格递减。队首元素恒为当前窗口最大值，均摊时间复杂度严格 O(n)。', 'Deque indices strictly increase while values strictly decrease. Front element is always the window maximum, running in strict O(n) amortized time.')}</p>
+        </div>
+        <div className="sliding-window-max-counter">{activeStep + 1}<span>/ {steps.length}</span></div>
+      </header>
+
+      <div className="sliding-window-max-step-banner">
+        <span className={`phase-badge ${step.phase}`}>{step.phaseLabel}</span>
+        <strong>{step.title}</strong>
+        <p>{step.detail}</p>
+      </div>
+
+      <div className="sliding-window-max-array-section">
+        <div className="section-label">
+          <span>{t('原输入数组 nums 与当前滑动窗口', 'Input array nums & current window')}</span>
+          <span className="window-pill">
+            {t('当前窗口：', 'Window: ')}
+            <strong>[{step.windowStart}, {step.right}]</strong>
+            {` (len = ${windowLength})`}
+          </span>
+        </div>
+        <div className="sliding-window-max-array" role="group" aria-label={t('nums 数组单元格', 'nums array cells')}>
+          {SLIDING_WINDOW_MAX_NUMS.map((val, idx) => {
+            const inWindow = idx >= step.windowStart && idx <= step.right;
+            const isLeft = idx === step.windowStart;
+            const isRight = idx === step.right;
+            return (
+              <div
+                key={idx}
+                className={`max-cell ${inWindow ? 'in-window' : ''} ${isRight ? 'current-right' : ''}`}
+              >
+                <span className="idx-tag">[{idx}]</span>
+                <strong className="val-text">{val}</strong>
+                <span className="pointer-markers">
+                  {isLeft && <b className="ptr-l">L</b>}
+                  {isRight && <b className="ptr-r">R</b>}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="sliding-window-max-deque-section">
+        <div className="section-label">
+          <span>{t('单调双端队列状态 deque (存下标)', 'Monotonic Deque state (stores indices)')}</span>
+          <span className="invariant-tip">
+            {t('不变量：队首最大，向右单调递减', 'Invariant: Front is MAX, strictly decreasing')}
+          </span>
+        </div>
+        <div className="deque-container">
+          <div className="deque-bracket-end left-end">
+            <span>{t('队首 (MAX)', 'Front (MAX)')}</span>
+            <small>popleft()</small>
+          </div>
+          <div className="deque-track">
+            {step.deque.map((item, dIdx) => (
+              <div key={item.idx} className={`deque-item ${dIdx === 0 ? 'is-max' : ''}`}>
+                <span className="d-idx">idx: {item.idx}</span>
+                <strong className="d-val">{item.val}</strong>
+                {dIdx === 0 && <span className="max-tag">MAX</span>}
+              </div>
+            ))}
+            {step.deque.length === 0 && (
+              <span className="empty-deque-hint">{t('队列为空', 'Deque empty')}</span>
+            )}
+          </div>
+          <div className="deque-bracket-end right-end">
+            <span>{t('队尾 (Tail)', 'Tail')}</span>
+            <small>pop() / push()</small>
+          </div>
+        </div>
+
+        {(step.poppedTail.length > 0 || step.poppedHead) && (
+          <div className="deque-evictions">
+            {step.poppedHead && (
+              <div className="evict-pill head-expired">
+                <span className="badge-tag">{t('队首过期滑出', 'Expired from Front')}</span>
+                <span>idx: {step.poppedHead.idx} ({step.poppedHead.val}) &lt; L={step.windowStart}</span>
+              </div>
+            )}
+            {step.poppedTail.map((p) => (
+              <div key={p.idx} className="evict-pill tail-dominated">
+                <span className="badge-tag">{t('队尾弱势淘汰', 'Popped from Tail')}</span>
+                <span>idx: {p.idx} (val: {p.val}) &le; nums[R]={SLIDING_WINDOW_MAX_NUMS[step.right]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="sliding-window-max-output-section">
+        <div className="section-label">
+          <span>{t('输出答案数组 answer', 'Collected Output answer')}</span>
+          <small>{t('仅在窗口满 k 时输出队首', 'Recorded only when window reaches k')}</small>
+        </div>
+        <div className="output-row">
+          <span className="output-bracket">[</span>
+          {step.result.map((ansVal, ansIdx) => {
+            const isNewest = ansIdx === step.result.length - 1 && windowLength >= SLIDING_WINDOW_MAX_K;
+            return (
+              <span key={ansIdx} className={`output-item ${isNewest ? 'newest' : ''}`}>
+                {ansVal}
+                {ansIdx < 5 ? ', ' : ''}
+              </span>
+            );
+          })}
+          {step.result.length === 0 && (
+            <span className="output-empty">{t('尚未产生输出 (窗口未达 k=3)', 'No output yet (window < 3)')}</span>
+          )}
+          <span className="output-bracket">]</span>
+        </div>
+      </div>
+
+      <div className="sliding-window-max-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((curr) => Math.max(0, curr - 1))}
+          disabled={activeStep === 0}
+        >
+          {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(e) => setActiveStep(Number(e.target.value))}
+          aria-label={t('选择滑动窗口最大值步骤', 'Select sliding window maximum step')}
+        />
+        <button
+          type="button"
+          onClick={() => setActiveStep((curr) => Math.min(steps.length - 1, curr + 1))}
           disabled={activeStep === steps.length - 1}
         >
           {t('下一步', 'Next')}
@@ -7918,6 +8284,589 @@ function AsyncMessagingArchitectureVisual() {
       </div>
 
       <footer className="messaging-rule"><span>{t('记忆规则', 'Rule of thumb')}</span><strong>{t('Queue / PubSub 是消费语义；Kafka、RabbitMQ、SQS 是承载语义的系统。', 'Queue and Pub/Sub describe consumption semantics; Kafka, RabbitMQ, and SQS are systems that implement them.')}</strong></footer>
+    </section>
+  );
+}
+
+function QueueVsStreamArchitectureVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'stream' | 'compare'
+  const [msg1Acked, setMsg1Acked] = useState(false);
+  const [backlogHigh, setBacklogHigh] = useState(false);
+  const [offsetA, setOffsetA] = useState(3);
+  const [offsetB, setOffsetB] = useState(7);
+
+  return (
+    <section className="queue-stream-visual" aria-label={t('消息队列 vs 事件总线架构对比演示', 'Message Queue vs Event Bus Architecture Demo')}>
+      <header className="queue-stream-header">
+        <div>
+          <p className="eyebrow">{t('消息与流架构深度对比', 'Messaging vs Streaming Internals')}</p>
+          <h3>
+            {activeTab === 'queue' && t('传统消息队列：细粒度状态机与阅后即焚', 'Message Queue: State Machine & Destructive Read')}
+            {activeTab === 'stream' && t('事件总线 / 日志流：分布式只追加日志与游标驱动', 'Event Bus: Append-Only Commit Log & Offset-Driven')}
+            {activeTab === 'compare' && t('底层架构机制对比矩阵', 'Underlying Architecture Comparison Matrix')}
+          </h3>
+          <p>
+            {activeTab === 'queue' && t('Broker 在内存中为每条消息维护 Ready/Unacked/Acked 状态；一旦确认物理删除。大量积压易触发内存换页崩溃。', 'Broker tracks Ready/Unacked/Acked states per message in RAM; deletes upon Ack. Heavy backlog triggers OS Page Swapping.')}
+            {activeTab === 'stream' && t('磁盘文件严格只追加顺序写；服务端完全无状态，消费者各自维护递增整型 Offset 独立扫描与重放。', 'Append-only sequential disk log; broker is stateless; independent consumers maintain numeric offsets for replay.')}
+            {activeTab === 'compare' && t('存储结构、状态维护者、零拷贝 I/O、消费竞争与积压耐受力等五大维度硬核对照。', 'Hardcore comparison across storage structures, state holders, zero-copy I/O, semantics, and backlog endurance.')}
+          </p>
+        </div>
+        <div className="arch-tabs" role="tablist" aria-label={t('切换视角', 'Switch view')}>
+          <button type="button" className={activeTab === 'queue' ? 'active' : ''} onClick={() => setActiveTab('queue')}>
+            {t('消息队列 (Queue)', 'Message Queue')}
+          </button>
+          <button type="button" className={activeTab === 'stream' ? 'active' : ''} onClick={() => setActiveTab('stream')}>
+            {t('事件总线 (Stream)', 'Event Bus / Stream')}
+          </button>
+          <button type="button" className={activeTab === 'compare' ? 'active' : ''} onClick={() => setActiveTab('compare')}>
+            {t('对比矩阵 (Matrix)', 'Comparison Matrix')}
+          </button>
+        </div>
+      </header>
+
+      {activeTab === 'queue' && (
+        <>
+          <div className="queue-stream-actions">
+            <button
+              type="button"
+              className="queue-stream-btn"
+              onClick={() => setMsg1Acked(true)}
+              disabled={msg1Acked}
+            >
+              {msg1Acked ? t('✓ Worker 1 已确认 ACK(Msg 1)', '✓ Worker 1 Acked Msg 1') : t('⚡ Worker 1 消费并发送 ACK(Msg 1)', '⚡ Worker 1 Ack(Msg 1)')}
+            </button>
+            <button
+              type="button"
+              className={`queue-stream-btn ${backlogHigh ? 'warning' : ''}`}
+              onClick={() => setBacklogHigh(!backlogHigh)}
+            >
+              {backlogHigh ? t('💥 积压已模拟 (恢复正常)', '💥 Clear Backlog Simulation') : t('⚠️ 模拟 100 万并发消息严重积压', '⚠️ Simulate 1M Message Backlog')}
+            </button>
+            <button
+              type="button"
+              className="queue-stream-btn"
+              onClick={() => { setMsg1Acked(false); setBacklogHigh(false); }}
+            >
+              {t('↺ 重置状态', '↺ Reset')}
+            </button>
+          </div>
+
+          <div className="queue-stream-canvas">
+            {backlogHigh && (
+              <div className="backlog-alert" role="alert">
+                <span>⚠️</span>
+                <span>
+                  {t(
+                    '严重警告：内存中的动态链表暴增至 1,240,000 条，物理 RAM 耗尽！Linux 内核强制触发 Page Swapping（频繁磁盘换页），Broker 陷入锁等待，写吞吐断崖式暴跌 85%！',
+                    'Severe Warning: In-memory linked list ballooned to 1.24M msgs, exhausting RAM! Linux triggers Page Swapping; Broker locks up, write throughput collapses by 85%!'
+                  )}
+                </span>
+              </div>
+            )}
+
+            <div className="broker-box">
+              <div className="broker-title">
+                <span>{t('MESSAGE QUEUE BROKER · 内存链表与状态跟踪', 'MESSAGE QUEUE BROKER · IN-MEMORY QUEUE & STATE TRACKING')}</span>
+                <small>{backlogHigh ? t('状态: 内存暴涨换页中', 'STATUS: RAM SWAPPING') : t('状态: 正常运行', 'STATUS: HEALTHY')}</small>
+              </div>
+
+              <div className="mq-message-list">
+                <div className="mq-msg-card ready">
+                  <div className="status-badge ready">READY</div>
+                  <strong>Msg 4</strong>
+                  <small>{t('等待空闲 Worker', 'Waiting for worker')}</small>
+                </div>
+                <div className="mq-msg-card ready">
+                  <div className="status-badge ready">READY</div>
+                  <strong>Msg 3</strong>
+                  <small>{t('等待空闲 Worker', 'Waiting for worker')}</small>
+                </div>
+                <div className="mq-msg-card unacked">
+                  <div className="status-badge unacked">UNACKED</div>
+                  <strong>Msg 2</strong>
+                  <small>{t('租约锁定中 (Worker 2)', 'Leased to Worker 2')}</small>
+                </div>
+                <div className={`mq-msg-card ${msg1Acked ? 'deleted' : 'unacked'}`}>
+                  <div className={`status-badge ${msg1Acked ? 'deleted' : 'unacked'}`}>
+                    {msg1Acked ? t('物理删除', 'DELETED') : 'UNACKED'}
+                  </div>
+                  <strong>Msg 1</strong>
+                  <small>{msg1Acked ? t('阅后即焚: 内存与索引已擦除', 'Destructive Read: Purged from RAM') : t('处理中 (Worker 1)', 'Leased to Worker 1')}</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="workers-row">
+              <div className="worker-node-card">
+                <strong>Worker 1 (Task Consumer)</strong>
+                <span>{msg1Acked ? t('已回执 ACK(Msg 1)，消息被 Broker 抹除', 'Sent ACK(Msg 1); broker purged message') : t('正在执行 Msg 1 业务副作用...', 'Processing Msg 1 business effects...')}</span>
+              </div>
+              <div className="worker-node-card">
+                <strong>Worker 2 (Task Consumer)</strong>
+                <span>{t('正在执行 Msg 2 业务副作用 (租约 30s 倒计时)', 'Processing Msg 2 with 30s lease timeout')}</span>
+              </div>
+            </div>
+
+            <div className="pillars-grid">
+              <div className="pillar-card">
+                <strong>1. 细粒度状态机 (Server-side State)</strong>
+                <p>{t('Broker 内存为每条消息维护 Ready、Unacked、Acked 状态，重试超限进 DLQ。', 'Broker tracks Ready, Unacked, Acked states per message, escalating to DLQ on max retry.')}</p>
+              </div>
+              <div className="pillar-card">
+                <strong>2. 点对点竞争抢占 (Competing Consumers)</strong>
+                <p>{t('Worker 之间是竞争关系，单条消息仅派发给单一 Worker 消费。', 'Workers compete for tasks; each task is claimed and processed by exactly one worker.')}</p>
+              </div>
+              <div className="pillar-card">
+                <strong>3. 阅后即焚 (Destructive Read)</strong>
+                <p>{t('收到 ACK 回执后，消息索引和内存数据被立即清除，无法重放。', 'ACK triggers physical purging of memory and disk indexes; historical replay is impossible.')}</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'stream' && (
+        <>
+          <div className="queue-stream-actions">
+            <button
+              type="button"
+              className="queue-stream-btn"
+              onClick={() => setOffsetA(Math.min(offsetA + 1, 9))}
+            >
+              {t(`⚡ 推进 Group A 游标 (当前 Offset = ${offsetA})`, `⚡ Advance Group A Offset (Currently ${offsetA})`)}
+            </button>
+            <button
+              type="button"
+              className="queue-stream-btn"
+              onClick={() => setOffsetB(0)}
+            >
+              {t('↺ Group B 游标回退至 0 (Offset Rewind 历史重放)', '↺ Rewind Group B to 0 (History Replay)')}
+            </button>
+            <button
+              type="button"
+              className="queue-stream-btn"
+              onClick={() => { setOffsetA(3); setOffsetB(7); }}
+            >
+              {t('↺ 重置游标', '↺ Reset Offsets')}
+            </button>
+          </div>
+
+          <div className="queue-stream-canvas">
+            <div className="broker-box">
+              <div className="broker-title">
+                <span>{t('KAFKA / PULSAR BROKER · 物理磁盘 COMMIT LOG (PARTITION 0: 00000.LOG)', 'KAFKA / PULSAR BROKER · PHYSICAL COMMIT LOG (PARTITION 0: 00000.LOG)')}</span>
+                <small>{t('顺序追加写 · 零拷贝传输', 'APPEND-ONLY · ZERO-COPY SENDFILE')}</small>
+              </div>
+
+              <div className="stream-log-strip">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((idx) => {
+                  const isA = offsetA === idx;
+                  const isB = offsetB === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className={`stream-slot ${isA ? 'has-pointer-a' : ''} ${isB ? 'has-pointer-b' : ''}`}
+                    >
+                      <span>{idx}</span>
+                      {isA && <span className="stream-cursor-tag tag-a">{t(`Group A: ${offsetA}`, `Grp A: ${offsetA}`)}</span>}
+                      {isB && <span className="stream-cursor-tag tag-b">{t(`Group B: ${offsetB}`, `Grp B: ${offsetB}`)}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="workers-row">
+              <div className="worker-node-card">
+                <strong>Consumer Group A (Push Service)</strong>
+                <span>{t(`持有独立游标 Offset = ${offsetA}，通过 OS PageCache 非破坏性顺序读`, `Owns independent Offset = ${offsetA}, non-destructive read via PageCache`)}</span>
+              </div>
+              <div className="worker-node-card">
+                <strong>Consumer Group B (Runner Gateway)</strong>
+                <span>{t(`持有独立游标 Offset = ${offsetB}，可随意回退游标重新消费旧日志`, `Owns independent Offset = ${offsetB}, rewinds freely for replay`)}</span>
+              </div>
+            </div>
+
+            <div className="pillars-grid">
+              <div className="pillar-card">
+                <strong>1. 磁盘只追加写 (Append-Only Log)</strong>
+                <p>{t('消息顺序写入物理 Log Segment，充分利用磁盘数百 MB/s 连续写带宽。', 'Messages append sequentially to log segments, maxing out disk continuous write bandwidth.')}</p>
+              </div>
+              <div className="pillar-card">
+                <strong>2. 服务端无状态与游标驱动 (Offset Driven)</strong>
+                <p>{t('Broker 不记录每条消息状态，仅保存整型 Offset；读取为非破坏性读取。', 'Broker stores no per-message state, only integer offsets; reads are strictly non-destructive.')}</p>
+              </div>
+              <div className="pillar-card">
+                <strong>3. 多租户独立扇出 (Pub/Sub Fan-out)</strong>
+                <p>{t('Group A 与 Group B 并发扫描同一份物理文件，互不干扰、互不阻塞。', 'Groups A & B scan the identical physical file concurrently without contention or blocking.')}</p>
+              </div>
+              <div className="pillar-card">
+                <strong>4. 绝对积压免疫 (Backlog Tolerance)</strong>
+                <p>{t('积压 1 条与积压 1 亿条对写入性能几乎恒定，基于时间滚动清理。', 'Backlog of 1 vs 100M messages has near-zero impact on append performance; cleaned by time.')}</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'compare' && (
+        <div className="queue-stream-canvas">
+          <table className="qs-comparison-table">
+            <thead>
+              <tr>
+                <th>{t('对比维度', 'DIMENSION')}</th>
+                <th>{t('传统消息队列 (Message Queue: RabbitMQ)', 'MESSAGE QUEUE (RABBITMQ)')}</th>
+                <th>{t('事件总线 / 日志流 (Event Bus / Stream: Kafka)', 'EVENT BUS / STREAM (KAFKA)')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>{t('存储数据结构', 'Storage Structure')}</strong></td>
+                <td>{t('内存优先的双向链表 / B-Tree 索引', 'Memory-first doubly linked list / B-Tree index')}</td>
+                <td>{t('磁盘文件顺序追加的 Commit Log', 'Disk-based append-only sequential commit log')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('状态维护者', 'State Holder')}</strong></td>
+                <td>{t('Broker 端（重）：追踪每条消息的 Ready/Unacked/Acked 状态', 'Broker-side (Heavy): tracks Ready/Unacked/Acked per message')}</td>
+                <td>{t('Client 端 / 集中存储（轻）：仅记录一个递增 Offset 游标数值', 'Client-side (Light): merely tracks an incrementing numeric Offset')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('读取性能实现', 'Read Performance')}</strong></td>
+                <td>{t('内存对象遍历与加锁；容易触发 Page Swapping 磁盘换页', 'In-memory locks & traversal; prone to OS page-swapping thrashing')}</td>
+                <td>{t('OS PageCache + sendfile() 零拷贝，直接走网卡 DMA 传输', 'OS PageCache + sendfile() zero-copy direct to NIC DMA')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('订阅语义', 'Subscription Semantics')}</strong></td>
+                <td>{t('点对点竞争（Competing Consumers），一条被认领则其余不可见', 'Competing consumers: once claimed, invisible to other workers')}</td>
+                <td>{t('发布-订阅（Pub-Sub），多个 Consumer Group 独立并发读取同一份数据', 'Pub/Sub: multiple consumer groups independently scan identical logs')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('积压耐受力', 'Backlog Tolerance')}</strong></td>
+                <td>{t('较差：积压导致队列管理开销激增、内存耗尽、性能断崖式恶化', 'Poor: queue management explodes, RAM exhausts, performance plunges')}</td>
+                <td>{t('极佳：积压 1 条与积压 1 亿条对写入性能几乎零影响', 'Exceptional: 1 vs 100M message backlog has near-zero write degradation')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function NewSqlArchitectureVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeTab, setActiveTab] = useState('blueprint'); // 'blueprint' | 'sim' | 'matrix'
+  const [simScenario, setSimScenario] = useState('local'); // 'local' | 'cross' | 'rebalance'
+  const [rebalanced, setRebalanced] = useState(false);
+
+  return (
+    <section className="newsql-visual" aria-label={t('NewSQL 分布式数据库架构对比演示', 'NewSQL vs Sharded RDBMS Architecture Demo')}>
+      <header className="newsql-header">
+        <div>
+          <p className="eyebrow">{t('分布式存储基础设施选型', 'Distributed Data Infrastructure')}</p>
+          <h3>
+            {activeTab === 'blueprint' && t('架构全景对照：分库分表 (Sharded RDBMS) vs 原生分布式 (NewSQL)', 'Architectural Blueprint: Sharded RDBMS vs NewSQL')}
+            {activeTab === 'sim' && t('交互式读写与弹性再平衡演练', 'Interactive Query Execution & Elastic Rebalance')}
+            {activeTab === 'matrix' && t('七维核心指标全景权衡决策矩阵', 'Seven-Dimension Architectural Trade-off Matrix')}
+          </h3>
+          <p>
+            {activeTab === 'blueprint' && t('分库分表依赖中间件路由至单体库（Shared-Nothing）；NewSQL 原生计算存储分离并通过 Multi-Raft 维护按范围切分的数百个 Region。', 'Sharded RDBMS relies on proxy routing to isolated single instances; NewSQL natively decouples compute from Multi-Raft range-based storage.')}
+            {activeTab === 'sim' && t('实时模拟单分片单仓库点查、跨分片大租户聚合与存储节点动态扩容再平衡的数据流向与延迟差异。', 'Simulate single-repo point queries, cross-shard aggregations, and zero-downtime node addition rebalancing.')}
+            {activeTab === 'matrix' && t('从物理存储结构、事务实现、扩容代价到硬件成本等七大维度深度对比选型。', 'Comprehensive comparison across physical layout, transactions, resharding, and infrastructure TCO.')}
+          </p>
+        </div>
+        <div className="newsql-tabs" role="tablist" aria-label={t('切换视角', 'Switch view')}>
+          <button type="button" className={activeTab === 'blueprint' ? 'active' : ''} onClick={() => setActiveTab('blueprint')}>
+            {t('全局架构对比', 'Blueprint')}
+          </button>
+          <button type="button" className={activeTab === 'sim' ? 'active' : ''} onClick={() => setActiveTab('sim')}>
+            {t('动态流向演练', 'Query Flow & Scaling')}
+          </button>
+          <button type="button" className={activeTab === 'matrix' ? 'active' : ''} onClick={() => setActiveTab('matrix')}>
+            {t('权衡决策矩阵', 'Trade-off Matrix')}
+          </button>
+        </div>
+      </header>
+
+      {activeTab === 'blueprint' && (
+        <div className="newsql-blueprint-grid">
+          {/* Left: Sharded RDBMS */}
+          <div className="newsql-side-card">
+            <div className="newsql-side-header">
+              <strong>{t('方案 A: 分库分表 (Sharded RDBMS)', 'Path A: Sharded RDBMS')}</strong>
+              <span className="newsql-badge sharded">{t('SHARED-NOTHING 单体聚合', 'SHARED-NOTHING')}</span>
+            </div>
+            <div className="newsql-layer-stack">
+              <div className="newsql-layer-box">
+                <div className="newsql-layer-title">
+                  <span>{t('1. 接入层 (Application Client)', '1. Application Client')}</span>
+                </div>
+                <code>POST /runs (tenant_id: 'org1', repo_id: 42)</code>
+              </div>
+              <div className="newsql-layer-box">
+                <div className="newsql-layer-title">
+                  <span>{t('2. 中间件代理层 (Vitess / ShardingSphere)', '2. Proxy Middleware')}</span>
+                  <span className="tag">Hash Routing</span>
+                </div>
+                <small>{t('SQL 解析提取分片键: repo_id % 3 -> 路由目标 Shard 1', 'Extracts sharding key: repo_id % 3 -> targets Shard 1')}</small>
+              </div>
+              <div className="newsql-layer-box">
+                <div className="newsql-layer-title">
+                  <span>{t('3. 物理单体存储层 (Independent MySQL / PG)', '3. Storage Shards')}</span>
+                  <span className="tag">InnoDB Engines</span>
+                </div>
+                <div className="newsql-nodes-row">
+                  <div className="newsql-node-item">
+                    <strong>Shard 0</strong>
+                    <small>MySQL 1</small>
+                    <span className="region-chip follower">120 GB</span>
+                  </div>
+                  <div className="newsql-node-item skew-warning">
+                    <strong>Shard 1 ⚠️</strong>
+                    <small>MySQL 2 (倾斜)</small>
+                    <span className="region-chip leader">890 GB</span>
+                  </div>
+                  <div className="newsql-node-item">
+                    <strong>Shard 2</strong>
+                    <small>MySQL 3</small>
+                    <span className="region-chip follower">130 GB</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul className="newsql-callout-list">
+              <li>{t('⚡ 单仓库访问：单分片本地 B+Tree 引擎，1-2ms 极速响应。', 'Single repo queries hit local B+Tree with ultra-low 1-2ms latency.')}</li>
+              <li>{t('⚠️ 跨分片聚合：Proxy 广播拉取全量行在内存拼装，极易 OOM (150ms+)。', 'Cross-shard queries require proxy scatter-gather with high memory pressure.')}</li>
+              <li>{t('💥 扩容痛点：增加分片需人工双写、全量校验、停机切片，周期数周。', 'Adding shards demands painful manual dual-writes, data validation, and cutovers.')}</li>
+            </ul>
+          </div>
+
+          {/* Right: NewSQL */}
+          <div className="newsql-side-card">
+            <div className="newsql-side-header">
+              <strong>{t('方案 B: 原生分布式 (NewSQL / Distributed SQL)', 'Path B: NewSQL')}</strong>
+              <span className="newsql-badge newsql">{t('计算存储分离 + MULTI-RAFT', 'DECOUPLED + MULTI-RAFT')}</span>
+            </div>
+            <div className="newsql-layer-stack">
+              <div className="newsql-layer-box highlight-compute">
+                <div className="newsql-layer-title">
+                  <span>{t('1. 无状态计算层 (TiDB / Cockroach SQL Nodes)', '1. Stateless SQL Nodes')}</span>
+                  <span className="tag">Scale Out (秒级)</span>
+                </div>
+                <small>{t('分布式优化器 (CBO) · 算子下推 · 并行执行计划生成', 'Cost-Based Optimizer · Coprocessor Pushdown · Parallel Execution')}</small>
+              </div>
+              <div className="newsql-layer-box">
+                <div className="newsql-layer-title">
+                  <span>{t('2. 元数据与时钟中心 (PD / HLC / TrueTime)', '2. Placement Driver / Clock')}</span>
+                  <span className="tag">Global TSO</span>
+                </div>
+                <small>{t('分配全局单调时间戳 · 维护 Region 路由表 [Key_start, Key_end)', 'Monotonic timestamp allocator · Maintains Region routing metadata')}</small>
+              </div>
+              <div className="newsql-layer-box highlight-storage">
+                <div className="newsql-layer-title">
+                  <span>{t('3. 分布式存储引擎 (TiKV / RocksDB LSM-Tree)', '3. Distributed Storage')}</span>
+                  <span className="tag">Multi-Raft Groups</span>
+                </div>
+                <div className="newsql-nodes-row">
+                  <div className="newsql-node-item">
+                    <strong>TiKV Node 1</strong>
+                    <div className="region-tags">
+                      <span className="region-chip leader">R1 ★</span>
+                      <span className="region-chip follower">R2 ○</span>
+                      <span className="region-chip follower">R3 ○</span>
+                    </div>
+                  </div>
+                  <div className="newsql-node-item">
+                    <strong>TiKV Node 2</strong>
+                    <div className="region-tags">
+                      <span className="region-chip follower">R1 ○</span>
+                      <span className="region-chip leader">R2 ★</span>
+                      <span className="region-chip follower">R3 ○</span>
+                    </div>
+                  </div>
+                  <div className="newsql-node-item">
+                    <strong>TiKV Node 3</strong>
+                    <div className="region-tags">
+                      <span className="region-chip follower">R1 ○</span>
+                      <span className="region-chip follower">R2 ○</span>
+                      <span className="region-chip leader">R3 ★</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul className="newsql-callout-list">
+              <li>{t('🚀 算子下推 (Coprocessor)：过滤与聚合在存储节点并行就地执行。', 'Predicates & aggregations push down to TiKV coprocessors in parallel.')}</li>
+              <li>{t('🛡️ Multi-Raft 强一致：每个 Region 独立选举 Leader，多数派共识 RPO=0。', 'Multi-Raft guarantees zero data loss (RPO=0) via per-region quorums.')}</li>
+              <li>{t('🔄 自动切片与再平衡：Region 满 96MB 自动分裂，新机加入自动迁移。', 'Regions auto-split at 96MB threshold and rebalance with zero application lock.')}</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'sim' && (
+        <div className="newsql-sim-wrap">
+          <div className="newsql-sim-selector" role="tablist" aria-label={t('选择模拟场景', 'Select Simulation Scenario')}>
+            <button
+              type="button"
+              className={`newsql-sim-btn ${simScenario === 'local' ? 'active' : ''}`}
+              onClick={() => { setSimScenario('local'); setRebalanced(false); }}
+            >
+              🎯 {t('场景 1: 单仓库本地点查 (repo_id = 42)', 'Scenario 1: Single Repo Point Query')}
+            </button>
+            <button
+              type="button"
+              className={`newsql-sim-btn ${simScenario === 'cross' ? 'active' : ''}`}
+              onClick={() => { setSimScenario('cross'); setRebalanced(false); }}
+            >
+              📊 {t('场景 2: 跨分片大租户聚合 (tenant_id = "org_alpha")', 'Scenario 2: Cross-Shard Aggregation')}
+            </button>
+            <button
+              type="button"
+              className={`newsql-sim-btn ${simScenario === 'rebalance' ? 'active' : ''}`}
+              onClick={() => setSimScenario('rebalance')}
+            >
+              ⚡ {t('场景 3: 扩容新增存储节点 (Add Node 4)', 'Scenario 3: Add Storage Node')}
+            </button>
+          </div>
+
+          <div className="newsql-sim-card">
+            {simScenario === 'local' && (
+              <>
+                <div className="newsql-sim-header">
+                  <strong>{t('执行语句: SELECT * FROM workflow_run WHERE repo_id = 42 AND commit_SHA = "a1b2c3"', 'Executed: SELECT * FROM workflow_run WHERE repo_id = 42 AND commit_SHA = "a1b2c3"')}</strong>
+                  <span className="newsql-sim-metric fast">{t('单仓库闭环访问', 'Colocated Point Query')}</span>
+                </div>
+                <div className="newsql-sim-grid">
+                  <div className="newsql-sim-col">
+                    <h4>{t('分库分表 (Sharded RDBMS)', 'Sharded RDBMS')}</h4>
+                    <p>{t('中间件根据哈希直接定位到 Shard 1。单机 MySQL 走主键索引扫描，无跨网络共识。', 'Middleware routes directly to Shard 1 via hash. MySQL executes local B+Tree index scan.')}</p>
+                    <strong>{t('延迟: 1.2 ms | 网络传输: 1 次往返', 'Latency: 1.2 ms | Network: 1 RTT')}</strong>
+                  </div>
+                  <div className="newsql-sim-col">
+                    <h4>{t('NewSQL (TiDB / CockroachDB)', 'NewSQL')}</h4>
+                    <p>{t('SQL 节点解析 SQL，向 PD 获取 Region 1 Leader 所在物理机，走内部 gRPC 请求 TiKV 1。', 'SQL node parses query, resolves Region 1 Leader from PD cache, fetches from TiKV 1 via gRPC.')}</p>
+                    <strong>{t('延迟: 3.5 ms | 网络传输: 2 次网络 RPC', 'Latency: 3.5 ms | Network: 2 RPC hops')}</strong>
+                  </div>
+                </div>
+                <div className="newsql-sim-verdict">
+                  💡 {t('核心结论：在单仓库强局部性读写场景下，Sharded RDBMS 凭借单机原生存储引擎略占优势（约 2ms 优势）。', 'Verdict: In single-repo localized queries, Sharded RDBMS holds a slight edge (~2ms advantage) due to zero consensus overhead.')}
+                </div>
+              </>
+            )}
+
+            {simScenario === 'cross' && (
+              <>
+                <div className="newsql-sim-header">
+                  <strong>{t('执行语句: SELECT count(*), sum(duration) FROM workflow_run WHERE tenant_id = "org_alpha"', 'Executed: SELECT count(*), sum(duration) FROM workflow_run WHERE tenant_id = "org_alpha"')}</strong>
+                  <span className="newsql-sim-metric slow">{t('跨分片全局分析', 'Cross-Shard Scatter-Gather')}</span>
+                </div>
+                <div className="newsql-sim-grid">
+                  <div className="newsql-sim-col">
+                    <h4>{t('分库分表 (Sharded RDBMS)', 'Sharded RDBMS')}</h4>
+                    <p>{t('Proxy 无法通过分片键裁剪，被迫向 Shard 0/1/2 全部分片广播（Scatter-Gather）。拉取 80,000 行原始明细在 Proxy 内存中累加计算，极易 OOM。', 'Proxy scatters query across all shards; transfers 80k raw rows over network; merges in proxy RAM, risking OOM.')}</p>
+                    <strong>{t('延迟: 185 ms | 网络传输: 80,000 行原始数据 (45 MB)', 'Latency: 185 ms | Transfer: 80k rows (45 MB)')}</strong>
+                  </div>
+                  <div className="newsql-sim-col">
+                    <h4>{t('NewSQL (TiDB / CockroachDB)', 'NewSQL')}</h4>
+                    <p>{t('优化器将 count() 和 sum() 算子直接下推（Coprocessor）到所有 TiKV 节点并行执行。各节点就地计算后仅向上返回 3 条聚合数字汇总。', 'Optimizer pushes count/sum down to TiKV coprocessors in parallel; storage nodes return only 3 aggregated scalar records.')}</p>
+                    <strong>{t('延迟: 14 ms | 网络传输: 仅 3 个标量数值 (1 KB)', 'Latency: 14 ms | Transfer: 3 scalar numbers (1 KB)')}</strong>
+                  </div>
+                </div>
+                <div className="newsql-sim-verdict">
+                  💡 {t('核心结论：跨分片与聚合场景下，NewSQL 的分布式算子下推展现出降维打击能力，网络传输减少 99.9%，延迟降低 10 倍以上！', 'Verdict: In cross-partition aggregations, NewSQL coprocessor pushdown cuts network traffic by 99.9% and slashes latency by 10x!')}
+                </div>
+              </>
+            )}
+
+            {simScenario === 'rebalance' && (
+              <>
+                <div className="newsql-sim-header">
+                  <strong>{t('操作事件: 物理机房上架新存储节点 [TiKV Node 4 / Shard 3]', 'Action: Provision new hardware storage node [TiKV Node 4 / Shard 3]')}</strong>
+                  <button
+                    type="button"
+                    className="newsql-sim-btn active"
+                    onClick={() => setRebalanced(!rebalanced)}
+                  >
+                    {rebalanced ? t('↺ 重置节点状态', '↺ Reset Nodes') : t('⚡ 触发自动再平衡 (Raft Rebalance)', '⚡ Trigger Auto Rebalance')}
+                  </button>
+                </div>
+                <div className="newsql-sim-grid">
+                  <div className="newsql-sim-col">
+                    <h4>{t('分库分表 (Sharded RDBMS)', 'Sharded RDBMS')}</h4>
+                    <p>{t('需要工程师启动长达 2 周的重分片项目：修改分片哈希算法、开启应用双写、全量历史数据 Dump 与 Binlog 增量追齐、一致性校验校验锁表切换。', 'Demands a multi-week migration project: update hash algorithm, dual-writes, binlog replication sync, data validation, and maintenance window cutover.')}</p>
+                    <strong>{t('运维代价: 极高 | 业务影响: 存在锁表与停机风险', 'Ops Cost: Extremely High | Risk: Table locks & downtime')}</strong>
+                  </div>
+                  <div className="newsql-sim-col">
+                    <h4>{t('NewSQL (TiDB / CockroachDB)', 'NewSQL')}</h4>
+                    <p>
+                      {rebalanced
+                        ? t('【再平衡完成】PD 调度器检测到 Node 4 空闲，自动将 Region 3 的 Follower 副本通过 Raft Snapshot 迁移至 Node 4，无需停机！', '[Rebalance Complete] PD detected idle Node 4; migrated Region 3 replica via Raft Snapshot with zero downtime!')
+                        : t('节点加入集群后向 PD 发送心跳。点击上方按钮可观察底层通过 Raft 自动迁移副本的过程。', 'Node joins and heartbeats to PD. Click button above to watch automated Raft replica migration.')}
+                    </p>
+                    <strong>{rebalanced ? t('状态: 4 节点负载均衡 | 业务影响: 0 秒停机', 'Status: Balanced across 4 nodes | Downtime: 0s') : t('状态: 等待迁移指令', 'Status: Waiting for trigger')}</strong>
+                  </div>
+                </div>
+                <div className="newsql-sim-verdict">
+                  💡 {t('核心结论：NewSQL 的细粒度 Region + Multi-Raft 彻底终结了关系型数据库十余年来的重分片噩梦。', 'Verdict: Fine-grained Regions and Multi-Raft eradicate the decadal re-sharding nightmare of relational databases.')}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'matrix' && (
+        <div className="queue-stream-canvas">
+          <table className="qs-comparison-table">
+            <thead>
+              <tr>
+                <th>{t('对比维度', 'DIMENSION')}</th>
+                <th>{t('分库分表 (Sharded RDBMS: Vitess / MySQL)', 'SHARDED RDBMS (VITESS + MYSQL)')}</th>
+                <th>{t('原生分布式 (NewSQL: TiDB / CockroachDB)', 'NEWSQL (TIDB / COCKROACHDB)')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>{t('底层存储结构', 'Storage Architecture')}</strong></td>
+                <td>{t('Shared-Nothing 独立单体实例组合，物理库表强割裂', 'Shared-Nothing isolated instances; physical schema fragmentation')}</td>
+                <td>{t('计算存储分离，全局划分为数万个有序 Range/Region', 'Decoupled compute & storage; tens of thousands of sorted Regions')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('单分片极值延迟', 'Single Shard Latency')}</strong></td>
+                <td>{t('1 - 2 ms（成熟 B+Tree 单机引擎，无网络共识）', '1 - 2 ms (Mature local B+Tree, zero consensus network RTT)')}</td>
+                <td>{t('3 - 10 ms（跨节点 Raft/Paxos 多数派落盘往返）', '3 - 10 ms (Cross-node Raft/Paxos majority write network RTT)')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('弹性扩容与重分片', 'Elastic Resharding')}</strong></td>
+                <td>{t('极度痛苦：人工数据双写、全量迁移、灰度切片锁表', 'Painful: manual dual-writes, binlog catch-up, cutover lock risk')}</td>
+                <td>{t('原生自动：新增机器底层自动通过 Raft 迁移 Region 副本', 'Automated: new nodes trigger automatic Raft replica migration')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('跨分片事务与聚合', 'Cross-Shard Queries')}</strong></td>
+                <td>{t('能力极弱：XA 事务性能暴跌；跨分片拉全量数据易 OOM', 'Severely limited: 2PC/XA performance cliff; proxy memory exhaustion')}</td>
+                <td>{t('原生强支持：分布式查询优化器将算子下推存储并行计算', 'Native: optimizer pushes filters and aggregations to storage nodes')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('大租户数据倾斜', 'Data Skew Handling')}</strong></td>
+                <td>{t('无法自愈：单一巨型仓库打满单 Shard 磁盘与 CPU', 'Unresolvable: giant tenant saturates single shard disk and CPU')}</td>
+                <td>{t('动态打散：自动将巨型表切分成多个 Region 分布到不同物理机', 'Dynamic balance: table sliced across multiple Regions on distinct nodes')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('运维与排障心智', 'Operational Simplicity')}</strong></td>
+                <td>{t('成熟简单：数十年工业界检验，单机排障工具链极其完善', 'Mature & simple: decades of production tooling and muscle memory')}</td>
+                <td>{t('系统复杂：需深谙 Raft 状态机、分布式死锁与时钟漂移排查', 'Complex: demands deep mastery of Raft consensus, HLC, and tracing')}</td>
+              </tr>
+              <tr>
+                <td><strong>{t('硬件与基础设施 TCO', 'Hardware & TCO')}</strong></td>
+                <td>{t('较低：资源利用率精准，普通中配机器即可支撑', 'Lower: predictable resource utilization on commodity hardware')}</td>
+                <td>{t('较高：存储多副本共识与 LSM-Tree 写放大需要 NVMe 与万兆网', 'Higher: multi-replica consensus & LSM write amplification need NVMe')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -28268,7 +29217,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -28296,6 +29245,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'sliding-window-demo') {
     return <SlidingWindowVisual />;
+  }
+
+  if (match?.[1] === 'sliding-window-max-demo') {
+    return <SlidingWindowMaxVisual />;
   }
 
   if (match?.[1] === 'longest-substring-demo') {
@@ -28480,6 +29433,14 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'async-messaging-architecture-visual') {
     return <AsyncMessagingArchitectureVisual />;
+  }
+
+  if (match?.[1] === 'queue-vs-stream-visual') {
+    return <QueueVsStreamArchitectureVisual />;
+  }
+
+  if (match?.[1] === 'newsql-architecture-visual') {
+    return <NewSqlArchitectureVisual />;
   }
 
   if (match?.[1] === 'virtualization-container-visual') {
@@ -29575,6 +30536,7 @@ function App() {
   const [pendingHeadingId, setPendingHeadingId] = useState(initialRoute.headingId ?? null);
   const [language, setLanguage] = useState('zh');
   const [query, setQuery] = useState('');
+  const [systemDesignFilter, setSystemDesignFilter] = useState('all');
   const [contentByKey, setContentByKey] = useState({});
   const [errorByKey, setErrorByKey] = useState({});
   const inFlightRef = useRef(new Set());
@@ -29598,17 +30560,21 @@ function App() {
   const activeSectionNotes = tutorials.filter((tutorial) => tutorial.sectionId === selectedSection?.id);
 
   const filteredTutorials = useMemo(() => {
+    let notes = activeSectionNotes;
+    if (selectedSection?.id === 'system-design' && systemDesignFilter !== 'all') {
+      notes = notes.filter((t) => t.category === systemDesignFilter);
+    }
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
-      return activeSectionNotes;
+      return notes;
     }
 
-    return activeSectionNotes.filter((tutorial) =>
+    return notes.filter((tutorial) =>
       [tutorial.title, tutorial.titleEn, tutorial.fileName, tutorial.enFileName]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(normalizedQuery)),
     );
-  }, [activeSectionNotes, query]);
+  }, [activeSectionNotes, query, selectedSection?.id, systemDesignFilter]);
 
   const selectedTutorial =
     tutorials.find((tutorial) => tutorial.id === selectedTutorialId) ?? filteredTutorials[0] ?? tutorials[0] ?? null;
@@ -29703,13 +30669,17 @@ function App() {
 
   const navigateToSection = (sectionId) => {
     const section = noteSections.find((candidate) => candidate.id === sectionId);
-    const nextId = section?.notes[0]?.id ?? tutorials[0]?.id ?? '';
+    const defaultNote = sectionId === 'system-design'
+      ? section?.notes.find((n) => n.id.includes('SystemDesign00')) ?? section?.notes[0]
+      : section?.notes[0];
+    const nextId = defaultNote?.id ?? tutorials[0]?.id ?? '';
     try {
       sessionStorage.removeItem(`note_scroll_${nextId}`);
     } catch {}
     restoredNoteRef.current = null;
     setCurrentView('reader');
     setQuery('');
+    setSystemDesignFilter('all');
     setPendingHeadingId(null);
     setSelectedTutorialId(nextId);
     safeScrollTo(0);
@@ -30029,6 +30999,36 @@ function App() {
             placeholder={language === 'en' ? 'Type a note title or filename' : '输入笔记标题或文件名'}
           />
         </label>
+
+        {selectedSection?.id === 'system-design' && (
+          <div className="sidebar-category-filter" role="tablist" aria-label={language === 'en' ? 'Filter by category' : '按分类筛选'}>
+            <button
+              type="button"
+              className={`category-filter-btn ${systemDesignFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setSystemDesignFilter('all')}
+            >
+              {language === 'en' ? `All (${systemDesignNotes.length})` : `全部 (${systemDesignNotes.length})`}
+            </button>
+            <button
+              type="button"
+              className={`category-filter-btn ${systemDesignFilter === 'Case' ? 'active' : ''}`}
+              onClick={() => setSystemDesignFilter('Case')}
+            >
+              {language === 'en'
+                ? `Cases (${systemDesignNotes.filter((n) => n.category === 'Case').length})`
+                : `实战 Case (${systemDesignNotes.filter((n) => n.category === 'Case').length})`}
+            </button>
+            <button
+              type="button"
+              className={`category-filter-btn ${systemDesignFilter === 'Wiki' ? 'active' : ''}`}
+              onClick={() => setSystemDesignFilter('Wiki')}
+            >
+              {language === 'en'
+                ? `Wiki (${systemDesignNotes.filter((n) => n.category === 'Wiki').length})`
+                : `Wiki 模式 (${systemDesignNotes.filter((n) => n.category === 'Wiki').length})`}
+            </button>
+          </div>
+        )}
 
         <div className="note-list">
           {(() => {

@@ -66,6 +66,20 @@ describe('App', () => {
               ? '# System Design 11 · 移动推送与通知系统 (Notification System)'
             : requestUrl.includes('SystemDesign12')
               ? '# System Design 12 · 填字游戏求解器 (Crossword Puzzle Solver)'
+            : requestUrl.includes('SystemDesignWiki%20Event%20Bus') || requestUrl.includes('SystemDesignWiki Event Bus')
+              ? '# Wiki · Event Bus (事件总线与事件驱动架构)'
+            : requestUrl.includes('SystemDesignWiki%20Message%20Queue') || requestUrl.includes('SystemDesignWiki Message Queue')
+              ? '# Wiki · Message Queue (消息队列与点对点工作队列)'
+            : requestUrl.includes('SystemDesignWiki%20NoSQL%20Streaming') || requestUrl.includes('SystemDesignWiki NoSQL Streaming')
+              ? '# Wiki · NoSQL + Streaming (NoSQL 变更流与事件驱动计算)'
+            : requestUrl.includes('SystemDesignWiki%20Kafka') || requestUrl.includes('SystemDesignWiki Kafka')
+              ? '# Wiki · Kafka (分布式流平台与分区日志)'
+            : requestUrl.includes('SystemDesignWiki%20Transactional%20Outbox') || requestUrl.includes('SystemDesignWiki Transactional Outbox')
+              ? '# Wiki · Transactional Outbox (事务发件箱模式)'
+            : requestUrl.includes('SystemDesignWiki%20Control%20Data%20Plane') || requestUrl.includes('SystemDesignWiki Control Data Plane')
+              ? '# Wiki · 控制面与数据面解耦 (Control & Data Plane)'
+            : requestUrl.includes('SystemDesignWiki%20Pull%20vs%20Push') || requestUrl.includes('SystemDesignWiki Pull vs Push')
+              ? '# Wiki · Pull vs Push (推拉模型与读写扩散)'
             : requestUrl.includes('SystemDesign01D')
               ? '# System Design 01D · Redis'
             : requestUrl.includes('CoreSkills09')
@@ -388,6 +402,31 @@ describe('App', () => {
     expect(within(visual).getByText('移除旧 a，left 从 0 变成 1')).toBeInTheDocument();
   });
 
+  it('renders the monotonic deque sliding window maximum visual and steps through states', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills16')
+          ? '# Sliding Window\n\n```sliding-window-max-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 16 · Sliding Window/i }));
+
+    const visual = await screen.findByRole('region', { name: '单调队列滑动窗口最大值演示' });
+    expect(within(visual).getByText('队尾淘汰更弱者，队首按界滑出')).toBeInTheDocument();
+    expect(within(visual).getByText(/right = 0/i)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: '下一步' }));
+    expect(within(visual).getByText(/right = 1/i)).toBeInTheDocument();
+    expect(within(visual).getByText(/淘汰弱势队尾/i)).toBeInTheDocument();
+  });
+
   it('renders the unified monotonic stack walkthrough', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);
@@ -635,6 +674,44 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 12 · 填字游戏求解器/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /实战 Case \(5\)/i }));
+    expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Transactional Outbox/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Wiki · Kafka/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Event Bus/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /控制面与数据面解耦/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(19\)/i }));
+    expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Event Bus/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Wiki · Message Queue/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /NoSQL \+ Streaming/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /控制面与数据面解耦/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /全部 \(24\)/i }));
+    expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Event Bus/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /控制面与数据面解耦/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiki · Event Bus/i }));
+    expect(await screen.findByRole('heading', { name: /Event Bus/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiki · Message Queue/i }));
+    expect(await screen.findByRole('heading', { name: /Message Queue/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiki · NoSQL \+ Streaming/i }));
+    expect(await screen.findByRole('heading', { name: /NoSQL \+ Streaming/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiki · Kafka/i }));
+    expect(await screen.findByRole('heading', { name: /Kafka/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /控制面与数据面解耦/i }));
+    expect(await screen.findByRole('heading', { name: /控制面与数据面解耦/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
 
@@ -956,6 +1033,82 @@ describe('App', () => {
     expect(within(flash).getByText('Sale Service')).toBeInTheDocument();
     fireEvent.click(within(flash).getByRole('button', { name: '查结果' }));
     expect(within(flash).getByText(/Redis 是读模型/)).toBeInTheDocument();
+  });
+
+  it('renders queue-vs-stream architecture visualizer and switches tabs', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      if (requestUrl.includes('SystemDesignWiki%20Message%20Queue') || requestUrl.includes('Message Queue')) {
+        return { ok: true, text: async () => '# Message Queue\n\n```queue-vs-stream-visual\n```' };
+      }
+      return { ok: true, text: async () => '# System Design tutorial' };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+
+    const mqBtn = await screen.findByRole('button', { name: /Wiki · Message Queue/i });
+    fireEvent.click(mqBtn);
+
+    const visual = await screen.findByRole('region', { name: '消息队列 vs 事件总线架构对比演示' });
+    expect(within(visual).getByText('传统消息队列：细粒度状态机与阅后即焚')).toBeInTheDocument();
+
+    const ackBtn = within(visual).getByRole('button', { name: /ACK\(Msg 1\)/i });
+    fireEvent.click(ackBtn);
+    expect(within(visual).getByText('物理删除')).toBeInTheDocument();
+    expect(within(visual).getByText('阅后即焚: 内存与索引已擦除')).toBeInTheDocument();
+
+    const backlogBtn = within(visual).getByRole('button', { name: /模拟 100 万/i });
+    fireEvent.click(backlogBtn);
+    expect(within(visual).getByText(/动态链表暴增至 1,240,000 条/i)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /事件总线 \(Stream\)/i }));
+    expect(within(visual).getByText('事件总线 / 日志流：分布式只追加日志与游标驱动')).toBeInTheDocument();
+    const rewindBtn = within(visual).getByRole('button', { name: /Group B 游标回退至 0/i });
+    fireEvent.click(rewindBtn);
+    expect(within(visual).getByText(/Group B.*Runner Gateway/i)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /对比矩阵/i }));
+    expect(within(visual).getByText('底层架构机制对比矩阵')).toBeInTheDocument();
+    expect(within(visual).getByText('积压耐受力')).toBeInTheDocument();
+  });
+
+  it('renders newsql architecture visualizer and switches tabs and scenarios', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      if (requestUrl.includes('SystemDesignWiki%20NewSQL') || requestUrl.includes('NewSQL')) {
+        return { ok: true, text: async () => '# NewSQL\n\n```newsql-architecture-visual\n```' };
+      }
+      return { ok: true, text: async () => '# System Design tutorial' };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
+
+    const newsqlBtn = await screen.findByRole('button', { name: /Wiki · NewSQL/i });
+    fireEvent.click(newsqlBtn);
+
+    const visual = await screen.findByRole('region', { name: 'NewSQL 分布式数据库架构对比演示' });
+    expect(within(visual).getByText('架构全景对照：分库分表 (Sharded RDBMS) vs 原生分布式 (NewSQL)')).toBeInTheDocument();
+    expect(within(visual).getByText(/SHARED-NOTHING 单体聚合/)).toBeInTheDocument();
+    expect(within(visual).getByText(/计算存储分离 \+ MULTI-RAFT/)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /动态流向演练/i }));
+    expect(within(visual).getByText('交互式读写与弹性再平衡演练')).toBeInTheDocument();
+    expect(within(visual).getByText(/单仓库闭环访问/)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /场景 2: 跨分片大租户聚合/i }));
+    expect(within(visual).getByText(/跨分片全局分析/)).toBeInTheDocument();
+    expect(within(visual).getByText(/仅 3 个标量数值/)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /场景 3: 扩容新增存储节点/i }));
+    const triggerBtn = within(visual).getByRole('button', { name: /触发自动再平衡/i });
+    fireEvent.click(triggerBtn);
+    expect(within(visual).getByText(/再平衡完成/)).toBeInTheDocument();
+
+    fireEvent.click(within(visual).getByRole('button', { name: /权衡决策矩阵/i }));
+    expect(within(visual).getByText('七维核心指标全景权衡决策矩阵')).toBeInTheDocument();
+    expect(within(visual).getByText('大租户数据倾斜')).toBeInTheDocument();
   });
 
   it('shows local-only draft notes in development mode', async () => {

@@ -77,78 +77,112 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 
 ---
 
-## 2 · 分布式系统设计完整的演进路线图 (The Storyline)
+## 2 · 分布式系统设计体系全景图 (The Two Pillars)
 
 ```system-design-overview-visual
 ```
 
-全专栏共 12 篇核心模块，严格按照工业级架构从**单体演进至全球多活千亿级平台**的技术主线层层递进：
+全专栏结构重塑为两大板块：**实战 Case（端到端工业级系统实战）** 与 **Wiki 模式库（原子化设计模式与组件基准）**：
 
 ```text
-【阶段 0：总纲与基准】 ──► 00 全局架构体系与量化估算基准 (本篇)
-                              │
-  ┌───────────────────────────┴───────────────────────────┐
-  ▼                                                       ▼
-【阶段 1：计算层与弹性编排】                             【阶段 2：缓存与持久化数据层】
-01  无状态服务 (Stateless API & 短链实战)                01D Redis (高并发缓存、防穿透与锁租约)
-01B 虚拟化与容器 (Namespaces/Cgroups 隔离)                02  数据库范式与扩展 (Scalability Cube/分片/复制)
-01C Kubernetes (Pod 生命周期、编排与弹性伸缩)            04  存储系统 (块/文件/对象存储 S3 与 LSM-Tree)
-  │                                                       │
-  └───────────────────────────┬───────────────────────────┘
-                              ▼
-【阶段 3：异步解耦与分布式路由层】
-06  异步消息队列 (Kafka/MQ 削峰填谷、持久日志与消费语义)
-09  一致性哈希 (Consistent Hashing 弹性路由与虚拟节点再平衡)
-                              │
-                              ▼
-【阶段 4：工业级综合实战案例 (End-to-End Deep Dives)】
-07  图片分享与 Feed 流系统 (大文件直传、读写扩散与 Timeline 聚合)
-08  异步 LLM 强化学习平台 (现代前沿 AI 基础设施、Actor-Learner 解耦)
-10  极端瞬态高并发秒杀系统 (Redis 准入拦截、MQ 削峰与防超卖)
-11  海量移动推送与通知平台 (事务 Outbox 零丢信、物理隔离队列、APNs/FCM 适配池)
-12  分布式填字游戏求解器 (位并行 CSP 本地解、粗粒度自适应切片、CAS 竞态仲裁)
-                              │
-                              ▼
-【阶段 5：总结与参考】 ──► 99 高频术语与核心对比图谱
+┌────────────────────────────────────────────────────────────────────────┐
+│                        System Design 架构知识体系                       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+         ┌──────────────────────────┴──────────────────────────┐
+         ▼                                                     ▼
+【板块一：实战 Case (End-to-End Cases)】               【板块二：Wiki 模式库 (Patterns & Wiki)】
+07 图片分享与 Feed 流 (推拉混合、Timeline 聚合)        · Event Bus (事件总线、ECST 与声明式过滤)
+08 异步 LLM 强化学习平台 (Actor-Learner 解耦)         · Message Queue (工作队列、租约与毒丸隔离)
+10 极端瞬态高并发秒杀系统 (Redis 拦截、防超卖)          · NoSQL + Streaming (内建 CDC、流表二象性)
+11 海量移动推送与通知平台 (Outbox 零丢失、队列削峰)      · Kafka (分布式分区日志、高吞吐与一致性)
+12 分布式填字游戏求解器 (位并行 CSP、CAS 竞态仲裁)      · Transactional Outbox (解决 DB 与 MQ 双写困境)
+                                                       · 控制面与数据面解耦 (K8s/Envoy 生存不变性)
+                                                       · Pull vs Push (推拉模型、写扩散与读扩散权衡)
+                                                       · 09 一致性哈希 (虚拟节点均衡、最小化数据迁移)
+                                                       · 06 异步消息系统演示 (生命周期与确认机制)
+                                                       · 01D Redis 内存缓存 (Cache-Aside、防穿透/击穿/雪崩)
+                                                       · 02 数据库范式与分片 (Scalability Cube、分片键设计)
+                                                       · 04 分布式存储系统 (对象存储 S3 与 LSM-Tree 追加写)
+                                                       · 01C Kubernetes (Pod 生命周期、编排与 HPA 水平伸缩)
+                                                       · 01B 虚拟化与容器 (Namespaces/Cgroups 运行时边界)
+                                                       · 01 无状态服务 (计算状态分离、会话外置与优雅下线)
+                                                       · 00 全局量化估算基准 (Application/Cache/DB 物理极限)
+                                                       · 99 高频术语与核心对比图谱 (CAP/BASE/Little's Law)
 ```
 
 ---
 
-## 3 · 每一章在架构大图中的定位与解决的核心瓶颈
+## 3 · 模块索引与解决的核心工程瓶颈
 
-1. **[[SystemDesign01 Stateless Service|01 无状态服务 (Stateless Service)]]**
-   - *核心瓶颈*：如何让计算层具备无限横向扩展（Scale Out）能力？
-   - *主线逻辑*：解耦计算与状态，会话与临时任务外部化；深入剖析优雅下线与幂等性保障；以**高性能分布式短链与分析系统**作为首个端到端实战案例。
-2. **[[SystemDesign01B Virtualization Containers|01B 虚拟化与容器 (Containers)]]**
-   - *核心瓶颈*：无状态计算节点如何在物理服务器上高效、隔离地密集部署？
-   - *主线逻辑*：从重型 Hypervisor 虚拟机到轻量级 Linux Namespaces + Cgroups 容器技术，理解容器隔离性与运行时资源边界。
-3. **[[SystemDesign01C Kubernetes|01C 集群编排与 Kubernetes (K8s)]]**
-   - *核心瓶颈*：成百上千个无状态容器实例如何自动化发布、调度、自愈与扩缩容？
-   - *主线逻辑*：Pod 控制器模型、声明式 API、Service 虚拟 IP 网络转发与自动水平伸缩（HPA）。
-4. **[[SystemDesign01D Redis|01D 内存缓存与协调 (Redis)]]**
-   - *核心瓶颈*：计算层扩容后，底层数据库由于磁盘 IOPS 限制被读流量打满。
-   - *主线逻辑*：基于内存的毫秒级数据存取，深入 Cache-Aside 模式、缓存穿透/击穿/雪崩三大防御机制、分布式租约与秒杀准入过滤。
-5. **[[SystemDesign02 Database Paradigms|02 数据库范式与扩展 (Database Paradigms)]]**
-   - *核心瓶颈*：单机数据库写入吞吐与存储容量彻底耗尽。
-   - *主线逻辑*：ACID 与隔离级别；Scalability Cube 扩展三维立方体（X 轴主从与主主复制、Y 轴业务功能拆库、Z 轴水平分片）；数据依赖性分析；分片键 6 大设计法则与终结 Scatter-Gather 的 4 大架构方案。
-6. **[[SystemDesign04 Storage Systems|04 分布式存储系统 (Storage Systems)]]**
-   - *核心瓶颈*：非结构化二进制大文件（图片、视频、备份日志）绝不能塞入昂贵的关系型数据库。
-   - *主线逻辑*：块存储、文件系统与对象存储（S3/MinIO）；LSM-Tree 顺序追加写机制；分布式元数据与数据面解耦。
-7. **[[SystemDesign06 Async Messaging Systems|06 异步消息系统 (Message Queue)]]**
-   - *核心瓶颈*：突发写峰值导致数据库崩溃，长耗时业务阻塞客户端请求。
-   - *主线逻辑*：消息队列作为持久缓冲带与事件总线；Kafka 分区机制与顺序性保障；At-least-once 消费语义与幂等去重。
-8. **[[SystemDesign09 Consistent Hashing|09 一致性哈希 (Consistent Hashing)]]**
-   - *核心瓶颈*：分布式缓存和存储集群在动态增删机器时，传统取模哈希导致全网缓存雪崩。
-   - *主线逻辑*：哈希环设计、虚拟节点（Virtual Nodes）消除数据倾斜、最小化数据迁移成本。
-9. **[[SystemDesign07 Photo Sharing Feed|07 综合实战：图片分享与 Feed 流]]**
-   - *架构全链路*：读写比 100:1 的海量社交平台。大文件客户端直传对象存储，写扩散（Push）与读扩散（Pull）架构权衡，Timeline 缓存聚合。
-10. **[[SystemDesign08 LLM Async RL Platform|08 综合实战：异步 LLM 强化学习平台]]**
-    - *架构全链路*：前沿现代 AI 基础设施。Rollout 生成与 Trainer 梯度反向传播异步解耦，高吞吐参数更新与大规模分布式数据管道。
-11. **[[SystemDesign10 Flash Sale|10 综合实战：极端并发秒杀系统]]**
-    - *架构全链路*：微秒级突发瞬态洪峰。Redis 准入拦截、MQ 队列削峰、数据库行级悲观锁事务防超卖。
-12. **[[SystemDesign11 Notification System|11 综合实战：海量移动推送与通知平台]]**
-    - *架构全链路*：单日十亿级推送。Transaction Outbox 零丢失投递、Dispatcher 批量切片与偏好过滤、Durable Queues 优先级隔离削峰、APNs/FCM HTTP/2 连接池与 At-least-once 幂等去重闭环。
-13. **[[SystemDesign12 Crossword Solver|12 综合实战：分布式填字游戏求解器]]**
-    - *架构全链路*：NP-Complete 约束满足与分布式 DFS 搜索调度。静态复杂度初筛与动态看门狗双轨准入，单机位并行索引极速消化 90%+ 流量；长尾任务接入分布式 DFS 算力池，基于最浅选择点粗粒度工作窃取、信用权重守恒屏障与 CAS 竞态胜出。
-14. **[[SystemDesign99 Glossary|99 高频术语与核心对比图谱]]**
-    - *全局检索*：全专栏分布式系统关键概念、定理（CAP/BASE/Little's Law）与对比矩阵速查。
+### 3.1 · 实战 Case (End-to-End Deep Dives)
+
+1. **[[SystemDesign07 Photo Sharing Feed|Case 07 · 图片分享与 Feed 流]]**
+   - *架构全链路*：读写比 100:1 的海量社交平台。大文件客户端直传对象存储，写扩散（Push）与读扩散（Pull）混合架构权衡，Timeline 预热缓存聚合。
+2. **[[SystemDesign08 LLM Async RL Platform|Case 08 · 异步 LLM 强化学习平台]]**
+   - *架构全链路*：前沿现代 AI 基础设施。Rollout 生成与 Trainer 梯度反向传播异步解耦，高吞吐参数更新与大规模分布式数据管道。
+3. **[[SystemDesign10 Flash Sale|Case 10 · 极端并发秒杀系统]]**
+   - *架构全链路*：微秒级突发瞬态洪峰。Redis 准入拦截、MQ 队列削峰、数据库行级悲观锁事务防超卖。
+4. **[[SystemDesign11 Notification System|Case 11 · 海量移动推送与通知平台]]**
+   - *架构全链路*：单日十亿级推送。Transaction Outbox 零丢失投递、Dispatcher 批量切片与偏好过滤、Durable Queues 优先级隔离削峰、APNs/FCM HTTP/2 连接池与 At-least-once 幂等去重闭环。
+5. **[[SystemDesign12 Crossword Solver|Case 12 · 分布式填字游戏求解器]]**
+   - *架构全链路*：NP-Complete 约束满足与分布式 DFS 搜索调度。静态复杂度初筛与动态看门狗双轨准入，单机位并行索引极速消化 90%+ 流量；长尾任务接入分布式 DFS 算力池，基于最浅选择点粗粒度工作窃取与 CAS 竞态胜出。
+
+### 3.2 · Wiki 模式与知识点 (Design Patterns & Atomic Wiki)
+
+1. **[[SystemDesignWiki Event Bus|Wiki · Event Bus (事件总线与事件驱动架构)]]**
+   - *核心瓶颈*：跨微服务领域事件分发、复杂订阅规则过滤与读风暴防范。
+   - *主线逻辑*：Pub/Sub 广播范式、Event-Carried State Transfer (ECST)、声明式 JSON 模式过滤；进程内、Redis P/S、NATS 与 EventBridge 吞吐分级（$1\text{k} - 10\text{M QPS}$）；领域事件解耦与缓存失效广播。
+2. **[[SystemDesignWiki Message Queue|Wiki · Message Queue (消息队列与点对点工作队列)]]**
+   - *核心瓶颈*：高负载异步耗时任务编排、突发瞬态流量缓冲与慢系统保护。
+   - *主线逻辑*：竞争消费者（1-to-1 抢占）、租约可见性超时（Visibility Timeout）、两阶段确认（Ack/Nack）；死信队列（DLQ）毒丸熔断；RabbitMQ、AWS SQS、Redis List 性能基准（$2\text{w} - 10\text{w QPS}$）。
+3. **[[SystemDesignWiki NoSQL Streaming|Wiki · NoSQL + Streaming (NoSQL 变更流与事件驱动)]]**
+   - *核心瓶颈*：应用层双写数据不一致、多异构存储视图实时同步与海量吞吐持久化。
+   - *主线逻辑*：存储引擎内建 CDC 捕获、流表二象性（$S \iff T$）、`OldImage / NewImage` 增量差异；CQRS 物化视图同步（Elasticsearch / Redis / ClickHouse）；DynamoDB Streams、MongoDB Oplog 与 Redis Streams 性能水准（$10\text{w} - 100\text{w}+\text{ QPS}$）。
+4. **[[SystemDesignWiki Kafka|Wiki · Kafka 核心机制与实战 (Distributed Commit Log)]]**
+   - *核心瓶颈*：高吞吐低延迟分布式日志存储、顺序 I/O 与可靠投递一致性。
+   - *主线逻辑*：分区追加写、OS Page Cache 深度复用与 `sendfile` 零拷贝；ISR 水位线、Leader Epoch 崩溃自愈与 KRaft 元数据共识；幂等生产者与事务消息（EOS）；秒杀串行化、通知分级隔离、Saga 编排等 6 大面试场景实操规范。
+5. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox (事务发件箱)]]**
+   - *核心瓶颈*：本地数据库与外部消息发布（DB + MQ）双写不一致难题。
+   - *主线逻辑*：单机 ACID 事务保证业务表与 Outbox 表原子落盘；异步轮询（Polling）与日志挖掘（CDC/Binlog）两种中继架构；At-least-once 投递与下游幂等消费。
+6. **[[SystemDesignWiki Control Data Plane|Wiki · 控制面与数据面解耦 (Control & Data Plane)]]**
+   - *核心瓶颈*：控制管理逻辑高开销拖垮高频数据路径，控制面崩溃引发业务全局断流。
+   - *主线逻辑*：大脑与躯干切分；生存第一法则（控制面宕机，数据面基于本地缓存 100% 存活运行）；K8s Master vs Node Pods、Istio vs Envoy xDS、Kafka KRaft Controller vs Broker 映射；量化指标（$1\text{k}$ vs $10\text{M QPS}$）。
+7. **[[SystemDesignWiki Pull vs Push|Wiki · Pull vs Push (推拉模型与读写扩散)]]**
+   - *核心瓶颈*：多端数据同步与社交 Feed 的写放大与读延迟冲突。
+   - *主线逻辑*：写扩散（Push）vs 读扩散（Pull）；大 V / 明星问题（Celebrity Problem）与基于粉丝量阈值的动静分离混合模式；长短轮询 vs WebSocket/SSE/Webhook 传输选型与决策矩阵。
+8. **[[SystemDesignWiki Idempotency|Wiki · Idempotency (幂等性设计与实现模式)]]**
+   - *核心瓶颈*：网络超时三态重试引发的重复创建、重复扣费与计算资源雪崩。
+   - *主线逻辑*：数学与工程定义；以 `workflow_run`（Run/Tenant/Repo/Commit/Event）为实战案例剖析；DB 联合唯一约束、分布式 Token、状态机 CAS 跃迁、去重表、确定性 Hash 派生与天然幂等 6 大实现范式；TOCTOU 与响应一致性 4 大工程陷阱。
+9. **[[SystemDesignWiki NewSQL|Wiki · NewSQL (分布式数据库架构与选型)]]**
+   - *核心瓶颈*：传统分库分表（Sharded RDBMS）跨分片分布式事务性能崩塌、重分片（Re-sharding）运维沉重与大租户数据倾斜。
+   - *主线逻辑*：计算存储分离、Range-based 动态 Region 切片、Multi-Raft 多数派强一致、Percolator 2PC + HLC/TrueTime 分布式事务；算子下推（Coprocessor）并行过滤；CI/CD 场景下单仓库局部性（Sharded 占优）与全量聚合/大租户（NewSQL 占优）选型全景。
+10. **[[SystemDesign09 Consistent Hashing|Wiki · 09 一致性哈希 (Consistent Hashing)]]**
+    - *核心瓶颈*：缓存与存储集群节点动态伸缩时全网哈希漂移。
+    - *主线逻辑*：哈希环设计、虚拟节点（Virtual Nodes）消除倾斜、最小化数据迁移。
+11. **[[SystemDesign06 Async Messaging Systems|Wiki · 06 异步消息系统演示 (Async Messaging)]]**
+    - *核心瓶颈*：突发写峰值导致持久层崩溃，长耗时链路阻塞在线响应。
+    - *主线逻辑*：持久日志、分区与顺序消费、At-least-once 语义与交互式可视化演示。
+12. **[[SystemDesign01D Redis|Wiki · 01D 内存缓存与协调 (Redis)]]**
+    - *核心瓶颈*：磁盘 IOPS 瓶颈导致的高并发读延迟。
+    - *主线逻辑*：Cache-Aside 模式、缓存穿透/击穿/雪崩三大防御机制、分布式租约锁。
+13. **[[SystemDesign02 Database Paradigms|Wiki · 02 数据库范式与分片 (Database Paradigms)]]**
+    - *核心瓶颈*：单机数据库写入吞吐与磁盘存储容量枯竭。
+    - *主线逻辑*：ACID 与隔离级别、Scalability Cube 三维扩展、分片键设计法则与跨分片关联消除。
+14. **[[SystemDesign04 Storage Systems|Wiki · 04 分布式存储系统 (Storage Systems)]]**
+    - *核心瓶颈*：海量非结构化二进制大文件存储与索引追加吞吐。
+    - *主线逻辑*：块/文件/对象存储 S3 选型、LSM-Tree 追加写与元数据解耦。
+15. **[[SystemDesign01C Kubernetes|Wiki · 01C 集群编排与调度 (Kubernetes)]]**
+    - *核心瓶颈*：超大规模容器集群自动化部署、服务发现与弹性自愈。
+    - *主线逻辑*：Pod 控制器模型、声明式 API、Service 虚拟 IP 网络与 HPA 水平伸缩。
+16. **[[SystemDesign01B Virtualization Containers|Wiki · 01B 虚拟化与容器隔离 (Containers)]]**
+    - *核心瓶颈*：应用如何在物理服务器上轻量、安全、隔离地密集部署。
+    - *主线逻辑*：Hypervisor vs Linux Namespaces + Cgroups，运行时资源与安全边界。
+17. **[[SystemDesign01 Stateless Service|Wiki · 01 无状态服务与幂等 (Stateless Service)]]**
+    - *核心瓶颈*：计算层无状态扩展与分布式短链实战。
+    - *主线逻辑*：状态外置、优雅下线、幂等性 Token 校验。
+18. **[[SystemDesign00 Overview|Wiki · 00 全局量化估算基准 (Blueprint & Numbers)]]**
+    - *核心瓶颈*：系统容量规划与瓶颈膝点量化。
+    - *主线逻辑*：Application Server、Cache、Database、Storage 四大物理量化基准与 Knee-of-the-curve 判定。
+19. **[[SystemDesign99 Glossary|Wiki · 99 高频术语与核心定理 (Glossary)]]**
+    - *全局检索*：CAP、BASE、Little's Law 与分布式核心概念对比矩阵速查。
