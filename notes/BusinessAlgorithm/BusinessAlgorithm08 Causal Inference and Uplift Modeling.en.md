@@ -30,58 +30,15 @@ $$
 Y_i = T_i Y_i(1) + (1 - T_i) Y_i(0)
 $$
 
-<div style="margin: 24px 0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: bold; font-size: 14px; color: #1e293b;">
-    📊 The Fundamental Problem: Counterfactual Missing Data Matrix
-  </div>
-  <div style="overflow-x: auto; padding: 12px;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-      <thead>
-        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Unit $i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Features $X_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Assignment $T_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0; background: #e0f2fe;">Observed $Y_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">$Y_i(1)$ (Treated)</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">$Y_i(0)$ (Control)</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0; background: #fef3c7;">True Lift $\tau_i$</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">User 1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">High Activity / Tier 1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0284c7;">1 (Treatment)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">1 (Observed)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (Counterfactual)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">Unobservable</td>
-        </tr>
-        <tr style="background: #fafafa;">
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">User 2</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">Low Activity / Tier 3</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">0 (Control)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">0</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (Counterfactual)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">0 (Observed)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">Unobservable</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">User 3</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">Mid Activity / Tier 2</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0284c7;">1 (Treatment)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">1 (Observed)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (Counterfactual)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">Unobservable</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <div style="background: #f8fafc; padding: 8px 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-    📌 Core Takeaway: Individual Treatment Effect (ITE) is strictly unobservable. Causal inference leverages randomized experiments or conditional unconfoundedness assumptions to robustly impute counterfactual expectations at cohort scale.
-  </div>
-</div>
+> **📊 The Fundamental Problem: Counterfactual Missing Data Matrix**
+>
+> 📌 **Core Takeaway**: Individual Treatment Effect (ITE) is strictly unobservable. Causal inference leverages randomized experiments or conditional unconfoundedness assumptions to robustly impute counterfactual expectations at cohort scale.
+
+| Unit $i$ | Features $X_i$ | Assignment $T_i$ | Observed $Y_i$ | $Y_i(1)$ (Treated) | $Y_i(0)$ (Control) | True Lift $\tau_i$ |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| User 1 | High Activity / Tier 1 | **1 (Treatment)** | **1** | 1 (Observed) | ? (Counterfactual) | Unobservable |
+| User 2 | Low Activity / Tier 3 | **0 (Control)** | **0** | ? (Counterfactual) | 0 (Observed) | Unobservable |
+| User 3 | Mid Activity / Tier 2 | **1 (Treatment)** | **1** | 1 (Observed) | ? (Counterfactual) | Unobservable |
 
 #### Three Levels of Treatment Effects (ATE vs. ATT vs. CATE)
 
@@ -93,78 +50,15 @@ In production environments, causal inference is never an abstract mathematical f
 
 Consider two quintessential industrial scenarios: **"E-Commerce / Food Delivery Promotion Coupon Subsidy"** and **"App Push Notification Retention"**:
 
-<div style="margin: 20px 0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: bold; font-size: 14px; color: #1e293b;">
-    📋 Production Data Warehouse Schema (Hive / Feature Store Slice)
-  </div>
-  <div style="overflow-x: auto; padding: 12px;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
-      <thead>
-        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Variable Class</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Warehouse Column Name</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Data Type &amp; Meaning</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">Role in Causal Modeling</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #3b82f6;">Covariates $X$<br>(Feature Vector)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>user_age_group</code><br>
-            <code>city_tier</code><br>
-            <code>device_brand_price</code><br>
-            <code>active_days_30d</code><br>
-            <code>pay_gmv_30d</code><br>
-            <code>cart_unpaid_cnt_7d</code><br>
-            <code>hist_coupon_use_rate</code><br>
-            <code>cur_browse_cate_l1</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • User static demographics (age, city tier, device price bracket)<br>
-            • RFM consumption history (30-day active days, GMV spend)<br>
-            • Strong unconverted intent (cart adds unpaid in past 7 days)<br>
-            • Price sensitivity signals (historical coupon redemption rate)<br>
-            • Real-time context (current browsing category: high-margin 3C vs low-margin groceries)
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            Model inputs. Causal estimators (e.g. Causal Forest / X-Learner) use $X$ to isolate effect heterogeneity—distinguishing price-sensitive high-intent buyers from loyal users who purchase regardless.
-          </td>
-        </tr>
-        <tr style="background: #fafafa;">
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #f59e0b;">Treatment $T$<br>(Intervention)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>is_coupon_issued</code><br>
-            <code>treatment_type</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • Binary indicator: <code>1</code> (Issue $20 discount coupon), <code>0</code> (Control: natural organic feed without discount)<br>
-            • Multi-dose treatment: <code>T ∈ {0: None, 1: $5 off $50, 2: $20 off $100}</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            The physical intervention signal dispatched by the system. In randomized A/B tests, determined by server-side hash bucketing.
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #10b981;">Outcome $Y$<br>(Target Response)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>is_order_paid_24h</code><br>
-            <code>pay_gmv_24h</code><br>
-            <code>net_profit_24h</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • Binary classification target: paid within 24 hours (<code>0 or 1</code>)<br>
-            • Continuous regression target: Total GMV transacted within 24h<br>
-            • Net Profit: <code>GMV * TakeRate - (CouponCost * IsRedeemed)</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            The business metric being stimulated. Optimizing gross GMV alone frequently burns marketing budgets; mature systems model Net Commercial Profit or cost-constrained conversion.
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+> **📋 Production Data Warehouse Schema (Hive / Feature Store Slice)**
+
+| Variable Class | Warehouse Column Name | Data Type &amp; Meaning | Role in Causal Modeling |
+| :--- | :--- | :--- | :--- |
+| **Covariates $X$**<br>(Feature Vector) | `user_age_group`<br>`city_tier`<br>`device_brand_price`<br>`active_days_30d`<br>`pay_gmv_30d`<br>`cart_unpaid_cnt_7d`<br>`hist_coupon_use_rate`<br>`cur_browse_cate_l1` | • User static demographics (age, city tier, device price bracket)<br>• RFM consumption history (30-day active days, GMV spend)<br>• Strong unconverted intent (cart adds unpaid in past 7 days)<br>• Price sensitivity signals (historical coupon redemption rate)<br>• Real-time context (current browsing category: high-margin 3C vs low-margin groceries) | Model inputs. Causal estimators (e.g. Causal Forest / X-Learner) use $X$ to isolate effect heterogeneity—distinguishing price-sensitive high-intent buyers from loyal users who purchase regardless. |
+| **Treatment $T$**<br>(Intervention) | `is_coupon_issued`<br>`treatment_type` | • Binary indicator: `1` (Issue \$20 discount coupon), `0` (Control: natural organic feed without discount)<br>• Multi-dose treatment: `T ∈ {0: None, 1: \$5 off \$50, 2: \$20 off \$100}` | The physical intervention signal dispatched by the system. In randomized A/B tests, determined by server-side hash bucketing. |
+| **Outcome $Y$**<br>(Target Response) | `is_order_paid_24h`<br>`pay_gmv_24h`<br>`net_profit_24h` | • Binary classification target: paid within 24 hours (`0 or 1`)<br>• Continuous regression target: Total GMV transacted within 24h<br>• Net Profit: `GMV * TakeRate - (CouponCost * IsRedeemed)` | The business metric being stimulated. Optimizing gross GMV alone frequently burns marketing budgets; mature systems model Net Commercial Profit or cost-constrained conversion. |
+
+---
 
 ---
 
@@ -172,7 +66,7 @@ Consider two quintessential industrial scenarios: **"E-Commerce / Food Delivery 
 
 | Metric | Mathematical Definition | Intuitive Meaning | How to Compute in Production / Internships | Key Application &amp; Limitations |
 | :--- | :--- | :--- | :--- | :--- |
-| **ATE**<br>(Average Treatment Effect) | $$\mathbb{E}[Y(1) - Y(0)]$$ | **"If we universalize subsidies to all users, do we make money overall?"**<br><br>Expected incremental effect per capita if the intervention is rolled out to the entire population. | **Randomized A/B Test Difference in Means**:<br>Computed across randomized sample buckets:<br>$$\widehat{\text{ATE}} = \bar{Y}_{T=1} - \bar{Y}_{T=0}$$<br>p-value verified via two-sample Welch t-test. | **Business Proposal &amp; Global Viability Review**:<br>• Executive reporting: "Does this strategy generate net positive value globally?"<br>• **Pitfall**: If ATE = +0.01 (+1% conversion), issuing $10 coupons to 10M users costs $100M. If 1% extra conversions yield only $2M commission, universal rollout yields a **$98M net loss!** ATE must never be used for resource-constrained budget allocation. |
+| **ATE**<br>(Average Treatment Effect) | $$\mathbb{E}[Y(1) - Y(0)]$$ | **"If we universalize subsidies to all users, do we make money overall?"**<br><br>Expected incremental effect per capita if the intervention is rolled out to the entire population. | **Randomized A/B Test Difference in Means**:<br>Computed across randomized sample buckets:<br>$$\widehat{\text{ATE}} = \bar{Y}_{T=1} - \bar{Y}_{T=0}$$<br>p-value verified via two-sample Welch t-test. | **Business Proposal &amp; Global Viability Review**:<br>• Executive reporting: "Does this strategy generate net positive value globally?"<br>• **Pitfall**: If ATE = +0.01 (+1% conversion), issuing \$10 coupons to 10M users costs \$100M. If 1% extra conversions yield only \$2M commission, universal rollout yields a **\$98M net loss!** ATE must never be used for resource-constrained budget allocation. |
 | **ATT**<br>(Average Treatment Effect on the Treated) | $$\mathbb{E}[Y(1) - Y(0) \mid T = 1]$$ | **"Did the cohort selected by operations rules actually benefit?"**<br><br>Net incremental gain strictly within the subpopulation targeted by current rules or algorithms. | **Targeted Cohort Holdout Test**:<br>For an operational rule (e.g. "inactive churn risk users in past 30 days"), withhold a 5%-10% holdout control (qualified but untreated):<br>$$\widehat{\text{ATT}} = \bar{Y}_{T=1, \text{rule}} - \bar{Y}_{T=0, \text{rule}}$$ | **Auditing Legacy Operations Rules &amp; Free-Riders**:<br>• Standard task for interns/engineers: audit rule efficacy.<br>• If ATT ≈ 0 or negative, users in that cohort would have converted organically (giving free money to bargain hunters) or are unresponsive. Provides data to decommission ineffective manual rules. |
 | **CATE**<br>(Conditional Average Treatment Effect) | $$\tau(X) = \mathbb{E}[Y(1) - Y(0) \mid X]$$ | **"For a user with covariate vector $X$, what is the net conversion gain from treatment?"**<br><br>Quantifies individual effect heterogeneity; **the foundational target of Uplift Modeling**. | **Pointwise Causal ML Model Inference**:<br>Train X-Learner, Causal Forest, or DR-Learner. Score arriving user feature vector $X_i$ to output scalar prediction:<br>$$\hat{\tau}(X_i) \in (-\infty, +\infty)$$ | **Real-Time Policy Optimization &amp; Budget Knapsack**:<br>1. **Classify 4-quadrant cohorts**: suppress natural buyers &amp; sleeping dogs;<br>2. **Greedy Marginal ROI Thresholding**: maximize total incremental return under budget cap. |
 
@@ -194,7 +88,7 @@ How do ML engineers turn trained CATE estimators into real revenue? The end-to-e
    A deployment-ready model must show **strict monotonic descent**: Decile 1 achieves the highest empirical uplift (+8%), while Decile 10 approaches zero or negative.
 
 3. **Step 3: Constrained Budget Knapsack Thresholding (Marginal ROI)**
-   With campaign budget $B$ ($500k), treatment cost $c(X_i)$ ($20 coupon), and gross margin per order $v$:
+   With campaign budget $B$ (\$500k), treatment cost $c(X_i)$ (\$20 coupon), and gross margin per order $v$:
    
    $$
    \text{Marginal\_ROI}_i = \frac{\hat{\tau}(X_i) \times v}{c(X_i)}
@@ -343,53 +237,17 @@ In shared two-sided marketplaces and social networks, unit independence frequent
 
 The goal is to estimate $\hat{\tau}(X)$ from finite empirical data. Industrial practice is anchored on Meta-Learners and Causal Forests.
 
-<div style="margin: 24px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: bold; font-size: 14px;">
-    🧩 Comparison Matrix of Five Core Uplift Architectures
-  </div>
-  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-    <thead>
-      <tr style="background: #f1f5f9; text-align: left;">
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Architecture</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Topology & Data Flow</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Theoretical Advantage</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Key Production Limitation</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">S-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Single model $\mu(X, T)$; $\hat{\tau} = \mu(X, 1) - \mu(X, 0)$</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Simple to build; full sample utilization</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;"><b>Regularization Bias</b>: 1D $T$ is submerged by high-dimensional $X$</td>
-      </tr>
-      <tr style="background: #fafafa;">
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">T-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Separate models $\mu_1(X), \mu_0(X)$; $\hat{\tau} = \mu_1 - \mu_0$</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Forces preservation of $T$ effect</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;">Independent additive variances; fails under severe class imbalance</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">X-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Two-stage counterfactual imputation + propensity fusion</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Designed for <b>severe sample imbalance</b> ($P(T=1) \ll P(T=0)$)</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">Maintains 4 internal models; higher training complexity</td>
-      </tr>
-      <tr style="background: #fafafa;">
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">DR-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Constructs AIPW pseudo-outcome $Y^{\text{DR}}$; regresses directly</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;"><b>Double Robustness</b> & Neyman orthogonality; efficient variance</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">Inverse propensity in denominator creates outlier sensitivity</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">Causal Forest</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Splits on treatment heterogeneity + Honest Splitting</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">Native asymptotic normality and confidence intervals</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">Less scalable to ultra-high-dimensional sparse sparse IDs than DNNs</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+> **🧩 Comparison Matrix of Five Core Uplift Architectures**
+
+| Architecture | Model Topology &amp; Estimator | Formulation of $\tau(X)$ | Core Production Strength | Production Pitfall &amp; Failure Mode |
+| :--- | :--- | :--- | :--- | :--- |
+| **S-Learner**<br>(Single Learner) | Single model $\mu(X, T)$; $\hat{\tau} = \mu(X, 1) - \mu(X, 0)$ | $\mu(X, T) = \mathbb{E}[Y \mid X, T]$<br>$\hat{\tau}(X) = \hat{\mu}(X, 1) - \hat{\mu}(X, 0)$ | Lowest development barrier; reuses existing ranking pipelines | **Regularization Bias**: 1D treatment $T$ is submerged by high-dimensional $X$; predictions shrink to 0 |
+| **T-Learner**<br>(Two Learners) | Separate models $\mu_1(X), \mu_0(X)$; $\hat{\tau} = \mu_1 - \mu_0$ | $\mu_1(X) = \mathbb{E}[Y \mid X, T=1]$<br>$\mu_0(X) = \mathbb{E}[Y \mid X, T=0]$<br>$\hat{\tau}(X) = \hat{\mu}_1(X) - \hat{\mu}_0(X)$ | Preserves treatment signal without feature interference | **Variance Explosion on Class Imbalance**: If treated ratio is 5%, $\mu_1(X)$ suffers large estimation error |
+| **X-Learner**<br>(Crossover Learner) | Two-stage counterfactual imputation + propensity weighting | Stage 1: Impute counterfactual residuals<br>$D_1 = Y_1 - \hat{\mu}_0(X_1)$<br>$D_0 = \hat{\mu}_1(X_0) - Y_0$<br>Stage 2: Weighted lift combination<br>$\hat{\tau}(X) = e(X)\hat{\tau}_0(X) + (1-e(X))\hat{\tau}_1(X)$ | **Optimal for severe class imbalance** ($P(T=1) \ll P(T=0)$); minimal variance | Requires 4 base models + 1 propensity model; highest offline orchestration overhead |
+| **DR-Learner**<br>(Doubly Robust) | Constructs AIPW pseudo-outcome $Y^{\text{DR}}$; regresses directly | $Y^{\text{DR}} = \hat{\mu}_1(X) - \hat{\mu}_0(X) + \frac{T(Y - \hat{\mu}_1(X))}{e(X)} - \frac{(1-T)(Y - \hat{\mu}_0(X))}{1-e(X)}$<br>$\hat{\tau} = \arg\min_f \sum (Y_i^{\text{DR}} - f(X_i))^2$ | **Double Robustness &amp; Neyman Orthogonality**: Unbiased if either outcome or propensity model is correct | Extreme propensity scores $e(X) \to 0$ cause high variance; requires propensity clipping |
+| **Causal Forest**<br>(Honest Forest) | Honest Splitting on heterogeneity variance + adaptive weighting | $\hat{\tau}(X) = \sum_{i=1}^n \alpha_i(X) Y_i$<br>Weights $\alpha_i(X)$ determined by leaf co-occurrence | Non-parametric point estimates with rigorous asymptotic normality &amp; valid confidence intervals | Splitting degrades on ultra-high-dimensional sparse ID features; higher serving latency |
+
+---
 
 ---
 
@@ -481,29 +339,15 @@ $$
 \Delta(L, R) = \frac{N_L \cdot N_R}{N_P^2} (\hat{\tau}_L - \hat{\tau}_R)^2
 $$
 
-<div style="margin: 20px 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; background: #ffffff;">
-  <div style="font-weight: bold; font-size: 14px; color: #1e293b; margin-bottom: 12px;">
-    🌲 Causal Forest: Honest Splitting Workflow
-  </div>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-    <div style="border: 1px solid #93c5fd; background: #eff6ff; border-radius: 6px; padding: 12px;">
-      <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 4px;">Sub-sample A: $S_{\text{split}}$ (Tree Architecture)</div>
-      <div style="font-size: 13px; color: #3b82f6;">
-        Used solely to evaluate splitting criterion Δ(L, R) and establish leaf boundaries. Discarded once tree topology is fixed.
-      </div>
-    </div>
-    <div style="border: 1px solid #86efac; background: #f0fdf4; border-radius: 6px; padding: 12px;">
-      <div style="font-weight: bold; color: #15803d; margin-bottom: 4px;">Sub-sample B: $S_{\text{est}}$ (Leaf Point Estimation)</div>
-      <div style="font-size: 13px; color: #16a34a;">
-        Fresh samples dropped into pre-constructed leaves to evaluate clean local treatment effects:<br>
-        $\hat{\tau}_{\text{leaf}} = \bar{Y}_{1, \text{leaf}} - \bar{Y}_{0, \text{leaf}}$
-      </div>
-    </div>
-  </div>
-  <div style="margin-top: 12px; font-size: 12px; color: #64748b;">
-    📌 Honest Splitting eliminates adaptive selection bias: estimators are asymptotically Gaussian, delivering exact confidence intervals and hypothesis tests.
-  </div>
-</div>
+> **🌲 Causal Forest: Honest Splitting Workflow**
+>
+> * **Sub-sample A: $S_{\text{split}}$ (Tree Architecture)**:
+>   Used solely to evaluate splitting criterion $\Delta(L, R)$ and establish leaf boundaries. Discarded once tree topology is fixed.
+> * **Sub-sample B: $S_{\text{est}}$ (Leaf Point Estimation)**:
+>   Fresh samples dropped into pre-constructed leaves to evaluate clean local treatment effects:
+>   $$\hat{\tau}_{\text{leaf}} = \bar{Y}_{1, \text{leaf}} - \bar{Y}_{0, \text{leaf}}$$
+>
+> 📌 **Statistical Guarantee**: Honest Splitting eliminates adaptive selection bias. Estimators are asymptotically Gaussian, delivering exact confidence intervals and hypothesis tests.
 
 ---
 

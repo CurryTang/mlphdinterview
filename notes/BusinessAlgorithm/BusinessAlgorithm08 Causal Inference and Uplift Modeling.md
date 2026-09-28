@@ -30,58 +30,15 @@ $$
 Y_i = T_i Y_i(1) + (1 - T_i) Y_i(0)
 $$
 
-<div style="margin: 24px 0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: bold; font-size: 14px; color: #1e293b;">
-    📊 因果推断核心矛盾：反事实缺失矩阵（The Counterfactual Missing Data Problem）
-  </div>
-  <div style="overflow-x: auto; padding: 12px;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-      <thead>
-        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">样本 $i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">特征 $X_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">干预分配 $T_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0; background: #e0f2fe;">观测结果 $Y_i$</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">$Y_i(1)$ (干预潜在结果)</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">$Y_i(0)$ (对照潜在结果)</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0; background: #fef3c7;">真实增量 $\tau_i$</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">用户 1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">高活跃/一线城市</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0284c7;">1 (实验组)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">1 (已观测)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (反事实缺失)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">无法单点直接计算</td>
-        </tr>
-        <tr style="background: #fafafa;">
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">用户 2</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">低活跃/三线城市</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">0 (对照组)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">0</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (反事实缺失)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">0 (已观测)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">无法单点直接计算</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">用户 3</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">中活跃/二线城市</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0284c7;">1 (实验组)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">1</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold;">1 (已观测)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-style: italic; background: #fef2f2;">? (反事实缺失)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">无法单点直接计算</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <div style="background: #f8fafc; padding: 8px 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-    📌 结论：个体因果效应（ITE）不可观测。因果推断的一切统计建模本质，是利用实验随机性或特征条件独立假设，通过群体统计期望去稳健“推补（Impute）”反事实均值。
-  </div>
-</div>
+> **📊 因果推断核心矛盾：反事实缺失矩阵（The Counterfactual Missing Data Problem）**
+>
+> 📌 **核心结论**：个体因果效应（ITE）不可观测。因果推断的一切统计建模本质，是利用实验随机性或特征条件独立假设，通过群体统计期望去稳健“推补（Impute）”反事实均值。
+
+| 样本 $i$ | 特征 $X_i$ | 干预分配 $T_i$ | 观测结果 $Y_i$ | $Y_i(1)$ (干预潜在结果) | $Y_i(0)$ (对照潜在结果) | 真实增量 $\tau_i$ |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 用户 1 | 高活跃/一线城市 | **1 (实验组)** | **1** | 1 (已观测) | ? (反事实缺失) | 无法单点直接计算 |
+| 用户 2 | 低活跃/三线城市 | **0 (对照组)** | **0** | ? (反事实缺失) | 0 (已观测) | 无法单点直接计算 |
+| 用户 3 | 中活跃/二线城市 | **1 (实验组)** | **1** | 1 (已观测) | ? (反事实缺失) | 无法单点直接计算 |
 
 #### 因果效应的三大度量分层（ATE vs. ATT vs. CATE）
 
@@ -93,78 +50,15 @@ $$
 
 以最典型的大厂**“电商/外卖大促智能发券补贴”**与**“App 消息推送（Push）召回”**为例：
 
-<div style="margin: 20px 0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: bold; font-size: 14px; color: #1e293b;">
-    📋 工业大厂样本宽表数据结构定义（Hive / Feature Store 真实字段切片）
-  </div>
-  <div style="overflow-x: auto; padding: 12px;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
-      <thead>
-        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">变量类别</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">数仓具体字段名</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">数据类型与含义</th>
-          <th style="padding: 8px; border: 1px solid #e2e8f0;">在因果建模中的实战作用</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #3b82f6;">特征向量 $X$<br>(Covariates)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>user_age_group</code><br>
-            <code>city_tier</code><br>
-            <code>device_brand_price</code><br>
-            <code>active_days_30d</code><br>
-            <code>pay_gmv_30d</code><br>
-            <code>cart_unpaid_cnt_7d</code><br>
-            <code>hist_coupon_use_rate</code><br>
-            <code>cur_browse_cate_l1</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • 用户静态画像（年龄/一二线或下沉/千元机或旗舰机）<br>
-            • RFM 历史消费统计（近30天活跃天数、消费金额）<br>
-            • 强意向未转化信号（近7天加购但未支付次数）<br>
-            • 价格敏感度指标（历史领券核销率、折扣偏好）<br>
-            • 实时上下文（当前访问品类：高毛利美妆 vs 低毛利日百）
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            作为模型的输入协变量。因果模型（如 Causal Forest / X-Learner）基于 $X$ 捕捉人群异质性（Heterogeneity），区分出“对价格极度敏感但有购买意向”的人群与“无论如何都会买”的老客。
-          </td>
-        </tr>
-        <tr style="background: #fafafa;">
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #f59e0b;">干预动作 $T$<br>(Treatment)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>is_coupon_issued</code><br>
-            <code>treatment_type</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • 离散二值：<code>1</code>（发放满 100 减 20 促销神券），<code>0</code>（对照组，纯自然推荐不下发任何补贴）<br>
-            • 多门槛干预：<code>T ∈ {0: 无券, 1: 满50-5, 2: 满100-20}</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            工程侧实际施加的物理干预信号。在随机 AB 实验中由服务端随机分流系统（如 Hash 落桶）决定。
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #10b981;">目标响应 $Y$<br>(Outcome)</td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            <code>is_order_paid_24h</code><br>
-            <code>pay_gmv_24h</code><br>
-            <code>net_profit_24h</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            • 分类目标：干预后 24 小时内是否支付成功（<code>0 或 1</code>）<br>
-            • 回归目标：干预后成交的总 GMV（连续实数）<br>
-            • 净利润：<code>GMV * 毛利率 - (补贴面额 * 核销标记)</code>
-          </td>
-          <td style="padding: 8px; border: 1px solid #e2e8f0;">
-            模型希望通过干预拉动的业务结果。工业界若仅优化 GMV 极易产生巨额补贴亏损，因此成熟业务通常将 $Y$ 定义为净商业增量（Net Profit）或带成本约束的转化率。
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+> **📋 工业大厂样本宽表数据结构定义（Hive / Feature Store 真实字段切片）**
+
+| 变量类别 | 数仓具体字段名 | 数据类型与业务含义 | 在因果建模中的实战作用 |
+| :--- | :--- | :--- | :--- |
+| **特征向量 $X$**<br>(Covariates) | `user_age_group`<br>`city_tier`<br>`device_brand_price`<br>`active_days_30d`<br>`pay_gmv_30d`<br>`cart_unpaid_cnt_7d`<br>`hist_coupon_use_rate`<br>`cur_browse_cate_l1` | • 用户静态画像（年龄/一二线或下沉/千元机或旗舰机）<br>• RFM 历史消费统计（近30天活跃天数、消费金额）<br>• 强意向未转化信号（近7天加购但未支付次数）<br>• 价格敏感度指标（历史领券核销率、折扣偏好）<br>• 实时上下文（当前访问品类：高毛利美妆 vs 低毛利日百） | 作为模型的输入协变量。因果模型（如 Causal Forest / X-Learner）基于 $X$ 捕捉人群异质性（Heterogeneity），区分出“对价格极度敏感但有购买意向”的人群与“无论如何都会买”的老客。 |
+| **干预动作 $T$**<br>(Treatment) | `is_coupon_issued`<br>`treatment_type` | • 离散二值：`1`（发放满 100 减 20 促销券），`0`（对照组，纯自然推荐不下发任何补贴）<br>• 多门槛干预：`T ∈ {0: 无券, 1: 满50-5, 2: 满100-20}` | 工程侧实际施加的物理干预信号。在随机 AB 实验中由服务端随机分流系统（如 Hash 落桶）决定。 |
+| **目标响应 $Y$**<br>(Outcome) | `is_order_paid_24h`<br>`pay_gmv_24h`<br>`net_profit_24h` | • 分类目标：干预后 24 小时内是否支付成功（`0 或 1`）<br>• 回归目标：干预后成交的总 GMV（连续实数）<br>• 净利润：`GMV * 毛利率 - (补贴面额 * 核销标记)` | 模型希望通过干预拉动的业务结果。工业界若仅优化 GMV 极易产生巨额补贴亏损，因此成熟业务通常将 $Y$ 建模为净商业增量（Net Profit）或带成本约束的转化率。 |
+
+---
 
 ---
 
@@ -283,7 +177,7 @@ $$
   </div>
   <div style="margin-top: 12px; border-top: 1px dashed #cbd5e1; padding-top: 12px; font-size: 13px; color: #475569; display: flex; align-items: center; gap: 8px;">
     <span style="color: #dc2626; font-weight: bold;">⚠️ 隐式混杂 U (用户内在购买意愿)</span>
-    <span>同时作用于实际核销行为 $T$ 与购买转化 $Y$，形成不可阻断的后门路径（Backdoor Path）！</span>
+    <span>同时作用于实际核销行为 <i>T</i> 与购买转化 <i>Y</i>，形成不可阻断的后门路径（Backdoor Path）！</span>
   </div>
 </div>
 
@@ -342,53 +236,15 @@ $$
 
 增量建模的核心任务是基于有限样本拟合 $\hat{\tau}(X)$。工业界主流形成了 Meta-Learners（元学习器体系）与 Causal Tree / Forest（因果树体系）两大路线。
 
-<div style="margin: 24px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-  <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: bold; font-size: 14px;">
-    🧩 五大 Uplift 核心建模范式架构全景矩阵
-  </div>
-  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-    <thead>
-      <tr style="background: #f1f5f9; text-align: left;">
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">算法架构</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">模型结构与数据流拓扑</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">核心理论优势</th>
-        <th style="padding: 10px; border-bottom: 1px solid #e2e8f0;">工业落地关键缺陷</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">S-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">单模型 $\mu(X, T)$，预估 $\hat{\tau} = \mu(X, 1) - \mu(X, 0)$</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">工程改造成本最低，全量样本复用</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;"><b>正则化偏倚</b>：树分裂或 L1/L2 极易将 1 维的 $T$ 吞噬归零</td>
-      </tr>
-      <tr style="background: #fafafa;">
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">T-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">独立训练 $\mu_1(X)$ 与 $\mu_0(X)$，预估 $\mu_1 - \mu_0$</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">强制保留 $T$ 效应，不受特征正则化挤压</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #dc2626;">两模型误差独立放大；样本不均衡时小样本组方差爆炸</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">X-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">两阶段反事实残差交叉推补 + 倾向得分后验加权</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">专克<b>样本极度不平衡</b>场景（如发券仅占 5%）</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">需要维护 4 个内部模型，训练与部署开销较高</td>
-      </tr>
-      <tr style="background: #fafafa;">
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">DR-Learner</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">构造 AIPW 伪标签 $Y^{\text{DR}}$，直接回归拟合增量</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;"><b>双重稳健性</b>与 Neyman 正交性，半参数方差达到理论下界</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">分母含倾向得分 $e(X)$，极端重叠度下伪标签有震荡离群点</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">Causal Forest</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">以因果效应异质性方差为分裂目标 + 诚实切分</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">非参数原生输出置信区间，具备严谨渐近正态分布保证</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; color: #b45309;">高维稀疏 ID 特征拟合能力弱于深度模型</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+> **🧩 五大 Uplift 核心建模范式架构全景矩阵**
+
+| 算法范式 | 核心预估架构 | 目标因果效应 $\tau(X)$ 计算公式 | 工业界核心优势 | 工业界致命缺陷 / 风险 |
+| :--- | :--- | :--- | :--- | :--- |
+| **S-Learner**<br>(Single Learner) | 单模型 $\mu(X, T)$，预估 $\hat{\tau} = \mu(X, 1) - \mu(X, 0)$ | $\mu(X, T) = \mathbb{E}[Y \mid X, T]$<br>$\hat{\tau}(X) = \hat{\mu}(X, 1) - \hat{\mu}(X, 0)$ | 结构最简单，直接复用既有精排模型，训练成本最低 | **正则化偏倚**：树分裂或 L1/L2 极易将 1 维的 $T$ 吞噬归零，预估增量严重缩水偏向 0 |
+| **T-Learner**<br>(Two Learners) | 独立训练 $\mu_1(X)$ 与 $\mu_0(X)$，预估 $\mu_1 - \mu_0$ | $\mu_1(X) = \mathbb{E}[Y \mid X, T=1]$<br>$\mu_0(X) = \mathbb{E}[Y \mid X, T=0]$<br>$\hat{\tau}(X) = \hat{\mu}_1(X) - \hat{\mu}_0(X)$ | 强制保留 $T$ 效应，不受特征正则化挤压 | **样本量失衡方差爆炸**：工业界实验组 $T=1$ 常仅占 5%~10%，$\mu_1(X)$ 严重欠拟合导致残差方差放大 |
+| **X-Learner**<br>(Crossover Learner) | 两阶段交叉推补反事实残差，倾向得分自适应加权 | Stage 1: 反事实残差推补<br>$D_1 = Y_1 - \hat{\mu}_0(X_1)$<br>$D_0 = \hat{\mu}_1(X_0) - Y_0$<br>Stage 2: 倾向得分融合<br>$\hat{\tau}(X) = e(X)\hat{\tau}_0(X) + (1-e(X))\hat{\tau}_1(X)$ | **专治样本极度不平衡**（$P(T=1) \ll P(T=0)$），方差最小，大厂营销补贴首选 Meta-Learner | 需训练 4 个基模型 + 1 个倾向模型，离线离线训练与维护成本最高 |
+| **DR-Learner**<br>(Doubly Robust) | 构造 AIPW 伪标签 $Y^{\text{DR}}$，直接回归拟合增量 | $Y^{\text{DR}} = \hat{\mu}_1(X) - \hat{\mu}_0(X) + \frac{T(Y - \hat{\mu}_1(X))}{e(X)} - \frac{(1-T)(Y - \hat{\mu}_0(X))}{1-e(X)}$<br>$\hat{\tau} = \arg\min_f \sum (Y_i^{\text{DR}} - f(X_i))^2$ | **双重稳健性 + Neyman 正交性**：响应模型 $\mu$ 或倾向模型 $e$ 任一正确即无偏；收敛速度达 $\sqrt{N}$ | 分母含倾向得分 $e(X)$，极端重叠度下伪标签有震荡离群点，需截断 |
+| **Causal Forest**<br>(Honest Forest) | 诚实树分裂（Honest Splitting）自适应近邻匹配 | $\hat{\tau}(X) = \sum_{i=1}^n \alpha_i(X) Y_i$<br>权重 $\alpha_i(X)$ 由样本在同一叶节点的共现频率决定 | 局部非参数估计，具备严格渐近正态性与统计置信区间输出 | 特征维度极高（$D > 500$）或稀疏 ID 特征下树模型分裂退化，推理延迟较高 |
 
 ---
 
@@ -542,29 +398,15 @@ $$
 
 在经典机器学习中，使用同一批样本做树结构搜索与叶子节点参数评估会导致严重的自适应过拟合，且无法输出置信区间。因果森林引入样本独立划分机制：
 
-<div style="margin: 20px 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; background: #ffffff;">
-  <div style="font-weight: bold; font-size: 14px; color: #1e293b; margin-bottom: 12px;">
-    🌲 因果森林：诚实切分（Honest Splitting）样本流动机制
-  </div>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-    <div style="border: 1px solid #93c5fd; background: #eff6ff; border-radius: 6px; padding: 12px;">
-      <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 4px;">子样本集 A: $S_{\text{split}}$ (结构训练集)</div>
-      <div style="font-size: 13px; color: #3b82f6;">
-        仅用于计算切分指标 $\Delta(L, R)$，决定树在哪个特征、哪个阈值处分裂。树结构确定后，该集合样本立即被彻底丢弃。
-      </div>
-    </div>
-    <div style="border: 1px solid #86efac; background: #f0fdf4; border-radius: 6px; padding: 12px;">
-      <div style="font-weight: bold; color: #15803d; margin-bottom: 4px;">子样本集 B: $S_{\text{est}}$ (效应估计集)</div>
-      <div style="font-size: 13px; color: #16a34a;">
-        将未参与树分裂的独立干净样本落入叶子节点，在各个叶子内部计算真实因果效应：<br>
-        $\hat{\tau}_{\text{leaf}} = \bar{Y}_{1, \text{leaf}} - \bar{Y}_{0, \text{leaf}}$
-      </div>
-    </div>
-  </div>
-  <div style="margin-top: 12px; font-size: 12px; color: #64748b;">
-    📌 统计学证明：由于叶子内的样本没有参与该叶子边界的形成（零信息泄露），根据中心极限定理，叶子估计量无偏，且渐近服从高斯正态分布，原生支持输出稳健的置信区间与 $p$ 值！
-  </div>
-</div>
+> **🌲 因果森林：诚实切分（Honest Splitting）样本流动机制**
+>
+> * **子样本集 A: $S_{\text{split}}$（结构训练集）**：
+>   仅用于计算切分指标 $\Delta(L, R)$，决定树在哪个特征、哪个阈值处分裂。树结构确定后，该集合样本立即被彻底丢弃。
+> * **子样本集 B: $S_{\text{est}}$（效应估计集）**：
+>   将未参与树分裂的独立干净样本落入叶子节点，在各个叶子内部计算真实因果效应：
+>   $$\hat{\tau}_{\text{leaf}} = \bar{Y}_{1, \text{leaf}} - \bar{Y}_{0, \text{leaf}}$$
+>
+> 📌 **统计学证明**：由于叶子内的样本没有参与该叶子边界的形成（零信息泄露），根据中心极限定理，叶子估计量无偏，且渐近服从高斯正态分布，原生支持输出稳健的置信区间与 $p$ 值！
 
 ---
 
