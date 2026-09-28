@@ -1873,6 +1873,12 @@ const businessAlgorithmNoteDefinitions = [
     'BusinessAlgorithm07 System Design.en.md',
     { directory: 'BusinessAlgorithm', category: '工业算法 · 生成式前沿与系统工程', categoryEn: 'Industrial Algorithms · Generative Rec & Production', difficulty: 'Applied' },
   ),
+  createTutorialDefinition(
+    '第 21 章 · 因果推断与增量建模（Uplift Modeling）',
+    'BusinessAlgorithm08 Causal Inference and Uplift Modeling.md',
+    'BusinessAlgorithm08 Causal Inference and Uplift Modeling.en.md',
+    { directory: 'BusinessAlgorithm', category: '工业算法 · 因果推断与增量建模', categoryEn: 'Industrial Algorithms · Causal Inference & Uplift', difficulty: 'Hard' },
+  ),
 ];
 
 const businessAlgorithmEnglishTitles = {
@@ -1896,6 +1902,7 @@ const businessAlgorithmEnglishTitles = {
   'BusinessAlgorithm05 Generative Recommendation.md': 'Chapter 18 · LLM Ranking and Generative Recommendation',
   'BusinessAlgorithm06 Agentic Search.md': 'Chapter 19 · RAG and Agentic Search',
   'BusinessAlgorithm07 System Design.md': 'Chapter 20 · System Design and Production Validation',
+  'BusinessAlgorithm08 Causal Inference and Uplift Modeling.md': 'Chapter 21 · Causal Inference and Uplift Modeling',
 };
 
 const businessAlgorithmNotes = businessAlgorithmNoteDefinitions.map((definition) => ({
