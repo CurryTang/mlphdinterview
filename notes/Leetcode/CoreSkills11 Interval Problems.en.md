@@ -75,90 +75,140 @@ s2 > e1
 
 That means they are disjoint, so the previous interval can be safely output.
 
-## The universal template: start here
+## The Unified Interval Blueprint
 
-Interval problems look like 7 separate patterns, but the real "skeleton" is only two. Memorizing these two skeletons is more useful than memorizing 7 pieces of code.
-
-Sort first, then ask yourself one question:
+Interval problems project 1D segments onto an ordered timeline.
+All seemingly disparate interval variants converge mathematically to **one unified ordering + two core models**:
 
 ```text
-What do I actually need?
-
-├── Merge results / output a list of intervals?
-│     -> Skeleton A: sort by start + maintain a current interval
-│       Examples: Merge Intervals, Insert Interval
-│
-├── Remove as few as possible so the rest don't overlap?
-│     -> Skeleton A's greedy variant: sort by END + keep the one with the smaller end
-│       Example: Non-overlapping Intervals
-│
-├── Just need a boolean: is there any conflict at all?
-│     -> Skeleton A's simplest form: sort by start + compare only adjacent pairs
-│       Example: Meeting Rooms
-│
-├── Need "how many intervals are active at the same time, at most"?
-│     -> Skeleton B: event counting / heap
-│       Examples: Meeting Rooms II, Sweep Line, Car Pooling
-│
-└── For each query, find the best interval covering it right now?
-      -> Skeleton B upgraded: heap of candidate intervals, evict expired ones while scanning
-        Example: Minimum Interval to Include Each Query
+                               ┌───────────────────────────┐
+                               │ Universally sort by start │
+                               │ intervals.sort(key=...)   │
+                               └─────────────┬─────────────┘
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+         [Model 1: Frontier Evolution]              [Model 2: Concurrency Peak]
+         (LC 56, 57, 435, 452, 252)                  (LC 253, 1094, 732)
+                       │                                           │
+                       ▼                                           ▼
+       Maintain active frontier prev = intervals[0]   Decompose into (time, delta) events
+       Traverse subsequent [start, end]:              Sort by timestamp (-1 before +1)
+                       │                                           │
+         ┌─────────────┴─────────────┐                             ▼
+         ▼                           ▼              Prefix accumulate: active += delta
+      Overlap (start <= prev.end)   Disjoint (start > prev.end)  max_peak = max(max_peak, active)
+         │                           │
+         ├─ Merge (LC 56/57)         └─ Frontier safely sealed; output prev
+         │  prev.end = max(prev.end, end)   prev = current interval
+         ├─ Greedy Pruning (LC 435/452)
+         │  prev.end = min(prev.end, end)
+         └─ Conflict Check (LC 252)
+            return False
 ```
 
-### Skeleton A: sort + single-pointer scan compared against a rolling state
+### 1. Unified Frontier Evolution Template
+
+This template governs all "range merging", "greedy pruning", and "overlap detection" problems. **Always sort universally by `start`**. When an overlap occurs, a single character difference (`max` vs. `min`) seamlessly switches between merging and pruning:
 
 ```python
-def solve(intervals):
-    intervals.sort(key=lambda x: x[SORT_KEY])  # 0 = by start, 1 = by end
-    state = INIT_STATE                          # usually "the interval currently being built" or one of its boundaries
+from typing import List
 
-    for start, end in intervals:
-        if CONFLICT(start, end, state):
-            ACTION_ON_CONFLICT()
-        else:
-            ACTION_ON_NO_CONFLICT()
 
-    return RESULT
+class IntervalFrontierTemplate:
+    @staticmethod
+    def solve_frontier(intervals: List[List[int]], mode: str = "merge"):
+        """Universally sort by start; maintain rolling frontier [prev_start, prev_end]
+
+        mode supports:
+        - "merge": LC 56 Merge Intervals / LC 57 Insert Interval
+        - "erase": LC 435 Non-overlapping Intervals / LC 452 Burst Balloons
+        - "detect": LC 252 Meeting Rooms (check for any collision)
+        """
+        if not intervals:
+            return [] if mode != "detect" else True
+
+        # 1. Always sort by start ascending
+        intervals.sort(key=lambda x: x[0])
+
+        merged = [intervals[0]]  # merged[-1] acts as the active rolling frontier
+        removed = 0
+
+        for start, end in intervals[1:]:
+            prev_end = merged[-1][1]
+
+            # 2. Overlap condition: current start <= previous end
+            if start <= prev_end:
+                if mode == "merge":
+                    # Mode A: Expand frontier to subsume overlap (LC 56)
+                    merged[-1][1] = max(prev_end, end)
+                elif mode == "erase":
+                    # Mode B: Greedy pruning (LC 435); keep the one with earlier end to preserve future room
+                    removed += 1
+                    merged[-1][1] = min(prev_end, end)
+                elif mode == "detect":
+                    # Mode C: Collision detected (LC 252)
+                    return False
+            else:
+                # 3. Disjoint: seal current frontier and advance to new interval
+                merged.append([start, end])
+
+        if mode == "merge":
+            return merged
+        if mode == "erase":
+            return removed
+        return True
 ```
 
-The four problems differ only in how these four blanks get filled in:
+> **First Principles Epiphany (Why sorting by start also solves LC 435):**
+> A widespread misconception claims that "Merge Intervals must be sorted by start, but Non-overlapping Intervals must be sorted by end."
+> In reality, **sorting universally by start**:
+> - When two intervals collide, exactly one must be removed. To maximize the remaining room for future intervals, we **must keep the one that ends earlier**;
+> - Thus, executing `merged[-1][1] = min(prev_end, end)` drops the interval with the later end;
+> - This is mathematically **identical** to sorting by end, completely eliminating cognitive dissonance about switching sort keys.
 
-| Problem | SORT_KEY | Initial state | CONFLICT check | Action on conflict | Action on no conflict |
-|---|---|---|---|---|---|
-| Merge Intervals | start | the first interval | `next.start <= state.end` | `state.end = max(state.end, next.end)` | output state, `state = next` |
-| Meeting Rooms (can attend?) | start | end of the first interval | `next.start < state` | `return False` | `state = next.end` |
-| Non-overlapping Intervals | **end** | `-inf` | `next.start < state` | `removed += 1` (drop next) | `state = next.end` |
+---
 
-At a glance, Merge and Meeting Rooms use **exactly the same comparison** (`next.start` against state) — the only difference is whether state stores the whole interval or just an end value. Non-overlapping Intervals is the only one that sorts by end instead of start, because its greedy rule is "keep whichever interval ends earliest," and only sorting by end guarantees the first interval you encounter is the one you should keep.
+### 2. Unified Sweep Line / Concurrency Template
 
-Insert Interval is really just an incremental version of Skeleton A: the input is already sorted by start, so instead of re-sorting, you just "insert" `newInterval` at the right position and run the same merge logic. The three-zone code shown earlier (left intervals output directly, overlapping ones expand the new interval, right intervals output directly) is just this same merge process split up by position — same result, minus one $O(n\log n)$ sort.
-
-### Skeleton B: turn intervals into events, sweep once to count how many are active
+This template governs all "maximum simultaneous occupancy", "minimum meeting rooms", and "passenger capacity peak" problems:
 
 ```python
-def solve_active_count(intervals):
-    events = []
-    for start, end in intervals:
-        events.append((start, +1))
-        events.append((end, -1))
-    events.sort()  # at the same timestamp, (-1) automatically sorts before (+1)
+from typing import List
 
-    active = best = 0
-    for _, delta in events:
-        active += delta
-        best = max(best, active)
-    return best
+
+class IntervalSweepLineTemplate:
+    @staticmethod
+    def min_meeting_rooms(intervals: List[List[int]]) -> int:
+        """Event Delta Stream: finds maximum peak concurrency (LC 253 / LC 1094 / LC 732)"""
+        events = []
+        for start, end in intervals:
+            # Start event (+1 capacity); End event (-1 capacity)
+            events.append((start, 1))
+            events.append((end, -1))
+
+        # Tie-breaker rule: departure (-1) sorts before arrival (+1) at identical timestamps.
+        # This naturally allows meetings [1, 2] and [2, 3] to reuse a room without special branching.
+        events.sort(key=lambda x: (x[0], x[1]))
+
+        active = 0
+        peak = 0
+        for _, delta in events:
+            active += delta
+            peak = max(peak, active)
+
+        return peak
 ```
 
-This skeleton directly gives the answer to Meeting Rooms II and Sweep Line (`best` is the maximum number of intervals active at once, i.e. the minimum number of rooms needed). One detail that's easy to get asked about: why doesn't `[1,2]` and `[2,3]` require two rooms? Because sorting by `(time, delta)` puts `(2, -1)` before `(2, +1)` (since `-1 < +1`) — "release, then occupy" — which matches the intuition that the instant a meeting ends, its room is immediately free for the next one. No extra branch is needed; the sort itself gets this boundary case right for free.
+---
 
-If the question also asks *which* intervals are overlapping, not just the count, switch to a heap: replace `state = next.end` with a min-heap of end times for intervals currently occupying a room. For each new interval, check whether the heap's smallest end is already $\le$ the current start — if so, a room just freed up, so `pop` before you `push`. That's exactly Meeting Rooms II's solution A, which is just another implementation of Skeleton B.
+### 3. Unified Active Query Heap Template
 
-Minimum Interval to Include Each Query is Skeleton B taken one step further: the heap stores `(interval length, end)` instead of a bare end value. For each query, push every interval with `start <= query` into the heap, then pop anything whose `end < query` (it's expired and can never cover any later query either). Whatever's left on top of the heap is the shortest interval currently covering that query.
-
-### When the skeletons aren't enough
-
-Of the 7 patterns, the only one that doesn't fit cleanly into Skeleton A or B is the one needing two independent orderings at once — maintaining candidate intervals by validity while also ranking them by length (Minimum Interval Query), which is why it needs a heap with a custom sort key. When you hit an interval problem, first ask whether it's Skeleton A or B; only reach for extra state inside Skeleton B's heap if neither fits as-is.
+This template governs range queries with point evaluations (LC 1851 Minimum Interval to Include Each Query):
+* **Dual-pointer advance**: Sort both `intervals` (by start) and `queries` ascending;
+* **Min-heap candidate pool**: Push all intervals with `start <= q` into the min-heap as `(length, end)`;
+* **Eviction of stale candidates**: Pop all intervals from heap top whose `end < q`;
+* **Heap top is optimal**: The remaining heap top is guaranteed to be the shortest interval covering query $q$.
 
 ## Pattern 1: Merge Intervals
 
@@ -324,14 +374,48 @@ Why?
 
 Because the earlier it ends, the more space it leaves for later intervals.
 
-Code:
+### Approach 1: Unified Frontier Evolution (Sort by Start, Symmetrical to Merge Intervals)
+
+Sorting key remains identical to interval merging. When an overlap conflict occurs, merging uses `max` to expand, while non-overlapping uses `min` to greedily retain the interval ending earlier and prune the one ending later:
 
 ```python
 from typing import List
 
 class Solution:
     def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
-        intervals.sort(key=lambda interval: interval[1])
+        if not intervals:
+            return 0
+
+        # Universally sort by start
+        intervals.sort(key=lambda x: x[0])
+
+        removed = 0
+        prev_end = intervals[0][1]
+
+        for start, end in intervals[1:]:
+            if start < prev_end:
+                # Overlap conflict: must remove one
+                # Greedy choice: retain interval with smaller end to maximize remaining room
+                removed += 1
+                prev_end = min(prev_end, end)
+            else:
+                # Safe: advance frontier
+                prev_end = end
+
+        return removed
+```
+
+### Approach 2: Classic Greedy (Sort by End)
+
+Count the maximum number of non-overlapping intervals kept, where the answer is $n - \text{keep}$:
+
+```python
+from typing import List
+
+class Solution:
+    def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
+        # Sort by end ascending
+        intervals.sort(key=lambda x: x[1])
 
         removed = 0
         prev_end = float("-inf")
@@ -345,20 +429,7 @@ class Solution:
         return removed
 ```
 
-This formulation is equivalent to:
-
-```text
-What is the maximum number of non-overlapping intervals we can keep?
-answer = n - keep
-```
-
-You can also write it by sorting on start, but when there is a conflict you need to update:
-
-```python
-prev_end = min(prev_end, end)
-```
-
-In interviews, sorting by end is usually preferred because the greedy intention is clearer.
+Both approaches are mathematically and asymptotically equivalent ($O(n \log n)$). Approach 1 has the distinct advantage of sharing the exact same `start` sorting key and frontier comparison as Merge Intervals, eliminating context switching.
 
 Complexity:
 
@@ -657,17 +728,20 @@ Representative problems:
 - Merge Intervals
 - Insert Interval
 
-### You need to remove the fewest conflicts
+### You need to remove the fewest conflicts / greedy pruning
 
 Use:
 
 ```text
-sort by end + keep earliest ending interval
+sort by start + on conflict min(prev_end, end) (Unified Frontier)
+or
+sort by end + keep earliest ending interval (Classic Greedy)
 ```
 
 Representative problems:
 
 - Non-overlapping Intervals
+- Minimum Number of Arrows to Burst Balloons
 
 ### You need to determine whether there is a conflict
 
@@ -729,7 +803,7 @@ You can start answering interval problems like this:
 
 1. First, I place the intervals on a timeline.
 2. If the problem cares about covered ranges, I sort by start and maintain the current interval.
-3. If the problem cares about maximizing non-overlap, I sort by end, because the earlier an interval ends, the less it affects what comes after.
+3. If the problem cares about maximizing non-overlap / removing fewest intervals, I sort by start and on conflict take min(prev_end, end) to retain the earliest ending interval (or sort by end with classic greedy).
 4. If the problem cares about how many intervals exist at the same time, I use a heap / sweep line to maintain active intervals.
 5. If the problem has queries, I sort the queries too and use a heap to maintain the candidate intervals for the current query.
 

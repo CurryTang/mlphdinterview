@@ -75,90 +75,140 @@ s2 > e1
 
 说明它们断开，前一个区间可以安全输出。
 
-## 万能模板：先套这一个
+## 终极统一模板：两问定型法 (The Unified Interval Blueprint)
 
-区间题看着有 7 个 pattern，但真正的"骨架"只有两种。记住这两套骨架，比记住 7 道题的代码更管用。
-
-拿到题先排序，然后问自己一句话：
+区间题的本质是将一维数轴上的离散时间段投影到一条有序的时间线上。
+所有看似繁杂的分类，在数学上统一收敛为**一个前置排序 + 两个核心模型**：
 
 ```text
-我需要的是……
-
-├── 合并结果 / 输出区间列表？
-│     → 骨架 A：sort by start + 维护一个 current 区间
-│       代表题：Merge Intervals, Insert Interval
-│
-├── 删到最少剩余、让其余的互不重叠？
-│     → 骨架 A 的贪心变体：sort by END + 保留 end 更小的
-│       代表题：Non-overlapping Intervals
-│
-├── 只想知道会不会冲突（返回布尔值）？
-│     → 骨架 A 的最简版：sort by start + 只比较相邻两个
-│       代表题：Meeting Rooms
-│
-├── 想知道"同一时刻最多有几个区间在线"？
-│     → 骨架 B：事件计数 / 堆
-│       代表题：Meeting Rooms II, Sweep Line, Car Pooling
-│
-└── 每个 query 要找"当前覆盖它的最优区间"？
-      → 骨架 B 的升级版：堆里放候选区间，边扫边淘汰过期区间
-        代表题：Minimum Interval to Include Each Query
+                               ┌───────────────────────────┐
+                               │ 统一按 start 升序排序     │
+                               │ intervals.sort(key=...)   │
+                               └─────────────┬─────────────┘
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+       【模型一：前沿状态演进 (Frontier)】         【模型二：并发峰值统计 (Concurrency)】
+       (LC 56, 57, 435, 452, 252)                   (LC 253, 1094, 732)
+                       │                                           │
+                       ▼                                           ▼
+       维护滚动前沿 prev = intervals[0]             拆分为 (time, delta) 差分事件
+       遍历后续区间 [start, end]:                   按时间点升序排序 (-1 优先于 +1)
+                       │                                           │
+         ┌─────────────┴─────────────┐                             ▼
+         ▼                           ▼              前缀累加 active += delta
+     发生重叠 (start <= prev.end)   完全断开 (start > prev.end)  max_rooms = max(max_rooms, active)
+         │                           │
+         ├─ 要合并 (LC 56/57)        └─ 前沿安全闭合，输出 prev
+         │  prev.end = max(prev.end, end)  prev = 当前区间
+         ├─ 贪心去重 (LC 435/452)
+         │  prev.end = min(prev.end, end)
+         └─ 冲突检测 (LC 252)
+            return False
 ```
 
-### 骨架 A：排序 + 单指针扫描 + 和一个滚动状态比较
+### 1. 统一前沿演进模板 (Unified Frontier Template)
+
+该模板统领所有“合并覆盖”、“贪心去重”和“冲突检测”问题。**永远统一按 `start` 升序排序**，遇到重叠时仅凭一个字符（`max` 还是 `min`）即可在合并与去重之间无缝切换：
 
 ```python
-def solve(intervals):
-    intervals.sort(key=lambda x: x[SORT_KEY])  # 0 = 按 start，1 = 按 end
-    state = INIT_STATE                          # 通常是"当前正在维护的区间"或它的一个边界
+from typing import List
 
-    for start, end in intervals:
-        if CONFLICT(start, end, state):
-            ACTION_ON_CONFLICT()
-        else:
-            ACTION_ON_NO_CONFLICT()
 
-    return RESULT
+class IntervalFrontierTemplate:
+    @staticmethod
+    def solve_frontier(intervals: List[List[int]], mode: str = "merge"):
+        """统一按 start 升序排序，维护滚动前沿 [prev_start, prev_end]
+
+        mode 支持：
+        - "merge": LC 56 合并区间 / LC 57 插入区间
+        - "erase": LC 435 无重叠区间（删除最少区间） / LC 452 用最少箭引爆气球
+        - "detect": LC 252 会议室（是否存在重叠冲突）
+        """
+        if not intervals:
+            return [] if mode != "detect" else True
+
+        # 1. 永远统一按 start 升序排序！
+        intervals.sort(key=lambda x: x[0])
+
+        merged = [intervals[0]]  # merged[-1] 充当当前活跃前沿 prev
+        removed = 0
+
+        for start, end in intervals[1:]:
+            prev_end = merged[-1][1]
+
+            # 2. 核心判定：当前起点 <= 前沿终点 -> 发生重叠！
+            if start <= prev_end:
+                if mode == "merge":
+                    # 模式 A: 扩张合并 (LC 56)，前沿向右延展
+                    merged[-1][1] = max(prev_end, end)
+                elif mode == "erase":
+                    # 模式 B: 贪心去重 (LC 435)，必须淘汰一个，保留 end 更小的为后续腾空间
+                    removed += 1
+                    merged[-1][1] = min(prev_end, end)
+                elif mode == "detect":
+                    # 模式 C: 冲突违规 (LC 252)，发现重叠直接返回不可行
+                    return False
+            else:
+                # 3. 未重叠：前沿安全闭合，当前区间成为新前沿
+                merged.append([start, end])
+
+        if mode == "merge":
+            return merged
+        if mode == "erase":
+            return removed
+        return True
 ```
 
-四道题的区别只在于怎么填这四个空：
+> **核心顿悟（为什么按 start 排序也能解 LC 435？）**：
+> 常见误区认为“合并区间必须按 start 排，无重叠区间必须按 end 排”，制造了不必要的记忆撕裂。
+> 事实上，**统一按 start 排序**时：
+> - 一旦两个区间重叠，两者冲突必须删掉一个。为了给右侧未来的区间留出尽可能多的容纳空间，我们**必须保留 end 更小的那个**；
+> - 因此执行 `merged[-1][1] = min(prev_end, end)`，直接把 end 较大的区间舍弃；
+> - 这与按 end 排序在数学上**完全等价**。按 start 排序一套骨架通杀所有前沿题，无需在考场上切换排序键！
 
-| 题型 | SORT_KEY | state 初始值 | CONFLICT 判断 | 冲突时的动作 | 不冲突时的动作 |
-|---|---|---|---|---|---|
-| Merge Intervals | start | 第一个区间 | `next.start <= state.end` | `state.end = max(state.end, next.end)` | 输出 state，`state = next` |
-| Meeting Rooms（能否参加） | start | 第一个区间的 end | `next.start < state` | `return False` | `state = next.end` |
-| Non-overlapping Intervals | **end** | `-inf` | `next.start < state` | `removed += 1`（丢弃 next） | `state = next.end` |
+---
 
-一眼就能看出来：Merge 和 Meeting Rooms 用的是**同一个判断条件**（`next.start` 和 state 比较），区别只是 state 存的是"整个区间"还是"一个 end 值"；Non-overlapping 唯一不同的地方是排序键换成了 end——因为这题的贪心策略是"优先保留结束更早的区间"，只有按 end 排序才能保证第一个遇到的就是该保留的那个。
+### 2. 统一差分事件扫描线模板 (Unified Sweep Line Template)
 
-Insert Interval 本质上是骨架 A 的增量版：因为输入已经按 start 排好序，不需要重新排序，只要在正确位置"插入" `newInterval` 再跑一遍同样的合并逻辑就行。笔记前面给出的三段式写法（左边直接输出、重叠区间扩张、右边直接输出）只是把这个合并过程按位置拆开来写，效果完全一样，只是省掉了一次 $O(n\log n)$ 的排序，效率更高。
-
-### 骨架 B：把区间拆成事件，扫一遍数活跃数量
+该模板统领所有“最大同时在线数”、“最少会议室数量”、“车上乘客峰值”问题。将连续区间打散为离散事件：
 
 ```python
-def solve_active_count(intervals):
-    events = []
-    for start, end in intervals:
-        events.append((start, +1))
-        events.append((end, -1))
-    events.sort()  # 同一时间点，(-1) 会自动排在 (+1) 前面
+from typing import List
 
-    active = best = 0
-    for _, delta in events:
-        active += delta
-        best = max(best, active)
-    return best
+
+class IntervalSweepLineTemplate:
+    @staticmethod
+    def min_meeting_rooms(intervals: List[List[int]]) -> int:
+        """差分事件流模板：求解时间轴上的最大并发峰值 (LC 253 / LC 1094 / LC 732)"""
+        events = []
+        for start, end in intervals:
+            # 开始事件：占用资源 (+1)；结束事件：释放资源 (-1)
+            events.append((start, 1))
+            events.append((end, -1))
+
+        # 核心排序规则：按时间点排序；若时间相同，结束事件 (-1) 必须排在开始事件 (+1) 前面！
+        # 这一排序天然保证 [1, 2] 与 [2, 3] 在时刻 2 能够复用会议室，零额外 if 特判
+        events.sort(key=lambda x: (x[0], x[1]))
+
+        active = 0
+        peak = 0
+        for _, delta in events:
+            active += delta
+            peak = max(peak, active)
+
+        return peak
 ```
 
-这套骨架直接给出 Meeting Rooms II 和 Sweep Line 的答案（`best` 就是最大同时在线数量，也就是最少需要的房间数）。有一个容易被问到的细节：为什么 `[1,2]` 和 `[2,3]` 不应该算作需要两个房间？因为按 `(time, delta)` 排序时，`(2, -1)` 会排在 `(2, +1)` 前面（`-1 < +1`），也就是"先释放、再占用"，这正好对应"会议结束的那一刻，房间立刻可以给下一场会议用"这个直觉，不需要额外写判断逻辑，排序本身就把这条边界规则处理对了。
+---
 
-如果题目还要求你知道"具体是哪几个区间在重叠"，不只是数量，就换成堆：把 `state = next.end` 换成一个 min-heap（存当前占用中的区间的 end），每次新区间来先看堆顶的 end 是不是已经 $\le$ 当前 start，是的话说明有房间空出来了，`pop` 之后再 `push`。这就是 Meeting Rooms II 解法 A 的写法，本质上是骨架 B 的另一种实现方式。
+### 3. 统一离线查询小顶堆模板 (Unified Active Query Heap Template)
 
-Minimum Interval to Include Each Query 是骨架 B 的再升级：堆里存的不是单纯的 end，而是 `(区间长度, end)`，每来一个 query 就把 `start <= query` 的区间都丢进堆，再把堆顶里 `end < query`（已经过期、不可能再覆盖任何后续 query）的区间弹出去，剩下堆顶就是当前能覆盖这个 query 的最短区间。
-
-### 什么时候骨架不够用
-
-7 个 pattern 里，唯一没法套进骨架 A/B 的是"既要维护候选区间，又要按长度排序找最优"这种双重排序需求（也就是 Minimum Interval Query），这也是为什么它单独用了一个自定义排序的 heap。遇到区间题先问自己是骨架 A 还是骨架 B，套不进去再考虑要不要在骨架 B 的堆里塞更多信息。
+该模板统领带 Query 的区间检索问题（LC 1851 包含每个查询的最小区间）：
+* **双指针推进**：将 `intervals` 按 start 排序，`queries` 也升序排序；
+* **小顶堆维护候选池**：把所有 `start <= q` 的合法区间入堆 `(length, end)`；
+* **堆顶过期淘汰**：将堆顶所有 `end < q`（已经不可能覆盖后续查询）的区间弹出；
+* **堆顶即是最优解**：堆顶就是当前覆盖 $q$ 的最短区间。
 
 ## Pattern 1：Merge Intervals
 
@@ -324,14 +374,48 @@ answer = 1
 
 因为结束越早，留给后面区间的空间越大。
 
-代码：
+### 解法一：统一前沿演进（按 start 排序，与 Merge Intervals 完全对称）
+
+与区间合并完全一致，排序键不变。遇到重叠冲突时，合并是取 `max` 扩张，而去重则是取 `min` 贪心保留结束更早的区间，直接淘汰掉结束晚的区间：
 
 ```python
 from typing import List
 
 class Solution:
     def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
-        intervals.sort(key=lambda interval: interval[1])
+        if not intervals:
+            return 0
+
+        # 统一按 start 排序
+        intervals.sort(key=lambda x: x[0])
+
+        removed = 0
+        prev_end = intervals[0][1]
+
+        for start, end in intervals[1:]:
+            if start < prev_end:
+                # 产生重叠：必须淘汰一个
+                # 贪心原则：保留 end 更小的区间，为右侧留出最大容纳空间
+                removed += 1
+                prev_end = min(prev_end, end)
+            else:
+                # 无重叠：安全推进前沿
+                prev_end = end
+
+        return removed
+```
+
+### 解法二：经典贪心（按 end 排序）
+
+统计最多能容纳的不重叠区间数量，答案为 $n - \text{keep}$：
+
+```python
+from typing import List
+
+class Solution:
+    def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
+        # 按 end 升序排序
+        intervals.sort(key=lambda x: x[1])
 
         removed = 0
         prev_end = float("-inf")
@@ -345,20 +429,7 @@ class Solution:
         return removed
 ```
 
-这个写法等价于：
-
-```text
-最多能保留多少个不重叠区间？
-答案 = n - keep
-```
-
-也可以按 start 排序写，但冲突时要更新：
-
-```python
-prev_end = min(prev_end, end)
-```
-
-面试里更推荐按 end 排序，因为贪心意图更清楚。
+两种写法在数学与时间复杂度上完全等价（均为 $O(n \log n)$）。解法一的优势在于与 Merge Intervals 共享完全相同的 `start` 排序与判定前沿，无需切换心智模型。
 
 复杂度：
 
@@ -657,17 +728,20 @@ sort by start + current merged interval
 - Merge Intervals
 - Insert Interval
 
-### 要删除最少冲突
+### 要删除最少冲突 / 贪心去重
 
 用：
 
 ```text
-sort by end + keep earliest ending interval
+sort by start + 冲突时 min(prev_end, end)（统一前沿法）
+或
+sort by end + keep earliest ending interval（经典贪心法）
 ```
 
 代表题：
 
 - Non-overlapping Intervals
+- Minimum Number of Arrows to Burst Balloons
 
 ### 要判断有没有冲突
 
@@ -729,7 +803,7 @@ heap stores active candidate intervals
 
 1. 我先把区间放到一条时间线上。
 2. 如果题目关心覆盖范围，我按 start 排序并维护 current interval。
-3. 如果题目关心最多不重叠，我按 end 排序，因为结束越早越不影响后面。
+3. 如果题目关心最多不重叠/最少消除，我按 start 排序且冲突时取 min(prev_end, end) 保留最早结束者（或按 end 排序经典贪心）。
 4. 如果题目关心同时存在多少区间，我用 heap / sweep line 维护 active intervals。
 5. 如果题目有 query，我把 query 也排序，用 heap 维护当前 query 的候选区间。
 
