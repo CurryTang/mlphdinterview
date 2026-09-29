@@ -180,7 +180,156 @@ class SASRec(nn.Module):
 
 ---
 
-### 12.5 Temporal Issues in Training
+### 12.5 Temporal Representation Evolution: From Monotonic Decay to the Interest Clock (Circadian Rhythm)
+
+In recommendation domains like short-video feeds and news aggregators, user consumption intent is profoundly governed by **circadian rhythms and physiological schedules**. The "Interest Clock" replaces simple monotonic time decay with a dual-track framework: **Trend Decay + Periodic Resonance**.
+
+#### 1. Pathology of Monotonic Time Distance Decay
+
+Most classical sequential recommendation models (such as early DIN, BST, and SIM's Soft Search) calculate a unidirectional time delta:
+
+$$\Delta t = t_{\text{target}} - t_{\text{action}}$$
+
+which is discretized via logarithmic bucketing: $\mathbf{e}_{\Delta t} = \text{Embedding}(\text{Bucket}(\log(1 + \Delta t)))$.
+
+This introduces a flawed assumption: **as physical elapsed time increases, historical relevance to the current query must strictly decrease**. In real-world feeds, this assumption regularly breaks down:
+- **Circadian Intent Disconnection**: A user's deep engagement with "sleep-aid ambient audio / late-night emotional radio" at 23:30 last night is far more relevant to tonight at 23:30 than to the "morning breaking financial news" casually browsed during their 09:00 morning commute.
+- **Over-dilution of High-Value History**: Monotonic $\Delta t$ decay severely suppresses last night's deep interest due to a 14-hour physical time gap, preventing the nighttime model from reproducing circadian intent.
+
+#### 2. Dual-Scale Disentangled Representation
+
+The Interest Clock disentangles temporal dynamics across two complementary physical dimensions:
+
+```text
+[Dual-Track Temporal Representation Architecture]
+
+                     ┌── 1. Absolute Wall-Clock Slot: Learns intrinsic mindset across 0:00~23:59
+Timestamp Projection ┤
+                     └── 2. Circular Clock Delta: Measures shortest circular arc on a 24-hour dial
+```
+
+- **Dimension 1: Absolute Wall-Clock Time**
+  Projects Unix timestamps onto a closed 24-hour cycle (0:00 ~ 23:59):
+  - **Continuous Harmonic Basis**:
+    $$e_{\text{sin}} = \sin\left(2\pi \cdot \frac{\text{minute\_of\_day}}{1440}\right), \quad e_{\text{cos}} = \cos\left(2\pi \cdot \frac{\text{minute\_of\_day}}{1440}\right)$$
+    Eliminates the Euclidean discontinuity between 23:59 and 00:01, ensuring topological smoothness.
+  - **Discrete Clock Slot Embedding**:
+    Production recommendation engines typically bucket the day into fixed intervals, such as 96 slots (15 minutes per slot) or 48 slots (30 minutes per slot), learning a dense embedding $\mathbf{e}_{\text{clock\_slot}} \in \mathbb{R}^d$ per slot.
+
+- **Dimension 2: Circular Clock Delta**
+  Computes the **shortest circular arc distance** between the historical event time and the current target request time on the 24-hour dial:
+  $$\Delta \tau_i = \min\left(\vert{}h_{\text{target}} - h_i\vert{},\; 24 - \vert{}h_{\text{target}} - h_i\vert{}\right)$$
+  If the target request occurs at 01:00 AM ($h_{\text{target}} = 1$) and a historical interaction happened at 23:00 PM yesterday ($h_i = 23$), the physical delta is $\Delta t = 26 \text{ hours}$, yet the circular phase difference is only $\Delta \tau = 2 \text{ hours}$. This triggers a strong "same-time-window interest resonance".
+
+#### 3. Fusion Paradigm: Embedding Concatenation vs. Attention Bias
+
+- **Embedding-Level Fusion (Input-side Coarse Conditioning)**:
+  $$\mathbf{x}_i = \mathbf{e}_{\text{item}} + \mathbf{e}_{\text{action}} + \mathbf{e}_{\text{clock\_slot}} + \mathbf{e}_{\Delta t}$$
+  While straightforward, passing side embeddings through subsequent dense layers relies on implicit interaction and cannot guarantee attention weights directly scale with temporal proximity.
+- **Attention Bias-Level Intervention (Attention-side Explicit Steering, Production SOTA)**:
+  Directly injects a learnable circular clock bias into the Query-Key attention matrix:
+  $$\text{Score}(Q, K_i) = \frac{Q K_i^T}{\sqrt{d}} - \lambda \cdot \log(1 + \Delta t_i) + \text{Bias}_{\text{circ}}(\Delta \tau_i)$$
+  This formulation unites physical damping with periodic resonance: $-\lambda \log(1 + \Delta t)$ handles long-term interest drift, while $+\text{Bias}_{\text{circ}}$ elevates past high-quality items whenever the circadian phase aligns ($\Delta \tau \to 0$).
+
+#### 4. Production PyTorch Implementation: InterestClockAttention
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class InterestClockAttention(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, num_clock_slots: int = 96):
+        """
+        num_clock_slots: Number of bins across 24 hours (96 slots = 15 mins per slot)
+        """
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        self.num_clock_slots = num_clock_slots
+
+        self.q_proj = nn.Linear(d_model, d_model)
+        self.k_proj = nn.Linear(d_model, d_model)
+        self.v_proj = nn.Linear(d_model, d_model)
+
+        # 1. Absolute periodic clock slot embedding (0 ~ num_clock_slots - 1)
+        self.clock_slot_embed = nn.Embedding(num_clock_slots, d_model)
+
+        # 2. Relative circular delta attention bias table (max arc = num_clock_slots // 2)
+        max_circ_diff = num_clock_slots // 2 + 1
+        self.circ_bias_table = nn.Embedding(max_circ_diff, num_heads)
+
+    def _extract_clock_slots(self, timestamps: torch.Tensor) -> torch.Tensor:
+        """Extracts 24h slot indices from Unix timestamps (0 ~ num_clock_slots - 1)"""
+        seconds_in_day = timestamps % 86400
+        slot_duration = 86400 / self.num_clock_slots
+        return (seconds_in_day / slot_duration).long()
+
+    def _calc_circular_delta(self, target_slots: torch.Tensor, hist_slots: torch.Tensor) -> torch.Tensor:
+        """Calculates shortest circular arc distance on the 24h dial"""
+        abs_diff = torch.abs(target_slots - hist_slots)  # [B, 1, L]
+        circ_diff = torch.minimum(abs_diff, self.num_clock_slots - abs_diff)
+        return circ_diff
+
+    def forward(
+        self,
+        target_item: torch.Tensor,       # [B, 1, d_model]
+        target_ts: torch.Tensor,         # [B, 1] (Unix timestamp)
+        hist_items: torch.Tensor,        # [B, L, d_model]
+        hist_ts: torch.Tensor,           # [B, L] (Unix timestamp)
+        mask: torch.Tensor = None        # [B, 1, L] (True indicates valid position)
+    ) -> torch.Tensor:
+        B, L, _ = hist_items.shape
+
+        # 1. Extract slot indices
+        tgt_slot = self._extract_clock_slots(target_ts)       # [B, 1]
+        hist_slot = self._extract_clock_slots(hist_ts)        # [B, L]
+
+        # 2. Superimpose absolute clock embeddings at input layer
+        tgt_input = target_item + self.clock_slot_embed(tgt_slot)
+        hist_input = hist_items + self.clock_slot_embed(hist_slot)
+
+        # 3. Linear projections and multi-head reshaping
+        Q = self.q_proj(tgt_input).view(B, 1, self.num_heads, self.d_k).transpose(1, 2)   # [B, H, 1, d_k]
+        K = self.k_proj(hist_input).view(B, L, self.num_heads, self.d_k).transpose(1, 2)  # [B, H, L, d_k]
+        V = self.v_proj(hist_input).view(B, L, self.num_heads, self.d_k).transpose(1, 2)  # [B, H, L, d_k]
+
+        # 4. Scaled dot-product attention score
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / (self.d_k ** 0.5)  # [B, H, 1, L]
+
+        # 5. Inject circular clock attention bias
+        circ_diff = self._calc_circular_delta(tgt_slot.unsqueeze(2), hist_slot.unsqueeze(1))  # [B, 1, L]
+        clock_bias = self.circ_bias_table(circ_diff.squeeze(1))  # [B, L, H]
+        clock_bias = clock_bias.permute(0, 2, 1).unsqueeze(2)    # [B, H, 1, L]
+
+        scores = scores + clock_bias
+
+        # 6. Padding mask and weighted aggregation
+        if mask is not None:
+            scores = scores.masked_fill(~mask.unsqueeze(1), float('-inf'))
+
+        attn_weights = F.softmax(scores, dim=-1)  # [B, H, 1, L]
+        out = torch.matmul(attn_weights, V)       # [B, H, 1, d_k]
+        out = out.transpose(1, 2).contiguous().view(B, 1, self.d_model)
+        return out
+```
+
+#### 5. Industrial Systems Engineering Details
+
+1. **Local Timezone Normalization**:
+   Raw timestamps in logs are typically UTC. Slot computation must translate UTC into the **user's local wall-clock time** based on client IP/GPS or timezone offsets; otherwise, identical UTC timestamps between London (midnight) and Beijing (morning) yield inverted circadian phases.
+2. **Hierarchical Clocks (Hour + Weekday)**:
+   Mature industrial architectures combine two nested cycles:
+   - **Hour Clock (24h period)**: Captures diurnal morning-commute, midday-break, and late-night sleep-aid habits.
+   - **Weekday Clock (7d period)**: Captures shifts between weekday goal-driven consumption and weekend leisure browsing. Biases from both tiers are linearly summed into the attention logits.
+3. **Zero-Latency Serving Optimization (Pre-quantization & In-memory Feature Store)**:
+   Target slot is computed once per request. Historical item slots are pre-quantized in streaming ETL (Flink/Kafka) upon event arrival and stored as lightweight uint8 attributes in the Feature Store. Online inference reduces to integer subtraction and array lookups, introducing virtually zero P99 latency overhead.
+
+---
+
+### 12.6 Temporal Issues in Training
 
 The most dangerous bug in sequence models is time leakage.
 
@@ -195,7 +344,9 @@ One must also handle:
 - Negative feedback and ineffective views;
 - Inconsistencies between training truncation and online truncation.
 
-### 12.6 Real-Time Updates
+---
+
+### 12.7 Real-Time Updates
 
 The value of sequence models often comes from the most recent behaviors. If a user just finished watching a skiing video, and the feature service only updates five minutes later, no matter how complex the model is, it cannot react.
 
@@ -209,13 +360,16 @@ Common practices include:
 
 Model parameters can also update incrementally: train a full model on a complete window overnight, then consume fresh logs for small hourly updates. This shortens response time to interest shifts but introduces delayed labels, catastrophic forgetting, and rapid propagation of bad data. Serving must be able to fall back to the latest full checkpoint and track full and incremental data versions separately.
 
-### 12.7 Chapter Self-Test
+---
+
+### 12.8 Chapter Self-Test
 
 1. What information does Last-N average pooling lose?
 2. Why does DIN's user representation depend on the candidate?
 3. Why does SIM use a two-stage process for long sequences?
-4. How can one check if sequence features have time leakage?
-5. How to degrade when online short-term behavior updates fail?
+4. What is the fundamental flaw of monotonic time decay ($\Delta t$) in modeling circadian rhythms, and how does the Interest Clock resolve it?
+5. How can one check if sequence features have time leakage?
+6. How to degrade when online short-term behavior updates fail?
 
 <details>
 <summary>Reference answers</summary>
@@ -223,7 +377,8 @@ Model parameters can also update incrementally: train a full model on a complete
 1. Mean pooling loses order, time gaps, repetition, and interest transitions.
 2. DIN uses the candidate as the attention query, so the same user receives a different representation for each candidate.
 3. SIM cheaply retrieves a candidate-relevant subsequence from long history, then models that shorter sequence in detail.
-4. Verify every event precedes the request and replay features with a point-in-time join; aggregation windows must not include future events.
-5. Fall back to an older versioned sequence or long-term features, record the degradation rate, and do not disguise missing data as a genuine empty history.
+4. Monotonic $\Delta t$ strongly assumes relevance decays monotonically over time, over-diluting valuable same-period historical interests (e.g. sleep-aid audio late at night); the Interest Clock decouples absolute wall-clock slots from circular clock phase differences ($\Delta \tau$), injecting periodic resonance bias into attention logits to retrieve matching-phase historical items.
+5. Verify every event precedes the request and replay features with a point-in-time join; aggregation windows must not include future events.
+6. Fall back to an older versioned sequence or long-term features, record the degradation rate, and do not disguise missing data as a genuine empty history.
 
 </details>
