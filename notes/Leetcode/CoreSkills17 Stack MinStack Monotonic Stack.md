@@ -1,73 +1,78 @@
 # Stack · MinStack 与单调栈
 
-栈的 API 不难，真正容易卡住的是两种用法：
+栈的核心 API 非常精简，其高频应用主要收敛为两大范式：
 
 ```text
-MinStack：入栈时保存历史，让查询不必回头扫描
-单调栈：先把下标放进栈里等待，等右侧第一个合适的元素来回答
+MinStack：入栈时保存历史快照，使极值查询无须回溯扫描
+单调栈：维护未解元素的候选单调集，等待右侧元素触发消除并确定边界
 ```
 
-MinStack 是一道相对独立的设计题，记住一版稳定写法即可。单调栈则是一组题，重点不是背每道题的代码，而是固定同一个模板，再替换比较符号和答案形式。
+MinStack 是独立的状态快照设计；单调栈则是处理“一维序列最近极值边界”的完整题族。掌握单调栈的关键在于建立**“三问四槽”万能解题模板**，在不同题目中仅需替换比较谓词与结算槽位即可完成映射。
 
 ## 学习顺序
 
-题目从 [NeetCode 150](https://neetcode.io/practice/practice/neetcode150) 中选，但只保留与这两个模块直接相关的三题。
+题目精选自典型高频核心题型，建立从状态快照到单调栈全域边界的递进理解：
 
-| 顺序 | 原题 | 要掌握的内容 |
-|---:|---|---|
-| 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | 每个栈帧保存 `min_so_far` |
-| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | 右侧第一个更大值 |
-| 3 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | 单调栈确定左右边界 |
+| 顺序 | 原题 | 核心模型 | 解决的关键问题 |
+|---:|---|---|---|
+| 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | 状态快照模式 (State-Snapshot) | 每个栈帧绑定 `min_so_far` 实现 $O(1)$ 查询与回滚 |
+| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | 单调栈·右侧边界 (Next Greater) | 槽位 3A：弹栈时根据下标差结算等待距离 |
+| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | 单调栈·循环数组 (Circular Array) | 槽位 1：$2n$ 取模倍增，无缝复用单调栈模板 |
+| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | 单调栈·双侧边界 (Dual Boundaries) | 槽位 1 注入尾部哨兵，槽位 3A 弹栈时同步锁定左右边界 |
+| 5 | [42. Trapping Rain Water](https://neetcode.io/problems/trapping-rain-water/question?list=neetcode150) | 单调栈·凹槽横向注水 (Trough Fill) | 弹栈确定底部，新栈顶与当前柱围成横向矩形槽 |
+
+---
 
 ## 模块一：MinStack
 
-### 给每一层保存当时的最小值
+### 1.1 · 状态快照模式：给每个栈帧记录当时的极值
 
-如果只额外维护一个全局变量 `minimum`，`push` 和 `getMin` 很简单，但弹出当前最小值后，不知道上一个最小值是什么。重新扫描整个栈需要 $O(n)$。
+如果仅维护单个全局变量 `minimum`，在 `push` 时更新很容易，但一旦弹出当前的最小值，系统无法获知上一个历史最小值，重新扫描全栈需耗费 $O(n)$ 时间。
 
-更稳的写法是让每个栈元素保存一对值：
+工程上最鲁棒的实现是**状态快照模式（State-Snapshot Pattern）**：让每个栈帧存储一对元组：
 
 ```text
-(当前 value, 压入当前 value 后的 min_so_far)
+(当前值 value, 压入该值后的历史最小值 min_so_far)
 ```
 
-于是栈顶同时包含两份信息：
+此时栈顶天然携带双重信息：
 
 ```text
 top()    = stack[-1][0]
 getMin() = stack[-1][1]
 ```
 
-每次 `push` 都给当前状态拍一张快照。`pop` 时快照跟着一起删除，下面一层保存的旧最小值自然恢复，不需要额外回滚逻辑。
+每次 `push` 相当于对当前时刻的极值状态打一张快照；`pop` 弹出快照后，下方栈帧保存的历史极值自然显露，无需任何额外的状态回滚或同步锁机制。
 
-### 为什么重复最小值不会出错
+### 1.2 · 为什么重复最小值不会导致状态失真
 
-依次压入 `2, 1, 1`：
+设依次压入元素 `[2, 1, 1]`：
 
 ```text
-[(2, 2), (1, 1), (1, 1)]
+1. push(2) -> stack: [(2, 2)]
+2. push(1) -> stack: [(2, 2), (1, 1)]
+3. push(1) -> stack: [(2, 2), (1, 1), (1, 1)]
 ```
 
-弹出一个 `1` 后，下面那个栈帧仍然保存 `(1, 1)`，所以最小值还是 `1`。不要只在“出现更小值”时记录辅助栈，否则重复最小值会让 `pop` 的同步逻辑变复杂。
+当执行一次 `pop()` 弹出栈顶的 `1` 后，栈变为 `[(2, 2), (1, 1)]`，栈顶快照仍精确记录最小值为 `1`。
+若使用独立辅助栈且仅在“严格更小”时入栈，遇到重复最小值时必须在 `pop` 中额外编写条件判断，极易引发同步错位。元组快照法在代数上完全自洽且分支最小。
 
-### Quick Coding：实现 MinStack
+### 1.3 · Quick Coding：实现 MinStack
 
-实现 `push`、`pop`、`top` 和 `getMin`，四个操作都要求 $O(1)$。
+实现 `push`、`pop`、`top` 和 `getMin`，要求时间复杂度均为 $O(1)$。
 
 <details>
-<summary>参考答案</summary>
+<summary>参考实现（状态快照法）</summary>
 
 ```python
 class MinStack:
     def __init__(self):
+        # 栈内存储 (val, min_so_far)
         self.stack = []
 
-    def push(self, value: int) -> None:
-        minimum = value if not self.stack else min(
-            value,
-            self.stack[-1][1],
-        )
-        self.stack.append((value, minimum))
+    def push(self, val: int) -> None:
+        current_min = val if not self.stack else min(val, self.stack[-1][1])
+        self.stack.append((val, current_min))
 
     def pop(self) -> None:
         self.stack.pop()
@@ -79,242 +84,293 @@ class MinStack:
         return self.stack[-1][1]
 ```
 
-每个操作都是 $O(1)$。为每个元素多保存一个最小值，空间复杂度为 $O(n)$。
+- **时间复杂度**：所有操作均为严格 $O(1)$。
+- **空间复杂度**：为每个元素维护快照元组，空间复杂度为 $O(n)$。
 
 </details>
 
-这道题建议直接记住 `(value, min_so_far)`。双栈写法也正确，但面试现场需要多维护一次同步关系，没有必要给自己增加分支。
+### 1.4 · 进阶扩展：空间最优的差值编码法 (Value-Difference Encoding)
+
+在内存极其严苛的嵌入式或高频数据流场景中，如果不希望为每个元素分配额外的元组对象，可以使用**差值编码法**，仅使用一个栈与单变量 `min_val` 完成：
+
+1. 栈内存储当前值与当前最小值的差值：`diff = val - min_val`。
+2. 当 `val < min_val` 时，入栈的 `diff < 0`，随后更新 `min_val = val`；
+3. 出栈时若观测到 `diff < 0`，说明弹出的正是当前最小值，前驱最小值为 `min_val = min_val - diff`。
+
+该方法将辅助空间压缩至严格极限，但在高并发多语言实现中需要考虑整数溢出（如 C++ `long long` 防御）。
+
+---
 
 ## 模块二：单调栈
 
-### 它主要解决什么问题
+### 2.1 · 核心动力学机制与解决的问题
 
-单调栈最常处理的是这类问题：
+单调栈（Monotonic Stack）最核心解决的问题是：
 
-> 对数组中的每个位置，找到它左边或右边第一个（最近的）更大或更小元素。
+> **在一维序列中，为每个位置寻找其左侧或右侧“最近”的更大或更小元素（Nearest Greater / Smaller Element）。**
 
-题目换一种说法，仍然可能是同一个结构：
+常见题型虽然表述各异，本质上均在寻找这种**局部最近边界**：
 
-| 题目问法 | 实际在找什么 |
-|---|---|
-| 还要几天才会升温 | 右侧第一个严格更大元素，答案取下标差 |
-| 下一个更大元素是谁 | 右侧第一个严格更大元素，答案取值 |
-| 柱子最多能向两边延伸多远 | 左右两侧第一个更小元素 |
-| 当前价格连续支配前面多少天 | 左侧最近的更大元素形成边界 |
+| 题目表述 | 实际数学本质 | 对应单调栈行为 |
+|---|---|---|
+| 还要几天才会升温？ | 右侧第一个严格更大元素（Next Greater） | 答案记录为下标差 $i - j$ |
+| 下一个更大元素是谁？ | 循环数组右侧第一个更大元素（Next Greater） | 答案记录为元素值 $nums[i]$ |
+| 柱子最多能向两边延伸多远？ | 左右两侧第一个更小元素（Dual Smaller Boundaries） | 弹栈时一次性锁死左右边界 |
+| 接雨水能装多少？ | 左右两侧更高的柱子形成封闭凹槽 | 弹栈确定槽底，栈顶与当前柱定高 |
+| 连续子数组的最小值之和？ | 以当前值为最小值的极大覆盖区间 $[L+1, R-1]$ | 双侧极值边界与去重防漏乘积 |
 
-它有两个明显信号：
+#### 为什么暴力法是 $O(n^2)$，而单调栈是 $O(n)$？
+暴力法对于每个位置都需要向左或向右线性扫描，最坏情况下（如单调有序数组）产生双重循环 $\sum_{i=1}^n i = O(n^2)$。
+单调栈通过维护一个**“未解下标等待集合”**：
+- 每个下标**仅入栈一次**；
+- 每个下标**至多出栈一次**；
+- 整个处理过程中的总 `push` 与 `pop` 操作次数严格 $\le 2n$ 次，因此总时间复杂度严格均摊为 $O(n)$。
 
-1. 输入通常是一维序列，题目要为**每个位置**找一个边界；
-2. 这个边界不是全局最大值或最小值，而是某个方向上**第一个满足大小关系的位置**。
+#### 栈内为什么必须严格存储“下标”而非“数值”？
+在单调栈中，永远优先存储**下标（Index）**，因为一个下标 $j$ 同时具备三项完备信息：
+1. **原值寻址**：通过 $nums[j]$ 随时获知其数值大小；
+2. **跨度度量**：通过当前坐标 $i$ 计算几何跨度 $\Delta = i - j$ 或矩形宽度 $W = R - L - 1$；
+3. **精准写回**：直接定位结果数组槽位 $ans[j]$，无需通过哈希表二次反查，消除键冲突问题。
 
-暴力做法会从每个位置向左或向右扫描，最坏需要 $O(n^2)$。单调栈把仍在等待边界的位置留下，让每个下标最多入栈、出栈各一次，把整批查询降到 $O(n)$。
+---
 
-如果题目问的是固定窗口最大值，通常用单调队列；如果只问整个数组的最大值，直接扫描即可。单调栈的价值在于同时回答一批“最近边界”问题。
+### 2.2 · 单调栈万能通用模板：三问四槽模型 (Universal Monotonic Stack Blueprint)
 
-### 栈里究竟保存什么
-
-以“右侧第一个严格更大元素”为例，栈里不保存答案，而是保存：
-
-> 已经扫描过、但右侧第一个更大元素还没有出现的下标。
-
-通常保存**下标**，而不是只保存数值，因为一个下标同时提供三种信息：
-
-```text
-nums[j]：用来比较大小
-j：用来计算距离 i - j
-answer[j]：知道答案应该写回哪里
-```
-
-只存数值会丢掉位置，也无法区分数组中的重复值。
-
-例如扫描 `nums = [5, 2, 4, 6]`：
+单调栈所有题型共享同一套解题思维流水线与骨架结构：
 
 ```text
-读到 5：stack = [0]       位置 0 在等更大的数
-读到 2：stack = [0, 1]    2 不能回答 5，位置 1 也开始等待
-读到 4：弹出 1            4 是位置 1 右侧第一个更大值
-        stack = [0, 2]    位置 0 和 2 仍在等待
-读到 6：依次弹出 2、0     6 同时回答两个尚未解决的位置
+                           ┌────────────────────────────┐
+                           │   for i, current in arr:   │
+                           └─────────────┬──────────────┘
+                                         │
+                                         ▼
+                           ┌────────────────────────────┐
+                           │ 槽位 1 [哨兵与初始化]       │
+                           │ arr = nums + [0] (可选)    │
+                           └─────────────┬──────────────┘
+                                         │
+                                         ▼
+                           ┌────────────────────────────┐
+        ┌─────────────────►│ 槽位 2 [弹栈条件断言]       │
+        │                  │ while stack and pop_cond:  │
+        │                  └──────┬──────────────┬──────┘
+        │                         │ 满足         │ 不满足
+        │                         ▼              ▼
+        │             ┌───────────────────────┐  ┌────────────────────────┐
+        │             │ mid = stack.pop()     │  │ 槽位 3B [左侧最近结算]  │
+        │             │                       │  │ ans[i] = stack[-1]  │
+        │             │ 槽位 3A [右/双侧结算] │  └───────────┬────────────┘
+        │             │ ans[mid] = i / 矩形面积│              │
+        │             └───────────┬───────────┘              │
+        │                         │                          │
+        └─────────────────────────┘                          ▼
+                                                 ┌────────────────────────┐
+                                                 │ 槽位 4 [当前下标入栈]  │
+                                                 │ stack.append(i)        │
+                                                 └────────────────────────┘
 ```
 
-所以，栈不是“所有已经看过的元素”，而是经过淘汰后仍未得到答案的候选下标。扫描到下标 `i` 时，当前值 `nums[i]` 会不断回答栈顶：
+#### 1. 三问定型法（Three Clarification Questions）
+
+- **Q1：方向与边界归属（Direction & Attribution）**
+  - **右侧最近边界（Next-X）**：当前元素 $i$ 作为“回答者”，当其破坏单调性时，弹出栈顶 $j$，并将当前 $i$ 结算给被弹出元素 $j$（**在 `while` 内部槽位 3A 结算**）。
+  - **左侧最近边界（Prev-X）**：当前元素 $i$ 作为“被查询者”，用 `while` 清除所有无法成为有效答案的无效候选；循环结束后，留在栈顶的元素即为 $i$ 的左侧最近边界（**在 `while` 外部槽位 3B 结算**）。
+  - **双侧全域边界（Dual Boundaries）**：当 $mid = stack.pop()$ 发生时：
+    - 当前扫描元素 $i$ 是其**右侧第一个更小/更大值**（右边界 $R = i$）；
+    - 弹出后此时暴露的新栈顶 $stack[-1]$ 则是其**左侧第一个更小/更大值**（左边界 $L = stack[-1]$）；
+    - 一次弹栈直接获取 $mid$ 的两端极值边界，覆盖有效区间为 $[L + 1, R - 1]$。
+
+- **Q2：大小关系与去重防漏定理（Strictness & Tie-Breaking Theorem）**
+  - **求更大元素**：当前值大于栈顶时弹栈，栈底到栈顶保持单调递减。
+  - **求更小元素**：当前值小于栈顶时弹栈，栈底到栈顶保持单调递增。
+  - **去重防漏定理（Exact Partitioning Theorem）**：
+    - 当原数组存在**重复元素**且题目要求统计所有子数组贡献（如 LC 907、LC 84）时：
+      - 若左右两侧均取严格大小关系（`<` 与 `>`），相等元素之间的区间会被**漏算（Under-counting）**；
+      - 若左右两侧均取非严格大小关系（`<=` 与 `>=`），相等元素之间的区间会被**重算（Over-counting）**；
+      - **黄金原则**：必须且只能设定为**一侧严格（如左侧严格更小 `<`）、另一侧非严格（如右侧小于等于 `<=`）**，从而构成左开右闭或左闭右开的互斥完备子集划分。
+
+- **Q3：存储载体与结算形式（Storage & Answer Form）**
+  - 栈内恒存下标。答案槽位依据题意写入：下标值、距离天数 ($i - j$)、扩展宽度 ($R - L - 1$) 或矩形乘积面积。
+
+---
+
+#### 2. 四槽通用代码骨架（Universal Template Code）
 
 ```python
-while stack and nums[i] > nums[stack[-1]]:
-    j = stack.pop()
-    answer[j] = i
-```
+from typing import List, Optional
 
-弹栈结束后再把 `i` 压入，表示它也开始等待自己的右侧答案。此时栈中对应的值从栈底到栈顶单调不增，但“单调”是上述等待与淘汰过程的结果，不是最终目的。
 
-为什么当前 `i` 一定是被弹出下标 `j` 的**第一个**答案？因为 `j` 入栈以后，扫描指针按顺序经过了 `j + 1, j + 2, ...`。如果中间有任何元素已经满足条件，`j` 当时就会被弹出，不可能等到现在。
+def universal_monotonic_stack(
+    nums: List[int],
+    mode: str = "next_greater",  # "next_greater" | "next_smaller" | "prev_greater" | "prev_smaller" | "dual_smaller"
+    with_sentinel: bool = False,
+    sentinel_val: int = 0,
+) -> List[int]:
+    """单调栈通用解题骨架 (Universal Monotonic Stack Blueprint)
 
-### 一个统一模板
+    4 个参数化槽位：
+    [槽位 1] 哨兵与初始化: 初始化答案数组与边界哨兵，消除清栈分支
+    [槽位 2] 弹栈判定谓词: 当前值与栈顶历史值的关系断言
+    [槽位 3] 结算动作:
+             - 槽位 3A: 弹栈时结算 (右侧边界或双侧扩展极值)
+             - 槽位 3B: 弹栈后结算 (左侧最近有效边界)
+    [槽位 4] 入栈等待: 当前下标压入栈中开始等待右侧触发
+    """
+    n = len(nums)
 
-先写“右侧第一个满足条件的位置”：
+    # ──────────────────────────────────────────────────────
+    # 槽位 1: 哨兵与容器初始化
+    # ──────────────────────────────────────────────────────
+    arr = nums + [sentinel_val] if with_sentinel else nums
+    limit = len(arr)
+    ans = [-1] * n
+    stack = []  # 严格保存下标
 
-```python
-def first_match_on_right(nums):
-    answer = [-1] * len(nums)
-    stack = []  # 尚未找到答案的下标
+    # ──────────────────────────────────────────────────────
+    # 槽位 2: 弹栈比较谓词 (当前值是否打破栈顶单调性)
+    # ──────────────────────────────────────────────────────
+    def should_pop(top_val: int, curr_val: int) -> bool:
+        if mode in ("next_greater", "prev_greater"):
+            return curr_val > top_val
+        elif mode in ("next_smaller", "prev_smaller", "dual_smaller"):
+            return curr_val < top_val
+        return False
 
-    for i, value in enumerate(nums):
-        while stack and value_satisfies(nums[stack[-1]], value):
-            j = stack.pop()
-            answer[j] = i
+    for i in range(limit):
+        curr_val = arr[i]
 
+        while stack and should_pop(arr[stack[-1]], curr_val):
+            mid = stack.pop()
+
+            # ──────────────────────────────────────────────────
+            # 槽位 3A: 弹栈时结算 (右侧边界 / 双侧极值边界)
+            # ──────────────────────────────────────────────────
+            if mode.startswith("next") and mid < n:
+                ans[mid] = i  # 或计算跨度: i - mid
+            elif mode == "dual_smaller":
+                left = stack[-1] if stack else -1
+                right = i
+                width = right - left - 1
+                # 执行双侧几何聚合，如 ans = max(ans, arr[mid] * width)
+
+        # ──────────────────────────────────────────────────────
+        # 槽位 3B: 弹栈后结算 (左侧最近有效边界，当前值使用最新栈顶)
+        # ──────────────────────────────────────────────────────
+        if mode.startswith("prev") and i < n:
+            ans[i] = stack[-1] if stack else -1
+
+        # ──────────────────────────────────────────────────────
+        # 槽位 4: 当前下标入栈
+        # ──────────────────────────────────────────────────────
         stack.append(i)
 
-    return answer
+    return ans
 ```
 
-真正需要替换的只有两处：
+---
 
-```text
-value_satisfies：当前值什么时候能回答栈顶
-answer[j]：题目要下标、值，还是距离
-```
+### 2.3 · 比较符号与状态对照表
 
-### 比较符号表
+记 `top = nums[stack[-1]]` 为栈顶历史值，`current = nums[i]` 为当前扫描值：
 
-把 `old = nums[stack[-1]]`、`current = nums[i]` 代入：
+| 查找目标 | 弹栈触发条件 (`while`) | 弹栈后栈内值分布（栈底 → 栈顶） | 适用场景 |
+|---|---|---|---|
+| **右侧第一个严格更大** | `top < current` | 单调不增（从大到小） | 每日温度、下一个更大元素 |
+| **右侧第一个大于等于** | `top <= current` | 严格递减 | 消除重复元素的右侧阻挡 |
+| **右侧第一个严格更小** | `top > current` | 单调不减（从小到大） | 柱状图最大矩形、子数组极小值 |
+| **右侧第一个小于等于** | `top >= current` | 严格递增 | 去重防漏半开半闭区间统计 |
 
-| 要找的答案 | `while` 弹栈条件 | 处理后栈内值：栈底 → 栈顶 |
-|---|---|---|
-| 右侧第一个严格更大 | `old < current` | 单调不增 |
-| 右侧第一个大于等于 | `old <= current` | 严格递减 |
-| 右侧第一个严格更小 | `old > current` | 单调不减 |
-| 右侧第一个小于等于 | `old >= current` | 严格递增 |
+> **核心记忆法则**：
+> 不要死记“维护递增还是递减栈”。直接提问：**“当前扫描到的元素，是否已经满足了栈顶元素在等待的目标？”**
+> 一旦满足，立即弹栈并执行结算。
 
-最不容易写反的记法是：
-
-> 不要先背“我要维护递增栈还是递减栈”。直接问：当前值是否已经满足栈顶等待的答案？满足就弹。
-
-下面的演示用同一个数组跑“右侧更大”和“右侧更小”。切换目标时，模板只改一个比较符号。
+下面的交互演示用同一个数组执行“右侧更大”与“右侧更小”的逐步演算：
 
 ```monotonic-stack-demo
 ```
 
-### Daily Temperatures：答案从下标改成距离
+---
 
-给定每日温度，返回每一天还要等待多少天才会遇到更高温度；之后没有更高温度则返回 `0`。
+### 2.4 · 经典题目万能模板填装对照表 (Slot-Filling Matrix)
 
-这就是“右侧第一个严格更大”，只不过答案不是 `i`，而是距离：
+面对任何题目，直接将业务参数代入“四槽模型”：
 
-```text
-answer[j] = i - j
-```
+| 经典题目 | 模式分类 | 槽位 1 (哨兵) | 槽位 2 (弹栈谓词) | 槽位 3 (结算时机与计算) | 槽位 4 (入栈) |
+|---|---|---|---|---|---|
+| **LC 739. Daily Temperatures** | Next Greater | 无 | `top < current` | 槽位 3A：`ans[mid] = i - mid` | `stack.append(i)` |
+| **LC 496. Next Greater Element I** | Next Greater | 无 | `top < current` | 槽位 3A：`ans[mid] = current` | `stack.append(i)` |
+| **LC 503. Next Greater Element II** | 循环 Next Greater | $2n$ 遍历取模 | `top < nums[i % n]` | 槽位 3A：`ans[mid] = nums[i % n]`（当 `mid < n`） | `if i < n: stack.append(i)` |
+| **LC 84. Largest Rectangle** | Dual Smaller | 尾部加 `0` | `top > current` | 槽位 3A：`w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
+| **LC 42. Trapping Rain Water** | Dual Greater | 无 | `top < current` | 槽位 3A：凹槽高度差乘以宽度<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
+| **LC 907. Subarray Minimums** | Dual Smaller (去重) | 尾部加 `0` | 左严格 `<`，右侧 `<=` | 槽位 3A：乘法原理计算子数组数<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
 
-### Quick Coding：Daily Temperatures
+---
 
-```python
-def dailyTemperatures(temperatures):
-    ...
-```
+### 2.5 · 题型实战与模板代入
 
-<details>
-<summary>参考答案</summary>
+#### 实战一：Daily Temperatures（每日温度）
+给定每日气温，求出每一天需要等待多少天才会遇到更高气温。
+- **模板映射**：属于典型 **Next Greater** 模式，答案形式由下标变为跨度差值 $i - mid$。
 
 ```python
 from typing import List
 
 
 class Solution:
-    def dailyTemperatures(
-        self,
-        temperatures: List[int],
-    ) -> List[int]:
-        answer = [0] * len(temperatures)
-        stack = []
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        ans = [0] * n
+        stack = []  # 保存下标
 
-        for i, temperature in enumerate(temperatures):
-            while (
-                stack
-                and temperatures[stack[-1]] < temperature
-            ):
-                j = stack.pop()
-                answer[j] = i - j
-
+        for i, temp in enumerate(temperatures):
+            # 槽位 2: 当前温度高于栈顶，触发弹栈
+            while stack and temperatures[stack[-1]] < temp:
+                mid = stack.pop()
+                # 槽位 3A: 弹栈结算，答案取距离差
+                ans[mid] = i - mid
+            # 槽位 4: 当前天数入栈等待
             stack.append(i)
 
-        return answer
+        return ans
 ```
 
-栈中下标对应的温度从栈底到栈顶单调不增。相等温度不能回答“严格更高”，所以比较符号必须是 `<`，不能写 `<=`。
-
-</details>
-
-### 右侧答案与左侧答案，记录时机不同
-
-单调栈常见的两种问法只差答案属于谁。
-
-### 找右侧第一个答案：回答被弹出的旧下标
+#### 实战二：Next Greater Element II（循环数组的取模倍增）
+给定循环数组，寻找每个元素的下一个更大值。
+- **模板映射**：循环数组只需在**槽位 1** 中将遍历范围扩展至 $2n$，下标取模 `i % n`，且仅在第一轮 $i < n$ 时执行压栈。
 
 ```python
-for i, value in enumerate(nums):
-    while stack and current_answers_top(...):
-        j = stack.pop()
-        answer[j] = i
-    stack.append(i)
+from typing import List
+
+
+class Solution:
+    def nextGreaterElements(self, nums: List[int]) -> List[int]:
+        n = len(nums)
+        ans = [-1] * n
+        stack = []
+
+        # 槽位 1: 虚拟倍增循环 2*n
+        for i in range(2 * n):
+            val = nums[i % n]
+            # 槽位 2: 弹栈比较
+            while stack and nums[stack[-1]] < val:
+                mid = stack.pop()
+                # 槽位 3A: 弹栈结算实际数值
+                ans[mid] = val
+            # 槽位 4: 仅前 n 个元素需要压栈求解
+            if i < n:
+                stack.append(i)
+
+        return ans
 ```
 
-当前值出现后，可能一次回答多个旧下标，因此答案写在 `while` 里面。
-
-### 找左侧最近答案：弹掉无效候选，再读取栈顶
-
-下面以“左侧最近的严格更小元素”为例：
-
-```python
-answer = [-1] * len(nums)
-stack = []
-
-for i, value in enumerate(nums):
-    while stack and nums[stack[-1]] >= value:
-        stack.pop()
-
-    if stack:
-        answer[i] = stack[-1]
-
-    stack.append(i)
-```
-
-这里答案属于当前下标 `i`。`while` 负责清掉不可能成为答案的候选；清理完成后的栈顶，才是离 `i` 最近的严格更小元素。
-
-| 问法 | `while` 在做什么 | 在哪里写答案 |
-|---|---|---|
-| 右侧第一个满足条件 | 当前值回答旧下标 | 弹栈时写 `answer[j]` |
-| 左侧最近满足条件 | 删除当前下标不能使用的候选 | `while` 后读栈顶，写 `answer[i]` |
-
-### Largest Rectangle：弹栈时确定完整边界
-
-在 [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) 中，下标 `j` 被更矮的柱子 `right` 弹出时：
-
-```text
-right = 右侧第一个严格更矮的位置
-stack[-1] = 弹出后左侧最近的更矮位置
-```
-
-因此高度 `heights[j]` 能覆盖的宽度是：
-
-$$
-\text{width}
-=
-\text{right}
--
-\text{left}
--
-1.
-$$
-
-末尾补一个高度为 `0` 的哨兵，可以让所有剩余柱子出栈，不必再复制一段清栈代码。
-
-下面的演示用固定数组逐步展示弹栈、宽度计算与哨兵处理。
+#### 实战三：Largest Rectangle in Histogram（双侧边界与尾部哨兵）
+给定柱状图高度数组，求能勾勒出的最大矩形面积。
+- **关键推导**：以某根柱子 $heights[mid]$ 作为矩形高度时，其宽度向左右延伸的最大范围受限于**左右两侧第一个严格更矮的柱子**：
+  $$W = \text{right} - \text{left} - 1$$
+- **哨兵收益**：在末尾追加高度为 `0` 的哨兵，可强制清空栈中所有遗留柱子，避免在循环结束后编写冗长的清栈特判代码。
 
 ```largest-rectangle-demo
 ```
-
-<details>
-<summary>参考答案</summary>
 
 ```python
 from typing import List
@@ -322,48 +378,87 @@ from typing import List
 
 class Solution:
     def largestRectangleArea(self, heights: List[int]) -> int:
-        answer = 0
+        max_area = 0
         stack = []
 
+        # 槽位 1: 尾部注入高度为 0 的哨兵
         for right in range(len(heights) + 1):
-            current = 0 if right == len(heights) else heights[\right]
+            curr_h = 0 if right == len(heights) else heights[right]
 
-            while stack and heights[stack[-1]] > current:
-                j = stack.pop()
+            # 槽位 2: 当前高度更矮，破坏单调递增性
+            while stack and heights[stack[-1]] > curr_h:
+                mid = stack.pop()
+                mid_h = heights[mid]
+                # 槽位 3A: 双侧边界同时确立
                 left = stack[-1] if stack else -1
                 width = right - left - 1
-                answer = max(answer, heights[j] * width)
+                max_area = max(max_area, mid_h * width)
 
-            stack.append(\right)
+            # 槽位 4: 下标入栈
+            stack.append(right)
 
-        return answer
+        return max_area
 ```
 
-哨兵下标会在最后一次循环中入栈，但循环随即结束，不会再读取 `heights[len(heights)]`。
+#### 实战四：Trapping Rain Water（接雨水·单调栈横向凹槽法）
+- **核心模型**：利用单调栈维护递减序列。当遇到更高柱子时，弹出栈顶作为凹槽底部 $mid$；新的栈顶即为左侧支柱 $left$，当前柱即为右侧支柱 $right$。
+- **计算公式**：横向水槽的水位高度取决于木桶效应，宽度为两柱间距：
+  $$H = \min(height[left], height[right]) - height[mid]$$
+  $$W = right - left - 1$$
+  $$\text{Water} = H \times W$$
 
-</details>
+```python
+from typing import List
 
-### 为什么嵌套 while 仍然是 O(n)
 
-不要把外层 `for` 和内层 `while` 直接相乘。一个下标：
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        water = 0
+        stack = []
 
-```text
-最多入栈一次
-最多出栈一次
+        for right, curr_h in enumerate(height):
+            # 槽位 2: 遇到更高柱子，破坏递减形成凹槽
+            while stack and height[stack[-1]] < curr_h:
+                mid = stack.pop()
+                if not stack:
+                    break  # 左侧无边界，无法积水
+
+                left = stack[-1]
+                # 槽位 3A: 横向切片注水
+                h = min(height[left], curr_h) - height[mid]
+                w = right - left - 1
+                water += h * w
+
+            # 槽位 4: 当前柱入栈
+            stack.append(right)
+
+        return water
 ```
 
-所有 `push` 加起来不超过 $n$ 次，所有 `pop` 加起来也不超过 $n$ 次，所以总操作数是 $O(n)$。栈最多保存 $n$ 个下标，空间复杂度为 $O(n)$。
+---
 
-这和双指针、滑动窗口的线性分析是同一种摊还思路：局部看似有循环，某个元素一旦被删除，就不会回来。
+### 2.6 · 复杂度证明：为什么嵌套 while 循环仍然是 O(n)？
 
-### 面试前最后检查
+许多初学者容易对嵌套在 `for` 循环内的 `while` 产生 $O(n^2)$ 的误判。
 
-1. 栈里存值还是下标？需要距离、边界或回看原数组时，优先存下标。
-2. 当前元素是在回答旧下标，还是为自己寻找左侧答案？
-3. 题目要求严格大于，还是大于等于？这决定 `<` 和 `<=`。
-4. `answer[j]` 要保存下标、值还是 `i - j`？
-5. 柱状图是否用哨兵清空了剩余下标？
+严格的**聚合分析（Aggregate Analysis / 摊还复杂度）**证明如下：
+1. 数组长度为 $n$，每个下标进入外层 `for` 循环至多被 `stack.append()` **执行 1 次**；
+2. 元素只有存在于栈内时，才可能在 `while` 内部被 `stack.pop()` **执行至多 1 次**；
+3. 一旦某个下标被出栈弹出，它便彻底脱离生命周期，后续遍历中绝不可能再次入栈或被重复弹出；
+4. 因此，跨越所有 $n$ 次外层迭代，内层 `while` 条件成立并执行 `pop()` 的**物理总次数上限严格为 $n$ 次**。
 
-最后只记一句：
+$$\sum_{i=1}^n (\text{push 次数} + \text{pop 次数}) \le n + n = 2n = O(n)$$
 
-> 栈顶下标还没有答案；当前值一旦满足它等待的条件，就弹栈并写答案。
+因此，单调栈的全局时间复杂度严格为 $O(n)$，空间复杂度因最坏情况下需保存全量单调下标而为 $O(n)$。
+
+---
+
+### 2.7 · 面试结构化应答清单
+
+在白板或线上编码面试中，单调栈的答题推进可严格按以下 5 步展开：
+
+1. **定型声明**：“本题需要为每个元素寻找单侧/双侧最近极值边界，暴力为 $O(n^2)$，最优结构为单调栈，时间复杂度降至 $O(n)$。”
+2. **载体确认**：“栈内保存下标而非数值，因为后续计算跨度 $i - j$ 和面积需要物理距离。”
+3. **谓词说明**：“求右侧更大元素，因此栈内维持单调递减；一旦遇到严格更大值即触发弹栈。”
+4. **结算归属**：“答案在弹栈时写给旧元素（槽位 3A），因为当前元素扮演的是‘回答者’角色。”
+5. **边界哨兵**：“对于柱状图或多区间计算，在数组尾部注入哨兵 `0`，确保栈内遗留元素被强制清空，避免冗余的尾部收敛代码。”

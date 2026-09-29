@@ -3,71 +3,75 @@
 The stack API is simple. The two patterns that matter in interviews are:
 
 ```text
-MinStack: preserve history during push so a query never has to rescan
-Monotonic stack: let indices wait until the first qualifying value on the right resolves them
+MinStack: preserve history snapshots during push so that extreme-value queries never rescan
+Monotonic Stack: maintain an active candidate set of unresolved elements, waiting for right-side elements to trigger eviction and establish boundaries
 ```
 
-MinStack is a fairly isolated design problem; memorizing one reliable implementation is enough. Monotonic stack is a family of problems. Instead of memorizing each solution, keep one template and replace only its comparator and answer format.
+MinStack is a standalone state-snapshot design; Monotonic Stack is a unified family of problems resolving "1D nearest local extreme boundaries". Mastering Monotonic Stack requires establishing the **"Three-Question Four-Slot" Universal Blueprint**, mapping any problem to this framework by merely swapping eviction comparators and settlement slots.
 
 ## Learning Order
 
-The problems come from [NeetCode 150](https://neetcode.io/practice/practice/neetcode150), but this chapter keeps only the three that directly support its two modules.
+Selected from high-frequency core interview problems to build progressive mastery from state snapshots to full dual-boundary monotonic stacks:
 
-| Order | Original Problem | What to Learn |
-|---:|---|---|
-| 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | Store `min_so_far` in every stack frame |
-| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | First greater value on the right |
-| 3 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | Use a monotonic stack to determine boundaries |
+| Order | Original Problem | Core Pattern | Key Engineering Problem Solved |
+|---:|---|---|---|
+| 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | State-Snapshot Pattern | Bind `min_so_far` to each stack frame for $O(1)$ query and rollback |
+| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | Monotonic Stack · Right Boundary (Next Greater) | Slot 3A: Settle waiting distance via index delta upon eviction |
+| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | Monotonic Stack · Circular Array | Slot 1: Virtual $2n$ modulo doubling, seamlessly reusing the template |
+| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | Monotonic Stack · Dual Boundaries | Slot 1 sentinel padding; Slot 3A resolves both left and right boundaries simultaneously |
+| 5 | [42. Trapping Rain Water](https://neetcode.io/problems/trapping-rain-water/question?list=neetcode150) | Monotonic Stack · Trough Fill | Eviction identifies trough floor; stack top and current bar form horizontal bounding box |
+
+---
 
 ## Module 1: MinStack
 
-### Save the Minimum at Every Level
+### 1.1 · State-Snapshot Pattern: Storing History at Every Stack Level
 
-If we keep only one global variable named `minimum`, `push` and `getMin` are easy. Once the current minimum is popped, however, we no longer know the previous minimum. Rescanning the entire stack would cost $O(n)$.
+If we only track a single global variable `minimum`, `push` is straightforward, but once the current minimum is popped, the system loses the historical previous minimum. Rescanning the stack costs $O(n)$.
 
-A more reliable representation stores a pair for every element:
+The most robust engineering pattern is the **State-Snapshot Pattern**: store a pair in each stack frame:
 
 ```text
 (current value, min_so_far after pushing this value)
 ```
 
-The top stack frame then carries both answers:
+The stack top then carries dual information in $O(1)$:
 
 ```text
 top()    = stack[-1][0]
 getMin() = stack[-1][1]
 ```
 
-Every `push` takes a snapshot of the current state. A `pop` removes that snapshot, automatically revealing the previous minimum stored one level below. No special rollback logic is needed.
+Every `push` takes an immutable snapshot of the current state. When `pop` removes a snapshot, the historical minimum stored in the frame below is instantly restored without needing rollback logic or secondary synchronization.
 
-### Why Duplicate Minimum Values Work
+### 1.2 · Why Duplicate Minimum Values Do Not Desynchronize
 
-Push `2, 1, 1` in order:
+Push `[2, 1, 1]` in sequence:
 
 ```text
-[(2, 2), (1, 1), (1, 1)]
+1. push(2) -> stack: [(2, 2)]
+2. push(1) -> stack: [(2, 2), (1, 1)]
+3. push(1) -> stack: [(2, 2), (1, 1), (1, 1)]
 ```
 
-After one `1` is popped, the frame below still stores `(1, 1)`, so the minimum remains `1`. Recording only values that establish a new minimum makes duplicate handling unnecessarily delicate.
+When one `1` is popped, the frame below still holds `(1, 1)`, keeping the minimum at `1`. Auxiliary two-stack approaches that only push strictly smaller values require delicate conditional checks during `pop`, making synchronization error-prone. The tuple snapshot approach is algebraically self-contained with minimal branching.
 
-### Quick Coding: Implement MinStack
+### 1.3 · Quick Coding: Implement MinStack
 
 Implement `push`, `pop`, `top`, and `getMin`, all in $O(1)$ time.
 
 <details>
-<summary>Reference answer</summary>
+<summary>Reference Implementation (State-Snapshot)</summary>
 
 ```python
 class MinStack:
     def __init__(self):
+        # Stack frames store (val, min_so_far)
         self.stack = []
 
-    def push(self, value: int) -> None:
-        minimum = value if not self.stack else min(
-            value,
-            self.stack[-1][1],
-        )
-        self.stack.append((value, minimum))
+    def push(self, val: int) -> None:
+        current_min = val if not self.stack else min(val, self.stack[-1][1])
+        self.stack.append((val, current_min))
 
     def pop(self) -> None:
         self.stack.pop()
@@ -79,242 +83,293 @@ class MinStack:
         return self.stack[-1][1]
 ```
 
-Every operation is $O(1)$. Storing one additional minimum per element uses $O(n)$ space.
+- **Time Complexity**: Strictly $O(1)$ for all operations.
+- **Space Complexity**: $O(n)$ space to store snapshot tuples.
 
 </details>
 
-For this problem, it is worth memorizing `(value, min_so_far)` directly. A two-stack implementation is also correct, but it adds a synchronization rule without making the interview solution clearer.
+### 1.4 · Advanced Extension: Value-Difference Encoding for Optimal Space
+
+In embedded or ultra-low-memory environments where tuple allocation overhead is unacceptable, the **Value-Difference Encoding** pattern uses a single stack of integer deltas and a scalar `min_val`:
+
+1. Store `diff = val - min_val` in the stack.
+2. If `val < min_val`, `diff < 0` is pushed, followed by updating `min_val = val`.
+3. During `pop()`, observing `diff < 0` indicates the popped element established the current minimum; restore the previous minimum via `min_val = min_val - diff`.
+
+This eliminates all tuple overhead, with the caveat of guarding against integer overflow in typed languages (e.g., C++ `int64_t`).
+
+---
 
 ## Module 2: Monotonic Stack
 
-### What Kind of Problems Does It Solve?
+### 2.1 · Core Mechanics & What Problems It Solves
 
-A monotonic stack most often handles this question:
+A Monotonic Stack fundamentally answers:
 
-> For every position in an array, find the first (nearest) greater or smaller element to its left or right.
+> **In a 1D sequence, for each position, find the nearest greater or smaller element to its left or right.**
 
-The wording may change while the underlying query stays the same:
+Diverse problem statements map to this identical underlying query:
 
-| Problem Wording | What It Is Really Asking For |
-|---|---|
-| How many days until it gets warmer? | First strictly greater value on the right; return the index difference |
-| What is the next greater element? | First strictly greater value on the right; return its value |
-| How far can a histogram bar extend? | First smaller value on both sides |
-| How many previous prices does today's price dominate? | The nearest greater value on the left forms the boundary |
+| Problem Statement | Mathematical Essence | Monotonic Stack Mechanics |
+|---|---|---|
+| Days until warmer temperature? | First strictly greater element on the right (Next Greater) | Record index difference $i - j$ |
+| Next greater element in array? | First greater element in circular array (Next Greater) | Record actual value $nums[i]$ |
+| Maximum width a histogram bar can extend? | Nearest smaller elements on both sides (Dual Smaller Boundaries) | Eviction locks both left and right boundaries |
+| Trapping rain water volume? | Bounding bars on left and right forming a trough | Eviction determines trough floor; stack top and current bar set water height |
+| Sum of subarray minimums? | Maximal bounding interval $[L+1, R-1]$ where current element is minimum | Dual boundaries with tie-breaking multiplication |
 
-There are two strong signals:
+#### Why Brute Force is $O(n^2)$ While Monotonic Stack is $O(n)$?
+Brute force scans linearly left or right for every element, yielding $\sum_{i=1}^n i = O(n^2)$ worst-case time on monotonic inputs.
+A monotonic stack maintains an **active waiting set of unresolved indices**:
+- Each index is pushed **exactly once**;
+- Each index is popped **at most once**;
+- Total `push` and `pop` operations across the entire algorithm are bounded by $\le 2n$, guaranteeing strict $O(n)$ amortized time.
 
-1. The input is usually a one-dimensional sequence, and the problem needs a boundary for **every position**.
-2. The boundary is not the global maximum or minimum. It is the **first position in one direction that satisfies a comparison**.
+#### Why Store Indices Instead of Values?
+Indices provide three complete dimensions of information simultaneously:
+1. **Value Lookup**: $nums[j]$ recovers the value in $O(1)$;
+2. **Span Metric**: Calculate geometric distance $\Delta = i - j$ or rectangle width $W = R - L - 1$;
+3. **Direct Writeback**: Directly index the result array $ans[j]$ without hash table lookups or collision risks.
 
-A brute-force solution scans left or right from every position and can take $O(n^2)$. A monotonic stack keeps only positions whose boundaries are still unknown. Since each index is pushed and popped at most once, all of these queries can be answered in $O(n)$.
+---
 
-For a maximum over every fixed-size window, a monotonic deque is usually the right tool. For one maximum over the entire array, a linear scan is enough. A monotonic stack is useful when many positions each need their own nearest boundary.
+### 2.2 · Universal Monotonic Stack Blueprint: The Three-Question Four-Slot Model
 
-### What Does the Stack Actually Store?
-
-For "the first strictly greater value to the right," the stack does not hold answers. It holds:
-
-> Indices that have already been scanned but whose first greater value on the right has not appeared.
-
-Store **indices**, rather than values alone, because an index gives all three pieces of information:
-
-```text
-nums[j]: the value used in comparisons
-j: the position used to compute a distance such as i - j
-answer[j]: the slot where the result belongs
-```
-
-Storing only values loses their positions and cannot distinguish duplicate values.
-
-For example, scan `nums = [5, 2, 4, 6]`:
+All monotonic stack problems share a unified mental model and code skeleton:
 
 ```text
-Read 5: stack = [0]       index 0 is waiting for something greater
-Read 2: stack = [0, 1]    2 cannot resolve 5, so index 1 also waits
-Read 4: pop 1             4 is the first greater value to the right of index 1
-        stack = [0, 2]    indices 0 and 2 are still unresolved
-Read 6: pop 2, then 0     6 resolves both remaining indices
+                           ┌────────────────────────────┐
+                           │   for i, current in arr:   │
+                           └─────────────┬──────────────┘
+                                         │
+                                         ▼
+                           ┌────────────────────────────┐
+                           │ Slot 1 [Sentinel & Init]   │
+                           │ arr = nums + [0] (Optional)│
+                           └─────────────┬──────────────┘
+                                         │
+                                         ▼
+                           ┌────────────────────────────┐
+        ┌─────────────────►│ Slot 2 [Eviction Predicate]│
+        │                  │ while stack and pop_cond:  │
+        │                  └──────┬──────────────┬──────┘
+        │                         │ True         │ False
+        │                         ▼              ▼
+        │             ┌───────────────────────┐  ┌────────────────────────┐
+        │             │ mid = stack.pop()     │  │ Slot 3B [Prev Boundary]│
+        │             │                       │  │ ans[i] = stack[-1]     │
+        │             │ Slot 3A [Next/Dual]   │  └───────────┬────────────┘
+        │             │ ans[mid] = i / Area   │              │
+        │             └───────────┬───────────┘              │
+        │                         │                          │
+        └─────────────────────────┘                          ▼
+                                                 ┌────────────────────────┐
+                                                 │ Slot 4 [Push to Wait]  │
+                                                 │ stack.append(i)        │
+                                                 └────────────────────────┘
 ```
 
-The stack is therefore not "everything seen so far." It contains only unresolved candidate indices that survive earlier comparisons. At index `i`, the current value `nums[i]` repeatedly resolves the top:
+#### 1. Three Clarification Questions
+
+- **Q1: Direction & Attribution**
+  - **Right-Side Boundary (Next-X)**: The current element $i$ acts as the "resolver". When it violates monotonicity, it evicts top index $j$ and answers $j$ with current position $i$ (**settled inside `while` loop at Slot 3A**).
+  - **Left-Side Boundary (Prev-X)**: The current element $i$ is the "target". The `while` loop cleans away invalid candidates; the surviving stack top is the nearest valid left boundary for $i$ (**settled after `while` loop at Slot 3B**).
+  - **Dual Boundaries**: When $mid = stack.pop()$ occurs:
+    - Current index $i$ is the **first smaller/greater on the right** ($R = i$);
+    - The newly exposed stack top $stack[-1]$ is the **nearest smaller/greater on the left** ($L = stack[-1]$);
+    - A single eviction locks both boundaries, establishing the maximal span interval $[L + 1, R - 1]$.
+
+- **Q2: Strictness & Tie-Breaking Principle**
+  - **Finding Greater Elements**: Pop when current is greater; stack maintains monotonic decreasing order.
+  - **Finding Smaller Elements**: Pop when current is smaller; stack maintains monotonic increasing order.
+  - **Exact Partitioning Theorem**:
+    - When duplicate values exist and the problem counts subarray contributions (e.g., LC 907, LC 84):
+      - Strict inequality on both sides (`<` and `>`) **under-counts** subarrays between duplicates;
+      - Non-strict inequality on both sides (`<=` and `>=`) **over-counts** duplicates;
+      - **Golden Rule**: You MUST set **one side strict (e.g. left strictly smaller `<`) and the other non-strict (e.g. right smaller or equal `<=`)**, establishing mutually disjoint and exhaustive half-open intervals.
+
+- **Q3: Storage Carrier & Answer Form**
+  - Always store indices in the stack. Populate answers as index values, waiting distances ($i - j$), spans ($R - L - 1$), or geometric areas.
+
+---
+
+#### 2. Universal Template Code
 
 ```python
-while stack and nums[i] > nums[stack[-1]]:
-    j = stack.pop()
-    answer[j] = i
-```
+from typing import List, Optional
 
-After the popping stops, push `i`: the current position now begins waiting for its own answer on the right. The values represented by the stack are non-increasing from bottom to top, but that monotonic order is a consequence of the waiting-and-removal process, not the goal by itself.
 
-Why is the current `i` the **first** answer for a popped index `j`? Since `j` was pushed, the scan has visited `j + 1, j + 2, ...` in order. If an earlier value had satisfied the condition, it would already have popped `j`.
+def universal_monotonic_stack(
+    nums: List[int],
+    mode: str = "next_greater",  # "next_greater" | "next_smaller" | "prev_greater" | "prev_smaller" | "dual_smaller"
+    with_sentinel: bool = False,
+    sentinel_val: int = 0,
+) -> List[int]:
+    """Universal Monotonic Stack Blueprint
 
-### One Unified Template
+    4 Parameterized Slots:
+    [Slot 1] Sentinel & Initialization: Initialize answer container and optional sentinel
+    [Slot 2] Eviction Predicate: Evaluates whether current value breaks monotonicity
+    [Slot 3] Settlement Actions:
+             - Slot 3A: Settle upon eviction (Next or Dual boundary problems)
+             - Slot 3B: Settle after eviction (Prev boundary problems)
+    [Slot 4] Push to Wait: Enqueue current index to await future resolvers
+    """
+    n = len(nums)
 
-Start with "the first qualifying position on the right":
+    # ──────────────────────────────────────────────────────
+    # Slot 1: Sentinel Padding & Container Init
+    # ──────────────────────────────────────────────────────
+    arr = nums + [sentinel_val] if with_sentinel else nums
+    limit = len(arr)
+    ans = [-1] * n
+    stack = []  # Strictly stores indices
 
-```python
-def first_match_on_right(nums):
-    answer = [-1] * len(nums)
-    stack = []  # indices whose answer has not appeared
+    # ──────────────────────────────────────────────────────
+    # Slot 2: Eviction Predicate
+    # ──────────────────────────────────────────────────────
+    def should_pop(top_val: int, curr_val: int) -> bool:
+        if mode in ("next_greater", "prev_greater"):
+            return curr_val > top_val
+        elif mode in ("next_smaller", "prev_smaller", "dual_smaller"):
+            return curr_val < top_val
+        return False
 
-    for i, value in enumerate(nums):
-        while stack and value_satisfies(nums[stack[-1]], value):
-            j = stack.pop()
-            answer[j] = i
+    for i in range(limit):
+        curr_val = arr[i]
 
+        while stack and should_pop(arr[stack[-1]], curr_val):
+            mid = stack.pop()
+
+            # ──────────────────────────────────────────────────
+            # Slot 3A: Settle upon Eviction (Next / Dual Boundaries)
+            # ──────────────────────────────────────────────────
+            if mode.startswith("next") and mid < n:
+                ans[mid] = i  # Or distance: i - mid
+            elif mode == "dual_smaller":
+                left = stack[-1] if stack else -1
+                right = i
+                width = right - left - 1
+                # Aggregate geometric area: ans = max(ans, arr[mid] * width)
+
+        # ──────────────────────────────────────────────────────
+        # Slot 3B: Settle after Eviction (Prev Boundary for Current i)
+        # ──────────────────────────────────────────────────────
+        if mode.startswith("prev") and i < n:
+            ans[i] = stack[-1] if stack else -1
+
+        # ──────────────────────────────────────────────────────
+        # Slot 4: Push Current Index to Wait
+        # ──────────────────────────────────────────────────────
         stack.append(i)
 
-    return answer
+    return ans
 ```
 
-Only two slots change:
+---
 
-```text
-value_satisfies: when the current value answers the stack top
-answer[j]: whether the problem asks for an index, value, or distance
-```
+### 2.3 · Comparator and Monotonicity Reference Table
 
-### Comparator Table
+Let `top = nums[stack[-1]]` be the historical top value, and `current = nums[i]` be the scanning value:
 
-Let `old = nums[stack[-1]]` and `current = nums[i]`:
+| Target Query | Eviction Condition (`while`) | Stack Order After Eviction (Bottom → Top) | Typical Use Cases |
+|---|---|---|---|
+| **First strictly greater on right** | `top < current` | Monotonic non-increasing | Daily Temperatures, Next Greater Element |
+| **First greater or equal on right** | `top <= current` | Strictly decreasing | Pruning duplicates on the right |
+| **First strictly smaller on right** | `top > current` | Monotonic non-decreasing | Largest Rectangle in Histogram, Subarray Min |
+| **First smaller or equal on right** | `top >= current` | Strictly increasing | Exact partitioning for tie-breaking |
 
-| Desired Answer | Pop Condition in `while` | Values Left in Stack: Bottom → Top |
-|---|---|---|
-| First strictly greater on the right | `old < current` | Non-increasing |
-| First greater-or-equal on the right | `old <= current` | Strictly decreasing |
-| First strictly smaller on the right | `old > current` | Non-decreasing |
-| First smaller-or-equal on the right | `old >= current` | Strictly increasing |
+> **Universal Memory Rule**:
+> Never memorize whether to use an increasing or decreasing stack. Simply ask: **"Does the current scanned element satisfy what the stack-top element is waiting for?"**
+> If yes, evict and settle immediately.
 
-The safest way to avoid reversing the comparator is:
-
-> Do not begin by memorizing "increasing stack" or "decreasing stack." Ask whether the current value satisfies what the top is waiting for. If it does, pop.
-
-The walkthrough below runs "next greater" and "next smaller" on the same array. Switching the target changes one comparator in the template.
+The interactive visualizer below steps through "Next Greater" and "Next Smaller" on the same array:
 
 ```monotonic-stack-demo
 ```
 
-### Daily Temperatures: Change an Index into a Distance
+---
 
-Given daily temperatures, return how many days each day must wait for a warmer temperature; return `0` if no warmer day follows.
+### 2.4 · Universal Slot-Filling Matrix
 
-This is exactly "the first strictly greater value on the right," except the required answer is a distance:
+Every problem maps directly into the 4 slots:
 
-```text
-answer[j] = i - j
-```
+| Classic Problem | Mode | Slot 1 (Sentinel) | Slot 2 (Eviction Predicate) | Slot 3 (Settlement Calculation) | Slot 4 (Push) |
+|---|---|---|---|---|---|
+| **LC 739. Daily Temperatures** | Next Greater | None | `top < current` | Slot 3A: `ans[mid] = i - mid` | `stack.append(i)` |
+| **LC 496. Next Greater Element I** | Next Greater | None | `top < current` | Slot 3A: `ans[mid] = current` | `stack.append(i)` |
+| **LC 503. Next Greater Element II** | Circular Next Greater | Virtual $2n$ loop | `top < nums[i % n]` | Slot 3A: `ans[mid] = nums[i % n]` (when `mid < n`) | `if i < n: stack.append(i)` |
+| **LC 84. Largest Rectangle** | Dual Smaller | Append `0` | `top > current` | Slot 3A: `w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
+| **LC 42. Trapping Rain Water** | Dual Greater | None | `top < current` | Slot 3A: Bounded water trough<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
+| **LC 907. Subarray Minimums** | Dual Smaller (Tie-break) | Append `0` | Left `<` strict, Right `<=` non-strict | Slot 3A: Product rule for subarrays<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
 
-### Quick Coding: Daily Temperatures
+---
 
-```python
-def dailyTemperatures(temperatures):
-    ...
-```
+### 2.5 · Canonical Problems & Blueprint Instantiation
 
-<details>
-<summary>Reference answer</summary>
+#### Practice 1: Daily Temperatures
+Given daily temperatures, return the number of days to wait until a warmer temperature.
+- **Mapping**: Canonical **Next Greater** problem where answer format is the waiting span $i - mid$.
 
 ```python
 from typing import List
 
 
 class Solution:
-    def dailyTemperatures(
-        self,
-        temperatures: List[int],
-    ) -> List[int]:
-        answer = [0] * len(temperatures)
-        stack = []
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        ans = [0] * n
+        stack = []  # Stores indices
 
-        for i, temperature in enumerate(temperatures):
-            while (
-                stack
-                and temperatures[stack[-1]] < temperature
-            ):
-                j = stack.pop()
-                answer[j] = i - j
-
+        for i, temp in enumerate(temperatures):
+            # Slot 2: Current temperature higher than stack top
+            while stack and temperatures[stack[-1]] < temp:
+                mid = stack.pop()
+                # Slot 3A: Settle distance delta upon eviction
+                ans[mid] = i - mid
+            # Slot 4: Enqueue current day
             stack.append(i)
 
-        return answer
+        return ans
 ```
 
-Temperatures represented by the stack indices are non-increasing from bottom to top. An equal temperature does not answer "strictly warmer," so the comparator must be `<`, not `<=`.
-
-</details>
-
-### Answers on the Right and Left Have Different Recording Times
-
-The two common monotonic-stack questions differ mainly in who owns the answer.
-
-### First Answer on the Right: Resolve an Old, Popped Index
+#### Practice 2: Next Greater Element II (Circular Array via Modulo)
+Find the next greater element in a circular array.
+- **Mapping**: Extend iteration to $2n$ in **Slot 1** using `i % n`, pushing to stack only during the first cycle ($i < n$).
 
 ```python
-for i, value in enumerate(nums):
-    while stack and current_answers_top(...):
-        j = stack.pop()
-        answer[j] = i
-    stack.append(i)
+from typing import List
+
+
+class Solution:
+    def nextGreaterElements(self, nums: List[int]) -> List[int]:
+        n = len(nums)
+        ans = [-1] * n
+        stack = []
+
+        # Slot 1: Virtual doubling via 2*n iteration
+        for i in range(2 * n):
+            val = nums[i % n]
+            # Slot 2: Eviction comparison
+            while stack and nums[stack[-1]] < val:
+                mid = stack.pop()
+                # Slot 3A: Record next greater value
+                ans[mid] = val
+            # Slot 4: Only push during first cycle
+            if i < n:
+                stack.append(i)
+
+        return ans
 ```
 
-One current value may resolve several old indices, so answers are written inside the `while` loop.
-
-### Nearest Answer on the Left: Remove Invalid Candidates, Then Read the Top
-
-For the nearest strictly smaller value on the left:
-
-```python
-answer = [-1] * len(nums)
-stack = []
-
-for i, value in enumerate(nums):
-    while stack and nums[stack[-1]] >= value:
-        stack.pop()
-
-    if stack:
-        answer[i] = stack[-1]
-
-    stack.append(i)
-```
-
-Here the answer belongs to the current index `i`. The `while` loop removes candidates that cannot answer the current index. Once it finishes, the top is the nearest strictly smaller value.
-
-| Question | What the `while` Loop Does | Where to Write the Answer |
-|---|---|---|
-| First qualifying value on the right | The current value resolves old indices | Write `answer[j]` while popping |
-| Nearest qualifying value on the left | Remove candidates invalid for the current index | Read the top after `while`, then write `answer[i]` |
-
-### Largest Rectangle: Determine Both Boundaries When Popping
-
-In [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150), when a shorter bar at `right` pops index `j`:
-
-```text
-right = first strictly shorter position on the right
-stack[-1] after the pop = nearest shorter position on the left
-```
-
-The width covered by `heights[j]` is therefore:
-
-$$
-\text{width}
-=
-\text{right}
--
-\text{left}
--
-1.
-$$
-
-A final sentinel bar of height `0` pops all remaining bars, avoiding a duplicated cleanup loop.
-
-The demo below uses a fixed array to show popping, width computation, and sentinel handling step by step.
+#### Practice 3: Largest Rectangle in Histogram (Dual Boundaries & Sentinel)
+Find the area of the largest rectangle in the histogram.
+- **Mathematical Derivation**: With bar $heights[mid]$ as height, the maximal span width is bounded by the **nearest strictly shorter bars on left and right**:
+  $$W = \text{right} - \text{left} - 1$$
+- **Sentinel Optimization**: Appending an artificial bar of height `0` at index $n$ forces eviction of all residual bars, eliminating post-loop cleanup code.
 
 ```largest-rectangle-demo
 ```
-
-<details>
-<summary>Reference answer</summary>
 
 ```python
 from typing import List
@@ -322,48 +377,87 @@ from typing import List
 
 class Solution:
     def largestRectangleArea(self, heights: List[int]) -> int:
-        answer = 0
+        max_area = 0
         stack = []
 
+        # Slot 1: Inject tail sentinel of height 0
         for right in range(len(heights) + 1):
-            current = 0 if right == len(heights) else heights[\right]
+            curr_h = 0 if right == len(heights) else heights[right]
 
-            while stack and heights[stack[-1]] > current:
-                j = stack.pop()
+            # Slot 2: Shorter bar breaks increasing monotonicity
+            while stack and heights[stack[-1]] > curr_h:
+                mid = stack.pop()
+                mid_h = heights[mid]
+                # Slot 3A: Left and right boundaries locked simultaneously
                 left = stack[-1] if stack else -1
                 width = right - left - 1
-                answer = max(answer, heights[j] * width)
+                max_area = max(max_area, mid_h * width)
 
-            stack.append(\right)
+            # Slot 4: Enqueue current index
+            stack.append(right)
 
-        return answer
+        return max_area
 ```
 
-The sentinel index is pushed during the last iteration, but the loop ends immediately afterward, so `heights[len(heights)]` is never read.
+#### Practice 4: Trapping Rain Water (Horizontal Trough Fill)
+- **Model**: Monotonic decreasing stack. When a taller bar is encountered, the evicted bar serves as the trough floor $mid$. The new stack top is the left boundary $left$, and current bar is the right boundary $right$.
+- **Formulas**:
+  $$H = \min(height[left], height[right]) - height[mid]$$
+  $$W = right - left - 1$$
+  $$\text{Water} = H \times W$$
 
-</details>
+```python
+from typing import List
 
-### Why the Nested `while` Is Still O(n)
 
-Do not multiply the outer `for` and inner `while` mechanically. Each index is:
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        water = 0
+        stack = []
 
-```text
-pushed at most once
-popped at most once
+        for right, curr_h in enumerate(height):
+            # Slot 2: Taller bar encountered, forming bounding trough
+            while stack and height[stack[-1]] < curr_h:
+                mid = stack.pop()
+                if not stack:
+                    break  # No left boundary to trap water
+
+                left = stack[-1]
+                # Slot 3A: Horizontal trough slice accumulation
+                h = min(height[left], curr_h) - height[mid]
+                w = right - left - 1
+                water += h * w
+
+            # Slot 4: Enqueue current bar
+            stack.append(right)
+
+        return water
 ```
 
-There are at most $n$ pushes and $n$ pops, so the total number of stack operations is $O(n)$. The stack holds at most $n$ indices, giving $O(n)$ space.
+---
 
-This is the same amortized argument used for two pointers and sliding windows: a local loop may repeat, but an element never returns after it is removed.
+### 2.6 · Complexity Proof: Why Nested while Loops Run in Strict O(n) Time
 
-### Final Interview Checklist
+A common pitfall is mistaking nested `while` inside `for` as $O(n^2)$.
 
-1. Should the stack store values or indices? Prefer indices when you need distances, boundaries, or access to the original array.
-2. Is the current element resolving old indices, or looking for its own answer on the left?
-3. Does the problem ask for a strict or non-strict comparison? That decides `<` versus `<=`.
-4. Should `answer[j]` store an index, value, or `i - j`?
-5. In a histogram, does a sentinel empty the remaining stack?
+The formal **Aggregate Analysis** proof is straightforward:
+1. In an array of size $n$, each index enters the `for` loop and is pushed via `stack.append()` **at most once**;
+2. An element can only be popped via `stack.pop()` if it currently resides in the stack, so each element is popped **at most once**;
+3. Once an index is popped, it is permanently discarded and never re-enters the stack;
+4. Therefore, across all $n$ outer iterations, the inner `while` condition evaluates to true and executes `pop()` at most $n$ times total.
 
-Keep one sentence in memory:
+$$\sum_{i=1}^n (\text{Push Count} + \text{Pop Count}) \le n + n = 2n = O(n)$$
 
-> The index at the top still has no answer. Once the current value satisfies what it is waiting for, pop it and write its answer.
+Thus, the monotonic stack algorithm runs in strict $O(n)$ time and $O(n)$ auxiliary space in the worst case.
+
+---
+
+### 2.7 · Whiteboard Interview Checklist
+
+When presenting a monotonic stack solution in technical interviews, structure your explanation across 5 clear milestones:
+
+1. **Classification**: "This problem requires finding nearest extreme-value boundaries for each position in 1D. Brute force is $O(n^2)$; a monotonic stack optimizes this to linear $O(n)$ time."
+2. **Data Structure**: "The stack stores indices rather than values because calculating spans $i - j$ and rectangle widths requires physical distances."
+3. **Monotonicity**: "We maintain a monotonic decreasing stack because we are seeking the next greater element; any value violating this triggers immediate eviction."
+4. **Attribution**: "Answers are settled upon eviction (Slot 3A) because the current scanned element serves as the active resolver for waiting elements."
+5. **Sentinel**: "For histogram area or multi-interval aggregation, append a `0` sentinel to flush residual frames automatically without duplicate cleanup code."
