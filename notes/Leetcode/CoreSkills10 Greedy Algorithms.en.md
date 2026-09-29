@@ -20,6 +20,37 @@ In interviews, the two standard arguments used to prove greedy correctness are:
 4. Discard Negative Drags: Once a prefix's net contribution drops below zero, carrying it forward only drags future subarrays down—reset the starting point immediately.
 ```
 
+### 1.1 How to Identify / Guess If a Problem Is Greedy in 60 Seconds?
+
+In technical interviews, when facing an optimization or feasibility problem, candidates often struggle to choose between **Dynamic Programming (DP)**, **Greedy**, and **Backtracking**.
+
+You can rapidly diagnose whether a problem is solvable by greedy methods using four key "Greedy Sensors":
+
+#### Sensor 1: Dominance Property — Does One Choice Strictly Encompass Another?
+- **Core Condition**: If making choice $A$ endows the future with a capability set that **strictly contains** that of choice $B$ ($A \supseteq B$), then choice $B$ is strictly dominated by $A$ and can be eliminated without branching.
+- **The Watershed between DP and Greedy**:
+  - **The DP Realm (Trade-offs Exist)**:
+    Consider Coin Change (`coins = [1, 3, 4]`, target = 6). If you greedily pick the largest coin 4, you are left with 2, requiring 1+1 (3 coins total). If you pick the smaller 3, you are left with 3, which is matched in one step (2 coins total).
+    Picking 4 does not subsume picking 3; they represent conflicting trade-offs. **Whenever trade-offs exist across future paths, greedy fails and DP must preserve all branches**.
+  - **The Greedy Realm (Absolute Dominance, No Trade-offs)**:
+    Consider Jump Game (LC 55). At index $i$, if you can reach index 10 or index 8, does choosing 10 ever sacrifice any opportunities reachable from 8? **Never**. Being able to reach 10 means all indices from $i+1$ to 10 are within view. Reaching 10 strictly contains all possibilities of reaching 8. With no trade-offs, you greedily take `max_reach = max(max_reach, i + nums[i])`.
+
+#### Sensor 2: Liability Cut-off — Does Past History Become a Pure Drag?
+- **Core Condition**: When accumulating a running state along a sequence, does its **net contribution become negative**?
+- If a prefix sum or net balance turns negative, carrying it forward strictly harms any subsequent sequence. Severing it always improves downstream prospects:
+  - **Kadane's Algorithm (LC 53)**: $sum_{prefix} < 0$. Carrying negative momentum only reduces the sum of future subarrays; reset `cur_sum = 0` immediately.
+  - **Gas Station (LC 134)**: If `tank < 0` at station $i$, the segment $[start, i]$ ran a net deficit. By dominance, starting from any intermediate station $k \in [start, i]$ with zero initial fuel would run out even earlier. Thus, the entire range $[start, i]$ is disqualified; leap the candidate start to $i + 1$.
+
+#### Sensor 3: Forced Move / Unique Placement
+- **Core Condition**: Is there an extreme element (global minimum, earliest deadline, last occurrence) that **has nowhere else to go** in any valid configuration?
+  - **Hand of Straights (LC 846)**: The globally smallest card $x$ cannot be the 2nd or 3rd card of any straight (no card smaller than $x$ exists). $x$ **must** start a straight $[x, x+1, \dots]$. There is zero branch ambiguity; greedy consumption is mandatory.
+  - **Partition Labels (LC 763)**: Once character $c$ appears, its partition must encompass its last occurrence `last[c]`. This rigid constraint forces `end = max(end, last[c])`.
+
+#### Sensor 4: The 30-Second Scratchpad Test
+1. **Construct a Mini-Example**: Write down a non-trivial 4-element case;
+2. **Make a Non-Greedy Choice**: Deliberately pick an inferior local option at step 1;
+3. **Check for a Comeback**: Can this inferior choice ever overtake the greedy choice downstream? If its state trajectory is strictly bounded by the greedy choice, the problem is 100% greedy.
+
 ---
 
 ## 2. Deep Dive into Kadane's Algorithm: Principles, DP & Greedy Duality
@@ -114,16 +145,158 @@ def kadane(nums: list[int]) -> int:
 
 ---
 
-## 3. Four Universal Greedy Templates
+## 3. The Unified Greedy Architecture: State Envelope Machine & 4 Master Templates
 
-| Template Category | Invariant & Operational Logic | Classic Representative Problems |
-| :--- | :--- | :--- |
-| **1. Prefix Reset** | When running sum `< 0`, history is a pure drag on the future; discard and reset start immediately. | **Maximum Subarray** (LC 53)<br>**Gas Station** (LC 134) |
-| **2. Reachable Envelope & BFS Window** | Maintain farthest reachable boundary `max_reach`; advance layer-by-layer for minimum steps. | **Jump Game** (LC 55)<br>**Jump Game II** (LC 45) |
-| **3. Forced Choice & Disqualification** | Minimum element has no predecessor, forced to start a sequence; disqualify violating candidates upfront. | **Hand of Straights** (LC 846)<br>**Merge Triplets** (LC 1899) |
-| **4. Boundary Merge & Range Tracking** | Cut immediately when reaching `max(last[c])`; track unclosed bracket range `[min, max]` under wildcards. | **Partition Labels** (LC 763)<br>**Valid Parenthesis String** (LC 678) |
+Many developers believe "greedy algorithms are disparate ad-hoc tricks with no unified pattern."
+In reality, all production-grade greedy algorithms are instances of a **State Envelope Machine**:
+1. **Preprocessing**: Sorting (aligned to extremes/deadlines) or frequency pre-computation;
+2. **State Envelope Progression**: Traversing the sequence while maintaining a monotonic invariant (farthest reach, non-negative gas surplus, running minimum);
+3. **Dominance Pruning & Liability Cut-off**: Discarding dominated paths or severing deficits the instant running yield turns negative.
 
 ```greedy-patterns
+```
+
+### 3.1 Template 1: Prefix Reset & Leap Template
+**Governs**: LC 53 Maximum Subarray, LC 134 Gas Station.
+**Core Mechanism**: Once accumulated net gain drops below zero ($< 0$), it is a pure liability to future elements. Immediately reset the accumulator to zero and advance the candidate start to the next position.
+
+```python
+from typing import List
+
+class PrefixResetGreedyTemplate:
+    @staticmethod
+    def solve(deltas: List[int], mode: str = "max_sum") -> int:
+        """
+        Prefix liability cut-off and leap template:
+        - mode == "max_sum": LC 53 Maximum Subarray (deltas = nums)
+        - mode == "gas_station": LC 134 Gas Station (deltas = [gas[i] - cost[i]])
+        """
+        total_sum = 0
+        cur_tank = 0
+        start = 0
+        max_sum = deltas[0]
+
+        for i, delta in enumerate(deltas):
+            total_sum += delta
+            cur_tank += delta
+
+            # Mode A (LC 53): Track global peak prefix sum
+            if mode == "max_sum":
+                max_sum = max(max_sum, cur_tank)
+
+            # Core greedy cut-off: net yield turns negative, drag on future -> reset immediately!
+            if cur_tank < 0:
+                cur_tank = 0
+                start = i + 1  # Disqualify [start, i]; leap candidate start
+
+        if mode == "max_sum":
+            return max_sum
+        elif mode == "gas_station":
+            return start if total_sum >= 0 else -1
+```
+
+---
+
+### 3.2 Template 2: Reachable Envelope & Implicit BFS Window Template
+**Governs**: LC 55 Jump Game, LC 45 Jump Game II.
+**Core Mechanism**: Exploit dominance to eliminate branch exploration; maintain the global farthest boundary `farthest` in a single pass.
+
+```python
+from typing import List
+
+class EnvelopeGreedyTemplate:
+    @staticmethod
+    def solve_reach(nums: List[int], mode: str = "can_reach") -> int:
+        """
+        Reachable envelope and window template:
+        - mode == "can_reach": LC 55 (feasibility)
+        - mode == "min_steps": LC 45 (minimum jumps)
+        """
+        n = len(nums)
+        if n <= 1:
+            return True if mode == "can_reach" else 0
+
+        farthest = 0
+        cur_window_end = 0
+        steps = 0
+        limit = n if mode == "can_reach" else n - 1
+
+        for i in range(limit):
+            # 1. Trapped outside reachable envelope -> unreachable
+            if i > farthest:
+                return False
+
+            # 2. Greedily extend envelope
+            farthest = max(farthest, i + nums[i])
+
+            # 3. Current BFS jump window exhausted; trigger jump increment (LC 45)
+            if mode == "min_steps" and i == cur_window_end:
+                steps += 1
+                cur_window_end = farthest
+                if cur_window_end >= n - 1:
+                    break
+
+        return (farthest >= n - 1) if mode == "can_reach" else steps
+```
+
+---
+
+### 3.3 Template 3: Forced Minimum Choice Template
+**Governs**: LC 846 Hand of Straights, LC 1899 Merge Triplets.
+**Core Mechanism**: The global minimum element has no predecessor; it has **zero alternative placements** in any valid configuration. It must be immediately consumed to initiate a valid group. Violating candidates are disqualified upfront.
+
+```python
+from collections import Counter
+from typing import List
+
+class ForcedChoiceGreedyTemplate:
+    @staticmethod
+    def is_n_straight_hand(hand: List[int], groupSize: int) -> bool:
+        """LC 846: Global minimum forced group creation"""
+        if len(hand) % groupSize != 0:
+            return False
+
+        count = Counter(hand)
+        for card in sorted(count):
+            if count[card] > 0:
+                needed = count[card]
+                for next_card in range(card, card + groupSize):
+                    if count[next_card] < needed:
+                        return False
+                    count[next_card] -= needed
+        return True
+```
+
+---
+
+### 3.4 Template 4: Range Bound Tracking & Boundary Merge Template
+**Governs**: LC 678 Valid Parenthesis String, LC 763 Partition Labels.
+**Core Mechanism**: Under branching ambiguity or wildcards, do not branch recursively. Maintain closed bounding intervals `[cmin, cmax]` of allowable states, and cut partitions immediately upon reaching the maximum last-seen boundary.
+
+```python
+class RangeBoundGreedyTemplate:
+    @staticmethod
+    def check_valid_string(s: str) -> bool:
+        """LC 678: Track unclosed left bracket range [cmin, cmax]"""
+        cmin = 0  # Minimum '(' treating '*' as ')'
+        cmax = 0  # Maximum '(' treating '*' as '('
+
+        for ch in s:
+            if ch == '(':
+                cmin += 1
+                cmax += 1
+            elif ch == ')':
+                cmin = max(0, cmin - 1)
+                cmax -= 1
+            else:  # '*'
+                cmin = max(0, cmin - 1)
+                cmax += 1
+
+            # If cmax < 0 at any point, ')' overload -> invalid
+            if cmax < 0:
+                return False
+
+        return cmin == 0
 ```
 
 ---
@@ -278,6 +451,14 @@ class Solution:
 ```
 
 - **Complexity**: Time $O(n)$, Space $O(1)$.
+
+#### Isomorphic Mapping to Kadane's Algorithm (LC 53)
+Comparing LC 53 (Maximum Subarray) and LC 134 (Gas Station), their underlying state machines are **fully isomorphic**:
+- **Shared Action**: Traversing an incremental sequence $\Delta_i$.
+- **Shared Greedy Trigger**: The moment accumulated yield `cur_tank < 0`, the history from `start` to the current index is a **pure liability**, guaranteed to drag down any subsequent sequence. Sever it immediately: `cur_tank = 0` and leap the candidate start to `i + 1`!
+- **Divergence Only at Final Output**:
+  - LC 53 maintains a global peak running prefix `max_sum = max(max_sum, cur_tank)`;
+  - LC 134 maintains the net total fuel budget `total_surplus >= 0` to decide circular feasibility.
 
 ---
 

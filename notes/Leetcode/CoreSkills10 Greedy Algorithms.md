@@ -20,6 +20,38 @@
 4. 排除负向累赘：一旦某个局部前缀的净收益变为负数，继续携带它只会拖累未来，必须果断重置起点。
 ```
 
+### 1.1 怎样在 60 秒内敏锐识别 / 猜测一题可以做贪心？
+
+在面试中，面对一个最优化或可行性问题，候选人最大的痛点是无法确定该用**动态规划（DP）**、**贪心（Greedy）**还是**回溯搜索（Backtracking）**。
+
+可以通过以下四大“贪心传感器”进行快速推导与鉴别：
+
+#### 传感器 1：包含支配性（Dominance Property）——是否存在“无痛碾压”？
+- **核心判定**：如果选择方案 $A$ 所赋予未来的能力集合，**严格包含**方案 $B$ 所赋予未来的能力（$A \supseteq B$），那么方案 $B$ 已经被方案 $A$ 严格支配，根本无需保留。
+- **与 DP 的本质分水岭**：
+  - **DP 的场景（存在权衡 Trade-off）**：
+    以零钱兑换（Coin Change：硬币 `[1, 3, 4]`，凑 6 元）为例。如果第一步贪心选面值最大的 4，剩下 2 元需要 1+1（共 3 枚）；而如果第一步选看似较小的 3，剩下 3 元刚好一步凑齐（共 2 枚）。
+    此时选 4 并不包含选 3 的未来能力——它们存在此消彼长的权衡（Trade-off）。**凡是存在 Trade-off 的，贪心必死，必须用 DP 保留所有分支**。
+  - **贪心的场景（压倒性包含，无权衡）**：
+    以 Jump Game（LC 55）为例。在位置 $i$，如果能跳到 10，也能跳到 8。跳到 10 会丧失跳到 8 能获得的机会吗？**绝不可能**。因为能到达 10，数轴上从 $i+1$ 到 10 的所有落脚点都在视野中。跳到 10 的可能性严格包含了跳到 8 的可能性。没有权衡，直接无脑取 `max_reach`。
+
+#### 传感器 2：负资产即刻斩断（Liability Cut-off）——历史是否会成为纯负债？
+- **核心判定**：历史积累的局部中间状态，在遇到某个断点时，其**净贡献（Net Contribution）是否变为了负数**？
+- 若前缀净贡献转负，它对后续任何序列都只有拖累。将其切除，后续收益必然更高。
+  - **Kadane 最大子数组和 (LC 53)**：$sum_{prefix} < 0$，带上它只会让后面的子数组变小，立即归零重置。
+  - **Gas Station 加油站 (LC 134)**：从 $start$ 走到 $i$ 时如果 $tank < 0$，说明 $[start, i]$ 区间内的净油量亏空。根据支配性定理，区间内任何中间站 $k$（初始油量为 0）到达 $i$ 时油量必然更少，因此 $[start, i]$ 内所有候选点被全盘否决，直接跳到 $i + 1$ 重置。
+
+#### 传感器 3：极值元素唯一安放（Forced Move / Unique Placement）
+- **核心判定**：数轴或数组中是否存在某个“极值元素”（如当前最小的数、最早截止的 DDL、最后一次出现的字符），在合法的最终结构中**根本没有别的选择余地**？
+  - **Hand of Straights (LC 846)**：数组中全局最小的数 $x$，绝不可能作为顺子的第 2 张或第 3 张（因为不存在比它更小的数来打头）。$x$ **必须且只能**作为某副顺子的起点。无其他分支，强制贪心消耗。
+  - **Partition Labels (LC 763)**：某个字符 $c$ 首次出现后，为了保证 $c$ 不被切分，当前片段的右边界**必须至少延展到 $c$ 最后一次出现的位置**。这是物理刚性约束，直接贪心扩张 `end = max(end, last[c])`。
+
+#### 传感器 4：草稿纸 3 步反例探测法（The 30-Second Scratchpad Test）
+在白板上花 30 秒进行反证检验：
+1. **构造微型反例**：写一个包含 3~4 个元素的非平凡样例；
+2. **故意做非贪心决策**：假设在第 1 步不选局部最好项，而是故意选一个劣质项；
+3. **观察能否翻盘**：观察该劣质项在未来是否可能反超最优解。如果劣质项的演进空间始终被贪心项全包围，100% 可以直接写贪心。
+
 ---
 
 ## 2. 深入解构 Kadane 算法：原理、动态规划与贪心双重视角
@@ -115,16 +147,158 @@ def kadane(nums: list[int]) -> int:
 
 ---
 
-## 3. 经典 4 大贪心万能模板
+## 3. 终极统一贪心架构：状态包络演进机与四大万能模板
 
-| 模板分类 | 核心不变量与操作机制 | 典型代表题目 |
-| :--- | :--- | :--- |
-| **1. 前缀收益归零与断点重置**<br>*(Prefix Reset)* | 历史累加和 `< 0` 时对未来纯拉低效益，立即抛弃并重置起点。 | **Maximum Subarray** (LC 53)<br>**Gas Station** (LC 134) |
-| **2. 覆盖包络线与隐式 BFS 窗口**<br>*(Envelope & BFS Window)* | 维护最远可达边界 `max_reach`；逐层寻找下一跳最大覆盖范围。 | **Jump Game** (LC 55)<br>**Jump Game II** (LC 45) |
-| **3. 极端约束强制固定与频次切片**<br>*(Forced Choice & Sorting)* | 最小元素无前驱，被迫开序列；超标分量一票否决。 | **Hand of Straights** (LC 846)<br>**Merge Triplets** (LC 1899) |
-| **4. 边界合并与状态区间追踪**<br>*(Interval & Range Bounds)* | 字符最后出现位置闭合切断；通配符追踪 `[min, max]` 容许域。 | **Partition Labels** (LC 763)<br>**Valid Parenthesis String** (LC 678) |
+很多开发者认为“贪心算法各显神通，无法提炼统一模板”。
+实际上，所有工业级高频贪心题，底层全都是**状态包络演进机（State Envelope Machine）**：
+1. **预处理**：排序（按极值/边界对齐）或哈希频次预统计；
+2. **状态包络演进**：遍历序列，维护一个单调不变量（如最远可达点、非负净油量、当前最小值）；
+3. **支配性剪枝与负资产止损**：一旦发现局部选择被严格支配，或累积收益转为负数，立刻斩断并推进边界。
 
 ```greedy-patterns
+```
+
+### 3.1 模板 1：前缀负债止损与断点跃迁模板 (Prefix Reset & Leap)
+**统领**：LC 53 最大子数组和 (Maximum Subarray)、LC 134 加油站 (Gas Station)。
+**核心机制**：历史累加净收益一旦 $< 0$，对未来序列纯属拖累（负债）。立刻将累计值归零，并将潜在候选起点直接跃迁到当前断点的下一个位置。
+
+```python
+from typing import List
+
+class PrefixResetGreedyTemplate:
+    @staticmethod
+    def solve(deltas: List[int], mode: str = "max_sum") -> int:
+        """
+        前缀负债止损与断点跃迁模板:
+        - mode == "max_sum": LC 53 最大子数组和 (deltas = nums)
+        - mode == "gas_station": LC 134 加油站 (deltas = [gas[i] - cost[i]])
+        """
+        total_sum = 0
+        cur_tank = 0
+        start = 0
+        max_sum = deltas[0]
+
+        for i, delta in enumerate(deltas):
+            total_sum += delta
+            cur_tank += delta
+
+            # 模式 A (LC 53): 持续更新历史最高前缀收益
+            if mode == "max_sum":
+                max_sum = max(max_sum, cur_tank)
+
+            # 核心贪心止损：当前前缀净收益转负，对未来产生负向拖累，果断斩断！
+            if cur_tank < 0:
+                cur_tank = 0
+                start = i + 1  # 淘汰 [start, i] 全区间，起点直接跃迁
+
+        if mode == "max_sum":
+            return max_sum
+        elif mode == "gas_station":
+            return start if total_sum >= 0 else -1
+```
+
+---
+
+### 3.2 模板 2：最远覆盖包络线与隐式 BFS 窗口模板 (Farthest Reach & Window)
+**统领**：LC 55 跳跃游戏 (Jump Game)、LC 45 跳跃游戏 II (Jump Game II)。
+**核心机制**：利用支配性（Dominance），无需递归回溯所有跳跃分支，只需在单遍扫描中维护最远可达边界 `farthest`。
+
+```python
+from typing import List
+
+class EnvelopeGreedyTemplate:
+    @staticmethod
+    def solve_reach(nums: List[int], mode: str = "can_reach") -> int:
+        """
+        最远包络线与隐式窗口模板:
+        - mode == "can_reach": LC 55 (能否到达终点)
+        - mode == "min_steps": LC 45 (最少跳跃步数)
+        """
+        n = len(nums)
+        if n <= 1:
+            return True if mode == "can_reach" else 0
+
+        farthest = 0
+        cur_window_end = 0
+        steps = 0
+        limit = n if mode == "can_reach" else n - 1
+
+        for i in range(limit):
+            # 1. 掉出当前最远可达包络线 -> 永远不可达
+            if i > farthest:
+                return False
+
+            # 2. 贪心延展覆盖包络线
+            farthest = max(farthest, i + nums[i])
+
+            # 3. 隐式 BFS 当前跳跃窗口耗尽，触发步数累加并扩展窗口 (LC 45)
+            if mode == "min_steps" and i == cur_window_end:
+                steps += 1
+                cur_window_end = farthest
+                if cur_window_end >= n - 1:
+                    break
+
+        return (farthest >= n - 1) if mode == "can_reach" else steps
+```
+
+---
+
+### 3.3 模板 3：极值无前驱强制出牌模板 (Forced Minimum Choice)
+**统领**：LC 846 一手顺子 (Hand of Straights)、LC 1899 合并三元组 (Merge Triplets)。
+**核心机制**：当前全局最小值无前驱，在任何合法解中都**绝无作为中间件的可能**，它必须被立即强制用来构成一个合法单元；违规候选（如超标三元组）一票否决。
+
+```python
+from collections import Counter
+from typing import List
+
+class ForcedChoiceGreedyTemplate:
+    @staticmethod
+    def is_n_straight_hand(hand: List[int], groupSize: int) -> bool:
+        """LC 846: 全局最小值强制开牌"""
+        if len(hand) % groupSize != 0:
+            return False
+
+        count = Counter(hand)
+        for card in sorted(count):
+            if count[card] > 0:
+                needed = count[card]
+                for next_card in range(card, card + groupSize):
+                    if count[next_card] < needed:
+                        return False
+                    count[next_card] -= needed
+        return True
+```
+
+---
+
+### 3.4 模板 4：容许域区间追踪与边界切断模板 (Range Bound Tracking)
+**统领**：LC 678 有效的括号字符串 (Valid Parenthesis String)、LC 763 划分字母区间 (Partition Labels)。
+**核心机制**：当存在通配符或分支选择时，不递归穷举，而是维护合法状态的上下界闭区间 `[cmin, cmax]`；当达到最晚出现位置边界时即时切断。
+
+```python
+class RangeBoundGreedyTemplate:
+    @staticmethod
+    def check_valid_string(s: str) -> bool:
+        """LC 678: 用 [cmin, cmax] 追踪未匹配左括号的可能数量区间"""
+        cmin = 0  # 视所有 '*' 为 ')' 时的最小左括号数
+        cmax = 0  # 视所有 '*' 为 '(' 时的最大左括号数
+
+        for ch in s:
+            if ch == '(':
+                cmin += 1
+                cmax += 1
+            elif ch == ')':
+                cmin = max(0, cmin - 1)
+                cmax -= 1
+            else:  # '*'
+                cmin = max(0, cmin - 1)
+                cmax += 1
+
+            # 任何时刻若 cmax < 0，说明 ')' 过载，绝对不可行
+            if cmax < 0:
+                return False
+
+        return cmin == 0
 ```
 
 ---
@@ -280,6 +454,14 @@ class Solution:
 ```
 
 - **复杂度**：时间 $O(n)$，空间 $O(1)$。
+
+#### 与 Kadane 算法（LC 53）的统一模板映射
+仔细对比 LC 53（最大子数组和）与 LC 134（加油站），两者的底层状态机**完全同构**：
+- **共同动作**：遍历增量序列 $\Delta_i$。
+- **共同贪心点**：一旦当前累积收益 `cur_tank < 0`，说明从 `start` 到当前位置的历史贡献为**纯负资产**，带上它只会让后续变得更糟。因此果断止损：`cur_tank = 0`，候选起点直接跳跃到 `i + 1`！
+- **差异仅在终局判定**：
+  - LC 53 维护全局最大前缀和 `max_sum = max(max_sum, cur_tank)`；
+  - LC 134 维护全局总油量收支 `total_surplus >= 0`，决定环路是否有解。
 
 ---
 
