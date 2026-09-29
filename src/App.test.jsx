@@ -82,6 +82,10 @@ describe('App', () => {
               ? '# Wiki · Pull vs Push (推拉模型与读写扩散)'
             : requestUrl.includes('SystemDesign01D')
               ? '# System Design 01D · Redis'
+            : requestUrl.includes('SystemDesign99')
+              ? '# System Design 99 · 高频术语整合'
+            : requestUrl.includes('SystemDesign02')
+              ? '# System Design 02 · 数据库'
             : requestUrl.includes('CoreSkills09')
               ? '## 双源推进可行性：Interleaving String\n\n$$dp[i][j] = (dp[i-1][j] \\land s_1[i-1] == s_3[i+j-1]) \\lor (dp[i][j-1] \\land s_2[j-1] == s_3[i+j-1])$$\n'
             : chineseContent,
@@ -657,23 +661,24 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
 
     expect(await screen.findByRole('heading', { name: /System Design 0/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 00 · 全局架构与量化估算/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 01 · 无状态服务/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 01C · Kubernetes/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 01D · Redis/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 02 · 数据库/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /系统设计解题框架/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /全局架构与量化估算基准/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /无状态架构与状态外置/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /虚拟化与容器隔离/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Kubernetes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Redis/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /数据库存储范式与分片/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Design 03 · /i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 04 · 存储/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /分布式存储系统/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Design 05 · /i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 06 · 消息队列/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /异步消息系统演示/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 08 · 异步 LLM RL/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /一致性哈希/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 10 · 秒杀/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 11 · 移动推送与通知系统/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Design 12 · 填字游戏求解器/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /高频术语与核心定理/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /实战 Case \(5\)/i }));
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
@@ -682,7 +687,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Event Bus/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /控制面与数据面解耦/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(19\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(20\)/i }));
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Event Bus/i })).toBeInTheDocument();
@@ -691,7 +696,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /控制面与数据面解耦/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /全部 \(24\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /全部 \(25\)/i }));
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
@@ -713,16 +718,16 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /控制面与数据面解耦/i }));
     expect(await screen.findByRole('heading', { name: /控制面与数据面解耦/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
+    fireEvent.click(screen.getByRole('button', { name: /数据库存储范式与分片/i }));
 
     expect(await screen.findByRole('heading', { name: /数据库/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 04 · 存储/i }));
+    fireEvent.click(screen.getByRole('button', { name: /分布式存储系统/i }));
 
     expect(await screen.findByRole('heading', { name: /中文教程/ })).toBeInTheDocument();
     expect(screen.getByText('SystemDesign04 Storage Systems.md')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 06 · 消息队列/i }));
+    fireEvent.click(screen.getByRole('button', { name: /异步消息系统演示/i }));
 
     expect(await screen.findByRole('heading', { name: /消息队列/ })).toBeInTheDocument();
     expect(screen.getByText('SystemDesign06 Async Messaging Systems.md')).toBeInTheDocument();
@@ -738,7 +743,7 @@ describe('App', () => {
     expect(screen.getByText(/Sample Admission QPS ~60 \/s/)).toBeInTheDocument();
     expect(screen.getByText('SystemDesign08 LLM Async RL Platform.md')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 09 · 一致性哈希/i }));
+    fireEvent.click(screen.getByRole('button', { name: /一致性哈希/i }));
 
     expect(await screen.findByRole('heading', { name: /System Design 09 · 一致性哈希/ })).toBeInTheDocument();
     expect(screen.getByText(/节点变化时只迁移相邻区间/)).toBeInTheDocument();
@@ -759,7 +764,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /填字游戏求解器/ })).toBeInTheDocument();
     expect(screen.getByText('SystemDesign12 Crossword Solver.md')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 99 · 高频术语整合/i }));
+    fireEvent.click(screen.getByRole('button', { name: /高频术语与核心定理/i }));
 
     expect(await screen.findByRole('heading', { name: /高频术语整合/ })).toBeInTheDocument();
     expect(screen.getByText('SystemDesign99 Glossary.md')).toBeInTheDocument();
@@ -857,7 +862,7 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
-    fireEvent.click(screen.getByRole('button', { name: /System Design 06 · 消息队列/i }));
+    fireEvent.click(screen.getByRole('button', { name: /异步消息系统演示/i }));
 
     const visual = await screen.findByRole('region', { name: '消息队列数据与投递生命周期演示' });
     expect(within(visual).getByText('Producer 构造应用消息')).toBeInTheDocument();
@@ -888,7 +893,7 @@ describe('App', () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
-    fireEvent.click(screen.getByRole('button', { name: /System Design 01B · 虚拟化与容器/i }));
+    fireEvent.click(screen.getByRole('button', { name: /虚拟化与容器隔离/i }));
 
     const visual = await screen.findByRole('region', { name: '虚拟机与容器隔离边界对比' });
     expect(within(visual).getByText('VM：每个 guest 有自己的 kernel')).toBeInTheDocument();
@@ -913,7 +918,7 @@ describe('App', () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'System Design' }));
-    fireEvent.click(await screen.findByRole('button', { name: /System Design 01C · Kubernetes/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Kubernetes/i }));
 
     const hierarchy = await screen.findByRole('region', { name: 'Kubernetes 对象层级从容器到 Namespace' });
     expect(within(hierarchy).getByText('从容器一层层包到 Namespace')).toBeInTheDocument();
@@ -1007,7 +1012,7 @@ describe('App', () => {
     fireEvent.click(within(overview).getByRole('button', { name: /Primary Store/i }));
     expect(within(overview).getByText('先明确 source of truth')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 02 · 数据库/i }));
+    fireEvent.click(screen.getByRole('button', { name: /数据库存储范式与分片/i }));
     const dbVisual = await screen.findByRole('region', { name: '数据库扩展与分片决策器' });
     expect(within(dbVisual).getByText('基于数据依赖性的架构选型决策树')).toBeInTheDocument();
     fireEvent.click(within(dbVisual).getByRole('button', { name: /分片键实战避坑/i }));
@@ -1020,7 +1025,7 @@ describe('App', () => {
     expect(within(photo).getByText('先取 post_id，再批量补齐内容')).toBeInTheDocument();
     expect(within(photo).getByText('读取时校验')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /System Design 06 · 消息队列/i }));
+    fireEvent.click(screen.getByRole('button', { name: /异步消息系统演示/i }));
     const asyncDiagram = await screen.findByRole('region', { name: '异步消息模式架构图' });
     fireEvent.click(within(asyncDiagram).getByRole('button', { name: 'Kafka groups' }));
     expect(within(asyncDiagram).getByText('系统是实现，group 决定语义')).toBeInTheDocument();

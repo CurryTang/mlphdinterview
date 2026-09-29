@@ -92,23 +92,26 @@ The system design curriculum is structured into two focused pillars: **Practical
          ┌──────────────────────────┴──────────────────────────┐
          ▼                                                     ▼
 [ Pillar 1: Practical Cases (End-to-End) ]             [ Pillar 2: Wiki Pattern Library ]
-07 Photo Sharing & Feed (Fan-out, Timelines)           · Event Bus (Domain Events, ECST & Declarative Rules)
-08 Async LLM RL Platform (Actor-Learner)               · Message Queue (Work Queues, Leases & Poison Pills)
-10 Flash Sale (Redis Admission, Inventory Lock)        · NoSQL + Streaming (Built-in CDC & Materialized Views)
-11 Mobile Push & Notifications (Outbox, Queues)        · Kafka (Partitioned Log, High-Throughput & Consistency)
-12 Distributed Crossword Solver (Bit-CSP & CAS)        · Transactional Outbox (DB + MQ Dual-Write Fix)
+07 Photo Sharing & Feed (Fan-out, Timelines)           · System Design Blueprint (FR+Non-FR+QPS+Diagram+Deep Dive)
+08 Async LLM RL Platform (Actor-Learner)               · Blueprint & Quantitative Numbers (Physical Sizing Limits)
+10 Flash Sale (Redis Admission, Inventory Lock)        · Stateless Architecture (Compute-State Decoupling & Drain)
+11 Mobile Push & Notifications (Outbox, Queues)        · Virtualization & Containers (Namespaces/Cgroups Boundaries)
+12 Distributed Crossword Solver (Bit-CSP & CAS)        · Kubernetes (Pod Lifecycle, Controllers & Scheduling)
+                                                       · Redis (Cache-Aside, Anti-Stampede & Distributed Locks)
+                                                       · Database Paradigms & Sharding (Cube & Sharding Keys)
+                                                       · Distributed Storage Systems (Object S3 & Append Logs)
+                                                       · Async Messaging Systems (Interactive Lifecycle Demo)
+                                                       · Consistent Hashing (Virtual Nodes & Minimal Migration)
+                                                       · Glossary & Key Concepts (CAP/BASE/Little's Law Matrix)
+                                                       · Event Bus (Domain Events, ECST & Declarative Rules)
+                                                       · Message Queue (Work Queues, Leases & Poison Pills)
+                                                       · NoSQL + Streaming (Built-in CDC & Materialized Views)
+                                                       · Kafka (Partitioned Log, High-Throughput & Consistency)
+                                                       · Transactional Outbox (DB + MQ Dual-Write Fix)
                                                        · Control vs Data Plane (K8s/Envoy Survival Invariant)
                                                        · Pull vs Push (Fan-out on Read vs Write Trade-offs)
-                                                       · 09 Consistent Hashing (Virtual Nodes, Rebalance)
-                                                       · 06 Async Messaging (Kafka Logs & Consumer Semantics)
-                                                       · 01D Redis (Cache-Aside, Anti-Stampede, Leases)
-                                                       · 02 Database Paradigms (Scalability Cube & Sharding)
-                                                       · 04 Storage Systems (Object S3 & LSM-Tree Appends)
-                                                       · 01C Kubernetes (Pod Lifecycle & Autoscaling)
-                                                       · 01B Virtualization & Containers (Runtime Isolation)
-                                                       · 01 Stateless Service (State Separation & Idempotency)
-                                                       · 00 Blueprint & Numbers (Physical Sizing Baselines)
-                                                       · 99 Glossary & Theorems (CAP/BASE & Fast Lookup)
+                                                       · Idempotency (Intent Keys & Atomic Implementation)
+                                                       · NewSQL (Storage-Compute Decoupling & Distributed SQL)
 ```
 
 ---
@@ -125,22 +128,23 @@ The system design curriculum is structured into two focused pillars: **Practical
 
 ### 3.2 · Wiki Pattern Library & Knowledge Points
 
-1. **[[SystemDesignWiki Event Bus|Wiki · Event Bus & Event-Driven Architecture]]**: Pub/Sub broadcasting, Event-Carried State Transfer (ECST), content-based declarative filtering; in-process, Redis P/S, NATS, and EventBridge throughput baselines ($1\text{k} - 10\text{M QPS}$); domain event fan-out & cache invalidation.
-2. **[[SystemDesignWiki Message Queue|Wiki · Message Queue: Competing Consumers & Task Scheduling]]**: Competing consumers (1-to-1 preemptive execution), visibility timeouts & two-phase acks, DLQ poison pill isolation, delay/priority queues; RabbitMQ, AWS SQS, and Redis List performance ($20\text{k} - 100\text{k QPS}$).
-3. **[[SystemDesignWiki NoSQL Streaming|Wiki · NoSQL + Streaming: CDC & Event-Driven Pipelines]]**: Engine-level native CDC, stream-table duality ($S \iff T$), `OldImage / NewImage` delta tracking; CQRS materialized views (Elasticsearch / Redis / ClickHouse); DynamoDB Streams, MongoDB Change Streams, and Redis Streams ($100\text{k} - 1\text{M+ QPS}$).
-4. **[[SystemDesignWiki Kafka|Wiki · Kafka: Partitioned Log & Architecture Deep Dive]]**: High-throughput distributed commit log, sequential disk I/O, OS Page Cache reuse and `sendfile` zero-copy; ISR, High Watermark, Leader Epoch recovery, and KRaft consensus; Idempotent producers & Exactly-Once Semantics (EOS); 6 production system design interview use cases.
-5. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox Pattern]]**: Resolving the dual-write hazard between database mutations and message queues via local ACID persistence and Polling / CDC transaction log tailing.
-6. **[[SystemDesignWiki Control Data Plane|Wiki · Control Plane vs Data Plane Separation]]**: Decoupling the "Brain" from the "Muscles"; the survival invariant (control plane failure never disrupts running data plane traffic); K8s Master vs Node Pods, Istio vs Envoy xDS, Kafka KRaft Controller vs Broker; quantitative baselines ($1\text{k}$ vs $10\text{M QPS}$).
-7. **[[SystemDesignWiki Pull vs Push|Wiki · Pull vs Push Models]]**: Trade-offs between Fan-out on Write and Fan-out on Read; celebrity hotspot mitigation in feeds; Long Polling vs WebSocket vs SSE client-server streaming.
-8. **[[SystemDesignWiki Idempotency|Wiki · Idempotency Design Patterns & Implementations]]**: Mathematical & engineering definitions; deep dive into CI/CD `workflow_run` (Run/Tenant/Repo/Commit/Event); 6 core paradigms (DB unique constraints, Idempotency-Key tokens, state machine CAS transitions, deduplication tables, deterministic hash IDs, and natural idempotence); 4 production pitfalls.
-9. **[[SystemDesignWiki NewSQL|Wiki · NewSQL & Distributed SQL Architecture]]**: Compute-storage decoupling, range-based Region splitting, Multi-Raft consensus, Percolator 2PC + HLC/TrueTime distributed transactions, and parallel coprocessor pushdown vs Sharded RDBMS trade-offs.
-10. **[[SystemDesign09 Consistent Hashing|Wiki · 09 Consistent Hashing]]**: Elastic node ring routing, virtual nodes for skew prevention, and minimal rebalancing overhead.
-11. **[[SystemDesign06 Async Messaging Systems|Wiki · 06 Async Messaging Systems]]**: Kafka/MQ log streaming, peak leveling, asynchronous decoupling, and consumer delivery semantics.
-12. **[[SystemDesign01D Redis|Wiki · 01D Redis]]**: High-throughput in-memory caching, Cache-Aside, multi-layer stampede defenses, distributed leases, and admission control.
-13. **[[SystemDesign02 Database Paradigms|Wiki · 02 Database Paradigms]]**: ACID invariants, Scalability Cube (X-axis replicas, Y-axis microservices, Z-axis sharding), 6 sharding key rules, and 4 patterns to eliminate scatter-gather.
-14. **[[SystemDesign04 Storage Systems|Wiki · 04 Storage Systems]]**: Object storage (S3/MinIO), blob handling, LSM-Tree sequential storage engines, and metadata decoupling.
-15. **[[SystemDesign01C Kubernetes|Wiki · 01C Kubernetes]]**: Automated scheduling, declarative controllers, service routing, and horizontal pod autoscaling (HPA).
-16. **[[SystemDesign01B Virtualization Containers|Wiki · 01B Virtualization & Containers]]**: Lightweight Linux Namespaces & Cgroups isolation for multi-tenant container packing.
-17. **[[SystemDesign01 Stateless Service|Wiki · 01 Stateless Service]]**: Decouples compute from state to enable horizontal scaling (Scale Out); end-to-end URL Shortener system design.
-18. **[[SystemDesign00 Blueprint & Numbers|Wiki · 00 Blueprint & Numbers]]**: Physical hardware performance boundaries across Application Servers, In-Memory Caches, Databases, and Object Storage.
-19. **[[SystemDesign99 Glossary|Wiki · 99 Glossary & Key Concepts]]**: Distributed systems axioms, theorems (CAP/BASE/Little's Law), and architectural decision matrices.
+1. **[[SystemDesign01 Stateless Service|Wiki · System Design Blueprint (FR + Non-FR + QPS + Diagram + Deep Dive)]]**: End-to-end 5-stage interview methodology, capacity sizing, layered topology, 3 core deep-dive trade-offs, and request tracing via URL Shortener.
+2. **[[SystemDesignWiki Stateless Architecture|Wiki · Stateless Architecture & State Externalization]]**: Compute-state decoupling, 3 externalization pillars (Session/Blob/Workflow), idempotency intent keys, graceful draining, and dual-probe lifecycles.
+3. **[[SystemDesign00 Overview|Wiki · Blueprint & Quantitative Numbers]]**: Physical hardware performance boundaries across Application Servers, In-Memory Caches, Databases, and Object Storage.
+4. **[[SystemDesign01B Virtualization Containers|Wiki · Virtualization & Containers]]**: Lightweight Linux Namespaces & Cgroups isolation for multi-tenant container packing.
+5. **[[SystemDesign01C Kubernetes|Wiki · Kubernetes (Orchestration & Control Plane)]]**: Automated scheduling, declarative controllers, service routing, and horizontal pod autoscaling (HPA).
+6. **[[SystemDesign01D Redis|Wiki · Redis (In-Memory Cache & Coordination)]]**: High-throughput in-memory caching, Cache-Aside, multi-layer stampede defenses, distributed leases, and admission control.
+7. **[[SystemDesign02 Database Paradigms|Wiki · Database Paradigms & Sharding]]**: ACID invariants, Scalability Cube (X-axis replicas, Y-axis microservices, Z-axis sharding), 6 sharding key rules, and patterns to eliminate scatter-gather.
+8. **[[SystemDesign04 Storage Systems|Wiki · Distributed Storage Systems]]**: Object storage (S3/MinIO), blob handling, LSM-Tree sequential storage engines, and metadata decoupling.
+9. **[[SystemDesign06 Async Messaging Systems|Wiki · Async Messaging Systems]]**: Kafka/MQ log streaming, peak leveling, asynchronous decoupling, and consumer delivery semantics.
+10. **[[SystemDesign09 Consistent Hashing|Wiki · Consistent Hashing]]**: Elastic node ring routing, virtual nodes for skew prevention, and minimal rebalancing overhead.
+11. **[[SystemDesign99 Glossary|Wiki · Glossary & Key Concepts]]**: Distributed systems axioms, theorems (CAP/BASE/Little's Law), and architectural decision matrices.
+12. **[[SystemDesignWiki Event Bus|Wiki · Event Bus & Event-Driven Architecture]]**: Pub/Sub broadcasting, Event-Carried State Transfer (ECST), content-based declarative filtering; in-process, Redis P/S, NATS, and EventBridge throughput baselines ($1	ext{k} - 10	ext{M QPS}$); domain event fan-out & cache invalidation.
+13. **[[SystemDesignWiki Message Queue|Wiki · Message Queue: Competing Consumers & Task Scheduling]]**: Competing consumers (1-to-1 preemptive execution), visibility timeouts & two-phase acks, DLQ poison pill isolation, delay/priority queues; RabbitMQ, AWS SQS, and Redis List performance ($20	ext{k} - 100	ext{k QPS}$).
+14. **[[SystemDesignWiki NoSQL Streaming|Wiki · NoSQL + Streaming: CDC & Event-Driven Pipelines]]**: Engine-level native CDC, stream-table duality ($S \iff T$), `OldImage / NewImage` delta tracking; CQRS materialized views (Elasticsearch / Redis / ClickHouse); DynamoDB Streams, MongoDB Change Streams, and Redis Streams ($100	ext{k} - 1	ext{M+ QPS}$).
+15. **[[SystemDesignWiki Kafka|Wiki · Kafka: Partitioned Log & Architecture Deep Dive]]**: High-throughput distributed commit log, sequential disk I/O, OS Page Cache reuse and `sendfile` zero-copy; ISR, High Watermark, Leader Epoch recovery, and KRaft consensus; Idempotent producers & Exactly-Once Semantics (EOS); 6 production system design interview use cases.
+16. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox Pattern]]**: Resolving the dual-write hazard between database mutations and message queues via local ACID persistence and Polling / CDC transaction log tailing.
+17. **[[SystemDesignWiki Control Data Plane|Wiki · Control Plane vs Data Plane Separation]]**: Decoupling the "Brain" from the "Muscles"; the survival invariant (control plane failure never disrupts running data plane traffic); K8s Master vs Node Pods, Istio vs Envoy xDS, Kafka KRaft Controller vs Broker; quantitative baselines ($1	ext{k}$ vs $10	ext{M QPS}$).
+18. **[[SystemDesignWiki Pull vs Push|Wiki · Pull vs Push Models]]**: Trade-offs between Fan-out on Write and Fan-out on Read; celebrity hotspot mitigation in feeds; Long Polling vs WebSocket vs SSE client-server streaming.
+19. **[[SystemDesignWiki Idempotency|Wiki · Idempotency Design Patterns & Implementations]]**: Mathematical & engineering definitions; deep dive into CI/CD `workflow_run` (Run/Tenant/Repo/Commit/Event); 6 core paradigms (DB unique constraints, Idempotency-Key tokens, state machine CAS transitions, deduplication tables, deterministic hash IDs, and natural idempotence); 4 production pitfalls.
+20. **[[SystemDesignWiki NewSQL|Wiki · NewSQL & Distributed SQL Architecture]]**: Compute-storage decoupling, range-based Region splitting, Multi-Raft consensus, Percolator 2PC + HLC/TrueTime distributed transactions, and parallel coprocessor pushdown vs Sharded RDBMS trade-offs.
