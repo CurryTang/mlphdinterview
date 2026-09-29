@@ -133,7 +133,66 @@ Indices provide three complete dimensions of information simultaneously:
 
 ---
 
-### 2.2 · Universal Monotonic Stack Blueprint: The Three-Question Four-Slot Model
+### 2.2 · Intuitive Mental Models & The Epiphany of Eviction
+
+Many engineers struggle with monotonic stacks because LIFO eviction initially feels unnatural. Three physical analogies explain the underlying invariants:
+
+#### Model 1: The "Skyline Sightline Shadow" Model (Why Evicted Elements are Safely Forgotten)
+
+Consider finding the next greater element, where array values represent building heights:
+- As the scan pointer advances rightward, a tall building $B_{\text{current}}$ arrives, exceeding previous shorter buildings $B_{\text{old}}$.
+- Why can we permanently pop and discard $B_{\text{old}}$ without ever regretting it later?
+  - **For $B_{\text{old}}$ itself**: Looking rightward, the very first taller structure it encounters is $B_{\text{current}}$. Its question is completely resolved.
+  - **For any future building $B_{\text{future}}$ further to the right**: Looking backward to the left, the towering $B_{\text{current}}$ stands directly in its line of sight. Shorter buildings like $B_{\text{old}}$ are cast entirely into $B_{\text{current}}$'s shadow (Eclipsed). Any sightline from the right will hit $B_{\text{current}}$ long before it could ever reach $B_{\text{old}}$!
+  - Therefore, $B_{\text{old}}$ can **never** serve as the "nearest greater element to the left" for any future element. Its lifecycle is permanently complete, and popping it is algebraically sound and lossless.
+
+```text
+[The Skyline Eclipse Principle]
+Height:
+  6 │                █ (current: 6)
+  5 │        █       █
+  4 │        █   █   █ ─── Height 6 towers over everything to its left;
+  2 │  █     █   █   █     any future building looking left will hit 6
+  1 │  █  █  █   █   █     and NEVER see the shadowed bars 1 and 2!
+────┼───────────────────────► Index progression
+Idx:   0  1  2   3   4
+```
+
+#### Model 2: The "Bounty Board & Weakest Barrier" Model (Why Specifically a LIFO Stack?)
+
+Why must a monotonic stack be a Last-In, First-Out (LIFO) stack rather than a queue or table?
+- Each index in the stack represents an **unresolved bounty**: *"I am waiting for the first element taller than me on the right."*
+- From bottom to top, the stack maintains strictly decreasing values: the bottom holds the tallest, strongest barriers; the top holds the shortest, most fragile **"weakest barrier"**.
+- When a newcomer arrives, it only needs to challenge the **top of the stack (weakest barrier)**:
+  - If the newcomer cannot even defeat the shortest element at the top, it has **zero chance** of defeating the taller elements deeper down! There is no need to search further: the check terminates in $O(1)$, and the newcomer posts its own bounty (`push`).
+  - If the newcomer defeats the top, that bounty is collected (`pop` and answer recorded). The next-weakest barrier is exposed, and the challenge repeats until the newcomer hits an insurmountable wall.
+- **Key Insight**: A LIFO stack ensures every search attacks the point of least resistance first, eliminating redundant comparisons.
+
+#### Model 3: The "Two-Coin Amortized" Model (Why Nested while is Strictly O(n))
+
+Nested loops (`while` inside `for`) naturally trigger fears of $O(n^2)$. The clearest proof of linearity is the **Two-Coin Token Model**:
+- Give every element in the array exactly **two gold coins**:
+  - **Coin 1**: Pays for its invocation of `push` into the stack;
+  - **Coin 2**: Pre-pays for its eventual `pop` out of the stack.
+- Once an element is popped, it is permanently discarded. There is no third coin to bring it back.
+- If an iteration pops 5 elements in a single `while` loop, it is merely cashing in the second coins pre-paid by those 5 elements earlier.
+- The total coins spent across the entire execution cannot exceed $2n$. Thus, total operations are strictly bounded by $O(n)$.
+
+#### The Core Epiphany: The Spatiotemporal Collapse of Eviction (Locking Both Boundaries)
+
+In Largest Rectangle in Histogram (LC 84) and Trapping Rain Water (LC 42), the most profound question is: *"How does a single pop simultaneously establish both the left and right boundaries of an element?"*
+
+At the exact microsecond `mid = stack.pop()` executes:
+1. **Right Boundary ($R$)**: It is the current scanning element $i$. Because $arr[i]$ broke the monotonic property, $i$ is guaranteed to be the **first smaller/greater barrier to the right** of $mid$.
+2. **Left Boundary ($L$)**: After popping $mid$, the surviving stack top $stack[-1]$ is guaranteed to be the **nearest smaller/greater barrier to the left** of $mid$!
+   - *Why are there no smaller bars in between?* Because anything between $stack[-1]$ and $mid$ was already evicted by $mid$ when $mid$ originally arrived!
+3. **The Maximal Span is Instantly Known**: The maximal open interval where $arr[mid]$ can expand is strictly $(Left, Right)$, with physical width:
+   $$W = \text{Right} - \text{Left} - 1$$
+   A single eviction locks both bounding walls simultaneously.
+
+---
+
+### 2.3 · Universal Monotonic Stack Blueprint: The Three-Question Four-Slot Model
 
 All monotonic stack problems share a unified mental model and code skeleton:
 
@@ -268,7 +327,7 @@ def universal_monotonic_stack(
 
 ---
 
-### 2.3 · Comparator and Monotonicity Reference Table
+### 2.4 · Comparator and Monotonicity Reference Table
 
 Let `top = nums[stack[-1]]` be the historical top value, and `current = nums[i]` be the scanning value:
 
@@ -290,7 +349,7 @@ The interactive visualizer below steps through "Next Greater" and "Next Smaller"
 
 ---
 
-### 2.4 · Universal Slot-Filling Matrix
+### 2.5 · Universal Slot-Filling Matrix
 
 Every problem maps directly into the 4 slots:
 
@@ -305,7 +364,98 @@ Every problem maps directly into the 4 slots:
 
 ---
 
-### 2.5 · Canonical Problems & Blueprint Instantiation
+### 2.6 · Sentinel Mechanics Demystified: When and Why Are Sentinels Necessary?
+
+A sentinel element in a monotonic stack is not merely syntactic sugar; it is a **mathematical and operational barrier designed to eliminate branch checks, prevent illegal index underflows, and force unresolved computations to terminate deterministically**.
+
+#### 1. Dual Failure Modes Solved by Sentinels
+
+Without sentinels, monotonic stack implementations face two chronic boundary pathologies:
+
+- **Pathology 1: Head Stack Underflow & Left Boundary Fallback**
+  - **Manifestation**: After executing `mid = stack.pop()`, the algorithm needs to look at its left boundary `left = stack[-1]`. If the stack is now completely empty (meaning no element to the left of $mid$ is smaller/larger, making $mid$ the global extreme of the prefix), accessing `stack[-1]` raises an `IndexError`.
+  - **Non-Sentinel Workaround**: Developers are forced to clutter code with ternaries: `left = stack[-1] if stack else -1`.
+- **Pathology 2: Tail Stranding & Flush Omission**
+  - **Manifestation**: When array traversal finishes, elements often remain stranded inside the stack (e.g., if the array or its suffix is strictly monotonic). When **business logic is executed upon eviction in Slot 3A** (such as LC 84 Largest Rectangle, LC 85 Maximal Rectangle, or LC 907 Subarray Minimums), no further array elements arrive to disrupt monotonicity. The stranded elements **never get popped, causing severe computation omissions**!
+  - **Non-Sentinel Workaround**: A duplicate, error-prone `while stack:` loop must be appended after the main loop to flush out remaining items.
+
+```text
+[Without Sentinel vs. With Sentinels Architecture]
+
+Without Sentinel:
+Iterate nums ─────► Stranded unevicted elements ─────► Must duplicate while stack flush loop
+                       │
+                       └─► Every left lookup needs: stack[-1] if stack else -1
+
+Dual Sentinels:
+[-∞ / 0] + nums + [-∞ / 0] ───────────────► All elements guaranteed flushed by tail sentinel
+   │                       │
+   │                       └─► Tail Sentinel: 100% evictions triggered in Slot 3A (Zero-leak)
+   └─────────────────────────► Head Sentinel: Stack never empty, stack[-1] always valid (No underflow)
+```
+
+#### 2. Sentinel Taxonomy & Decision Matrix
+
+| Sentinel Strategy | Canonical Form | Primary Purpose | Problem Characteristics | Canonical Problems |
+|---|---|---|---|---|
+| **Tail Sentinel** | `arr = nums + [0]`<br>or `range(len(nums) + 1)` | Injects a **global disrupter** to force-flush all stranded stack elements in the final step. | **Settlement occurs upon eviction (Slot 3A)**, requiring exact full-span aggregation. | **LC 84** (Largest Rectangle)<br>**LC 907** (Subarray Minimums)<br>**LC 85** (Maximal Rectangle) |
+| **Head Sentinel** | Preset `stack = [-1]`<br>or `arr = [0] + nums` | Serves as a **natural open-interval left pivot**, keeping stack non-empty at all times. | Left boundary lookup is required without risk of stack underflow. | **LC 32** (Longest Valid Parentheses)<br>**LC 84** (Monotonic increasing left pivot) |
+| **Dual Sentinels** | `arr = [0] + heights + [0]`<br>or `[-inf] + nums + [-inf]` | **Simultaneously eliminates both head underflows and tail flush loops**. Maximum symmetry and cleanest logic. | Bilateral span queries, geometric rectangle calculations. | **LC 84** (Largest Rectangle optimal)<br>**LC 85** (Maximal Rectangle) |
+| **No Sentinel Needed** | Keep raw `nums`<br>Pre-fill result array | **Natural default semantics**; stranded elements naturally represent "no answer exists". | 1. Pre-filled array (e.g., `-1` or `0` in LC 739);<br>2. Settlement occurs **before push during left queries (Slot 3B)**. | **LC 739** (Daily Temperatures)<br>**LC 496** (Next Greater Element I)<br>**LC 503** (Modulo virtual doubling) |
+
+#### 3. Extreme Value Selection Principle
+
+The sentinel value must strictly adhere to the **domain bound theorem**:
+- **Monotonically Increasing Stack (Finding Smaller Elements, e.g., LC 84, LC 907)**:
+  - Tail sentinel must be **strictly smaller** than any valid input element.
+  - If inputs are non-negative ($heights[i] \ge 0$), use `0`.
+  - If inputs contain arbitrary or negative integers, use negative infinity: `float('-inf')`.
+- **Monotonically Decreasing Stack (Finding Greater Elements, e.g., Trapping Rain Water)**:
+  - Tail sentinel must be **strictly larger** than any valid input element, typically `float('inf')`.
+
+#### 4. Implementation Evolution (LC 84 Case Study)
+
+```python
+# Approach A: No Sentinels (Verbose, requires underflow ternaries and duplicate cleanup loop)
+class SolutionNoSentinel:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        stack, max_area = [], 0
+        for i, h in enumerate(heights):
+            while stack and heights[stack[-1]] > h:
+                mid = stack.pop()
+                left = stack[-1] if stack else -1
+                max_area = max(max_area, heights[mid] * (i - left - 1))
+            stack.append(i)
+        # Duplicate post-loop flush required!
+        while stack:
+            mid = stack.pop()
+            left = stack[-1] if stack else -1
+            max_area = max(max_area, heights[mid] * (len(heights) - left - 1))
+        return max_area
+
+
+# Approach B: Dual Sentinels (Zero branches, perfectly symmetric, bulletproof)
+class SolutionDualSentinels:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        # Pad both ends with height 0 sentinels
+        arr = [0] + heights + [0]
+        stack, max_area = [], 0
+
+        for i, h in enumerate(arr):
+            # Left sentinel prevents empty stack; right sentinel guarantees total flush
+            while stack and arr[stack[-1]] > h:
+                mid = stack.pop()
+                left = stack[-1]  # Invariant: stack is never empty here!
+                width = i - left - 1
+                max_area = max(max_area, arr[mid] * width)
+            stack.append(i)
+
+        return max_area
+```
+
+---
+
+### 2.7 · Canonical Problems & Blueprint Instantiation
 
 #### Practice 1: Daily Temperatures
 Given daily temperatures, return the number of days to wait until a warmer temperature.
@@ -436,7 +586,7 @@ class Solution:
 
 ---
 
-### 2.6 · Complexity Proof: Why Nested while Loops Run in Strict O(n) Time
+### 2.8 · Complexity Proof: Why Nested while Loops Run in Strict O(n) Time
 
 A common pitfall is mistaking nested `while` inside `for` as $O(n^2)$.
 
@@ -452,7 +602,7 @@ Thus, the monotonic stack algorithm runs in strict $O(n)$ time and $O(n)$ auxili
 
 ---
 
-### 2.7 · Whiteboard Interview Checklist
+### 2.9 · Whiteboard Interview Checklist
 
 When presenting a monotonic stack solution in technical interviews, structure your explanation across 5 clear milestones:
 
