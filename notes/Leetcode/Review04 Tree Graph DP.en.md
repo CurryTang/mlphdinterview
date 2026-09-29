@@ -2273,4 +2273,214 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 22. Best Time to Buy and Sell Stock: The Unified State Machine Framework
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">DP 22</span>
+  <span class="review-card-title">Best Time to Buy and Sell Stock: The Unified State Machine Framework</span>
+  <span class="review-card-tag">Dynamic Programming · State Machine DP · LC 121 / 122 / 123 / 188 / 309 / 714 · O(1) Space</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode Canonical 6-Problem Suite**:
+> - [LeetCode 121 · Best Time to Buy and Sell Stock](https://leetcode.com/problems/best-time-to-buy-and-sell-stock/) (Single transaction $k=1$)
+> - [LeetCode 122 · Best Time to Buy and Sell Stock II](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/) (Infinite transactions $k=+\infty$)
+> - [LeetCode 123 · Best Time to Buy and Sell Stock III](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iii/) (At most two transactions $k=2$)
+> - [LeetCode 188 · Best Time to Buy and Sell Stock IV](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/) (General $k$ transactions)
+> - [LeetCode 309 · Best Time to Buy and Sell Stock with Cooldown](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/) (1-day cooldown)
+> - [LeetCode 714 · Best Time to Buy and Sell Stock with Transaction Fee](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/) (Flat transaction fee)
+
+<div class="review-block">
+<div class="review-block-label">📌 Unified Master State Machine Formulation</div>
+
+Although LeetCode contains 6 distinct stock trading problems, their foundational mathematical structure **strictly unifies under a single 3D dynamic programming state machine**:
+
+**1. 3D State Space Definition**:
+Let $dp[i][k][s]$ denote the maximum net profit achievable at the end of day $i$ ($0 \le i < n$), with at most $k$ transactions consumed so far, and holding state $s \in \{0, 1\}$:
+- $s = 0$: Cash state (holding zero shares of stock);
+- $s = 1$: Hold state (holding exactly 1 share of stock).
+
+**2. Master Recurrence Equations**:
+- **Cash State ($s = 0$)**: Maximum between resting in cash from yesterday and selling yesterday's stock today:
+  $$dp[i][k][0] = \max\Big(dp[i-1][k][0], \; dp[i-1][k][1] + prices[i]\Big)$$
+- **Hold State ($s = 1$)**: Maximum between continuing to hold yesterday's stock and buying stock today (consuming 1 transaction quota):
+  $$dp[i][k][1] = \max\Big(dp[i-1][k][1], \; dp[i-1][k-1][0] - prices[i] - fee\Big)$$
+
+> **Canonical Convention**: We charge transaction count $k$ upon **buying**, leaving selling free. Transaction fees $fee$ are deducted at purchase.
+
+**3. Seamless Degeneration Map across All 6 Problems**:
+- **LC 121 ($k=1$)**: $k=1 \implies k-1=0$. Profit before any trade is strictly $0$ ($dp[i-1][0][0] = 0$). Hold equation collapses to $\max(buy_1, -prices[i])$. Reduces to 2 scalar states.
+- **LC 122 ($k=+\infty$)**: Unbounded transactions mean $k$ and $k-1$ are equivalent; **the $k$ dimension collapses entirely**. Only `cash` and `hold` scalars are required.
+- **LC 123 ($k=2$)**: $k \in \{1, 2\}$, explicitly unfolded into 4 scalars: `buy1, sell1, buy2, sell2` in $\mathcal{O}(1)$ space.
+- **LC 188 (General $k$)**: Array implementation over $k$. **Critical defensive branch**: when $k \ge n // 2$, transaction limits exceed possible price oscillations; bypasses directly to LC 122 greedy in $\mathcal{O}(n)$ time and $\mathcal{O}(1)$ space to prevent MLE/TLE.
+- **LC 309 (Cooldown)**: Selling imposes a 1-day lock. Purchasing today must transition from cash at day $i-2$, or modeled cleanly as a 3-state automaton: `hold`, `sold` (cooldown tomorrow), and `rest` (unlocked cash).
+- **LC 714 (Transaction Fee)**: Identical to LC 122, with $fee$ deducted on purchases.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 Unified Stock Engine Implementation</div>
+
+```python
+from typing import List, Optional
+
+class StockUniverseEngine:
+    """
+    Unified implementation covering all 6 LeetCode stock trading problems:
+    LC 121 / 122 / 123 / 188 / 309 / 714.
+    """
+
+    @classmethod
+    def maxProfit_I(cls, prices: List[int]) -> int:
+        """LC 121: Single transaction (k = 1)"""
+        buy1 = float("-inf")
+        sell1 = 0
+        for p in prices:
+            buy1 = max(buy1, -p)
+            sell1 = max(sell1, buy1 + p)
+        return sell1
+
+    @classmethod
+    def maxProfit_II(cls, prices: List[int]) -> int:
+        """LC 122: Unbounded transactions (k = +inf)"""
+        cash = 0
+        hold = float("-inf")
+        for p in prices:
+            hold = max(hold, cash - p)
+            cash = max(cash, hold + p)
+        return cash
+
+    @classmethod
+    def maxProfit_III(cls, prices: List[int]) -> int:
+        """LC 123: At most two transactions (k = 2)"""
+        buy1 = buy2 = float("-inf")
+        sell1 = sell2 = 0
+        for p in prices:
+            buy1 = max(buy1, -p)
+            sell1 = max(sell1, buy1 + p)
+            buy2 = max(buy2, sell1 - p)
+            sell2 = max(sell2, buy2 + p)
+        return sell2
+
+    @classmethod
+    def maxProfit_IV(cls, k: int, prices: List[int]) -> int:
+        """LC 188: At most k transactions (General k)"""
+        n = len(prices)
+        if n <= 1 or k <= 0:
+            return 0
+
+        # Defensive branch: k >= n // 2 degenerates to unbounded transactions (LC 122)
+        if k >= n // 2:
+            return cls.maxProfit_II(prices)
+
+        buy = [float("-inf")] * (k + 1)
+        sell = [0] * (k + 1)
+
+        for p in prices:
+            for j in range(1, k + 1):
+                buy[j] = max(buy[j], sell[j - 1] - p)
+                sell[j] = max(sell[j], buy[j] + p)
+
+        return sell[k]
+
+    @classmethod
+    def maxProfit_Cooldown(cls, prices: List[int]) -> int:
+        """LC 309: Best Time to Buy and Sell Stock with Cooldown"""
+        if not prices:
+            return 0
+        hold = float("-inf")
+        sold = 0
+        rest = 0
+
+        for p in prices:
+            prev_sold = sold
+            sold = hold + p
+            hold = max(hold, rest - p)
+            rest = max(rest, prev_sold)
+
+        return max(sold, rest)
+
+    @classmethod
+    def maxProfit_Fee(cls, prices: List[int], fee: int) -> int:
+        """LC 714: Best Time to Buy and Sell Stock with Transaction Fee"""
+        cash = 0
+        hold = float("-inf")
+        for p in prices:
+            hold = max(hold, cash - p - fee)
+            cash = max(cash, hold + p)
+        return cash
+
+    @classmethod
+    def solve_master(
+        cls,
+        prices: List[int],
+        k: Optional[int] = None,
+        cooldown: int = 0,
+        fee: int = 0,
+    ) -> int:
+        """
+        Unified dispatcher:
+        Routes inputs automatically to the optimal specialized model.
+        """
+        if not prices:
+            return 0
+        if cooldown == 1 and k is None and fee == 0:
+            return cls.maxProfit_Cooldown(prices)
+        if fee > 0 and k is None and cooldown == 0:
+            return cls.maxProfit_Fee(prices, fee)
+        if k == 1:
+            return cls.maxProfit_I(prices)
+        if k == 2:
+            return cls.maxProfit_III(prices)
+        if k is not None:
+            return cls.maxProfit_IV(k, prices)
+        return cls.maxProfit_II(prices)
+
+
+if __name__ == "__main__":
+    assert StockUniverseEngine.maxProfit_I([7, 1, 5, 3, 6, 4]) == 5
+    assert StockUniverseEngine.maxProfit_II([7, 1, 5, 3, 6, 4]) == 7
+    assert StockUniverseEngine.maxProfit_III([3, 3, 5, 0, 0, 3, 1, 4]) == 6
+    assert StockUniverseEngine.maxProfit_IV(2, [2, 4, 1]) == 2
+    assert StockUniverseEngine.maxProfit_IV(2, [3, 2, 6, 5, 0, 3]) == 7
+    assert StockUniverseEngine.maxProfit_Cooldown([1, 2, 3, 0, 2]) == 3
+    assert StockUniverseEngine.maxProfit_Fee([1, 3, 2, 8, 4, 9], 2) == 8
+    print("✅ Card 22 (Stock Universe) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 Key Invariants & Initialization Traps</div>
+
+- **Why must initial `buy` be `float('-inf')`?**
+  Initializing `buy` to `0` would mean `max(0, -prices[0]) = 0`, falsely granting stock ownership without paying its cost. $-\infty$ represents an unreachable/illegal state, guaranteeing legitimate purchases overwrite it.
+- **Why is initial `sell` equal to `0`?**
+  Prior to any trades, cash profit is strictly zero.
+- **Space Compression from $\mathcal{O}(N \cdot K)$ to $\mathcal{O}(K)$ or $\mathcal{O}(1)$**:
+  Day $i$ transitions solely depend on day $i-1$. In-place scalar updates do not violate optimality: same-day buy and immediate sell yields zero net gain ($-p + p = 0$), preserving non-aftereffect.
+- **Greedy Shortcut for $k \ge n // 2$**:
+  In a price array of length $n$, there can be at most $n // 2$ distinct increasing price swings. If $k \ge n // 2$, transaction limits are unconstrained, allowing an instant $\mathcal{O}(n)$ greedy bypass.
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ Full Suite Complexity Matrix</div>
+
+| Variant | Constraints | Time Complexity | Space Complexity (Compressed) | Key Degeneration Technique |
+|---|---|---|---|---|
+| **LC 121 (Stock I)** | $k = 1$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | Track running `min_price` |
+| **LC 122 (Stock II)** | $k = +\infty$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | Greedy sum of all positive deltas |
+| **LC 123 (Stock III)** | $k = 2$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | 4-state scalar topological chain |
+| **LC 188 (Stock IV)** | General $k$ | $\mathcal{O}(n \cdot \min(k, n))$ | $\mathcal{O}(\min(k, n))$ | $k \ge n // 2$ greedy bypass |
+| **LC 309 (Cooldown)** | 1-day cooldown | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | Hold / Sold / Rest 3-state automaton |
+| **LC 714 (Fee)** | Flat `fee` per trade | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | Deduct $p + fee$ on purchase |
+
+</div>
+
+</div>
+</details>
+
+
 

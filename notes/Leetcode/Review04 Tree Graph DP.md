@@ -2529,4 +2529,220 @@ if __name__ == "__main__":
 </div>
 </details>
 
+### 22. 股票交易全系列大一统状态机模型 (Best Time to Buy and Sell Stock: The Unified State Machine Framework)
+
+<details class="review-card">
+<summary class="review-card-summary">
+  <span class="review-card-badge">DP 22</span>
+  <span class="review-card-title">股票交易全系列大一统状态机模型 (Best Time to Buy and Sell Stock: Unified State Machine)</span>
+  <span class="review-card-tag">动态规划 · 状态机DP · LC 121 / 122 / 123 / 188 / 309 / 714 · 空间压缩 O(1)</span>
+</summary>
+<div class="review-card-content">
+
+> 🔗 **LeetCode 关联题目全集 (Canonical 6-Problem Suite)**：
+> - [LeetCode 121 · Best Time to Buy and Sell Stock](https://leetcode.com/problems/best-time-to-buy-and-sell-stock/)（单次交易 $k=1$）
+> - [LeetCode 122 · Best Time to Buy and Sell Stock II](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/)（无限次交易 $k=+\infty$）
+> - [LeetCode 123 · Best Time to Buy and Sell Stock III](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iii/)（最多两次交易 $k=2$）
+> - [LeetCode 188 · Best Time to Buy and Sell Stock IV](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/)（最多 $k$ 次交易通用解）
+> - [LeetCode 309 · Best Time to Buy and Sell Stock with Cooldown](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/)（含 1 天冷冻期）
+> - [LeetCode 714 · Best Time to Buy and Sell Stock with Transaction Fee](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/)（含每笔交易手续费）
+
+<div class="review-block">
+<div class="review-block-label">📌 大一统状态机理论与转移矩阵 (Unified Master Equations)</div>
+
+股票买卖系列虽然有 6 道题，但其底层物理模型**严格统一于同一个三维动态规划状态机**：
+
+**1. 三维状态空间定义**：
+定义 $dp[i][k][s]$ 表示在第 $i$ 天（$0 \le i < n$）结束时，至今最多允许（或已消耗）$k$ 次交易机会，且当前持仓状态为 $s \in \{0, 1\}$ 时的最大现金利润：
+- $s = 0$：空仓现金态（当前未持有任何股票）；
+- $s = 1$：持股态（当前手头持有 1 股股票）。
+
+**2. 核心大一统转移方程组 (Master Recurrence Equations)**：
+- **空仓态 ($s = 0$)**：由“前一日继续空仓”与“前一日持股今日卖出变现”转移而来：
+  $$dp[i][k][0] = \max\Big(dp[i-1][k][0], \; dp[i-1][k][1] + prices[i]\Big)$$
+- **持股态 ($s = 1$)**：由“前一日继续持股”与“前一日空仓今日消耗一次交易买入”转移而来：
+  $$dp[i][k][1] = \max\Big(dp[i-1][k][1], \; dp[i-1][k-1][0] - prices[i] - fee\Big)$$
+
+> **规约约定**：统一将一次交易的计次点放在**买入时**（消耗 $k-1$），卖出时不扣减 $k$。手续费 $fee$ 统一在买入时抵扣。
+
+**3. 全系列 6 题的无缝退化图谱**：
+- **LC 121 ($k=1$)**：$k=1 \implies k-1=0$。无交易时的利润恒为 0（$dp[i-1][0][0] = 0$）。持股方程退化为 $\max(buy_1, -prices[i])$。状态空间退化为 2 个标量。
+- **LC 122 ($k=+\infty$)**：交易次数无上限，因此 $k$ 与 $k-1$ 完全等价，**$k$ 维度彻底坍缩消失**！仅需维护 `cash` 与 `hold` 两个标量。
+- **LC 123 ($k=2$)**：$k \in \{1, 2\}$，直接展开为 4 个状态标量：`buy1, sell1, buy2, sell2`，空间降至 $\mathcal{O}(1)$。
+- **LC 188 (任意 $k$)**：数组维护 `buy[k]` 与 `sell[k]`。**关键工业逃生剪枝**：当 $k \ge n // 2$ 时，允许交易次数已超过所有波谷波峰，退化为 LC 122 贪心求解，避免 $\mathcal{O}(n k)$ 的 MLE/TLE。
+- **LC 309 (含冷冻期)**：卖出后次日不可买入。今日买入只能继承前天卖出后的空仓利润，或采用 3 态有限状态自动机：`hold`（持股）、`sold`（今日刚卖，明天冷冻）、`rest`（空仓可买）。
+- **LC 714 (含手续费)**：在 LC 122 基础上，买入时额外扣减 $fee$ 成本。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">📌 核心代码：大一统求解引擎 (Unified Stock Engine)</div>
+
+```python
+from typing import List, Optional
+
+class StockUniverseEngine:
+    """
+    股票交易全系列大一统工程实现
+    包含 LC 121 / 122 / 123 / 188 / 309 / 714 全场景解法
+    """
+
+    @classmethod
+    def maxProfit_I(cls, prices: List[int]) -> int:
+        """LC 121: 买卖股票的最佳时机 I (k = 1)"""
+        buy1 = float("-inf")
+        sell1 = 0
+        for p in prices:
+            buy1 = max(buy1, -p)
+            sell1 = max(sell1, buy1 + p)
+        return sell1
+
+    @classmethod
+    def maxProfit_II(cls, prices: List[int]) -> int:
+        """LC 122: 买卖股票的最佳时机 II (k = +inf)"""
+        cash = 0
+        hold = float("-inf")
+        for p in prices:
+            hold = max(hold, cash - p)
+            cash = max(cash, hold + p)
+        return cash
+
+    @classmethod
+    def maxProfit_III(cls, prices: List[int]) -> int:
+        """LC 123: 买卖股票的最佳时机 III (k = 2)"""
+        buy1 = buy2 = float("-inf")
+        sell1 = sell2 = 0
+        for p in prices:
+            buy1 = max(buy1, -p)
+            sell1 = max(sell1, buy1 + p)
+            buy2 = max(buy2, sell1 - p)
+            sell2 = max(sell2, buy2 + p)
+        return sell2
+
+    @classmethod
+    def maxProfit_IV(cls, k: int, prices: List[int]) -> int:
+        """LC 188: 买卖股票的最佳时机 IV (任意 k)"""
+        n = len(prices)
+        if n <= 1 or k <= 0:
+            return 0
+
+        # 核心工业逃生分支: k >= n // 2 时退化为无限制交易 (LC 122)，避免 O(nk) 浪费
+        if k >= n // 2:
+            return cls.maxProfit_II(prices)
+
+        buy = [float("-inf")] * (k + 1)
+        sell = [0] * (k + 1)
+
+        for p in prices:
+            for j in range(1, k + 1):
+                buy[j] = max(buy[j], sell[j - 1] - p)
+                sell[j] = max(sell[j], buy[j] + p)
+
+        return sell[k]
+
+    @classmethod
+    def maxProfit_Cooldown(cls, prices: List[int]) -> int:
+        """LC 309: 买卖股票的最佳时机含冷冻期 (1 天冷冻期)"""
+        if not prices:
+            return 0
+        hold = float("-inf")  # 当前持有股票
+        sold = 0              # 今日刚卖出（明日进入冷冻）
+        rest = 0              # 当前不持股且未卖出（可自由买入）
+
+        for p in prices:
+            prev_sold = sold
+            sold = hold + p
+            hold = max(hold, rest - p)
+            rest = max(rest, prev_sold)
+
+        return max(sold, rest)
+
+    @classmethod
+    def maxProfit_Fee(cls, prices: List[int], fee: int) -> int:
+        """LC 714: 买卖股票的最佳时机含手续费"""
+        cash = 0
+        hold = float("-inf")
+        for p in prices:
+            hold = max(hold, cash - p - fee)
+            cash = max(cash, hold + p)
+        return cash
+
+    @classmethod
+    def solve_master(
+        cls,
+        prices: List[int],
+        k: Optional[int] = None,
+        cooldown: int = 0,
+        fee: int = 0,
+    ) -> int:
+        """
+        大一统通用分发器:
+        统一入参调度，自动推导最优化物理退化路径
+        """
+        if not prices:
+            return 0
+        if cooldown == 1 and k is None and fee == 0:
+            return cls.maxProfit_Cooldown(prices)
+        if fee > 0 and k is None and cooldown == 0:
+            return cls.maxProfit_Fee(prices, fee)
+        if k == 1:
+            return cls.maxProfit_I(prices)
+        if k == 2:
+            return cls.maxProfit_III(prices)
+        if k is not None:
+            return cls.maxProfit_IV(k, prices)
+        return cls.maxProfit_II(prices)
+
+
+if __name__ == "__main__":
+    # LC 121
+    assert StockUniverseEngine.maxProfit_I([7, 1, 5, 3, 6, 4]) == 5
+    # LC 122
+    assert StockUniverseEngine.maxProfit_II([7, 1, 5, 3, 6, 4]) == 7
+    # LC 123
+    assert StockUniverseEngine.maxProfit_III([3, 3, 5, 0, 0, 3, 1, 4]) == 6
+    # LC 188
+    assert StockUniverseEngine.maxProfit_IV(2, [2, 4, 1]) == 2
+    assert StockUniverseEngine.maxProfit_IV(2, [3, 2, 6, 5, 0, 3]) == 7
+    # LC 309
+    assert StockUniverseEngine.maxProfit_Cooldown([1, 2, 3, 0, 2]) == 3
+    # LC 714
+    assert StockUniverseEngine.maxProfit_Fee([1, 3, 2, 8, 4, 9], 2) == 8
+    print("✅ Card 22 (Stock Universe) all tests passed!")
+```
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">💡 机制剖析与初始化陷阱</div>
+
+- **为什么持股初态 `buy` 必须初始化为 `float('-inf')`？**
+  若初始设为 `0`，则第一天计算 `buy = max(0, -prices[0])` 会错误得出 `0`（相当于不花钱凭空获得了股票）。设为 $-\infty$ 代表非法/未发生购买状态，确保任何真实买入都会覆盖它。
+- **为什么未持股初态 `sell` 必须初始化为 `0`？**
+  交易开始前，未参与市场交易的最大现金利润恒为 0。
+- **空间复杂度从 $\mathcal{O}(N \cdot K)$ 压缩到 $\mathcal{O}(K)$ 或 $\mathcal{O}(1)$ 的原理**：
+  第 $i$ 天的状态仅取决于第 $i-1$ 天的切片。同一天内即使我们先算 `buy` 再算 `sell`，若当天买当天卖，净利润增益为 $-p + p = 0$，不会凭空虚构利润，这保证了单数组原地覆盖更新的无后效性（或按 $j$ 倒序遍历完全杜绝跨步重叠）。
+- **$k \ge n // 2$ 的贪心旁路逃生**：
+  在长度为 $n$ 的价格序列中，最多只存在 $n // 2$ 个单调递增波段。当 $k \ge n // 2$ 时，交易次数已不可能构成任何约束。如果不做特判，开出 $k = 10^9$ 的 DP 数组会引发内存爆表（MLE）。
+
+</div>
+
+<div class="review-block">
+<div class="review-block-label">⏱️ 全系列复杂度汇总矩阵</div>
+
+| 题目变体 | 限制条件 | 时间复杂度 | 空间复杂度（压缩后） | 核心退化技巧 |
+|---|---|---|---|---|
+| **LC 121 (Stock I)** | $k = 1$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | 维护历史最低价 `min_price` |
+| **LC 122 (Stock II)** | $k = +\infty$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | 贪心累加所有正收益 $p[i] - p[i-1]$ |
+| **LC 123 (Stock III)** | $k = 2$ | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | 4 状态标量拓扑链 |
+| **LC 188 (Stock IV)** | 任意 $k$ | $\mathcal{O}(n \cdot \min(k, n))$ | $\mathcal{O}(\min(k, n))$ | $k \ge n // 2$ 贪心旁路逃生 |
+| **LC 309 (Cooldown)** | 卖后冷冻 1 天 | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | Hold / Sold / Rest 三态自动机 |
+| **LC 714 (Fee)** | 每次交易手续费 `fee` | $\mathcal{O}(n)$ | $\mathcal{O}(1)$ | 买入时直接抵扣成本 $p + fee$ |
+
+</div>
+
+</div>
+</details>
+
+
 
