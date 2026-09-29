@@ -193,7 +193,7 @@ class MinStack:
 
 ---
 
-### 2.3 · 单调栈万能通用模板：三问四槽模型 (Universal Monotonic Stack Blueprint)
+### 2.3 · 单调栈万能通用模板：三问五槽模型 (Universal Monotonic Stack Blueprint)
 
 单调栈所有题型共享同一套解题思维流水线与骨架结构：
 
@@ -226,6 +226,13 @@ class MinStack:
                                                  ┌────────────────────────┐
                                                  │ 槽位 4 [当前下标入栈]  │
                                                  │ stack.append(i)        │
+                                                 └───────────┬────────────┘
+                                                             │
+                                                             ▼ (循环结束)
+                                                 ┌────────────────────────┐
+                                                 │ 槽位 5 [尾部清场循环]  │
+                                                 │ while stack: (若无哨兵)│
+                                                 │   mid = pop(); R = n   │
                                                  └────────────────────────┘
 ```
 
@@ -253,7 +260,7 @@ class MinStack:
 
 ---
 
-#### 2. 四槽通用代码骨架（Universal Template Code）
+#### 2. 五槽通用代码骨架（Universal Template Code with Residual Flush）
 
 ```python
 from typing import List, Optional
@@ -267,23 +274,25 @@ def universal_monotonic_stack(
 ) -> List[int]:
     """单调栈通用解题骨架 (Universal Monotonic Stack Blueprint)
 
-    4 个参数化槽位：
-    [槽位 1] 哨兵与初始化: 初始化答案数组与边界哨兵，消除清栈分支
+    5 个参数化槽位：
+    [槽位 1] 哨兵与初始化: 初始化答案数组与边界哨兵，若加哨兵则把清场动作无感合入主循环
     [槽位 2] 弹栈判定谓词: 当前值与栈顶历史值的关系断言
     [槽位 3] 结算动作:
              - 槽位 3A: 弹栈时结算 (右侧边界或双侧扩展极值)
              - 槽位 3B: 弹栈后结算 (左侧最近有效边界)
     [槽位 4] 入栈等待: 当前下标压入栈中开始等待右侧触发
+    [槽位 5] 尾部清场: 若未启用哨兵，显式清空栈内未决元素，右边界统一闭合到数组尽头 n
     """
     n = len(nums)
 
     # ──────────────────────────────────────────────────────
     # 槽位 1: 哨兵与容器初始化
     # ──────────────────────────────────────────────────────
+    # 若加哨兵：在末尾追加全局最弱极值，主循环第 n 步将自动强制清空全栈，免写槽位 5
     arr = nums + [sentinel_val] if with_sentinel else nums
     limit = len(arr)
-    ans = [-1] * n
-    stack = []  # 严格保存下标
+    ans = [-1] * n  # 默认值初始化（单侧题滞留元素无更优日，自动保留 -1 或 0）
+    stack = []      # 严格保存下标
 
     # ──────────────────────────────────────────────────────
     # 槽位 2: 弹栈比较谓词 (当前值是否打破栈顶单调性)
@@ -306,7 +315,7 @@ def universal_monotonic_stack(
             # ──────────────────────────────────────────────────
             if mode.startswith("next") and mid < n:
                 ans[mid] = i  # 或计算跨度: i - mid
-            elif mode == "dual_smaller":
+            elif mode == "dual_smaller" and mid < n:
                 left = stack[-1] if stack else -1
                 right = i
                 width = right - left - 1
@@ -322,6 +331,22 @@ def universal_monotonic_stack(
         # 槽位 4: 当前下标入栈
         # ──────────────────────────────────────────────────────
         stack.append(i)
+
+    # ──────────────────────────────────────────────────────────
+    # 槽位 5: 显式尾部清场（若未启用尾部哨兵，处理仍滞留在栈内的未决元素）
+    # ──────────────────────────────────────────────────────────
+    # 滞留元素意味着右侧直到数组末尾都没有遇到能将其弹出的障碍，右边界统一闭合到 n
+    if not with_sentinel:
+        while stack:
+            mid = stack.pop()
+            if mode == "dual_smaller":
+                left = stack[-1] if stack else -1
+                right = n  # 数组尽头作为右侧有效开区间边界
+                width = right - left - 1
+                # ans = max(ans, arr[mid] * width)
+            elif mode.startswith("next"):
+                # 单侧查询中，滞留元素代表右侧不存在更优解，已在初始化时置为 -1/0，无需重复赋值
+                pass
 
     return ans
 ```

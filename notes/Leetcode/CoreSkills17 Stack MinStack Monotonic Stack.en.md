@@ -192,7 +192,7 @@ At the exact microsecond `mid = stack.pop()` executes:
 
 ---
 
-### 2.3 · Universal Monotonic Stack Blueprint: The Three-Question Four-Slot Model
+### 2.3 · Universal Monotonic Stack Blueprint: The Three-Question Five-Slot Model
 
 All monotonic stack problems share a unified mental model and code skeleton:
 
@@ -225,6 +225,13 @@ All monotonic stack problems share a unified mental model and code skeleton:
                                                  ┌────────────────────────┐
                                                  │ Slot 4 [Push to Wait]  │
                                                  │ stack.append(i)        │
+                                                 └───────────┬────────────┘
+                                                             │
+                                                             ▼ (Loop Finished)
+                                                 ┌────────────────────────┐
+                                                 │ Slot 5 [Residual Flush]│
+                                                 │ while stack: (no sent.)│
+                                                 │   mid = pop(); R = n   │
                                                  └────────────────────────┘
 ```
 
@@ -252,7 +259,7 @@ All monotonic stack problems share a unified mental model and code skeleton:
 
 ---
 
-#### 2. Universal Template Code
+#### 2. Five-Slot Universal Template Code (with Residual Flush)
 
 ```python
 from typing import List, Optional
@@ -266,23 +273,25 @@ def universal_monotonic_stack(
 ) -> List[int]:
     """Universal Monotonic Stack Blueprint
 
-    4 Parameterized Slots:
-    [Slot 1] Sentinel & Initialization: Initialize answer container and optional sentinel
+    5 Parameterized Slots:
+    [Slot 1] Sentinel & Initialization: Initialize answer container; optional sentinel flushes stack automatically
     [Slot 2] Eviction Predicate: Evaluates whether current value breaks monotonicity
     [Slot 3] Settlement Actions:
              - Slot 3A: Settle upon eviction (Next or Dual boundary problems)
              - Slot 3B: Settle after eviction (Prev boundary problems)
     [Slot 4] Push to Wait: Enqueue current index to await future resolvers
+    [Slot 5] Residual Flush: If no sentinel used, flush unresolved elements with right boundary R = n
     """
     n = len(nums)
 
     # ──────────────────────────────────────────────────────
     # Slot 1: Sentinel Padding & Container Init
     # ──────────────────────────────────────────────────────
+    # If sentinel used: appending extreme value forces a complete flush at step n, eliminating Slot 5
     arr = nums + [sentinel_val] if with_sentinel else nums
     limit = len(arr)
-    ans = [-1] * n
-    stack = []  # Strictly stores indices
+    ans = [-1] * n  # Default init (unresolved items in unilateral queries naturally retain -1 or 0)
+    stack = []      # Strictly stores indices
 
     # ──────────────────────────────────────────────────────
     # Slot 2: Eviction Predicate
@@ -305,7 +314,7 @@ def universal_monotonic_stack(
             # ──────────────────────────────────────────────────
             if mode.startswith("next") and mid < n:
                 ans[mid] = i  # Or distance: i - mid
-            elif mode == "dual_smaller":
+            elif mode == "dual_smaller" and mid < n:
                 left = stack[-1] if stack else -1
                 right = i
                 width = right - left - 1
@@ -321,6 +330,23 @@ def universal_monotonic_stack(
         # Slot 4: Push Current Index to Wait
         # ──────────────────────────────────────────────────────
         stack.append(i)
+
+    # ──────────────────────────────────────────────────────────
+    # Slot 5: Explicit Residual Flush (For unsentinelized dual/full-range problems)
+    # ──────────────────────────────────────────────────────────
+    # Stranded elements encountered no right obstacle all the way to array end; R closes at n
+    if not with_sentinel:
+        while stack:
+            mid = stack.pop()
+            if mode == "dual_smaller":
+                left = stack[-1] if stack else -1
+                right = n  # Array boundary acts as open right bound
+                width = right - left - 1
+                # ans = max(ans, arr[mid] * width)
+            elif mode.startswith("next"):
+                # In unilateral queries, stranded items mean no better future element exists
+                # Already populated with default -1 or 0, no-op
+                pass
 
     return ans
 ```
