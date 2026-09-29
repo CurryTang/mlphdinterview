@@ -163,7 +163,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
     - *全局检索*：CAP、BASE、Little's Law 与分布式核心概念对比矩阵速查。
 11. **[[SystemDesignWiki Event Bus|Wiki · Event Bus (事件总线与事件驱动架构)]]**
     - *核心瓶颈*：跨微服务领域事件分发、复杂订阅规则过滤与读风暴防范。
-    - *主线逻辑*：Pub/Sub 广播范式、Event-Carried State Transfer (ECST)、声明式 JSON 模式过滤。
+    - *主线逻辑*：Pub/Sub 广播范式、Event-Carried State Transfer (ECST)、声明式 JSON 模式过滤；双层扇出范式（SNS-to-SQS 拓扑隔离与 Dispatcher 微批分发）。
 12. **[[SystemDesignWiki Message Queue|Wiki · Message Queue (消息队列与点对点工作队列)]]**
     - *核心瓶颈*：高负载异步耗时任务编排、突发瞬态流量缓冲与慢系统保护。
     - *主线逻辑*：竞争消费者（1-to-1 抢占）、租约可见性超时（Visibility Timeout）、两阶段确认。

@@ -80,7 +80,97 @@ Event buses and streaming backbones such as Apache Kafka and Pulsar revolve arou
 
 ---
 
-## 2 · Architectural Comparison Matrix (Stream vs Queue)
+## 2 · Dispatcher & Fan-out Architectural Paradigm
+
+### 2.1 · Engineering Nature & Twin Challenges of Fan-out
+In event-driven architectures, **Fan-out** describes the mechanism where a single upstream event triggers processing across multiple downstream services or entities. In production-grade systems, naive broker broadcasting introduces two acute failure modes:
+1. **Inter-Service Heterogeneity & Slow Consumer Head-of-Line Blocking**:
+   If publishers broadcast synchronously or rely on a shared single-buffer broker, an outage or latency spike in a slow downstream consumer (e.g., audit logging or OLAP sync) blocks or backpressures the entire core transaction pipeline (e.g., billing or checkout).
+2. **1-to-N Entity Explosion & Egress Amplification**:
+   In user-facing workloads (e.g., global broadcast notifications, celebrity timeline fan-out, mass cache invalidation), a single root event instantaneously explodes into $10^5 \sim 10^7$ physical sub-tasks. If a single worker iterates over millions of targets in a monolithic loop, it triggers CPU saturation, OOM crashes, third-party provider rate limits (e.g., APNs/SMS HTTP 429), and severe head-of-line blocking.
+
+### 2.2 · Two-Tier Fan-out Architecture
+
+Production-grade event-driven platforms decouple fan-out into two distinct physical tiers:
+
+```text
+[Upstream Event: OrderPaid / BroadcastAlert]
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Tier-1: Service-Level Topology Fan-out (Topic-to-Queue)                     │
+│                                                                             │
+│                               [Topic / Exchange]                            │
+│                                       │                                     │
+│            ┌──────────────────────────┼──────────────────────────┐          │
+│            ▼                          ▼                          ▼          │
+│     [Queue: Billing]           [Queue: Fraud]             [Queue: Dispatcher]│
+│            │                          │                          │          │
+│            ▼                          ▼                          │          │
+│     [Billing Service]          [Fraud Service]                   │          │
+└──────────────────────────────────────────────────────────────────┼──────────┘
+                                                                   │
+                                                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Tier-2: Workload-Level Dispatcher Fan-out (Sharded Slicing & Chunking)      │
+│                                                                             │
+│                        [Notification Dispatcher]                            │
+│                 (1. Idempotency -> 2. Target Resolution & Micro-Batching)   │
+│                                       │                                     │
+│       ┌───────────────────────────────┼───────────────────────────────┐     │
+│       ▼ (Chunk 1: 1~1,000)            ▼ (Chunk 2: 1,001~2,000)        ▼ ... │
+│ [Priority Worker Queue 1]       [Priority Worker Queue 2]       [...]       │
+│       │                               │                               │     │
+│       ▼                               ▼                               ▼     │
+│ [Delivery Worker Pool]         [Delivery Worker Pool]          [...]        │
+│       │                               │                               │     │
+│       ▼ (Token Bucket Limiter)        ▼ (Token Bucket Limiter)        ▼     │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │           Downstream Channels (APNs HTTP/2, FCM, SMS, Webhooks)           │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.3 · Tier-1: Service-Level Topology Fan-out (Topic-to-Dedicated-Queue)
+1. **SNS-to-SQS Paradigm / Fan-out Exchange**:
+   - The publisher emits a single domain event into a centralized Topic.
+   - The messaging infrastructure (e.g., AWS SNS, RabbitMQ Fan-out Exchange) replicates the message payload across dedicated, persistent buffers (SQS / Queue) owned by each subscriber.
+2. **Four Critical Architectural Guarantees**:
+   - **Fault Isolation**: An outage in the analytics service accumulates lag exclusively in its private queue, leaving billing and fraud pipelines entirely unaffected.
+   - **Elastic Peak Leveling**: Each subscriber consumes at its own prefetch concurrency, preventing slow consumers from starving the broker.
+   - **Independent Retry & Dead Letter Queues (DLQ)**: Exponential backoff, retry caps, and DLQ routing are configured per business domain (e.g., billing retries 10 times; telemetry retries once).
+   - **IAM & Security Decoupling**: Subscriber services only require read permissions for their specific queue.
+
+### 2.4 · Tier-2: Workload-Level Dispatcher Fan-out (Dispatcher & Batch Slicing)
+When an event must reach massive recipient sets (e.g., [[SystemDesign11 Notification System|Case 11 · Mobile Push Platform]], [[SystemDesign07 Photo Sharing Feed|Case 07 · Feed Fan-out on Write]]), systems employ a dedicated **Dispatcher** executing a four-stage pipeline:
+
+1. **Stage 1: Global Idempotency Admission**:
+   - The Dispatcher performs atomic CAS validation on the event or campaign key (e.g., `SETNX campaign:{id}:status IN_PROGRESS EX 86400` in Redis) to prevent duplicate fan-out loops from upstream re-deliveries.
+2. **Stage 2: Target Resolution & Micro-Batch Slicing**:
+   - **Cursor Streaming**: Target user IDs are streamed via keyset pagination or partition scanning from relational databases, social graphs (followers), or user profile segments.
+   - **Uniform Micro-Batching (Chunking)**: Targets are partitioned into deterministic slices of 500 to 1,000 recipients:
+     $$\text{Chunk}_k = \{ \text{user\_id}_i \}_{i=(k-1)B + 1}^{\min(kB, N)}, \quad B \in [500, 1000]$$
+   - **Deterministic Chunk Key**: Assigns `chunk_id = hash(event_id, k)`, guaranteeing chunk-level retry idempotency.
+   - **Early Preference Filtering**: Evaluates cached Redis bitsets or tables (Do Not Disturb schedules, opt-outs, unsubscribes) to prune invalid recipients before emitting network jobs.
+3. **Stage 3: Queuing & Physical Priority Isolation**:
+   - Micro-batch chunks are dispatched into separated downstream priority queues (`high-priority-queue` for transactional 2FA/OTPs; `bulk-queue` for marketing blasts).
+4. **Stage 4: Parallel Worker Execution & Egress Rate Limiting**:
+   - Delivery worker pools consume chunks concurrently.
+   - **Egress Rate Limiting**: Distributed Redis Token Bucket limiters throttle traffic outbound to external vendor APIs (e.g., APNs HTTP/2 connection concurrency, FCM quotas, SMS carrier TPS limits).
+   - **Partial Failure Containment**: If specific device tokens fail within a chunk, only the failed IDs are isolated into retry queues or unregister routines, avoiding full chunk replay.
+
+### 2.5 · Core Engineering Trade-offs & Decision Matrix
+
+| Dimension | In-Process Monolithic Loop | Topic-Only Multi-Subscriber | Dispatcher + Worker Slicing |
+|---|---|---|---|
+| **Max Fan-out Throughput** | Low (Single node, thread & socket limits) | Medium (Constrained by partition bandwidth) | **Virtually Infinite** (Horizontally scalable slicing) |
+| **Fault Isolation** | None (Single crash drops remaining targets) | Moderate (Consumer lag risks memory pressure) | **Highest** (Chunk-level isolation, private DLQs) |
+| **Egress Throttling** | Difficult across distributed nodes | Broker-level backpressure only | **Granular** (Token bucket aligned to downstream quotas) |
+| **Retry & Idempotency** | Coarse; full re-run causes massive duplicates | Partition-level coarse replay | **Micro-batch / Individual-level idempotency** |
+
+---
+
+## 3 · Architectural Comparison Matrix (Stream vs Queue)
 
 | Dimension | Event Bus / Commit Log Stream | Traditional Message Queue |
 | :--- | :--- | :--- |
@@ -92,7 +182,7 @@ Event buses and streaming backbones such as Apache Kafka and Pulsar revolve arou
 
 ---
 
-## 3 · Throughput & Latency Quantitative Ceilings
+## 4 · Throughput & Latency Quantitative Ceilings
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -113,7 +203,7 @@ Event buses and streaming backbones such as Apache Kafka and Pulsar revolve arou
 
 ---
 
-## 4 · Production Use Cases & Decision Matrix
+## 5 · Production Use Cases & Decision Matrix
 
 ### 4.1 · Ideal Scenarios
 1. **Domain Event Fan-Out (Case 07 / Case 10 / Case 11)**:

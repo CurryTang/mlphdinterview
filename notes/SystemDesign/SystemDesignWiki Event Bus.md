@@ -80,7 +80,99 @@ Wiki 词条归属：[[SystemDesign00 Overview|00 系统设计全局蓝图]] → 
 
 ---
 
-## 2 · 核心架构机制对照（事件总线/流 vs 消息队列）
+## 2 · Dispatcher 与 Fan-out 扇出架构范式
+
+### 2.1 · 扇出（Fan-out）的工程本质与两大技术挑战
+在事件驱动体系中，**扇出（Fan-out）** 指单一上游事件触发多个下游实体或服务消费的架构机制。然而，简单的“Broker 广播”在工业级场景下会瞬间引发两大技术矛盾：
+1. **服务间异构消费与慢消费者阻塞（Inter-Service Heterogeneity & Slow Consumer Problem）**：
+   若发布者直接循环调用或由单一消息代理同步分发，当下游某一个异构系统（如审计或数据分析）发生延迟或宕机时，会反向阻塞甚至击垮核心业务服务（如支付或交易）。
+2. **爆炸级实体放大与出网带宽/系统击穿（1-to-N Entity Explosion & Egress Amplification）**：
+   在面向用户的业务场景（如全员广播推送、明星发帖 Timeline 更新、大规模缓存批量失效），单个根事件在下游会瞬间放大为 $10^5 \sim 10^7$ 个物理任务。若由单个节点或进程同步循环遍历，会导致该节点 CPU 占满、内存暴涨（OOM）、第三方通道限流（如 APNs / SMS 429）以及严重的长尾延迟（Head-of-Line Blocking）。
+
+### 2.2 · 双层扇出拓扑架构（Two-Tier Fan-out Architecture）
+
+工业界高性能事件总线系统通常将扇出切分为两个清晰的物理层级：
+
+```text
+[Upstream Event: OrderPaid / BroadcastAlert]
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Tier-1: 服务级拓扑扇出 (Service-Level Fan-out / Topic-to-Queue)               │
+│                                                                             │
+│                               [Topic / Exchange]                            │
+│                                       │                                     │
+│            ┌──────────────────────────┼──────────────────────────┐          │
+│            ▼                          ▼                          ▼          │
+│     [Queue: Billing]           [Queue: Fraud]             [Queue: Dispatcher]│
+│            │                          │                          │          │
+│            ▼                          ▼                          │          │
+│     [Billing Service]          [Fraud Service]                   │          │
+└──────────────────────────────────────────────────────────────────┼──────────┘
+                                                                   │
+                                                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Tier-2: 工作负载级分发器扇出 (Workload-Level Dispatcher & Sharded Slicing)   │
+│                                                                             │
+│                        [Notification Dispatcher]                            │
+│                 (1. 幂等去重 -> 2. 目标解析与分片切块)                       │
+│                                       │                                     │
+│       ┌───────────────────────────────┼───────────────────────────────┐     │
+│       ▼ (Chunk 1: 1~1,000)            ▼ (Chunk 2: 1,001~2,000)        ▼ ... │
+│ [Priority Worker Queue 1]       [Priority Worker Queue 2]       [...]       │
+│       │                               │                               │     │
+│       ▼                               ▼                               ▼     │
+│ [Delivery Worker Pool]         [Delivery Worker Pool]          [...]        │
+│       │                               │                               │     │
+│       ▼ (Token Bucket 流控)           ▼ (Token Bucket 流控)           ▼     │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │           第三方通道 / 下游目标 (APNs HTTP/2, FCM, SMS, Webhooks)         │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.3 · Tier-1：服务级拓扑扇出（Topic-to-Dedicated-Queue）
+1. **SNS-to-SQS 范式 / Fan-out Exchange**：
+   - 发布者仅向单个主题（Topic）发布事件。
+   - 消息中间件（如 AWS SNS、RabbitMQ Fanout Exchange）负责将事件完整拷贝投递至各个订阅者独立的持久化队列（Dedicated SQS / Queue）。
+2. **四大核心收益**：
+   - **完全故障隔离（Fault Isolation）**：下游分析服务宕机，仅导致其私有队列产生积压，核心账单和通知服务毫发无损。
+   - **弹性削峰缓冲（Independent Buffering）**：各消费者按自身消费能力（Prefetch / Concurrency）拉取，杜绝慢消费者反噬。
+   - **独立重试与死信队列（Independent DLQ）**：重试策略、最大重试次数和 DLQ 针对业务特性差异化配置（例如账单重试 10 次，打点仅重试 1 次）。
+   - **安全与权限解耦（IAM Least Privilege）**：各消费者仅对其绑定的私有队列拥有读写权限。
+
+### 2.4 · Tier-2：工作负载级分发器扇出（Dispatcher & Batch Slicing）
+当单个事件需要扇出至大规模实体（如 [[SystemDesign11 Notification System|Case 11 · 海量移动推送平台]]、[[SystemDesign07 Photo Sharing Feed|Case 07 · 社交 Feed 流写扩散]]）时，必须引入专门的 **Dispatcher（分发器）** 模式，执行经典的三阶段流水线：
+
+1. **阶段 1：全局幂等准入（Admission & Global Idempotency）**：
+   - Dispatcher 首先基于事件的唯一业务键（如 `event_id` 或 `campaign_id`）在 Redis / 数据库中执行原子 CAS（如 `SETNX campaign:{id}:status IN_PROGRESS EX 86400`）。
+   - 若命中已存在，直接丢弃或跳过，杜绝上游重投导致千万级任务二次膨胀。
+2. **阶段 2：目标解析与微批切片（Target Resolution & Micro-Batch Slicing）**：
+   - **游标分页与分块生成**：Dispatcher 从关系数据库、图数据库（如关注列表）或画像系统（如标签群组）按游标（Cursor）或主键区间流式拉取目标 ID。
+   - **规整微批（Chunking）**：将大规模目标列表按固定粒度（如 500 ~ 1,000 个目标）切分为独立的微批切片任务：
+     $$\text{Chunk}_k = \{ \text{user\_id}_i \}_{i=(k-1)B + 1}^{\min(kB, N)}, \quad B \in [500, 1000]$$
+   - **确定性切片 ID**：生成 `chunk_id = hash(event_id, k)`，赋予每个切片独立的幂等粒度。
+   - **偏好与静音初筛**：结合 Redis 缓存中的全局免打扰设置（Do Not Disturb）或用户黑名单，在切片阶段提前剔除无效目标，减少下游无谓的网络 RPC 开销。
+3. **阶段 3：分发入队与物理优先级隔离（Queuing & Priority Isolation）**：
+   - Dispatcher 将切片任务异步写入下游的工作队列。
+   - **优先级隔离**：验证码、安全告警等高优先级切片走 `high-priority-queue`，营销大促等大广播切片走 `bulk-queue`，避免海量广播切片阻塞实时高危任务。
+4. **阶段 4：并行 Worker 抢占与第三方流控（Worker Execution & Egress Throttling）**：
+   - 下游 Delivery Worker 集群并行抢占消费切片。
+   - **出网流量整流（Egress Rate Limiting）**：针对第三方 Provider（如 APNs 单长连接并发限制、FCM 速率上限、短信网关 QPS 限制），挂载基于分布式 Redis 令牌桶（Token Bucket）的速率限制器，平滑下发，防止触发 429 Too Many Requests。
+   - **细粒度失败归档与部分失败隔离**：单个切片内若仅部分目标因设备 Token 失效或网络超时失败，仅将失败的目标列表单独投递至重试队列或失效设备清理队列，绝不进行切片全量重投。
+
+### 2.5 · 核心工程权衡与避坑矩阵
+
+| 架构维度 | 简单循环广播 (Naive In-Process Loop) | 仅依赖 Topic 广播 (Topic-Only Fan-out) | Dispatcher + 队列微批分发 (Dispatcher Slicing) |
+|---|---|---|---|
+| **单任务吞吐能力** | 极低（单机阻塞，受限于线程与连接） | 中等（受 Broker 单分区读写与网络出带宽限制） | **极高**（水平扩展无上限，分片并行入队与消费） |
+| **故障隔离性** | 极差（单点故障导致后续目标全部丢失） | 较好（消费者组解耦，但单一慢消费者易挤占 Broker 内存） | **最高**（切片级失败隔离，独立 DLQ 与重试） |
+| **流控与防击穿** | 难以实现跨节点全局流控 | 依赖 Broker 端背压，无法按第三方出口渠道细粒度整流 | **最佳**（Worker 池结合分布式令牌桶，精准平滑削峰） |
+| **重试与幂等成本** | 失败需全量重跑，产生大量重复投递 | 分区级别重试，重试粒度较粗 | **切片级/个体级幂等**，支持增量补发 |
+
+---
+
+## 3 · 核心架构机制对照（事件总线/流 vs 消息队列）
 
 | 维度 | 事件总线 / 日志流 (Event Bus / Stream) | 传统消息队列 (Message Queue) |
 | :--- | :--- | :--- |
@@ -92,7 +184,7 @@ Wiki 词条归属：[[SystemDesign00 Overview|00 系统设计全局蓝图]] → 
 
 ---
 
-## 3 · 吞吐量级与性能基准（QPS & Latency）
+## 4 · 吞吐量级与性能基准（QPS & Latency）
 
 事件总线的性能边界严格受限于其持久化机制与网络 I/O 拓扑：
 
@@ -115,7 +207,7 @@ Wiki 词条归属：[[SystemDesign00 Overview|00 系统设计全局蓝图]] → 
 
 ---
 
-## 4 · 适用场景与面试系统设计选型
+## 5 · 适用场景与面试系统设计选型
 
 ### 4.1 · 最佳适用场景
 1. **领域微服务广播与业务解耦（Case 07 / Case 10 / Case 11）**：
