@@ -461,6 +461,51 @@ class SolutionDualSentinels:
 Given daily temperatures, return the number of days to wait until a warmer temperature.
 - **Mapping**: Canonical **Next Greater** problem where answer format is the waiting span $i - mid$.
 
+```daily-temperatures-demo
+```
+
+##### Dynamic Execution Trace & Multi-Level Eviction Flow
+
+Tracing `temperatures = [73, 74, 75, 71, 69, 72, 76, 73]`:
+
+```text
+[Monotonic Decreasing Stack Execution Flow]
+
+Day 0 (73°): Empty stack ──► Push 0(73°)
+             Stack: [ 0(73°) ]
+
+Day 1 (74°): 74° > 73° ──► Pop 0(73°), ans[0] = 1 - 0 = 1 ──► Push 1(74°)
+             Stack: [ 1(74°) ]
+
+Day 2 (75°): 75° > 74° ──► Pop 1(74°), ans[1] = 2 - 1 = 1 ──► Push 2(75°)
+             Stack: [ 2(75°) ]
+
+Day 3 (71°): 71° < 75° ──► Push 3(71°)
+             Stack: [ 2(75°), 3(71°) ]
+
+Day 4 (69°): 69° < 71° ──► Push 4(69°) (cooling streak builds decreasing bounty chain)
+             Stack: [ 2(75°), 3(71°), 4(69°) ] ◄── Top 4(69°) is the weakest barrier
+
+Day 5 (72°): [Multi-Level Eviction Event 1]
+             ├─ 72° > 69° ──► Pop 4(69°), ans[4] = 5 - 4 = 1
+             ├─ 72° > 71° ──► Pop 3(71°), ans[3] = 5 - 3 = 2
+             └─ 72° < 75° ──► Encounters barrier 75°, stop! Push 5(72°)
+             Stack: [ 2(75°), 5(72°) ]
+
+Day 6 (76°): [Multi-Level Eviction Event 2 · Global Breakthrough]
+             ├─ 76° > 72° ──► Pop 5(72°), ans[5] = 6 - 5 = 1
+             └─ 76° > 75° ──► Pop 2(75°), ans[2] = 6 - 2 = 4 (resolves 4-day wait!)
+             Push 6(76°)
+             Stack: [ 6(76°) ]
+
+Day 7 (73°): 73° < 76° ──► Push 7(73°)
+             Stack: [ 6(76°), 7(73°) ]
+
+End of Scan:
+             Residual days [6, 7] never see a warmer future; default 0 is retained.
+Output:      ans = [1, 1, 4, 2, 1, 1, 0, 0]
+```
+
 ```python
 from typing import List
 
@@ -469,7 +514,7 @@ class Solution:
     def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
         n = len(temperatures)
         ans = [0] * n
-        stack = []  # Stores indices
+        stack = []  # Stores indices; temperatures strictly decrease from bottom to top
 
         for i, temp in enumerate(temperatures):
             # Slot 2: Current temperature higher than stack top

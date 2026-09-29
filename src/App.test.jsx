@@ -469,6 +469,33 @@ describe('App', () => {
     expect(within(englishVisual).getByRole('button', { name: 'Next smaller' })).toBeInTheDocument();
   });
 
+  it('renders the daily temperatures visual walkthrough and steps through states', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('CoreSkills17')
+          ? '# Stack\n\n```daily-temperatures-demo\n```'
+          : '# LeetCode tutorial',
+      };
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'LeetCode' }));
+    fireEvent.click(screen.getByRole('button', { name: /Core Skills 17 · Stack & Monotonic Stack/i }));
+
+    const visual = await screen.findByRole('region', {
+      name: /每日温度单调栈执行推演|Daily Temperatures Monotonic Stack Walkthrough/i,
+    });
+    expect(within(visual).getByText(/单调递减栈与等待天数动态结算|Decreasing Stack & Waiting Span Resolution/i)).toBeInTheDocument();
+
+    fireEvent.change(within(visual).getByRole('slider', { name: /选择每日温度推演步骤|Select Daily Temperatures step/i }), {
+      target: { value: '4' },
+    });
+    expect(within(visual).getByText(/升温触发|Warmer Day/i)).toBeInTheDocument();
+  });
+
   it('renders the trapping rain water walkthrough and reaches six units', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);

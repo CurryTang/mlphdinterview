@@ -18187,6 +18187,300 @@ function MonotonicStackVisual() {
   );
 }
 
+const DAILY_TEMPS_VALUES = [73, 74, 75, 71, 69, 72, 76, 73];
+
+function buildDailyTemperaturesSteps() {
+  const nums = DAILY_TEMPS_VALUES;
+  const n = nums.length;
+  const stack = [];
+  const ans = Array(n).fill(0);
+  const steps = [{
+    action: 'init',
+    current: null,
+    popped: null,
+    waitDays: null,
+    stack: [],
+    ans: [...ans],
+    activeLine: 'init',
+  }];
+
+  nums.forEach((temp, i) => {
+    // Scan step
+    steps.push({
+      action: 'scan',
+      current: i,
+      popped: null,
+      waitDays: null,
+      stack: [...stack],
+      ans: [...ans],
+      activeLine: 'loop',
+    });
+
+    // While loop: stack top is colder than current day
+    while (stack.length > 0 && nums[stack[stack.length - 1]] < temp) {
+      const mid = stack.pop();
+      const waitDays = i - mid;
+      ans[mid] = waitDays;
+      steps.push({
+        action: 'resolve',
+        current: i,
+        popped: mid,
+        waitDays,
+        stack: [...stack],
+        ans: [...ans],
+        activeLine: 'resolve',
+      });
+    }
+
+    // Push step
+    stack.push(i);
+    steps.push({
+      action: 'push',
+      current: i,
+      popped: null,
+      waitDays: null,
+      stack: [...stack],
+      ans: [...ans],
+      activeLine: 'push',
+    });
+  });
+
+  // Finish step
+  steps.push({
+    action: 'finish',
+    current: null,
+    popped: null,
+    waitDays: null,
+    stack: [...stack],
+    ans: [...ans],
+    activeLine: 'finish',
+  });
+
+  return steps;
+}
+
+const DAILY_TEMPS_STEPS = buildDailyTemperaturesSteps();
+
+function DailyTemperaturesVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = DAILY_TEMPS_STEPS;
+  const step = steps[activeStep];
+  const nums = DAILY_TEMPS_VALUES;
+
+  let title = t('每日温度单调栈流转推演', 'Daily Temperatures Monotonic Stack Walkthrough');
+  let detail = t(
+    '维护一个单调递减栈（栈底最高，栈顶最低）。当遇到更高气温时，连续弹出更低的历史天数并结算等待天数。',
+    'Maintain a monotonic decreasing stack (bottom is highest, top is lowest). Warmer days pop colder past days and settle waiting spans.'
+  );
+
+  if (step.action === 'init') {
+    title = t('初始化：ans 数组全为 0，栈为空', 'Initialization: ans filled with 0s, stack is empty');
+    detail = t(
+      'ans 默认初始化为 0。若未来没有任何一天比某天更暖，该天留在栈中最终保留为 0，无需任何额外特判。',
+      'ans defaults to 0. If no warmer day ever appears, days remaining in the stack retain 0 naturally without special handling.'
+    );
+  } else if (step.action === 'scan') {
+    const temp = nums[step.current];
+    const topIdx = step.stack.length > 0 ? step.stack[step.stack.length - 1] : undefined;
+    title = isEnglish
+      ? `Scan Day ${step.current} (${temp}°)`
+      : `扫描第 ${step.current} 天（气温 ${temp}°）`;
+    detail = topIdx === undefined
+      ? t('栈为空，当前天无法回答任何人，准备直接压栈。', 'Stack is empty; current day cannot resolve anyone yet. Will push.')
+      : isEnglish
+        ? `Compare current temp ${temp}° with stack top Day ${topIdx} (${nums[topIdx]}°).`
+        : `拿当前气温 ${temp}° 与栈顶第 ${topIdx} 天（${nums[topIdx]}°）比较。`;
+  } else if (step.action === 'resolve') {
+    const temp = nums[step.current];
+    const poppedTemp = nums[step.popped];
+    title = isEnglish
+      ? `Warmer Day! ${temp}° > ${poppedTemp}°, pop Day ${step.popped}`
+      : `升温触发！第 ${step.current} 天（${temp}°）> 第 ${step.popped} 天（${poppedTemp}°），弹出第 ${step.popped} 天`;
+    detail = isEnglish
+      ? `Day ${step.current} is the first warmer day after Day ${step.popped}! Wait span = ${step.current} - ${step.popped} = ${step.waitDays} days. ans[${step.popped}] = ${step.waitDays}.`
+      : `第 ${step.current} 天是第 ${step.popped} 天之后遇到的首个更暖日！等待跨度 = ${step.current} - ${step.popped} = ${step.waitDays} 天，写入 ans[${step.popped}] = ${step.waitDays}。`;
+  } else if (step.action === 'push') {
+    const temp = nums[step.current];
+    title = isEnglish
+      ? `Push Day ${step.current} (${temp}°) onto stack`
+      : `第 ${step.current} 天（气温 ${temp}°）压入栈中`;
+    detail = isEnglish
+      ? `Its own warmer day is unknown yet. Stack invariant holds: bottom to top strictly decreasing.`
+      : `第 ${step.current} 天自身的更高气温尚未出现，入栈等待。栈内维持“从底到顶气温递减”的不变量。`;
+  } else if (step.action === 'finish') {
+    title = t('扫描结束：栈内滞留天下标保留为 0', 'Traversal complete: stranded indices retain 0');
+    detail = isEnglish
+      ? `Days [${step.stack.join(', ')}] never saw a warmer future day. Their answers correctly remain 0.`
+      : `栈中剩余的第 ${step.stack.join('、')} 天在后续历史中没有遇到更高气温，答案正确保留为初始值 0。`;
+  }
+
+  const templateLines = [
+    ['init', 'ans = [0] * len(temperatures)', 'stack = []  # 栈底到栈顶单调递减'],
+    ['loop', 'for i, temp in enumerate(temperatures):', '# 当前气温作为回答者'],
+    [
+      'resolve',
+      '    while stack and temperatures[stack[-1]] < temp:',
+      '        mid = stack.pop(); ans[mid] = i - mid  # 计算等待跨度',
+    ],
+    ['push', '    stack.append(i)', '# 当前天入栈等待后续升温日'],
+    ['finish', 'return ans', '# 栈内滞留元素无更暖日，保留 0'],
+  ];
+
+  return (
+    <section
+      className="daily-temps-visual"
+      aria-label={t('每日温度单调栈执行推演', 'Daily Temperatures Monotonic Stack Walkthrough')}
+    >
+      <header className="daily-temps-header">
+        <div>
+          <p className="eyebrow">{t('LC 739 · 每日温度', 'LC 739 · Daily Temperatures')}</p>
+          <h2>{t('单调递减栈与等待天数动态结算', 'Decreasing Stack & Waiting Span Resolution')}</h2>
+          <p>{t(
+            '数组 [73, 74, 75, 71, 69, 72, 76, 73]。单调栈维护气温递减链；一旦遇到升温日，立刻倒序结算栈顶元素。',
+            'Array [73, 74, 75, 71, 69, 72, 76, 73]. Stack maintains a decreasing chain; warmer days pop & resolve stack tops.'
+          )}</p>
+        </div>
+        <div className="daily-temps-summary-badge">
+          <span>{t('当前操作', 'Action')}</span>
+          <strong>{step.action.toUpperCase()}</strong>
+        </div>
+      </header>
+
+      <div className={`daily-temps-step-copy ${step.action}`} aria-live="polite">
+        <span>{activeStep + 1} / {steps.length}</span>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+
+      <div className="daily-temps-array" aria-label={t('每日气温卡片', 'Daily Temperature Cards')}>
+        {nums.map((temp, index) => {
+          const isCurrent = index === step.current;
+          const isPopped = index === step.popped;
+          const inStack = step.stack.includes(index);
+          const ansVal = step.ans[index];
+          const isResolved = ansVal > 0;
+
+          let statusText = t('等待中', 'waiting');
+          if (isPopped) statusText = `+${step.waitDays}d`;
+          else if (isResolved) statusText = t(`${ansVal}天`, `${ansVal}d`);
+          else if (inStack) statusText = t('在栈内', 'in stack');
+          else if (step.action === 'finish' && ansVal === 0) statusText = t('无更暖', 'none');
+
+          return (
+            <div
+              className={`daily-temps-cell${isCurrent ? ' current' : ''}${isPopped ? ' popped' : ''}${inStack ? ' in-stack' : ''}${isResolved ? ' resolved' : ''}`}
+              key={index}
+            >
+              <small>Day {index}</small>
+              <strong>{temp}°</strong>
+              <span className="temp-tag">{statusText}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="daily-temps-workspace">
+        <div className="daily-temps-lane">
+          <div className="daily-temps-lane-heading">
+            <span>{t('未决气温栈 (Monotonic Stack)', 'Unresolved Monotonic Stack')}</span>
+            <strong>{t('栈底 (高) ──► 栈顶 (低)', 'Bottom (High) ──► Top (Low)')}</strong>
+          </div>
+          <div className="daily-temps-items">
+            <span className="daily-temps-bottom">{t('栈底', 'bottom')}</span>
+            {step.stack.length === 0 ? (
+              <em>{t('栈为空 (无挂单)', 'Stack is empty')}</em>
+            ) : (
+              step.stack.map((idx, pos) => (
+                <div
+                  className={`daily-temps-item${pos === step.stack.length - 1 ? ' top' : ''}`}
+                  key={idx}
+                >
+                  <small>Day {idx}</small>
+                  <strong>{nums[idx]}°</strong>
+                  {pos === step.stack.length - 1 && <span>{t('栈顶', 'top')}</span>}
+                </div>
+              ))
+            )}
+          </div>
+          {step.action === 'resolve' && (
+            <div className="daily-temps-calc-box">
+              <strong>
+                {t('等待跨度公式', 'Span Formula')}: wait_days = i - mid = {step.current} - {step.popped} = {step.waitDays} {t('天', 'days')}
+              </strong>
+              <span>
+                {t(
+                  `第 ${step.current} 天气温 ${nums[step.current]}° > 第 ${step.popped} 天气温 ${nums[step.popped]}°，成功回答第 ${step.popped} 天的悬赏！`,
+                  `Day ${step.current} temp ${nums[step.current]}° > Day ${step.popped} temp ${nums[step.popped]}°, resolving Day ${step.popped}!`
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="daily-temps-code" aria-label={t('Python 代码高亮执行', 'Code Tracker')}>
+          <div className="daily-temps-code-heading">
+            <span>{t('执行逻辑与状态跟踪', 'Execution State')}</span>
+            <strong>{step.activeLine}</strong>
+          </div>
+          <div className="daily-temps-code-lines">
+            {templateLines.map(([id, first, second]) => (
+              <div
+                className={step.activeLine === id ? 'active' : ''}
+                aria-current={step.activeLine === id ? 'step' : undefined}
+                key={id}
+              >
+                <code>{first}</code>
+                {second && <code>{second}</code>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="daily-temps-answer">
+        <strong>ans =</strong>
+        {step.ans.map((val, idx) => (
+          <span
+            className={`${val > 0 ? 'resolved' : ''}${idx === step.popped ? ' flash' : ''}`}
+            key={idx}
+          >
+            <small>{idx}</small>
+            {val}
+          </span>
+        ))}
+        <em>{t('ans[i] 记录第 i 天需等待几天遇到更暖日 (0 表示无)', 'ans[i] = days to wait for a warmer day (0 = none)')}</em>
+      </div>
+
+      <div className="daily-temps-controls">
+        <button
+          type="button"
+          onClick={() => setActiveStep((c) => Math.max(0, c - 1))}
+          disabled={activeStep === 0}
+        >
+          ← {t('上一步', 'Previous')}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={activeStep}
+          onChange={(e) => setActiveStep(Number(e.target.value))}
+          aria-label={t('选择每日温度推演步骤', 'Select Daily Temperatures step')}
+        />
+        <button
+          type="button"
+          className="primary"
+          onClick={() => setActiveStep((c) => Math.min(steps.length - 1, c + 1))}
+          disabled={activeStep === steps.length - 1}
+        >
+          {t('下一步', 'Next')} →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const BINARY_SEARCH_TEMPLATE_CODE_LINES = [
   { id: 'init', code: ['def find_first_true(lo, hi, check):', '    while lo < hi:'] },
   { id: 'mid', code: ['        mid = lo + (hi - lo) // 2'] },
@@ -29224,7 +29518,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|daily-temperatures-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -29268,6 +29562,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'monotonic-stack-demo') {
     return <MonotonicStackVisual />;
+  }
+
+  if (match?.[1] === 'daily-temperatures-demo') {
+    return <DailyTemperaturesVisual />;
   }
 
   if (match?.[1] === 'largest-rectangle-demo') {
