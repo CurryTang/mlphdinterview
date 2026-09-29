@@ -362,6 +362,7 @@ def universal_monotonic_stack(
 | **LC 84. Largest Rectangle** | Dual Smaller | 尾部加 `0` | `top > current` | 槽位 3A：`w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
 | **LC 42. Trapping Rain Water** | Dual Greater | 无 | `top < current` | 槽位 3A：凹槽高度差乘以宽度<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
 | **LC 907. Subarray Minimums** | Dual Smaller (去重) | 尾部加 `0` | 左严格 `<`，右侧 `<=` | 槽位 3A：乘法原理计算子数组数<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
+| **LC 1063. Valid Subarrays** | Next Strictly Smaller | 尾部加 `-inf`（或遍历至 $n$） | `top > current` | 槽位 3A：段长累加<br>`ans += i - mid` | `stack.append(i)` |
 
 ---
 
@@ -629,6 +630,94 @@ class Solution:
 
         return water
 ```
+
+#### 实战五：Number of Valid Subarrays（LC 1063，有效子数组个数与单侧延展贡献）
+
+给定整数数组 `nums`，定义一个子数组是“有效”的，当且仅当该子数组的**最左端首元素等于该子数组的最小值（允许相等）**。求有效子数组的总个数。
+
+##### 1. 数学模型与边界判定
+- **问题本质转化**：
+  若子数组 $nums[i..j]$ 有效，则要求 $\min(nums[i..j]) = nums[i]$，即区间内所有元素均满足：
+  $$nums[k] \ge nums[i], \quad \forall k \in [i, j]$$
+- **追问一：相等元素会不会截断窗口？**
+  - **结论：绝对不会！**
+  - **严密证明**：当遇到 $nums[k] == nums[i]$ 时，区间最小值仍然等于 $nums[i]$，并未违背有效性定义。因此，**相等元素不会破坏子数组合法性**，窗口可以继续向右无阻碍延展。截断窗口的**唯一触发条件是遇到严格小于首元素的数值**（即 $nums[k] < nums[i]$）。
+
+##### 2. 左端点、右端点与贡献公式推导
+- **左端点（起始点）**：固定考察以某一下标 $i$ 作为子数组的最左元素。
+- **右边界 $R_i$**：向右寻找**第一个严格小于 $nums[i]$** 的破坏者下标：
+  $$R_i = \min \{ k \mid k > i \text{ 且 } nums[k] < nums[i] \}$$
+  若右侧没有任何元素比 $nums[i]$ 更小，则右边界延伸至数组末尾之外，虚拟边界记为 $R_i = n$。
+- **合法右端点范围**：既然 $R_i$ 之前的所有元素都 $\ge nums[i]$，则任何以 $j \in [i, R_i - 1]$ 结尾的子数组 $nums[i..j]$ 均合法。
+- **单元素贡献公式（Contribution Formula）**：
+  以 $i$ 为左端点的有效子数组个数，严格等于合法右端点 $j$ 的可选数量：
+  $$\text{Count}(i) = (R_i - 1) - i + 1 = R_i - i$$
+- **全局总数**：对所有合法左端点的贡献进行求和：
+  $$\text{Total} = \sum_{i=0}^{n-1} (R_i - i)$$
+
+##### 3. 单调栈四槽模型装填与实现
+
+维护一个**单调不减栈（栈底到栈顶 $nums[stack[k]] \le nums[stack[k+1]]$，允许相等元素共存）**：
+- **槽位 1（哨兵）**：在末尾虚拟引入一个负无穷大哨兵（或遍历至 $n$），强制将遍历结束后滞留在栈中的所有元素全部弹出；
+- **槽位 2（谓词）**：`while stack and nums[stack[-1]] > curr_val:`，遇到严格更小值即触发破链弹栈；
+- **槽位 3A（结算）**：当前扫描到的 $i$ 即为被弹出者 $mid$ 的右边界 $R_{mid} = i$，贡献即为 $i - mid$，累加入总答案；
+- **槽位 4（入栈）**：`stack.append(i)`。
+
+```python
+from typing import List
+
+
+class Solution:
+    def validSubarrays(self, nums: List[int]) -> int:
+        n = len(nums)
+        ans = 0
+        stack = []  # 栈内下标对应数值单调不减 (nums[stack[k]] <= nums[stack[k+1]])
+
+        # 槽位 1: 遍历至 n (虚拟注入全局最小值哨兵，强制清空栈)
+        for i in range(n + 1):
+            curr_val = float("-inf") if i == n else nums[i]
+
+            # 槽位 2: 遇到严格更小值，说明打破了以栈顶为最小值的窗口
+            while stack and nums[stack[-1]] > curr_val:
+                mid = stack.pop()
+                # 槽位 3A: 当前 i 即为 mid 右侧首个更小者，贡献段长为 i - mid
+                ans += i - mid
+
+            # 槽位 4: 下标入栈
+            stack.append(i)
+
+        return ans
+```
+
+##### 4. 视角对偶拓展：按右端点存活栈深结算（Active Stack Depth Duality）
+
+除了“以 $mid$ 为左端点，在出栈时结算跨度 $R_{mid} - mid$”之外，本题存在一个极度优美的**数学对偶视角**：
+- **以当前 $i$ 为右端点**：
+  在执行完 `while stack and nums[stack[-1]] > nums[i]: stack.pop()` 之后，栈中残留的每一个历史元素 $k$，都保证满足 $nums[k] \le nums[i]$，且 $k$ 到 $i$ 之间的所有数值均不小于 $nums[k]$。
+- **这意味着**：当前栈内存在的**每一个下标 $k$，都可以作为一个以 $i$ 为结尾的合法有效子数组的左端点**！
+- 此时将 $i$ 自身入栈后，以 $i$ 结尾的有效子数组总数，**恰好等于当前栈的物理深度 `len(stack)`**！
+
+```python
+class SolutionStackDepth:
+    def validSubarrays(self, nums: List[int]) -> int:
+        ans = 0
+        stack = []
+
+        for num in nums:
+            # 弹出所有严格大于当前值的元素（它们无法以当前 num 作为延续）
+            while stack and stack[-1] > num:
+                stack.pop()
+            stack.append(num)
+            # 当前栈内所有元素均可作为以当前元素为右端点的有效子数组起点
+            ans += len(stack)
+
+        return ans
+```
+
+两种视角在数学上恒等：
+$$\sum_{i=0}^{n-1} (R_i - i) \equiv \sum_{j=0}^{n-1} \text{StackDepth}(j)$$
+- **视角 A（左端点延展跨度）**：体现的是四槽模板中**槽位 3A 弹栈结算**的经典模式，与柱状图最大矩形、每日温度一脉相承；
+- **视角 B（右端点栈深存活）**：体现了单调栈内部活跃元素的天然拓扑序。
 
 ---
 

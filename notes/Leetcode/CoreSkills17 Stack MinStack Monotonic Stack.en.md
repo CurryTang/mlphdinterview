@@ -361,6 +361,7 @@ Every problem maps directly into the 4 slots:
 | **LC 84. Largest Rectangle** | Dual Smaller | Append `0` | `top > current` | Slot 3A: `w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
 | **LC 42. Trapping Rain Water** | Dual Greater | None | `top < current` | Slot 3A: Bounded water trough<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
 | **LC 907. Subarray Minimums** | Dual Smaller (Tie-break) | Append `0` | Left `<` strict, Right `<=` non-strict | Slot 3A: Product rule for subarrays<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
+| **LC 1063. Valid Subarrays** | Next Strictly Smaller | Append `-inf` (or loop to $n$) | `top > current` | Slot 3A: `ans += i - mid` (Span contribution) | `stack.append(i)` |
 
 ---
 
@@ -628,6 +629,91 @@ class Solution:
 
         return water
 ```
+
+#### Practice 5: Number of Valid Subarrays (LC 1063, Monotonic Span Contribution)
+
+Given an integer array `nums`, return the number of non-empty continuous subarrays where the **leftmost element is less than or equal to every other element in that subarray** (i.e., the leftmost element equals the subarray's minimum).
+
+##### 1. Mathematical Formulation & Boundary Semantics
+- **Condition Definition**:
+  A subarray $nums[i..j]$ is valid iff $\min(nums[i..j]) = nums[i]$, which requires:
+  $$nums[k] \ge nums[i], \quad \forall k \in [i, j]$$
+- **Follow-up: Do equal elements truncate the window?**
+  - **Conclusion: Absolutely not!**
+  - **Proof**: If $nums[k] == nums[i]$, the minimum of $nums[i..k]$ remains $nums[i]$ (equality is explicitly permitted). Thus, equal elements never break subarray validity. The window expands unimpeded until encountering a strictly smaller value ($nums[k] < nums[i]$).
+
+##### 2. Left Endpoint, Right Endpoint, and Contribution Formula
+- **Left Endpoint ($i$)**: Fix each index $i$ as the designated starting position of the subarray.
+- **Right Boundary ($R_i$)**: Search to the right for the **first strictly smaller element**:
+  $$R_i = \min \{ k \mid k > i \text{ and } nums[k] < nums[i] \}$$
+  If no element to the right is strictly smaller than $nums[i]$, the right boundary extends past the array boundary: $R_i = n$.
+- **Valid Right Endpoints**: Since all elements in $[i, R_i - 1]$ satisfy $nums[k] \ge nums[i]$, every index $j \in [i, R_i - 1]$ forms a distinct valid subarray $nums[i..j]$.
+- **Single Element Contribution Formula**:
+  The number of valid subarrays originating at $i$ strictly equals the number of choices for $j$:
+  $$\text{Count}(i) = (R_i - 1) - i + 1 = R_i - i$$
+- **Global Answer**:
+  $$\text{Total} = \sum_{i=0}^{n-1} (R_i - i)$$
+
+##### 3. Monotonic Stack Blueprint Instantiation
+
+Maintain a **monotonically non-decreasing stack** (from bottom to top $nums[stack[k]] \le nums[stack[k+1]]$, permitting equal values):
+- **Slot 1 (Sentinel)**: Virtual $-\infty$ at index $n$ to guarantee complete flushing;
+- **Slot 2 (Eviction Predicate)**: `while stack and nums[stack[-1]] > curr_val:` (strictly smaller breaks monotonicity);
+- **Slot 3A (Settlement)**: For popped element $mid$, current index $i$ is its first strictly smaller right boundary $R_{mid} = i$. Add $i - mid$ to answer;
+- **Slot 4 (Push)**: `stack.append(i)`.
+
+```python
+from typing import List
+
+
+class Solution:
+    def validSubarrays(self, nums: List[int]) -> int:
+        n = len(nums)
+        ans = 0
+        stack = []  # Invariant: nums[stack[k]] <= nums[stack[k+1]]
+
+        # Slot 1: Iterate up to n with virtual -inf sentinel
+        for i in range(n + 1):
+            curr_val = float("-inf") if i == n else nums[i]
+
+            # Slot 2: Evict on strictly smaller element
+            while stack and nums[stack[-1]] > curr_val:
+                mid = stack.pop()
+                # Slot 3A: Settle span contribution for mid
+                ans += i - mid
+
+            # Slot 4: Push current index
+            stack.append(i)
+
+        return ans
+```
+
+##### 4. Mathematical Duality: Active Stack Depth Perspective
+
+Beyond the left-endpoint span perspective ($R_{mid} - mid$ on eviction), there exists a dual viewpoint:
+- **Right Endpoint Perspective**:
+  After popping all elements strictly greater than $nums[i]$, every remaining index $k$ in the stack satisfies $nums[k] \le nums[i]$, with no intervening elements smaller than $nums[k]$.
+- **Duality Invariant**:
+  Every surviving index in `stack` can serve as a valid left endpoint for a subarray ending at $i$. Pushing $i$ makes the number of valid subarrays ending at $i$ **identically equal to `len(stack)`**!
+
+```python
+class SolutionStackDepth:
+    def validSubarrays(self, nums: List[int]) -> int:
+        ans = 0
+        stack = []
+
+        for num in nums:
+            while stack and stack[-1] > num:
+                stack.pop()
+            stack.append(num)
+            # Every element currently in stack forms a valid subarray ending at num
+            ans += len(stack)
+
+        return ans
+```
+
+Both formulations are mathematically isomorphic:
+$$\sum_{i=0}^{n-1} (R_i - i) \equiv \sum_{j=0}^{n-1} \text{StackDepth}(j)$$
 
 ---
 
