@@ -100,7 +100,6 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
                                                        · Redis (Cache-Aside、防穿透/击穿/雪崩与分布式锁)
                                                        · 数据库存储范式与分片 (Scalability Cube、分片键设计)
                                                        · 分布式存储系统 (对象存储 S3 与 LSM-Tree 追加写)
-                                                       · 异步消息系统演示 (生命周期与确认机制交互演示)
                                                        · 一致性哈希 (虚拟节点均衡、最小化数据迁移)
                                                        · 高频术语与核心定理 (CAP/BASE/Little's Law 对比矩阵)
                                                        · Event Bus (事件总线、ECST 与声明式过滤)
@@ -157,38 +156,35 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 8. **[[SystemDesign04 Storage Systems|Wiki · 分布式存储系统 (Storage Systems)]]**
    - *核心瓶颈*：海量非结构化二进制大文件存储与索引追加吞吐。
    - *主线逻辑*：块/文件/对象存储 S3 选型、LSM-Tree 追加写与元数据解耦。
-9. **[[SystemDesign06 Async Messaging Systems|Wiki · 异步消息系统演示 (Async Messaging Systems)]]**
-   - *核心瓶颈*：突发写峰值导致持久层崩溃，长耗时链路阻塞在线响应。
-   - *主线逻辑*：持久日志、分区与顺序消费、At-least-once 语义与交互式可视化演示。
-10. **[[SystemDesign09 Consistent Hashing|Wiki · 一致性哈希 (Consistent Hashing)]]**
-    - *核心瓶颈*：缓存与存储集群节点动态伸缩时全网哈希漂移。
-    - *主线逻辑*：哈希环设计、虚拟节点（Virtual Nodes）消除倾斜、最小化数据迁移。
-11. **[[SystemDesign99 Glossary|Wiki · 高频术语与核心定理 (Glossary & Laws)]]**
+9. **[[SystemDesign09 Consistent Hashing|Wiki · 一致性哈希 (Consistent Hashing)]]**
+   - *核心瓶颈*：缓存与存储集群节点动态伸缩时全网哈希漂移。
+   - *主线逻辑*：哈希环设计、虚拟节点（Virtual Nodes）消除倾斜、最小化数据迁移。
+10. **[[SystemDesign99 Glossary|Wiki · 高频术语与核心定理 (Glossary & Laws)]]**
     - *全局检索*：CAP、BASE、Little's Law 与分布式核心概念对比矩阵速查。
-12. **[[SystemDesignWiki Event Bus|Wiki · Event Bus (事件总线与事件驱动架构)]]**
+11. **[[SystemDesignWiki Event Bus|Wiki · Event Bus (事件总线与事件驱动架构)]]**
     - *核心瓶颈*：跨微服务领域事件分发、复杂订阅规则过滤与读风暴防范。
     - *主线逻辑*：Pub/Sub 广播范式、Event-Carried State Transfer (ECST)、声明式 JSON 模式过滤。
-13. **[[SystemDesignWiki Message Queue|Wiki · Message Queue (消息队列与点对点工作队列)]]**
+12. **[[SystemDesignWiki Message Queue|Wiki · Message Queue (消息队列与点对点工作队列)]]**
     - *核心瓶颈*：高负载异步耗时任务编排、突发瞬态流量缓冲与慢系统保护。
     - *主线逻辑*：竞争消费者（1-to-1 抢占）、租约可见性超时（Visibility Timeout）、两阶段确认。
-14. **[[SystemDesignWiki NoSQL Streaming|Wiki · NoSQL + Streaming (NoSQL 变更流与事件驱动)]]**
+13. **[[SystemDesignWiki NoSQL Streaming|Wiki · NoSQL + Streaming (NoSQL 变更流与事件驱动)]]**
     - *核心瓶颈*：应用层双写数据不一致、多异构存储视图实时同步与海量吞吐持久化。
     - *主线逻辑*：存储引擎内建 CDC 捕获、流表二象性（$S \iff T$）、CQRS 物化视图同步。
-15. **[[SystemDesignWiki Kafka|Wiki · Kafka 核心机制与实战 (Distributed Commit Log)]]**
+14. **[[SystemDesignWiki Kafka|Wiki · Kafka 核心机制与实战 (Distributed Commit Log)]]**
     - *核心瓶颈*：高吞吐低延迟分布式日志存储、顺序 I/O 与可靠投递一致性。
     - *主线逻辑*：分区追加写、OS Page Cache 复用与 `sendfile` 零拷贝；ISR 水位线、EOS 幂等事务。
-16. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox (事务发件箱)]]**
+15. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox (事务发件箱)]]**
     - *核心瓶颈*：本地数据库与外部消息发布（DB + MQ）双写不一致难题。
     - *主线逻辑*：单机 ACID 事务保证业务表与 Outbox 表原子落盘；异步轮询与 CDC 挖掘。
-17. **[[SystemDesignWiki Control Data Plane|Wiki · 控制面与数据面解耦 (Control & Data Plane)]]**
+16. **[[SystemDesignWiki Control Data Plane|Wiki · 控制面与数据面解耦 (Control & Data Plane)]]**
     - *核心瓶颈*：控制管理逻辑高开销拖垮高频数据路径，控制面崩溃引发业务全局断流。
     - *主线逻辑*：大脑与躯干切分；生存第一法则（控制面宕机，数据面基于本地缓存 100% 存活运行）。
-18. **[[SystemDesignWiki Pull vs Push|Wiki · Pull vs Push (推拉模型与读写扩散)]]**
+17. **[[SystemDesignWiki Pull vs Push|Wiki · Pull vs Push (推拉模型与读写扩散)]]**
     - *核心瓶颈*：多端数据同步与社交 Feed 的写放大与读延迟冲突。
     - *主线逻辑*：写扩散（Push）vs 读扩散（Pull）；大 V / 明星问题与混合动静分离。
-19. **[[SystemDesignWiki Idempotency|Wiki · Idempotency (幂等性设计与实现模式)]]**
+18. **[[SystemDesignWiki Idempotency|Wiki · Idempotency (幂等性设计与实现模式)]]**
     - *核心瓶颈*：网络超时三态重试引发的重复创建、重复扣费与计算资源雪崩。
     - *主线逻辑*：数学与工程定义；联合唯一约束、分布式 Token、状态机 CAS、确定性 Hash 派生。
-20. **[[SystemDesignWiki NewSQL|Wiki · NewSQL (分布式数据库架构与选型)]]**
+19. **[[SystemDesignWiki NewSQL|Wiki · NewSQL (分布式数据库架构与选型)]]**
     - *核心瓶颈*：传统分库分表跨分片分布式事务性能崩塌、重分片运维沉重与数据倾斜。
     - *主线逻辑*：计算存储分离、Range-based 动态 Region 切片、Multi-Raft 多数派强一致、Percolator 2PC。

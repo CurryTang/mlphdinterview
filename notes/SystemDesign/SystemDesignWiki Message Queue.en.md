@@ -7,6 +7,9 @@ A **Message Queue (MQ)** is the quintessential point-to-point asynchronous coord
 ```queue-vs-stream-visual
 ```
 
+```async-messaging-architecture-visual
+```
+
 ---
 
 ## 1 · Core Philosophy & Architectural Patterns

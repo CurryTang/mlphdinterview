@@ -7,6 +7,9 @@ Wiki 词条归属：[[SystemDesign00 Overview|00 系统设计全局蓝图]] → 
 ```queue-vs-stream-visual
 ```
 
+```async-messaging-architecture-visual
+```
+
 ---
 
 ## 1 · 核心设计理念与架构模式

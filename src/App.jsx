@@ -1729,12 +1729,6 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', titleEn: 'Wiki · Distributed Storage Systems', category: 'Wiki', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
-    'Wiki · 异步消息系统演示 (Async Messaging Systems)',
-    'SystemDesign06 Async Messaging Systems.md',
-    'SystemDesign06 Async Messaging Systems.en.md',
-    { directory: 'SystemDesign', titleEn: 'Wiki · Async Messaging Systems', category: 'Wiki', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
     'Wiki · 一致性哈希 (Consistent Hashing)',
     'SystemDesign09 Consistent Hashing.md',
     'SystemDesign09 Consistent Hashing.en.md',
@@ -29791,7 +29785,8 @@ const legacyRoutes = {
   'SystemDesign03 Database Scaling.md': 'SystemDesign02 Database Paradigms.md',
   'SystemDesign05 Reliability Replication.md': 'SystemDesign02 Database Paradigms.md',
   'SystemDesign06 Photo Sharing Feed.md': 'SystemDesign07 Photo Sharing Feed.md',
-  'SystemDesign07 Async Messaging Systems.md': 'SystemDesign06 Async Messaging Systems.md',
+  'SystemDesign06 Async Messaging Systems.md': 'SystemDesignWiki Message Queue.md',
+  'SystemDesign07 Async Messaging Systems.md': 'SystemDesignWiki Message Queue.md',
   'Quant05 Normal Sign Correlation.md': 'Quant04 Correlation Matrix PSD.md',
   'Quant07 Recursion Absent-Minded Passenger.md': 'Quant01 Expectation Counting Multinomial.md',
   'Quant08 Order Statistics Conditional Truncation.md': 'Quant03 Continuous Distribution Geometry Transform.md',
