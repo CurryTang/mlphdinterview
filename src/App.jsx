@@ -18189,12 +18189,17 @@ function MonotonicStackVisual() {
 
 const DAILY_TEMPS_VALUES = [73, 74, 75, 71, 69, 72, 76, 73];
 
-function buildDailyTemperaturesSteps() {
+function buildDailyTemperaturesLeftSteps() {
   const nums = DAILY_TEMPS_VALUES;
   const n = nums.length;
   const stack = [];
   const ans = Array(n).fill(0);
+  let totalComp = 0;
+  let trueComp = 0;
+  let falseComp = 0;
+
   const steps = [{
+    viewMode: 'left',
     action: 'init',
     current: null,
     popped: null,
@@ -18202,11 +18207,17 @@ function buildDailyTemperaturesSteps() {
     stack: [],
     ans: [...ans],
     activeLine: 'init',
+    comparisons: { total: 0, trueCount: 0, falseCount: 0 },
+    currentCheck: { expr: 'stack == []', result: null, note: '初始状态：栈为空，ans 数组全为 0' },
   }];
 
   nums.forEach((temp, i) => {
-    // Scan step
+    const stackIsEmpty = stack.length === 0;
+    const topBefore = !stackIsEmpty ? stack[stack.length - 1] : null;
+
+    // Scan step (matches original step sequence)
     steps.push({
+      viewMode: 'left',
       action: 'scan',
       current: i,
       popped: null,
@@ -18214,14 +18225,27 @@ function buildDailyTemperaturesSteps() {
       stack: [...stack],
       ans: [...ans],
       activeLine: 'loop',
+      comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+      currentCheck: stackIsEmpty
+        ? { expr: 'stack == []', result: null, note: '栈为空，短路跳过 while 比较，无需比较数值' }
+        : {
+            expr: `temperatures[${topBefore}] (${nums[topBefore]}°) < temp (${temp}°)`,
+            result: nums[topBefore] < temp,
+            note: nums[topBefore] < temp
+              ? `升温触发 (${temp}° > ${nums[topBefore]}°)，即将执行 while 循环内部弹栈`
+              : `未升温 (${temp}° <= ${nums[topBefore]}°)，while 条件为假，终止循环`
+          },
     });
 
     // While loop: stack top is colder than current day
     while (stack.length > 0 && nums[stack[stack.length - 1]] < temp) {
+      totalComp++;
+      trueComp++;
       const mid = stack.pop();
       const waitDays = i - mid;
       ans[mid] = waitDays;
       steps.push({
+        viewMode: 'left',
         action: 'resolve',
         current: i,
         popped: mid,
@@ -18229,12 +18253,25 @@ function buildDailyTemperaturesSteps() {
         stack: [...stack],
         ans: [...ans],
         activeLine: 'resolve',
+        comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+        currentCheck: {
+          expr: `temperatures[${mid}] (${nums[mid]}°) < temperatures[${i}] (${temp}°)`,
+          result: true,
+          note: `比较成功 (True)：第 ${i} 天升温，弹出 Day ${mid}，结算等待跨度 = ${i} - ${mid} = ${waitDays} 天`,
+        },
       });
+    }
+
+    // Check if while loop terminated due to condition evaluation (non-empty stack)
+    if (stack.length > 0) {
+      totalComp++;
+      falseComp++;
     }
 
     // Push step
     stack.push(i);
     steps.push({
+      viewMode: 'left',
       action: 'push',
       current: i,
       popped: null,
@@ -18242,11 +18279,24 @@ function buildDailyTemperaturesSteps() {
       stack: [...stack],
       ans: [...ans],
       activeLine: 'push',
+      comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+      currentCheck: stack.length > 1
+        ? {
+            expr: `temperatures[${stack[stack.length - 2]}] (${nums[stack[stack.length - 2]]}°) < ${temp}°`,
+            result: false,
+            note: `比较失败 (False)：未升温，while 终止；当前 Day ${i} 压入栈中继续等待`,
+          }
+        : {
+            expr: `stack.append(${i})`,
+            result: null,
+            note: `当前 Day ${i} (${temp}°) 压入栈顶，栈维持从底到顶气温严格单调递减`,
+          },
     });
   });
 
   // Finish step
   steps.push({
+    viewMode: 'left',
     action: 'finish',
     current: null,
     popped: null,
@@ -18254,78 +18304,318 @@ function buildDailyTemperaturesSteps() {
     stack: [...stack],
     ans: [...ans],
     activeLine: 'finish',
+    comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+    currentCheck: {
+      expr: '正向遍历完毕 (All elements processed)',
+      result: null,
+      note: `共执行 ${totalComp} 次 while 比较 (${trueComp} 次弹出 + ${falseComp} 次终止退出) ≤ 2n = 16`,
+    },
   });
 
   return steps;
 }
 
-const DAILY_TEMPS_STEPS = buildDailyTemperaturesSteps();
+function buildDailyTemperaturesRightSteps() {
+  const nums = DAILY_TEMPS_VALUES;
+  const n = nums.length;
+  const stack = [];
+  const ans = Array(n).fill(0);
+  let totalComp = 0;
+  let trueComp = 0;
+  let falseComp = 0;
+
+  const steps = [{
+    viewMode: 'right',
+    action: 'init',
+    current: null,
+    popped: null,
+    warmerIdx: null,
+    waitDays: null,
+    stack: [],
+    ans: [...ans],
+    activeLine: 'init',
+    comparisons: { total: 0, trueCount: 0, falseCount: 0 },
+    currentCheck: { expr: 'stack == []', result: null, note: '逆序右视图：从右向左扫描 (i 从 7 降至 0)，栈维护右侧潜在候选人' },
+  }];
+
+  for (let i = n - 1; i >= 0; i--) {
+    const temp = nums[i];
+    const stackIsEmpty = stack.length === 0;
+    const topBefore = !stackIsEmpty ? stack[stack.length - 1] : null;
+
+    // Scan step
+    steps.push({
+      viewMode: 'right',
+      action: 'scan',
+      current: i,
+      popped: null,
+      warmerIdx: null,
+      waitDays: null,
+      stack: [...stack],
+      ans: [...ans],
+      activeLine: 'loop',
+      comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+      currentCheck: stackIsEmpty
+        ? { expr: 'stack == []', result: null, note: '栈为空，右侧无任何日，短路跳过 while 比较' }
+        : {
+            expr: `temperatures[${topBefore}] (${nums[topBefore]}°) <= temp (${temp}°)`,
+            result: nums[topBefore] <= temp,
+            note: nums[topBefore] <= temp
+              ? `右侧候选人 ${nums[topBefore]}° <= ${temp}°，被 Day ${i} 永久遮挡，触发淘汰弹出`
+              : `右侧栈顶 ${nums[topBefore]}° > ${temp}°，为假终止 while，即为 Day ${i} 的首个更暖日`
+          },
+    });
+
+    // While loop: pop right-side elements that are colder or equal to temp
+    while (stack.length > 0 && nums[stack[stack.length - 1]] <= temp) {
+      totalComp++;
+      trueComp++;
+      const mid = stack.pop();
+      steps.push({
+        viewMode: 'right',
+        action: 'eliminate',
+        current: i,
+        popped: mid,
+        warmerIdx: null,
+        waitDays: null,
+        stack: [...stack],
+        ans: [...ans],
+        activeLine: 'eliminate',
+        comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+        currentCheck: {
+          expr: `temperatures[${mid}] (${nums[mid]}°) <= temperatures[${i}] (${temp}°)`,
+          result: true,
+          note: `淘汰判定 (True)：Day ${mid} (${nums[mid]}°) 比当前 Day ${i} (${temp}°) 矮或相等，被永久遮挡，弹出淘汰！`,
+        },
+      });
+    }
+
+    if (stack.length > 0) {
+      totalComp++;
+      falseComp++;
+    }
+
+    // Settle step (Slot 3B: Instant Settlement for current day i)
+    const warmerIdx = stack.length > 0 ? stack[stack.length - 1] : null;
+    const waitDays = warmerIdx !== null ? warmerIdx - i : 0;
+    ans[i] = waitDays;
+
+    steps.push({
+      viewMode: 'right',
+      action: 'settle',
+      current: i,
+      popped: null,
+      warmerIdx,
+      waitDays,
+      stack: [...stack],
+      ans: [...ans],
+      activeLine: 'settle',
+      comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+      currentCheck: warmerIdx !== null
+        ? {
+            expr: `ans[${i}] = stack[-1] - ${i} = ${warmerIdx} - ${i} = ${waitDays}`,
+            result: false,
+            note: `即时结算 (Slot 3B)：右侧首个更暖日为栈顶 Day ${warmerIdx} (${nums[warmerIdx]}°)，等待跨度 = ${waitDays} 天`,
+          }
+        : {
+            expr: `ans[${i}] = 0 (栈为空)`,
+            result: null,
+            note: `即时结算 (Slot 3B)：右侧无任何更高气温，直接确认为 0 天`,
+          },
+    });
+
+    // Push step: Day i enters stack as potential candidate for days to the left
+    stack.push(i);
+    steps.push({
+      viewMode: 'right',
+      action: 'push',
+      current: i,
+      popped: null,
+      warmerIdx: null,
+      waitDays: null,
+      stack: [...stack],
+      ans: [...ans],
+      activeLine: 'push',
+      comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+      currentCheck: {
+        expr: `stack.append(${i})`,
+        result: null,
+        note: `Day ${i} (${temp}°) 入栈，作为左侧日期的候选更暖日`,
+      },
+    });
+  }
+
+  // Finish step
+  steps.push({
+    viewMode: 'right',
+    action: 'finish',
+    current: null,
+    popped: null,
+    warmerIdx: null,
+    waitDays: null,
+    stack: [...stack],
+    ans: [...ans],
+    activeLine: 'finish',
+    comparisons: { total: totalComp, trueCount: trueComp, falseCount: falseComp },
+    currentCheck: {
+      expr: '逆序扫描完毕 (All elements settled online)',
+      result: null,
+      note: `共执行 ${totalComp} 次 while 比较 (${trueComp} 次淘汰 + ${falseComp} 次终止退出) ≤ 2n = 16`,
+    },
+  });
+
+  return steps;
+}
+
+const DAILY_TEMPS_LEFT_STEPS = buildDailyTemperaturesLeftSteps();
+const DAILY_TEMPS_RIGHT_STEPS = buildDailyTemperaturesRightSteps();
+
+const DAILY_TEMPS_LEFT_CODE_LINES = [
+  ['init', 'ans = [0] * len(temperatures)', 'stack = []  # 栈底到栈顶单调递减'],
+  ['loop', 'for i, temp in enumerate(temperatures):', '# 当前气温作为回答者'],
+  [
+    'resolve',
+    '    while stack and temperatures[stack[-1]] < temp:',
+    '        mid = stack.pop(); ans[mid] = i - mid  # 出栈结算 (Slot 3A)',
+  ],
+  ['push', '    stack.append(i)', '# 当前天入栈等待后续升温日'],
+  ['finish', 'return ans', '# 栈内滞留元素无更暖日，保留 0'],
+];
+
+const DAILY_TEMPS_RIGHT_CODE_LINES = [
+  ['init', 'ans = [0] * len(temperatures)', 'stack = []  # 维护右侧单调递减候选链'],
+  ['loop', 'for i in range(len(temperatures) - 1, -1, -1):', '# 逆序遍历：当前天即时自结算'],
+  [
+    'eliminate',
+    '    while stack and temperatures[stack[-1]] <= temperatures[i]:',
+    '        stack.pop()  # 淘汰右侧更低/相同者（遮挡效应）',
+  ],
+  ['settle', '    ans[i] = stack[-1] - i if stack else 0', '# 即时结算当前天 (Slot 3B)'],
+  ['push', '    stack.append(i)', '# 当前天作为左侧候选人入栈'],
+  ['finish', 'return ans', '# 遍历结束，所有答案就地就绪，免除哨兵'],
+];
 
 function DailyTemperaturesVisual() {
   const { isEnglish, t } = useUiCopy();
+  const [viewMode, setViewMode] = useState('left');
   const [activeStep, setActiveStep] = useState(0);
-  const steps = DAILY_TEMPS_STEPS;
-  const step = steps[activeStep];
+
+  const steps = viewMode === 'left' ? DAILY_TEMPS_LEFT_STEPS : DAILY_TEMPS_RIGHT_STEPS;
+  const step = steps[Math.min(activeStep, steps.length - 1)];
   const nums = DAILY_TEMPS_VALUES;
+  const templateLines = viewMode === 'left' ? DAILY_TEMPS_LEFT_CODE_LINES : DAILY_TEMPS_RIGHT_CODE_LINES;
+
+  const handleSwitchView = (mode) => {
+    setViewMode(mode);
+    setActiveStep(0);
+  };
 
   let title = t('每日温度单调栈流转推演', 'Daily Temperatures Monotonic Stack Walkthrough');
   let detail = t(
-    '维护一个单调递减栈（栈底最高，栈顶最低）。当遇到更高气温时，连续弹出更低的历史天数并结算等待天数。',
-    'Maintain a monotonic decreasing stack (bottom is highest, top is lowest). Warmer days pop colder past days and settle waiting spans.'
+    '维护一个单调递减栈。左视图采用正向出栈结算（Slot 3A），右视图采用逆序入栈即时结算（Slot 3B）。',
+    'Maintain a monotonic decreasing stack. Left View uses forward pop resolution (Slot 3A); Right View uses reverse instant push settlement (Slot 3B).'
   );
 
-  if (step.action === 'init') {
-    title = t('初始化：ans 数组全为 0，栈为空', 'Initialization: ans filled with 0s, stack is empty');
-    detail = t(
-      'ans 默认初始化为 0。若未来没有任何一天比某天更暖，该天留在栈中最终保留为 0，无需任何额外特判。',
-      'ans defaults to 0. If no warmer day ever appears, days remaining in the stack retain 0 naturally without special handling.'
-    );
-  } else if (step.action === 'scan') {
-    const temp = nums[step.current];
-    const topIdx = step.stack.length > 0 ? step.stack[step.stack.length - 1] : undefined;
-    title = isEnglish
-      ? `Scan Day ${step.current} (${temp}°)`
-      : `扫描第 ${step.current} 天（气温 ${temp}°）`;
-    detail = topIdx === undefined
-      ? t('栈为空，当前天无法回答任何人，准备直接压栈。', 'Stack is empty; current day cannot resolve anyone yet. Will push.')
-      : isEnglish
-        ? `Compare current temp ${temp}° with stack top Day ${topIdx} (${nums[topIdx]}°).`
-        : `拿当前气温 ${temp}° 与栈顶第 ${topIdx} 天（${nums[topIdx]}°）比较。`;
-  } else if (step.action === 'resolve') {
-    const temp = nums[step.current];
-    const poppedTemp = nums[step.popped];
-    title = isEnglish
-      ? `Warmer Day! ${temp}° > ${poppedTemp}°, pop Day ${step.popped}`
-      : `升温触发！第 ${step.current} 天（${temp}°）> 第 ${step.popped} 天（${poppedTemp}°），弹出第 ${step.popped} 天`;
-    detail = isEnglish
-      ? `Day ${step.current} is the first warmer day after Day ${step.popped}! Wait span = ${step.current} - ${step.popped} = ${step.waitDays} days. ans[${step.popped}] = ${step.waitDays}.`
-      : `第 ${step.current} 天是第 ${step.popped} 天之后遇到的首个更暖日！等待跨度 = ${step.current} - ${step.popped} = ${step.waitDays} 天，写入 ans[${step.popped}] = ${step.waitDays}。`;
-  } else if (step.action === 'push') {
-    const temp = nums[step.current];
-    title = isEnglish
-      ? `Push Day ${step.current} (${temp}°) onto stack`
-      : `第 ${step.current} 天（气温 ${temp}°）压入栈中`;
-    detail = isEnglish
-      ? `Its own warmer day is unknown yet. Stack invariant holds: bottom to top strictly decreasing.`
-      : `第 ${step.current} 天自身的更高气温尚未出现，入栈等待。栈内维持“从底到顶气温递减”的不变量。`;
-  } else if (step.action === 'finish') {
-    title = t('扫描结束：栈内滞留天下标保留为 0', 'Traversal complete: stranded indices retain 0');
-    detail = isEnglish
-      ? `Days [${step.stack.join(', ')}] never saw a warmer future day. Their answers correctly remain 0.`
-      : `栈中剩余的第 ${step.stack.join('、')} 天在后续历史中没有遇到更高气温，答案正确保留为初始值 0。`;
+  if (viewMode === 'left') {
+    if (step.action === 'init') {
+      title = t('初始化：ans 数组全为 0，栈为空', 'Initialization: ans filled with 0s, stack is empty');
+      detail = t(
+        'ans 默认初始化为 0。若未来没有任何一天比某天更暖，该天留在栈中最终保留为 0，无需任何额外特判。',
+        'ans defaults to 0. If no warmer day ever appears, days remaining in the stack retain 0 naturally without special handling.'
+      );
+    } else if (step.action === 'scan') {
+      const temp = nums[step.current];
+      const topIdx = step.stack.length > 0 ? step.stack[step.stack.length - 1] : undefined;
+      title = isEnglish
+        ? `Scan Day ${step.current} (${temp}°)`
+        : `扫描第 ${step.current} 天（气温 ${temp}°）`;
+      detail = topIdx === undefined
+        ? t('栈为空，当前天无法回答任何人，准备直接压栈。', 'Stack is empty; current day cannot resolve anyone yet. Will push.')
+        : isEnglish
+          ? `Compare current temp ${temp}° with stack top Day ${topIdx} (${nums[topIdx]}°).`
+          : `拿当前气温 ${temp}° 与栈顶第 ${topIdx} 天（${nums[topIdx]}°）比较。`;
+    } else if (step.action === 'resolve') {
+      const temp = nums[step.current];
+      const poppedTemp = nums[step.popped];
+      title = isEnglish
+        ? `Warmer Day! ${temp}° > ${poppedTemp}°, pop Day ${step.popped}`
+        : `升温触发！第 ${step.current} 天（${temp}°）> 第 ${step.popped} 天（${poppedTemp}°），弹出第 ${step.popped} 天`;
+      detail = isEnglish
+        ? `Day ${step.current} is the first warmer day after Day ${step.popped}! Wait span = ${step.current} - ${step.popped} = ${step.waitDays} days. ans[${step.popped}] = ${step.waitDays}.`
+        : `第 ${step.current} 天是第 ${step.popped} 天之后遇到的首个更暖日！等待跨度 = ${step.current} - ${step.popped} = ${step.waitDays} 天，写入 ans[${step.popped}] = ${step.waitDays}。`;
+    } else if (step.action === 'push') {
+      const temp = nums[step.current];
+      title = isEnglish
+        ? `Push Day ${step.current} (${temp}°) onto stack`
+        : `第 ${step.current} 天（气温 ${temp}°）压入栈中`;
+      detail = isEnglish
+        ? `Its own warmer day is unknown yet. Stack invariant holds: bottom to top strictly decreasing.`
+        : `第 ${step.current} 天自身的更高气温尚未出现，入栈等待。栈内维持“从底到顶气温递减”的不变量。`;
+    } else if (step.action === 'finish') {
+      title = t('正向扫描结束：栈内滞留天下标保留为 0', 'Forward traversal complete: stranded indices retain 0');
+      detail = isEnglish
+        ? `Days [${step.stack.join(', ')}] never saw a warmer future day. Their answers correctly remain 0.`
+        : `栈中剩余的第 ${step.stack.join('、')} 天在后续历史中没有遇到更高气温，答案正确保留为初始值 0。`;
+    }
+  } else {
+    // Right view copy
+    if (step.action === 'init') {
+      title = t('初始化：逆序右视图即时结算（Slot 3B）', 'Initialization: Right View Reverse Instant Settlement (Slot 3B)');
+      detail = t(
+        '从右向左扫描数组 (i 从 7 到 0)。栈中维护右侧候选人，每个元素在被访问时即时算清自身答案，天然免除哨兵！',
+        'Scan array from right to left (i from 7 down to 0). Stack holds right-side candidates; answers are resolved instantly online without sentinels!'
+      );
+    } else if (step.action === 'scan') {
+      const temp = nums[step.current];
+      const topIdx = step.stack.length > 0 ? step.stack[step.stack.length - 1] : undefined;
+      title = isEnglish
+        ? `Reverse Scan Day ${step.current} (${temp}°)`
+        : `逆序扫描第 ${step.current} 天（气温 ${temp}°）`;
+      detail = topIdx === undefined
+        ? t('右侧候选栈为空，未来无更暖日，当前天答案即为 0。', 'Candidate stack is empty; no future warmer day exists, ans is 0.')
+        : isEnglish
+          ? `Check right candidates: compare stack top Day ${topIdx} (${nums[topIdx]}°) with current ${temp}°.`
+          : `考察右侧候选人：比较栈顶第 ${topIdx} 天（${nums[topIdx]}°）与当前 ${temp}°。`;
+    } else if (step.action === 'eliminate') {
+      const temp = nums[step.current];
+      const poppedTemp = nums[step.popped];
+      title = isEnglish
+        ? `Candidate Shadowed! Day ${step.popped} (${poppedTemp}°) <= Day ${step.current} (${temp}°)`
+        : `候选人淘汰！右侧第 ${step.popped} 天（${poppedTemp}°）<= 当前第 ${step.current} 天（${temp}°）`;
+      detail = isEnglish
+        ? `Day ${step.popped} is permanently shadowed by Day ${step.current} (closer & warmer/equal for all left days). Popped!`
+        : `第 ${step.popped} 天被当前第 ${step.current} 天永久遮挡（对左侧所有日期而言，当前天距离更近且气温更高/等），果断弹出淘汰！`;
+    } else if (step.action === 'settle') {
+      const temp = nums[step.current];
+      title = step.warmerIdx !== null
+        ? isEnglish
+          ? `Instant Settle! Day ${step.current} (${temp}°) Next Warmer = Day ${step.warmerIdx} (${nums[step.warmerIdx]}°)`
+          : `即时结算！第 ${step.current} 天（${temp}°）右侧首个更暖日为第 ${step.warmerIdx} 天（${nums[step.warmerIdx]}°）`
+        : isEnglish
+          ? `Instant Settle! Day ${step.current} (${temp}°) has no warmer day, ans = 0`
+          : `即时结算！第 ${step.current} 天（${temp}°）右侧无更高气温，ans[${step.current}] = 0`;
+      detail = step.warmerIdx !== null
+        ? isEnglish
+          ? `Stack top Day ${step.warmerIdx} is the first strictly warmer day! Span = ${step.warmerIdx} - ${step.current} = ${step.waitDays} days. Settled immediately!`
+          : `栈顶第 ${step.warmerIdx} 天即为右侧首个严格更暖日！跨度 = ${step.warmerIdx} - ${step.current} = ${step.waitDays} 天，就地即时写入！`
+        : isEnglish
+          ? `Stack is empty; no warmer day exists in the future. Directly settled as 0.`
+          : `右侧栈为空，未来无更高气温，直接就地写入 0。`;
+    } else if (step.action === 'push') {
+      const temp = nums[step.current];
+      title = isEnglish
+        ? `Push Day ${step.current} (${temp}°) onto stack as right-candidate`
+        : `第 ${step.current} 天（${temp}°）入栈作为左侧候选人`;
+      detail = isEnglish
+        ? `Day ${step.current} becomes a viable Next Greater candidate for earlier days to its left.`
+        : `第 ${step.current} 天自身答案已结清，现在作为左侧所有日期的潜在候选人入栈。`;
+    } else if (step.action === 'finish') {
+      title = t('逆序扫描结束：所有天数已即时结算完毕', 'Reverse traversal complete: all answers settled online');
+      detail = isEnglish
+        ? 'All answers were computed on the spot during traversal. Zero sentinel required.'
+        : '所有天数的答案在逆序遍历时均已就地即时完成结算，天然无需尾部哨兵特判。';
+    }
   }
-
-  const templateLines = [
-    ['init', 'ans = [0] * len(temperatures)', 'stack = []  # 栈底到栈顶单调递减'],
-    ['loop', 'for i, temp in enumerate(temperatures):', '# 当前气温作为回答者'],
-    [
-      'resolve',
-      '    while stack and temperatures[stack[-1]] < temp:',
-      '        mid = stack.pop(); ans[mid] = i - mid  # 计算等待跨度',
-    ],
-    ['push', '    stack.append(i)', '# 当前天入栈等待后续升温日'],
-    ['finish', 'return ans', '# 栈内滞留元素无更暖日，保留 0'],
-  ];
 
   return (
     <section
@@ -18337,8 +18627,8 @@ function DailyTemperaturesVisual() {
           <p className="eyebrow">{t('LC 739 · 每日温度', 'LC 739 · Daily Temperatures')}</p>
           <h2>{t('单调递减栈与等待天数动态结算', 'Decreasing Stack & Waiting Span Resolution')}</h2>
           <p>{t(
-            '数组 [73, 74, 75, 71, 69, 72, 76, 73]。单调栈维护气温递减链；一旦遇到升温日，立刻倒序结算栈顶元素。',
-            'Array [73, 74, 75, 71, 69, 72, 76, 73]. Stack maintains a decreasing chain; warmer days pop & resolve stack tops.'
+            '数组 [73, 74, 75, 71, 69, 72, 76, 73]。单调栈维护气温递减链；支持正向出栈结算（左视图）与逆序即时结算（右视图）。',
+            'Array [73, 74, 75, 71, 69, 72, 76, 73]. Decreasing stack supports both forward pop-driven (Left View) and reverse instant (Right View) settlement.'
           )}</p>
         </div>
         <div className="daily-temps-summary-badge">
@@ -18346,6 +18636,62 @@ function DailyTemperaturesVisual() {
           <strong>{step.action.toUpperCase()}</strong>
         </div>
       </header>
+
+      <div className="daily-temps-view-switcher" role="tablist" aria-label={t('单调栈视角切换', 'Monotonic Stack View Mode')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'left'}
+          className={`view-btn ${viewMode === 'left' ? 'active' : ''}`}
+          onClick={() => handleSwitchView('left')}
+        >
+          {t('左视图 (正向出栈结算 · Slot 3A)', 'Left View (Forward Pop-Driven · Slot 3A)')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'right'}
+          className={`view-btn ${viewMode === 'right' ? 'active' : ''}`}
+          onClick={() => handleSwitchView('right')}
+        >
+          {t('右视图 (逆序即时结算 · Slot 3B)', 'Right View (Reverse Push-Driven · Slot 3B)')}
+        </button>
+      </div>
+
+      <div className="daily-temps-metrics-dashboard" aria-label={t('While 比较度量看板', 'While Comparison Metrics')}>
+        <div className="daily-temps-metric-item">
+          <span>{t('While 比较总计', 'Total Comparisons')}</span>
+          <strong>{step.comparisons.total} <small>/ 10 ({t('全流程', 'full')})</small></strong>
+          <em>{t('理论严格上界 ≤ 2n = 16 次', 'Theoretical bound ≤ 2n = 16')}</em>
+        </div>
+        <div className="daily-temps-metric-item true-stat">
+          <span>{t('满足弹出 (True)', 'Pop Checks (True)')}</span>
+          <strong>{step.comparisons.trueCount} <small>{t('次', 'times')}</small></strong>
+          <em>{t('每元素至多弹栈 1 次 (≤ n)', 'Each element popped at most once')}</em>
+        </div>
+        <div className="daily-temps-metric-item false-stat">
+          <span>{t('终止退出 (False)', 'Exit Checks (False)')}</span>
+          <strong>{step.comparisons.falseCount} <small>{t('次', 'times')}</small></strong>
+          <em>{t('每轮外层至多失败 1 次 (≤ n)', 'At most 1 failure per outer loop')}</em>
+        </div>
+        <div className="daily-temps-metric-item current-check">
+          <span>{t('当前微观判定', 'Current Evaluation')}</span>
+          <div className="current-check-expr">
+            <code>{step.currentCheck ? step.currentCheck.expr : '—'}</code>
+            {step.currentCheck && step.currentCheck.result !== null && (
+              <span className={`check-tag ${step.currentCheck.result ? 'true' : 'false'}`}>
+                {step.currentCheck.result ? 'True' : 'False'}
+              </span>
+            )}
+            {step.currentCheck && step.currentCheck.result === null && (
+              <span className="check-tag neutral">
+                {t('短路 / 压栈', 'Direct')}
+              </span>
+            )}
+          </div>
+          <em>{step.currentCheck ? step.currentCheck.note : ''}</em>
+        </div>
+      </div>
 
       <div className={`daily-temps-step-copy ${step.action}`} aria-live="polite">
         <span>{activeStep + 1} / {steps.length}</span>
@@ -18357,12 +18703,14 @@ function DailyTemperaturesVisual() {
         {nums.map((temp, index) => {
           const isCurrent = index === step.current;
           const isPopped = index === step.popped;
+          const isWarmerTarget = viewMode === 'right' && step.action === 'settle' && index === step.warmerIdx;
           const inStack = step.stack.includes(index);
           const ansVal = step.ans[index];
           const isResolved = ansVal > 0;
 
           let statusText = t('等待中', 'waiting');
-          if (isPopped) statusText = `+${step.waitDays}d`;
+          if (isPopped) statusText = viewMode === 'left' ? `+${step.waitDays}d` : t('已淘汰', 'eliminated');
+          else if (isWarmerTarget) statusText = t('首个更暖', 'warmer target');
           else if (isResolved) statusText = t(`${ansVal}天`, `${ansVal}d`);
           else if (inStack) statusText = t('在栈内', 'in stack');
           else if (step.action === 'finish' && ansVal === 0) statusText = t('无更暖', 'none');
@@ -18383,7 +18731,11 @@ function DailyTemperaturesVisual() {
       <div className="daily-temps-workspace">
         <div className="daily-temps-lane">
           <div className="daily-temps-lane-heading">
-            <span>{t('未决气温栈 (Monotonic Stack)', 'Unresolved Monotonic Stack')}</span>
+            <span>
+              {viewMode === 'left'
+                ? t('未决历史气温栈 (Monotonic Stack)', 'Unresolved Past Stack')
+                : t('右侧候选气温栈 (Candidate Stack)', 'Right-side Candidate Stack')}
+            </span>
             <strong>{t('栈底 (高) ──► 栈顶 (低)', 'Bottom (High) ──► Top (Low)')}</strong>
           </div>
           <div className="daily-temps-items">
@@ -18403,15 +18755,46 @@ function DailyTemperaturesVisual() {
               ))
             )}
           </div>
-          {step.action === 'resolve' && (
+          {viewMode === 'left' && step.action === 'resolve' && (
             <div className="daily-temps-calc-box">
               <strong>
-                {t('等待跨度公式', 'Span Formula')}: wait_days = i - mid = {step.current} - {step.popped} = {step.waitDays} {t('天', 'days')}
+                {t('等待跨度公式 (出栈结算 · Slot 3A)', 'Span Formula (Pop-Driven · Slot 3A)')}: wait_days = i - mid = {step.current} - {step.popped} = {step.waitDays} {t('天', 'days')}
               </strong>
               <span>
                 {t(
-                  `第 ${step.current} 天气温 ${nums[step.current]}° > 第 ${step.popped} 天气温 ${nums[step.popped]}°，成功回答第 ${step.popped} 天的悬赏！`,
+                  `第 ${step.current} 天气温 ${nums[step.current]}° > 第 ${step.popped} 天气温 ${nums[step.popped]}°，当前天成功回答历史第 ${step.popped} 天的悬赏！`,
                   `Day ${step.current} temp ${nums[step.current]}° > Day ${step.popped} temp ${nums[step.popped]}°, resolving Day ${step.popped}!`
+                )}
+              </span>
+            </div>
+          )}
+          {viewMode === 'right' && step.action === 'settle' && (
+            <div className="daily-temps-calc-box">
+              <strong>
+                {t('即时结算公式 (入栈结算 · Slot 3B)', 'Instant Settle Formula (Push-Driven · Slot 3B)')}: {step.warmerIdx !== null ? `ans[${step.current}] = stack[-1] - ${step.current} = ${step.warmerIdx} - ${step.current} = ${step.waitDays} 天` : `ans[${step.current}] = 0 (右侧无更高气温)`}
+              </strong>
+              <span>
+                {step.warmerIdx !== null
+                  ? t(
+                      `当前第 ${step.current} 天（${nums[step.current]}°）右侧首个严格更暖日为栈顶第 ${step.warmerIdx} 天（${nums[step.warmerIdx]}°），就地即时写入！`,
+                      `Right-side first warmer day for Day ${step.current} (${nums[step.current]}°) is stack top Day ${step.warmerIdx} (${nums[step.warmerIdx]}°), settled on the spot!`
+                    )
+                  : t(
+                      `当前第 ${step.current} 天（${nums[step.current]}°）右侧无更高气温，即时确认为 0。`,
+                      `No warmer day to the right for Day ${step.current} (${nums[step.current]}°), settled as 0.`
+                    )}
+              </span>
+            </div>
+          )}
+          {viewMode === 'right' && step.action === 'eliminate' && (
+            <div className="daily-temps-calc-box eliminate">
+              <strong>
+                {t('候选人遮挡淘汰', 'Candidate Shadowing Elimination')}: {nums[step.popped]}° &le; {nums[step.current]}°
+              </strong>
+              <span>
+                {t(
+                  `右侧第 ${step.popped} 天（${nums[step.popped]}°）气温不高于当前第 ${step.current} 天（${nums[step.current]}°），且位置更靠右。对左侧任意日期而言，当前天更近且更暖，第 ${step.popped} 天被永久遮挡，淘汰出栈！`,
+                  `Day ${step.popped} (${nums[step.popped]}°) is <= Day ${step.current} (${nums[step.current]}°) and further right. Shorter and further away means it is permanently shadowed, so pop!`
                 )}
               </span>
             </div>
@@ -18442,7 +18825,7 @@ function DailyTemperaturesVisual() {
         <strong>ans =</strong>
         {step.ans.map((val, idx) => (
           <span
-            className={`${val > 0 ? 'resolved' : ''}${idx === step.popped ? ' flash' : ''}`}
+            className={`${val > 0 ? 'resolved' : ''}${idx === step.popped || (viewMode === 'right' && idx === step.current && step.action === 'settle') ? ' flash' : ''}`}
             key={idx}
           >
             <small>{idx}</small>

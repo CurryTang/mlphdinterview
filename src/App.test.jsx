@@ -489,11 +489,23 @@ describe('App', () => {
       name: /每日温度单调栈执行推演|Daily Temperatures Monotonic Stack Walkthrough/i,
     });
     expect(within(visual).getByText(/单调递减栈与等待天数动态结算|Decreasing Stack & Waiting Span Resolution/i)).toBeInTheDocument();
+    expect(within(visual).getByText(/While 比较总计|Total Comparisons/i)).toBeInTheDocument();
 
+    // Step 4 in Left View (resolve Day 0)
     fireEvent.change(within(visual).getByRole('slider', { name: /选择每日温度推演步骤|Select Daily Temperatures step/i }), {
       target: { value: '4' },
     });
     expect(within(visual).getByText(/升温触发|Warmer Day/i)).toBeInTheDocument();
+
+    // Switch to Right View (Slot 3B instant reverse settlement)
+    const rightTab = within(visual).getByRole('tab', { name: /右视图|Right View/i });
+    fireEvent.click(rightTab);
+    expect(within(visual).getByText(/逆序右视图即时结算|Right View Reverse Instant Settlement/i)).toBeInTheDocument();
+
+    // Step slider in Right View
+    const slider = within(visual).getByRole('slider', { name: /选择每日温度推演步骤|Select Daily Temperatures step/i });
+    fireEvent.change(slider, { target: { value: '4' } });
+    expect(within(visual).getByText(/逆序扫描第 6 天|Reverse Scan Day 6/i)).toBeInTheDocument();
   });
 
   it('renders the trapping rain water walkthrough and reaches six units', async () => {

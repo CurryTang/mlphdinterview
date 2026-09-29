@@ -529,6 +529,82 @@ class Solution:
         return ans
 ```
 
+##### Right View Implementation (Reverse Traversal with Instant Settlement · Slot 3B)
+
+If we traverse in **reverse order ($i = n-1 \to 0$)**, the current element $i$ acts directly as the **protagonist**. The stack maintains all viable candidates to its right. Any right-hand candidate with $temperatures[\text{top}] \le temp$ is permanently shadowed by Day $i$ (since Day $i$ is both closer to any left-side day and warmer or equal), and is immediately evicted. Once evictions finish, the stack top is guaranteed to be the first strictly warmer day, allowing **instant settlement (Slot 3B)**:
+
+```python
+class SolutionRightView:
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        ans = [0] * n
+        stack = []  # Temperatures strictly decrease from bottom to top
+
+        # Slot 1: Reverse traversal
+        for i in range(n - 1, -1, -1):
+            temp = temperatures[i]
+            # Slot 2: Evict shadowed right-hand candidates
+            while stack and temperatures[stack[-1]] <= temp:
+                stack.pop()
+            # Slot 3B: Instant settlement for Day i
+            ans[i] = stack[-1] - i if stack else 0
+            # Slot 4: Enqueue Day i as candidate for earlier days
+            stack.append(i)
+
+        return ans
+```
+
+##### Left View vs. Right View: Structural Comparison & Selection Criteria
+
+| Dimension | Left View (Forward + Pop-Driven · Slot 3A) | Right View (Reverse + Push-Driven · Slot 3B) |
+| :--- | :--- | :--- |
+| **Protagonist** | Evicted element `mid` is the protagonist; scanning element $i$ is the right terminator | Scanning element $i$ is the protagonist; stack stores the candidate skeleton |
+| **Settlement Timing** | **Asynchronous / Delayed**: Element enqueues and waits until a warmer future day pops it | **Instant / Online**: Answer for $i$ is finalized immediately on the spot |
+| **Residual Stack Items** | Unresolved days; retain default 0 or require trailing sentinels to flush | Global candidates; all answers already finalized, completely eliminating sentinels |
+| **When Right View is Simpler** | Bilateral boundary problems (e.g., Largest Rectangle, Rain Water) | **Online streaming** (LC 901), **Subarray counting** (LC 1063), **DP state transitions** (LC 907) |
+
+##### Aggregate Analysis of While Loop Comparisons: Formal Upper Bound Proof
+
+Let $n$ denote array length. The outer `for` loop executes exactly $n$ iterations. For each execution of `while stack and condition:`:
+
+1. **Short-Circuit on Empty Stack**:
+   When `stack` is empty, evaluation terminates immediately without performing any numeric comparison.
+2. **Condition Evaluates to True**:
+   Every True evaluation triggers exactly one `stack.pop()`. Since each index is pushed at most once, at most $n$ successful pops can occur:
+   $$\text{Comparisons}_{\text{True}} \le n$$
+3. **Condition Evaluates to False**:
+   Every False evaluation terminates the `while` loop immediately. Since the loop can terminate at most once per outer iteration:
+   $$\text{Comparisons}_{\text{False}} \le n$$
+4. **Tight Amortized Upper Bound**:
+   $$\text{Total Comparisons} = \text{Comparisons}_{\text{True}} + \text{Comparisons}_{\text{False}} \le n + n = 2n$$
+   Hence, monotonic stack value comparisons never exceed $2n$, giving strict amortized $\Theta(n)$ execution time.
+
+###### Concrete Execution Trace for `temperatures = [73, 74, 75, 71, 69, 72, 76, 73]` ($n = 8$)
+
+On this canonical input, both views execute **exactly 10 numeric comparisons** (well below the $2n = 16$ ceiling):
+
+- **Left View (Forward) Trace**:
+  - Day 0 (73°): Stack empty $\to$ **0 comparisons**. Push 0.
+  - Day 1 (74°): $73° < 74°$ True (pop 0, settle); stack empty $\to$ **1 True**. Push 1.
+  - Day 2 (75°): $74° < 75°$ True (pop 1, settle); stack empty $\to$ **1 True**. Push 2.
+  - Day 3 (71°): $75° < 71°$ False (terminate) $\to$ **1 False**. Push 3.
+  - Day 4 (69°): $71° < 69°$ False (terminate) $\to$ **1 False**. Push 4.
+  - Day 5 (72°): $69° < 72°$ True (pop 4); $71° < 72°$ True (pop 3); $75° < 72°$ False (terminate) $\to$ **2 True + 1 False = 3 comparisons**. Push 5.
+  - Day 6 (76°): $72° < 76°$ True (pop 5); $75° < 76°$ True (pop 2); stack empty $\to$ **2 True**. Push 6.
+  - Day 7 (73°): $76° < 73°$ False (terminate) $\to$ **1 False**. Push 7.
+  - **Total**: $6 \text{ True} + 4 \text{ False} = 10 \text{ numeric comparisons}$.
+
+- **Right View (Reverse) Trace**:
+  - Day 7 (73°): Stack empty $\to$ **0 comparisons**. Settle $ans[7]=0$. Push 7.
+  - Day 6 (76°): $73° \le 76°$ True (evict 7); stack empty $\to$ **1 True**. Settle $ans[6]=0$. Push 6.
+  - Day 5 (72°): $76° \le 72°$ False (terminate) $\to$ **1 False**. Top is 6, settle $ans[5] = 6 - 5 = 1$. Push 5.
+  - Day 4 (69°): $72° \le 69°$ False (terminate) $\to$ **1 False**. Top is 5, settle $ans[4] = 5 - 4 = 1$. Push 4.
+  - Day 3 (71°): $69° \le 71°$ True (evict 4); $72° \le 71°$ False (terminate) $\to$ **1 True + 1 False = 2 comparisons**. Top is 5, settle $ans[3] = 5 - 3 = 2$. Push 3.
+  - Day 2 (75°): $71° \le 75°$ True (evict 3); $72° \le 75°$ True (evict 5); $76° \le 75°$ False (terminate) $\to$ **2 True + 1 False = 3 comparisons**. Top is 6, settle $ans[2] = 6 - 2 = 4$. Push 2.
+  - Day 1 (74°): $75° \le 74°$ False (terminate) $\to$ **1 False**. Top is 2, settle $ans[1] = 2 - 1 = 1$. Push 1.
+  - Day 0 (73°): $74° \le 73°$ False (terminate) $\to$ **1 False**. Top is 1, settle $ans[0] = 1 - 0 = 1$. Push 0.
+  - **Total**: $4 \text{ True} + 6 \text{ False} = 10 \text{ numeric comparisons}$.
+
 #### Practice 2: Next Greater Element II (Circular Array via Modulo)
 Find the next greater element in a circular array.
 - **Mapping**: Extend iteration to $2n$ in **Slot 1** using `i % n`, pushing to stack only during the first cycle ($i < n$).

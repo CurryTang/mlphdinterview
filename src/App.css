@@ -4637,6 +4637,140 @@
   font: 800 1.15rem "Space Grotesk", "Avenir Next", sans-serif;
 }
 
+.daily-temps-view-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: rgba(240, 246, 248, 0.85);
+  border-bottom: 1px solid rgba(38, 69, 82, 0.12);
+}
+
+.daily-temps-view-switcher .view-btn {
+  border: 1px solid rgba(29, 89, 109, 0.25);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #21434f;
+  padding: 0.38rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.daily-temps-view-switcher .view-btn:hover {
+  background: #eef6f8;
+  border-color: #1d596d;
+}
+
+.daily-temps-view-switcher .view-btn.active {
+  background: #1d596d;
+  color: #ffffff;
+  border-color: #1d596d;
+  box-shadow: 0 2px 6px rgba(29, 89, 109, 0.25);
+}
+
+.daily-temps-metrics-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(38, 69, 82, 0.1);
+}
+
+.daily-temps-metric-item {
+  border: 1px solid rgba(35, 69, 82, 0.16);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.48rem 0.65rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.daily-temps-metric-item span {
+  color: #617780;
+  font: 700 0.61rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.daily-temps-metric-item strong {
+  color: #183b47;
+  font: 800 1.15rem "Space Grotesk", "Avenir Next", sans-serif;
+  line-height: 1.15;
+}
+
+.daily-temps-metric-item strong small {
+  color: #718892;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.daily-temps-metric-item em {
+  color: #6f858f;
+  font-size: 0.64rem;
+  font-style: normal;
+}
+
+.daily-temps-metric-item.true-stat strong {
+  color: #157158;
+}
+
+.daily-temps-metric-item.false-stat strong {
+  color: #c96e27;
+}
+
+.daily-temps-metric-item.current-check {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .daily-temps-metric-item.current-check {
+    grid-column: span 2;
+  }
+}
+
+.current-check-expr {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.1rem 0;
+}
+
+.markdown-body .current-check-expr code {
+  color: #1a4250 !important;
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+  background: #eef6f9 !important;
+  padding: 0.15rem 0.35rem !important;
+  border-radius: 4px;
+}
+
+.check-tag {
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+  font: 700 0.58rem "IBM Plex Mono", "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.check-tag.true {
+  background: var(--dt-green-soft);
+  color: #105d49;
+  border: 1px solid rgba(21, 113, 88, 0.3);
+}
+
+.check-tag.false {
+  background: var(--dt-orange-soft);
+  color: #b35915;
+  border: 1px solid rgba(201, 110, 39, 0.3);
+}
+
+.check-tag.neutral {
+  background: #e8edef;
+  color: #556c76;
+}
+
 .daily-temps-step-copy {
   min-height: 88px;
   border-left: 5px solid var(--dt-blue);
@@ -4654,8 +4788,13 @@
   border-left-color: var(--dt-orange);
 }
 
-.daily-temps-step-copy.resolve {
+.daily-temps-step-copy.resolve,
+.daily-temps-step-copy.settle {
   border-left-color: var(--dt-green);
+}
+
+.daily-temps-step-copy.eliminate {
+  border-left-color: #d9534f;
 }
 
 .daily-temps-step-copy.finish {
@@ -4856,6 +4995,12 @@
   padding: 0.55rem 0.75rem;
   color: #0d4e3d;
   font-size: 0.78rem;
+}
+
+.daily-temps-calc-box.eliminate {
+  border-color: rgba(217, 83, 79, 0.35);
+  background: #fdf2f2;
+  color: #922b28;
 }
 
 .daily-temps-calc-box strong {
