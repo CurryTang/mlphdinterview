@@ -669,6 +669,59 @@ Analyzing the macro lifetime of each index $i \in [0, n-1]$:
 
 Total push and pop operations across the entire execution cannot exceed $2n$. Thus time complexity is strictly $O(n)$, with auxiliary space $O(k)$.
 
+### 5.1 Canonical Variant: Fixed Window (LC 239) vs Streaming Trailing Window Max (Warm-up)
+
+In quantitative finance high-frequency signal extraction and online streaming risk systems (e.g., maximum drawdown over the past 15 minutes, peak concurrency), a variant closely aligned with production realities often appears: **Trailing Window Maximum with Warm-up**.
+
+#### Core Mechanism Comparison
+
+| Dimension | Standard LC 239 (Fixed Window, Batch) | Trailing / Rolling Window Max (Streaming, Online) |
+|---|---|---|
+| **Window Span** | Strictly fixed at size $k$ | First $n-1$ points undergo warm-up (size $t+1 \le n$), then stabilize at $n$ |
+| **Output Timing** | Must wait until window accumulates $k$ items (`right >= k - 1`) | **Emits output immediately at every timestamp $t$** |
+| **Output Length** | $N - k + 1$ | Strictly equals input length $N$ |
+| **Head Expiry** | `candidates[0] == left` (or `<= right - k`) | `q[0] <= t - n` (active lookback interval is $[t - n + 1, t]$) |
+| **Recording Logic**| Guarded by `if right >= k - 1: ans.append(nums[q[0]])` | Unguarded: append `res.append(xs[q[0]])` unconditionally at every step |
+
+#### Streaming Rolling Max Implementation
+
+```python
+from collections import deque
+from typing import List
+
+def rolling_max(xs: List[float], n: int) -> List[float]:
+    """
+    Trailing window maximum (window size <= n).
+    
+    Computes the maximum within lookback interval [max(0, t - n + 1), t] at each step t.
+    Produces output immediately starting from t = 0; output length strictly equals len(xs).
+    """
+    if not xs or n <= 0:
+        return []
+
+    q = deque()  # stores indices; maintains strictly decreasing values
+    res = []
+
+    for t, val in enumerate(xs):
+        # 1. Head expiry: active window left bound is t - n + 1; pop indices <= t - n
+        while q and q[0] <= t - n:
+            q.popleft()
+
+        # 2. Tail domination: older and smaller/equal elements are strictly dominated; pop them
+        while q and xs[q[-1]] <= val:
+            q.pop()
+
+        # 3. Push current timestamp index
+        q.append(t)
+
+        # 4. Deque front is the maximum for current window; emit immediately
+        res.append(float(xs[q[0]]))
+
+    return res
+```
+
+The monotonic eviction logic between the two variants is **mathematically identical**. The distinguishing feature of the streaming variant is its **warm-up phase**, which eliminates cold-start voids while preserving online causality without lookahead bias.
+
 ---
 
 ## 6. Minimum Size Subarray Sum

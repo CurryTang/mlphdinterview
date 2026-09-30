@@ -670,6 +670,59 @@ class Solution:
 
 全部元素在整个程序运行期间的进出队操作总数上界为 $2n$。因此时间复杂度严格为 $O(n)$，辅助空间复杂度为 $O(k)$。
 
+### 5.1 衍生核心变体：固定窗口 (LC 239) vs 流式暖机回看窗口 (Trailing / Rolling Window Max)
+
+在量化金融高频交易信号提取、流式风控（如过去 15 分钟最大回撤、最高并发量）中，常遇到一个比 LC 239 更贴合工程现实的变体：**变长暖机回看窗口最大值（Trailing Window Maximum）**。
+
+#### 核心机制对比
+
+| 维度 | 标准 LC 239 (固定满窗，Batch) | Trailing / Rolling Window Max (时序流式，Online) |
+|---|---|---|
+| **窗口大小** | 恒为 $k$ | 前 $n-1$ 个点处于暖机期（窗口大小为 $t+1 \le n$），之后稳定为 $n$ |
+| **输出时机** | 必须等待窗口积满 $k$ 个元素（`right >= k - 1`） | **每个时间戳 $t$ 立即产生输出**，无需等待 |
+| **输出长度** | $N - k + 1$ | 严格等于输入序列长度 $N$ |
+| **队首淘汰条件** | `candidates[0] == left`（或 `<= right - k`） | `q[0] <= t - n`（当前回看区间为 $[t - n + 1, t]$） |
+| **记录答案方式** | `if right >= k - 1: ans.append(nums[q[0]])` | 无需条件门禁，每步直接 `res.append(xs[q[0]])` |
+
+#### 流式暖机版代码实现 (Rolling Max)
+
+```python
+from collections import deque
+from typing import List
+
+def rolling_max(xs: List[float], n: int) -> List[float]:
+    """
+    Trailing window maximum (window size <= n).
+    
+    对于每一个时间点 t，计算其在回看窗口 [max(0, t - n + 1), t] 内的最大值。
+    从 t = 0 开始即刻产生输出，输出数组长度严格为 len(xs)。
+    """
+    if not xs or n <= 0:
+        return []
+
+    q = deque()  # 存放下标，维持对应值自队首向队尾严格单调递减
+    res = []
+
+    for t, val in enumerate(xs):
+        # 1. 队首过期检查：有效窗口左端点为 t - n + 1，早于该位置的下标 <= t - n 弹出
+        while q and q[0] <= t - n:
+            q.popleft()
+
+        # 2. 队尾单调淘汰：历史更早进入且数值更小的元素已被严格支配，弹出
+        while q and xs[q[-1]] <= val:
+            q.pop()
+
+        # 3. 当前下标入队
+        q.append(t)
+
+        # 4. 队首即为当前窗口极值，每步即时输出
+        res.append(float(xs[q[0]]))
+
+    return res
+```
+
+两者的单调队列淘汰机制在数学上**完全同构**，唯一的差别在于**流式时序具有前缀暖机阶段（Warm-up Phase）**，这不仅避免了冷启动时的输出空洞，而且在工程上保证了实时的因果无前瞻性（Causality）。
+
 ---
 
 ## 6. Minimum Size Subarray Sum

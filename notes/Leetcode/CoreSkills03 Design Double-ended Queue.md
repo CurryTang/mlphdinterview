@@ -52,3 +52,100 @@ pushBack(x):
 扩容时按逻辑顺序复制 `data[(front+i)%old_capacity]` 到新数组的 `i`，然后把 `front` 重置为 0。
 
 </details>
+
+---
+
+## 实战应用：Trailing Window Maximum（时序流式暖机窗口最大值）
+
+双端队列在工业系统、量化交易与在线时序特征工程中最经典的高频算法应用，正是**单调双端队列（Monotonic Deque）**维护时序滑动窗口极值。
+
+### 题目定义
+
+> **Trailing / Rolling Window Maximum**：
+> 给定一个实数时序流 `xs`（长度为 $N$）与最大回看时间窗口大小 $n$。
+> 在每一个时间步 $t \in [0, N-1]$，窗口覆盖历史范围为 $[ \max(0, t - n + 1), \; t ]$（窗口尺寸 $\le n$）。
+> 要求实时输出截至时间戳 $t$ 为止该回看窗口内的最大值。返回长度同样为 $N$ 的结果列表。
+
+```python
+def rolling_max(xs: List[float], n: int) -> List[float]: ...
+```
+
+### 与标准 LeetCode 239（固定窗口）的核心区别
+
+| 维度 | 标准 LeetCode 239 (Sliding Window Maximum) | Trailing / Rolling Window Maximum (时序流式) |
+|---|---|---|
+| **输出时机** | 必须等待窗口填满 $k$ 个元素（$t \ge k - 1$）才开始输出 | **每个时刻 $t$ 都必须立即产生一个输出**（包含暖机阶段） |
+| **窗口跨度** | 严格固定为 $k$ | 前 $n-1$ 个点窗口动态从 $1$ 逐渐膨胀至 $n$（Warm-up 暖机阶段） |
+| **输出长度** | $N - k + 1$ | 严格等于输入长度 $N$ |
+| **工业场景** | 离线批量切片 | 实时在线风控、量化交易信号、特征工程因果无前瞻（Causal Streaming） |
+
+### 核心不变量与操作步骤
+
+双端队列中**仅保存时间戳下标 $t$**，维持两大核心不变量：
+1. **时序严格递增**：队首到队尾下标单调递增；
+2. **数值单调递减**：队首对应的数值最大，队首 $q[0]$ 恒为当前有效窗口内的最值。
+
+在每个时间戳 $t$ 收到数值 $val = xs[t]$ 时，执行四步标准流程：
+1. **队首过期淘汰**：
+   当前窗口左界为 $t - n + 1$。因此凡是下标 $\le t - n$（即 $< t - n + 1$）的历史索引均已过期，从队首弹出：`while q and q[0] <= t - n: q.popleft()`；
+2. **队尾单调淘汰（支配性原理）**：
+   若队尾元素 $xs[q[-1]] \le val$，说明它既比新元素更早进入、数值又小于等于新元素，在未来绝无可能成为窗口最大值，立即从队尾弹出：`while q and xs[q[-1]] <= val: q.pop()`；
+3. **当前元素入队**：
+   `q.append(t)`；
+4. **即时记录当前最大值**：
+   队首 $xs[q[0]]$ 即为当前窗口内的最大值，`res.append(float(xs[q[0]]))`。
+
+### 工业级实现代码
+
+```python
+from collections import deque
+from typing import List
+
+def rolling_max(xs: List[float], n: int) -> List[float]:
+    """
+    Trailing window maximum with window size <= n.
+    
+    Parameters:
+        xs: 输入浮点时序列表，长度为 N
+        n:  最大回看窗口长度 (n >= 1)
+        
+    Returns:
+        与 xs 等长的浮点列表，res[t] 代表 xs[max(0, t - n + 1) : t + 1] 的最大值
+    """
+    if not xs or n <= 0:
+        return []
+
+    q = deque()  # 存放下标，严格维持对应数值自顶向下递减
+    res: List[float] = []
+
+    for t, val in enumerate(xs):
+        # 1. 队首过期检查：有效窗口左闭右闭区间为 [t - n + 1, t]
+        # 下标 <= t - n 已经滑出窗口
+        while q and q[0] <= t - n:
+            q.popleft()
+
+        # 2. 队尾淘汰劣质候选：比当前值小或相等的历史元素永无翻盘机会
+        while q and xs[q[-1]] <= val:
+            q.pop()
+
+        # 3. 当前下标入队
+        q.append(t)
+
+        # 4. 队首即为当前窗口 [max(0, t - n + 1), t] 内的最大值
+        res.append(float(xs[q[0]]))
+
+    return res
+
+if __name__ == "__main__":
+    # 示例 1: 基础递增与回撤 (n=3)
+    data = [1.0, 3.0, -1.0, -3.0, 5.0, 3.0, 6.0, 7.0]
+    expected = [1.0, 3.0, 3.0, 3.0, 5.0, 5.0, 6.0, 7.0]
+    assert rolling_max(data, 3) == expected
+    print("✅ rolling_max test passed!")
+```
+
+### 复杂度分析
+
+- **时间复杂度**：严格 $\mathcal{O}(N)$。每个索引 $t \in [0, N-1]$ 入队恰好一次（`append`），在后续的整个执行过程中最多被队首弹出一次或队尾弹出一次（出队总次数 $\le N$）。因此 `while` 循环的总摊还操作次数为 $\mathcal{O}(N)$，平均每个时间步耗时 $\mathcal{O}(1)$。
+- **空间复杂度**：双端队列在任意时刻最多容纳 $\min(n, N)$ 个有效下标，额外空间复杂度严格为 $\mathcal{O}(\min(n, N))$。
+
