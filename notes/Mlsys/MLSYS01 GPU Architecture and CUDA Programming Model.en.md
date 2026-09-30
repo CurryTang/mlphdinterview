@@ -6,18 +6,21 @@ This chapter serves as the fundamental foundation of MLSYS operator engineering 
 
 ## Part 1: GPU Hardware Architecture & Core Components
 
-## More GPU
+### 1.1 Hierarchical Architecture Overview
 
-### Overview
+![[assets/Pasted image 20251222135239.png|Figure 1: NVIDIA H100/B100 Top-Level Accelerator Architecture]]
+> **Figure 1 Key Architectural Takeaways:** Shows the GPU's hierarchical memory and compute topology:
+> - **Top-Level SM Array:** Multiple Streaming Multiprocessors (SM 0..SM N-1, up to 132 SMs on H100) are organized in parallel across GPCs.
+> - **Compute Pipelines:** Each SM integrates 4 Tensor Cores (specialized MMA hardware delivering ~1024 FLOPs/cycle, dominating over 93% of dense DL compute) and 4 Warp Schedulers (each controlling 32 SIMD vector lanes).
+> - **Memory Subsystem Hierarchy:** 256 KB L1/SMEM per SM provides low-latency (~20 cycles, ~33 TB/s aggregate) software-managed caching; all SMs share a 50 MB L2 Cache (~12 TB/s) backed by up to 80 GB HBM3 (3.35 TB/s peak).
 
-![[assets/Pasted image 20251222135239.png]]
-**Figure 1: Abstract diagram of the overall NVIDIA H100/B100 GPU architecture.** It shows the GPU's hierarchical memory and compute structure: multiple streaming multiprocessors (SM 0, SM 1, ... SM N-1) are arranged in parallel, and each SM contains 4 Tensor Cores (responsible for matrix multiplication and contributing most of the compute throughput, analogous to the TPU MXU) and 4 Warp Schedulers (SIMD vector units containing 32 lanes, i.e., "CUDA Cores"; all lanes within the same warp must execute the same operation). Each SM has 256KB of L1 Cache/SMEM (shared memory that can be controlled by the programmer, similar to TPU VMEM but smaller). All SMs share a 50MB L2 Cache (automatically managed by hardware to provide faster bandwidth) and the underlying HBM high-bandwidth memory (80GB on H100, 192GB on B100), which stores model parameters, activations, and optimizer states.
+![[assets/Pasted image 20251222135741.png|Figure 2: NVIDIA H100 Streaming Multiprocessor (SM) Microarchitecture]]
+> **Figure 2 SM Microarchitecture Analysis:** Detailed breakdown of a single H100 SM:
+> - **Four Sub-Partitions (Processing Blocks):** Each sub-partition operates independently with its own L0 Instruction Cache, Warp Scheduler (1 warp/cycle), Dual Dispatch Units, and a 16,384 × 32-bit Register File.
+> - **Execution Units per Sub-Partition:** 16 INT32 cores, 16 FP32 cores, 8 FP64 cores, 1 Fourth-Gen Tensor Core, LD/ST units, and Special Function Units (SFUs).
+> - **Asynchronous Engines:** Hardware TMA (Tensor Memory Accelerator) offloads tensor tiling and address calculation directly between global memory and shared memory without consuming SM registers or ALUs.
 
-![[assets/Pasted image 20251222135741.png]]
-**Figure 2: Detailed internal architecture of a single NVIDIA H100 SM (streaming multiprocessor).** Each SM contains 4 processing blocks that share an L1 instruction cache and a 256KB L1 data cache/shared memory. Each processing block contains an L0 instruction cache, a Warp Scheduler (scheduling 32 threads per cycle), a Dispatch Unit, a 16384×32-bit register file, and many compute units—16 INT32 units, 16 FP32 units, 8 FP64 units, 1 fourth-generation Tensor Core, LD/ST (load/store) units, and an SFU (special function unit). The bottom also includes a Tensor Memory Accelerator and Tex (texture units). This design enables the H100 to efficiently execute large-scale matrix operations and deep learning workloads in parallel.
-
-
-### Components
+### 1.2 SM Compute & Memory Component Decomposition
 
 #### Summary of GPU compute components
 
@@ -268,51 +271,67 @@ def sm_cycle(sub_partition):
     sub_partition.process_writebacks()
 ```
 
-## Flowchart
+### 1.3 Sub-Partition Execution Pipeline & Warp Scheduling Flow
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         SM                                   │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │              Sub-Partition (×4)                         │ │
-│  │                                                         │ │
-│  │   ┌──────────────┐                                      │ │
-│  │   │ Warp Pool    │  (8 warps)                          │ │
-│  │   │ W0 W1 W2 ... │                                      │ │
-│  │   └──────┬───────┘                                      │ │
-│  │          │ Which warp is ready?                         │ │
-│  │          ▼                                              │ │
-│  │   ┌──────────────┐                                      │ │
-│  │   │Warp Scheduler│ ──selects 1-2 eligible warps         │ │
-│  │   └──────┬───────┘                                      │ │
-│  │          │                                              │ │
-│  │          ▼                                              │ │
-│  │   ┌──────────────┐    ┌──────────────┐                  │ │
-│  │   │Dispatch Unit │    │Dispatch Unit │  (×2)            │ │
-│  │   └──────┬───────┘    └──────┬───────┘                  │ │
-│  │          │                   │                          │ │
-│  │          ▼                   ▼                          │ │
-│  │   ┌─────────────────────────────────────────────┐       │ │
-│  │   │           Execution Units                    │       │ │
-│  │   │  INT32  FP32  FP64  LD/ST  SFU  TensorCore  │       │ │
-│  │   └─────────────────────────────────────────────┘       │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+<div class="hardware-arch-card">
+  <div class="arch-card-header">
+    <h4>NVIDIA Streaming Multiprocessor (SM) Execution Pipeline</h4>
+    <span class="arch-badge">Warp Scheduling &amp; Dispatch Flow</span>
+  </div>
+  <div class="arch-subpartition-grid">
+    <div class="arch-subpartition">
+      <div class="subpart-title">Processing Sub-Partition (1 of 4 per SM)</div>
+      <div class="arch-unit-group">
+        <div class="unit-box pool">
+          <span class="unit-tag">Warp Pool</span>
+          <strong>Active Warps (up to 16 resident per Sub-Partition / 64 per SM)</strong>
+        </div>
+        <div class="unit-arrow">▼ Ready / Eligible Check (Scoreboard &amp; Barrier Filter)</div>
+        <div class="unit-box scheduler">
+          <span class="unit-tag">Warp Scheduler</span>
+          <strong>Instruction Issue Logic (Greedy-Then-Oldest / Round-Robin)</strong>
+        </div>
+        <div class="unit-arrow">▼ Dual Issue per Cycle</div>
+        <div class="dispatch-dual">
+          <div class="unit-box dispatch">
+            <span class="unit-tag">Dispatch Unit 0</span>
+            <strong>Operand Collector &amp; Route</strong>
+          </div>
+          <div class="unit-box dispatch">
+            <span class="unit-tag">Dispatch Unit 1</span>
+            <strong>Operand Collector &amp; Route</strong>
+          </div>
+        </div>
+        <div class="unit-arrow">▼ Issue to Execution Pipelines</div>
+        <div class="execution-units-grid">
+          <div class="exec-chip tensor">Tensor Core<br/><span>MMA / WGMMA</span></div>
+          <div class="exec-chip fp32">FP32 Cores<br/><span>16 SIMD Lanes</span></div>
+          <div class="exec-chip int32">INT32 Cores<br/><span>Address / Control</span></div>
+          <div class="exec-chip ldst">LD/ST Units<br/><span>L1 / SMEM / Cache</span></div>
+          <div class="exec-chip sfu">SFU Units<br/><span>sin / cos / exp / rsqrt</span></div>
+          <div class="exec-chip fp64">FP64 Cores<br/><span>Double Precision</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-| Component | Responsibility | Analogy |
-| ------------------ | ---------------------- | -------------- |
-| **Warp Scheduler** | Decides "who executes," checks dependencies and hazards, and chooses a policy | Dispatcher: chooses the next player to send in |
-| **Dispatch Unit**  | Decides "how to execute," reads operands, selects execution units, and issues instructions | Coordinator: sends the player to the correct lane |
+| Component | Hardware Responsibility | Mental Model / Analogy |
+| :--- | :--- | :--- |
+| **Warp Scheduler** | Decides **"who executes"**: scans register scoreboard, checks barrier dependencies, and selects ready warps. | Dispatcher: picks the ready athlete from the dugout. |
+| **Dispatch Unit** | Decides **"how to execute"**: collects operands from register files, arbitrates unit ports, and dispatches instructions. | Coordinator: guides the athlete onto the designated track. |
 
-Cycle 1:  Warp_A: LD r1, [addr]     # initiates memory read, must wait ~400 cycles
-Cycle 2:  Warp_B: ADD r2, r3, r4    # switch to B
-Cycle 3:  Warp_C: MUL r5, r6, r7    # switch to C
-...
-Cycle 400: Warp_A: (memory returns)       # A's data has arrived
-Cycle 401: Warp_A: ADD r8, r1, r9   # A resumes execution
+> [!example] Warp Latency Hiding Timeline
+> ```cuda
+> Cycle 1:   Warp_A: LD r1, [global_addr]  // Initiates global memory load (latches scoreboard, takes ~400 cycles)
+> Cycle 2:   Warp_B: ADD r2, r3, r4        // Warp Scheduler instantly switches to Warp_B (Zero-overhead context switch)
+> Cycle 3:   Warp_C: MUL r5, r6, r7        // Switches to Warp_C (no stall)
+> ...
+> Cycle 400: Warp_A: [Memory data returns] // Scoreboard marks Warp_A operands as ready
+> Cycle 401: Warp_A: ADD r8, r1, r9        // Warp_A resumes execution seamlessly
+> ```
 
-### Importance of Tensor Cores
+### 1.4 The Dominance of Tensor Cores in Modern LLM Workloads
 
 The numbers below use the H100 SXM scale for intuition: dense BF16 Tensor Core throughput is about 990 TFLOPs, while FP32 CUDA Core throughput is roughly 60-66 TFLOPs. The point is not a precise benchmark; it is to show where the main compute path of modern ML workloads lives.
 
@@ -348,7 +367,7 @@ The precise conclusion is: Transformer projection, MLP, and attention GEMMs shou
 
 ## Part 2: CUDA Programming Model & Kernel Engineering
 
-## Q1 Basic environment setup and hello world kernel
+### 2.1 CUDA Extension Build Pathways: load_inline vs setup.py
 
 ### Project file structure
 
@@ -430,7 +449,7 @@ b = torch.randn(1024, device='cuda')
 c = module.vector_add(a, b)
 ```
 
-## Q2 Understand hello world kernel
+### 2.2 Vector Add Operator Implementation and Execution Mapping
 
 ### GPU Hardware Architecture Intro
 
@@ -546,78 +565,76 @@ CPU                          GPU
 
 ## Part 3: Roofline Performance Modeling & Theoretical Bounds
 
-## 1. Motivation
+### 3.1 Motivation & Two-Segment Execution Model
 
-In deep learning, we often run into the following confusion:
-- Increasing batch size sometimes speeds things up, but sometimes has no effect
-- The same model can behave very differently on different hardware
-- Some operators (such as attention) are especially slow, while matrix multiplication is very fast
-**Roofline analysis** provides a concise framework for answering these questions: it tells you whether the current bottleneck is **compute** or **bandwidth**, and how to optimize for it.
-## 2. Core Definitions
+In deep learning systems engineering, we often encounter fundamental performance questions:
+- Increasing batch size sometimes scales throughput linearly, but other times has zero effect;
+- The exact same model shows vastly different scaling behavior across hardware architectures (e.g., A100 vs H100 vs TPU);
+- Certain operators (e.g., LayerNorm, Attention Softmax) consume significant wall-clock time despite small parameter counts, whereas matrix multiplication achieves immense throughput.
 
-Any computation can be decomposed into two time components:
-$$T_{\text{math}} = \frac{\text{FLOPs}}{\text{Accelerator FLOPs/s}}$$
-$$T_{\text{comms}} = \frac{\text{Bytes}}{\text{Bandwidth (Bytes/s)}}$$
+**Roofline Analysis** establishes a concise yet rigorous diagnostic framework: by contrasting an algorithm's **Arithmetic Intensity** against the hardware platform's **Critical Intensity (Ridge Point)**, it pinpoints whether an operator is **Compute-Bound** or **Memory-Bound**, identifying the only mathematically viable optimization pathways.
 
-| Symbol    | Meaning | Example (TPU v5e) |
-| --------- | ------ | ---------------------------- |
-| FLOPs/s   | Peak chip compute throughput | $1.97 \times 10^{14}$ (bf16) |
-| Bandwidth | HBM bandwidth | $8.2 \times 10^{11}$ bytes/s |
+### 3.2 Core Definitions & Physical Parameter Reference
 
-### Arithmetic Intensity
-$$\text{Arithmetic Intensity} = \frac{\text{FLOPs}}{\text{Bytes}}$$
-This is the core concept in roofline analysis: **how many floating-point operations can be performed per byte of data moved**.
-### Critical Intensity
-$$\text{Critical Intensity} = \frac{\text{Peak FLOPs/s}}{\text{Peak Bandwidth}}$$
-For the TPU v5e MXU:
-$$\frac{1.97 \times 10^{14}}{8.2 \times 10^{11}} \approx 240 \text{ FLOPs/byte}$$
-### 2.4 Compute-bound vs Memory-bound
+The execution time of any operator is bounded by two physical components:
+$$T_{\text{math}} = \frac{\text{FLOPs}}{\text{Accelerator Peak FLOPs/s}}$$
+$$T_{\text{comms}} = \frac{\text{Bytes}}{\text{Memory Bandwidth (Bytes/s)}}$$
 
-| Condition | Regime | Meaning |
-| --------------------------------------------------------------- | -------------------------- | ------------ |
-| $\text{Intensity}_{\text{algo}} > \text{Intensity}_{\text{hw}}$ | **Compute-bound**          | Compute is fully utilized ✓ |
-| $\text{Intensity}_{\text{algo}} < \text{Intensity}_{\text{hw}}$ | **Memory/Bandwidth-bound** | Compute waits on data and is wasted ✗ |
+| Symbol | Physical Meaning | Reference Value (TPU v5e) | Reference Value (H100 SXM) |
+| :--- | :--- | :--- | :--- |
+| $\pi$ (Peak FLOPs/s) | Peak compute throughput | $1.97 \times 10^{14}$ (BF16 MXU) | $\sim 1.0 \times 10^{15}$ (BF16 Dense Tensor Core) |
+| $\beta$ (Bandwidth) | Device memory (HBM) physical bandwidth | $8.2 \times 10^{11}$ Bytes/s (820 GB/s) | $3.35 \times 10^{12}$ Bytes/s (3.35 TB/s) |
 
-## 3. Methodology and Examples
+#### Arithmetic Intensity
+$$I_{\text{algo}} = \frac{\text{FLOPs}}{\text{Bytes}} \quad (\text{FLOPs/Byte})$$
+Measures how many floating-point operations can be executed per byte of data transferred across the memory hierarchy.
 
-### 3.1 A Systematic Method for Roofline Analysis
+#### Critical Intensity (Ridge Point)
+$$I_c = \frac{\text{Peak FLOPs/s}}{\text{Peak Bandwidth}} = \frac{\pi}{\beta} \quad (\text{FLOPs/Byte})$$
 
-To perform roofline analysis, follow these steps:
-**Step 1: Determine hardware parameters**
-First, look up the specifications of the target hardware:
+- **TPU v5e MXU:** $I_c = \frac{1.97 \times 10^{14}}{8.1 \times 10^{11}} \approx 243 \text{ FLOPs/Byte}$
+- **NVIDIA H100 SXM:** $I_c = \frac{1.0 \times 10^{15}}{3.35 \times 10^{12}} \approx 298 \text{ FLOPs/Byte}$
+
+#### Bottleneck Classification Criteria
+
+| Condition | Operational Regime | Physical Nature & Engineering Action |
+| :--- | :--- | :--- |
+| $I_{\text{algo}} \ge I_c$ | **Compute-Bound** | Hardware compute pipelines are fully saturated; memory bandwidth has surplus. Priority: Tensor Core utilization and instruction-level parallelism (ILP). |
+| $I_{\text{algo}} < I_c$ | **Memory-Bound** | Compute units spend clock cycles stalled waiting for memory operands. Priority: eliminate memory traffic (operator fusion, quantization) and improve data reuse. |
+
+### 3.3 Systematic 5-Step Roofline Methodology
+
+To perform roofline analysis, follow these five systematic steps:
+
+**Step 1: Determine target hardware parameters**
+First, query the specifications of the target hardware ($\beta$ and $\pi$, then compute $I_c = \pi/\beta$):
 
 | Hardware | HBM Capacity | HBM Bandwidth $\beta$ | bf16 Throughput $\pi$ | int8 Throughput | Critical Intensity $I_c = \pi/\beta$ |
-| ------- | ------ | ------------------------ | --------------------- | --------------------- | ---------------------- |
-| TPU v5e | 16 GB  | $8.1 \times 10^{11}$ B/s | $1.97 \times 10^{14}$ | $3.94 \times 10^{14}$ | 243                    |
-| TPU v5p | 96 GB  | $2.8 \times 10^{12}$ B/s | $4.59 \times 10^{14}$ | $9.18 \times 10^{14}$ | 164                    |
-| TPU v6e | 32 GB  | $1.6 \times 10^{12}$ B/s | $9.20 \times 10^{14}$ | $1.84 \times 10^{15}$ | 575                    |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TPU v5e | 16 GB  | $8.1 \times 10^{11}$ B/s | $1.97 \times 10^{14}$ | $3.94 \times 10^{14}$ | 243 |
+| TPU v5p | 96 GB  | $2.8 \times 10^{12}$ B/s | $4.59 \times 10^{14}$ | $9.18 \times 10^{14}$ | 164 |
+| TPU v6e | 32 GB  | $1.6 \times 10^{12}$ B/s | $9.20 \times 10^{14}$ | $1.84 \times 10^{15}$ | 575 |
 
-**Step 2: Compute the algorithm's FLOPs and Bytes**
-
-For a given algorithm, compute separately:
+**Step 2: Compute algorithmic compute work $W$ (FLOPs) and memory traffic $Q$ (Bytes)**
 - $W$: total amount of computation (FLOPs)
-- $Q$: total amount of data movement (Bytes) = reads + writes
+- $Q$: total amount of data movement (Bytes) = reads + writes across HBM
 
 **Step 3: Compute arithmetic intensity**
-$$I_{\text{algo}} = \frac{W}{Q} \quad \text{(FLOPs/Byte)}$$
-**Step 4: Determine the bottleneck type**
+$$I_{\text{algo}} = \frac{W}{Q} \quad (\text{FLOPs/Byte})$$
 
-Compare $I_{\text{algo}}$ with $I_c$:
+**Step 4: Determine the bottleneck regime and execution lower bound**
 $$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}} \right)$$
-- If $I_{\text{algo}} > I_c$: **Compute-bound**, $T_{\text{actual}} = T_{\text{compute}}$
+- If $I_{\text{algo}} \ge I_c$: **Compute-bound**, $T_{\text{actual}} = T_{\text{compute}}$
 - If $I_{\text{algo}} < I_c$: **Memory-bound**, $T_{\text{actual}} = T_{\text{memory}}$
 
-**Step 5: Compute hardware efficiency**
+**Step 5: Compute achieved hardware efficiency**
 $$\text{Efficiency} = \frac{\text{Achieved FLOPs/s}}{\pi} = \frac{W / T_{\text{actual}}}{\pi}$$
-### 3.2 Understanding the Roofline Plot
-**Physical meaning of the two regions**:
-- **Sloped region (Memory-bound)**: data movement is the bottleneck; compute units are "waiting for data"
-  - Actual throughput = $I_{\text{algo}} \times \beta$ (grows linearly with intensity)
-- **Flat region (Compute-bound)**: computation is the bottleneck; peak throughput has been reached
-  - Actual throughput = $\pi$ (no longer increases)
 
-![[assets/Pasted image 20251216210603.png]]
-> *This figure shows two algorithms with different arithmetic intensities (Algorithm 1 and Algorithm 2) and their theoretical peak throughput under different bandwidths (BW1 and BW2). The red region indicates that the algorithm is bandwidth-limited under both bandwidth settings, leaving part of the hardware peak FLOPs/s unused. The yellow region indicates that the algorithm is bandwidth-limited only under the lower bandwidth (BW1). The green region indicates that the algorithm is compute-limited under all bandwidth settings. At this point, the accelerator's peak FLOPs/s is fully utilized, and neither increasing bandwidth nor increasing arithmetic intensity provides further benefit.*
+![[assets/Pasted image 20251216210603.png|Figure 3: Roofline Performance Boundaries and Theoretical Throughput Across Multi-Tier Bandwidths]]
+> **Figure 3 Architectural Insights:** Depicts theoretical peak throughput envelopes for algorithms with different arithmetic intensities across varying memory bandwidths (BW1 vs BW2):
+> - **Red Region (Dual Memory-Bound):** Under both BW1 and BW2, the algorithm resides on the sloped bandwidth ceiling, leaving peak compute underutilized.
+> - **Yellow Region (Single-Tier Bandwidth Bound):** The operator is bandwidth-constrained only under lower bandwidth (BW1); upgrading to higher bandwidth (BW2) transitions the operator across the Ridge Point into the compute ceiling.
+> - **Green Region (Fully Compute-Bound):** Arithmetic intensity is high enough to saturate peak hardware FLOPs/s; additional bandwidth provides no execution speedup.
 
 ### 3.3 Example: Dot Product
 
@@ -844,9 +861,9 @@ $$B > I_c \implies \boxed{B > 298}$$
 >
 > This is because the two devices have similar "compute/bandwidth" ratios (about 240-300 FLOPs/byte).
 > This ratio is determined by chip architecture and is a common characteristic of modern AI accelerators.
-## 4. Practice: Code and Tools
+### 3.4 Profiler Practice & Hardware Roofline Validation
 
-### 4.1 PyTorch Profiler
+#### 3.4.1 PyTorch Profiler: Chrome Trace & FLOPs Counter
 
 ```python
 import torch
@@ -876,60 +893,100 @@ def torch_roofline(B, D, F, device='cuda'):
         row_limit=10
     ))
     
-    # Export Chrome trace
+    # Export Chrome trace for timeline inspection
     prof.export_chrome_trace("torch_trace.json")
 
 torch_roofline(256, 4096, 4096)
 ```
 
-### 4.2 NVIDIA Nsight Analysis (requires root privileges)
+#### 3.4.2 NVIDIA Nsight Compute (NCU) Hardware Roofline Profiling
 
 ```bash
-# Collect roofline data
+# Collect GPU hardware performance counters & roofline analysis (requires profiling permissions)
 ncu --set roofline -o profile ./your_program
 
-# View report
+# Launch NCU interactive GUI to inspect operator placement on the roofline plot
 ncu-ui profile.ncu-rep
 ```
 
-### 4.3 Analyze the Roofline of the hello world Kernel / Matmul Kernel
+#### 3.4.3 Vector Add Empirical Roofline (Strictly Memory-Bound)
 
+![[assets/Pasted image 20251223165208.png|Figure 4: BF16 Vector Add Roofline Empirical Distribution on RTX A5000 (Memory-Bound)]]
+> **Figure 4 Measurement Analysis:** Across varying array lengths ($n = 1\text{M}$ to $134\text{M}$), vector add data points firmly anchor along the left-hand bandwidth slope (saturating 80%~90% of peak HBM bandwidth). Because its arithmetic intensity ($I \approx 0.17 \text{ FLOPs/Byte}$) sits far below the hardware ridge point ($72.4$), the operator is strictly bound by memory bandwidth; scaling tensor sizes cannot bridge the operator onto the compute plateau.
 
-![[assets/Pasted image 20251223165208.png]]
-All ops are at the same position.
+#### 3.4.4 MatMul Empirical Roofline Evolution & Diagnostic Anomalies
 
+![[assets/Pasted image 20251223164911.png|Figure 5: BF16 MatMul Scaling Transition from Memory-Bound to Compute-Bound & Diagnostic Anomalies]]
+> **Figure 5 Diagnostic Anomalies & Systems Insights:**
+> 1. **Font Glyphs / Tofu Box Explanation:** The original plot title displays `MatMul Roofline: □□□□ vs □□ (RTX A5000, BF16)` because the benchmarking script ran in a Linux headless environment missing CJK system fonts, rendering Chinese characters ("理论峰值 vs 测量性能") as fallback tofu squares.
+> 2. **Why do large GEMM points physically exceed the Roofline ceiling (125%~179%)?**
+>    - The blue horizontal ceiling represents the **theoretical peak throughput of FP32 CUDA Cores** (~65 TFLOPs).
+>    - However, modern NVIDIA architectures automatically route BF16 GEMM instructions through the specialized **Fourth-Gen Tensor Core pipeline** (with BF16 dense throughput reaching ~130+ TFLOPs on the RTX A5000).
+>    - Consequently, once matrix dimensions scale to $1024 \times 1024$ and beyond, empirical throughput naturally surges past the CUDA Core "false ceiling".
+>    - **Key Engineering Takeaway:** When performing Roofline validation, ensure theoretical peak $\pi$ strictly corresponds to the actual execution pipeline (Tensor Core vs CUDA Core); otherwise, calculated hardware efficiency will erroneously exceed 100%.
 
-![[assets/Pasted image 20251223164911.png]]
+### 3.5 Roofline Classification & Optimization Decision Matrix
 
-This is the roofline curve for matmul. You can see that as the scale increases, it gradually transitions from memory-bound to compute-bound (why does it end up on the line here? Because this figure is actually wrong: it is a CUDA Core plot, but bf16 matmul uses Tensor Cores!)
-### 5 Summary
+<div class="roofline-decision-card">
+  <div class="decision-header">
+    <h4>Roofline Performance Optimization Decision Matrix</h4>
+    <span class="decision-badge">Ridge Point Boundary Demarcation</span>
+  </div>
+  <div class="decision-grid">
+    <div class="decision-branch memory">
+      <span class="branch-badge">Memory-Bound Regime</span>
+      <div class="branch-title">Arithmetic Intensity AI &lt; Ridge Point</div>
+      <code class="branch-formula">Achieved Throughput = AI × Bandwidth &lt; Peak FLOPs</code>
+      <ul>
+        <li><strong>Primary Bottleneck:</strong> Memory bus bandwidth (HBM / DRAM); compute ALUs spend cycles starved of operands.</li>
+        <li><strong>Futile Direction:</strong> Increasing compute core counts or core clocks delivers negligible speedup.</li>
+        <li><strong>Core Optimization Tactics:</strong>
+          <ul>
+            <li><strong>Operator Fusion (Kernel Fusion):</strong> Fuse elementwise, normalization, and activation ops into preceding GEMMs to eliminate roundtrip HBM writes.</li>
+            <li><strong>Explicit Tiling:</strong> Stage local tiles into Shared Memory / Registers to maximize intra-block data reuse.</li>
+            <li><strong>Precision Quantization:</strong> FP32 $\to$ FP16/BF16 $\to$ INT8/FP4, halving memory bandwidth demand.</li>
+            <li><strong>Recomputation:</strong> Trade low-cost compute cycles to avoid large intermediate tensor spills.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="decision-branch compute">
+      <span class="branch-badge">Compute-Bound Regime</span>
+      <div class="branch-title">Arithmetic Intensity AI &ge; Ridge Point</div>
+      <code class="branch-formula">Achieved Throughput &le; Peak FLOPs/s</code>
+      <ul>
+        <li><strong>Primary Bottleneck:</strong> Execution pipeline saturation (ALU / Tensor Core peak); memory bus has surplus bandwidth.</li>
+        <li><strong>Futile Direction:</strong> Memory streaming optimizations or wider bandwidth do not accelerate execution.</li>
+        <li><strong>Core Optimization Tactics:</strong>
+          <ul>
+            <li><strong>Leverage Dedicated Tensor Pipelines:</strong> Enforce MMA / WGMMA hardware instructions, unlocking 90%+ of silicon FLOPS.</li>
+            <li><strong>Instruction-Level Parallelism (ILP):</strong> Loop unrolling (#pragma unroll) with multiple accumulator registers to hide execution latency.</li>
+            <li><strong>Structured Sparsity:</strong> Utilize 2:4 structured sparse matrix multiplication instructions to double throughput.</li>
+            <li><strong>Eliminate Warp Divergence:</strong> Align control flow across all 32 lanes to avoid execution serialization.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
 
-![[assets/Pasted image 20251223105527.png]]
+#### Diagnostic Interpretation: Position Relative to Roofline Boundaries
 
-* Position of a point relative to the Ridge Point
-	* Point to the left of the Ridge Point (AI < Ridge Point):
-		* The algorithm is in the Memory-Bound regime. The performance bottleneck is memory bandwidth, and the compute units are waiting for data. The theoretical maximum performance = bandwidth × AI. In this case, increasing compute capability does not help, because data cannot be supplied fast enough.
-		* Optimization direction: reduce memory accesses (operator fusion, quantization, sparsification) or improve data reuse (change the algorithm).
-	* Point to the right of the Ridge Point (AI > Ridge Point):
-		* The algorithm is in the Compute-Bound regime. The performance bottleneck is compute capability, and memory bandwidth has headroom. The theoretical maximum performance = peak compute throughput. In this case, increasing memory bandwidth does not help, because computation cannot keep up.
-		* Optimization direction: use more efficient compute instructions (Tensor Core), improve parallelism, and reduce instruction dependencies.
-* Position of a point relative to the Roofline
-	* Point on the line (efficiency > 80%):
-		* The implementation is already close to the hardware limit, leaving almost no room for optimization at the current AI. If you still want higher performance, you must change the algorithm itself to increase AI (for example through operator fusion), or switch to stronger hardware.
-	* Point below the line (efficiency < 80%): the implementation does not fully utilize the hardware, so there is room for optimization. You need to diagnose the specific reason.
-		* If it is in the Memory-Bound region and efficiency is low, possible causes include: non-coalesced memory accesses, low cache hit rate, bank conflicts, or data alignment issues.
-		* If it is in the Compute-Bound region and efficiency is low, possible causes include: insufficient occupancy, register spilling, not using Tensor Cores, or instruction dependencies causing pipeline stalls.
-	* Point above the line: theoretically impossible. If measurements show a point above the roofline, then either the measurement is wrong or the AI calculation is wrong. Common causes include: not accounting for cache effects so actual memory traffic is smaller than the theoretical value, missing FLOPs in the count, or inaccurate timing.
+- **Point situated to the left of the Ridge Point ($\text{AI} < I_c$):** Strictly Memory-Bound. The limiting resource is memory bandwidth, while execution units wait on operands. Theoretical performance ceiling $= \beta \times \text{AI}$. Adding compute cores is futile; prioritize memory traffic minimization (operator fusion, quantization) and cache reuse.
+- **Point situated to the right of the Ridge Point ($\text{AI} > I_c$):** Strictly Compute-Bound. The limiting resource is pipeline issue throughput, with surplus bandwidth. Theoretical ceiling $= \pi$. Upgrading bandwidth provides no gain; prioritize Tensor Core utilization, instruction unrolling, and latency hiding.
+- **Point on the ceiling line ($\text{Efficiency} > 80\%$):** Implementation is operating near physical hardware limits; negligible room for micro-optimizations under current AI. Further acceleration requires algorithmic reformulation (e.g., fusion to increase AI) or hardware upgrades.
+- **Point substantially below the ceiling line ($\text{Efficiency} < 80\%$):** Hardware is underutilized; actionable optimization targets exist:
+  - **Memory-Bound Inefficiencies:** Non-coalesced memory access patterns, Shared Memory bank conflicts, or unaligned data layouts triggering redundant memory transactions.
+  - **Compute-Bound Inefficiencies:** Suboptimal occupancy, register spilling to local memory, failing to invoke Tensor Core pipelines, or raw data dependency stalls.
+- **Point above the ceiling line (Physically Impossible):** Signifies benchmarking or accounting errors: uncounted L1/L2 cache reuse causing actual HBM traffic to be smaller than theoretical estimates, inaccurate FLOPs formulas, omitted host synchronization (`cudaDeviceSynchronize()`), or selecting an inappropriate hardware peak (e.g., using CUDA Core ceiling for Tensor Core operations).
 
 ---
 
 ## Part 4: Five Core Principles for GPU Optimization
 
-## 2. Five Core Principles for Memory-Bound Optimization
-
 Summarizing optimization experience across kernels such as transpose, stencil, SpMV, histogram, and compaction, we can extract the following five general principles:
 
-### Principle A: Byte Accounting
+### 4.1 Principle A: Byte Accounting
 
 Before optimizing, you need an accurate estimate of the kernel's total memory traffic. This step determines whether subsequent optimization work is actually targeting the real bottleneck.
 
@@ -939,7 +996,7 @@ Rule of thumb: **sum the bytes of all read and write operations**, and remember 
 > Cutting FLOPs in half without reducing memory accesses does not improve kernel runtime at all. Worse, reducing computation by introducing extra intermediate arrays can increase memory traffic and actually hurt performance.
 
 **Example: Byte accounting for vector addition**
-```
+```cuda
 // C[i] = A[i] + B[i], N floats
 // Read: A (4N bytes) + B (4N bytes) = 8N bytes
 // Write: C (4N bytes)
@@ -948,7 +1005,7 @@ Rule of thumb: **sum the bytes of all read and write operations**, and remember 
 ```
 
 **Example: Byte accounting for Histogram (easy to miscalculate)**
-```
+```cuda
 // Input: N ints (read 4N bytes)
 // Output: bins[] uses atomicAdd
 // atomic = read + modify + write -> each update is about 3x4 = 12 bytes
@@ -957,7 +1014,7 @@ Rule of thumb: **sum the bytes of all read and write operations**, and remember 
 
 ---
 
-### Principle B: Coalescing
+### 4.2 Principle B: Coalescing
 
 The ideal memory access pattern is: **the 32 threads in a warp access a contiguous 128-byte segment** (for `float`, for example).
 
@@ -968,19 +1025,19 @@ More concretely:
 Coalescing is the prerequisite for all other optimizations. If coalescing is not satisfied, the upper limit of effective bandwidth drops dramatically.
 
 **Example: The coalescing issue in matrix transpose**
-```
+```cuda
 // Bad case: read by column, warp threads access with stride N
-out[j][i] = in[i][j]   // in read by row (coalesced) ✓
+out[j][i] = in[i][j];   // in read by row (coalesced) ✓
                         // out written by column (strided) ✗ -> bandwidth utilization drops sharply
 
 // Good case: use shared memory as a staging buffer
-tile[threadIdx.y][threadIdx.x] = in[row][col]   // coalesced read
-__syncthreads()
-out[col][row] = tile[threadIdx.x][threadIdx.y]   // coalesced write
+tile[threadIdx.y][threadIdx.x] = in[row][col];   // coalesced read
+__syncthreads();
+out[col][row] = tile[threadIdx.x][threadIdx.y];   // coalesced write
 ```
 
 **Example: AoS vs SoA**
-```
+```cpp
 // AoS (Array of Structs) — when a warp reads x, the stride is sizeof(Point)
 struct Point { float x, y, z; };
 Point pts[N];            // pts[tid].x → stride=12 bytes ✗
@@ -992,7 +1049,7 @@ px[tid]                  // stride=4 bytes, perfectly coalesced ✓
 
 ---
 
-### Principle C: Explicit Reuse (Tiling)
+### 4.3 Principle C: Explicit Reuse (Tiling)
 
 When a kernel has neighborhood structure or data reuse (such as stencil, convolution, or some sparse local operators):
 
@@ -1005,7 +1062,7 @@ The core idea is: **load data from HBM into SRAM and reuse it multiple times to 
 > A stencil is a common computational pattern in which each output element is computed as a weighted sum of **the input element itself and input elements in a fixed neighborhood**. A 1D stencil with radius R means that `out[i]` depends on `in[i-R] ... in[i+R]`, for a total of 2R+1 elements. Typical applications include finite differences (CFD/PDE solvers), image blur/sharpening (2D stencil), audio filtering, and more. Because the input windows of neighboring output points overlap heavily, stencil is a classic use case for tiling.
 
 **Example: 1D stencil — without tiling vs with tiling**
-```
+```cuda
 // Without tiling: each output point reads 2R+1 neighbors from HBM
 // Neighboring threads have heavily overlapping reads -> depends on cache hits, not controllable
 out[i] = Σ w[k] * in[i-R+k],  k=0..2R
@@ -1023,7 +1080,7 @@ out[i] = Σ w[k] * tile[threadIdx.x + k];  // all hits come from SRAM
 
 ---
 
-### Principle D: Reduce Synchronization and Contention (Sync/Contention)
+### 4.4 Principle D: Reduce Synchronization & Contention (Sync / Contention)
 
 For memory-bound kernels, the performance bottleneck is often not the bandwidth itself, but rather:
 - overly frequent `__syncthreads()` calls, which turn pipeline throughput into serialized waiting
@@ -1032,7 +1089,7 @@ For memory-bound kernels, the performance bottleneck is often not the bandwidth 
 The "hierarchical privatization" strategy in the previous Histogram lecture is a canonical application of this principle: reduce the scope of contention progressively from global to block to warp, thereby lowering contention overhead.
 
 **Example: Hierarchical privatization for Histogram**
-```
+```cuda
 // Level 1 — global atomic (maximum contention)
 atomicAdd(&global_bins[val], 1);           // all threads contend for the same set of bins
 
@@ -1048,7 +1105,7 @@ atomicAdd(&global_bins[tid], local_bins[tid]);  // one-shot reduction
 
 ---
 
-### Principle E: Latency Hiding
+### 4.5 Principle E: Latency Hiding
 
 When high memory latency is unavoidable (for example, the random accesses in SpMV), latency can be hidden in the following ways:
 - **increase occupancy**: raise the number of resident warps so that more warps can be scheduled while others are waiting on memory
@@ -1057,7 +1114,7 @@ When high memory latency is unavoidable (for example, the random accesses in SpM
 The grid-stride loop is a general engineering pattern for realizing this principle.
 
 **Example: Grid-stride loop + ILP unrolling**
-```
+```cuda
 // Basic version: each thread handles one element; occupancy is the only latency-hiding mechanism
 for (int i = tid; i < N; i += gridDim.x * blockDim.x)
     out[i] = f(in[i]);
@@ -1077,96 +1134,171 @@ for (int i = tid; i < N; i += stride * 4) {
 
 ---
 
----
-
 ## Part 5: Practice Exercises & Review Self-Checks
 
-### Module A: CUDA Environment & Extension Boundaries
+### 5.1 Module A: CUDA Environment & Extension Boundaries
 
 <details class="exercise">
-<summary><span class="q-label">Exercise 1</span> <span class="q-text">Why must CUDA kernel launches be placed in .cu files rather than .cpp files?</span></summary>
+<summary><span class="q-label">Q1</span> <span class="q-text">Why must CUDA kernel launches be placed in .cu files rather than .cpp files?</span></summary>
 
-CUDA kernel launch syntax `<<<blocks, threads>>>` can only be parsed by the `nvcc` compiler. Standard host C++ compilers only handle bindings, function declarations, and CPU-side wrappers. True CUDA source code containing `__global__` functions and launch syntax must reside in `.cu` source files.
+CUDA kernel launch syntax `<<<blocks, threads>>>` can only be parsed by the `nvcc` compiler. Standard host C++ compilers (g++, clang) only handle bindings, function declarations, and CPU-side wrappers. True CUDA source code containing `__global__` functions and launch syntax must reside in `.cu` source files to generate PTX and SASS assembly.
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Exercise 2</span> <span class="q-text">A thread block has 256 threads. How many warps does it contain?</span></summary>
+<summary><span class="q-label">Q2</span> <span class="q-text">A thread block has 256 threads. How many warps does it contain, and how are they scheduled?</span></summary>
 
-A warp consists of 32 threads, so 256 threads correspond to 8 warps. The thread block is scheduled as a whole onto an SM, and its warps are issued by the warp schedulers. Performance tuning requires checking whether block count provides sufficient grid parallelism and whether each block uses too many registers or shared memory.
+A warp consists of 32 threads, so 256 threads correspond to $256 / 32 = 8$ warps. The thread block is scheduled atomically as a whole onto a specific physical SM; the 8 warps within the block are then dynamically issued by the 4 warp schedulers inside the SM based on instruction readiness. Tuning must balance having enough blocks to keep all SMs occupied without exhausting registers or Shared Memory.
 
 </details>
 
 <details class="exercise">
 <summary><span class="q-label">Q3</span> <span class="q-text">What are the respective responsibilities of CPU code, CUDA kernels, and PyTorch bindings?</span></summary>
 
-CPU code manages tensor allocation, validates shapes/dtypes/devices, and calls launchers; CUDA kernels define thread-level execution logic on the GPU; PyTorch C++ bindings expose CUDA operations to Python. Never conflate these layers in interviews: `pybind` performs no computation, and kernels never manage Python APIs.
+- **CPU Host Code**: Allocates tensor memory, verifies Shape/Dtype/Device constraints, computes Grid/Block launch configurations, and invokes launchers.
+- **CUDA Kernels (.cu)**: Executes fine-grained parallel computation on the GPU, defining how threads and warps cooperate to access Shared/Global memory.
+- **PyTorch Binding (pybind11 / cpp_extension)**: Bridges Python tensor objects to underlying C++/CUDA functions across the ABI boundary. Never conflate these: `pybind` performs no computation, and kernels never manage Python runtime objects.
 
 </details>
 
 <details class="exercise">
 <summary><span class="q-label">Q4</span> <span class="q-text">Why is boundary checking almost always necessary in CUDA kernels?</span></summary>
 
-Kernel launches round up the grid size to multiples of the block size `(n + threads - 1) / threads`. The total number of threads launched often exceeds the array length. Without `if (idx < n)`, the trailing threads in the final block would access out-of-bounds memory, leading to memory corruption or silent nondeterministic failures.
-
-</details>
-
-### Module B: SM Architecture & Execution Scheduling
-
-<details class="exercise">
-<summary><span class="q-label">Exercise 1</span> <span class="q-text">Why does GEMM optimization focus on Tensor Cores first?</span></summary>
-
-Modern deep learning training and inference workloads are dominated by matrix multiplications: attention projections, MLPs, MoE experts, QK, and PV. On H100, dense BF16 Tensor Core peak throughput (~990 TFLOPs) dwarfs FP32 CUDA Core peak (~60-66 TFLOPs). If compute does not land on Tensor Cores, memory bandwidth, layout, alignment, or lowering must be investigated first.
+Kernel launches round up the grid size `ceil(N / BlockSize)`. The total allocated threads often exceed the array length $N$. Without `if (idx < n)`, trailing threads in the final block perform illegal out-of-bounds reads/writes. While small unit tests might silently pass without page faults, in real production runs this causes memory corruption or silent numerical defects.
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Exercise 2</span> <span class="q-text">What causes high occupancy but low Tensor Core utilization?</span></summary>
+<summary><span class="q-label">Q5</span> <span class="q-text">Given n=10000 and threads=256, how do you calculate block count? Why not integer division?</span></summary>
 
-High occupancy only means many warps reside on the SM, not that they issue high-throughput instructions. Low Tensor Core utilization stems from not using `mma`/`wgmma` instructions, tile shape mismatches, memory starvation, register spilling, excessive synchronization, or non-GEMM workloads (e.g. softmax or reductions).
-
-</details>
-
-<details class="exercise">
-<summary><span class="q-label">Q3</span> <span class="q-text">What is the relationship between SM, Warp, and Thread Block?</span></summary>
-
-A thread block is the programmer's launch unit assigned to an SM; threads within a block are grouped into 32-thread warps; warps are the physical units issued by the hardware schedulers. Block count dictates global parallelism, warp count enables latency hiding, and SM resources determine occupancy.
+You must use the ceiling formula `(n + threads - 1) / threads`, yielding `(10000 + 255) / 256 = 40` blocks. If you use floor division `10000 / 256 = 39`, only $39 \times 256 = 9984$ threads are launched, leaving the final 16 elements completely unprocessed and corrupting the output tensor.
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q4</span> <span class="q-text">Why does high occupancy not necessarily equal high kernel performance?</span></summary>
+<summary><span class="q-label">Q6</span> <span class="q-text">What is the correct diagnostic roadmap when a CUDA hello-world kernel runs unexpectedly slow?</span></summary>
 
-Occupancy only measures resident warps, not useful instruction issue rates. A kernel can still be stalled by memory bandwidth, register spills, shared memory bank conflicts, thread barriers, or execution on low-throughput scalar paths. True evaluation requires inspecting eligible warps, stall reasons, memory throughput, and tensor pipe utilization.
-
-</details>
-
-### Module C: Roofline Analysis & Bottleneck Identification
-
-<details class="exercise">
-<summary><span class="q-label">Exercise 1</span> <span class="q-text">Given FLOPs, Bytes, peak FLOPs, and memory bandwidth, how do you diagnose the performance bottleneck?</span></summary>
-
-Compute arithmetic intensity $I = \text{FLOPs} / \text{Bytes}$ and critical intensity $I_c = \pi / \beta$. If $I < I_c$, the kernel is memory-bound; if $I > I_c$, it is compute-bound. For BF16 GEMM, peak FLOPs must reflect Tensor Core throughput.
+Do not start by questioning algorithmic complexity. Novice kernel slowdowns usually stem from:
+1. Launch configuration is too small, leaving SMs severely underutilized;
+2. Unintended implicit CPU-GPU data transfers (DtoH / HtoD) inside loops;
+3. Omitted `cudaDeviceSynchronize()` during timing, capturing cold-start or asynchronous latency;
+4. Hidden type conversions due to mismatched dtypes. First confirm functional correctness, synchronization, and memory flow before tuning hardware microarchitecture.
 
 </details>
 
-<details class="exercise">
-<summary><span class="q-label">Exercise 2</span> <span class="q-text">Why can evaluating only achieved TFLOPs lead to incorrect conclusions?</span></summary>
+### 5.2 Module B: SM Architecture & Execution Scheduling
 
-Memory-bound kernels naturally attain low TFLOPs because their ceiling is limited by memory bandwidth. Achieving a fraction of peak compute while saturating 90%+ of memory bandwidth represents near-optimal performance for a memory-bound operator.
+<details class="exercise">
+<summary><span class="q-label">Q7</span> <span class="q-text">Why does modern LLM GEMM optimization prioritize Tensor Cores above all else?</span></summary>
+
+Large language model compute is heavily dominated by dense matrix multiplications (Attention projections, MLP layers, MoE experts, FlashAttention $QK^T$ and $PV$). On NVIDIA H100 SXM, BF16 Tensor Core peak throughput (~1000 TFLOPs) is roughly 15× higher than FP32 CUDA Core peak (~67 TFLOPs). If the core compute does not land on Tensor Cores, you lose an order of magnitude of hardware capability immediately.
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q3</span> <span class="q-text">What do the numerator and denominator represent in Arithmetic Intensity?</span></summary>
+<summary><span class="q-label">Q8</span> <span class="q-text">What causes high SM Occupancy but very low Tensor Core utilization?</span></summary>
 
-The numerator is the total floating-point operations executed; the denominator is the total bytes transferred across the targeted memory hierarchy (typically HBM). Higher intensity means more computation per transferred byte.
+High occupancy only means many warps reside on the SM; it does not ensure they are issuing high-throughput instructions. Root causes include:
+1. The kernel fails to lower to `mma` or `wgmma` assembly instructions, falling back to scalar FMA;
+2. Tile sizes are too small, causing pipeline bubbles between Tensor Core issues;
+3. Memory starvation: Global or Shared Memory cannot feed data fast enough, causing warps to stall on scoreboard dependencies;
+4. Workloads dominated by non-GEMM logic like LayerNorm, Softmax, or reductions.
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q4</span> <span class="q-text">Why does a kernel transition from memory-bound to compute-bound as tensor dimensions scale?</span></summary>
+<summary><span class="q-label">Q9</span> <span class="q-text">What is the physical and logical mapping among SM, Warp, and Thread Block?</span></summary>
 
-Scaling tensor dimensions increases data reuse. In GEMM, larger $M, N, K$ allow tiled data to be reused across more multiply-accumulate operations, raising arithmetic intensity past the hardware ridge point.
+- **Thread Block**: The programmer-defined logical scheduling unit, assigned atomically to a specific SM for its entire lifetime.
+- **Warp**: The hardware instruction issue and execution atom (32 threads lock-stepping the same instruction). Blocks are subdivided into warps.
+- **SM (Streaming Multiprocessor)**: The independent physical compute unit containing register files, Shared Memory, warp schedulers, and execution units. Multiple warps from one or more blocks reside concurrently on an SM.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q10</span> <span class="q-text">Why is high occupancy not synonymous with high kernel performance?</span></summary>
+
+Occupancy is merely a mechanism to hide latency, not an optimization objective. Once enough warps reside on an SM to hide memory and pipeline latency (typically 40%~60% theoretical occupancy is sufficient), further occupancy increases yield zero speedup. Striving for 100% occupancy often requires restricting registers per thread, triggering catastrophic register spilling into local memory and aggravating Shared Memory pressure.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q11</span> <span class="q-text">In Transformer architectures, what is the exact operational division between Tensor Cores and CUDA Cores?</span></summary>
+
+- **Tensor Cores**: Heavy matrix multiplication operators with high arithmetic intensity: Q/K/V projections, MLP Gate/Up/Down projections, Attention score computation and value aggregation.
+- **CUDA Cores**: Scalar, control-flow, and memory-bound operations: RoPE positional embeddings, Softmax, RMSNorm/LayerNorm, SwiGLU activations, indexing, and memory layout transformations. High-performance kernels use Tensor Cores for compute and CUDA Cores as glue logic.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q12</span> <span class="q-text">What is the systematic debugging sequence for a theoretically compute-bound GEMM with poor Tensor Core utilization?</span></summary>
+
+Recommended sequence:
+1. **Instruction Verification**: Check SASS or NCU to verify that `HMMA` / `WGMMA` instructions are actually issued;
+2. **Alignment & Layout**: Ensure K-dimension is 16-byte aligned and memory layout supports 128-bit vectorized loads;
+3. **Tiling Dimensions**: Verify Block Tile, Warp Tile, and Thread Tile match architecture recommendations;
+4. **Asynchronous Double-Buffering**: Confirm Shared Memory staging is not bottlenecking compute, leveraging `cp.async` on modern architectures;
+5. **Register Pressure**: Check for register spills to local memory.
+
+</details>
+
+### 5.3 Module C: Roofline Analysis & Performance Characterization
+
+<details class="exercise">
+<summary><span class="q-label">Q13</span> <span class="q-text">Given FLOPs, Bytes, peak compute, and memory bandwidth, how do you formally determine the bottleneck regime?</span></summary>
+
+1. Compute arithmetic intensity: $I_{\text{algo}} = \frac{\text{FLOPs}}{\text{Bytes}}$;
+2. Compute hardware critical intensity (Ridge Point): $I_c = \frac{\text{Peak FLOPs/s}}{\text{Memory Bandwidth (Bytes/s)}}$;
+3. **Decision Rule**:
+   - If $I_{\text{algo}} < I_c$: The operator is **Memory-Bound**, bounded by memory bus bandwidth, with theoretical runtime $\frac{\text{Bytes}}{\beta}$;
+   - If $I_{\text{algo}} \ge I_c$: The operator is **Compute-Bound**, bounded by peak pipeline throughput, with theoretical runtime $\frac{\text{FLOPs}}{\pi}$. For BF16 GEMM, $\pi$ must be Tensor Core peak.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q14</span> <span class="q-text">Why does achieved TFLOPs alone fail to characterize kernel implementation quality?</span></summary>
+
+Memory-bound operators (e.g. Elementwise Add, LayerNorm, Softmax) have inherently low arithmetic intensity; their theoretical ceiling is governed by memory bandwidth, resulting in achieved TFLOPs that are naturally only a fraction of hardware compute peak. A reduction achieving 90% of theoretical HBM bandwidth is near-optimal even if it only hits 2 TFLOPs. Conversely, a GEMM hitting 50 TFLOPs on an H100 with 1000 TFLOPs capability represents an abysmal 5% utilization. Performance must be evaluated relative to the Roofline boundary and memory bandwidth utilization.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q15</span> <span class="q-text">What are the physical definitions of FLOPs (numerator) and Bytes (denominator) in Roofline analysis?</span></summary>
+
+- **FLOPs (Numerator)**: The algorithmic, mathematically required floating-point operations (typically 1 FMA = 2 FLOPs), independent of implementation quirks.
+- **Bytes (Denominator)**: The total physical data traffic that must cross the target memory boundary (typically off-chip HBM/DRAM) during execution. Arithmetic intensity indicates how many floating-point calculations are supported per byte transferred from memory.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q16</span> <span class="q-text">Why does the same operator transition between bottleneck regimes as problem scale grows?</span></summary>
+
+Consider matrix multiplication: when Batch Size is 1 (GEMV during autoregressive generation), each weight element loaded from HBM is used once with no cross-batch reuse, giving $I \approx 1 \text{ FLOP/Byte}$ (strictly Memory-Bound). When Batch Size scales to hundreds or thousands (Prompt prefill or training), each weight tile staged into on-chip SRAM is reused across all batch elements, scaling arithmetic intensity linearly until it surpasses the Ridge Point into the Compute-Bound regime.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q17</span> <span class="q-text">What are the common causes of benchmarked data points exceeding 100% Roofline efficiency?</span></summary>
+
+Common causes include:
+1. **Selecting the wrong hardware peak baseline**: e.g. plotting FP32 CUDA Core peak while running BF16 code that executes on higher-throughput Tensor Cores;
+2. **Unaccounted on-chip cache reuse**: Estimating theoretical bytes from tensor sizes while actual HBM traffic is greatly reduced due to L2/SRAM hits;
+3. **Asynchronous timing errors**: Forgetting `cudaDeviceSynchronize()`, measuring only CPU launch latency;
+4. **Overestimated FLOP counts**: Counting operations eliminated by compiler dead code elimination (DCE).
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q18</span> <span class="q-text">What are the primary optimization instincts for Memory-Bound vs Compute-Bound operators?</span></summary>
+
+- **Memory-Bound Operators (Goal: Minimize memory traffic and maximize bus saturation)**:
+  1. Operator Fusion (Kernel Fusion) to keep intermediate activations on-chip and eliminate DRAM roundtrips;
+  2. Precision Quantization (INT8 / FP8 / FP4) to shrink byte traffic;
+  3. Enforce memory coalescing and eliminate Shared Memory bank conflicts.
+- **Compute-Bound Operators (Goal: Saturate compute pipelines and eliminate execution stalls)**:
+  1. Switch to dedicated hardware acceleration pathways (Tensor Core MMA / WGMMA);
+  2. Loop unrolling (`#pragma unroll`) and multiple accumulator registers to boost ILP;
+  3. Leverage 2:4 structured sparsity;
+  4. Eliminate warp divergence to keep all 32 lanes synchronous without idle cycles.
 
 </details>

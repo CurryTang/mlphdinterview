@@ -31010,6 +31010,7 @@ function MarkdownImage({ src, alt, ...props }) {
   const resolvedSrc = (cleanSrc && resolveMediaUrl(cleanSrc)) || cleanSrc;
   const { t } = useUiCopy();
 
+  const [hasError, setHasError] = useState(false);
   const [isLoupeActive, setIsLoupeActive] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isShiftKey, setIsShiftKey] = useState(false);
@@ -31127,14 +31128,35 @@ function MarkdownImage({ src, alt, ...props }) {
         onClick={handleImageClick}
         title={effectiveLoupe ? t('点击退出放大镜模式', 'Click to exit loupe') : t('点击全屏交互缩放', 'Click for fullscreen zoom')}
       >
-        <img
-          ref={imgRef}
-          src={resolvedSrc}
-          alt={alt}
-          loading="lazy"
-          className="markdown-image-el"
-          {...props}
-        />
+        {hasError ? (
+          <div className="markdown-image-error-card">
+            <span className="error-icon">⚠️</span>
+            <div className="error-details">
+              <strong>{t('图像未能正常加载', 'Image failed to load')}</strong>
+              <code className="error-src">{resolvedSrc}</code>
+              <button
+                type="button"
+                className="image-retry-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setHasError(false);
+                }}
+              >
+                {t('重试加载', 'Retry')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <img
+            ref={imgRef}
+            src={resolvedSrc}
+            alt={alt}
+            loading="lazy"
+            className="markdown-image-el"
+            onError={() => setHasError(true)}
+            {...props}
+          />
+        )}
 
         <div className="markdown-image-toolbar" onClick={(e) => e.stopPropagation()}>
           <button
@@ -31192,7 +31214,9 @@ function MarkdownImage({ src, alt, ...props }) {
         )}
       </div>
 
-      {alt && <figcaption className="markdown-image-caption">{alt}</figcaption>}
+      {alt && !/^Pasted[ _]image/i.test(alt) && !/\.(png|jpe?g|gif|webp|svg)$/i.test(alt) && (
+        <figcaption className="markdown-image-caption">{alt}</figcaption>
+      )}
 
       {isModalOpen && (
         <ImageLightboxModal

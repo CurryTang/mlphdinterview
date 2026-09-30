@@ -1328,6 +1328,280 @@
   pointer-events: none;
 }
 
+/* Image Fallback Error Card */
+.markdown-image-error-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 1.25rem 1.5rem;
+  background: #fff8f6;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  margin: 1rem 0;
+  max-width: 640px;
+}
+.markdown-image-error-card .error-icon {
+  font-size: 1.8rem;
+}
+.markdown-image-error-card .error-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.markdown-image-error-card .error-details strong {
+  color: #9f1239;
+  font-size: 0.95rem;
+}
+.markdown-image-error-card .error-details code.error-src {
+  font-size: 0.8rem;
+  color: #881337;
+  word-break: break-all;
+  background: rgba(254, 205, 211, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.markdown-image-error-card .image-retry-btn {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #f43f5e;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #e11d48;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.markdown-image-error-card .image-retry-btn:hover {
+  background: #f43f5e;
+  color: #ffffff;
+}
+
+/* Hardware SM Architecture Visual Card */
+.hardware-arch-card {
+  margin: 1.5rem 0 2rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(24, 49, 63, 0.18);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 248, 250, 0.98)),
+    repeating-linear-gradient(90deg, rgba(24, 49, 63, 0.04) 0 1px, transparent 1px 40px);
+  box-shadow: 0 12px 28px rgba(31, 53, 66, 0.08);
+}
+.hardware-arch-card .arch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.12);
+}
+.hardware-arch-card .arch-header h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #102a36;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: -0.01em;
+}
+.hardware-arch-card .arch-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+}
+.hardware-arch-card .sm-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 1.25rem;
+}
+.hardware-arch-card .flow-step-box {
+  background: #ffffff;
+  border: 1px solid rgba(24, 49, 63, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(24, 49, 63, 0.04);
+  position: relative;
+}
+.hardware-arch-card .flow-step-box.highlight {
+  border-color: #0284c7;
+  background: linear-gradient(180deg, #ffffff, #f0f9ff);
+}
+.hardware-arch-card .flow-step-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #0284c7;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.hardware-arch-card .flow-step-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #102a36;
+  margin-bottom: 6px;
+}
+.hardware-arch-card .flow-step-desc {
+  font-size: 0.8rem;
+  color: #526b77;
+  line-height: 1.45;
+}
+.hardware-arch-card .flow-step-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.hardware-arch-card .flow-tag {
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+  background: rgba(24, 49, 63, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #274754;
+}
+.hardware-arch-card .flow-tag.accent {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+  font-weight: 600;
+}
+.hardware-arch-card .arch-subpartitions {
+  margin-top: 1rem;
+  border-top: 1px dashed rgba(24, 49, 63, 0.15);
+  padding-top: 1rem;
+}
+.hardware-arch-card .subpartition-unit-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.hardware-arch-card .unit-item {
+  background: #ffffff;
+  border: 1px solid rgba(24, 49, 63, 0.1);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+.hardware-arch-card .unit-item strong {
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+.hardware-arch-card .unit-item span {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: "IBM Plex Mono", monospace;
+}
+.hardware-arch-card .unit-item.tensor {
+  border-color: #f43f5e;
+  background: #fff1f2;
+}
+.hardware-arch-card .unit-item.tensor strong {
+  color: #be123c;
+}
+
+/* Roofline Decision Matrix Card */
+.roofline-decision-card {
+  margin: 1.5rem 0 2rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(24, 49, 63, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 10px 24px rgba(31, 53, 66, 0.08);
+}
+.roofline-decision-card .decision-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(24, 49, 63, 0.12);
+}
+.roofline-decision-card .decision-header h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #102a36;
+  font-family: "Space Grotesk", sans-serif;
+}
+.roofline-decision-card .decision-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.roofline-decision-card .decision-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .roofline-decision-card .decision-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.roofline-decision-card .decision-branch {
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid rgba(24, 49, 63, 0.12);
+  background: #ffffff;
+}
+.roofline-decision-card .decision-branch.memory {
+  border-top: 4px solid #0284c7;
+}
+.roofline-decision-card .decision-branch.compute {
+  border-top: 4px solid #10b981;
+}
+.roofline-decision-card .branch-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+.roofline-decision-card .decision-branch.memory .branch-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.roofline-decision-card .decision-branch.compute .branch-badge {
+  background: #d1fae5;
+  color: #065f46;
+}
+.roofline-decision-card .branch-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+.roofline-decision-card .branch-formula {
+  font-size: 0.82rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  display: block;
+}
+.roofline-decision-card ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.55;
+}
+
 /* Lightbox Modal */
 .image-lightbox-overlay {
   position: fixed;

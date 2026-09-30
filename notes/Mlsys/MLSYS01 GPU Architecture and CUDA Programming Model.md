@@ -6,18 +6,17 @@
 
 ## 第一部分：GPU 硬件体系结构与核心组件
 
-## More GPU
+### 1.1 GPU 全局拓扑与层次化存储架构（H100 / B100）
 
-### Overview
+![[assets/Pasted image 20251222135239.png|图 1：NVIDIA H100/B100 GPU 整体架构抽象与层次化存储]]
+> **图 1 核心架构解析：** 展示了 GPU 的层次化内存与计算结构。多个流式多处理器（SM 0, SM 1, ... SM N-1）并行排布，每个 SM 内部封装 4 个第四代 Tensor Core（主导密集矩阵乘累加，贡献 93%+ 峰值算力）与 4 个 Warp Scheduler（每个调度器对应 32-lane 向量管线）。每个 SM 独享 256KB 的极高速 L1 Cache / Shared Memory（可由程序员显式控制分配）。所有 SM 通过片上互联共享 50MB 的 L2 Cache，最底层由高带宽片外显存（HBM3，H100 为 80GB@3.35TB/s，B100 为 192GB@8TB/s）承载全局权重与激活。
 
-![[assets/Pasted image 20251222135239.png]]
-**图1：NVIDIA H100/B100 GPU 整体架构抽象图。** 展示了 GPU 的层次化内存与计算结构：多个流多处理器（SM 0, SM 1, ... SM N-1）并行排列，每个 SM 内包含 4 个 Tensor Core（负责矩阵乘法运算，贡献主要算力，类似 TPU 的 MXU）和 4 个 Warp Scheduler（SIMD 向量单元，包含 32 个 lane 即"CUDA Core"，同一 warp 内所有 lane 必须执行相同操作）。每个 SM 拥有 256KB 的 L1 Cache/SMEM（共享内存，可由程序员控制，类似 TPU VMEM 但更小）。所有 SM 共享 50MB 的 L2 Cache（硬件自动管理，提供更快的带宽）和底层的 HBM 高带宽显存（H100 为 80GB，B100 为 192GB，用于存储模型参数、激活值和优化器状态）。
+### 1.2 SM（流式多处理器）微架构与处理块（Processing Block）剖析
 
-![[assets/Pasted image 20251222135741.png]]
-**图2：NVIDIA H100 单个 SM（流多处理器）内部详细架构图。** 每个 SM 包含 4 个处理块（Processing Block），共享 L1 指令缓存和 256KB L1 数据缓存/共享内存。每个处理块包含：L0 指令缓存、Warp Scheduler（每周期调度 32 线程）、Dispatch Unit、16384×32-bit 的寄存器文件，以及大量计算单元——16 个 INT32 单元、16 个 FP32 单元、8 个 FP64 单元、1 个第四代 Tensor Core、LD/ST（加载/存储）单元和 SFU（特殊函数单元）。底部还配备 Tensor Memory Accelerator（张量内存加速器）和 Tex（纹理单元）。这种设计使得 H100 能够高效地并行执行大规模矩阵运算和深度学习工作负载。
+![[assets/Pasted image 20251222135741.png|图 2：NVIDIA H100 单个 SM（Streaming Multiprocessor）内部详细微架构]]
+> **图 2 微架构解析：** 单个 SM 内部划分为 4 个物理处理块（Processing Block / Sub-Partition），统一共享 L1 指令缓存与 256KB L1 数据缓存/共享内存池。每个处理块配备：独立的 L0 指令缓存、Warp 调度器（每周期可调度 32 线程）、双发射分发单元（Dispatch Unit）、$16384 \times 32\text{-bit}$ 寄存器堆，以及细粒度执行单元矩阵（16 个 INT32 单元、16 个 FP32 单元、8 个 FP64 单元、1 个第四代 Tensor Core、LD/ST 访存单元与 SFU 特殊函数单元）。底部集成硬件级张量内存加速器（TMA，Tensor Memory Accelerator）与纹理单元（Tex）。
 
-
-### 组件
+### 1.3 核心硬件组件与存储层级全景
 
 #### GPU 计算组件总结
 
@@ -107,8 +106,7 @@ GPU
 | **Constant** | Layer 的超参数、lookup table | `__constant__` 声明 |
 
 
-### 通过伪代码理解warp和dispatch的工作机制
-
+### 1.4 Warp 调度机制、流水线与 Dispatch 逻辑
 
 ```python
 # ============ SM 内部结构 ============
@@ -268,51 +266,68 @@ def sm_cycle(sub_partition):
     sub_partition.process_writebacks()
 ```
 
-## 流程图
+<div class="hardware-arch-card">
+  <div class="arch-header">
+    <h4>SM 硬件执行管线与调度数据通路</h4>
+    <span class="arch-badge">NVIDIA Hopper / Blackwell SM Pipeline</span>
+  </div>
+  <div class="sm-flow-grid">
+    <div class="flow-step-box">
+      <div class="flow-step-num">Step 1 · Warp Pool</div>
+      <div class="flow-step-title">常驻线程束池 (Resident Warps)</div>
+      <div class="flow-step-desc">每个 Sub-Partition 常驻多达 8-16 个 Warps（每个 SM 最多 64 个 Warps）。线程束在流水线中处于就绪、阻塞或等待同步状态。</div>
+      <div class="flow-step-tags">
+        <span class="flow-tag">32 Lanes / Warp</span>
+        <span class="flow-tag">Zero-overhead switch</span>
+      </div>
+    </div>
+    <div class="flow-step-box highlight">
+      <div class="flow-step-num">Step 2 · Warp Scheduler</div>
+      <div class="flow-step-title">调度仲裁器 (Arbiter & Selection)</div>
+      <div class="flow-step-desc">每个周期由 Scoreboard 检查操作数就绪状态与结构冲突，采用 GTO（Greedy-Then-Oldest）或 LRR 策略挑出 1~2 个就绪 Warp。</div>
+      <div class="flow-step-tags">
+        <span class="flow-tag accent">GTO / LRR 策略</span>
+        <span class="flow-tag">Scoreboard 追踪</span>
+      </div>
+    </div>
+    <div class="flow-step-box">
+      <div class="flow-step-num">Step 3 · Dispatch Unit (×2)</div>
+      <div class="flow-step-title">双指令分发单元 (Dual-Issue)</div>
+      <div class="flow-step-desc">从 64KB 寄存器堆读取源操作数，将无依赖指令分发到对应的计算单元管线，同时向 Scoreboard 注册写回依赖。</div>
+      <div class="flow-step-tags">
+        <span class="flow-tag">Dual Issue</span>
+        <span class="flow-tag">1-Cycle Reg Read</span>
+      </div>
+    </div>
+  </div>
+  <div class="arch-subpartitions">
+    <div class="flow-step-num">Step 4 · 多功能执行单元矩阵 (Execution Units)</div>
+    <div class="subpartition-unit-list">
+      <div class="unit-item tensor"><strong>Tensor Core (4th Gen)</strong><span>MMA / WGMMA (~94% 算力)</span></div>
+      <div class="unit-item"><strong>FP32 CUDA Cores (×32)</strong><span>单精度浮点 / 激活 / 归约</span></div>
+      <div class="unit-item"><strong>INT32 Cores (×16)</strong><span>寻址计算 / 索引 / 逻辑位移</span></div>
+      <div class="unit-item"><strong>LD / ST Units (×8)</strong><span>HBM / L2 / SMEM 显存访存</span></div>
+      <div class="unit-item"><strong>SFU (×4)</strong><span>exp / rsqrt / sin / cos</span></div>
+    </div>
+  </div>
+</div>
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         SM                                   │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │              Sub-Partition (×4)                         │ │
-│  │                                                         │ │
-│  │   ┌──────────────┐                                      │ │
-│  │   │ Warp Pool    │  (8 warps)                          │ │
-│  │   │ W0 W1 W2 ... │                                      │ │
-│  │   └──────┬───────┘                                      │ │
-│  │          │ 哪个 warp ready?                              │ │
-│  │          ▼                                              │ │
-│  │   ┌──────────────┐                                      │ │
-│  │   │Warp Scheduler│ ──选择 1-2 个 eligible warp          │ │
-│  │   └──────┬───────┘                                      │ │
-│  │          │                                              │ │
-│  │          ▼                                              │ │
-│  │   ┌──────────────┐    ┌──────────────┐                  │ │
-│  │   │Dispatch Unit │    │Dispatch Unit │  (×2)            │ │
-│  │   └──────┬───────┘    └──────┬───────┘                  │ │
-│  │          │                   │                          │ │
-│  │          ▼                   ▼                          │ │
-│  │   ┌─────────────────────────────────────────────┐       │ │
-│  │   │           Execution Units                    │       │ │
-│  │   │  INT32  FP32  FP64  LD/ST  SFU  TensorCore  │       │ │
-│  │   └─────────────────────────────────────────────┘       │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+| 组件 | 核心职责 | 工程类比与关键瓶颈 |
+| :--- | :--- | :--- |
+| **Warp Scheduler** | 决定“谁来执行”：每个周期评估 Scoreboard 依赖、硬件冒险与屏障同步，决定 Eligible Warps | 调度员：负责消除流水线 Bubble，通过交错就绪 Warp 实现延迟隐藏 |
+| **Dispatch Unit** | 决定“怎么执行”：读取寄存器操作数、绑定功能单元并双发射指令 | 分派员：指令分发带宽决定了单周期的 IPC 上限 |
 
-| 组件                 | 职责                     | 类比             |
-| ------------------ | ---------------------- | -------------- |
-| **Warp Scheduler** | 决定"谁来执行"，检查依赖、冒险、选择策略  | 调度员：选择下一个上场的选手 |
-| **Dispatch Unit**  | 决定"怎么执行"，读操作数、选执行单元、发射 | 分配员：把选手送到正确的赛道 |
+> [!example] 指令流水线周期级调度追踪（零开销线程束切换与延迟隐藏）
+> ```bash
+> Cycle 1:   Warp_A: LD r1, [addr]     # 发起 HBM 访存读取，需等待约 400 个时钟周期
+> Cycle 2:   Warp_B: ADD r2, r3, r4    # 切换至就绪的 Warp_B，零开销上下文切换
+> Cycle 3:   Warp_C: MUL r5, r6, r7    # 切换至就绪的 Warp_C，维持计算流水线打满
+> ...
+> Cycle 400: Warp_A: (Memory Ready)    # 显存数据抵达，Scoreboard 解锁目标寄存器
+> Cycle 401: Warp_A: ADD r8, r1, r9    # Warp_A 重新满足 Eligible 条件被发射执行
+> ```
 
-Cycle 1:  Warp_A: LD r1, [addr]     # 发起内存读取，需要等待 ~400 周期
-Cycle 2:  Warp_B: ADD r2, r3, r4    # 切换到 B
-Cycle 3:  Warp_C: MUL r5, r6, r7    # 切换到 C
-...
-Cycle 400: Warp_A: (内存返回)       # A 的数据到了
-Cycle 401: Warp_A: ADD r8, r1, r9   # A 继续执行
-
-### Tensor Core 的重要性
+### 1.5 Tensor Core 的算力主导地位与执行路径
 
 下面的数字用 H100 SXM 的量级做直觉对比：dense BF16 Tensor Core 约 990 TFLOPs，FP32 CUDA Core 约 60-66 TFLOPs。比例不是为了精确 benchmark，而是说明现代 ML workload 的主计算路径在哪里。
 
@@ -348,7 +363,7 @@ Cycle 401: Warp_A: ADD r8, r1, r9   # A 继续执行
 
 ## 第二部分：CUDA 编程模型与内核工程实战
 
-## Q1 基础环境搭建与 hello world kernel
+### 2.1 基础环境搭建与工程架构（JIT 内联 vs Setup.py 扩展）
 
 ### 项目文件架构
 
@@ -430,7 +445,7 @@ b = torch.randn(1024, device='cuda')
 c = module.vector_add(a, b)
 ```
 
-## Q2 理解 hello world kernel
+### 2.2 Vector Add 算子从零手撕与底层执行模型映射
 
 ### GPU 硬件架构 Intro
 
@@ -546,78 +561,59 @@ CPU                          GPU
 
 ## 第三部分：Roofline 性能建模与理论瓶颈分析
 
-## 1. Motivation
+### 3.1 性能建模动因与两段式耗时模型
 
-在深度学习中，我们经常遇到这样的困惑：
-- 增大 batch size 有时能提速，有时却没用
-- 同样的模型在不同硬件上表现差异巨大
-- 某些算子（如 attention）特别慢，但矩阵乘法却很快
-**Roofline 分析**提供了一个简洁的框架来回答这些问题：它告诉你当前的瓶颈是**算力**还是**带宽**，以及如何优化。
-## 2. 核心定义
+在深度学习系统工程中，我们经常遇到如下核心问题：
+- 增大 batch size 有时能成倍提升吞吐，有时却毫无改观；
+- 同样的模型在不同硬件架构（如 A100 vs H100 vs TPU）上表现差异巨大；
+- 某些算子（如 LayerNorm、Attention Softmax）用时漫长，但矩阵乘法却吞吐极高。
 
-任何计算都可以分解为两部分时间：
-$$T_{\text{math}} = \frac{\text{FLOPs}}{\text{Accelerator FLOPs/s}}$$
-$$T_{\text{comms}} = \frac{\text{Bytes}}{\text{Bandwidth (Bytes/s)}}$$
+**Roofline 分析**提供了一个极简而完备的分析框架：它通过算法的**算术强度（Arithmetic Intensity）**与硬件的**临界强度（Critical Intensity / Ridge Point）**对比，明确揭示算子当前处于**算力受限（Compute-Bound）**还是**带宽受限（Memory-Bound）**状态，并指明唯一有效的优化路径。
 
-| 符号        | 含义     | 例子 (TPU v5e)                 |
-| --------- | ------ | ---------------------------- |
-| FLOPs/s   | 芯片峰值算力 | $1.97 \times 10^{14}$ (bf16) |
-| Bandwidth | HBM 带宽 | $8.2 \times 10^{11}$ bytes/s |
+### 3.2 核心定义与物理量标定
 
-### 算术强度 (Arithmetic Intensity)
-$$\text{Arithmetic Intensity} = \frac{\text{FLOPs}}{\text{Bytes}}$$
-这是 roofline 分析的核心概念：**每搬运一个 byte 的数据，能做多少次浮点运算**。
-### 临界强度 (Critical Intensity)
-$$\text{Critical Intensity} = \frac{\text{Peak FLOPs/s}}{\text{Peak Bandwidth}}$$
-对于 TPU v5e MXU：
-$$\frac{1.97 \times 10^{14}}{8.2 \times 10^{11}} \approx 240 \text{ FLOPs/byte}$$
-### 2.4 Compute-bound vs Memory-bound
+任何算子的执行时间在物理上均可解构为两部分：
+$$T_{\text{math}} = \frac{\text{FLOPs}}{\text{Accelerator Peak FLOPs/s}}$$
+$$T_{\text{comms}} = \frac{\text{Bytes}}{\text{Memory Bandwidth (Bytes/s)}}$$
 
-| 条件                                                              | 状态                         | 含义           |
-| --------------------------------------------------------------- | -------------------------- | ------------ |
-| $\text{Intensity}_{\text{algo}} > \text{Intensity}_{\text{hw}}$ | **Compute-bound**          | 算力被充分利用 ✓    |
-| $\text{Intensity}_{\text{algo}} < \text{Intensity}_{\text{hw}}$ | **Memory/Bandwidth-bound** | 算力在等数据，被浪费 ✗ |
+| 物理符号 | 含义 | 硬件标定实例 (TPU v5e) | 硬件标定实例 (H100 SXM) |
+| :--- | :--- | :--- | :--- |
+| $\pi$ (Peak FLOPs/s) | 芯片理论峰值算力 | $1.97 \times 10^{14}$ (BF16 MXU) | $\sim 1.0 \times 10^{15}$ (BF16 Dense Tensor Core) |
+| $\beta$ (Bandwidth) | 片外显存（HBM）物理带宽 | $8.2 \times 10^{11}$ Bytes/s (820 GB/s) | $3.35 \times 10^{12}$ Bytes/s (3.35 TB/s) |
 
-## 3. 分析方法与例子
+#### 算术强度 (Arithmetic Intensity)
+$$I_{\text{algo}} = \frac{\text{FLOPs}}{\text{Bytes}} \quad (\text{FLOPs/Byte})$$
+每从存储层级搬运一个 Byte 的数据，能在计算单元内部完成多少次浮点运算。
 
-### 3.1 Roofline 分析的系统方法
+#### 硬件临界强度 (Critical Intensity / Ridge Point)
+$$I_c = \frac{\text{Peak FLOPs/s}}{\text{Peak Bandwidth}} = \frac{\pi}{\beta} \quad (\text{FLOPs/Byte})$$
 
-进行 Roofline 分析需要遵循以下步骤：
-**Step 1: 确定硬件参数**
-首先需要查阅目标硬件的规格：
+- **TPU v5e MXU：** $I_c = \frac{1.97 \times 10^{14}}{8.1 \times 10^{11}} \approx 243 \text{ FLOPs/Byte}$
+- **NVIDIA H100 SXM：** $I_c = \frac{1.0 \times 10^{15}}{3.35 \times 10^{12}} \approx 298 \text{ FLOPs/Byte}$
 
-| 硬件      | HBM 容量 | HBM 带宽 $\beta$           | bf16 算力 $\pi$         | int8 算力               | 临界强度 $I_c = \pi/\beta$ |
-| ------- | ------ | ------------------------ | --------------------- | --------------------- | ---------------------- |
-| TPU v5e | 16 GB  | $8.1 \times 10^{11}$ B/s | $1.97 \times 10^{14}$ | $3.94 \times 10^{14}$ | 243                    |
-| TPU v5p | 96 GB  | $2.8 \times 10^{12}$ B/s | $4.59 \times 10^{14}$ | $9.18 \times 10^{14}$ | 164                    |
-| TPU v6e | 32 GB  | $1.6 \times 10^{12}$ B/s | $9.20 \times 10^{14}$ | $1.84 \times 10^{15}$ | 575                    |
+#### 瓶颈分类判据
 
-**Step 2: 计算算法的 FLOPs 和 Bytes**
+| 判据条件 | 运行状态 | 物理本质与工程结论 |
+| :--- | :--- | :--- |
+| $I_{\text{algo}} \ge I_c$ | **Compute-Bound (算力受限)** | 硬件计算单元充分打满，显存总线带宽富余；优化重心是提升 Tensor Core 占比与指令级并行 |
+| $I_{\text{algo}} < I_c$ | **Memory-Bound (带宽受限)** | 硬件计算单元大部分周期在等待数据喂入；优化重心是减少内存搬运（算子融合、量化）与增加数据复用 |
 
-对于给定算法，分别计算：
-- $W$：总计算量（FLOPs）
-- $Q$：总数据传输量（Bytes）= 读取 + 写回
+### 3.3 Roofline 分析五步法与理论吞吐区域
 
-**Step 3: 计算算术强度**
-$$I_{\text{algo}} = \frac{W}{Q} \quad \text{(FLOPs/Byte)}$$
-**Step 4: 判断瓶颈类型**
+进行标准 Roofline 分析遵循以下五步：
+- **Step 1: 确定目标硬件规格**（查阅标称 $\beta$ 与 $\pi$，计算 $I_c = \pi/\beta$）
+- **Step 2: 计算算法的计算量 $W$（FLOPs）与访存量 $Q$（Bytes）**
+- **Step 3: 计算算法算术强度** $I_{\text{algo}} = \frac{W}{Q}$
+- **Step 4: 判断瓶颈类型与理论最短时间**：
+  $$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}} \right)$$
+- **Step 5: 计算实际硬件利用率**：
+  $$\text{Efficiency} = \frac{\text{Achieved FLOPs/s}}{\pi} = \frac{W / T_{\text{actual}}}{\pi}$$
 
-比较 $I_{\text{algo}}$ 与 $I_c$：
-$$T_{\text{actual}} = \max\left( \underbrace{\frac{W}{\pi}}_{T_{\text{compute}}}, \underbrace{\frac{Q}{\beta}}_{T_{\text{memory}}} \right)$$
-- 若 $I_{\text{algo}} > I_c$：**Compute-bound**，$T_{\text{actual}} = T_{\text{compute}}$
-- 若 $I_{\text{algo}} < I_c$：**Memory-bound**，$T_{\text{actual}} = T_{\text{memory}}$
-
-**Step 5: 计算硬件利用率**
-$$\text{Efficiency} = \frac{\text{Achieved FLOPs/s}}{\pi} = \frac{W / T_{\text{actual}}}{\pi}$$
-### 3.2 Roofline 图的理解
-**两个区域的物理意义**：
-- **斜线区域（Memory-bound）**：数据搬运是瓶颈，计算单元在"等数据"
-  - 实际吞吐 = $I_{\text{algo}} \times \beta$（随强度线性增长）
-- **平台区域（Compute-bound）**：计算是瓶颈，已达峰值算力
-  - 实际吞吐 = $\pi$（不再增长）
-
-![[assets/Pasted image 20251216210603.png]]
-> *展示了两种不同运算强度的算法（算法 1 和算法 2）及其在不同带宽（BW1 和 BW2）下的理论峰值吞吐量。红色区域表示算法在两种带宽下均受限于带宽，浪费了硬件峰值 FLOPs/s 的一部分。黄色区域表示算法仅在较低带宽（BW1）下受限于带宽。绿色区域表示算法在所有带宽下均受限于计算能力。此处，我们已充分利用了加速器的峰值 FLOPs/s，增加带宽或提高运算强度均无益处。*
+![[assets/Pasted image 20251216210603.png|图 3：Roofline 性能边界与多层级带宽下的理论吞吐量分布]]
+> **图 3 核心机制解读：** 展示了不同算术强度算法（算法 1 vs 算法 2）在不同硬件带宽（BW1 vs BW2）下的理论峰值吞吐量区域：
+> - **红色区域（双重带宽受限）：** 算法在 BW1 与 BW2 下均处于倾斜的 Memory-Bound 区域，硬件峰值算力严重未饱满。
+> - **黄色区域（单侧带宽受限）：** 算法仅在较低带宽（BW1）下受限，若切换至高带宽（BW2）即可跨越 Ridge Point 进入 Compute-Bound 平台。
+> - **绿色区域（完全算力受限）：** 算法算术强度足够高，已达到硬件峰值 FLOPs/s 平台，此时单纯增加带宽不再带来任何实质性能收益。
 
 ### 3.3 例子：Dot Product（向量点积）
 
@@ -844,9 +840,9 @@ $$B > I_c \implies \boxed{B > 298}$$
 >
 > 这是因为两者的"算力/带宽"比例接近（约 240-300 FLOPs/byte）。
 > 这个比例由芯片架构决定，是现代 AI 加速器的共同特征。
-## 4. 实践：代码与工具
+### 3.4 Profiler 实战与 Roofline 实测定界
 
-### 4.1 PyTorch Profiler
+#### 3.4.1 PyTorch Profiler 导出 Chrome Trace 与 FLOPs 计数
 
 ```python
 import torch
@@ -876,60 +872,100 @@ def torch_roofline(B, D, F, device='cuda'):
         row_limit=10
     ))
     
-    # 导出 Chrome trace
+    # 导出 Chrome trace 用于可视化时间线
     prof.export_chrome_trace("torch_trace.json")
 
 torch_roofline(256, 4096, 4096)
 ```
 
-### 4.2 NVIDIA Nsight 分析（需要root权限）
+#### 3.4.2 NVIDIA Nsight Compute (NCU) 硬件级 Roofline 剖析
 
 ```bash
-# 收集 roofline 数据
+# 收集 GPU 硬件计数器与 Roofline 剖析数据 (需具备驱动 profiling 权限)
 ncu --set roofline -o profile ./your_program
 
-# 查看报告
+# 启动 GUI 交互式分析器查看算子在 Roofline 图上的落点
 ncu-ui profile.ncu-rep
 ```
 
-### 4.3 分析hello world kernel/matmul kernel的roofline
+#### 3.4.3 Vector Add 实测 Roofline（严格 Memory-Bound）
 
+![[assets/Pasted image 20251223165208.png|图 4：BF16 Vector Add 在 RTX A5000 上的 Roofline 实测分布（Memory-Bound）]]
+> **图 4 测量结论：** 不同规模（从 $n = 1\text{M}$ 至 $134\text{M}$）的向量加法算子全部紧密锚定在左侧斜率线上（实测达到 80%~90% 的峰值内存带宽）。因其算术强度 $I \approx 0.17 \text{ FLOPs/Byte}$ 远低于硬件 Ridge Point（72.4），算子完全受限于显存带宽，增大规模无法跨越至平台区。
 
-![[assets/Pasted image 20251223165208.png]]
-所有ops都在同一个位置
+#### 3.4.4 MatMul 实测 Roofline 演进与异常点剖析
 
+![[assets/Pasted image 20251223164911.png|图 5：BF16 MatMul 在不同 Scale 下从 Memory-Bound 向 Compute-Bound 演进与异常点剖析]]
+> **图 5 异常点与工程诊断要点：**
+> 1. **图表标题异常说明：** 原图标题显示 `MatMul Roofline: □□□□ vs □□ (RTX A5000, BF16)`，系原测试脚本在 Linux 无中文字体环境下将“理论峰值 vs 测量性能”渲染为 Unicode 方块占位符（Tofu）。
+> 2. **为什么大矩阵乘法突破了 Roofline 顶线（125%~179%）？**
+>    - 图中蓝色顶线绘制的是 **CUDA Core (FP32) 的理论峰值算力**（约 65 TFLOPs）。
+>    - 但现代 GPU 在执行 BF16 GEMM 时，底层硬件会自动走 **第四代 Tensor Core 硬件流水线**（其 BF16 Dense 算力上限在 A5000 上高达 130+ TFLOPs）。
+>    - 因此当矩阵规模放大至 $1024 \times 1024$ 以上时，实际性能突破了绘制在图上的 CUDA Core“假天花板”。
+>    - **工程教训：** 做 Roofline 分析时，硬件峰值 $\pi$ 必须严格对齐算子实际走的物理单元（Tensor Core vs CUDA Core），否则会导致效率计算超过 100% 的误判。
 
-![[assets/Pasted image 20251223164911.png]]
+### 3.5 Roofline 定界与优化决策指南
 
-这个是matmul的roofline curve，可以看到随着scale增大，逐渐从memory bound成为了compute bound(这里会跑到线上去,为什么？因为这张图其实是错的，这是cuda core的图，但是bf16的matmul会用到的是tensor core！)
-### 5 小结
+<div class="roofline-decision-card">
+  <div class="decision-header">
+    <h4>Roofline 性能优化决策矩阵</h4>
+    <span class="decision-badge">Ridge Point 临界强度分水岭</span>
+  </div>
+  <div class="decision-grid">
+    <div class="decision-branch memory">
+      <span class="branch-badge">Memory-Bound 区域</span>
+      <div class="branch-title">算术强度 AI &lt; Ridge Point</div>
+      <code class="branch-formula">Achieved Throughput = AI × Bandwidth &lt; Peak FLOPs</code>
+      <ul>
+        <li><strong>首要瓶颈：</strong>显存总线带宽（HBM / DRAM），计算单元处于空转饥渴状态。</li>
+        <li><strong>错误方向：</strong>增加计算核心数量或提升主频无收益。</li>
+        <li><strong>核心优化战术：</strong>
+          <ul>
+            <li><strong>算子融合 (Kernel Fusion)：</strong>将 Elementwise/Norm/Activation 融于上游，避免中间张量往返写回 HBM。</li>
+            <li><strong>显式切块复用 (Tiling)：</strong>将局部 Tile 搬运至 Shared Memory / Register，多次复用分摊访存。</li>
+            <li><strong>精度量化 (Quantization)：</strong>FP32 $\to$ FP16/BF16 $\to$ INT8/FP4，直接缩减内存搬运字节数。</li>
+            <li><strong>重计算 (Recomputation)：</strong>用轻量算力替代显存占用与搬运。</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="decision-branch compute">
+      <span class="branch-badge">Compute-Bound 区域</span>
+      <div class="branch-title">算术强度 AI &ge; Ridge Point</div>
+      <code class="branch-formula">Achieved Throughput &le; Peak FLOPs/s</code>
+      <ul>
+        <li><strong>首要瓶颈：</strong>硬件执行管线（ALU / Tensor Core）吞吐上限，访存带宽有充裕余量。</li>
+        <li><strong>错误方向：</strong>单纯提升内存带宽或优化访存连续性无法进一步提升速度。</li>
+        <li><strong>核心优化战术：</strong>
+          <ul>
+            <li><strong>启用专用加速核心：</strong>强制使用 Tensor Core / MMA / WGMMA 指令，释放 90%+ 算力。</li>
+            <li><strong>提升指令级并行度 (ILP)：</strong>循环展开 (#pragma unroll)、多寄存器累加，掩盖执行管线延迟。</li>
+            <li><strong>结构化稀疏 (Structured Sparsity)：</strong>采用 2:4 稀疏化指令倍增 Tensor Core 吞吐。</li>
+            <li><strong>规避分支发散与停顿：</strong>消除 Warp Divergence，减少 RAW / WAR 数据冒险。</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
 
-![[assets/Pasted image 20251223105527.png]]
+#### 点位相对于 Roofline 边界的位置判别
 
-* 点相对于 Ridge Point 的位置
-	* 点在 Ridge Point 左侧（AI < Ridge Point）：
-		* 算法处于 Memory-Bound 状态。性能瓶颈是内存带宽，计算单元在等待数据。理论最大性能 = 带宽 × AI。此时增加计算能力没有意义，因为数据供应不上。
-		* 优化方向：减少内存访问（算子融合、量化、稀疏化）或提高数据复用（改变算法）。
-	* 点在 Ridge Point 右侧（AI > Ridge Point）：
-		* 算法处于 Compute-Bound 状态。性能瓶颈是计算能力，内存带宽有富余。理论最大性能 = 峰值算力。此时增加内存带宽没有意义，因为计算跟不上。
-		* 优化方向：使用更高效的计算指令（Tensor Core）、提高并行度、减少指令依赖。
-* 点相对于 Roofline 线的位置
-	* 点在线上（效率 > 80%）：
-		* 实现已经接近硬件极限，当前 AI 下几乎没有优化空间。如果还想提升性能，必须改变算法本身来提高 AI（比如算子融合），或者换更强的硬件。
-	* 点在线下（效率 < 80%）：实现没有充分利用硬件，存在优化空间。需要诊断具体原因。
-		* 如果在 Memory-Bound 区域且效率低，可能是：内存访问不连续（non-coalesced）、cache 命中率低、存在 bank conflict、数据对齐问题。
-		* 如果在 Compute-Bound 区域且效率低，可能是：occupancy 不足、寄存器溢出、没有使用 Tensor Core、存在指令依赖导致流水线停顿。
-	* 点在线上方：理论上不可能。如果测量结果显示点在 roofline 上方，说明测量有误或者 AI 计算错误。常见原因包括：没有算上 cache 效应导致实际内存访问量小于理论值、FLOPs 统计有遗漏、计时不准确。
+- **点位于 Ridge Point 左侧（$\text{AI} < I_c$）：** 处于 Memory-Bound 状态。瓶颈是内存带宽，计算单元等待数据。理论最大性能 $= \beta \times \text{AI}$。增加计算能力无意义，应主攻减少内存搬运（算子融合、量化）与增加数据复用。
+- **点位于 Ridge Point 右侧（$\text{AI} > I_c$）：** 处于 Compute-Bound 状态。瓶颈是计算能力，内存带宽充足。理论最大性能 $= \pi$。增加带宽无意义，应主攻提高 Tensor Core 利用率、指令并行与流水线打满。
+- **点在线上（效率 $> 80\%$）：** 算子实现已接近硬件物理极限，当前 AI 下优化空间极小。若想进一步提速，需通过算法级重构或算子融合提升 AI，或更换更高规格算力硬件。
+- **点在线下（效率 $< 80\%$）：** 硬件利用率不足，存在显著优化空间：
+  - **Memory-Bound 区域低效：** 常见于非合并访存（non-coalesced）、Shared Memory 存在 Bank Conflict、数据未对齐导致多次内存事务。
+  - **Compute-Bound 区域低效：** 常见于 Occupancy 不足、寄存器溢出到 Local Memory、未走 Tensor Core 专用硬件、指令依赖导致流水线停顿。
+- **点在线上方（物理不可能）：** 表明测试或计算存在错误。常见原因包括：未统计 L1/L2 缓存复用导致实际显存读取量远小于理论估算、FLOPs 统计遗漏、异步计时未执行 `cudaDeviceSynchronize()`、或硬件峰值选错（如用 CUDA Core 顶线评估 Tensor Core 算子）。
 
 ---
 
 ## 第四部分：GPU 性能优化的五条核心工程原则
 
-## 2. Memory-Bound 优化的五条核心原则
-
 将 transpose、stencil、SpMV、histogram、compaction 等各类 kernel 的优化经验归纳后，可以提炼出以下五条通用原则：
 
-### 原则 A：字节账本（Byte Accounting）
+### 4.1 原则 A：字节账本（Byte Accounting）
 
 优化前需要准确计算 kernel 的总内存流量。这一步决定了后续优化是否对准了真正的瓶颈。
 
@@ -957,7 +993,7 @@ ncu-ui profile.ncu-rep
 
 ---
 
-### 原则 B：合并访存（Coalescing）
+### 4.2 原则 B：合并访存（Coalescing）
 
 理想的访存形态：**一个 warp 的 32 个线程访问连续的 128 字节**（以 float 为例）。
 
@@ -968,19 +1004,19 @@ ncu-ui profile.ncu-rep
 合并访存是所有其他优化的前提。如果 coalescing 未满足，有效带宽的上限将被大幅削减。
 
 **例：矩阵转置中的 coalescing 问题**
-```
+```cuda
 // 反面：按列读取，warp 内线程访问步长为 N
-out[j][i] = in[i][j]   // in 按行读（coalesced）✓
+out[j][i] = in[i][j];   // in 按行读（coalesced）✓
                         // out 按列写（strided）✗ → 带宽利用率骤降
 
 // 正面：借助 shared memory 中转
-tile[threadIdx.y][threadIdx.x] = in[row][col]   // coalesced 读
-__syncthreads()
-out[col][row] = tile[threadIdx.x][threadIdx.y]   // coalesced 写
+tile[threadIdx.y][threadIdx.x] = in[row][col];   // coalesced 读
+__syncthreads();
+out[col][row] = tile[threadIdx.x][threadIdx.y];   // coalesced 写
 ```
 
 **例：AoS vs SoA**
-```
+```cpp
 // AoS（Array of Structs）— warp 读 x 时跨步为 sizeof(Point)
 struct Point { float x, y, z; };
 Point pts[N];            // pts[tid].x → stride=12 bytes ✗
@@ -992,7 +1028,7 @@ px[tid]                  // stride=4 bytes，完美 coalesced ✓
 
 ---
 
-### 原则 C：显式复用（Tiling）
+### 4.3 原则 C：显式复用（Tiling）
 
 当 kernel 存在邻域或数据复用结构（如 stencil、卷积、部分稀疏局部算子）时：
 
@@ -1005,7 +1041,7 @@ px[tid]                  // stride=4 bytes，完美 coalesced ✓
 > Stencil（模板计算）是一种常见的计算模式：每个输出元素由其**自身及固定邻域内的输入元素**加权求和得到。半径 R 的 1D stencil 意味着 `out[i]` 依赖 `in[i-R] ... in[i+R]` 共 2R+1 个元素。典型应用包括有限差分（CFD/PDE 求解）、图像模糊/锐化（2D stencil）、音频滤波等。由于相邻输出点的输入窗口高度重叠，stencil 是 tiling 优化的经典场景。
 
 **例：1D Stencil — 无 tiling vs 有 tiling**
-```
+```cuda
 // 无 tiling：每个输出点从 HBM 读 2R+1 个邻居
 // 相邻线程的读取大量重叠 → 依赖 cache 命中，不可控
 out[i] = Σ w[k] * in[i-R+k],  k=0..2R
@@ -1023,7 +1059,7 @@ out[i] = Σ w[k] * tile[threadIdx.x + k];  // 全部命中 SRAM
 
 ---
 
-### 原则 D：减少同步与争用（Sync/Contention）
+### 4.4 原则 D：减少同步与争用（Sync / Contention）
 
 Memory-bound kernel 的性能瓶颈往往不在于带宽本身，而在于：
 - `__syncthreads()` 调用过于频繁，将流水线吞吐转化为串行等待
@@ -1032,7 +1068,7 @@ Memory-bound kernel 的性能瓶颈往往不在于带宽本身，而在于：
 上一讲 Histogram 中的"层次化私有化"是这一原则的典型应用：将竞争范围从 global 逐级缩小到 block、再到 warp，从而降低争用开销。
 
 **例：Histogram 层次化私有化**
-```
+```cuda
 // 级别 1 — 全局 atomic（最大争用）
 atomicAdd(&global_bins[val], 1);           // 所有线程竞争同一组 bins
 
@@ -1048,7 +1084,7 @@ atomicAdd(&global_bins[tid], local_bins[tid]);  // 一次性归约
 
 ---
 
-### 原则 E：延迟隐藏（Latency Hiding）
+### 4.5 原则 E：延迟隐藏（Latency Hiding）
 
 当内存访问的高延迟无法避免时（如 SpMV 的随机访问），可通过以下方式隐藏延迟：
 - **提高 occupancy**：增加同时驻留的 warp 数量，使更多 warp 能在内存等待期间被调度执行
@@ -1057,7 +1093,7 @@ atomicAdd(&global_bins[tid], local_bins[tid]);  // 一次性归约
 Grid-stride loop 是实现这一原则的通用工程化手段。
 
 **例：Grid-stride loop + ILP unroll**
-```
+```cuda
 // 基础版：每线程处理一个元素，occupancy 是唯一延迟隐藏手段
 for (int i = tid; i < N; i += gridDim.x * blockDim.x)
     out[i] = f(in[i]);
@@ -1077,156 +1113,171 @@ for (int i = tid; i < N; i += stride * 4) {
 
 ---
 
----
-
 ## 第五部分：课后练习题与自测问答
 
-### 模块 A：CUDA 环境与 Extension 边界
-### 练习 1：CUDA extension 文件边界
+### 5.1 模块 A：CUDA 环境与 Extension 边界
 
 <details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">为什么 kernel launch 必须放在 .cu 文件？</span></summary>
+<summary><span class="q-label">Q1</span> <span class="q-text">为什么 CUDA Kernel Launch 必须放在 .cu 文件中？</span></summary>
 
-CUDA kernel launch 语法只能由 nvcc 解析。普通 C++ compiler 只能处理 binding、函数声明和 CPU 侧 wrapper。真正包含 global kernel 和 launch syntax 的代码应该放进 cuda source 或 .cu 文件。
-
-</details>
-
-### 练习 2：block / thread / warp 的映射
-
-<details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">一个 block 有 256 threads，会被拆成多少个 warp？</span></summary>
-
-一个 warp 是 32 threads，所以 256 threads 对应 8 个 warps。一个 block 会整体调度到某个 SM 上，block 内 warps 再由 warp scheduler 发射。优化时要同时看 block 数是否提供足够并行度，以及每个 block 是否占用太多 register 或 shared memory。
-
-</details>
-
-
-### 复习自测：看这组题能不能讲完整篇
-
-<details class="exercise">
-<summary><span class="q-label">Q3</span> <span class="q-text">CPU 代码、CUDA kernel、PyTorch binding 三层各自负责什么？</span></summary>
-
-CPU 侧负责分配张量、检查 shape/dtype/device、调用 launcher；`.cu` 里的 kernel 负责 GPU 上每个 thread 实际做什么；PyTorch binding 负责把 Python 调用接到 C++/CUDA 实现上。面试里不要把三层混在一起：`pybind` 不执行并行计算，kernel 也不负责 Python API。
+CUDA kernel launch 语法（`<<<>>>`）只能由 `nvcc` 解析。普通 C++ 编译器（如 g++、clang）只能处理 binding、函数声明和 CPU 侧 wrapper。真正包含 global kernel 和 launch 语法的代码必须放进 cuda source 或 `.cu` 文件中，通过 `nvcc` 进行预处理并降级生成 PTX / SASS 汇编。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q4</span> <span class="q-text">为什么 kernel 里几乎总要写边界检查？</span></summary>
+<summary><span class="q-label">Q2</span> <span class="q-text">一个 Thread Block 有 256 个线程，会被拆分成多少个 Warp？如何调度？</span></summary>
 
-CUDA launch 通常按 block size 向上取整，实际线程数会大于数据元素数。如果没有 `if (idx < n)`，最后一个 block 的多余线程可能越界读写。这个 bug 在小样例里可能不报错，但会污染显存或造成 nondeterministic failure。
-
-</details>
-
-<details class="exercise">
-<summary><span class="q-label">Q5</span> <span class="q-text">给 `n=10000, threads=256`，block 数怎么算？为什么不是整除？</span></summary>
-
-用 `(n + threads - 1) // threads` 向上取整，得到 `(10000 + 255) // 256 = 40`。如果只用 `n // threads = 39`，只能覆盖 9984 个元素，最后 16 个元素没有线程处理。
+一个 Warp 固定为 32 个线程，因此 256 个线程对应 $256 / 32 = 8$ 个 Warps。整个 Thread Block 会作为整体原子地被调度分配到某个具体的 SM 上；Block 内的 8 个 Warps 再由 SM 内部的 4 个 Warp Scheduler 依据指令就绪状态动态发射。优化时既要保证 Block 数量充足打满 GPU 上的所有 SM，又要控制每个 Block 的寄存器和 Shared Memory 占用以避免降低 Occupancy。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q6</span> <span class="q-text">一个 CUDA hello-world kernel 慢，先不要怀疑什么？应该先查什么？</span></summary>
+<summary><span class="q-label">Q3</span> <span class="q-text">CPU 代码、CUDA Kernel、PyTorch Binding 三层各自的核心职责是什么？</span></summary>
 
-先不要怀疑算法复杂度。入门 kernel 更常见的问题是 launch 配置太小、数据在 CPU/GPU 之间反复拷贝、没有同步导致计时错误、dtype/device 不一致、边界检查错误。先确认正确性、计时方式和数据流，再谈优化。
-
-</details>
-
-### 模块 B：SM 体系结构与执行调度
-### 练习 1：Tensor Core vs CUDA Core
-
-<details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">为什么 GEMM 优化首先关心 Tensor Core？</span></summary>
-
-现代训练和推理里的大头是矩阵乘：attention projection、MLP、MoE expert、QK 和 PV 都是 GEMM-like workload。H100 上 BF16 Tensor Core peak 远高于 FP32 CUDA Core peak。如果主计算没有落到 Tensor Core，通常说明数据类型、矩阵形状、layout、alignment 或 kernel lowering 有问题。
-
-</details>
-
-### 练习 2：SM 内部瓶颈定位
-
-<details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">occupancy 很高但 Tensor Core 利用率低，可能是什么原因？</span></summary>
-
-occupancy 高只表示有足够 warps 常驻，不保证发射的是高吞吐指令。Tensor Core 利用率低可能来自没有使用 mma/wgmma 路径、tile shape 不匹配、global/shared memory 供数不足、register spill、同步过多，或者 kernel 主体其实是 softmax/reduction 这类非 GEMM 操作。
-
-</details>
-
-
-### 复习自测：看这组题能不能讲完整篇
-
-<details class="exercise">
-<summary><span class="q-label">Q3</span> <span class="q-text">SM、warp、thread block 三者是什么关系？</span></summary>
-
-thread block 是程序员 launch 的调度单位，一个 block 会被放到某个 SM 上执行；block 内线程按 32 个一组组成 warp；warp 是硬件实际发射指令的基本单位。优化时，block 数决定全局并行度，warp 数决定隐藏延迟的能力，SM 资源决定同时能驻留多少 block/warp。
+- **CPU 侧**：负责分配输入输出张量内存、校验 Shape/Dtype/Device 约束、计算 Grid/Block 维度并调用 Launcher。
+- **CUDA Kernel（.cu）**：负责 GPU 端细粒度并行算子执行，定义每个 Thread/Warp 如何协作访问 Shared/Global 内存并完成数值计算。
+- **PyTorch Binding（pybind11 / cpp_extension）**：负责将 Python 解释器的 Tensor 对象与底层 C++/CUDA 函数进行 ABI 级参数绑定与类型转换。三者不可混淆：PyTorch binding 不执行并行计算，Kernel 也不参与 Python 运行时。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q4</span> <span class="q-text">为什么 occupancy 高不等于 kernel 快？</span></summary>
+<summary><span class="q-label">Q4</span> <span class="q-text">为什么 CUDA Kernel 中几乎必须书写边界检查（Boundary Check）？</span></summary>
 
-occupancy 只表示常驻 warp 多，不表示这些 warp 能发出有用指令。kernel 仍可能被 memory bandwidth、register spill、shared memory bank conflict、同步、指令依赖或没有走 Tensor Core 限制。正确判断要结合 eligible warps、stall reason、memory throughput 和 tensor pipe utilization。
-
-</details>
-
-<details class="exercise">
-<summary><span class="q-label">Q5</span> <span class="q-text">Tensor Core 在 Transformer 里主要吃哪些算子？CUDA Core 还负责什么？</span></summary>
-
-Tensor Core 主要吃 projection GEMM、MLP GEMM、MoE expert GEMM、attention 里的 QK/PV 等矩阵乘。CUDA Core 仍负责 elementwise、地址计算、mask、normalization、softmax、reduction 和控制逻辑。高性能 kernel 通常是 Tensor Core 做主计算，CUDA Core 做 glue code。
+CUDA 启动 Grid 维度通常按 Block Size 向上取整（`ceil(N / BlockSize)`），实际分配的全局线程总数往往大于实际数据元素数 $N$。如果没有 `if (idx < n)` 边界保护，最后一个 Block 中超出数据范围的多余线程将产生非法的越界内存读写，这在小规模张量测试中可能侥幸未报段错误，但在真实训练推理中会引发内存污染或难以复现的静默数值错误。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q6</span> <span class="q-text">一个 GEMM 理论上 compute-bound，但 Tensor Core 利用率低，排查顺序是什么？</span></summary>
+<summary><span class="q-label">Q5</span> <span class="q-text">给定 n=10000, threads=256，Block 数量如何计算？为什么不能直接向下整除？</span></summary>
 
-先查 dtype 和 shape 是否能走 Tensor Core，再看矩阵维度是否对齐、layout 是否连续、tile shape 是否合理、shared memory pipeline 是否供数及时、寄存器是否溢出。最后用 profiler 看是否真的有 `mma`/`wgmma` 指令，而不是退化成普通 CUDA Core 路径。
-
-</details>
-
-### 模块 C：Roofline 分析与性能定界
-### 练习 1：判断 memory-bound / compute-bound
-
-<details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">给定 FLOPs、Bytes、peak FLOPs 和 bandwidth，怎么判断瓶颈？</span></summary>
-
-先算 arithmetic intensity 等于 FLOPs 除以 Bytes，再算硬件 ridge point 等于 peak FLOPs 除以 bandwidth。如果前者小于后者，性能上界由带宽决定，属于 memory-bound；如果前者大于后者，性能上界接近峰值算力，属于 compute-bound。注意 BF16 matmul 应该用 Tensor Core peak。
-
-</details>
-
-### 练习 2：Roofline 误用
-
-<details class="exercise">
-<summary><span class="q-label">答案</span> <span class="q-text">为什么只看 achieved TFLOPs 可能误判？</span></summary>
-
-memory-bound kernel 的 achieved TFLOPs 天然低，因为上界由带宽决定。正确做法是同时看 achieved bandwidth、arithmetic intensity、理论 roofline 上界和实际运行时间。reduce 的 TFLOPs 很低可能已经接近带宽上限；GEMM 的 TFLOPs 低才更可能表示 Tensor Core 没吃满。
-
-</details>
-
-
-### 复习自测：看这组题能不能讲完整篇
-
-<details class="exercise">
-<summary><span class="q-label">Q3</span> <span class="q-text">Roofline 里 arithmetic intensity 的分子和分母分别是什么？</span></summary>
-
-分子是实际完成的 FLOPs，分母是从目标内存层级搬运的 Bytes。分析 GPU kernel 时通常先看 HBM bytes，因为很多瓶颈来自显存带宽。AI 越高，说明每读一个 byte 做的计算越多；AI 越低，越容易 memory-bound。
+必须使用向上取整公式 `(n + threads - 1) / threads`，即 `(10000 + 255) / 256 = 40` 个 Blocks。若错误地使用整除 `n / threads = 39`，则实际分配的线程数仅为 $39 \times 256 = 9984$，导致尾部剩余的 16 个元素无法被任何线程处理，造成算子计算结果截断缺失。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q4</span> <span class="q-text">为什么同一个 kernel 可能在小 shape memory-bound，在大 shape compute-bound？</span></summary>
+<summary><span class="q-label">Q6</span> <span class="q-text">排查 CUDA Hello-World 类简易算子性能迟缓的正确路径是什么？</span></summary>
 
-shape 变大后数据复用可能提高。比如 GEMM 的 K/N/M 变大后，每个加载进来的 tile 会参与更多乘加，arithmetic intensity 上升，瓶颈可能从 HBM 带宽转向 Tensor Core 计算峰值。Roofline 不是给算子贴永久标签，而是分析某个 shape 和实现。
+先不要怀疑算法时间复杂度。初级算子缓慢的核心病因通常包括：
+1. Grid / Block launch 配置过小导致 SM 严重欠载；
+2. 循环体内存在隐式的 CPU-GPU 张量来回拷贝（DtoH / HtoD）；
+3. 统计执行耗时未在前后显式加入 `cudaDeviceSynchronize()` 导致计入了冷启动或异步开销；
+4. 数据类型或设备未对齐导致的隐式转换。确认功能正确性、同步基准与端到端数据流后，再进入硬件微架构调优。
+
+</details>
+
+### 5.2 模块 B：SM 体系结构与执行调度
+
+<details class="exercise">
+<summary><span class="q-label">Q7</span> <span class="q-text">为什么现代大模型 GEMM 优化必须优先关注 Tensor Core？</span></summary>
+
+现代大语言模型的核心计算瓶颈高度集中在密集矩阵乘法上（Attention 投影、MLP 前馈层、MoE 门控与专家层、FlashAttention 的 $QK^T$ 与 $PV$）。在 NVIDIA H100 架构上，BF16 Tensor Core 的理论峰值算力（$\sim 1000$ TFLOPs）是 FP32 CUDA Core（$\sim 67$ TFLOPs）的 15 倍以上。若核心算子未落入 Tensor Core 管线，算子性能在硬件物理层面上就已丢失一个数量级。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q5</span> <span class="q-text">点落在 roofline 上方通常说明什么？</span></summary>
+<summary><span class="q-label">Q8</span> <span class="q-text">SM Occupancy 很高但 Tensor Core 利用率极低，根本原因可能是什么？</span></summary>
 
-通常说明测量或账本错了。常见原因是 FLOPs 算多、Bytes 算少、计时没有同步、使用了错误的硬件 peak、没有区分 Tensor Core 和 CUDA Core peak，或者 cache 命中让实际 HBM traffic 小于按理论张量大小估算的 bytes。
+Occupancy 高仅代表 SM 内部常驻的活跃 Warp 数量充裕，但并不代表这些 Warp 正在发射高吞吐的张量指令。根本原因包括：
+1. Kernel 底层未生成 `mma` 或 `wgmma` 硬件指令，退化为了普通的标量 FMA；
+2. 矩阵分块 Tile 尺寸过小，导致 Tensor Core 硬件管线长期处于等待发射气泡状态；
+3. Global/Shared Memory 供数带宽不足，Warp 因等待内存数据加载（Stall Long Scoreboard）而停顿；
+4. 算子本身包含大量的 Softmax、LayerNorm 或 Reduction 等非矩阵乘胶水操作。
 
 </details>
 
 <details class="exercise">
-<summary><span class="q-label">Q6</span> <span class="q-text">优化 memory-bound 和 compute-bound kernel 的第一反应分别是什么？</span></summary>
+<summary><span class="q-label">Q9</span> <span class="q-text">SM、Warp 与 Thread Block 三者之间的物理与逻辑映射关系是什么？</span></summary>
 
-memory-bound 先减少 HBM traffic 或提高访问效率：coalescing、fusion、cache reuse、量化、减少中间写回。compute-bound 先提高计算单元利用率：Tensor Core 路径、tile shape、pipeline、减少依赖和 register spill。方向反了会浪费时间。
+- **Thread Block**：程序员定义的逻辑组织与调度单位，启动时被原子分配至某一个具体的物理 SM，Block 在其生命周期内不可跨 SM 迁移。
+- **Warp**：硬件执行与指令发射的基本原子单位（32 个线程锁步执行相同指令）。Block 被进一步划分为若干个 Warp。
+- **SM（流式多处理器）**：包含物理寄存器堆、Shared Memory、Warp 调度器与执行管线的独立硬件芯片单元。一个 SM 上可并发驻留来自同一个或不同 Block 的多个 Warps。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q10</span> <span class="q-text">为什么高 Occupancy 并不等价于高 Kernel 性能？</span></summary>
+
+Occupancy 是用来“隐藏指令和内存访问延迟”的手段而非性能目的。当 Warp 数量已经足以掩盖流水线延迟（通常 40%~60% 的理论 Occupancy 即可满足）时，继续提升 Occupancy 并不会带来额外收益。相反，为了追求极高的 Occupancy 往往需要限制每个线程的寄存器使用量，极易诱发 Register Spill（寄存器溢出至高延迟 Local Memory），同时增加 Shared Memory 争用，最终反而导致算子吞吐大幅下降。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q11</span> <span class="q-text">在 Transformer 架构中，Tensor Core 与 CUDA Core 的具体分工是什么？</span></summary>
+
+- **Tensor Core**：专司高算术强度的 GEMM-like 主干算子，包括 Q/K/V 投影变换、MLP 的 Gate/Up/Down 投影、Attention 中的点积打分与加权聚合。
+- **CUDA Core**：负责所有标量辅助、控制流与非矩阵计算，包括 RoPE 旋转位置编码、Softmax 指数归一化、RMSNorm / LayerNorm、SwiGLU 激活函数、内存重排与地址寻址计算。高性能 Kernel 通常采用 Tensor Core 负责重算力运算，CUDA Core 或专用单元负责轻量胶水逻辑。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q12</span> <span class="q-text">一个理论上 Compute-Bound 的 GEMM 算子实测 Tensor Core 利用率低下，排查顺序是什么？</span></summary>
+
+推荐排查步骤：
+1. **指令验证**：通过 SASS 反汇编或 NCU 检查底层是否真正生成了 `HMMA` / `WGMMA` 指令；
+2. **数据布局与对齐**：核验输入矩阵在 K 维度上是否为 16 字节对齐，访存连续性是否满足 Vectorized Load 要求；
+3. **分块体系（Tiling）**：检查 Block Tile、Warp Tile 与 Thread Tile 形状是否匹配架构最佳实践；
+4. **访存双缓冲与异步流水**：排查 Shared Memory 供数是否成为瓶颈，是否启用了 `cp.async` 隐藏数据加载延迟；
+5. **寄存器压力**：排查是否存在 Register Spill 到 Local Memory。
+
+</details>
+
+### 5.3 模块 C：Roofline 分析与性能定界
+
+<details class="exercise">
+<summary><span class="q-label">Q13</span> <span class="q-text">给定 FLOPs、Bytes、峰值算力与带宽，如何严格判定算子受限类型？</span></summary>
+
+1. 计算算法自身的算术强度：$I_{\text{algo}} = \frac{\text{FLOPs}}{\text{Bytes}}$；
+2. 计算目标硬件平台的临界强度（Ridge Point）：$I_c = \frac{\text{Peak FLOPs/s}}{\text{Memory Bandwidth (Bytes/s)}}$；
+3. **判定法则**：
+   - 若 $I_{\text{algo}} < I_c$：判定为 **Memory-Bound**，性能上限由显存总线带宽决定，理论耗时为 $\frac{\text{Bytes}}{\beta}$；
+   - 若 $I_{\text{algo}} \ge I_c$：判定为 **Compute-Bound**，性能上限由计算单元峰值吞吐决定，理论耗时为 $\frac{\text{FLOPs}}{\pi}$。对于 BF16 GEMM，$\pi$ 必须取 Tensor Core 的物理峰值。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q14</span> <span class="q-text">为什么仅凭实测 Achieved TFLOPs 无法断定算子实现的好坏？</span></summary>
+
+因为 Memory-Bound 类算子（如 Elementwise Add、LayerNorm、Softmax）的算术强度极低，受限于显存带宽物理极限，其理论上能够达到的 TFLOPs 本身就只有硬件峰值的数个百分点甚至更低。若某 Reduce 算子的实测带宽利用率已达 90% 的 HBM 理论上限，即便其 Achieved TFLOPs 仅有 2 TFLOPs，它也已经逼近物理极限；反之，若一个 GEMM 算子跑出 50 TFLOPs，但在拥有 1000 TFLOPs Tensor Core 的 H100 上其利用率仅为 5%，则是极其劣质的实现。必须结合 Achieved Bandwidth 与 Roofline 边界联合评定。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q15</span> <span class="q-text">Roofline 分析中，算术强度的分子（FLOPs）与分母（Bytes）的物理本质是什么？</span></summary>
+
+- **分子（FLOPs）**：算法本身在数学定义上必须完成的有效浮点运算次数（通常 1 次乘加 FMA 计为 2 FLOPs），独立于具体代码实现。
+- **分母（Bytes）**：算子在执行过程中必须跨越特定硬件内存边界（通常指片外全局显存 HBM / DRAM）搬运的实际字节总量。算术强度反映了“每搬运 1 字节显存数据，能够支撑算法完成多少次浮点计算”，数值越高代表数据复用率越强。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q16</span> <span class="q-text">为什么同一个算子在不同数据 Scale 下会发生瓶颈类型的物理转移？</span></summary>
+
+以矩阵乘法为例，当 Batch Size 很小（如 $M=1$ 的 GEMV 推理解码阶段）时，每个权重矩阵参数从 HBM 载入后仅参与一次乘法，没有跨 Batch 的数据复用，算术强度约为 1 FLOPs/Byte，算子严格处于 Memory-Bound 区域；而随着 Batch Size 放大到数百或数千（Prompt 预填充或大 Batch 训练），每个权重元素在载入高速片上 SRAM 后被并发的数百个 Token 批量复用，算术强度线性上升至数百 FLOPs/Byte，跨越 Ridge Point 跃迁至 Compute-Bound 区域。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q17</span> <span class="q-text">实际测试中落点突破 Roofline 理论顶线（计算效率超过 100%）的常见原因是什么？</span></summary>
+
+主要原因包括：
+1. **硬件峰值基准选错**：例如将 FP32 CUDA Core 峰值作为顶线，而实际运行的 BF16 算子触发了算力高达数倍的 Tensor Core 硬件管线；
+2. **片上缓存命中未计入**：理论 Bytes 仅按全局张量尺寸估算，但大部分数据命中 L2 Cache 或 Shared Memory，实际发往 HBM 的物理流量远小于理论值；
+3. **异步计时缺陷**：GPU 算子为异步提交，计时代码未插入 `cudaDeviceSynchronize()` 导致仅记录了 CPU Launch 开销；
+4. **FLOPs 统计偏高**：公式估算的理论运算量包含了已被编译器死代码消除（DCE）的冗余逻辑。
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q18</span> <span class="q-text">针对 Memory-Bound 与 Compute-Bound 算子，第一反应的优化手段分别是什么？</span></summary>
+
+- **Memory-Bound 算子（首要目标：削减显存字节账本与提升总线利用率）**：
+  1. 实施算子融合（Kernel Fusion），将前后关联操作合并为一个 Kernel，消灭中间张量往返 HBM 的写入与读取；
+  2. 实施数值量化（INT8 / FP8 / FP4），成倍削减数据传输位宽；
+  3. 规避非合并访存（Coalescing）并消除 Shared Memory 的 Bank Conflict。
+- **Compute-Bound 算子（首要目标：打满核心算力流水线与消除气泡）**：
+  1. 切换至专用加速硬件通路（Tensor Core MMA / WGMMA 指令）；
+  2. 展开循环（`#pragma unroll`）并发射多路累加寄存器，提升指令级并行度（ILP）；
+  3. 采用 2:4 结构化稀疏加速；
+  4. 消除分支发散（Warp Divergence），确保 32 个线程无停顿同步推进。
 
 </details>
