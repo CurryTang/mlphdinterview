@@ -1,6 +1,6 @@
-# 01 · GPU 硬件体系、CUDA 编程模型与 Roofline 性能分析基石
+# 01 · GPU 硬件体系、CUDA 编程模型与 Roofline 性能分析
 
-本章作为 MLSYS 算子系统与底层优化的基石，建立起从 GPU 物理硬件、流式多处理器（SM）执行管线、CUDA 编程与执行模型，到 Roofline 性能分析框架与 Memory-Bound 调优核心原则的完整心智体系。
+本节梳理 GPU 硬件拓扑、流式多处理器（SM）执行管线、CUDA 编程模型与存储层级映射，结合 Roofline 性能分析框架量化算子计算与访存瓶颈，并归纳访存受限（Memory-Bound）算子的五条优化原则。
 
 ---
 
@@ -445,9 +445,9 @@ b = torch.randn(1024, device='cuda')
 c = module.vector_add(a, b)
 ```
 
-### 2.2 Vector Add 算子从零手撕与底层执行模型映射
+### 2.2 Vector Add 算子实现与底层执行模型映射
 
-### GPU 硬件架构 Intro
+#### 1. 硬件架构映射
 
 NVIDIA GPU 采用层次化的并行架构：
 
@@ -467,7 +467,7 @@ GPU
 - **Shared Memory**：同一 block 内的线程共享，速度接近寄存器
 - **Global Memory**：所有线程可访问，但延迟高（~400 cycles）
 
-### CUDA 编程模型
+#### 2. CUDA 线程组织模型
 
 CUDA 将线程组织为三层结构，与硬件对应：
 
@@ -481,7 +481,7 @@ Grid (网格)
 └── ...
 ```
 
-### 解析
+#### 3. 内核代码解析与索引计算
 
 ```cuda
 __global__ void vector_add_kernel(
@@ -517,7 +517,7 @@ Block 3: idx = 3*256 + 0..255  = 768..1023
 
 **边界检查** `if (idx < n)`：因为线程总数可能大于数据量，需要防止越界访问
 
-### kernel 启动
+#### 4. Kernel 启动配置与向上取整
 
 ```cuda
 int threads = 256;
@@ -536,7 +536,7 @@ blocks = (1000 + 255) / 256 = 4
 总线程数 = 4 * 256 = 1024 >= 1000 ✓
 ```
 
-### 执行流程
+#### 5. 端到端执行流程
 
 ```
 CPU                          GPU
@@ -904,7 +904,7 @@ ncu-ui profile.ncu-rep
 >    - 因此当矩阵规模放大至 $1024 \times 1024$ 以上时，实际性能突破了绘制在图上的 CUDA Core“假天花板”。
 >    - **工程教训：** 做 Roofline 分析时，硬件峰值 $\pi$ 必须严格对齐算子实际走的物理单元（Tensor Core vs CUDA Core），否则会导致效率计算超过 100% 的误判。
 
-### 3.5 Roofline 定界与优化决策指南
+### 3.5 Roofline 瓶颈定界与优化决策矩阵
 
 <div class="roofline-decision-card">
   <div class="decision-header">
@@ -1115,8 +1115,6 @@ for (int i = tid; i < N; i += stride * 4) {
 
 ## 第五部分：课后练习题与自测问答
 
-### 5.1 模块 A：CUDA 环境与 Extension 边界
-
 <details class="exercise">
 <summary><span class="q-label">Q1</span> <span class="q-text">为什么 CUDA Kernel Launch 必须放在 .cu 文件中？</span></summary>
 
@@ -1164,8 +1162,6 @@ CUDA 启动 Grid 维度通常按 Block Size 向上取整（`ceil(N / BlockSize)`
 4. 数据类型或设备未对齐导致的隐式转换。确认功能正确性、同步基准与端到端数据流后，再进入硬件微架构调优。
 
 </details>
-
-### 5.2 模块 B：SM 体系结构与执行调度
 
 <details class="exercise">
 <summary><span class="q-label">Q7</span> <span class="q-text">为什么现代大模型 GEMM 优化必须优先关注 Tensor Core？</span></summary>
@@ -1220,8 +1216,6 @@ Occupancy 是用来“隐藏指令和内存访问延迟”的手段而非性能�
 5. **寄存器压力**：排查是否存在 Register Spill 到 Local Memory。
 
 </details>
-
-### 5.3 模块 C：Roofline 分析与性能定界
 
 <details class="exercise">
 <summary><span class="q-label">Q13</span> <span class="q-text">给定 FLOPs、Bytes、峰值算力与带宽，如何严格判定算子受限类型？</span></summary>
@@ -1281,3 +1275,14 @@ Occupancy 是用来“隐藏指令和内存访问延迟”的手段而非性能�
   4. 消除分支发散（Warp Divergence），确保 32 个线程无停顿同步推进。
 
 </details>
+
+---
+
+## 参考文献与拓展阅读
+
+1. **Google DeepMind - *How To Scale Your Model*** (Jacob Austin, Sholto Douglas, Roy Frostig, et al., 2025): [Part 1: All About Rooflines](https://jax-ml.github.io/scaling-book).
+   > 本章的 Roofline 五步法分析框架、TPU v5e/v5p/v6e 硬件物理量标定、Dot Product 与 GEMM 算术强度极限推导、量化与混合精度临界 Batch Size 推导、以及 Batch-Specific Weight 反面案例均源自该文献。
+2. **Williams, S., Waterman, A., & Patterson, D. (2009)**. *Roofline: an insightful visual performance model for multicore architectures*. Communications of the ACM, 52(4), 65-76.
+3. **NVIDIA Corporation (2022)**. *NVIDIA H100 Tensor Core GPU Architecture Whitepaper*.
+4. **NVIDIA Corporation (2024)**. *CUDA C++ Programming Guide*.
+5. **PyTorch Team (2024)**. *Custom C++ and CUDA Extensions Tutorial*.

@@ -1,6 +1,6 @@
 # 01 · GPU Architecture, CUDA Programming Model & Roofline Performance Analysis
 
-This chapter serves as the fundamental foundation of MLSYS operator engineering and low-level systems. It establishes a complete mental model bridging GPU physical hardware, Streaming Multiprocessor (SM) execution pipelines, the CUDA programming and execution model, Roofline performance modeling, and the five core engineering principles of memory-bound optimization.
+This section details GPU hardware architecture, Streaming Multiprocessor (SM) execution pipelines, the CUDA programming model, and memory hierarchy mappings. It uses the Roofline performance model to quantify compute versus bandwidth bottlenecks and summarizes five core optimization principles for memory-bound kernels.
 
 ---
 
@@ -451,7 +451,7 @@ c = module.vector_add(a, b)
 
 ### 2.2 Vector Add Operator Implementation and Execution Mapping
 
-### GPU Hardware Architecture Intro
+#### 1. Hardware Architecture Mapping
 
 NVIDIA GPUs use a hierarchical parallel architecture:
 
@@ -471,7 +471,7 @@ GPU
 - **Shared Memory**: Threads in the same block share, the speed is close to the register
 - **Global Memory**: accessible to all threads, but high latency (~400 cycles)
 
-### CUDA Programming Model
+#### 2. CUDA Thread Hierarchy
 
 CUDA organizes threads into a three-layer structure, corresponding to the hardware:
 
@@ -485,7 +485,7 @@ Grid
 └── ...
 ```
 
-### Analysis
+#### 3. Kernel Code Analysis & Index Computation
 
 ```cuda
 __global__ void vector_add_kernel(
@@ -521,7 +521,7 @@ Block 3: idx = 3*256 + 0..255  = 768..1023
 
 **Boundary Check** `if (idx < n)`: Because the total number of threads may be greater than the amount of data, out-of-bounds access needs to be prevented
 
-### kernel startup
+#### 4. Kernel Launch Configuration & Grid Ceil Sizing
 
 ```cuda
 int threads = 256;
@@ -540,7 +540,7 @@ blocks = (1000 + 255) / 256 = 4
 Total threads = 4 * 256 = 1024 >= 1000 ✓
 ```
 
-### Execution process
+#### 5. End-to-End Execution Flow
 
 ```
 CPU                          GPU
@@ -1136,8 +1136,6 @@ for (int i = tid; i < N; i += stride * 4) {
 
 ## Part 5: Practice Exercises & Review Self-Checks
 
-### 5.1 Module A: CUDA Environment & Extension Boundaries
-
 <details class="exercise">
 <summary><span class="q-label">Q1</span> <span class="q-text">Why must CUDA kernel launches be placed in .cu files rather than .cpp files?</span></summary>
 
@@ -1185,8 +1183,6 @@ Do not start by questioning algorithmic complexity. Novice kernel slowdowns usua
 4. Hidden type conversions due to mismatched dtypes. First confirm functional correctness, synchronization, and memory flow before tuning hardware microarchitecture.
 
 </details>
-
-### 5.2 Module B: SM Architecture & Execution Scheduling
 
 <details class="exercise">
 <summary><span class="q-label">Q7</span> <span class="q-text">Why does modern LLM GEMM optimization prioritize Tensor Cores above all else?</span></summary>
@@ -1241,8 +1237,6 @@ Recommended sequence:
 5. **Register Pressure**: Check for register spills to local memory.
 
 </details>
-
-### 5.3 Module C: Roofline Analysis & Performance Characterization
 
 <details class="exercise">
 <summary><span class="q-label">Q13</span> <span class="q-text">Given FLOPs, Bytes, peak compute, and memory bandwidth, how do you formally determine the bottleneck regime?</span></summary>
@@ -1302,3 +1296,14 @@ Common causes include:
   4. Eliminate warp divergence to keep all 32 lanes synchronous without idle cycles.
 
 </details>
+
+---
+
+## References & Further Reading
+
+1. **Google DeepMind - *How To Scale Your Model*** (Jacob Austin, Sholto Douglas, Roy Frostig, et al., 2025): [Part 1: All About Rooflines](https://jax-ml.github.io/scaling-book).
+   > The Roofline methodology, TPU parameter references, arithmetic intensity derivations for Dot Product and GEMM, critical batch size calculations under quantization and mixed precision, and the batch-specific weight counter-example in this chapter are derived from this work.
+2. **Williams, S., Waterman, A., & Patterson, D. (2009)**. *Roofline: an insightful visual performance model for multicore architectures*. Communications of the ACM, 52(4), 65-76.
+3. **NVIDIA Corporation (2022)**. *NVIDIA H100 Tensor Core GPU Architecture Whitepaper*.
+4. **NVIDIA Corporation (2024)**. *CUDA C++ Programming Guide*.
+5. **PyTorch Team (2024)**. *Custom C++ and CUDA Extensions Tutorial*.
