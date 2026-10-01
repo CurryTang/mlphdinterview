@@ -2356,10 +2356,6 @@ class Solution:
 
 The problem gives a sorted dictionary `words` in an alien language. The words are composed of lowercase English letters, but the order of the alphabet is unknown. You need to infer and return a valid ordering of characters in the language. If no valid ordering exists (e.g., circular contradictions or invalid prefix order), return an empty string `""`. If multiple valid topological orders exist, returning any of them is acceptable. Problem source: <https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
 
-```topo-demo
-foreign-dictionary
-```
-
 | Item | Detail |
 |---|---|
 | Technique combination | Extracting character partial order from adjacent word pairs, Kahn's algorithm (BFS) or 3-color DFS producing the topological order |

@@ -2417,10 +2417,6 @@ class Solution:
 
 题目给出一个外星语言的有序词典 `words`。这些单词仍由小写英文字母组成，但字母之间的大小顺序未知。你需要根据词典的排序推断并返回一个合法的字母表顺序；如果不存在合法顺序（例如逻辑成环矛盾，或前缀规则非法），返回空字符串 `""`。若存在多个合法拓扑序，返回任意一个即可。题目源：<https://neetcode.io/problems/foreign-dictionary/question?list=neetcode150>
 
-```topo-demo
-foreign-dictionary
-```
-
 | 项目 | 内容 |
 |---|---|
 | 组合技巧 | 从相邻单词对抽取字符偏序关系，Kahn 算法（BFS）或三色 DFS 输出拓扑序 |
