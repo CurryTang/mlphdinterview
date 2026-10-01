@@ -2238,9 +2238,9 @@ Quartet 一步训练流程：
 
 $$L(N, D, P_{fwd}, P_{bwd}) = \frac{A}{(\text{effN})^\alpha} + \frac{B}{(\text{effD})^\beta} + E$$
 
-其中 $\text{effN} = N \cdot  ho(P_{fwd})$ 为"有效参数量"（低精度降低了参数的信息容量），$\text{effD} = D \cdot \eta(P_{bwd})$ 为"有效数据量"（低精度梯度降低了每个 token 的学习效率）。核心发现：
+其中 $\text{effN} = N \cdot \rho(P_{fwd})$ 为"有效参数量"（低精度降低了参数的信息容量），$\text{effD} = D \cdot \eta(P_{bwd})$ 为"有效数据量"（低精度梯度降低了每个 token 的学习效率）。核心发现：
 
-- **前向精度影响参数效率**：FP4 前向的 $ ho$ 约 0.69-0.78，即 FP4 模型需要约 1.3-1.45× 参数才能匹配 BF16 同等精度
+- **前向精度影响参数效率**：FP4 前向的 $\rho$ 约 0.69-0.78，即 FP4 模型需要约 1.3-1.45× 参数才能匹配 BF16 同等精度
 - **后向精度影响数据效率**：FP4 后向的 $\eta$ 约 0.85，需要约 1.18× 数据补偿
 - **前向比后向更敏感**：这解释了为什么 Quartet 在前向用更精确的 QuEST 而后向用简单的 SR
 
@@ -2347,7 +2347,7 @@ $$m = \begin{cases} \beta \cdot r_m & \text{if } r_m > 0 \wedge r_s > 1 \\ 0 & \
 
 **核心发现 1：离群值指标不能预测 PTQ 精度**
 
-§3 中我们介绍了离群值（outlier）是 LLM 量化的核心难点。直觉上，离群值越大量化越难——传统工作用 MMR（max/median ratio）或 Kurtosis 来衡量离群程度，并以此指导量化方案设计（如 §4.2 SmoothQuant 的目标就是降低激活的离群值）。但 Beyond Outliers 发现，**跨优化器比较时 MMR 和 Kurtosis 与 PTQ 后精度几乎无相关性**（$ ho = 0.62$ 和 $ ho = -0.89$ 对 760M 模型）：
+§3 中我们介绍了离群值（outlier）是 LLM 量化的核心难点。直觉上，离群值越大量化越难——传统工作用 MMR（max/median ratio）或 Kurtosis 来衡量离群程度，并以此指导量化方案设计（如 §4.2 SmoothQuant 的目标就是降低激活的离群值）。但 Beyond Outliers 发现，**跨优化器比较时 MMR 和 Kurtosis 与 PTQ 后精度几乎无相关性**（$\rho = 0.62$ 和 $\rho = -0.89$ 对 760M 模型）：
 
 - **Muon** 的 MMR 最低（离群最小），但 PTQ 后精度**下降最严重**（760M: 64.63% → 50.00%）
 - **Shampoo** 的 MMR 最高（离群最大），但 PTQ 后精度**保持最好**（760M: 63.05% → 59.26%）
@@ -2366,7 +2366,7 @@ $$G_\ell = G_{1,\ell} \cdot G_{2,\ell}$$
 
 $G_{1,\ell}$ 是谱范数比（量化前后权重谱范数变化，各优化器接近 1），$G_{2,\ell}$ 是对齐比（量化误差方向与权重主奇异方向的对齐程度）。**Muon 的 $G_\ell$ 在线性层最高**——量化误差恰好指向权重放大最强的方向，导致误差快速积累；Shampoo 和 AdamW 的 $G_\ell$ 最低。
 
-论文提出的新指标 $R_L$（最终层累积量化误差）与 PTQ 精度高度相关（$ ho = 0.70$）。
+论文提出的新指标 $R_L$（最终层累积量化误差）与 PTQ 精度高度相关（$\rho = 0.70$）。
 
 **核心发现 2：QAT 最佳优化器 ≠ 全精度最佳优化器**
 
@@ -2374,9 +2374,9 @@ $G_{1,\ell}$ 是谱范数比（量化前后权重谱范数变化，各优化器�
 
 **核心发现 3：QAT 的 scaling law**
 
-类似 §8.3 Quartet 提出的低精度 scaling law（用 effN 描述精度对参数效率的影响），Beyond Outliers 推导了 QAT 下的 optimizer-aware scaling law：$L = A' / (N \cdot  ho)^\alpha + E$，其中 $ ho$ 是"参数效率"——4-bit QAT 模型的等效参数量为 $ ho \cdot N$。各优化器的 $ ho_{4bit}$：
+类似 §8.3 Quartet 提出的低精度 scaling law（用 effN 描述精度对参数效率的影响），Beyond Outliers 推导了 QAT 下的 optimizer-aware scaling law：$L = A' / (N \cdot \rho)^\alpha + E$，其中 $\rho$ 是"参数效率"——4-bit QAT 模型的等效参数量为 $\rho \cdot N$。各优化器的 $\rho_\text{4bit}$：
 
-| 优化器 | $ ho_{4bit}$ | 含义 |
+| 优化器 | $\rho_\text{4bit}$ | 含义 |
 |---|---|---|
 | **Shampoo** | **0.879** | 4-bit 保留 87.9% 参数效率 |
 | AdamW | 0.863 | |

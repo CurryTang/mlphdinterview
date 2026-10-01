@@ -1,6 +1,6 @@
-# 02 · 经典并行原语与 Memory-Bound 算子手撕指南
+# 02 · 经典并行原语与 Memory-Bound 算子工程实现
 
-本章系统掌握高性能算子工程中最核心的经典并行原语（Reduction、Histogram、Prefix Scan）与 Memory-Bound 算子手撕代码库。从硬件访存合并、Bank Conflict 消除、Warp Shuffle 寄存器交换，到 Mamba-1/2 的前沿状态空间模型关联扫描，构建完整的访存受限算子调优心智。
+本章系统掌握高性能算子工程中最核心的经典并行原语（Reduction、Histogram、Prefix Scan）与 Memory-Bound 算子工程实现。从硬件访存合并、Bank Conflict 消除、Warp Shuffle 寄存器交换，到 Mamba-1/2 的前沿状态空间模型关联扫描，构建访存受限算子优化的完整知识体系。
 
 ---
 

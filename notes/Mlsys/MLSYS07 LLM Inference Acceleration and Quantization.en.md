@@ -2238,9 +2238,9 @@ Optimizer update: FP32 master weights (same as mixed-precision training)
 
 $$L(N, D, P_{fwd}, P_{bwd}) = \frac{A}{(\text{effN})^\alpha} + \frac{B}{(\text{effD})^\beta} + E$$
 
-where $\text{effN} = N \cdot  ho(P_{fwd})$ is the "effective parameter count" (lower forward precision reduces parameter information capacity), and $\text{effD} = D \cdot \eta(P_{bwd})$ is the "effective data amount" (lower-precision gradients reduce how much each token contributes to learning). The core findings are:
+where $\text{effN} = N \cdot \rho(P_{fwd})$ is the "effective parameter count" (lower forward precision reduces parameter information capacity), and $\text{effD} = D \cdot \eta(P_{bwd})$ is the "effective data amount" (lower-precision gradients reduce how much each token contributes to learning). The core findings are:
 
-- **Forward precision affects parameter efficiency**: FP4 forward has $ ho \approx 0.69-0.78$, meaning an FP4 model needs about 1.3-1.45× more parameters than BF16 to match the same accuracy
+- **Forward precision affects parameter efficiency**: FP4 forward has $\rho \approx 0.69-0.78$, meaning an FP4 model needs about 1.3-1.45× more parameters than BF16 to match the same accuracy
 - **Backward precision affects data efficiency**: FP4 backward has $\eta \approx 0.85$, meaning about 1.18× more data is needed as compensation
 - **Forward is more sensitive than backward**: this explains why Quartet uses more accurate QuEST in the forward pass and simpler SR in the backward pass
 
@@ -2347,7 +2347,7 @@ In §3 we introduced outliers as the core challenge in LLM quantization, and in 
 
 **Core finding 1: outlier metrics do not predict PTQ accuracy**
 
-§3 introduced outliers as the central difficulty of LLM quantization. Intuitively, larger outliers should mean harder quantization — traditional work uses metrics such as MMR (max/median ratio) or kurtosis to measure outlier severity, and designs quantization methods accordingly (e.g., SmoothQuant in §4.2 explicitly aims to reduce activation outliers). But Beyond Outliers finds that **when comparing across optimizers, MMR and kurtosis are almost uncorrelated with post-PTQ accuracy** ($ ho = 0.62$ and $ ho = -0.89$ for a 760M model):
+§3 introduced outliers as the central difficulty of LLM quantization. Intuitively, larger outliers should mean harder quantization — traditional work uses metrics such as MMR (max/median ratio) or kurtosis to measure outlier severity, and designs quantization methods accordingly (e.g., SmoothQuant in §4.2 explicitly aims to reduce activation outliers). But Beyond Outliers finds that **when comparing across optimizers, MMR and kurtosis are almost uncorrelated with post-PTQ accuracy** ($\rho = 0.62$ and $\rho = -0.89$ for a 760M model):
 
 - **Muon** has the lowest MMR (fewest outliers), but suffers the **largest drop** after PTQ (760M: 64.63% → 50.00%)
 - **Shampoo** has the highest MMR (largest outliers), but preserves accuracy **best** after PTQ (760M: 63.05% → 59.26%)
@@ -2366,7 +2366,7 @@ $$G_\ell = G_{1,\ell} \cdot G_{2,\ell}$$
 
 where $G_{1,\ell}$ is the spectral-norm ratio (change in weight spectral norm before vs after quantization, close to 1 across optimizers), and $G_{2,\ell}$ is the alignment ratio (how well the quantization-error direction aligns with the dominant singular direction of the weight matrix). **Muon has the largest $G_\ell$ in linear layers** — its quantization error points exactly in the direction most amplified by the weights, so errors accumulate rapidly; Shampoo and AdamW have the smallest $G_\ell$.
 
-The paper’s proposed metric $R_L$ (the accumulated quantization error in the final layer) correlates strongly with PTQ accuracy ($ ho = 0.70$).
+The paper’s proposed metric $R_L$ (the accumulated quantization error in the final layer) correlates strongly with PTQ accuracy ($\rho = 0.70$).
 
 **Core finding 2: the best optimizer for QAT is not the best optimizer for full precision**
 
@@ -2374,9 +2374,9 @@ In full-precision training, Muon performs best, but under 4-bit QAT (using the Q
 
 **Core finding 3: a scaling law for QAT**
 
-Similar to the low-precision scaling law proposed by Quartet in §8.3 (using effN to describe how precision affects parameter efficiency), Beyond Outliers derives an optimizer-aware scaling law for QAT: $L = A' / (N \cdot  ho)^\alpha + E$, where $ ho$ is "parameter efficiency" — the equivalent parameter count of a 4-bit QAT model is $ ho \cdot N$. The reported $ ho_{4bit}$ for different optimizers is:
+Similar to the low-precision scaling law proposed by Quartet in §8.3 (using effN to describe how precision affects parameter efficiency), Beyond Outliers derives an optimizer-aware scaling law for QAT: $L = A' / (N \cdot \rho)^\alpha + E$, where $\rho$ is "parameter efficiency" — the equivalent parameter count of a 4-bit QAT model is $\rho \cdot N$. The reported $\rho_\text{4bit}$ for different optimizers is:
 
-| Optimizer | $ ho_{4bit}$ | Meaning |
+| Optimizer | $\rho_\text{4bit}$ | Meaning |
 |---|---|---|
 | **Shampoo** | **0.879** | 4-bit retains 87.9% parameter efficiency |
 | AdamW | 0.863 | |

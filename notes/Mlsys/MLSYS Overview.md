@@ -8,7 +8,7 @@ MLSYS 板块从 GPU 底层硬件与 CUDA 算子工程出发，贯穿高性能 At
 
 ### 模块 1：GPU 硬件架构与 CUDA 算子工程
 - [[MLSYS01 GPU Architecture and CUDA Programming Model|01 · GPU 硬件体系、CUDA 编程模型与 Roofline 性能分析基石]]：从 SM 微架构、流水线仿真、CUDA 线程层级映射，到 Roofline 理论上下界与调优五原则。
-- [[MLSYS02 Parallel Primitives and Memory-Bound Kernels|02 · 经典并行原语与 Memory-Bound 算子手撕指南]]：Reduce 7 版本演进、Histogram 私有化、Scan（Blelloch 与 Mamba 关联扫描）、Vectorized float4、Transpose padding 与 RMSNorm。
+- [[MLSYS02 Parallel Primitives and Memory-Bound Kernels|02 · 经典并行原语与 Memory-Bound 算子工程实现]]：Reduce 7 版本演进、Histogram 私有化、Scan（Blelloch 与 Mamba 关联扫描）、Vectorized float4、Transpose padding 与 RMSNorm。
 - [[MLSYS03 Compute-Bound Kernels and GEMM Optimization|03 · Compute-Bound 算子与 GEMM 演进完全指南]]：从 Naive GEMM 到 2D Tiling、Register Tiling、Double Buffering、Tensor Core MMA、Triton Conv2D Implicit GEMM 与 Epilogue 融合。
 
 ### 模块 2：高性能 Attention 算子与长上下文

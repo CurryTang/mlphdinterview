@@ -104,22 +104,22 @@ $$
 1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2 \ge 0
 $$
 
-Let $ ho=\operatorname{Cov}(Z_X,Z_Y)$. This creates a quadratic polynomial in terms of $t$:
+Let $\rho=\operatorname{Cov}(Z_X,Z_Y)$. This creates a quadratic polynomial in terms of $t$:
 
 $$
-t^2 - 2 ho t + 1 \ge 0
+t^2 - 2\rho t + 1 \ge 0
 $$
 
 Since it is greater than or equal to zero for all $t$, its discriminant must be less than or equal to zero:
 
 $$
-(-2 ho)^2 - 4 \le 0
+(-2\rho)^2 - 4 \le 0
 $$
 
 Solving this yields:
 
 $$
- ho^2 \le 1
+\rho^2 \le 1
 $$
 
 Which means:
@@ -128,7 +128,7 @@ $$
 -1 \le \operatorname{corr}(X,Y) \le 1
 $$
 
-Note that $ ho=0$ only implies the absence of a linear relationship; it is not equivalent to independence. Independence guarantees a covariance of 0, but a covariance of 0 does not guarantee independence.
+Note that $\rho=0$ only implies the absence of a linear relationship; it is not equivalent to independence. Independence guarantees a covariance of 0, but a covariance of 0 does not guarantee independence.
 
 ---
 
@@ -194,7 +194,7 @@ R is PSD
 
 ## 4 · Equicorrelation lower bound
 
-Given $n$ variables, if all pairwise correlation coefficients are equal to $ ho$, what is the smallest possible value for $ ho$?
+Given $n$ variables, if all pairwise correlation coefficients are equal to $\rho$, what is the smallest possible value for $\rho$?
 
 Construct an all-ones weight vector $a = (1, 1, \dots, 1)^\top$. The correlation matrix $R$ must satisfy the PSD constraint:
 
@@ -202,22 +202,22 @@ $$
 a^\top R a = \sum_{i=1}^n \sum_{j=1}^n R_{ij} \ge 0
 $$
 
-In the matrix $R$, there are $n$ ones on the diagonal and $n(n-1)$ entries of $ ho$ off the diagonal:
+In the matrix $R$, there are $n$ ones on the diagonal and $n(n-1)$ entries of $\rho$ off the diagonal:
 
 $$
-a^\top R a = n + n(n-1) ho \ge 0
+a^\top R a = n + n(n-1)\rho \ge 0
 $$
 
 Simplifying this gives:
 
 $$
-n(n-1) ho \ge -n
+n(n-1)\rho \ge -n
 $$
 
 Solving for the lower bound:
 
 $$
- ho \ge -\frac{1}{n-1}
+ \rho \ge -\frac{1}{n-1}
 $$
 
 This provides a strict constraint for equicorrelation matrices. For example:
@@ -259,13 +259,13 @@ $$
 Expanding the determinant:
 
 $$
-1 + 2 ho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
+1 + 2\rho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
 $$
 
 Rearranging this into a quadratic inequality in terms of $ ho_{13}$:
 
 $$
- ho_{13}^2 - 2 ho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
+ ho_{13}^2 - 2\rho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
 $$
 
 This is a parabola opening upwards, constrained between its roots. Solving the quadratic equation yields a closed interval for $ ho_{13}$:
@@ -280,14 +280,14 @@ Geometrically, correlation coefficients can be interpreted as the cosine of the 
 
 ## 6 · Cholesky decomposition and correlated Gaussian simulation
 
-Given two independent standard normal variables $U, V \overset{i.i.d.}{\sim} N(0,1)$, how can we construct bivariate standard normals $(X,Y)$ with a correlation coefficient of $ ho$?
+Given two independent standard normal variables $U, V \overset{i.i.d.}{\sim} N(0,1)$, how can we construct bivariate standard normals $(X,Y)$ with a correlation coefficient of $\rho$?
 
 This is done through a linear transformation using the Cholesky decomposition of the correlation matrix:
 
 $$
 \begin{pmatrix} X \\ Y \end{pmatrix}
 =
-\begin{pmatrix} 1 & 0 \\  ho & \sqrt{1- ho^2} \end{pmatrix}
+\begin{pmatrix} 1 & 0 \\ \rho & \sqrt{1-\rho^2} \end{pmatrix}
 \begin{pmatrix} U \\ V \end{pmatrix}
 $$
 
@@ -298,7 +298,7 @@ X = U
 $$
 
 $$
-Y =  ho U + \sqrt{1- ho^2} V
+Y = \rho U + \sqrt{1-\rho^2} V
 $$
 
 Check the means, variances, and covariances:
@@ -308,7 +308,7 @@ $$
 $$
 
 $$
-\mathbb{E}[Y] =  ho \mathbb{E}[U] + \sqrt{1- ho^2} \mathbb{E}[V] = 0
+\mathbb{E}[Y] = \rho \mathbb{E}[U] + \sqrt{1-\rho^2} \mathbb{E}[V] = 0
 $$
 
 $$
@@ -316,17 +316,17 @@ $$
 $$
 
 $$
-\operatorname{Var}(Y) =  ho^2 \operatorname{Var}(U) + (1- ho^2) \operatorname{Var}(V) = 1
+\operatorname{Var}(Y) = \rho^2 \operatorname{Var}(U) + (1-\rho^2) \operatorname{Var}(V) = 1
 $$
 
 $$
-\operatorname{Cov}(X,Y) = \operatorname{Cov}(U,  ho U + \sqrt{1- ho^2} V) =  ho \operatorname{Var}(U) =  ho
+\operatorname{Cov}(X,Y) = \operatorname{Cov}(U, \rho U + \sqrt{1-\rho^2} V) = \rho \operatorname{Var}(U) = \rho
 $$
 
 Since the variances of both $X$ and $Y$ are 1, their covariance equals the correlation coefficient:
 
 $$
-\operatorname{corr}(X,Y) =  ho
+\operatorname{corr}(X,Y) = \rho
 $$
 
 This transformation linearly stretches the independent, circularly symmetric distribution in the $(U,V)$ plane into an elliptical distribution with a specific tilt. Since it relies purely on a linear operator, it preserves joint normality.
@@ -341,7 +341,7 @@ $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 $$
 
-where $(X,Y)$ have a correlation of $ ho$. The probability of a continuous normal distribution taking exactly the value 0 is 0, so the product of signs must be either 1 or -1.
+where $(X,Y)$ have a correlation of $\rho$. The probability of a continuous normal distribution taking exactly the value 0 is 0, so the product of signs must be either 1 or -1.
 
 $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 1 \cdot P(\text{same sign}) + (-1) \cdot P(\text{opposite sign}) = P(\text{same sign}) - P(\text{opposite sign})
@@ -376,7 +376,7 @@ $$
 Substitute the Cholesky transform into the calculation for $p$:
 
 $$
-p = P(X>0, Y>0) = P\left(U>0,\  ho U + \sqrt{1- ho^2} V > 0\right)
+p = P(X>0, Y>0) = P\left(U>0,\ \rho U + \sqrt{1-\rho^2} V > 0\right)
 $$
 
 The calculation moves to the independent $(U,V)$ plane. Because $U,V$ are independent standard normals, their joint density function is:
@@ -390,20 +390,20 @@ This density is perfectly circularly symmetric; it depends strictly on distance 
 The two inequalities define two half-planes:
 
 1. $U > 0$: The boundary is $U=0$ (the $V$-axis), keeping the right half-plane.
-2. $ ho U + \sqrt{1- ho^2} V > 0$: The boundary line is $V = -\frac{ ho}{\sqrt{1- ho^2}} U$.
+2. $\rho U + \sqrt{1-\rho^2} V > 0$: The boundary line is $V = -\frac{\rho}{\sqrt{1-\rho^2}} U$.
 
-Let $\alpha = \arcsin ho$. The boundary line $V = -\tan(\alpha) U$ makes an angle of $-\alpha$ with the positive $U$-axis. The first boundary line $U=0$ corresponds to an angle of $\pi/2$.
+Let $\alpha = \\arcsin \rho$. The boundary line $V = -\tan(\alpha) U$ makes an angle of $-\alpha$ with the positive $U$-axis. The first boundary line $U=0$ corresponds to an angle of $\pi/2$.
 
 The intersection of these two half-planes forms a sector with an angle of:
 
 $$
-\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \arcsin ho
+\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \\arcsin \rho
 $$
 
 So the probability $p$ is:
 
 $$
-p = \frac{\frac{\pi}{2} + \arcsin ho}{2\pi} = \frac{1}{4} + \frac{\arcsin ho}{2\pi}
+p = \frac{\frac{\pi}{2} + \\arcsin \rho}{2\pi} = \frac{1}{4} + \frac{\\arcsin \rho}{2\pi}
 $$
 
 ### Final expectation result
@@ -411,16 +411,16 @@ $$
 Substitute the expression for $p$ back into the expectation formula:
 
 $$
-\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\arcsin ho}{2\pi}\right) - 1
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\\arcsin \rho}{2\pi}\right) - 1
 $$
 
 Simplifying gives the final result:
 
 $$
-\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \arcsin ho
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \\arcsin \rho
 $$
 
-This result relies heavily on the rotational invariance (circular symmetry) of independent Gaussians and does not arbitrarily translate to other non-normal distributions that happen to share a correlation of $ ho$.
+This result relies heavily on the rotational invariance (circular symmetry) of independent Gaussians and does not arbitrarily translate to other non-normal distributions that happen to share a correlation of $\rho$.
 
 ---
 

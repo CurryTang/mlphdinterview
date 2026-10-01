@@ -19,6 +19,7 @@
 9. [[#9. Picotron Design Analysis]]
 10. [[#10. Summary and Best Practices]]
 11. [[#11. Exercises]]
+12. [[#12. References & Further Reading]]
 
 ---
 
@@ -123,11 +124,15 @@ Modern datacenter GPUs are typically connected as follows:
 
 ### 2.3 Core Communication Primitives (Collective Operations)
 
-Distributed training relies on the following core communication operations:
+In distributed deep learning, individual computing accelerators (GPUs or TPUs) hold local shards of model parameters, gradients, optimizer states, or activation tensors. To execute end-to-end training and inference, hardware devices must cooperatively exchange data. Modern deep learning frameworks orchestrate this distributed communication via a set of fundamental building blocks known as **collective communication primitives**.
+
+In distributed systems engineering and performance modeling, evaluating whether a parallelization strategy is scalable hinges on one critical task: **accurately modeling the runtime cost of each collective primitive on the physical network topology, and comparing it against local compute time (GEMM / Attention) to determine whether execution is compute-bound or communication-bound**.
+
+The analytical cost models below are derived on the standard **logical ring topology (or multi-dimensional torus)**—the foundational model established in Baidu Ring-AllReduce and formalized in Google DeepMind's *How to Scale Your Model* (Austin et al., 2025), which also underlies NVIDIA NCCL's ring-based implementations.
 
 #### 2.3.1 AllGather
 
-**Function**: collect shards from all devices so every device has the full data
+**Function**: Each device begins with a local tensor shard; upon completion, every device holds the reconstructed full global tensor.
 
 ```
 Device 0: [A0]     →   Device 0: [A0, A1, A2, A3]
@@ -136,42 +141,65 @@ Device 2: [A2]     →   Device 2: [A0, A1, A2, A3]
 Device 3: [A3]     →   Device 3: [A0, A1, A2, A3]
 ```
 
-**Notation**: $\text{AllGather}_X([A_X, B])  ightarrow [A, B]$
+**Notation**: $\text{AllGather}_X([A_X, B]) \rightarrow [A, B]$ (gather along sharded dimension $A$ across device grid axis $X$).
 
-**Cost**: $T = \frac{V}{W_{bidirectional}}$, where $V$ is the total data volume
+**Primary Use Cases**:
+1. **FSDP / ZeRO-3**: Before executing forward pass for a specific Transformer block, the parameters sharded across data-parallel ranks are gathered just-in-time into a complete weight matrix, and freed immediately after computation.
+2. **Tensor Parallelism (TP) / Sequence Parallelism (SP)**: Megatron sequence parallelism gathers sequence shards into full-length sequences before computing self-attention or MLP projections.
 
+**Cost Model and Step-by-Step Derivation**:
 
-> **AllGather Ring Algorithm**: $N$ devices are arranged in a ring, each device holds $V/N$ bytes of data. Each step sends the current block to the right and receives the block to the left. The two-way ring transmits to the left and right simultaneously:
-> $$T_\text{hop} = \frac{2V}{N \cdot W_\text{ici}}, \quad T_\text{total} = \frac{N}{2} \cdot T_\text{hop} = \frac{V}{W_\text{ici}}$$
-> **Key Insight**: AllGather time is **irrelevant** to $N$ of devices (in bandwidth-limited mode)!
+Let $N$ be the number of participating devices (ranks), and $V$ be the total size of the final gathered tensor in bytes. Prior to communication, each device holds a local shard of size $V/N$.
 
-**Latency correction**: when the data volume per hop is small, the per-hop latency $T_\text{min} \approx 1\,\mu\text{s}$ becomes the bottleneck:
+1. **Uni-directional Ring Derivation**:
+   Arrange $N$ devices into a logical ring. In each hop (step), device $i$ sends its current shard (size $V/N$) to its clockwise neighbor while receiving a new shard from its counter-clockwise neighbor.
+   To ensure all $N$ devices receive all $N$ shards, exactly $N-1$ steps are required.
+   If the uni-directional link bandwidth is $W_\text{uni}$, each hop takes $\frac{V/N}{W_\text{uni}}$. For large $N$, $N-1 \approx N$:
+   $$T_\text{uni} = (N - 1) \cdot \frac{V/N}{W_\text{uni}} \approx N \cdot \frac{V/N}{W_\text{uni}} = \frac{V}{W_\text{uni}}$$
 
-$$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W_\text{ici}} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W_\text{ici}} \right]$$
+2. **Bidirectional Ring / Torus Derivation**:
+   Modern hardware interconnects (NVIDIA NVLink, Google TPU ICI, PCIe full-duplex) support simultaneous bidirectional full-duplex transmission. To saturate total bidirectional link bandwidth $W_\text{bidir}$ (bandwidth per direction is $W_\text{bidir}/2$), communication libraries split each device's shard into two halves of size $\frac{V}{2N}$, transmitting one half clockwise and the other counter-clockwise.
+   Both directions require $(N-1)/2 \approx N/2$ hops to cover the ring:
+   $$T_\text{hop} = \frac{V / (2N)}{W_\text{bidir} / 2} = \frac{2V}{N \cdot W_\text{bidir}}$$
+   Across $N/2$ hops, the total communication time evaluates to:
+   $$T_\text{total} = \frac{N}{2} \cdot T_\text{hop} = \frac{N}{2} \cdot \frac{2V}{N \cdot W_\text{bidir}} = \frac{V}{W_\text{bidir}}$$
 
-For TPU v5e ($W_\text{ici} = 4.5 \times 10^{10}$ B/s), the latency threshold is around 45 kB: arrays smaller than this size are latency bound.
+> [!important] Key Insight: AllGather time is independent of device count $N$ in the bandwidth-bound regime
+> In the bandwidth-saturated regime, $N$ strictly cancels out of the formula! **The total AllGather transfer duration depends exclusively on the full tensor volume $V$ and the link bandwidth $W$, completely independent of the number of participating devices $N$**.
+> Although increasing $N$ scales up hop count proportionally, the data transferred per step ($V/N$) shrinks by the exact same factor, resulting in zero net change in total transfer time.
 
-**Multi-axis AllGather**: if AllGather runs simultaneously over multiple mesh axes $\{X_1, X_2, \ldots\}$, the effective bandwidth increases proportionally:
+3. **Latency-bound Correction**:
+   The derivation above assumes each transmission hop is dominated by raw wire transfer time. In physical networks, every cross-device transfer incurs fixed software protocol stack and hardware synchronization latency $T_\text{min}$ ($\sim 0.5 - 1\,\mu\text{s}$ for NVLink, $\sim 1.5 - 3\,\mu\text{s}$ for InfiniBand, $\sim 1\,\mu\text{s}$ for TPU ICI).
+   When the total tensor $V$ is small, or $N$ is very large such that the per-hop payload $\frac{2V}{N}$ drops to just a few kilobytes, the transfer time falls below $T_\text{min}$. The step duration becomes bottlenecked by latency:
+   $$T_\text{hop} = \max\!\left[ T_\text{min},\ \frac{2V}{N \cdot W} \right] \quad \Rightarrow \quad T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot N}{2},\ \frac{V}{W} \right]$$
+   - **Latency Crossover Threshold**: Setting $\frac{T_\text{min} \cdot N}{2} = \frac{V}{W}$ yields the critical shard size $\frac{V}{N} = \frac{T_\text{min} \cdot W}{2}$.
+   - **Hardware Comparisons**:
+     - **TPU v5e** ($W = 4.5 \times 10^{10}\text{ B/s},\ T_\text{min} \approx 1\,\mu\text{s}$): Crossover threshold $\approx 22.5 - 45\text{ kB}$. Shards smaller than this fall into the latency-bound regime.
+     - **NVIDIA H100 SXM5** ($W = 900\text{ GB/s},\ T_\text{min} \approx 0.8\,\mu\text{s}$): Crossover threshold $\approx 360\text{ kB}$.
+     - **Systems Engineering Takeaway**: Never trigger fine-grained AllGather calls on tiny tensors individually. Small tensors must be fused into multi-megabyte buckets (Bucket Fusion) to force execution into the bandwidth-bound regime.
 
-$$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W_\text{ici} \cdot N_\text{axes}} \right]$$
+4. **Multi-axis Parallel AllGather**:
+   In multi-dimensional topologies (2D/3D Torus or intra-node NVLink + inter-node InfiniBand), device grids span multiple orthogonal coordinate axes $\{X_1, X_2, \ldots\}$. When tensors are sharded and gathered across multiple mesh axes concurrently, transfers utilize physically independent link channels:
+   $$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W \cdot N_\text{axes}} \right]$$
+   Effective bandwidth scales linearly with the number of concurrent axes $N_\text{axes}$.
 
 ![AllGather measured bandwidth (TPU v5e 8×16): about 95% peak above 10 MB](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
 
-> [!example] AllGather time estimate
+> [!example] Numerical AllGather Estimation Examples
 >
-> Grid: TPU v5e, `{'X': 8, 'Y': 4}`, ICI two-way bandwidth $W = 4.5 \times 10^{10}$ B/s
+> Grid setup: TPU v5e, `{'X': 8, 'Y': 4}`, ICI bidirectional bandwidth $W = 4.5 \times 10^{10}\text{ B/s}$.
 >
-> **(a)** `AllGather_Y([E_Y, F])`, $E = 2048$, $F = 8192$, bfloat16
-> - holds `bf16[512, 8192]` = 8.4 MB per device, total array 33.6 MB
-> - Time (bandwidth limited): $T = 33.6\text{ MB} / 4.5 \times 10^{10} \approx 747\,\mu\text{s}$ (actual measurement includes overhead of about 680 μs)
+> **(a) Scenario A (Bandwidth-bound)**: `AllGather_Y([E_Y, F])`, $E = 2048$, $F = 8192$, bfloat16.
+> - Shard per device: `bf16[512, 8192]` = 8.4 MB, total array $V = 33.6\text{ MB}$.
+> - Transfer time (bandwidth-bound): $T = 33.6\text{ MB} / (4.5 \times 10^{10}\text{ B/s}) \approx 747\,\mu\text{s}$ (measured hardware runtime $\approx 680\,\mu\text{s}$).
 >
-> **(b)** Same settings, $E = 256$, $F = 256$
-> - `bf16[64, 256]` = 32 kB < 45 kB threshold held per device → **Latency bound**
-> - Time: $T \approx T_\text{min} \times (Y/2) = 1\,\mu\text{s} \times 2 = 2\,\mu\text{s}$ (actually measured about 8 μs)
+> **(b) Scenario B (Latency-bound)**: Same network setup, reduced shape $E = 256$, $F = 256$.
+> - Shard per device: `bf16[64, 256]` = 32 kB < 45 kB threshold → **Latency-bound**.
+> - Theoretical time: $T \approx T_\text{min} \times (Y/2) = 1\,\mu\text{s} \times 2 = 2\,\mu\text{s}$ (measured runtime dominated by scheduling overhead at $\approx 8\,\mu\text{s}$).
 
 #### 2.3.2 ReduceScatter
 
-**Function**: first reduce (sum), then scatter across devices
+**Function**: All devices start with local tensors of identical shape (e.g., local gradient contributions computed during backpropagation). The operation elementwise reduces (sums) them and scatters equal-sized slices to each device, leaving each rank with only one shard of the globally reduced tensor.
 
 ```
 Device 0: [A0, B0, C0, D0]   →   Device 0: [A0+A1+A2+A3]
@@ -180,22 +208,22 @@ Device 2: [A2, B2, C2, D2]   →   Device 2: [C0+C1+C2+C3]
 Device 3: [A3, B3, C3, D3]   →   Device 3: [D0+D1+D2+D3]
 ```
 
-**Notation**: $\text{ReduceScatter}_{X,K}([A, K]\{U_X\})  ightarrow [A, K_X]$
+**Notation**: $\text{ReduceScatter}_{X,K}([A, K]\{U_X\}) \rightarrow [A, K_X]$ (reduce over unreduced dimension $K$ across axis $X$ and shard into $K_X$).
 
-**Cost**: same as AllGather
-> **Dual relationship between ReduceScatter and AllGather** (Kronecker product perspective):
->
-> Define the broadcast operator $\text{broadcast} = \mathbf{u} \otimes I_n$, and the reduction operator $\text{reduce} = \mathbf{u}^T \otimes I_n$ ($\mathbf{u} = (1,\ldots,1)^T$), then:
+**Cost Model**: Identical to AllGather ($T = \frac{V}{W_\text{bidir}}$), as the ring communication steps and data volumes are exactly symmetric.
+
+> [!note] Mathematical Duality with AllGather (Kronecker Perspective)
+> Defining broadcast $\text{broadcast} = \mathbf{u} \otimes I_n$ and reduce $\text{reduce} = \mathbf{u}^T \otimes I_n$ ($\mathbf{u} = (1,\ldots,1)^T$):
 > - $\text{AllGather} = \text{broadcast} \otimes I_p$
 > - $\text{ReduceScatter} = \text{reduce} \otimes I_p$
 >
 > Since $(\mathbf{u} \otimes I_n)^T = \mathbf{u}^T \otimes I_n$, we have $\text{AllGather}^T = \text{ReduceScatter}$.
 >
-> This means that the gradient of AllGather in backpropagation is ReduceScatter and vice versa - this is a mathematical necessity, not a coincidence.
+> **Physical Consequence**: **The backward adjoint derivative of an AllGather forward operation is mathematically a ReduceScatter**, and vice versa. In FSDP, gathering weights during forward automatically duals into reduce-scattering gradients during backward.
 
 #### 2.3.3 AllReduce
 
-**Function**: sum the data across all devices and replicate the result to every device
+**Function**: Elementwise sums data across all devices and leaves the fully reduced global tensor replicated across all devices.
 
 ```
 Device 0: [A0]   →   Device 0: [A0+A1+A2+A3]
@@ -204,41 +232,46 @@ Device 2: [A2]   →   Device 2: [A0+A1+A2+A3]
 Device 3: [A3]   →   Device 3: [A0+A1+A2+A3]
 ```
 
-> [!important] Key relationship
-> **AllReduce = ReduceScatter + AllGather**
+**Notation**: $\text{AllReduce}_{X}([A_X, B]\{U_Y\}) \rightarrow [A_X, B]$
+
+> [!important] Ring AllReduce Two-Stage Decomposition
+> Ring AllReduce is canonically factored into two consecutive stages:
+> $$\text{AllReduce} = \text{ReduceScatter} + \text{AllGather}$$
+> 1. **Stage 1 (ReduceScatter)**: Reduce and scatter shards across devices ($T_1 = \frac{V}{W_\text{bidir}}$).
+> 2. **Stage 2 (AllGather)**: Gather and broadcast the reduced shards to all ranks ($T_2 = \frac{V}{W_\text{bidir}}$).
 > 
-> Therefore, AllReduce takes 2 times as much time as AllGather: $T = \frac{2V}{W}$
+> Therefore, AllReduce takes exactly twice the duration of an AllGather:
+> $$T_\text{AllReduce} = \frac{2V}{W_\text{bidir}}$$
 
 #### 2.3.4 AllToAll
 
-**Function**: transpose the sharded dimension
+**Function**: Transposes the sharding dimensions (dimension exchange). Each device splits its data into $N$ equal blocks and sends block $j$ directly to device $j$.
 
 ```
 Device 0: [A0, B0]   →   Device 0: [A0, A1]
 Device 1: [A1, B1]   →   Device 1: [B0, B1]
 ```
 
-**Notation**: $\text{AllToAll}_{X, J}([A, B_X])  ightarrow [A_X, B]$
+**Notation**: $\text{AllToAll}_{X, J}([A, B_X]) \rightarrow [A_X, B]$
 
-**Cost**: about one-quarter of AllGather
+**Primary Use Cases**:
+1. **Mixture-of-Experts (MoE) Expert Parallelism**: Routers dispatch tokens to designated expert GPUs and receive processed representations back via AllToAll.
+2. **Hybrid Parallelism Axis Transformation**: Transposing between sequence-parallel and tensor-parallel sharding formats.
 
-> **Why is AllToAll 4 times faster than AllGather? **(two-way ring)
->
-> - **AllGather**: Each piece of data needs to reach all $N-1$ other devices, the total transmission volume of each link in the one-way ring $\propto V(1-1/N)$
-> - **AllToAll**: The data block of device $i$ only needs to be sent to device $j$ (taking $j-i$ steps), the total link load $\propto V \cdot \frac{N(N-1)/2}{N^2} \approx V/2$
-> - One-way ratio: AllToAll/AllGather $= 1/2$
->
-> When optimizing in both directions: AllGather is only 2 times faster (each direction shares half of the traffic); AllToAll is 4 times faster (each block takes the shortest path $\min(j-i, N-(j-i))$, and the average distance is further halved):
-> $$T_\text{AllToAll} = \frac{T_\text{AllGather}}{4} \quad \text{(bidirectional ring)}$$
+**Cost Analysis (Bidirectional Ring)**:
+- In AllGather, each shard traverses all $N-1$ other nodes to cover the entire ring.
+- In AllToAll, device $i$'s shard only travels to target device $j$. Along a bidirectional ring with shortest-path routing, the average travel distance is only $N/4$ hops (half of AllGather's $N/2$).
+- With bidirectional concurrency, the total transfer time is approximately 1/4 of AllGather:
+  $$T_\text{AllToAll} = \frac{T_\text{AllGather}}{4} = \frac{V}{4W_\text{bidir}}$$
 
 #### 2.3.5 Summary of Communication Operations
 
-| Operation | Description | Symbol | Time consuming |
-|------|------|------|------|
-| AllGather | Collect shards, remove subscripts | $[A_X, B] → [A, B]$ | $V / W$ |
-| ReduceScatter | Reduce and scatter | $[A, B]\{U_X\} → [A_X, B]$ | $V / W$ |
-| AllReduce | Full Reduce | $[A_X, B]\{U_Y\} → [A_X, B]$ | $2V / W$ |
-| AllToAll | Transpose shards | $[A, B_X] → [A_X, B]$ | $V / (4W)$ |
+| Operation | Core Function | Notation | Bidirectional Ring Runtime | Typical Parallel Paradigm |
+|:---|:---|:---|:---|:---|
+| **AllGather** | Gather shards into full tensor | $[A_X, B] \rightarrow [A, B]$ | $\frac{V}{W_\text{bidir}}$ | FSDP weight reconstruction, SP sequence concat |
+| **ReduceScatter** | Reduce elementwise & scatter shards | $[A, B]\{U_X\} \rightarrow [A_X, B]$ | $\frac{V}{W_\text{bidir}}$ | FSDP backward gradient reduce, TP column-to-row |
+| **AllReduce** | Global reduction replicated everywhere | $[A, B]\{U_X\} \rightarrow [A, B]$ | $\frac{2V}{W_\text{bidir}}$ | DDP gradient sync, Megatron TP output combine |
+| **AllToAll** | Transpose sharding dimensions | $[A, B_X] \rightarrow [A_X, B]$ | $\frac{V}{4W_\text{bidir}}$ | MoE token routing / dispatch, 2D grid transform |
 
 ![Comparison of four collective communication primitives](https://jax-ml.github.io/scaling-book/assets/img/all-collectives.png)
 
@@ -385,7 +418,7 @@ When performing sharded matrix multiplication $C = A \cdot B$, the communication
 
 #### Case 1: Neither contraction dimension is sharded
 
-$$A[I_X, J] \cdot B[J, K_Y]  ightarrow C[I_X, K_Y]$$
+$$A[I_X, J] \cdot B[J, K_Y] \rightarrow C[I_X, K_Y]$$
 
 **No communication required.** Each device can perform the local multiplication independently.
 
@@ -397,7 +430,7 @@ local_C = torch.matmul(local_A, local_B)
 
 #### Case 2: The contraction dimension of one input is sharded
 
-$$A[I, J_X] \cdot B[J, K]  ightarrow C[I, K]$$
+$$A[I, J_X] \cdot B[J, K] \rightarrow C[I, K]$$
 
 **Requires AllGather**: first gather A, then perform the local multiplication
 
@@ -410,7 +443,7 @@ local_C = torch.matmul(full_A, local_B)
 
 #### Case 3: Both inputs have the contraction dimension sharded along the same axis
 
-$$A[I, J_X] \cdot B[J_X, K]  ightarrow C[I, K]\{U_X\}$$
+$$A[I, J_X] \cdot B[J_X, K] \rightarrow C[I, K]\{U_X\}$$
 
 **Local multiplication produces partial sums, so AllReduce is required**:
 
@@ -428,7 +461,7 @@ full_C = all_reduce(partial_C, op=SUM)
 
 #### Case 4: Two non-contraction dimensions are sharded along the same axis (invalid)
 
-$$A[I_X, J] \cdot B[J, K_X]  ightarrow C[I_X, K_X] \quad \text{❌ Invalid!}$$
+$$A[I_X, J] \cdot B[J, K_X] \rightarrow C[I_X, K_X] \quad \text{(Dimension Conflict, Invalid)}$$
 
 **You must AllGather one of the inputs first**:
 
@@ -503,7 +536,7 @@ The following chapters (FSDP and TP) simply change the sharding choice. The comm
 
 **Data parallelism** is the simplest parallel strategy:
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D]  ightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D, F] \cdot_F W_\text{out}[F, D] \rightarrow \text{Out}[B_X, D]$$
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -610,7 +643,7 @@ for batch in dataloader:
 
 **FSDP** (Fully Sharded Data Parallel), also known as **ZeRO-3**, addresses the memory limitations of pure data parallelism:
 
-$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X]  ightarrow \text{Out}[B_X, D]$$
+$$\text{In}[B_X, D] \cdot_D W_\text{in}[D_X, F] \cdot_F W_\text{out}[F, D_X] \rightarrow \text{Out}[B_X, D]$$
 
 Core idea: **parameters, gradients, and optimizer states are all sharded along the data-parallel dimension**.
 
@@ -797,7 +830,7 @@ ZeRO++ optimization 3: quantized ReduceScatter (qRS)
 
 **Tensor parallelism** (also known as Megatron sharding) shards model dimensions:
 
-$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D]  ightarrow \text{Out}[B, D_Y]$$
+$$\text{In}[B, D_Y] \cdot_D W_\text{in}[D, F_Y] \cdot_F W_\text{out}[F_Y, D] \rightarrow \text{Out}[B, D_Y]$$
 
 Core idea: **shard model dimensions rather than data dimensions**.
 
@@ -1324,7 +1357,7 @@ When actually training large models, multiple parallel strategies are usually co
 
 The most commonly used combination is FSDP (data parallelism) + tensor parallelism:
 
-$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X]  ightarrow \text{Out}[B_X, D_Y]$$
+$$\text{In}[B_X, D_Y] \cdot_D W_\text{in}[D_X, F_Y] \cdot_F W_\text{out}[F_Y, D_X] \rightarrow \text{Out}[B_X, D_Y]$$
 
 **Advantages**:
 
@@ -1715,40 +1748,259 @@ Placement principles:
 └───────────────────────────────────────────────────────────────┘
 ```
 
-References
+---
 
-**Sharding and Communication Primitives**
-- Austin et al. (2025) [How to Scale Your Model](https://jax-ml.github.io/scaling-book/) — the main reference for Chapters 2 and 3 of this tutorial, with a systematic treatment of sharded matrix multiplication
-- Gibiansky (2017) [Bringing HPC Techniques to Deep Learning](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/) — the Ring AllReduce algorithm and the Chapter 2 communication-primitives background
+## 11. Exercises
 
-**Data Parallelism / FSDP**
-- Rajbhandari et al. (2020) [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054) — ZeRO-1/2/3, foundational for Chapter 5
-- Zhao et al. (2023) [PyTorch FSDP: Experiences on Scaling Fully Sharded Data Parallel](https://arxiv.org/abs/2304.11277) — PyTorch FSDP implementation details
+<details class="exercise">
+<summary><span class="q-label">Q1</span> <span class="q-text">Why cannot a 70B parameter model fit on a single GPU for training?</span></summary>
 
-**Tensor Parallelism / Sequence Parallelism**
-- Shoeybi et al. (2019) [Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism](https://arxiv.org/abs/1909.08053) — column parallelism + row parallelism, foundational for Chapter 6
-- Korthikanti et al. (2022) [Reducing Activation Recomputation in Large Transformer Models](https://arxiv.org/abs/2205.05198) — Sequence Parallel (SP) combined with TP; referenced in Chapter 8½'s SP discussion
+Storing 70B parameters in BF16 alone requires $\sim 140\text{ GB}$, exceeding the memory of an 80 GB H100. During mixed-precision AdamW training, optimizer states require FP32 master weights (4 bytes), first momentum $m$ (4 bytes), and second momentum $v$ (4 bytes), totaling 12 bytes/param. Along with gradients (2 to 4 bytes/param), static model states demand $16 - 18\text{ bytes/param} \times 70\text{B} \approx 1.12 - 1.26\text{ TB}$. Adding dynamic activation memory and workspace buffers places the model far beyond single-device capacity, mandating FSDP/ZeRO-3, Tensor Parallelism, Pipeline Parallelism, or hybrid schemes.
 
-**Pipeline Parallelism**
-- Huang et al. (2019) [GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism](https://arxiv.org/abs/1811.06965) — GPipe / AFAB scheduling
-- Narayanan et al. (2021) [Memory-Efficient Pipeline-Parallel DNN Training](https://arxiv.org/abs/2104.04473) — 1F1B scheduling, referenced in Chapter 7
+</details>
 
-**Context Parallel / Ring Attention**
-- Liu et al. (2023) [Ring Attention with Blockwise Transformers for Near-Infinite Context](https://arxiv.org/abs/2310.01889) — referenced in Chapter 8½'s CP discussion
+<details class="exercise">
+<summary><span class="q-label">Q2</span> <span class="q-text">Why is Tensor Parallelism (TP) strictly suited for intra-node deployment?</span></summary>
 
-**Collective Matmul (Communication-Computation Overlap)**
-- Wang et al. (2022) [Overlap Communication with Dependent Computation via Decomposition in Large Deep Learning Models](https://dl.acm.org/doi/10.1145/3567955.3567959) — referenced in Chapter 3 on collective matmul
+Tensor Parallelism partitions matrix multiplications within individual Transformer layers. Every forward and backward pass through a single layer requires collective communication (AllReduce or ReduceScatter + AllGather). This results in extraordinarily high communication frequency and microsecond-level latency sensitivity.
+Only intra-node NVLink / NVSwitch fabrics (delivering 900 GB/s to 1.8 TB/s bidirectional bandwidth and sub-microsecond latency) can sustain such frequent synchronization without stalling CUDA cores. Running TP across nodes over InfiniBand introduces latency penalties that cause massive compute idle time.
 
-### Code Implementations
-- [Picotron](https://github.com/huggingface/picotron) — the educational 4D parallel framework referenced throughout this tutorial
-- [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) — NVIDIA official TP/PP implementation
-- [DeepSpeed](https://github.com/microsoft/DeepSpeed) — ZeRO series implementation
-- [PyTorch DTensor](https://pytorch.org/docs/stable/distributed.tensor.html) — PyTorch sharded tensor API (used in the Chapter 3 code examples)
-- [Mosaic GPU Collective Matmul](https://docs.jax.dev/en/latest/pallas/gpu/collective_matmul.html) — JAX Pallas collective matmul implementation
+</details>
 
-### Online Resources
-- [How To Scale Your Model (JAX Scaling Book)](https://jax-ml.github.io/scaling-book/) — the primary reference for this tutorial
-- [Visualizing Parallelism in Transformer](https://ailzhang.github.io/posts/distributed-compute-in-transformer/) — Ailing Zhang (Meta PyTorch), the main reference for Chapter 8½, including six SVG overviews covering overview / embedding / attention / mlp / moe / loss
-- [Picotron Tutorial Playlist](https://www.youtube.com/playlist?list=PL-_armZiJvAnhcRr6yTJ0__f3Oi-LLi9S) — accompanying video tutorial
+<details class="exercise">
+<summary><span class="q-label">Q3</span> <span class="q-text">What states do ZeRO-1, ZeRO-2, and ZeRO-3 (FSDP) shard respectively?</span></summary>
+
+The ZeRO family partitions model training states along the data-parallel dimension:
+- **ZeRO-1**: Shards only the **optimizer states**. Model parameters and gradients remain fully replicated across all GPUs.
+- **ZeRO-2**: Shards **gradients** in addition to optimizer states. Each rank retains only the gradient slice corresponding to its optimizer partition.
+- **ZeRO-3 (FSDP)**: Shards **model parameters** as well. Ranks store only their assigned parameter shard, materializing full weights temporarily via AllGather before layer execution and freeing them immediately afterward.
+
+| Stage | Parameters (P) | Gradients (G) | Optimizer States (OS) | Communication Overhead | Memory Reduction |
+|:---|:---|:---|:---|:---|:---|
+| **DDP** | Replicated | Replicated | Replicated | Baseline (one backward AllReduce) | None |
+| **ZeRO-1** | Replicated | Replicated | Sharded | Equal to DDP | $\sim 4\times$ parameter memory saved |
+| **ZeRO-2** | Replicated | Sharded | Sharded | Equal to DDP | Gradients + optimizer states saved |
+| **ZeRO-3 / FSDP** | Sharded | Sharded | Sharded | $\approx 1.5\times$ DDP | Near-linear reduction across all states |
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q4</span> <span class="q-text">ZeRO memory accounting for a 7B model on 8 GPUs</span></summary>
+
+Assuming mixed-precision AdamW (BF16 parameters: 2 bytes, FP32 gradients: 4 bytes, FP32 master weights + $m$ + $v$: 12 bytes), the static model states for a 7B parameter model evaluate to:
+
+```text
+Parameters (BF16):       7B * 2  = 14 GB
+Gradients (FP32):        7B * 4  = 28 GB
+Optimizer States:        7B * 12 = 84 GB
+DDP Per-GPU Baseline:              126 GB
+```
+
+When sharding across 8 GPUs (DP = 8):
+- **ZeRO-1**: Optimizer states sharded ($84 / 8 = 10.5\text{ GB}$). Total = $14 + 28 + 10.5 = \mathbf{52.5\text{ GB}}$.
+- **ZeRO-2**: Gradients ($28 / 8 = 3.5\text{ GB}$) and optimizer states sharded. Total = $14 + 3.5 + 10.5 = \mathbf{28\text{ GB}}$.
+- **ZeRO-3**: All three sharded (parameters: $14 / 8 = 1.75\text{ GB}$, gradients: $3.5\text{ GB}$, optimizer: $10.5\text{ GB}$). Total = $\mathbf{15.75\text{ GB}}$.
+
+(Note: Excludes dynamic activations, temporary AllGather buffers, and CUDA workspace).
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q5</span> <span class="q-text">Why does FSDP still require AllGather if parameters are sharded?</span></summary>
+
+Standard linear layers perform dense GEMMs between the local batch activations and the layer weight matrix. Computing the correct local activation outputs requires the complete weight matrix. Since FSDP stores only $1/N$ of the layer's weights permanently, it must perform an AllGather immediately before layer computation to assemble the full weight matrix. Once the layer's GEMM completes, the full weight buffer is instantly freed, keeping peak memory bounded by just-in-time materialization.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q6</span> <span class="q-text">Why is FSDP communication volume comparable to DDP?</span></summary>
+
+In DDP, backward execution performs a full-gradient AllReduce:
+$$\text{Comm}_\text{DDP} = 2 \cdot V_\text{grad}$$
+
+In FSDP (ZeRO-3):
+1. Forward AllGather of layer weights: $V_\text{param}$
+2. Backward AllGather of layer weights: $V_\text{param}$
+3. Backward ReduceScatter of layer gradients: $V_\text{grad}$
+
+Assuming uniform 16-bit precision ($V_\text{param} = V_\text{grad} = V$):
+$$\text{Comm}_\text{FSDP} = 3V = 1.5 \cdot \text{Comm}_\text{DDP}$$
+FSDP incurs only $1.5\times$ the communication volume of DDP. Furthermore, because communication is broken down into per-layer AllGathers and ReduceScatters, it overlaps naturally with adjacent layer computations via prefetching streams.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q7</span> <span class="q-text">How to choose the optimal wrapping granularity for FSDP?</span></summary>
+
+Wrapping granularity balances peak memory usage against communication scheduling overhead:
+- **Too coarse (e.g., one wrap for the entire model)**: AllGather reconstructs all model parameters upfront, eliminating memory savings.
+- **Too fine (e.g., wrapping every single Linear layer)**: Triggers thousands of tiny collective operations, incurring severe kernel launch and network latency penalties ($T_\text{min}$).
+- **Best Practice (Per Transformer Block)**: Wrapping at the Transformer decoder layer boundary provides the sweet spot. Each block contains tens to hundreds of megabytes—saturating link bandwidth—while enabling seamless prefetching of block $i+1$ during block $i$'s computation.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q8</span> <span class="q-text">Do FSDP and activation checkpointing solve the same problem?</span></summary>
+
+No. They target orthogonal memory bottlenecks:
+- **FSDP (ZeRO-3)** targets **static model states** (parameters, gradients, optimizer states), which scale linearly with parameter count $P$ and are invariant to batch size or sequence length.
+- **Activation Checkpointing** targets **dynamic forward activations**, which scale with batch size $B$, sequence length $S$, and hidden size $H$. It drops intermediate activations during forward and recomputes them on-demand during backward at the expense of $\sim 30\% - 33\%$ compute overhead.
+
+Production LLM training combines both: FSDP accommodates hundred-billion-scale model weights, while activation checkpointing prevents OOMs during long-context training.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q9</span> <span class="q-text">When is pure FSDP insufficient, requiring Tensor Parallelism (TP)?</span></summary>
+
+TP is required when:
+1. **Single-layer GEMM weights or activations exceed single-GPU memory**: FSDP must materialize full weights for at least one layer. If an enormous hidden dimension or vocabulary projection cannot fit on one GPU, FSDP cannot run.
+2. **Tiny Batch Size ($B=1$ inference or RLHF rollout generation)**: FSDP requires per-GPU batch size $> C/W$ to hide communication behind GEMM compute. At $B=1$, FSDP becomes heavily communication-bound, whereas TP splits the weight dimensions to parallelize compute directly.
+3. **Latency-critical single-step execution**: TP reduces per-layer wall-clock time by distributing GEMM arithmetic across multiple GPUs concurrently.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q10</span> <span class="q-text">What are the engineering trade-offs in FSDP checkpointing?</span></summary>
+
+FSDP partitions model state across GPUs, presenting two checkpointing strategies:
+1. **Full State Dict**: All ranks gather their shards to Rank 0 (or CPU RAM) to output a single consolidated checkpoint file.
+   - *Pros*: Universal compatibility with downstream inference and evaluation scripts.
+   - *Cons*: High risk of Rank 0 OOM and long save times that stall training.
+2. **Sharded State Dict**: Each GPU writes its local parameter and optimizer shards directly to distributed storage in parallel (e.g., PyTorch Distributed Checkpoint).
+   - *Pros*: Scalable, fast, asynchronous saving with zero rank bottlenecks.
+   - *Cons*: Checkpoints depend on cluster topology metadata; changing GPU count requires resharding utilities.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q11</span> <span class="q-text">Which dimensions do TP, PP, EP, and CP shard in the Transformer computational graph?</span></summary>
+
+| Paradigm | Dimension Sharded | Core Collective | Primary Bottleneck Solved |
+|:---|:---|:---|:---|
+| **TP (Tensor Parallel)** | Hidden / Channel dimensions ($H, 4H$) | AllReduce / ReduceScatter + AllGather | Oversized single layers & GEMM latency |
+| **PP (Pipeline Parallel)** | Model depth (Transformer layers $L$) | P2P Send / Recv | Cross-node model capacity limits |
+| **EP (Expert Parallel)** | MoE expert pool (Expert ID $E$) | AllToAll (dynamic token dispatch/combine) | Massive parameter scaling in sparse MoEs |
+| **CP (Context Parallel)** | Sequence / context dimension ($S$) | Ring-Attention P2P or AllGather | Quadratic $O(S^2)$ attention memory on 128k+ contexts |
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q12</span> <span class="q-text">Why does Megatron MLP use column-parallel followed by row-parallel linear layers?</span></summary>
+
+In an MLP layer: $Y = \text{GELU}(X \cdot W_\text{in}) \cdot W_\text{out}$.
+1. **Column-Parallel First Layer**: $W_\text{in}$ is partitioned by columns into $[W_{\text{in}, 1}, W_{\text{in}, 2}]$. Each rank computes $Z_i = \text{GELU}(X \cdot W_{\text{in}, i})$. Since GELU is an elementwise non-linear function, each GPU computes its activation shard locally without any cross-device communication.
+2. **Row-Parallel Second Layer**: $W_\text{out}$ is partitioned by rows. Each rank multiplies its local activation shard $Z_i$ by its weight row slice $W_{\text{out}, i}$.
+3. **Single Output AllReduce**: Summing the partial results $Y = \sum Y_i$ requires only a single AllReduce at the very end of the block.
+
+This pairing delays cross-GPU communication until after the entire MLP, avoiding communication on the widest intermediate activation dimension ($4H$).
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q13</span> <span class="q-text">Why does Pipeline Parallelism incur bubbles, and how can they be mitigated?</span></summary>
+
+Pipeline bubbles occur due to sequential data dependencies across stages:
+- Early microbatches must progress forward before downstream stages can begin execution.
+- Downstream stages must complete forward execution and compute loss before upstream stages can receive backward gradients.
+
+For GPipe (AFAB schedule), the bubble fraction is $F_\text{bubble} = \frac{P-1}{M+P-1}$.
+Mitigation techniques:
+1. **Increase microbatches ($M \gg P$)**: Dilutes idle bubble time, but increases activation memory.
+2. **1F1B Scheduling**: Interleaves one forward step with one backward step once steady-state is reached, bounding in-flight activations to $P$ microbatches.
+3. **Interleaved 1F1B**: Assigns multiple non-contiguous virtual stages per physical GPU to further shrink bubble overhead.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q14</span> <span class="q-text">How does Expert Parallelism (EP) differ from Tensor Parallelism (TP)?</span></summary>
+
+- **Sharding Logic**: TP shards dense matrices uniformly; every token participates in every sharded GEMM across all TP GPUs. EP shards the pool of sparse expert FFNs; individual tokens are dynamically routed by gating networks to only their Top-$k$ selected experts.
+- **Communication Pattern**: TP uses deterministic, dense collectives (AllReduce / ReduceScatter) with rigid latency constraints. EP uses dynamic token dispatch and combination via AllToAll operations:
+  $$\text{Local Tokens} \xrightarrow{\text{Router}} \text{AllToAll Send} \to \text{Expert FFN} \to \text{AllToAll Return} \to \text{Combine}$$
+  EP introduces unique challenges including token load imbalance, straggler tail latency, and inter-node AllToAll bandwidth saturation.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q15</span> <span class="q-text">How does Context Parallelism (CP) differ from standard Sequence Parallelism (SP)?</span></summary>
+
+Megatron Sequence Parallelism (SP) does not split the core attention computation: it shards sequences only across LayerNorm and Dropout, gathering back full sequence representations before Attention and MLP GEMMs. Thus, standard SP cannot break the single-GPU memory barrier for massive context lengths.
+Context Parallelism (CP) partitions long sequences across GPUs throughout the entire Transformer block. For self-attention, CP employs Ring Attention: each rank computes local attention while asynchronously rotating Key/Value blocks in a logical ring, computing partial softmax reductions without ever gathering the full sequence on any single device.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q16</span> <span class="q-text">How should TP, PP, and DP dimensions be mapped across a 64-GPU cluster?</span></summary>
+
+On a 64-GPU cluster (8 nodes $\times$ 8 H100s, 900 GB/s NVLink intra-node, 400G InfiniBand inter-node), dimensions are assigned to align communication intensity with physical bandwidth:
+```text
+Intra-Node (8 GPUs):      TP = 8   (saturates intra-node NVLink / NVSwitch mesh)
+Inter-Node Dimension 1:   PP = 4   (partitions depth into 4 pipeline stages across nodes)
+Inter-Node Dimension 2:   DP = 2   (replicates 2 pipeline instances for data parallelism)
+Total GPUs:              TP * PP * DP = 8 * 4 * 2 = 64 GPUs
+```
+- **TP=8 within node**: TP generates high-frequency, latency-sensitive collectives that demand NVLink's sub-microsecond latency.
+- **PP=4 across nodes**: PP exchanges only boundary activations and gradients at microbatch boundaries, easily tolerating network latency.
+- **DP=2 outer layer**: Gradients are overlapped asynchronously with backward execution.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q17</span> <span class="q-text">Why cannot large-scale model training rely on a single parallelism paradigm?</span></summary>
+
+Every single parallelism strategy hits physical hardware limits:
+- **Pure DP/FSDP**: Does not partition single-layer GEMMs; fails when layer weights or activations exceed single-card memory, and suffers low efficiency at tiny per-device batch sizes.
+- **Pure TP**: Communication overhead scales with depth and rank count; extending TP beyond an 8-GPU NVLink boundary severely degrades throughput.
+- **Pure PP**: High stage counts inflate bubble fractions ($F_\text{bubble} = \frac{P-1}{M+P-1}$) and introduce severe activation memory pressure.
+- **Pure EP**: Applies only to MoE layers; dense attention layers remain unparallelized.
+- **Pure CP**: Solves long context scaling, but does not address parameter or optimizer memory.
+
+Consequently, training frontier models requires multi-dimensional 3D/4D hybrid parallelism.
+
+</details>
+
+<details class="exercise">
+<summary><span class="q-label">Q18</span> <span class="q-text">What four diagnostic questions evaluate a distributed parallelism scheme?</span></summary>
+
+To diagnose any distributed architecture proposal, verify four fundamental physical dimensions:
+1. **Which dimension of the computational graph is partitioned?** (Batch, hidden channel, model depth, expert pool, or sequence context?)
+2. **When and how frequently does communication occur?** (Per GEMM, per Transformer layer, per microbatch, or per optimization step?)
+3. **Which physical network layer carries the communication?** (Intra-node NVLink/NVSwitch, inter-node InfiniBand/RoCE, or cross-switch datacenter fabric?)
+4. **Which category of memory is saved, and what computational/communication trade-off is incurred?** (Static parameters/optimizer states vs. dynamic activations? Does it trade off FLOPs, network bandwidth, or pipeline bubble latency?)
+
+</details>
 
 ---
+
+## 12. References & Further Reading
+
+### Foundational Literature & Sharding Theory
+- **Google DeepMind Scaling Book**: Austin, J., Douglas, S., Frostig, R., et al. (2025). [How to Scale Your Model](https://jax-ml.github.io/scaling-book/). The primary reference for Chapters 2 and 3, formalizing sharded matrix multiplication notation, collective communication runtime models, and multi-axis parallelism constraints.
+- **Ring AllReduce Foundations**: Gibiansky, A. (2017). [Bringing HPC Techniques to Deep Learning](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/). Baidu Silicon Valley AI Lab. Ring-based collective communication derivation and latency modeling.
+
+### Data Parallelism & Memory Sharding (DP / FSDP / ZeRO)
+- **ZeRO**: Rajbhandari, S., Rasley, J., Ruwase, O., & He, Y. (2020). [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054). SC20. ZeRO-1/2/3 memory accounting and sharding strategies.
+- **PyTorch FSDP**: Zhao, Y., Gu, A., Varma, R., et al. (2023). [PyTorch FSDP: Experiences on Scaling Fully Sharded Data Parallel](https://arxiv.org/abs/2304.11277). VLDB 2023. Industrial FSDP implementation, prefetching, and communication-computation overlap.
+
+### Tensor Parallelism & Sequence Parallelism (TP / SP)
+- **Megatron-LM**: Shoeybi, M., Patwary, M., Puri, R., et al. (2019). [Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism](https://arxiv.org/abs/1909.08053). Column-parallel and row-parallel linear operator decompositions.
+- **Sequence Parallelism**: Korthikanti, V., Casper, J., Dey, S., et al. (2022). [Reducing Activation Recomputation in Large Transformer Models](https://arxiv.org/abs/2205.05198). Integrating Sequence Parallelism (SP) with TP.
+
+### Pipeline Parallelism (PP)
+- **GPipe**: Huang, Y., Cheng, Y., Bapna, A., et al. (2019). [GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism](https://arxiv.org/abs/1811.06965). NeurIPS 2019. GPipe and AFAB pipeline scheduling.
+- **1F1B Scheduling**: Narayanan, D., Shoeybi, M., Zheng, C., et al. (2021). [Memory-Efficient Pipeline-Parallel DNN Training](https://arxiv.org/abs/2104.04473). ICML 2021. 1F1B and Interleaved 1F1B schedules.
+
+### Long Context & Sparse MoE Parallelism (CP / EP)
+- **Context Parallelism / Ring Attention**: Liu, H., Yan, M., Zaharia, M., & Abbeel, P. (2023). [Ring Attention with Blockwise Transformers for Near-Infinite Context](https://arxiv.org/abs/2310.01889). ICLR 2024.
+- **Switch Transformers / MoE**: Fedus, W., Zoph, B., & Shazeer, N. (2022). [Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity](https://arxiv.org/abs/2101.03961). JMLR 2022.
+
+### Communication-Computation Overlap & Visualizations
+- **Collective Matmul**: Wang, Y., et al. (2022). [Overlap Communication with Dependent Computation via Decomposition in Large Deep Learning Models](https://dl.acm.org/doi/10.1145/3567955.3567959). ASPLOS 2023.
+- **Visualizing Parallelism in Transformer**: Zhang, A. (2024). [Visualizing Parallelism in Transformer](https://ailzhang.github.io/posts/distributed-compute-in-transformer/). Meta PyTorch. Reference for Chapter 8½ architecture diagrams.
+
+### Code Repositories
+- [Picotron (Hugging Face)](https://github.com/huggingface/picotron) — Educational 4D hybrid parallelism framework
+- [Megatron-LM (NVIDIA)](https://github.com/NVIDIA/Megatron-LM) — NVIDIA official TP/PP/SP implementation
+- [DeepSpeed (Microsoft)](https://github.com/microsoft/DeepSpeed) — ZeRO-1/2/3 and ZeRO-Offload implementation
+- [PyTorch DTensor](https://pytorch.org/docs/stable/distributed.tensor.html) — PyTorch distributed sharded tensor API

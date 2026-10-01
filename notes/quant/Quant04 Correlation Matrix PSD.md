@@ -104,22 +104,22 @@ $$
 1-2t\operatorname{Cov}(Z_X,Z_Y)+t^2 \ge 0
 $$
 
-记 $ ho=\operatorname{Cov}(Z_X,Z_Y)$。这是一个关于 $t$ 的二次多项式：
+记 $\rho=\operatorname{Cov}(Z_X,Z_Y)$。这是一个关于 $t$ 的二次多项式：
 
 $$
-t^2 - 2 ho t + 1 \ge 0
+t^2 - 2\rho t + 1 \ge 0
 $$
 
 既然它对所有 $t$ 都大于等于零，其判别式必须小于等于零：
 
 $$
-(-2 ho)^2 - 4 \le 0
+(-2\rho)^2 - 4 \le 0
 $$
 
 解得：
 
 $$
- ho^2 \le 1
+\rho^2 \le 1
 $$
 
 也就是：
@@ -128,7 +128,7 @@ $$
 -1 \le \operatorname{corr}(X,Y) \le 1
 $$
 
-注意 $ ho=0$ 只表示没有线性相关关系，并不等同于两个变量独立。独立一定意味着协方差为 0，但协方差为 0 推不出独立。
+注意 $\rho=0$ 只表示没有线性相关关系，并不等同于两个变量独立。独立一定意味着协方差为 0，但协方差为 0 推不出独立。
 
 ---
 
@@ -194,7 +194,7 @@ R is PSD
 
 ## 4 · 极值推论：等相关下界
 
-给定 $n$ 个变量，如果它们两两之间的相关系数全都相等，设为 $ ho$，那么 $ ho$ 最小能是多少？
+给定 $n$ 个变量，如果它们两两之间的相关系数全都相等，设为 $\rho$，那么 $\rho$ 最小能是多少？
 
 构造一个全 1 的权重向量 $a = (1, 1, \dots, 1)^\top$。相关矩阵 $R$ 必须满足半正定条件：
 
@@ -202,22 +202,22 @@ $$
 a^\top R a = \sum_{i=1}^n \sum_{j=1}^n R_{ij} \ge 0
 $$
 
-矩阵 $R$ 中，对角线上有 $n$ 个 1，非对角线上有 $n(n-1)$ 个 $ ho$：
+矩阵 $R$ 中，对角线上有 $n$ 个 1，非对角线上有 $n(n-1)$ 个 $\rho$：
 
 $$
-a^\top R a = n + n(n-1) ho \ge 0
+a^\top R a = n + n(n-1)\rho \ge 0
 $$
 
 化简得：
 
 $$
-n(n-1) ho \ge -n
+n(n-1)\rho \ge -n
 $$
 
 解出下界：
 
 $$
- ho \ge -\frac{1}{n-1}
+ \rho \ge -\frac{1}{n-1}
 $$
 
 这给出了等相关矩阵的严格约束。例如：
@@ -259,13 +259,13 @@ $$
 展开行列式：
 
 $$
-1 + 2 ho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
+1 + 2\rho_{12} ho_{23} ho_{13} -  ho_{12}^2 -  ho_{23}^2 -  ho_{13}^2 \ge 0
 $$
 
 将其整理为关于 $ ho_{13}$ 的二次不等式：
 
 $$
- ho_{13}^2 - 2 ho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
+ ho_{13}^2 - 2\rho_{12} ho_{23} ho_{13} + ( ho_{12}^2 +  ho_{23}^2 - 1) \le 0
 $$
 
 这是一个开口向上的抛物线，要在零点之间取值。解二次方程，得到 $ ho_{13}$ 的闭区间范围：
@@ -280,14 +280,14 @@ $$
 
 ## 6 · Cholesky 分解与相关正态模拟
 
-给定两个独立的标准正态变量 $U, V \overset{i.i.d.}{\sim} N(0,1)$，如何构造出相关系数为 $ ho$ 的二维正态变量 $(X,Y)$？
+给定两个独立的标准正态变量 $U, V \overset{i.i.d.}{\sim} N(0,1)$，如何构造出相关系数为 $\rho$ 的二维正态变量 $(X,Y)$？
 
 可以直接使用相关矩阵的 Cholesky 分解进行线性变换：
 
 $$
 \begin{pmatrix} X \\ Y \end{pmatrix}
 =
-\begin{pmatrix} 1 & 0 \\  ho & \sqrt{1- ho^2} \end{pmatrix}
+\begin{pmatrix} 1 & 0 \\ \rho & \sqrt{1-\rho^2} \end{pmatrix}
 \begin{pmatrix} U \\ V \end{pmatrix}
 $$
 
@@ -298,7 +298,7 @@ X = U
 $$
 
 $$
-Y =  ho U + \sqrt{1- ho^2} V
+Y = \rho U + \sqrt{1-\rho^2} V
 $$
 
 检验均值、方差和协方差：
@@ -308,7 +308,7 @@ $$
 $$
 
 $$
-\mathbb{E}[Y] =  ho \mathbb{E}[U] + \sqrt{1- ho^2} \mathbb{E}[V] = 0
+\mathbb{E}[Y] = \rho \mathbb{E}[U] + \sqrt{1-\rho^2} \mathbb{E}[V] = 0
 $$
 
 $$
@@ -316,17 +316,17 @@ $$
 $$
 
 $$
-\operatorname{Var}(Y) =  ho^2 \operatorname{Var}(U) + (1- ho^2) \operatorname{Var}(V) = 1
+\operatorname{Var}(Y) = \rho^2 \operatorname{Var}(U) + (1-\rho^2) \operatorname{Var}(V) = 1
 $$
 
 $$
-\operatorname{Cov}(X,Y) = \operatorname{Cov}(U,  ho U + \sqrt{1- ho^2} V) =  ho \operatorname{Var}(U) =  ho
+\operatorname{Cov}(X,Y) = \operatorname{Cov}(U, \rho U + \sqrt{1-\rho^2} V) = \rho \operatorname{Var}(U) = \rho
 $$
 
 因为 $X, Y$ 的方差都为 1，它们的协方差等于相关系数：
 
 $$
-\operatorname{corr}(X,Y) =  ho
+\operatorname{corr}(X,Y) = \rho
 $$
 
 这个变换把 $(U,V)$ 平面上独立的圆对称分布，线性拉伸成了具有特定倾斜方向的椭圆分布。由于使用的是线性算子，它保持了联合正态性（joint normality）。
@@ -341,7 +341,7 @@ $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)]
 $$
 
-其中 $(X,Y)$ 的相关系数为 $ ho$。连续正态分布取值为 0 的概率为 0，所以符号乘积必定是 1 或 -1。
+其中 $(X,Y)$ 的相关系数为 $\rho$。连续正态分布取值为 0 的概率为 0，所以符号乘积必定是 1 或 -1。
 
 $$
 \mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 1 \cdot P(\text{同号}) + (-1) \cdot P(\text{异号}) = P(\text{同号}) - P(\text{异号})
@@ -376,7 +376,7 @@ $$
 将 Cholesky 变换代入 $p$ 的计算：
 
 $$
-p = P(X>0, Y>0) = P\left(U>0,\  ho U + \sqrt{1- ho^2} V > 0\right)
+p = P(X>0, Y>0) = P\left(U>0,\ \rho U + \sqrt{1-\rho^2} V > 0\right)
 $$
 
 现在问题转移到了 $(U,V)$ 平面。$U,V$ 是独立标准正态，其联合密度函数为：
@@ -390,20 +390,20 @@ $$
 不等式系统定义了两个半平面：
 
 1. $U > 0$：边界线为 $U=0$（即 $V$ 轴）。它保留了右半平面。
-2. $ ho U + \sqrt{1- ho^2} V > 0$：边界线为 $V = -\frac{ ho}{\sqrt{1- ho^2}} U$。
+2. $\rho U + \sqrt{1-\rho^2} V > 0$：边界线为 $V = -\frac{\rho}{\sqrt{1-\rho^2}} U$。
 
-令 $\alpha = \arcsin ho$。经过原点的边界线 $V = -\tan(\alpha) U$ 与 $U$ 轴正半轴的夹角正好是 $-\alpha$。而第一条边界线 $U=0$ 对应正向的 $\pi/2$。
+令 $\alpha = \\arcsin \rho$。经过原点的边界线 $V = -\tan(\alpha) U$ 与 $U$ 轴正半轴的夹角正好是 $-\alpha$。而第一条边界线 $U=0$ 对应正向的 $\pi/2$。
 
 这两个半平面的交集构成了一个扇形，其开角为：
 
 $$
-\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \arcsin ho
+\frac{\pi}{2} + \alpha = \frac{\pi}{2} + \\arcsin \rho
 $$
 
 于是概率值为：
 
 $$
-p = \frac{\frac{\pi}{2} + \arcsin ho}{2\pi} = \frac{1}{4} + \frac{\arcsin ho}{2\pi}
+p = \frac{\frac{\pi}{2} + \\arcsin \rho}{2\pi} = \frac{1}{4} + \frac{\\arcsin \rho}{2\pi}
 $$
 
 ### 代回期望公式
@@ -411,16 +411,16 @@ $$
 将 $p$ 的表达式代回期望公式：
 
 $$
-\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\arcsin ho}{2\pi}\right) - 1
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = 4\left(\frac{1}{4} + \frac{\\arcsin \rho}{2\pi}\right) - 1
 $$
 
 得到干净的最终结论：
 
 $$
-\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \arcsin ho
+\mathbb{E}[\operatorname{sgn}(X)\operatorname{sgn}(Y)] = \frac{2}{\pi} \\arcsin \rho
 $$
 
-这个结果重度依赖独立高斯分布的旋转不变性（圆对称），并不适用于相关系数同为 $ ho$ 的任意分布。
+这个结果重度依赖独立高斯分布的旋转不变性（圆对称），并不适用于相关系数同为 $\rho$ 的任意分布。
 
 ---
 

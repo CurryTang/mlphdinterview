@@ -674,7 +674,7 @@ const mlsysNoteDefinitions = [
     },
   ),
   createTutorialDefinition(
-    '02 · 经典并行原语与 Memory-Bound 算子手撕指南',
+    '02 · 经典并行原语与 Memory-Bound 算子工程实现',
     'MLSYS02 Parallel Primitives and Memory-Bound Kernels.md',
     'MLSYS02 Parallel Primitives and Memory-Bound Kernels.en.md',
     {
