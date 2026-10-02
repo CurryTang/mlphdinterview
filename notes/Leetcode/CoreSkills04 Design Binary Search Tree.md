@@ -40,7 +40,7 @@ delete(root, key):
   else:
     if root.left is null: return root.right
     if root.right is null: return root.left
-    succ = minNode(root.\right)
+    succ = minNode(root.right)
     root.val = succ.val
     root.right = delete(root.right, succ.val)
   return root
@@ -95,7 +95,7 @@ delete(root, key):
 
 ```python
 def preorder(root):
-    return [root.val] + preorder(root.left) + preorder(root.\right) if root else []
+    return [root.val] + preorder(root.left) + preorder(root.right) if root else []
 ```
 
 迭代版先压右子节点，再压左子节点。栈的后进先出性质保证左子树先处理。
@@ -111,7 +111,7 @@ def preorder_iterative(root):
         node = stack.pop()
         order.append(node.val)
         if node.right:
-            stack.append(node.\right)
+            stack.append(node.right)
         if node.left:
             stack.append(node.left)
     return order
@@ -123,7 +123,7 @@ def preorder_iterative(root):
 
 ```python
 def inorder(root):
-    return inorder(root.left) + [root.val] + inorder(root.\right) if root else []
+    return inorder(root.left) + [root.val] + inorder(root.right) if root else []
 ```
 
 迭代版反复压入左链。当前指针为空时弹栈、访问，再转向右子树。
@@ -150,7 +150,7 @@ def inorder_iterative(root):
 
 ```python
 def postorder(root):
-    return postorder(root.left) + postorder(root.\right) + [root.val] if root else []
+    return postorder(root.left) + postorder(root.right) + [root.val] if root else []
 ```
 
 迭代版先生成修改前序 `root → right → left`，再整体反转。为了让右子节点先出栈，代码先压左子节点，再压右子节点。单栈加 `last_visited` 也可实现后序，但状态分支更多。
@@ -168,7 +168,7 @@ def postorder_iterative(root):
         if node.left:
             stack.append(node.left)
         if node.right:
-            stack.append(node.\right)
+            stack.append(node.right)
 
     return reverse_order[::-1]
 ```
@@ -193,7 +193,7 @@ def level_order(root):
         if node.left:
             queue.append(node.left)
         if node.right:
-            queue.append(node.\right)
+            queue.append(node.right)
     return order
 ```
 
@@ -201,153 +201,222 @@ def level_order(root):
 
 ## 模块二：五个核心递归模式
 
-### 1. 自底向上返回值 + 全局最优值
+面试中树类题目的核心首选永远是**递归**。递归写法不仅代码极其精炼（通常 5~15 行），而且逻辑与树的递归定义天然契合。在白板上手写时，迭代显式栈（尤其是带回溯或状态机的后序模拟）不仅冗长，而且指针极易出错。
 
-子节点先算出一个值，父节点用这个值算出当前节点的贡献，同时用一个独立变量记录扫描过程中出现的最优答案。整棵树的答案（`best`）和父节点需要的量（`value_for_parent`）往往不是同一个东西；混用这两个量会产生错误。这个结构既可以写成递归，也可以写成迭代后序遍历，选哪种取决于哪种写法在具体这道题上更容易说清楚，不需要每次都用同一种形式。
+掌握以下 5 个核心递归模板，即可覆盖绝大多数二叉树面试题。
 
-迭代版本用显式栈模拟调用栈，把每个节点的返回值缓存在字典里，等它的两个子节点都处理完再计算当前节点：
+---
+
+### 1. 自底向上返回值 + 全局最优值（树形 DP）
+
+子节点向父节点汇报“单边最大收益/单边高度”，父节点拿到左右两边的汇报后，结合自身更新跨越当前节点的“全局最优答案”（左右拼接），最后向上一层父节点返回单边贡献。
+
+**核心直觉**：
+- **向上返回**：只能选一条边向上走（单边链，不能分叉）。
+- **全局更新**：左右两条分支可以在当前节点拼接成“人字形”路径（全局最优解）。
 
 ```python
 def solve(root):
-    value = {None: 0}
-    best = 0
-    stack = [(root, False)]
-    while stack:
-        node, processed = stack.pop()
-        if node is None:
-            continue
-        if processed:
-            left = value[node.left]
-            right = value[node.\right]
-            best = max(best, combine_for_answer(left, right, node))
-            value[node] = value_for_parent(left, right, node)
-        else:
-            stack.append((node, True))
-            stack.append((node.left, False))
-            stack.append((node.right, False))
+    best = 0  # 记录整棵树全局最优值
+
+    def dfs(node):
+        nonlocal best
+        if not node:
+            return 0  # 空节点贡献为 0
+
+        # 1. 递归获得左右子树自底向上的汇报
+        left = dfs(node.left)
+        right = dfs(node.right)
+
+        # 2. 结合左右汇报更新全局最优解（例如：直径 left + right，或路径和 left + right + val）
+        best = max(best, combine_for_answer(left, right, node))
+
+        # 3. 向父节点返回当前节点能提供的单边最大贡献（不能分叉）
+        return value_for_parent(left, right, node)
+
+    dfs(root)
     return best
 ```
 
-`processed=False` 表示先展开子节点；`processed=True` 表示两个子节点的缓存值已经确定，可以计算当前节点。Diameter 用这个迭代版本缓存高度，答案记录 `left_height + right_height`。
+> **常见坑**：混淆“向父节点返回的单边量”与“整棵树更新的全局量”。前者不能分叉，后者可以跨越左右子树。
 
-递归版本更直接，不需要额外的缓存字典，因为子节点的返回值就是对应递归调用的结果。Maximum Path Sum 用的是这个形式：递归返回单边向下收益，`self.max_sum` 记录任意两个分支拼接后的最大路径和。
+使用题目：Diameter of Binary Tree (543)、Binary Tree Maximum Path Sum (124)。
 
-Count Good Nodes 使用同一项“状态与答案聚合分开”的原则，用显式栈把路径最大值从父节点传给子节点，独立变量记录计数，属于该模式的自顶向下变体。
+---
 
-使用题目：Diameter of Binary Tree（迭代）、Count Good Nodes in Binary Tree（迭代）、Binary Tree Maximum Path Sum（递归）。
+### 2. 结构比较递归（双树同步遍历）
 
-### 2. 结构比较递归
-
-显式栈同时保存两个树中位置对应的节点。空节点组合和值相等条件共同决定结果。
+同时递归遍历两棵树的对应节点。判断两棵树结构与值是否相同，只需关注 Base Case 与左右子树的同步递归。
 
 ```python
-def same(a, b):
-    stack = [(a, b)]
-    while stack:
-        x, y = stack.pop()
-        if not x and not y:
-            continue
-        if not x or not y or x.val != y.val:
-            return False
-        stack.append((x.left, y.left))
-        stack.append((x.right, y.\right))
-    return True
+def is_same(a, b):
+    # 1. 两者皆空，结构匹配成功
+    if not a and not b:
+        return True
+    # 2. 仅一个为空，或值不相等，匹配失败
+    if not a or not b or a.val != b.val:
+        return False
+    # 3. 递归比较左左与右右
+    return is_same(a.left, b.left) and is_same(a.right, b.right)
 ```
 
-Same Tree 直接使用该模板。Subtree of Another Tree 在主树的每个节点调用 `same(node, subRoot)`，匹配失败后继续检查左右子树。
+- **核心直觉**：只有当前节点值相等，且左子树和右子树均完全匹配时，两棵树才相同。
+- **衍生题**：Subtree of Another Tree (572) 在主树的每个节点调用 `is_same(node, subRoot)`，匹配失败则继续递归左右子树 `isSubtree(node.left, subRoot) or isSubtree(node.right, subRoot)`。
 
-使用题目：Same Tree、Subtree of Another Tree。
+使用题目：Same Tree (100)、Subtree of Another Tree (572)。
 
-### 3. BST 有序约束
+---
 
-BST 最重要的专用性质是中序遍历有序。它支持三种常见写法。
+### 3. BST 有序约束（自顶向下传递有效开区间）
 
-| 题目 | 使用方式 |
-|---|---|
-| Kth Smallest | 中序第 `k` 次访问就是第 `k` 小值，可以提前结束 |
-| Validate BST | 每个节点携带合法开区间 `(low, high)`；左子树上界收紧为当前值，右子树下界收紧为当前值 |
-| LCA of a BST | 两个目标值都小于当前值时向左，都大于当前值时向右，否则当前节点就是分叉点 |
+二叉搜索树（BST）的核心性质是**中序遍历严格递增**（每个节点大于左子树的所有节点，且小于右子树的所有节点）。
 
-只检查 `node.left.val < node.val < node.right.val` 会漏掉跨越多层的违规节点。合法区间必须从所有祖先传递下来。LCA 可以沿一条路径运行，时间复杂度为 `O(h)`，无需同时搜索两棵子树。
-
-Validate BST 使用显式栈携带每个节点的祖先边界：
+仅仅检查局部 `node.left.val < node.val < node.right.val` 是**典型错误**，因为这无法发现跨越多层的祖先约束违规（例如右子树的左孙子比根节点还小）。正确解法是**自顶向下传递合法的开区间 `(low, high)`**。
 
 ```python
-import math
-
-
-def valid(root):
-    stack = [(root, -math.inf, math.inf)]
-    while stack:
-        node, low, high = stack.pop()
+def is_valid_bst(root):
+    def validate(node, low, high):
         if not node:
-            continue
-        if not low < node.val < high:
+            return True
+        # 当前节点值必须落在严格开区间 (low, high) 内
+        if not (low < node.val < high):
             return False
-        stack.append((node.left, low, node.val))
-        stack.append((node.right, node.val, high))
-    return True
+        # 往左走上界收紧为 node.val；往右走下界收紧为 node.val
+        return validate(node.left, low, node.val) and validate(node.right, node.val, high)
+
+    return validate(root, float('-inf'), float('inf'))
 ```
 
-也可以用迭代中序遍历检查节点值是否严格递增，但区间栈更直接地展示了所有祖先共同施加的约束。
+BST 的三大经典衍生用法：
 
-### 4. 遍历序列重建
+| 题目 | 使用方式 | 复杂度 |
+|---|---|---|
+| Validate BST (98) | 自顶向下传递 `(low, high)` 开区间递归校验 | `O(n) / O(h)` |
+| Kth Smallest (230) | 中序遍历天然严格递增，第 $k$ 次访问即为答案 | `O(h + k) / O(h)` |
+| LCA of a BST (235) | 二分向下单向搜索：两值均小于当前值往左，均大于往右，分叉处即 LCA | `O(h) / O(1)` |
 
-前序序列依次给出新节点。栈保存当前右链中仍在等待右子节点的节点，`j` 指向中序序列中下一个待完成的节点。
+使用题目：Validate Binary Search Tree (98)、Kth Smallest Element in a BST (230)、Lowest Common Ancestor of a BST (235)。
+
+---
+
+### 4. 遍历序列重建（前序定根，中序切分）
+
+迭代法的单调栈与 `parent` 回溯指针在面试紧张时极易写错指针；而这道题（LeetCode 105）最容易理解和记忆的做法是**带哈希表的递归分治法**。
+
+递归法的本质只有一句话：**“前序找根，中序切成左右两半”**。
+
+#### 核心直觉（3 秒记住）
+
+* **前序遍历（Preorder）：** `[根节点, ...左子树全部节点..., ...右子树全部节点...]`
+  * 作用：**第一个元素永远是当前子树的根节点。**
+* **中序遍历（Inorder）：** `[...左子树全部节点..., 根节点, ...右子树全部节点...]`
+  * 作用：**找到根节点的位置后，其左侧就是左子树全部节点，右侧就是右子树全部节点。**
+
+知道左子树有几个节点后，就能在前序数组中把左子树区间和右子树区间切分开，随后递归构建即可。
+
+```text
+preorder: [ 根 |  --- 左子树 (k个) ---  |  --- 右子树 ---  ]
+             ↓
+inorder:  [ --- 左子树 (k个) --- | 根 | --- 右子树 ---  ]
+```
+
+#### 标准解法（指针 + 哈希表）
+
+用哈希表预存 `inorder` 中每个值的下标，可以做到 $O(1)$ 查找根节点；用下标范围代替数组切片，空间和时间都是最优的 $O(n)$。
 
 ```python
 def build_tree(preorder, inorder):
-    root = TreeNode(preorder[0])
-    stack = [root]
-    j = 0
-    for i in range(1, len(preorder)):
-        node = TreeNode(preorder[i])
-        parent = None
-        while stack and stack[-1].val == inorder[j]:
-            parent = stack.pop()
-            j += 1
-        if parent:
-            parent.right = node
-        else:
-            stack[-1].left = node
-        stack.append(node)
+    # 1. 哈希表快速定位根节点在 inorder 中的位置
+    val_to_idx = {val: i for i, val in enumerate(inorder)}
+
+    def helper(pre_left, pre_right, in_left, in_right):
+        if pre_left > pre_right:
+            return None
+
+        # 前序区间的第一个元素是根
+        root_val = preorder[pre_left]
+        root = TreeNode(root_val)
+
+        # 找到根在中序中的位置，算出左子树的大小
+        in_root_idx = val_to_idx[root_val]
+        left_size = in_root_idx - in_left
+
+        # 递归构造左右子树
+        root.left = helper(
+            pre_left + 1, pre_left + left_size,
+            in_left, in_root_idx - 1
+        )
+        root.right = helper(
+            pre_left + left_size + 1, pre_right,
+            in_root_idx + 1, in_right
+        )
+
+        return root
+
+    return helper(0, len(preorder) - 1, 0, len(inorder) - 1)
+```
+
+#### 白板速写版（5 行切片极简代码）
+
+如果不卡切片的复制开销，直接用 Python 切片只有 5 行，直观且无需推导下标：
+
+```python
+def build_tree_slice(preorder, inorder):
+    if not preorder:
+        return None
+
+    root_val = preorder[0]
+    root = TreeNode(root_val)
+
+    # 根节点在中序里的索引，也就是左子树的节点数量
+    k = inorder.index(root_val)
+
+    root.left = build_tree_slice(preorder[1 : 1 + k], inorder[:k])
+    root.right = build_tree_slice(preorder[1 + k :], inorder[k + 1 :])
+
     return root
 ```
 
-下一个前序值与 `inorder[j]` 不同时，它是栈顶节点的左子节点。相同时，当前左子树已经完成；连续弹出与中序值匹配的节点后，新节点连接为最后一个弹出节点的右子节点。每个节点入栈、出栈各一次，时间和额外空间均为 `O(n)`。
+> **3 秒记忆口诀**：
+> 1. 前序拿首位建根；
+> 2. 中序找根算长度 $k$；
+> 3. 前序跳过首位切 $k$ 个给左边，剩余给右边。
 
-Serialize and Deserialize 用的是带显式空标记的前序序列：前序先给出当前根，后续标记按“左子树、右子树”的固定顺序消费。这道题递归写法更直接，不需要额外的栈；空标记本身就告诉递归调用子树在哪结束。中序序列先出现左侧内容，缺少额外遍历时无法确定当前根的位置，因此不能单独完成无歧义反序列化，这也是为什么 Construct Binary Tree from Preorder and Inorder Traversal 必须用中序分割，而不能像这道题一样只靠前序加空标记。
+使用题目：Construct Binary Tree from Preorder and Inorder Traversal (105)、Serialize and Deserialize Binary Tree (297)（前序序列带空标记，天然确定子树边界）。
 
-使用题目：Construct Binary Tree from Preorder and Inorder Traversal（迭代）、Serialize and Deserialize Binary Tree（递归）。
+---
 
-### 5. 高度重复计算与哨兵修复
+### 5. 高度重复计算与哨兵修复（自底向上剪枝）
 
-Balanced Binary Tree 的直接写法会在每个节点重新调用 `height()`。倾斜树上的同一批节点被重复访问，总时间达到 `O(n^2)`。
+Balanced Binary Tree 如果用自顶向下的直接写法，会在每个节点重复调用 `height()`，倾斜树上总时间退化为 $O(n^2)$。
 
-一次迭代后序遍历可以同时计算高度和判断平衡。缓存保存已处理子树的高度；发现失衡时直接返回 `False`。
+最优写法是**自底向上的后序递归**：在返回树高的同时合并平衡校验。约定用 `-1` 作为**失衡哨兵信号**，一旦某棵子树失衡，立即逐层向上透传 `-1` 提前终止，将时间复杂度优化到 $O(n)$。
 
 ```python
 def is_balanced(root):
-    height = {None: 0}
-    stack = [(root, False)]
-    while stack:
-        node, processed = stack.pop()
-        if node is None:
-            continue
-        if processed:
-            left_h = height[node.left]
-            right_h = height[node.\right]
-            if abs(left_h - right_h) > 1:
-                return False
-            height[node] = 1 + max(left_h, right_h)
-        else:
-            stack.append((node, True))
-            stack.append((node.left, False))
-            stack.append((node.right, False))
-    return True
+    def check(node):
+        if not node:
+            return 0  # 空节点高度为 0
+
+        left_h = check(node.left)
+        if left_h == -1:  # 左子树已失衡，快速剪枝
+            return -1
+
+        right_h = check(node.right)
+        if right_h == -1:  # 右子树已失衡，快速剪枝
+            return -1
+
+        if abs(left_h - right_h) > 1:  # 当前节点左右失衡
+            return -1
+
+        return 1 + max(left_h, right_h)  # 平衡时返回真实高度
+
+    return check(root) != -1
 ```
 
-递归版本需要用 `-1` 跨调用帧传递“子树已经失衡”的信号。迭代版本在发现失衡时可以直接从函数返回 `False`，因此不需要哨兵值。两种机制都实现了同一原则：答案确定后立即停止。递归版本的 `-1` 与二分查找的边界哨兵、Largest Rectangle 栈中的尾部哨兵仍属于同一类接口设计：特殊值携带控制信息并缩短后续处理。
+- **核心直觉**：自底向上后序遍历天然掌握子树所有信息，使用 `-1` 哨兵实现发现违规立即熔断，避免多余递归。
+
+使用题目：Balanced Binary Tree (110)。
 
 ## 模块三：自平衡树的基本概念
 
@@ -358,7 +427,7 @@ def is_balanced(root):
 AVL 对每个节点维护平衡因子：
 
 $$
-\text{balance}(node) = \text{height}(node.left) - \text{height}(node.\right)
+\text{balance}(node) = \text{height}(node.left) - \text{height}(node.right)
 $$
 
 任意节点都要求 `|balance| <= 1`。插入或删除导致失衡后，根据较重路径的两次方向选择旋转。
@@ -421,12 +490,12 @@ B-Tree 的一个节点保存多个有序键和多个子指针。高分支因子�
 
 ### 1. Invert Binary Tree
 
-这道题组合迭代 DFS 与指针交换。每个节点交换左右子树，再把非空子节点压栈。
+翻转二叉树最自然的做法是递归：当前节点的左子树等于翻转后的右子树，右子树等于翻转后的左子树。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 树遍历 + 局部指针修改 |
-| 关键状态 | 当前节点的左右子指针 |
+| 组合模式 | 递归遍历 + 局部指针交换 |
+| 关键状态 | `root.left, root.right = invert(root.right), invert(root.left)` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Invert Binary Tree
@@ -447,28 +516,23 @@ class Solution:
     def invertTree(self, root: Optional[TreeNode]) -> Optional[TreeNode]:
         if not root:
             return None
-        stack = [root]
-        while stack:
-            node = stack.pop()
-            node.left, node.right = node.right, node.left
-            if node.left:
-                stack.append(node.left)
-            if node.right:
-                stack.append(node.\right)
+        root.left, root.right = self.invertTree(root.right), self.invertTree(root.left)
         return root
 ```
+
+> **注**：面试中 4 行递归最为精炼直观。若要求非递归，可用 BFS 队列或栈逐层/逐个交换左右子指针。
 
 </details>
 
 ### 2. Maximum Depth of Binary Tree
 
-层序 BFS 每处理完一层就把深度加一。队列为空时，累计的层数就是最大深度。
+树的最大深度等于根节点（1）加上左右子树深度的较大值。递归基准为当前节点为空时返回 0。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 层序遍历 + 层数累计 |
-| 关键状态 | 当前队列长度表示本层节点数 |
-| 时间 / 空间 | `O(n) / O(w)` |
+| 组合模式 | 自底向上高度递归 |
+| 关键转移 | `1 + max(maxDepth(root.left), maxDepth(root.right))` |
+| 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Maximum Depth of Binary Tree
 
@@ -481,7 +545,6 @@ def maxDepth(root):
 <summary>参考答案</summary>
 
 ```python
-from collections import deque
 from typing import Optional
 
 
@@ -489,29 +552,21 @@ class Solution:
     def maxDepth(self, root: Optional[TreeNode]) -> int:
         if not root:
             return 0
-        depth = 0
-        queue = deque([root])
-        while queue:
-            depth += 1
-            for _ in range(len(queue)):
-                node = queue.popleft()
-                if node.left:
-                    queue.append(node.left)
-                if node.right:
-                    queue.append(node.\right)
-        return depth
+        return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
 ```
+
+> **注**：也可用 BFS 层序遍历（逐层出队，队列每轮清空一次 `depth += 1`），空间复杂度为 `O(w)`。
 
 </details>
 
 ### 3. Diameter of Binary Tree
 
-迭代后序遍历先确定左右子树高度，再计算当前节点高度。独立变量记录每个节点处的 `left_height + right_height`，直径按边数计算。
+递归后序遍历计算子树深度。对任意节点，经过它的最长路径所包含的边数为 `left_depth + right_depth`，用全局变量维护最大直径；函数向父节点返回单边最大深度 `1 + max(left_depth, right_depth)`。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 后序栈 + 高度缓存 + 全局最优值 |
-| 缓存量 / 答案量 | 子树高度 / 最大直径 |
+| 组合模式 | 自底向上返回值 + 全局最优值 |
+| 返回量 / 答案量 | 单边最大深度 / 树的最大直径 |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Diameter of Binary Tree
@@ -530,38 +585,32 @@ from typing import Optional
 
 class Solution:
     def diameterOfBinaryTree(self, root: Optional[TreeNode]) -> int:
-        if not root:
-            return 0
-        height = {None: 0}
-        diameter = 0
-        stack = [(root, False)]
-        while stack:
-            node, processed = stack.pop()
-            if node is None:
-                continue
-            if processed:
-                left_h, right_h = height[node.left], height[node.\right]
-                diameter = max(diameter, left_h + right_h)
-                height[node] = 1 + max(left_h, right_h)
-            else:
-                stack.append((node, True))
-                stack.append((node.left, False))
-                stack.append((node.right, False))
-        return diameter
-```
+        self.diameter = 0
 
-栈中的 `(node, processed)` 记录处理阶段。`processed=False` 表示先展开当前节点的子节点；`processed=True` 表示两个子节点的高度已经写入 `height`，此时可以计算当前节点高度。这是标准的迭代后序模拟，Maximum Path Sum 会复用同一结构。
+        def depth(node: Optional[TreeNode]) -> int:
+            if not node:
+                return 0
+            left = depth(node.left)
+            right = depth(node.right)
+            # 经过当前节点的最长路径更新全局直径
+            self.diameter = max(self.diameter, left + right)
+            # 向父节点返回单边最大深度
+            return 1 + max(left, right)
+
+        depth(root)
+        return self.diameter
+```
 
 </details>
 
 ### 4. Balanced Binary Tree
 
-迭代后序遍历缓存每个子树的高度。任意节点的左右高度差超过 `1` 时直接返回 `False`。
+自底向上递归计算树高。若左右子树任一失衡（返回 `-1`）或左右高度差大于 1，则直接返回 `-1` 提前剪枝；否则返回真实高度 `1 + max(left, right)`。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 后序栈 + 高度缓存 + 提前结束 |
-| 关键条件 | `abs(left - \right) <= 1` |
+| 组合模式 | 后序递归 + 哨兵剪枝 |
+| 关键条件 | `abs(left - right) <= 1` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Balanced Binary Tree
@@ -580,36 +629,36 @@ from typing import Optional
 
 class Solution:
     def isBalanced(self, root: Optional[TreeNode]) -> bool:
-        if not root:
-            return True
-        height = {None: 0}
-        stack = [(root, False)]
-        while stack:
-            node, processed = stack.pop()
-            if node is None:
-                continue
-            if processed:
-                left_h, right_h = height[node.left], height[node.\right]
-                if abs(left_h - right_h) > 1:
-                    return False
-                height[node] = 1 + max(left_h, right_h)
-            else:
-                stack.append((node, True))
-                stack.append((node.left, False))
-                stack.append((node.right, False))
-        return True
+        def check(node: Optional[TreeNode]) -> int:
+            if not node:
+                return 0
+
+            left = check(node.left)
+            if left == -1:
+                return -1
+
+            right = check(node.right)
+            if right == -1:
+                return -1
+
+            if abs(left - right) > 1:
+                return -1
+
+            return 1 + max(left, right)
+
+        return check(root) != -1
 ```
 
 </details>
 
 ### 5. Same Tree
 
-这是结构比较的基本题。栈中的每个元素是一对结构位置相同的节点。两个空节点匹配；只有一个空节点或节点值不同都直接失败。
+递归比较两棵树：当前节点值相等，且左子树与左子树相同、右子树与右子树相同。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 节点对栈 + 结构比较 |
-| 关键状态 | 同一位置的两个节点 |
+| 组合模式 | 双树同步递归 |
+| 关键状态 | `p.val == q.val and isSame(p.left, q.left) and isSame(p.right, q.right)` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Same Tree
@@ -628,29 +677,24 @@ from typing import Optional
 
 class Solution:
     def isSameTree(self, p: Optional[TreeNode], q: Optional[TreeNode]) -> bool:
-        stack = [(p, q)]
-        while stack:
-            a, b = stack.pop()
-            if not a and not b:
-                continue
-            if not a or not b or a.val != b.val:
-                return False
-            stack.append((a.left, b.left))
-            stack.append((a.right, b.\right))
-        return True
+        if not p and not q:
+            return True
+        if not p or not q or p.val != q.val:
+            return False
+        return self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
 ```
 
 </details>
 
 ### 6. Subtree of Another Tree
 
-这道题把迭代 Same Tree 作为子程序。当前节点匹配失败后，主栈继续在左右子树中寻找候选根。
+递归检查：当前树是否与 `subRoot` 完全相同；若不相同，则递归在左子树或右子树中继续寻找。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 结构比较栈 + 候选根栈 |
-| 关键操作 | `same(node, subRoot)` |
-| 时间 / 空间 | 最坏 `O(mn) / O(h)` |
+| 组合模式 | 双重递归（树遍历 + 结构比较） |
+| 关键操作 | `self.isSame(root, subRoot)` |
+| 时间 / 空间 | 最坏 `O(m * n) / O(h)` |
 
 #### Quick Coding：Subtree of Another Tree
 
@@ -668,41 +712,29 @@ from typing import Optional
 
 class Solution:
     def isSubtree(self, root: Optional[TreeNode], subRoot: Optional[TreeNode]) -> bool:
-        def same(a: Optional[TreeNode], b: Optional[TreeNode]) -> bool:
-            stack = [(a, b)]
-            while stack:
-                x, y = stack.pop()
-                if not x and not y:
-                    continue
-                if not x or not y or x.val != y.val:
-                    return False
-                stack.append((x.left, y.left))
-                stack.append((x.right, y.\right))
+        if not root:
+            return False
+        if self.isSame(root, subRoot):
             return True
+        return self.isSubtree(root.left, subRoot) or self.isSubtree(root.right, subRoot)
 
-        if not subRoot:
+    def isSame(self, s: Optional[TreeNode], t: Optional[TreeNode]) -> bool:
+        if not s and not t:
             return True
-        stack = [root]
-        while stack:
-            node = stack.pop()
-            if not node:
-                continue
-            if same(node, subRoot):
-                return True
-            stack.append(node.left)
-            stack.append(node.\right)
-        return False
+        if not s or not t or s.val != t.val:
+            return False
+        return self.isSame(s.left, t.left) and self.isSame(s.right, t.right)
 ```
 
 </details>
 
 ### 7. Lowest Common Ancestor of a BST
 
-BST 有序约束把搜索限制在一条根到叶路径。目标值位于当前值两侧时，当前节点就是分叉点。
+利用 BST 有序性单向下降：若 `p` 和 `q` 的值都小于当前节点，LCA 必在左子树；都大于当前节点，必在右子树；否则（分居两侧或其中一个为当前节点），当前节点即为分叉点。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | BST 有序约束 |
+| 组合模式 | BST 有序约束 + 单向分支 |
 | 关键分支 | 同左、同右、分叉 |
 | 时间 / 空间 | `O(h) / O(1)` |
 
@@ -717,27 +749,29 @@ def lowestCommonAncestor(root, p, q):
 <summary>参考答案</summary>
 
 ```python
-from typing import Optional
-
-
 class Solution:
     def lowestCommonAncestor(
-        self,
-        root: TreeNode,
-        p: TreeNode,
-        q: TreeNode,
-    ) -> Optional[TreeNode]:
-        current = root
-        low, high = sorted((p.val, q.val))
-
-        while current:
-            if high < current.val:
-                current = current.left
-            elif low > current.val:
-                current = current.right
+        self, root: TreeNode, p: TreeNode, q: TreeNode
+    ) -> TreeNode:
+        curr = root
+        while curr:
+            if p.val < curr.val and q.val < curr.val:
+                curr = curr.left
+            elif p.val > curr.val and q.val > curr.val:
+                curr = curr.right
             else:
-                return current
-        return None
+                return curr
+        return root
+```
+
+> **注**：递归写法同样极简（仅 4 行）：
+
+```python
+if p.val < root.val and q.val < root.val:
+    return self.lowestCommonAncestor(root.left, p, q)
+if p.val > root.val and q.val > root.val:
+    return self.lowestCommonAncestor(root.right, p, q)
+return root
 ```
 
 </details>
@@ -782,7 +816,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.\right)
+                    queue.append(node.right)
             result.append(level)
         return result
 ```
@@ -828,7 +862,7 @@ class Solution:
                 if node.left:
                     queue.append(node.left)
                 if node.right:
-                    queue.append(node.\right)
+                    queue.append(node.right)
                 if i == level_size - 1:
                     result.append(node.val)
         return result
@@ -838,12 +872,12 @@ class Solution:
 
 ### 10. Count Good Nodes in Binary Tree
 
-栈中的 `(node, max_seen)` 把路径最大值从根向下传递。当前值不小于祖先路径最大值时计数加一，然后更新子节点收到的最大值。
+从根节点递归向下遍历，沿途维护从根到当前路径上的最大值 `max_val`。若当前节点值 `>= max_val`，则计入好节点，并向下传递更新后的最大值。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 路径状态 + 外层聚合计数 |
-| 关键状态 | `max_seen` |
+| 组合模式 | 递归向下传递路径状态 |
+| 关键状态 | `cur_max = max(max_val, node.val)` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
 #### Quick Coding：Count Good Nodes in Binary Tree
@@ -857,31 +891,30 @@ def goodNodes(root):
 <summary>参考答案</summary>
 
 ```python
+from typing import Optional
+
+
 class Solution:
     def goodNodes(self, root: TreeNode) -> int:
-        good = 0
-        stack = [(root, root.val)]
-        while stack:
-            node, max_seen = stack.pop()
-            if node.val >= max_seen:
-                good += 1
-            next_max = max(max_seen, node.val)
-            if node.left:
-                stack.append((node.left, next_max))
-            if node.right:
-                stack.append((node.right, next_max))
-        return good
+        def dfs(node: Optional[TreeNode], max_val: int) -> int:
+            if not node:
+                return 0
+            count = 1 if node.val >= max_val else 0
+            cur_max = max(max_val, node.val)
+            return count + dfs(node.left, cur_max) + dfs(node.right, cur_max)
+
+        return dfs(root, root.val)
 ```
 
 </details>
 
 ### 11. Validate Binary Search Tree
 
-显式栈让每个节点携带所有祖先共同确定的开区间 `(low, high)`。使用开区间也明确排除了重复键值。
+递归自顶向下传递每个节点必须满足的开区间 `(low, high)`。往左走上界收紧为当前值，往右走下界收紧为当前值。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | BST 有序约束 + 区间传递 |
+| 组合模式 | BST 有序约束 + 开区间传递 |
 | 关键条件 | `low < node.val < high` |
 | 时间 / 空间 | `O(n) / O(h)` |
 
@@ -896,36 +929,31 @@ def isValidBST(root):
 <summary>参考答案</summary>
 
 ```python
-import math
 from typing import Optional
 
 
 class Solution:
     def isValidBST(self, root: Optional[TreeNode]) -> bool:
-        stack = [(root, -math.inf, math.inf)]
-        while stack:
-            node, low, high = stack.pop()
+        def validate(node: Optional[TreeNode], low: float, high: float) -> bool:
             if not node:
-                continue
-            if not low < node.val < high:
+                return True
+            if not (low < node.val < high):
                 return False
-            stack.append((node.left, low, node.val))
-            stack.append((node.right, node.val, high))
-        return True
-```
+            return validate(node.left, low, node.val) and validate(node.right, node.val, high)
 
-也可以用迭代中序遍历检查节点值是否严格递增。这里保留区间栈，因为它直接展示了合法范围必须包含所有祖先的约束。
+        return validate(root, float('-inf'), float('inf'))
+```
 
 </details>
 
 ### 12. Kth Smallest Element in a BST
 
-迭代中序遍历按升序弹出节点。第 `k` 次弹栈访问时直接返回当前值。
+BST 的中序遍历天然严格单调递增。通过中序遍历，第 $k$ 个被访问的节点值即为第 $k$ 小元素。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | BST 有序约束 + 迭代中序 |
-| 关键状态 | 剩余访问次数 `k` |
+| 组合模式 | BST 中序遍历有序性 |
+| 关键状态 | 计数器 `k` 减至 0 提前结束 |
 | 时间 / 空间 | `O(h + k) / O(h)` |
 
 #### Quick Coding：Kth Smallest Element in a BST
@@ -939,36 +967,71 @@ def kthSmallest(root, k):
 <summary>参考答案</summary>
 
 ```python
+from typing import Optional
+
+
 class Solution:
-    def kthSmallest(self, root: TreeNode, k: int) -> int:
-        stack = []
-        current = root
+    def kthSmallest(self, root: Optional[TreeNode], k: int) -> int:
+        self.k = k
+        self.res = None
 
-        while stack or current:
-            while current:
-                stack.append(current)
-                current = current.left
+        def inorder(node: Optional[TreeNode]):
+            if not node or self.res is not None:
+                return
+            inorder(node.left)
+            self.k -= 1
+            if self.k == 0:
+                self.res = node.val
+                return
+            inorder(node.right)
 
-            current = stack.pop()
-            k -= 1
-            if k == 0:
-                return current.val
-            current = current.right
+        inorder(root)
+        return self.res
+```
 
-        raise ValueError("k exceeds the number of nodes")
+> **注**：也可以用显式栈迭代中序遍历，当第 $k$ 次弹栈时直接返回：
+
+```python
+stack = []
+curr = root
+while stack or curr:
+    while curr:
+        stack.append(curr)
+        curr = curr.left
+    curr = stack.pop()
+    k -= 1
+    if k == 0:
+        return curr.val
+    curr = curr.right
 ```
 
 </details>
 
 ### 13. Construct Binary Tree from Preorder and Inorder Traversal
 
-前序序列依次创建节点。栈保存当前右链中仍在等待右子节点的节点，`j` 与中序序列同步前进。
+这道题最容易理解和记忆的做法是**带哈希表的递归分治法**。
+迭代法的栈回溯逻辑（如维护 `parent`）在面试紧张时极易写错指针；而递归法的本质只有一句话：**“前序找根，中序切成左右两半”**。
 
 | 项目 | 内容 |
 |---|---|
-| 组合模式 | 遍历序列重建 |
-| 关键状态 | 待完成节点栈 + 中序指针 |
+| 组合模式 | 递归分治 + 哈希表快速定位 |
+| 关键状态 | 前序区间 `[pre_left, pre_right]` 与 中序区间 `[in_left, in_right]` |
 | 时间 / 空间 | `O(n) / O(n)` |
+
+#### 核心直觉（3 秒记住）
+
+* **前序遍历（Preorder）：** `[根节点, ...左子树全部节点..., ...右子树全部节点...]`
+  * 作用：**第一个元素永远是当前子树的根节点。**
+* **中序遍历（Inorder）：** `[...左子树全部节点..., 根节点, ...右子树全部节点...]`
+  * 作用：**找到根节点的位置后，其左侧就是左子树全部节点，右侧就是右子树全部节点。**
+
+知道左子树有几个节点后，就能在前序数组中把左子树区间和右子树区间切分开，随后递归构建即可。
+
+```text
+preorder: [ 根 |  --- 左子树 (k个) ---  |  --- 右子树 ---  ]
+             ↓
+inorder:  [ --- 左子树 (k个) --- | 根 | --- 右子树 ---  ]
+```
 
 #### Quick Coding：Construct Binary Tree from Preorder and Inorder Traversal
 
@@ -980,44 +1043,76 @@ def buildTree(preorder, inorder):
 <details>
 <summary>参考答案</summary>
 
+##### 1. 标准解法（指针 + 哈希表）
+
+用哈希表预存 `inorder` 中每个值的下标，做到 $O(1)$ 查找根节点；用下标范围代替数组切片，空间和时间都是最优的 $O(n)$。
+
 ```python
 from typing import List, Optional
 
 
 class Solution:
     def buildTree(self, preorder: List[int], inorder: List[int]) -> Optional[TreeNode]:
-        root = TreeNode(preorder[0])
-        stack = [root]
-        j = 0
-        for i in range(1, len(preorder)):
-            node = TreeNode(preorder[i])
-            parent = None
-            while stack and stack[-1].val == inorder[j]:
-                parent = stack.pop()
-                j += 1
-            if parent:
-                parent.right = node
-            else:
-                stack[-1].left = node
-            stack.append(node)
+        # 1. 哈希表快速定位根节点在 inorder 中的位置
+        val_to_idx = {val: i for i, val in enumerate(inorder)}
+
+        def helper(pre_left: int, pre_right: int, in_left: int, in_right: int) -> Optional[TreeNode]:
+            if pre_left > pre_right:
+                return None
+
+            # 前序区间的第一个元素是根
+            root_val = preorder[pre_left]
+            root = TreeNode(root_val)
+
+            # 找到根在中序中的位置，算出左子树的大小
+            in_root_idx = val_to_idx[root_val]
+            left_size = in_root_idx - in_left
+
+            # 递归构造左右子树
+            root.left = helper(
+                pre_left + 1, pre_left + left_size,
+                in_left, in_root_idx - 1
+            )
+            root.right = helper(
+                pre_left + left_size + 1, pre_right,
+                in_root_idx + 1, in_right
+            )
+
+            return root
+
+        return helper(0, len(preorder) - 1, 0, len(inorder) - 1)
+```
+
+##### 2. 白板速写极简版（5 行切片代码）
+
+如果不卡切片的开销，直接用 Python 切片代码只有 5 行，直观且无需推导下标：
+
+```python
+class Solution:
+    def buildTree(self, preorder: List[int], inorder: List[int]) -> Optional[TreeNode]:
+        if not preorder:
+            return None
+
+        root_val = preorder[0]
+        root = TreeNode(root_val)
+
+        # 根节点在中序里的索引，也就是左子树的节点数量
+        k = inorder.index(root_val)
+
+        root.left = self.buildTree(preorder[1 : 1 + k], inorder[:k])
+        root.right = self.buildTree(preorder[1 + k :], inorder[k + 1 :])
+
         return root
 ```
 
-不变量是：`stack` 保存当前右链中还在等待右子节点的节点，`j` 指向中序序列中下一个待完成的位置。处理下一个前序值前，如果栈顶值与 `inorder[j]` 不同，新节点必须是栈顶的左子节点，表示仍在沿左链下降。如果相同，说明对应节点的左子树已经完成；连续弹出与 `inorder[j]` 匹配的节点并同步增加 `j`，新节点成为最后一个弹出节点的右子节点。没有节点弹出时，新节点仍连接为当前栈顶的左子节点。
-
-示例 `preorder=[3,9,20,15,7]`、`inorder=[9,3,15,20,7]` 的执行过程如下：
-
-1. 创建根节点 `3`：`stack=[3]`，`j=0`，下一个中序值为 `9`。
-2. 处理 `9`：栈顶 `3 != 9`，连接 `3.left=9`，得到 `stack=[3,9]`。
-3. 处理 `20`：栈顶 `9` 与中序值 `9` 匹配，弹出 `9`；随后 `3` 与中序值 `3` 匹配，再弹出 `3`。此时 `j=2`，连接 `3.right=20`，得到 `stack=[20]`。
-4. 处理 `15`：栈顶 `20 != 15`，连接 `20.left=15`，得到 `stack=[20,15]`。
-5. 处理 `7`：依次弹出与中序值匹配的 `15` 和 `20`，此时 `j=4`，连接 `20.right=7`。
-
-最终得到 `3(9, 20(15,7))`。
+> **记忆口诀**：
+> 1. 前序拿首位建根；
+> 2. 中序找根算长度 $k$；
+> 3. 前序跳过首位切 $k$ 个给左边，剩余给右边。
 
 </details>
 
-下面的演示逐步执行这个例子，可以直接看到栈、`j` 指针和构建中的树如何一起变化。
+下面的演示展示了单调栈迭代法的构造步骤（供进阶了解栈与树形态变化使用；面试中推荐首选上述带哈希表的递归分治法）。
 
 ```build-tree-demo
 ```
@@ -1032,7 +1127,7 @@ class Solution:
 | 返回量 / 答案量 | 单边向下收益 / 任意端点最大路径和 |
 | 时间 / 空间 | `O(n) / O(h)` |
 
-这道题用递归比迭代版本更直接：Python 里 `self.max_sum` 直接是可变状态，不需要 `nonlocal`，也不需要额外的高度缓存字典去跨越栈帧传递子节点的返回值。是否用迭代还是递归，取决于哪种写法在这道题上更容易说清楚，不是所有题目都天然适合同一种写法。Diameter 和 Balanced Binary Tree 用迭代后序遍历，是因为它们本身就在演示"用显式栈模拟调用栈"这个技巧；这里没有这个额外目的，直接写递归更清楚。
+这道题与 Diameter of Binary Tree 属于同一种“自底向上返回值 + 全局最优值”的树形 DP 模式。递归向父节点返回单边向下收益（不能分叉），同时用全局变量 `self.max_sum` 记录以当前节点为折返点的最大路径和（左右拼接）。负收益节点直接舍弃（与 0 取较大值）。
 
 #### Quick Coding：Binary Tree Maximum Path Sum
 
@@ -1052,17 +1147,20 @@ class Solution:
     def maxPathSum(self, root: Optional[TreeNode]) -> int:
         self.max_sum = float('-inf')
 
-        def dfs(node):
+        def dfs(node: Optional[TreeNode]) -> int:
             if not node:
                 return 0
 
+            # 递归计算左右子树单边最大增益，负收益直接舍弃为 0
             max_left = max(0, dfs(node.left))
-            max_right = max(0, dfs(node.\right))
+            max_right = max(0, dfs(node.right))
 
+            # 更新以当前节点为折返点的全局最大路径和
             path_sum = node.val + max_left + max_right
             self.max_sum = max(self.max_sum, path_sum)
 
-            return node.val + max(max_left, max_\right)
+            # 向父节点返回当前节点能提供的单边最大增益
+            return node.val + max(max_left, max_right)
 
         dfs(root)
         return self.max_sum
@@ -1104,13 +1202,13 @@ class Codec:
     def serialize(self, root: Optional[TreeNode]) -> str:
         res = []
 
-        def dfs(node):
+        def dfs(node: Optional[TreeNode]):
             if not node:
                 res.append("N")  # 用 "N" 代表空节点
                 return
             res.append(str(node.val))
             dfs(node.left)
-            dfs(node.\right)
+            dfs(node.right)
 
         dfs(root)
         return ",".join(res)
