@@ -1070,6 +1070,145 @@ assert np.abs(full_grad - accum_grad).max() < 1e-10
 
 </details>
 
+### Exercise 10 · Symmetric InfoNCE (CLIP Training Objective)
+
+The core innovation of CLIP (Contrastive Language-Image Pretraining) does not lie in specialized neural architectures, but in its elegant multimodal bidirectional contrastive learning objective: **pull paired image-text representations closer together in a shared embedding space, while pushing non-matching pairs apart**.
+
+In coding interviews, you are typically asked to "strip away ViT and Text Transformers" and directly implement the **Symmetric InfoNCE Loss** on normalized embedding matrices:
+
+- **Input**: `image_emb` and `text_emb`, both L2-normalized (`np.ndarray` of shape `(B, D)`, satisfying $\|I_i\|_2 = 1, \|T_i\|_2 = 1$). The $i$-th image and $i$-th text form a positive ground-truth pair.
+- **Similarity Matrix**:
+  $$S = I T^\top \in \mathbb{R}^{B \times B}, \quad S_{i, j} = I_i \cdot T_j$$
+  Diagonal entries $S_{i, i}$ are positive pairs, while off-diagonal entries $S_{i, j} (i \ne j)$ serve as in-batch negatives.
+- **Loss Formulation**:
+  $$\mathcal{L} = \frac{1}{2} \Big( \text{CE}(S / \tau, y) + \text{CE}(S^\top / \tau, y) \Big), \quad y_i = i$$
+  where $\tau$ is the temperature coefficient (`temperature`, default $0.07$), and $\text{CE}$ denotes row-wise multi-class cross-entropy where row $i$'s ground-truth class index is $i$.
+- **Numerically Stable Log-Sum-Exp**:
+  Naively evaluating $\log \sum_j \exp(Z_{i, j})$ risks floating-point overflow. By letting $m_i = \max_j Z_{i, j}$, we apply the identity:
+  $$\log \sum_{j} \exp(Z_{i, j}) = m_i + \log \sum_{j} \exp(Z_{i, j} - m_i)$$
+  The row-wise cross-entropy loss for row $i$ is:
+  $$\text{loss}_i = m_i + \log \sum_{j=0}^{B-1} \exp(Z_{i, j} - m_i) - Z_{i, i}$$
+- **Edge Cases**: $B = 0$ or empty arrays return `0.0`; return a native Python `float`.
+
+| Rules | Details |
+|---|---|
+| **Allowed** | `numpy` matrix multiplication, `exp` / `log` / `sum` / `max`, handwritten vectorized `log-sum-exp` |
+| **Forbidden** | `torch.nn.functional.cross_entropy` / `nn.CrossEntropyLoss`, `sklearn`, manual nested Python loops over lists |
+
+#### Quick Coding: `clip_infonce_loss`
+
+```python
+def clip_infonce_loss(
+    image_emb: np.ndarray,
+    text_emb: np.ndarray,
+    temperature: float = 0.07,
+) -> float:
+    """Compute symmetric InfoNCE loss for CLIP (numerically stable NumPy implementation).
+
+    Args:
+        image_emb: (B, D) L2-normalized image embeddings
+        text_emb: (B, D) L2-normalized text embeddings
+        temperature: temperature tau, default 0.07
+    Returns:
+        Symmetric cross-entropy loss scalar float
+    """
+    ...
+```
+
+<details>
+<summary>Reference Solution</summary>
+
+```python
+import numpy as np
+
+def clip_infonce_loss(
+    image_emb: np.ndarray,
+    text_emb: np.ndarray,
+    temperature: float = 0.07,
+) -> float:
+    B = len(image_emb)
+    if B == 0 or image_emb.size == 0:
+        return 0.0
+
+    # 1. Cosine similarity matrix scaled by temperature: (B, B)
+    logits = (image_emb @ text_emb.T) / temperature
+
+    # 2. Numerically stable row-wise cross-entropy (Log-Sum-Exp trick)
+    def cross_entropy(z: np.ndarray) -> float:
+        # Subtract row-max to prevent exp overflow
+        max_z = np.max(z, axis=1, keepdims=True)
+        log_sum_exp = max_z.squeeze(1) + np.log(np.sum(np.exp(z - max_z), axis=1))
+        # Positive logits are the diagonal entries (y_i = i)
+        pos_logits = np.diag(z)
+        return float(np.mean(log_sum_exp - pos_logits))
+
+    # 3. Bidirectional symmetric average: Image-to-Text (I2T) + Text-to-Image (T2I)
+    loss_i2t = cross_entropy(logits)
+    loss_t2i = cross_entropy(logits.T)
+    return float(0.5 * (loss_i2t + loss_t2i))
+```
+
+> **3-Step Mnemonic for CLIP Symmetric InfoNCE**:
+> 1. **Similarity matrix**: `logits = (image_emb @ text_emb.T) / tau`
+> 2. **Stable cross-entropy**: compute mean of `max_z + log sum exp(z - max_z) - diag(z)`
+> 3. **Bidirectional mean**: `0.5 * (ce(logits) + ce(logits.T))`
+
+#### Numerical Validation & Intuition Checks
+
+```python
+# 1. Empty and B=1 boundary checks
+assert clip_infonce_loss(np.zeros((0, 32)), np.zeros((0, 32))) == 0.0
+assert abs(clip_infonce_loss(np.array([[1.0, 0.0]]), np.array([[1.0, 0.0]]))) < 1e-7
+
+# 2. Intuition for orthogonal batch with tau = 1.0:
+# When B items are mutually orthogonal (S = eye(B), diag=1, off-diag=0):
+# Theoretical row loss is ln(1 + (B - 1) / e), roughly order ln(B)
+B = 10
+eye = np.eye(B)
+orth_loss = clip_infonce_loss(eye, eye, temperature=1.0)
+expected_orth = float(np.log(1 + (B - 1) / np.e))
+assert abs(orth_loss - expected_orth) < 1e-12
+
+# 3. Verification against PyTorch F.cross_entropy (error < 1e-6)
+# torch.manual_seed(42)
+# S = (I @ T.T) / tau
+# loss_ref = 0.5 * (F.cross_entropy(S, torch.arange(B)) + F.cross_entropy(S.T, torch.arange(B))).item()
+# assert abs(clip_infonce_loss(I.numpy(), T.numpy(), tau) - loss_ref) < 1e-6
+```
+
+#### Follow-Up Questions (Interview Talking Points)
+
+**Q1: Why compute cross-entropy for both $S$ and $S^\top$ (bidirectional symmetric loss)?**
+- **Asymmetry of retrieval directions**:
+  Row $i$ of $S$ represents: "given image $i$, retrieve its matching text from the $B$ candidates (Image-to-Text, I2T)". Row $i$ of $S^\top$ (i.e. column $i$ of $S$) represents: "given text $i$, retrieve its matching image from the $B$ candidates (Text-to-Image, T2I)".
+- **Different denominator normalization sets**:
+  $P(T_j | I_i) = \frac{\exp(S_{i, j}/\tau)}{\sum_k \exp(S_{i, k}/\tau)}$ normalizes over rows; $P(I_j | T_i) = \frac{\exp(S_{j, i}/\tau)}{\sum_k \exp(S_{k, i}/\tau)}$ normalizes over columns. Unidirectional training (e.g. only I2T) can suffer from **representation collapse**: multiple distinct images collapse onto the same generic text embedding without penalty for failing text-to-image retrieval.
+- **Serving dual downstream tasks**:
+  Downstream applications include both image-to-text (captioning / text retrieval) and text-to-image / zero-shot classification (e.g. querying prompt "a photo of a cat" over candidate images). Symmetric loss enforces reciprocal geometric alignment across both modalities.
+
+**Q2: How do gradients and contrastive "difficulty" change as temperature $\tau$ becomes smaller or larger?**
+- **$\tau \to 0$ (Low temperature, sharpening softmax)**:
+  - **Distribution**: Softmax approaches an **Argmax / hard one-hot distribution**, concentrating almost all probability mass on the single most confusing negative sample (Hardest Negative).
+  - **Gradients**: Emits massive penalizing repulsive gradients against the hardest negatives, forcing the model to distinguish minute embedding differences. The contrastive "difficulty" increases and separation boundaries become sharper.
+  - **Risk**: Susceptible to numerical instability and overly sensitive to noisy labels or semantically overlapping negatives, causing gradient explosion or training instability.
+- **$\tau \to \infty$ (High temperature, smoothing softmax)**:
+  - **Distribution**: Softmax approaches a **uniform distribution**, dampening logit differences across all samples.
+  - **Gradients**: Gradients are distributed uniformly across all negatives; the model lacks incentive to push away hard negatives, decreasing contrastive "difficulty".
+  - **Risk**: Produces loose feature clusters with poor discriminative ability and weak zero-shot generalization.
+- **Engineering practice**: In CLIP, $\tau$ is treated as a learnable parameter (initialized to $0.07$, equivalent to scaling logits by $\approx 14.28\times$), with a lower clamp (e.g. $\tau \ge 0.01$) to prevent numerical divergence.
+
+**Q3: If a batch contains duplicate image-text pairs, does the diagonal assumption still hold?**
+- **Breakdown of diagonal assumption (False Negatives problem)**:
+  The diagonal assumption (positive pair strictly at $i = j$) assumes all items in the batch are distinct. If a batch contains identical pairs or **different images with identical/synonymous text descriptions** (e.g. two photos of corgis both labeled "a cute dog"), the off-diagonal entry $S_{i, j}$ is actually a true semantic positive.
+- **Harmful consequences**:
+  Standard cross-entropy treats $j$ as a negative and penalizes high similarity, incorrectly repelling two valid instances of the same concept and degrading semantic clustering.
+- **Industry solutions**:
+  1. **Deduplication during batching**: Filter identical texts or high-similarity embeddings prior to batch creation;
+  2. **Soft-label cross-entropy / Distillation**: Use a teacher model to precompute soft similarity distributions across the batch, optimizing KL divergence instead of 0-1 hard CE;
+  3. **Multi-positive contrastive learning (SupCon)**: If class labels or semantic similarity thresholds indicate matching pairs, aggregate all matching candidates into the positive numerator set.
+
+</details>
+
 ## Final Check: Debug Checklist for This Note
 
 - Does LayerNorm subtract the mean before dividing by the standard deviation; does RMSNorm actually skip the mean-subtraction step, rather than just using a larger `eps`.
@@ -1080,3 +1219,4 @@ assert np.abs(full_grad - accum_grad).max() < 1e-10
 - Does Conv2d's unfold/im2col layout line up with the weight's `reshape(Cout, -1)`; does the output spatial-size formula correctly account for both padding and stride.
 - Do all three linear-regression implementations converge to (nearly) the same coefficients? If not, check the learning rate, step count, or whether the normal equation should be using a pseudo-inverse instead of a direct inverse.
 - In gradient accumulation, is each micro-batch's loss divided by the accumulation count `K`; is `zero_grad()` called exactly once per accumulation cycle rather than once per micro-batch.
+- In Symmetric InfoNCE (CLIP), is row-wise cross-entropy evaluated on both $S$ and $S^\top$ and averaged; is numerically stable `log-sum-exp` applied (subtracting row maximum); are positive labels taken from diagonal indices; and are empty inputs safely returning 0.0.

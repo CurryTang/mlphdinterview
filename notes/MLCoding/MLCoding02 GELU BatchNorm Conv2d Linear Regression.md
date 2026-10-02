@@ -1072,6 +1072,145 @@ assert np.abs(full_grad - accum_grad).max() < 1e-10
 
 </details>
 
+### Exercise 10 · 对称 InfoNCE（CLIP 训练目标 / Symmetric InfoNCE）
+
+CLIP（Contrastive Language-Image Pretraining）的核心不是复杂的网络架构，而是优雅的多模态双向对比学习目标：**将成对的图文特征在多模态共享空间中拉近，将不匹配的图文特征推远**。
+
+在标准面试中，通常要求“剥离 ViT 和 Text Transformer”，直接对编码器输出的嵌入矩阵计算**对称 InfoNCE 损失**：
+
+- **输入**：`image_emb`、`text_emb`，均为已完成 L2 归一化（$\|I_i\|_2 = 1, \|T_i\|_2 = 1$）的 `np.ndarray`，形状均为 $(B, D)$。第 $i$ 张图与第 $i$ 段文本互为正样本对。
+- **相似度矩阵**：
+  $$S = I T^\top \in \mathbb{R}^{B \times B}, \quad S_{i, j} = I_i \cdot T_j$$
+  对角线元素 $S_{i, i}$ 为正样本对（Positive pairs），非对角线元素 $S_{i, j} (i \ne j)$ 为 batch 内负样本对（In-batch negatives）。
+- **损失公式**：
+  $$\mathcal{L} = \frac{1}{2} \Big( \text{CE}(S / \tau, y) + \text{CE}(S^\top / \tau, y) \Big), \quad y_i = i$$
+  其中 $\tau$ 为温度系数（`temperature`，默认 $0.07$）；$\text{CE}$ 是按行的多分类交叉熵，第 $i$ 行的正确类别下标就是 $i$。
+- **数值稳定 Log-Sum-Exp**：
+  直接计算 $\log \sum_j \exp(Z_{i, j})$ 会引发指数溢出。令 $m_i = \max_j Z_{i, j}$，利用恒等式：
+  $$\log \sum_{j} \exp(Z_{i, j}) = m_i + \log \sum_{j} \exp(Z_{i, j} - m_i)$$
+  第 $i$ 行的交叉熵损失为：
+  $$\text{loss}_i = m_i + \log \sum_{j=0}^{B-1} \exp(Z_{i, j} - m_i) - Z_{i, i}$$
+- **边界条件**：$B = 0$ 或空数组返回 `0.0`；返回 Python `float`。
+
+| 规则 | 内容 |
+|---|---|
+| **允许** | `numpy` 矩阵乘法、`exp` / `log` / `sum` / `max`、手写向量化 `log-sum-exp` |
+| **禁止** | `torch.nn.functional.cross_entropy` / `nn.CrossEntropyLoss`、`sklearn`、把矩阵拆成 Python list 双重循环硬算 |
+
+#### Quick Coding：`clip_infonce_loss`
+
+```python
+def clip_infonce_loss(
+    image_emb: np.ndarray,
+    text_emb: np.ndarray,
+    temperature: float = 0.07,
+) -> float:
+    """计算 CLIP 的对称 InfoNCE 损失 (NumPy 稳定数值实现).
+
+    Args:
+        image_emb: (B, D) 已 L2 归一化的图像嵌入向量
+        text_emb: (B, D) 已 L2 归一化的文本嵌入向量
+        temperature: 温度系数 tau，默认 0.07
+    Returns:
+        对称交叉熵损失标量 float
+    """
+    ...
+```
+
+<details>
+<summary>参考答案</summary>
+
+```python
+import numpy as np
+
+def clip_infonce_loss(
+    image_emb: np.ndarray,
+    text_emb: np.ndarray,
+    temperature: float = 0.07,
+) -> float:
+    B = len(image_emb)
+    if B == 0 or image_emb.size == 0:
+        return 0.0
+
+    # 1. 余弦相似度矩阵并除以温度系数: (B, B)
+    logits = (image_emb @ text_emb.T) / temperature
+
+    # 2. 稳定的行向多分类交叉熵 (Log-Sum-Exp 技巧)
+    def cross_entropy(z: np.ndarray) -> float:
+        # z: (B, B)，减去行最大值防止 exp 溢出
+        max_z = np.max(z, axis=1, keepdims=True)
+        log_sum_exp = max_z.squeeze(1) + np.log(np.sum(np.exp(z - max_z), axis=1))
+        # 对角线元素即为真实正样本的 logits (y_i = i)
+        pos_logits = np.diag(z)
+        return float(np.mean(log_sum_exp - pos_logits))
+
+    # 3. 对称双向平均: 图像到文本 (I2T) + 文本到图像 (T2I)
+    loss_i2t = cross_entropy(logits)
+    loss_t2i = cross_entropy(logits.T)
+    return float(0.5 * (loss_i2t + loss_t2i))
+```
+
+> **3 步记住 CLIP 对称 InfoNCE**：
+> 1. **相似矩阵**：`logits = (image_emb @ text_emb.T) / tau`；
+> 2. **稳定交叉熵**：`max_z + log sum exp(z - max_z) - diag(z)` 求均值；
+> 3. **双向平均**：`0.5 * (ce(logits) + ce(logits.T))`。
+
+#### 数值验证与直觉校验
+
+```python
+# 1. 空输入与 B=1 边界校验
+assert clip_infonce_loss(np.zeros((0, 32)), np.zeros((0, 32))) == 0.0
+assert abs(clip_infonce_loss(np.array([[1.0, 0.0]]), np.array([[1.0, 0.0]]))) < 1e-7
+
+# 2. 正交 batch、tau=1.0 的直觉量级校验
+# 当 B 个样本完全正交 (S 为单位阵，对角线为 1，非对角线为 0) 时：
+# 每一行的 loss 理论值为 ln(1 + (B - 1) / e)，量级接近 ln(B)
+B = 10
+eye = np.eye(B)
+orth_loss = clip_infonce_loss(eye, eye, temperature=1.0)
+expected_orth = float(np.log(1 + (B - 1) / np.e))
+assert abs(orth_loss - expected_orth) < 1e-12
+
+# 3. 与 PyTorch F.cross_entropy 参照比对 (误差 < 1e-6)
+# torch.manual_seed(42)
+# S = (I @ T.T) / tau
+# loss_ref = 0.5 * (F.cross_entropy(S, torch.arange(B)) + F.cross_entropy(S.T, torch.arange(B))).item()
+# assert abs(clip_infonce_loss(I.numpy(), T.numpy(), tau) - loss_ref) < 1e-6
+```
+
+#### 经典追问（面试口述要点）
+
+**Q1：为什么要对 $S$ 和 $S^\top$ 各算一次 CE（双向对称损失）？**
+- **检索方向的非对称性（Asymmetry）**：
+  $S$ 的第 $i$ 行代表“给定第 $i$ 张图像，从 $B$ 个文本中检索对应文本（I2T）”；而 $S^\top$ 的第 $i$ 行（即 $S$ 的第 $i$ 列）代表“给定第 $i$ 段文本，从 $B$ 个图像中检索对应图像（T2I）”。
+- **两模态条件概率的分母归一化集合不同**：
+  $P(T_j | I_i) = \frac{\exp(S_{i, j}/\tau)}{\sum_k \exp(S_{i, k}/\tau)}$ 是对行归一化；$P(I_j | T_i) = \frac{\exp(S_{j, i}/\tau)}{\sum_k \exp(S_{k, i}/\tau)}$ 是对列归一化。若只做单向优化（如仅 I2T），模型可能发生**表征坍缩**：多个不同图像映射到同一个通用文本特征，导致文本无法反向区分图像。
+- **服务下游双向应用**：
+  实际落地中，下游任务既包括以图搜文（Captioning / Image Retrieval），也包括以文搜图 / 零样本分类（Zero-shot Classification，如输入 prompt "a photo of a dog" 检索候选类别图像）。双向损失保证两模态在几何空间中的互惠双射对齐。
+
+**Q2：temperature $\tau$ 变小 / 变大时梯度与「难度」怎么变？**
+- **$\tau \to 0$（低温，锐化 Softmax）**：
+  - **分布特性**：Softmax 趋于 **Argmax / 硬独热分布（Hard-max）**，概率极度聚焦在与 query 最相似的一个负样本上（Hardest Negative）。
+  - **梯度特性**：对最难负样本施加极大的梯度惩罚（Push away），迫使模型极其苛刻地区分微小差异。对比学习的“难度”变大，学到的表征边界更锐利、辨识度更高。
+  - **风险**：数值容易溢出，且对标注噪声或语义重叠的负样本极其敏感，易导致梯度爆炸或训练震荡。
+- **$\tau \to \infty$（高温，平滑 Softmax）**：
+  - **分布特性**：Softmax 趋于 **均匀分布（Uniform distribution）**，所有负样本的 logits 差距被压缩拉平。
+  - **梯度特性**：所有负样本平摊微弱的梯度，模型缺乏重点拉开“难负样本”的动力，对比学习的“难度”变小。
+  - **风险**：学到的特征聚类松散，类间区分度不足，零样本泛化能力变弱。
+- **工程实践**：CLIP 中 $\tau$ 通常设为可学习参数（初始化为 $0.07$，等价于放大 logits 约 $14.28$ 倍），并在训练中设置下限截断（如 $\tau \ge 0.01$），兼顾判别力与数值稳定性。
+
+**Q3：若 batch 内有重复图文对，对角线假设还成立吗？**
+- **对角线假设失效（假负样本 / False Negatives 陷阱）**：
+  对角线假设（正样本仅在 $i=j$ 处）严格依赖于“当前 batch 内互无重复”。如果 batch 中包含完全重复的图文对，或者**不同图像对应了相同/相似的文本描述**（例如多张不同的柯基犬图片配文均为 "a cute dog"），那么非对角线上的 $S_{i, j}$ 实际上是真正的正样本。
+- **有害后果**：
+  标准交叉熵会强行将这个合法的语义正样本当作负样本惩罚（强行拉远），惩罚了正确的语义泛化性，导致表征破碎。
+- **工业界解决方案**：
+  1. **数据清洗与批内去重**：训练前对文本/图像特征去重，或同一个 batch 内避免采样相同文本标签；
+  2. **软标签交叉熵（Soft-label Cross-Entropy / 知识蒸馏）**：用教师模型对 batch 计算图像/文本间的软相似度矩阵，用 KL 散度替代 0-1 Hard CE；
+  3. **多正样本对比学习（Multi-positive InfoNCE / SupCon）**：把 batch 内具有相同类别或高于相似度阈值的样本同时纳入正样本分子集合（求和），不对其施加负样本排斥梯度。
+
+</details>
+
 ## 最后检查：本篇 Debug Checklist
 
 - LayerNorm 是否先减均值再除标准差；RMSNorm 是否真的跳过了减均值这一步，而不是只是把 `eps` 加大了。
@@ -1082,3 +1221,4 @@ assert np.abs(full_grad - accum_grad).max() < 1e-10
 - Conv2d 的 unfold/im2col 展开维度是否和权重的 `reshape(Cout, -1)` 对齐，输出空间尺寸公式里 padding 和 stride 有没有算漏。
 - 三种线性回归写法是否收敛到（几乎）同一组系数；如果没有，通常是学习率、步数或正规方程里该用伪逆却用了直接求逆。
 - 梯度累积里，每个 micro-batch 的 loss 是否除以了累积步数 `K`；`zero_grad()` 是否只在一个累积周期开始时调用一次。
+- 对称 InfoNCE（CLIP）是否对 $S$ 与 $S^\top$ 分别计算行向交叉熵再取均值；是否应用了稳定的 `log-sum-exp`（先减行内最大值），对角线正样本索引与空数组返回 0.0 的边界是否处理正确。
