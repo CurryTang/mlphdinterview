@@ -1118,7 +1118,7 @@ class Solution:
 
 </details>
 
-The demo below steps through the monotonic stack iterative construction (provided for deeper understanding of stack state transformations; in interviews, the recursive divide-and-conquer approach above is strongly recommended).
+The interactive demo below steps through the recursive divide-and-conquer construction with hash map: preorder finds the subtree root, inorder splits left and right subtree ranges, and recursion constructs both sides.
 
 ```build-tree-demo
 ```

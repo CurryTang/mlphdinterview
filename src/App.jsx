@@ -22794,76 +22794,342 @@ const BUILD_TREE_POSITIONS = {
 };
 
 const BUILD_TREE_CODE_LINES = [
-  { id: 'init', code: ['root = TreeNode(preorder[0])', 'stack = [root]', 'j = 0'] },
-  { id: 'create', code: ['for i in range(1, len(preorder)):', '    node = TreeNode(preorder[i])', '    parent = None'] },
-  { id: 'compare', code: ['    while stack and stack[-1].val == inorder[j]:'] },
-  { id: 'pop', code: ['        parent = stack.pop()', '        j += 1'] },
-  { id: 'attach-right', code: ['    if parent:', '        parent.right = node'] },
-  { id: 'attach-left', code: ['    else:', '        stack[-1].left = node'] },
-  { id: 'push', code: ['    stack.append(node)'] },
-  { id: 'finish', code: ['return root'] },
+  { id: 'hashmap', code: ['val_to_idx = {val: i for i, val in enumerate(inorder)}'] },
+  { id: 'check-base', code: ['if pre_left > pre_right:', '    return None'] },
+  { id: 'pick-root', code: ['root_val = preorder[pre_left]', 'root = TreeNode(root_val)'] },
+  { id: 'split', code: ['in_root_idx = val_to_idx[root_val]', 'left_size = in_root_idx - in_left'] },
+  { id: 'call-left', code: ['root.left = helper(', '    pre_left + 1, pre_left + left_size,', '    in_left, in_root_idx - 1)'] },
+  { id: 'call-right', code: ['root.right = helper(', '    pre_left + left_size + 1, pre_right,', '    in_root_idx + 1, in_right)'] },
+  { id: 'return-root', code: ['return root'] },
 ];
 
 function buildBuildTreeSteps() {
-  const preorder = BUILD_TREE_PREORDER;
-  const inorder = BUILD_TREE_INORDER;
-  const steps = [];
-  const stack = [preorder[0]];
-  const edges = [];
-  const createdValues = new Set([preorder[0]]);
-  let j = 0;
-
-  const snapshot = (action, activeLine, extra = {}) => steps.push({
-    action,
-    activeLine,
-    i: extra.i ?? null,
-    j,
-    current: extra.current ?? null,
-    compareTop: extra.compareTop ?? null,
-    popped: extra.popped ?? null,
-    stack: [...stack],
-    edges: edges.map((edge) => ({ ...edge })),
-    created: [...createdValues],
-  });
-
-  snapshot('init', 'init', { current: preorder[0] });
-
-  for (let i = 1; i < preorder.length; i++) {
-    const nodeVal = preorder[i];
-    createdValues.add(nodeVal);
-    snapshot('create', 'create', { i, current: nodeVal });
-
-    let parent = null;
-    while (true) {
-      if (!stack.length) break;
-      const top = stack[stack.length - 1];
-      snapshot('compare', 'compare', { i, current: nodeVal, compareTop: top });
-      if (top !== inorder[j]) break;
-      parent = stack.pop();
-      j += 1;
-      snapshot('pop', 'pop', { i, current: nodeVal, popped: parent });
-    }
-
-    if (parent !== null) {
-      edges.push({ parent, child: nodeVal, side: 'right' });
-      snapshot('attach-right', 'attach-right', { i, current: nodeVal });
-    } else {
-      edges.push({ parent: stack[stack.length - 1], child: nodeVal, side: 'left' });
-      snapshot('attach-left', 'attach-left', { i, current: nodeVal });
-    }
-
-    stack.push(nodeVal);
-    snapshot('push', 'push', { i, current: nodeVal });
-  }
-
-  snapshot('finish', 'finish', {});
-  return steps;
+  return [
+    {
+      action: 'hashmap',
+      activeLine: 'hashmap',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: null,
+      preRootIdx: null,
+      inRootIdx: null,
+      leftSize: null,
+      rightSize: null,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [],
+      placed: [],
+      callStack: [],
+      title: {
+        zh: '第 1 步：预存中序哈希表 val_to_idx',
+        en: 'Step 1: Precompute inorder hash map val_to_idx',
+      },
+      detail: {
+        zh: '构建 {9:0, 3:1, 15:2, 20:3, 7:4} 哈希映射。后续递归能在 O(1) 内直接定位任意子树根节点在中序数组中的下标。',
+        en: 'Build mapping {9:0, 3:1, 15:2, 20:3, 7:4}. During recursion, this provides O(1) lookup of any root index in inorder.',
+      },
+    },
+    {
+      action: 'pick-root',
+      activeLine: 'pick-root',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: 3,
+      preRootIdx: 0,
+      inRootIdx: null,
+      leftSize: null,
+      rightSize: null,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [],
+      placed: [3],
+      callStack: ['helper(pre:[0..4], in:[0..4])'],
+      title: {
+        zh: '第 2 步：前序首位确定整棵树根节点 3',
+        en: 'Step 2: Preorder head identifies tree root 3',
+      },
+      detail: {
+        zh: '在前序区间 pre[0..4] 中，首个元素 preorder[0] = 3 即为当前子树根节点。创建 TreeNode(3)。',
+        en: 'In preorder range pre[0..4], first item preorder[0] = 3 is the root. Instantiate TreeNode(3).',
+      },
+    },
+    {
+      action: 'split',
+      activeLine: 'split',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: 3,
+      preRootIdx: 0,
+      inRootIdx: 1,
+      leftSize: 1,
+      rightSize: 3,
+      leftPre: [1, 1],
+      rightPre: [2, 4],
+      leftIn: [0, 0],
+      rightIn: [2, 4],
+      edges: [],
+      placed: [3],
+      callStack: ['helper(pre:[0..4], in:[0..4]) → root 3 (left_size=1)'],
+      title: {
+        zh: '第 3 步：中序定位 3，切分出左右子树区间',
+        en: 'Step 3: Locate 3 in inorder, partition subtrees',
+      },
+      detail: {
+        zh: '查表得 in_root_idx = 1，算出左子树大小 left_size = 1 - 0 = 1。中序左边 [9] 为左子树，右边 [15, 20, 7] 为右子树；前序切出左区间 [9] 与右区间 [20, 15, 7]。',
+        en: 'Hash map gives in_root_idx = 1, left_size = 1 - 0 = 1. Inorder splits into left [9] and right [15, 20, 7]; preorder slices left [9] and right [20, 15, 7].',
+      },
+    },
+    {
+      action: 'call-left',
+      activeLine: 'call-left',
+      preRange: [1, 1],
+      inRange: [0, 0],
+      rootVal: 9,
+      preRootIdx: 1,
+      inRootIdx: 0,
+      leftSize: 0,
+      rightSize: 0,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [],
+      placed: [3, 9],
+      callStack: [
+        'helper(pre:[0..4], in:[0..4]) → root 3',
+        'helper(pre:[1..1], in:[0..0]) → root 9',
+      ],
+      title: {
+        zh: '第 4 步：递归构建 3 的左子树：根节点 9',
+        en: "Step 4: Recurse to build 3's left subtree: root 9",
+      },
+      detail: {
+        zh: '进入左区间 pre[1..1], in[0..0]。前序首位 preorder[1] = 9 为根，in_root_idx = 0，left_size = 0，左右子区间均为空。',
+        en: 'Enter left range pre[1..1], in[0..0]. Preorder head preorder[1] = 9 is root, in_root_idx = 0, left_size = 0, children empty.',
+      },
+    },
+    {
+      action: 'attach-left',
+      activeLine: 'call-left',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: 3,
+      preRootIdx: 0,
+      inRootIdx: 1,
+      leftSize: 1,
+      rightSize: 3,
+      leftPre: [1, 1],
+      rightPre: [2, 4],
+      leftIn: [0, 0],
+      rightIn: [2, 4],
+      edges: [{ parent: 3, child: 9, side: 'left' }],
+      placed: [3, 9],
+      callStack: ['helper(pre:[0..4], in:[0..4]) → 3.left = 9 已连接'],
+      title: {
+        zh: '第 5 步：左子树 9 返回，挂载 3.left = 9',
+        en: 'Step 5: Left subtree 9 returns, attach 3.left = 9',
+      },
+      detail: {
+        zh: '节点 9 的递归调用完成并返回，挂载为 3 的左孩子：3.left = 9。左子树构建完毕，接下来开始递归构建 3 的右子树。',
+        en: "Subtree 9 completes and returns, assigned to 3.left = 9. 3's left subtree is complete; next, recurse to build right subtree.",
+      },
+    },
+    {
+      action: 'call-right',
+      activeLine: 'pick-root',
+      preRange: [2, 4],
+      inRange: [2, 4],
+      rootVal: 20,
+      preRootIdx: 2,
+      inRootIdx: null,
+      leftSize: null,
+      rightSize: null,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [{ parent: 3, child: 9, side: 'left' }],
+      placed: [3, 9, 20],
+      callStack: [
+        'helper(pre:[0..4], in:[0..4]) → root 3',
+        'helper(pre:[2..4], in:[2..4]) → root 20',
+      ],
+      title: {
+        zh: '第 6 步：递归构建 3 的右子树：前序首位取 20',
+        en: "Step 6: Recurse to build 3's right subtree: preorder head selects 20",
+      },
+      detail: {
+        zh: '进入右区间 pre[2..4], in[2..4]。首位 preorder[2] = 20 为该子树的根节点。新建 TreeNode(20)。',
+        en: 'Enter right range pre[2..4], in[2..4]. First item preorder[2] = 20 is root of this subtree. Instantiate TreeNode(20).',
+      },
+    },
+    {
+      action: 'split',
+      activeLine: 'split',
+      preRange: [2, 4],
+      inRange: [2, 4],
+      rootVal: 20,
+      preRootIdx: 2,
+      inRootIdx: 3,
+      leftSize: 1,
+      rightSize: 1,
+      leftPre: [3, 3],
+      rightPre: [4, 4],
+      leftIn: [2, 2],
+      rightIn: [4, 4],
+      edges: [{ parent: 3, child: 9, side: 'left' }],
+      placed: [3, 9, 20],
+      callStack: [
+        'helper(pre:[0..4], in:[0..4]) → root 3',
+        'helper(pre:[2..4], in:[2..4]) → root 20 (left_size=1)',
+      ],
+      title: {
+        zh: '第 7 步：中序定位 20，切分出左 [15] 和右 [7]',
+        en: 'Step 7: Locate 20 in inorder, partition into [15] and [7]',
+      },
+      detail: {
+        zh: '查哈希表得 in_root_idx = 3，left_size = 3 - 2 = 1。左子树包含前序 [15]、中序 [15]；右子树包含前序 [7]、中序 [7]。',
+        en: 'Hash map gives in_root_idx = 3, left_size = 3 - 2 = 1. Left subtree has pre [15], in [15]; Right subtree has pre [7], in [7].',
+      },
+    },
+    {
+      action: 'call-left',
+      activeLine: 'call-left',
+      preRange: [3, 3],
+      inRange: [2, 2],
+      rootVal: 15,
+      preRootIdx: 3,
+      inRootIdx: 2,
+      leftSize: 0,
+      rightSize: 0,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [
+        { parent: 3, child: 9, side: 'left' },
+        { parent: 20, child: 15, side: 'left' },
+      ],
+      placed: [3, 9, 20, 15],
+      callStack: [
+        'helper(pre:[0..4], in:[0..4]) → root 3',
+        'helper(pre:[2..4], in:[2..4]) → 20.left = 15 已连接',
+      ],
+      title: {
+        zh: '第 8 步：递归构建 20 的左子树：20.left = 15',
+        en: "Step 8: Recurse for 20's left subtree: 20.left = 15",
+      },
+      detail: {
+        zh: '区间 pre[3..3], in[2..2] 创建叶子节点 15，两边子树为空直接返回，挂载为 20 的左孩子：20.left = 15。',
+        en: 'Range pre[3..3], in[2..2] creates leaf node 15, which returns immediately and attaches as 20.left = 15.',
+      },
+    },
+    {
+      action: 'call-right',
+      activeLine: 'call-right',
+      preRange: [4, 4],
+      inRange: [4, 4],
+      rootVal: 7,
+      preRootIdx: 4,
+      inRootIdx: 4,
+      leftSize: 0,
+      rightSize: 0,
+      leftPre: null,
+      rightPre: null,
+      leftIn: null,
+      rightIn: null,
+      edges: [
+        { parent: 3, child: 9, side: 'left' },
+        { parent: 20, child: 15, side: 'left' },
+        { parent: 20, child: 7, side: 'right' },
+      ],
+      placed: [3, 9, 20, 15, 7],
+      callStack: [
+        'helper(pre:[0..4], in:[0..4]) → root 3',
+        'helper(pre:[2..4], in:[2..4]) → 20.right = 7 已连接',
+      ],
+      title: {
+        zh: '第 9 步：递归构建 20 的右子树：20.right = 7',
+        en: "Step 9: Recurse for 20's right subtree: 20.right = 7",
+      },
+      detail: {
+        zh: '区间 pre[4..4], in[4..4] 创建叶子节点 7，两边子树为空直接返回，挂载为 20 的右孩子：20.right = 7。',
+        en: 'Range pre[4..4], in[4..4] creates leaf node 7, which returns immediately and attaches as 20.right = 7.',
+      },
+    },
+    {
+      action: 'attach-right',
+      activeLine: 'call-right',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: 3,
+      preRootIdx: 0,
+      inRootIdx: 1,
+      leftSize: 1,
+      rightSize: 3,
+      leftPre: [1, 1],
+      rightPre: [2, 4],
+      leftIn: [0, 0],
+      rightIn: [2, 4],
+      edges: [
+        { parent: 3, child: 9, side: 'left' },
+        { parent: 20, child: 15, side: 'left' },
+        { parent: 20, child: 7, side: 'right' },
+        { parent: 3, child: 20, side: 'right' },
+      ],
+      placed: [3, 9, 20, 15, 7],
+      callStack: ['helper(pre:[0..4], in:[0..4]) → 3.right = 20 已连接'],
+      title: {
+        zh: '第 10 步：子树 20 完成并返回，挂载 3.right = 20',
+        en: 'Step 10: Subtree 20 completes, attach 3.right = 20',
+      },
+      detail: {
+        zh: '节点 20 的左右孩子均已就绪，helper 返回以 20 为根的子树，挂载为根节点 3 的右孩子：3.right = 20。',
+        en: 'Subtree 20 is fully assembled; returns and attaches as right child of root 3: 3.right = 20.',
+      },
+    },
+    {
+      action: 'finish',
+      activeLine: 'return-root',
+      preRange: [0, 4],
+      inRange: [0, 4],
+      rootVal: 3,
+      preRootIdx: 0,
+      inRootIdx: 1,
+      leftSize: 1,
+      rightSize: 3,
+      leftPre: [1, 1],
+      rightPre: [2, 4],
+      leftIn: [0, 0],
+      rightIn: [2, 4],
+      edges: [
+        { parent: 3, child: 9, side: 'left' },
+        { parent: 20, child: 15, side: 'left' },
+        { parent: 20, child: 7, side: 'right' },
+        { parent: 3, child: 20, side: 'right' },
+      ],
+      placed: [3, 9, 20, 15, 7],
+      callStack: [],
+      title: {
+        zh: '构建完成：返回整棵树的根节点 3',
+        en: 'Build complete: return tree root 3',
+      },
+      detail: {
+        zh: '整棵二叉树构建完成：3(9, 20(15, 7))。利用哈希表 O(1) 定位中序根位置，每个节点访问一次，时间复杂度 O(N)，空间复杂度 O(N)。',
+        en: 'Binary tree construction complete: 3(9, 20(15, 7)). Using hash map for O(1) inorder lookups, every node is visited once in O(N) time and O(N) space.',
+      },
+    },
+  ];
 }
 
 const BUILD_TREE_STEPS = buildBuildTreeSteps();
 
 function BuildTreeDiagram({ step, t }) {
-  const placed = new Set([BUILD_TREE_PREORDER[0], ...step.edges.map((edge) => edge.child)]);
+  const placedSet = new Set(step.placed);
   return (
     <svg
       aria-label={t('从前序和中序构建的二叉树', 'The binary tree built from preorder and inorder')}
@@ -22887,20 +23153,22 @@ function BuildTreeDiagram({ step, t }) {
       })}
       {Object.entries(BUILD_TREE_POSITIONS).map(([value, pos]) => {
         const nodeVal = Number(value);
-        if (!placed.has(nodeVal)) {
+        if (!placedSet.has(nodeVal)) {
           return (
             <g className="build-tree-node ghost" key={nodeVal}>
               <rect height="54" rx="14" ry="14" width="70" x={pos.x - 35} y={pos.y - 27} />
             </g>
           );
         }
+        const isCurrent = nodeVal === step.rootVal;
+        const isLeftPart = step.leftPre && BUILD_TREE_PREORDER.slice(step.leftPre[0], step.leftPre[1] + 1).includes(nodeVal);
+        const isRightPart = step.rightPre && BUILD_TREE_PREORDER.slice(step.rightPre[0], step.rightPre[1] + 1).includes(nodeVal);
         const classes = [
           'build-tree-node',
-          nodeVal === step.current ? 'current' : '',
-          nodeVal === step.popped ? 'popped' : '',
-          nodeVal === step.compareTop ? 'comparing' : '',
-          nodeVal !== step.current && step.stack.includes(nodeVal) ? 'frontier' : '',
-          nodeVal !== step.current && !step.stack.includes(nodeVal) ? 'visited' : '',
+          isCurrent ? 'current' : '',
+          !isCurrent && isLeftPart ? 'left-child' : '',
+          !isCurrent && isRightPart ? 'right-child' : '',
+          !isCurrent && !isLeftPart && !isRightPart ? 'visited' : '',
         ].filter(Boolean).join(' ');
         return (
           <g className={classes} key={nodeVal}>
@@ -22918,77 +23186,37 @@ function BuildTreeVisual() {
   const [activeStep, setActiveStep] = useState(0);
   const steps = BUILD_TREE_STEPS;
   const step = steps[activeStep];
-  const pendingValue = step.current !== null
-    && step.current !== BUILD_TREE_PREORDER[0]
-    && !step.edges.some((edge) => edge.child === step.current)
-    ? step.current
-    : null;
-  const displayStack = [...step.stack].reverse();
 
   const activeLineLabel = {
-    init: t('创建根节点并初始化栈', 'Create the root and initialize the stack'),
-    create: t('用下一个前序值创建新节点', 'Create a new node from the next preorder value'),
-    compare: t('比较栈顶值与 inorder[j]', 'Compare the stack top with inorder[j]'),
-    pop: t('弹出栈顶，j 前进一位', 'Pop the stack top and advance j'),
-    'attach-right': t('接到最后弹出节点的右侧', 'Attach as the right child of the last popped node'),
-    'attach-left': t('接到当前栈顶的左侧', 'Attach as the left child of the current stack top'),
-    push: t('新节点入栈，等待右子节点', 'Push the new node, awaiting a right child'),
-    finish: t('返回根节点', 'Return the root'),
-  }[step.activeLine];
+    hashmap: t('预存中序哈希表 val_to_idx', 'Precompute inorder hash map val_to_idx'),
+    'check-base': t('递归基检查 pre_left > pre_right', 'Base check pre_left > pre_right'),
+    'pick-root': t('前序首位确定当前根节点', 'Pick root from preorder[pre_left]'),
+    split: t('中序定位根并切分左右区间', 'Find root in inorder and split ranges'),
+    'call-left': t('递归构建左子树 root.left', 'Recurse to build root.left'),
+    'call-right': t('递归构建右子树 root.right', 'Recurse to build root.right'),
+    'return-root': t('返回当前子树根节点 root', 'Return subtree root'),
+  }[step.activeLine] || t('执行中', 'Processing');
 
-  const actionCopy = {
-    init: {
-      title: t('根节点来自 preorder[0]', 'The root comes from preorder[0]'),
-      detail: t('根节点入栈，j 从 0 开始指向 inorder 中下一个待完成的位置。', 'The root is pushed onto the stack; j starts at 0, pointing at the next position inorder must resolve.'),
-    },
-    create: {
-      title: t(`创建节点 ${step.current}`, `Create node ${step.current}`),
-      detail: t('新节点还没有连接到树上，先看它应该接在哪里。', 'The new node is not connected to the tree yet — the next steps decide where it attaches.'),
-    },
-    compare: {
-      title: t(`栈顶 ${step.compareTop} 是否等于 inorder[${step.j}]？`, `Does the stack top ${step.compareTop} equal inorder[${step.j}]?`),
-      detail: t('相等说明栈顶节点的左子树已经在中序序列中完整出现，可以确定它没有更多待定的左侧内容。', 'Equality means the stack-top node’s left subtree has fully appeared in the inorder sequence — nothing about it is still pending on the left.'),
-    },
-    pop: {
-      title: t(`弹出 ${step.popped}，j 变为 ${step.j}`, `Pop ${step.popped}; j becomes ${step.j}`),
-      detail: t('这个节点暂时没有更多子节点等待判断；如果后面没有节点接到它右侧，它就保持只有左子树。', 'This node has nothing further pending for now; unless a later node attaches to its right, it keeps only its left subtree.'),
-    },
-    'attach-right': {
-      title: t(`${step.current} 成为 ${step.edges[step.edges.length - 1]?.parent} 的右子节点`, `${step.current} becomes the right child of ${step.edges[step.edges.length - 1]?.parent}`),
-      detail: t('至少发生过一次弹栈，说明新节点应该接在最后一个弹出节点的右侧。', 'At least one pop happened, so the new node attaches to the right of the last node popped.'),
-    },
-    'attach-left': {
-      title: t(`${step.current} 成为 ${step.stack[step.stack.length - 1]} 的左子节点`, `${step.current} becomes the left child of ${step.stack[step.stack.length - 1]}`),
-      detail: t('没有发生弹栈，说明当前栈顶还在等待左子节点。', 'No pop happened, so the current stack top is still waiting for its left child.'),
-    },
-    push: {
-      title: t(`${step.current} 入栈`, `Push ${step.current}`),
-      detail: t('新节点也可能还有自己的右子节点，所以先入栈等待。', 'The new node may still need a right child of its own, so it waits on the stack.'),
-    },
-    finish: {
-      title: t('构建完成：3(9, 20(15, 7))', 'Build complete: 3(9, 20(15, 7))'),
-      detail: t('每个节点入栈、出栈各一次，时间和额外空间都是 O(n)。', 'Every node is pushed and popped exactly once, so time and extra space are both O(n).'),
-    },
-  };
-  const copy = actionCopy[step.action];
+  const stepTitle = t(step.title.zh, step.title.en);
+  const stepDetail = t(step.detail.zh, step.detail.en);
 
   return (
     <section className="build-tree-visual" aria-label={t('前序加中序重建二叉树逐步演示', 'Step-through: rebuilding a binary tree from preorder and inorder')}>
       <header className="build-tree-header">
         <div>
           <p className="eyebrow">{t('遍历序列重建', 'Traversal-sequence reconstruction')}</p>
-          <h2>{t('用前序定根，用中序找分界', 'Preorder picks the root, inorder finds the split')}</h2>
+          <h2>{t('前序找根，中序切分左右两半', 'Preorder finds root, inorder splits into halves')}</h2>
           <p>{t(
-            '固定示例 preorder = [3, 9, 20, 15, 7]，inorder = [9, 3, 15, 20, 7]。栈保存等待右子节点的节点，j 跟随中序序列前进。',
-            'Fixed example preorder = [3, 9, 20, 15, 7], inorder = [9, 3, 15, 20, 7]. The stack holds nodes still waiting for a right child; j advances through the inorder sequence.',
+            '固定示例 preorder = [3, 9, 20, 15, 7]，inorder = [9, 3, 15, 20, 7]。哈希表 O(1) 定位根在中序的位置，算出左子树大小 left_size 后切分递归。',
+            'Fixed example preorder = [3, 9, 20, 15, 7], inorder = [9, 3, 15, 20, 7]. The hash map locates the root in inorder in O(1), partitioning left and right subtrees recursively.',
           )}</p>
         </div>
       </header>
 
       <div className={`build-tree-step ${step.action}`} aria-live="polite">
         <span>{activeStep + 1} / {steps.length}</span>
-        <strong>{copy.title}</strong>
-        <p>{copy.detail}</p>
+        <strong>{stepTitle}</strong>
+        <p>{stepDetail}</p>
       </div>
 
       <div className="build-tree-workspace">
@@ -22997,26 +23225,74 @@ function BuildTreeVisual() {
             <div className="build-tree-array-row">
               <span>{t('preorder', 'preorder')}</span>
               <div>
-                {BUILD_TREE_PREORDER.map((value, index) => (
-                  <em className={index === step.i ? 'pointer' : ''} key={index}>
-                    {value}
-                    {index === step.i && <i>i</i>}
-                  </em>
-                ))}
+                {BUILD_TREE_PREORDER.map((value, index) => {
+                  const isDimmed = step.preRange && (index < step.preRange[0] || index > step.preRange[1]);
+                  const isRoot = index === step.preRootIdx;
+                  const isLeft = step.leftPre && index >= step.leftPre[0] && index <= step.leftPre[1];
+                  const isRight = step.rightPre && index >= step.rightPre[0] && index <= step.rightPre[1];
+                  let roleClass = '';
+                  let badge = null;
+                  if (isRoot) {
+                    roleClass = 'root-item';
+                    badge = t('根', 'root');
+                  } else if (isLeft) {
+                    roleClass = 'left-item';
+                    badge = t('左', 'L');
+                  } else if (isRight) {
+                    roleClass = 'right-item';
+                    badge = t('右', 'R');
+                  }
+                  return (
+                    <em className={`${roleClass} ${isDimmed ? 'dimmed' : ''}`} key={index}>
+                      {value}
+                      {badge && <i>{badge}</i>}
+                    </em>
+                  );
+                })}
               </div>
             </div>
             <div className="build-tree-array-row">
               <span>{t('inorder', 'inorder')}</span>
               <div>
-                {BUILD_TREE_INORDER.map((value, index) => (
-                  <em className={index === step.j ? 'pointer' : ''} key={index}>
-                    {value}
-                    {index === step.j && <i>j</i>}
-                  </em>
-                ))}
+                {BUILD_TREE_INORDER.map((value, index) => {
+                  const isDimmed = step.inRange && (index < step.inRange[0] || index > step.inRange[1]);
+                  const isRoot = index === step.inRootIdx;
+                  const isLeft = step.leftIn && index >= step.leftIn[0] && index <= step.leftIn[1];
+                  const isRight = step.rightIn && index >= step.rightIn[0] && index <= step.rightIn[1];
+                  let roleClass = '';
+                  let badge = null;
+                  if (isRoot) {
+                    roleClass = 'root-item';
+                    badge = t('根', 'root');
+                  } else if (isLeft) {
+                    roleClass = 'left-item';
+                    badge = t('左', 'L');
+                  } else if (isRight) {
+                    roleClass = 'right-item';
+                    badge = t('右', 'R');
+                  }
+                  return (
+                    <em className={`${roleClass} ${isDimmed ? 'dimmed' : ''}`} key={index}>
+                      {value}
+                      {badge && <i>{badge}</i>}
+                    </em>
+                  );
+                })}
               </div>
             </div>
           </div>
+
+          {step.leftSize !== null && (
+            <div className="build-tree-split-badge">
+              <span>{t('子树切分', 'Partition')}:</span>
+              <span className="split-stat left">
+                {t('左子树大小 left_size', 'left_size')} = <strong>{step.leftSize}</strong>
+              </span>
+              <span className="split-stat right">
+                {t('右子树大小 right_size', 'right_size')} = <strong>{step.rightSize}</strong>
+              </span>
+            </div>
+          )}
 
           <div className="build-tree-stage-heading">
             <span>{t('构建中的树', 'Tree under construction')}</span>
@@ -23024,32 +23300,33 @@ function BuildTreeVisual() {
           </div>
           <BuildTreeDiagram step={step} t={t} />
 
-          {pendingValue !== null && (
-            <div className="build-tree-pending">
-              <span>{t('待连接节点', 'Node awaiting attachment')}</span>
-              <div className="build-tree-pending-node">{pendingValue}</div>
-            </div>
-          )}
-
           <div className="build-tree-container-panel">
             <div>
-              <span>{t('栈：等待右子节点，栈顶在左', 'Stack: awaiting a right child, top at left')}</span>
-              <strong>LIFO</strong>
+              <span>{t('递归调用栈 (Call Stack)', 'Recursion Call Stack')}</span>
+              <strong>{t('栈深度', 'Depth')}: {step.callStack.length}</strong>
             </div>
-            <div className="build-tree-container">
-              {displayStack.length ? displayStack.map((value, index) => (
-                <span className={index === 0 ? 'next' : ''} key={`${value}-${index}`}>
-                  {value}
-                  {index === 0 && <i>{t('栈顶', 'top')}</i>}
-                </span>
-              )) : <em>{t('空', 'empty')}</em>}
+            <div className="build-tree-call-stack">
+              {step.callStack.length ? (
+                step.callStack.map((frame, index) => {
+                  const isTop = index === step.callStack.length - 1;
+                  return (
+                    <div className={`build-tree-stack-frame ${isTop ? 'top-frame' : ''}`} key={index}>
+                      <span className="frame-marker">{isTop ? '▶' : '•'}</span>
+                      <code>{frame}</code>
+                      {isTop && <i>{t('当前层', 'Active')}</i>}
+                    </div>
+                  );
+                })
+              ) : (
+                <em>{t('所有递归层均已返回', 'All recursive call frames returned')}</em>
+              )}
             </div>
           </div>
         </div>
 
         <div className="build-tree-code" aria-label={t('当前重建代码', 'Current reconstruction code')}>
           <div className="build-tree-code-heading">
-            <span>{t('迭代模板', 'Iterative template')}</span>
+            <span>{t('递归分治模板', 'Recursive divide-and-conquer template')}</span>
             <strong>{activeLineLabel}</strong>
           </div>
           <div className="build-tree-code-lines">
@@ -23067,11 +23344,11 @@ function BuildTreeVisual() {
       </div>
 
       <div className="build-tree-legend">
-        <span><i className="current" />{t('本轮新节点', 'this round’s new node')}</span>
-        <span><i className="comparing" />{t('正在比较', 'being compared')}</span>
-        <span><i className="popped" />{t('刚刚弹出', 'just popped')}</span>
-        <span><i className="frontier" />{t('栈中等待', 'waiting on the stack')}</span>
-        <span><i className="visited" />{t('已确定', 'resolved')}</span>
+        <span><i className="root" />{t('子树根节点 (root)', 'Subtree root')}</span>
+        <span><i className="left-sub" />{t('左子树区间 (L)', 'Left subtree range')}</span>
+        <span><i className="right-sub" />{t('右子树区间 (R)', 'Right subtree range')}</span>
+        <span><i className="visited" />{t('已挂载节点', 'Placed node')}</span>
+        <span><i className="dimmed" />{t('当前层非活动', 'Inactive / outside range')}</span>
       </div>
 
       <div className="build-tree-controls">
