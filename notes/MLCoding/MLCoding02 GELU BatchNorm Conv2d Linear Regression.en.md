@@ -1140,6 +1140,11 @@ $$\text{CE} = -\log \left( \frac{e^{z_{\text{pos}}}}{\sum_j e^{z_j}} \right) = -
                                CLIP Loss
 ```
 
+**4. Why Subtract Max? (Shift Invariance & Dual-Guarantees):**
+- **Softmax Shift Invariance**: $\frac{e^{z_i - c}}{\sum_j e^{z_j - c}} = \frac{e^{z_i} e^{-c}}{\sum_j e^{z_j} e^{-c}} = \frac{e^{z_i}}{\sum_j e^{z_j}}$, subtracting any scalar $c$ preserves the exact mathematical result.
+- **Prevents Overflow**: Choosing $c = m = \max(z)$ forces all $z_j - m \le 0$, bounding $e^{z_j - m} \in (0, 1]$ and preventing $e^{89} \to \text{inf}$ float overflow.
+- **Prevents Underflow**: At least one element $z_k = m$ evaluates to $e^{m - m} = e^0 = 1.0$. Hence the sum $\sum e^{z - m} \ge 1.0$, guaranteeing its log $\log(\ge 1) \ge 0$ never crashes on $\log(0) \to -\infty$.
+
 #### Quick Coding: `clip_infonce_loss`
 
 ```python

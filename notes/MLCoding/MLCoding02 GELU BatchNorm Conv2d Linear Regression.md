@@ -1142,6 +1142,11 @@ $$\text{CE} = -\log \left( \frac{e^{z_{\text{pos}}}}{\sum_j e^{z_j}} \right) = -
                                CLIP Loss
 ```
 
+**4. 为什么必须选 Max？（平移不变性与双向保底机制）：**
+- **Softmax 平移不变性**：$\frac{e^{z_i - c}}{\sum_j e^{z_j - c}} = \frac{e^{z_i} e^{-c}}{\sum_j e^{z_j} e^{-c}} = \frac{e^{z_i}}{\sum_j e^{z_j}}$，减去任意标量 $c$ 结果完全不变。
+- **防上溢 (No Overflow)**：选 $c = m = \max(z)$ 使得所有 $z_j - m \le 0$，则 $e^{z_j - m} \in (0, 1]$，彻底杜绝 $e^{89} \to \text{inf}$ 导致的 NaN。
+- **防下溢 (No Underflow)**：必存在至少一个元素 $z_k = m$ 满足 $e^{m - m} = e^0 = 1.0$，分母求和 $\sum e^{z - m} \ge 1.0$，其对数 $\log(\ge 1) \ge 0$，彻底杜绝 $\log(0) \to -\infty$ 崩溃。
+
 #### Quick Coding：`clip_infonce_loss`
 
 ```python
