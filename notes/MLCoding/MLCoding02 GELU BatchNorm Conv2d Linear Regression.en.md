@@ -1095,53 +1095,49 @@ In coding interviews, you are typically asked to "strip away ViT and Text Transf
 | **Allowed** | `numpy` matrix multiplication, `exp` / `log` / `sum` / `max`, handwritten vectorized `log-sum-exp` |
 | **Forbidden** | `torch.nn.functional.cross_entropy` / `nn.CrossEntropyLoss`, `sklearn`, manual nested Python loops over lists |
 
-#### Core Diagram: Deconstructing Softmax Cross-Entropy into Log-Sum-Exp
+#### Kernel Computation Graph & Core Math
 
-When implementing Cross-Entropy (CE) from scratch, many candidates wonder: **"Why is there no division in the code? Why is CE simply `log_sum_exp - pos_logits`?"**
+**1. Why is Cross-Entropy `LogSumExp - pos`?** (1-line logarithmic expansion):
+$$\text{CE} = -\log \left( \frac{e^{z_{\text{pos}}}}{\sum_j e^{z_j}} \right) = -\Big( \log(e^{z_{\text{pos}}}) - \log \sum_j e^{z_j} \Big) = \underbrace{\log \sum_j e^{z_j}}_{\text{LogSumExp (denominator)}} - \underbrace{z_{\text{pos}}}_{\text{positive logit}}$$
 
-Here is the complete 3-step breakdown from standard multi-class probability definitions to numerically stable vectorized code:
-
-```mermaid
-flowchart TD
-    subgraph S1["Step 1: Multi-Class Cross-Entropy Definition"]
-        A["Given row logits vector: z = [z_0, z_1, ..., z_{B-1}]<br/>Ground-truth positive class index: y = i"] --> B["Softmax predicted probability:<br/>p_i = exp(z_i) / sum_j exp(z_j)"]
-        B --> C["Cross-Entropy Loss (Negative Log-Likelihood):<br/>CE = -log(p_i)"]
-    end
-
-    subgraph S2["Step 2: Logarithmic Expansion (Eliminating Division)"]
-        C --> D["Substitute p_i into CE loss:<br/>CE = -log( exp(z_i) / sum_j exp(z_j) )"]
-        D --> E["Apply log quotient rule: log(a / b) = log(a) - log(b):<br/>CE = - [ log(exp(z_i)) - log(sum_j exp(z_j)) ]"]
-        E --> F["Cancel outer negative sign and log(exp):<br/>CE = log( sum_j exp(z_j) ) - z_i<br/>i.e. CE = LogSumExp(z) - positive logit"]
-    end
-
-    subgraph S3["Step 3: Numerical Stability (Subtracting Row Maximum m)"]
-        F --> G["Evaluating sum(exp(z)) directly can cause exponential overflow!<br/>Let row maximum be: m = max(z)"]
-        G --> H["Factor out exp(m):<br/>sum_j exp(z_j) = sum_j exp((z_j - m) + m) = exp(m) * sum_j exp(z_j - m)"]
-        H --> I["Take natural log on both sides:<br/>log(sum_j exp(z_j)) = m + log(sum_j exp(z_j - m))"]
-        I --> J["Final stable implementation formula:<br/>CE = m + log(sum_j exp(z_j - m)) - z_i"]
-    end
+**2. Row-wise CE Kernel Graph:**
+```text
+                  z = [z_0, ..., z_{B-1}]
+                    /                 \
+             [max]                     \
+             /   \                      \
+       m ───┤   (z - m)                  \
+            │      │                      \
+            │    [exp]                     \
+            │      │                        \
+            │    [sum]                       \
+            │      │                          \
+            │    [log]                         \
+            │      │                            \
+            └──►[+]                             │
+                  │                             │
+              LogSumExp                     z_pos = diag(z)
+                  │                             │
+                  └──────────────►[-]◄──────────┘
+                                   │
+                                CE Loss
 ```
 
-##### Matrix Perspective: CLIP Similarity Matrix Mapped to Code
-
+**3. CLIP Bidirectional Dataflow Graph:**
 ```text
-Similarity logits matrix Z = (I @ T.T) / tau, shape (B, B):
-
-           Text 0      Text 1      Text 2     ...    Text B-1
-Img 0    [ Z[0,0]*     Z[0,1]      Z[0,2]     ...    Z[0,B-1] ]  → Row maximum m_0 = max(Z[0,:])
-Img 1    [ Z[1,0]      Z[1,1]*     Z[1,2]     ...    Z[1,B-1] ]  → Row maximum m_1 = max(Z[1,:])
-Img 2    [ Z[2,0]      Z[2,1]      Z[2,2]*    ...    Z[2,B-1] ]  → Row maximum m_2 = max(Z[2,:])
-  ⋮                                                             
-Img B-1  [ Z[B-1,0]    Z[B-1,1]    Z[B-1,2]   ...    Z[B-1,B-1]*]→ Row maximum m_{B-1}
-
-Note: The starred diagonal entries are the ground-truth text pairs: pos_logits = np.diag(Z)
-
-Code Line Mapping:
-1. max_z       = np.max(z, axis=1, keepdims=True)                # Row maximum m
-2. log_sum_exp = max_z.squeeze(1) + np.log(np.sum(np.exp(z - max_z), axis=1))  # Log of row denominator
-3. pos_logits  = np.diag(z)                                      # Log of positive numerator (diagonal)
-4. row_loss    = log_sum_exp - pos_logits                        # Row-wise multi-class cross-entropy
-5. total_loss  = 0.5 * (mean(loss_row) + mean(loss_col))         # Bidirectional symmetric mean (I2T + T2I)
+  I (B,D)      T (B,D)
+      \          /
+    [Matmul & Scale] ──► Z = (I @ T.T) / tau  (B, B)
+                           /             \
+                      Z (I2T)          Z.T (T2I)
+                         │                 │
+                    [CE Kernel]       [CE Kernel]
+                         │                 │
+                      Loss_I2T          Loss_T2I
+                         \                 /
+                          └──►[0.5 * (+)]◄─┘
+                                   │
+                               CLIP Loss
 ```
 
 #### Quick Coding: `clip_infonce_loss`

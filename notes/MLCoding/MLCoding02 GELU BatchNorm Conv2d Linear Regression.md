@@ -1097,53 +1097,49 @@ CLIP（Contrastive Language-Image Pretraining）的核心不是复杂的网络�
 | **允许** | `numpy` 矩阵乘法、`exp` / `log` / `sum` / `max`、手写向量化 `log-sum-exp` |
 | **禁止** | `torch.nn.functional.cross_entropy` / `nn.CrossEntropyLoss`、`sklearn`、把矩阵拆成 Python list 双重循环硬算 |
 
-#### 核心图解：从 Softmax 交叉熵 到 Log-Sum-Exp 的公式拆解
+#### 算子计算图 (Kernel Graph) 与 核心推导
 
-很多同学在初次手写交叉熵（Cross-Entropy, CE）时，容易疑惑：**“为什么代码里根本看不到任何除法，而是直接拿 `log_sum_exp - pos_logits`？”**
+**1. 为什么交叉熵是 `LogSumExp - pos`？**（一行动图化简）：
+$$\text{CE} = -\log \left( \frac{e^{z_{\text{pos}}}}{\sum_j e^{z_j}} \right) = -\Big( \log(e^{z_{\text{pos}}}) - \log \sum_j e^{z_j} \Big) = \underbrace{\log \sum_j e^{z_j}}_{\text{LogSumExp (分母项)}} - \underbrace{z_{\text{pos}}}_{\text{正样本 logit}}$$
 
-我们把从分类概率定义到数值稳定代码的推导完整拆解为三步：
-
-```mermaid
-flowchart TD
-    subgraph S1["步骤 1：原始多分类交叉熵定义"]
-        A["给定某行 Logits 向量: z = [z_0, z_1, ..., z_{B-1}]<br/>真实正样本类别下标: y = i"] --> B["Softmax 预测概率:<br/>p_i = exp(z_i) / sum_j exp(z_j)"]
-        B --> C["交叉熵损失 (负对数似然 NLL):<br/>CE = -log(p_i)"]
-    end
-
-    subgraph S2["步骤 2：对数展开 (消去指数与除法)"]
-        C --> D["将 p_i 代入 CE 损失:<br/>CE = -log( exp(z_i) / sum_j exp(z_j) )"]
-        D --> E["利用对数运算法则 log(a / b) = log(a) - log(b):<br/>CE = - [ log(exp(z_i)) - log(sum_j exp(z_j)) ]"]
-        E --> F["消去外层负号与 log(exp):<br/>CE = log( sum_j exp(z_j) ) - z_i<br/>即: CE = LogSumExp(z) - 正样本 logit"]
-    end
-
-    subgraph S3["步骤 3：数值防溢出 (减去行最大值 m)"]
-        F --> G["直接算 exp(z) 在数值较大时会发生指数上溢 (Overflow)！<br/>设行最大值: m = max(z)"]
-        G --> H["恒等提公因式:<br/>sum_j exp(z_j) = sum_j exp((z_j - m) + m) = exp(m) * sum_j exp(z_j - m)"]
-        H --> I["两边取对数:<br/>log(sum_j exp(z_j)) = m + log(sum_j exp(z_j - m))"]
-        I --> J["最终稳定实现公式:<br/>CE = m + log(sum_j exp(z_j - m)) - z_i"]
-    end
+**2. 单行 CE 算子计算图 (Kernel Graph)：**
+```text
+                  z = [z_0, ..., z_{B-1}]
+                    /                 \
+             [max]                     \
+             /   \                      \
+       m ───┤   (z - m)                  \
+            │      │                      \
+            │    [exp]                     \
+            │      │                        \
+            │    [sum]                       \
+            │      │                          \
+            │    [log]                         \
+            │      │                            \
+            └──►[+]                             │
+                  │                             │
+              LogSumExp                     z_pos = diag(z)
+                  │                             │
+                  └──────────────►[-]◄──────────┘
+                                   │
+                                CE Loss
 ```
 
-##### 矩阵视角：CLIP 相似度矩阵在代码中的每一步映射
-
+**3. CLIP 双向对称数据流：**
 ```text
-相似度 logits 矩阵 Z = (I @ T.T) / tau，形状 (B, B)：
-
-           Text 0      Text 1      Text 2     ...    Text B-1
-Img 0    [ Z[0,0]*     Z[0,1]      Z[0,2]     ...    Z[0,B-1] ]  → 行最大值 m_0 = max(Z[0,:])
-Img 1    [ Z[1,0]      Z[1,1]*     Z[1,2]     ...    Z[1,B-1] ]  → 行最大值 m_1 = max(Z[1,:])
-Img 2    [ Z[2,0]      Z[2,1]      Z[2,2]*    ...    Z[2,B-1] ]  → 行最大值 m_2 = max(Z[2,:])
-  ⋮                                                             
-Img B-1  [ Z[B-1,0]    Z[B-1,1]    Z[B-1,2]   ...    Z[B-1,B-1]*]→ 行最大值 m_{B-1}
-
-注：带 * 的对角线元素正是每张图配对的正样本文本：pos_logits = np.diag(Z)
-
-代码对应关系：
-1. max_z       = np.max(z, axis=1, keepdims=True)                # 每行最大值 m
-2. log_sum_exp = max_z.squeeze(1) + np.log(np.sum(np.exp(z - max_z), axis=1))  # 每行分母的对数
-3. pos_logits  = np.diag(z)                                      # 每行分子的对数 (即对角线元素)
-4. 每行 loss   = log_sum_exp - pos_logits                        # 相减即为该行的多分类交叉熵
-5. 总 loss     = 0.5 * (mean(loss_row) + mean(loss_col))         # I2T 与 T2I 双向对称平均
+  I (B,D)      T (B,D)
+      \          /
+    [Matmul & Scale] ──► Z = (I @ T.T) / tau  (B, B)
+                           /             \
+                      Z (I2T)          Z.T (T2I)
+                         │                 │
+                    [CE Kernel]       [CE Kernel]
+                         │                 │
+                      Loss_I2T          Loss_T2I
+                         \                 /
+                          └──►[0.5 * (+)]◄─┘
+                                   │
+                               CLIP Loss
 ```
 
 #### Quick Coding：`clip_infonce_loss`
