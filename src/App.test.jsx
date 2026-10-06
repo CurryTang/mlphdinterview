@@ -1761,6 +1761,37 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /06C · RLVR, Reasoning Models & Agentic RL/i })).toBeInTheDocument();
   });
 
+  it('renders the KL Divergence Modes visualizer and switches between Forward and Reverse KL', async () => {
+    globalThis.fetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      const isEn = requestUrl.includes('.en.md');
+      return {
+        ok: true,
+        text: async () => requestUrl.includes('MLCoding06C')
+          ? `${isEn ? '# 06C · RLVR, Reasoning Models & Agentic RL' : '# 06C · RLVR、推理模型与 Agentic RL'}\n\n\`\`\`kl-divergence-modes-demo\n\`\`\``
+          : '# Default note',
+      };
+    });
+
+    window.location.hash = '#MLCoding06C%20RLVR%20Reasoning%20GRPO%20Agentic%20RL.md';
+    render(<App />);
+
+    const visual = await screen.findByRole('region', { name: /KL 散度不对称性与模式动力学实验室/i });
+    expect(visual).toBeInTheDocument();
+    expect(within(visual).getByText(/前向 KL: Mode-Covering/i)).toBeInTheDocument();
+    expect(within(visual).getByText(/逆向 KL: Mode-Seeking/i)).toBeInTheDocument();
+
+    // Click Reverse KL tab
+    fireEvent.click(within(visual).getByRole('button', { name: /逆向 KL: Mode-Seeking/i }));
+    expect(within(visual).getByText(/RL 锁定最优解/i)).toBeInTheDocument();
+
+    // Switch language to English
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    const visualEn = await screen.findByRole('region', { name: /KL Divergence Asymmetry & Mode Dynamics Lab/i });
+    expect(visualEn).toBeInTheDocument();
+    expect(within(visualEn).getByText(/Reverse KL: Mode-Seeking/i)).toBeInTheDocument();
+  });
+
 
 
   it('routes directly to unified MLCoding07 Industrial ML Systems note', async () => {

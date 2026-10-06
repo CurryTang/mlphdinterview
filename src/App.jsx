@@ -28137,7 +28137,725 @@ function AnisotropyConeVisual() {
 }
 
 
+function KLDivergenceModesVisual() {
+  const { isEnglish, t } = useUiCopy();
+  const [mode, setMode] = useState('forward'); // 'forward' | 'reverse' | 'skew' | 'continuous'
+  const [targetPeak, setTargetPeak] = useState('left'); // 'left' | 'right'
+  const [peakDistance, setPeakDistance] = useState(3.2); // d between 2.0 and 4.6
+  const [lambdaVal, setLambdaVal] = useState(0.5); // continuous dial: 0 (forward) to 1 (reverse)
+  const [isSampling, setIsSampling] = useState(false);
+  const [sampleStats, setSampleStats] = useState({ total: 0, modeA: 0, modeB: 0, hallucinated: 0 });
+  const [recentSamples, setRecentSamples] = useState([]);
+  const [activeParticle, setActiveParticle] = useState(null);
+  const [activeTab, setActiveTab] = useState('asymmetry'); // 'asymmetry' | 'hallucination' | 'dagger'
+
+  const sigmaT = 0.72; // Teacher peak width
+  const peakA = -peakDistance / 2;
+  const peakB = peakDistance / 2;
+
+  // Active student parameters (mu and sigma) based on mode
+  const { activeMu, activeSigma, effectiveMode } = useMemo(() => {
+    if (mode === 'forward') {
+      const mu = 0;
+      const sigma = Math.sqrt(sigmaT * sigmaT + (peakDistance / 2) * (peakDistance / 2));
+      return { activeMu: mu, activeSigma: sigma, effectiveMode: 'forward' };
+    }
+    if (mode === 'reverse') {
+      const mu = targetPeak === 'left' ? peakA : peakB;
+      const sigma = sigmaT;
+      return { activeMu: mu, activeSigma: sigma, effectiveMode: 'reverse' };
+    }
+    if (mode === 'skew') {
+      // Skew KL interpolation
+      const mu = targetPeak === 'left' ? peakA * 0.7 : peakB * 0.7;
+      const sigma = sigmaT * 1.25;
+      return { activeMu: mu, activeSigma: sigma, effectiveMode: 'skew' };
+    }
+    // Continuous dial: lambda in [0, 1]
+    const targetMu = targetPeak === 'left' ? peakA : peakB;
+    const fwdSigma = Math.sqrt(sigmaT * sigmaT + (peakDistance / 2) * (peakDistance / 2));
+    const mu = (1 - lambdaVal) * 0 + lambdaVal * targetMu;
+    const sigma = (1 - lambdaVal) * fwdSigma + lambdaVal * sigmaT;
+    return { activeMu: mu, activeSigma: sigma, effectiveMode: 'continuous' };
+  }, [mode, targetPeak, peakDistance, lambdaVal, peakA, peakB, sigmaT]);
+
+  // Gaussian PDF helper
+  const gaussian = (x, mu, s) => {
+    const factor = 1.0 / (s * Math.sqrt(2 * Math.PI));
+    const expo = -((x - mu) * (x - mu)) / (2 * s * s);
+    return factor * Math.exp(expo);
+  };
+
+  // Grid points and distributions
+  const grid = useMemo(() => {
+    const pts = [];
+    const minX = -5.5;
+    const maxX = 5.5;
+    const step = 0.08;
+
+    let sumPT = 0;
+    let sumQ = 0;
+    let sumGapQ = 0;
+    let fklSum = 0;
+    let rklSum = 0;
+
+    const gapThreshold = peakDistance / 3.4;
+
+    for (let x = minX; x <= maxX; x += step) {
+      // Teacher: 50/50 mixture of two modes
+      const pA = 0.5 * gaussian(x, peakA, sigmaT);
+      const pB = 0.5 * gaussian(x, peakB, sigmaT);
+      const pT = pA + pB;
+
+      // Student
+      let q = 0;
+      if (mode === 'skew') {
+        const qBase = gaussian(x, targetPeak === 'left' ? peakA : peakB, sigmaT);
+        q = 0.65 * qBase + 0.35 * pT;
+      } else {
+        q = gaussian(x, activeMu, activeSigma);
+      }
+
+      pts.push({ x, pT, q, pA, pB });
+
+      sumPT += pT * step;
+      sumQ += q * step;
+
+      // Check gap mass (hallucination zone between peaks)
+      if (Math.abs(x) <= gapThreshold) {
+        sumGapQ += q * step;
+      }
+
+      // Discrete KL divergences
+      const eps = 1e-6;
+      fklSum += pT * Math.log((pT + eps) / (q + eps)) * step;
+      rklSum += q * Math.log((q + eps) / (pT + eps)) * step;
+    }
+
+    const gapRatio = sumQ > 0 ? (sumGapQ / sumQ) * 100 : 0;
+
+    return {
+      points: pts,
+      gapRatio: Math.max(0, Math.min(100, gapRatio)),
+      fkl: Math.max(0, fklSum),
+      rkl: Math.max(0, rklSum),
+    };
+  }, [peakA, peakB, sigmaT, activeMu, activeSigma, mode, targetPeak, peakDistance]);
+
+  // SVG Geometry Constants
+  const svgWidth = 640;
+  const svgHeight = 270;
+  const baselineY = 224;
+  const heightScale = 520;
+  const xToSvg = (x) => 320 + x * 48;
+  const yToSvg = (y) => baselineY - y * heightScale;
+
+  // Path generators
+  const teacherAreaPath = useMemo(() => {
+    if (!grid.points.length) return '';
+    const d = grid.points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xToSvg(p.x).toFixed(1)} ${yToSvg(p.pT).toFixed(1)}`).join(' ');
+    const firstX = xToSvg(grid.points[0].x).toFixed(1);
+    const lastX = xToSvg(grid.points[grid.points.length - 1].x).toFixed(1);
+    return `${d} L ${lastX} ${baselineY} L ${firstX} ${baselineY} Z`;
+  }, [grid.points]);
+
+  const teacherLinePath = useMemo(() => {
+    if (!grid.points.length) return '';
+    return grid.points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xToSvg(p.x).toFixed(1)} ${yToSvg(p.pT).toFixed(1)}`).join(' ');
+  }, [grid.points]);
+
+  const studentAreaPath = useMemo(() => {
+    if (!grid.points.length) return '';
+    const d = grid.points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xToSvg(p.x).toFixed(1)} ${yToSvg(p.q).toFixed(1)}`).join(' ');
+    const firstX = xToSvg(grid.points[0].x).toFixed(1);
+    const lastX = xToSvg(grid.points[grid.points.length - 1].x).toFixed(1);
+    return `${d} L ${lastX} ${baselineY} L ${firstX} ${baselineY} Z`;
+  }, [grid.points]);
+
+  const studentLinePath = useMemo(() => {
+    if (!grid.points.length) return '';
+    return grid.points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xToSvg(p.x).toFixed(1)} ${yToSvg(p.q).toFixed(1)}`).join(' ');
+  }, [grid.points]);
+
+  // Void / Gap zone rectangle coordinates
+  const gapWidthX = peakDistance / 1.7;
+  const gapLeftSvg = xToSvg(-gapWidthX / 2);
+  const gapRightSvg = xToSvg(gapWidthX / 2);
+
+  // Animated particle rollout sampling
+  useEffect(() => {
+    if (!isSampling) return;
+
+    const timer = setInterval(() => {
+      // Box-Muller sampling from student
+      const u1 = Math.max(1e-7, Math.random());
+      const u2 = Math.random();
+      const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+
+      let sampledX = 0;
+      if (mode === 'skew') {
+        const chooseTeacher = Math.random() < 0.35;
+        if (chooseTeacher) {
+          const isA = Math.random() < 0.5;
+          sampledX = (isA ? peakA : peakB) + sigmaT * z;
+        } else {
+          sampledX = (targetPeak === 'left' ? peakA : peakB) + sigmaT * z;
+        }
+      } else {
+        sampledX = activeMu + activeSigma * z;
+      }
+
+      let status = 'hallucination';
+      const distA = Math.abs(sampledX - peakA);
+      const distB = Math.abs(sampledX - peakB);
+      const gapThreshold = peakDistance / 3.4;
+
+      if (distA <= sigmaT * 1.35) {
+        status = 'mode_a';
+      } else if (distB <= sigmaT * 1.35) {
+        status = 'mode_b';
+      } else if (Math.abs(sampledX) <= gapThreshold) {
+        status = 'hallucination';
+      } else {
+        status = 'tail';
+      }
+
+      setSampleStats((prev) => ({
+        total: prev.total + 1,
+        modeA: prev.modeA + (status === 'mode_a' ? 1 : 0),
+        modeB: prev.modeB + (status === 'mode_b' ? 1 : 0),
+        hallucinated: prev.hallucinated + (status === 'hallucination' ? 1 : 0),
+      }));
+
+      const newSample = {
+        id: Date.now() + Math.random(),
+        x: sampledX,
+        status,
+        text:
+          status === 'mode_a'
+            ? t('解法一: 递归回溯 + 剪枝', 'Mode A: Recursive Backtracking')
+            : status === 'mode_b'
+            ? t('解法二: 动态规划 + 空间压缩', 'Mode B: DP Space Optimization')
+            : status === 'hallucination'
+            ? t('❌ 幻觉: 伪逻辑/缝合语法', '❌ Hallucination / Fluent Nonsense')
+            : t('长尾探索', 'Tail Exploration'),
+      };
+
+      setRecentSamples((prev) => [newSample, ...prev.slice(0, 7)]);
+      setActiveParticle(newSample);
+    }, 550);
+
+    return () => clearInterval(timer);
+  }, [isSampling, mode, targetPeak, peakA, peakB, sigmaT, activeMu, activeSigma, peakDistance, t]);
+
+  const resetSampling = () => {
+    setIsSampling(false);
+    setSampleStats({ total: 0, modeA: 0, modeB: 0, hallucinated: 0 });
+    setRecentSamples([]);
+    setActiveParticle(null);
+  };
+
+  return (
+    <section className="klv-container" aria-label={t('KL 散度不对称性与模式动力学实验室', 'KL Divergence Asymmetry & Mode Dynamics Lab')}>
+      {/* Header */}
+      <div className="klv-header">
+        <div className="klv-header-copy">
+          <p className="eyebrow">{t('Post-Training Policy Distillation Lab', 'Post-Training Policy Distillation Lab')}</p>
+          <h3>{t('KL 散度不对称性与模式动力学实验室（Forward KL vs Reverse KL）', 'KL Divergence Asymmetry & Mode Dynamics Interactive Lab')}</h3>
+          <p className="klv-subtitle">
+            {t(
+              '直观洞察知识蒸馏的核心数学对立：前向 KL（Mode-Covering / SFT）为何强行抹平双峰诱发幻觉？逆向 KL（Mode-Seeking / RL）为何主动舍弃次要峰值保全高保真严谨推导？',
+              'Explore the mathematical asymmetry of policy distillation: Why Forward KL (Mode-Covering / SFT) smears probability across the gap inducing hallucinations, and why Reverse KL (Mode-Seeking / RL) commits to a single coherent mode with zero fluent nonsense.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Mode Selector Tabs */}
+      <div className="klv-mode-selector">
+        <button
+          type="button"
+          className={`klv-mode-btn ${mode === 'forward' ? 'active-fwd' : ''}`}
+          onClick={() => setMode('forward')}
+        >
+          <span className="klv-btn-badge fwd">SFT</span>
+          <strong>{t('前向 KL: Mode-Covering (模式覆盖)', 'Forward KL: Mode-Covering (SFT)')}</strong>
+          <span className="klv-btn-desc">{t('D_KL(π_T || π_θ) · 强行包揽全部峰值', 'Zero-Avoiding · Smears mass into gap')}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`klv-mode-btn ${mode === 'reverse' ? 'active-rev' : ''}`}
+          onClick={() => setMode('reverse')}
+        >
+          <span className="klv-btn-badge rev">RL / OPD</span>
+          <strong>{t('逆向 KL: Mode-Seeking (模式寻优)', 'Reverse KL: Mode-Seeking (RL/MiniLLM)')}</strong>
+          <span className="klv-btn-desc">{t('D_KL(π_θ || π_T) · 舍弃次峰，锁定主峰', 'Zero-Forcing · Locks onto single peak')}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`klv-mode-btn ${mode === 'skew' ? 'active-skew' : ''}`}
+          onClick={() => setMode('skew')}
+        >
+          <span className="klv-btn-badge skew">DistiLLM</span>
+          <strong>{t('偏斜 KL: Skew KL (混合平滑)', 'Skew KL: Mixed Interpolation (DistiLLM)')}</strong>
+          <span className="klv-btn-desc">{t('π_α = (1-α)π_θ + απ_T · 压制方差', 'Smooths early heavy-tailed variance')}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`klv-mode-btn ${mode === 'continuous' ? 'active-cont' : ''}`}
+          onClick={() => setMode('continuous')}
+        >
+          <span className="klv-btn-badge cont">GKD</span>
+          <strong>{t('连续双旋钮: Continuous Dial', 'Continuous Dial: GKD Spectrum')}</strong>
+          <span className="klv-btn-desc">{t('λ 滑块自由过渡 Forward ↔ Reverse', 'Continuous morph between divergences')}</span>
+        </button>
+      </div>
+
+      {/* Main Interactive Stage */}
+      <div className="klv-stage-grid">
+        {/* Left: SVG Canvas */}
+        <div className="klv-canvas-card">
+          <div className="klv-canvas-header">
+            <div className="klv-legend-items">
+              <span className="klv-legend-tag teacher">
+                <span className="legend-swatch teach-swatch"></span>
+                <strong>{t('教师模型分布 π_T (双峰解法)', 'Teacher Distribution π_T (Bimodal)')}</strong>
+              </span>
+              <span className={`klv-legend-tag student ${mode}`}>
+                <span className="legend-swatch stud-swatch"></span>
+                <strong>
+                  {mode === 'forward'
+                    ? t('学生模型 π_θ (前向覆盖 / 泛化散开)', 'Student π_θ (Mode-Covering Smear)')
+                    : mode === 'reverse'
+                    ? t('学生模型 π_θ (逆向锁定 / 聚焦单一峰)', 'Student π_θ (Mode-Seeking Locked)')
+                    : mode === 'skew'
+                    ? t('学生模型 π_θ (偏斜插值 / 平滑过渡)', 'Student π_θ (Skew KL Blended)')
+                    : t('学生模型 π_θ (连续插值态)', 'Student π_θ (Interpolated State)')}
+                </strong>
+              </span>
+            </div>
+
+            <div className="klv-canvas-badges">
+              {mode === 'forward' && (
+                <span className="klv-status-pill alert-fwd">
+                  ⚠️ {t('低谷泄露：产生幻觉 (Fluent Nonsense)', 'Gap Mass: Severe Hallucinations')}
+                </span>
+              )}
+              {mode === 'reverse' && (
+                <span className="klv-status-pill success-rev">
+                  ✨ {t('高保真：聚焦单一有效解法', 'High Fidelity: Zero Gap Void Mass')}
+                </span>
+              )}
+              {mode === 'skew' && (
+                <span className="klv-status-pill stable-skew">
+                  🛡️ {t('梯度平稳：兼顾探索与稳定', 'Stabilized: Suppressed Gradient Tails')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="klv-svg-wrap">
+            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="klv-svg" role="img" aria-label="KL Divergence SVG Curve">
+              <defs>
+                {/* Teacher gradient */}
+                <linearGradient id="teacherGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity="0.04" />
+                </linearGradient>
+
+                {/* Student gradient (Forward) */}
+                <linearGradient id="studentFwdGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.05" />
+                </linearGradient>
+
+                {/* Student gradient (Reverse) */}
+                <linearGradient id="studentRevGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.55" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.06" />
+                </linearGradient>
+
+                {/* Student gradient (Skew) */}
+                <linearGradient id="studentSkewGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.05" />
+                </linearGradient>
+
+                {/* Warning void pattern */}
+                <pattern id="voidHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                  <line x1="0" y1="0" x2="0" y2="8" stroke="#ef4444" strokeWidth="1.2" strokeOpacity="0.25" />
+                </pattern>
+              </defs>
+
+              {/* Shaded Void / Gap Zone */}
+              <rect
+                x={gapLeftSvg}
+                y={28}
+                width={gapRightSvg - gapLeftSvg}
+                height={baselineY - 28}
+                fill="url(#voidHatch)"
+                className="klv-gap-zone"
+              />
+              <line x1={gapLeftSvg} y1={28} x2={gapLeftSvg} y2={baselineY} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity="0.45" />
+              <line x1={gapRightSvg} y1={28} x2={gapRightSvg} y2={baselineY} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity="0.45" />
+
+              {/* Void Warning Text */}
+              <text x={320} y={44} fill="#dc2626" fontSize="11" fontWeight="600" textAnchor="middle" className="klv-void-text">
+                {t('⚡ 虚空低谷区 (Void Valley: P_T ≈ 0)', '⚡ The Void Gap: P_T ≈ 0')}
+              </text>
+              <text x={320} y={59} fill="#991b1b" fontSize="9.5" textAnchor="middle" opacity="0.85">
+                {t('此区域概率质量 = 幻觉与逻辑混乱', 'Any mass here = Hallucinated Fluent Nonsense')}
+              </text>
+
+              {/* Baseline axis */}
+              <line x1={30} y1={baselineY} x2={610} y2={baselineY} stroke="#64748b" strokeWidth="1.5" />
+              <text x={30} y={baselineY + 16} fill="#64748b" fontSize="10">x = -5</text>
+              <text x={320} y={baselineY + 16} fill="#64748b" fontSize="10" textAnchor="middle">x = 0</text>
+              <text x={610} y={baselineY + 16} fill="#64748b" fontSize="10" textAnchor="end">x = +5</text>
+
+              {/* Teacher Distribution Fill & Line */}
+              <path d={teacherAreaPath} fill="url(#teacherGrad)" />
+              <path d={teacherLinePath} fill="none" stroke="#2563eb" strokeWidth="2.5" />
+
+              {/* Teacher Peak A Beacon */}
+              <g className="klv-peak-marker" transform={`translate(${xToSvg(peakA)}, ${yToSvg(0.27)})`}>
+                <circle cx={0} cy={0} r={4.5} fill="#2563eb" />
+                <circle cx={0} cy={0} r={10} fill="none" stroke="#2563eb" strokeWidth="1" strokeDasharray="2 2" className="klv-pulse-ring" />
+                <text x={0} y={-14} fill="#1e40af" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+                  {t('解法峰 A (Mode A)', 'Mode A (Peak)')}
+                </text>
+              </g>
+
+              {/* Teacher Peak B Beacon */}
+              <g className="klv-peak-marker" transform={`translate(${xToSvg(peakB)}, ${yToSvg(0.27)})`}>
+                <circle cx={0} cy={0} r={4.5} fill="#2563eb" />
+                <circle cx={0} cy={0} r={10} fill="none" stroke="#2563eb" strokeWidth="1" strokeDasharray="2 2" className="klv-pulse-ring" />
+                <text x={0} y={-14} fill="#1e40af" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+                  {t('解法峰 B (Mode B)', 'Mode B (Peak)')}
+                </text>
+              </g>
+
+              {/* Student Distribution Fill & Line */}
+              <path
+                d={studentAreaPath}
+                fill={
+                  mode === 'forward'
+                    ? 'url(#studentFwdGrad)'
+                    : mode === 'reverse'
+                    ? 'url(#studentRevGrad)'
+                    : 'url(#studentSkewGrad)'
+                }
+                className="klv-student-fill"
+              />
+              <path
+                d={studentLinePath}
+                fill="none"
+                stroke={mode === 'forward' ? '#f43f5e' : mode === 'reverse' ? '#10b981' : '#8b5cf6'}
+                strokeWidth="3"
+                className="klv-student-line"
+              />
+
+              {/* Student Peak Marker */}
+              {mode === 'reverse' && (
+                <g className="klv-locked-marker" transform={`translate(${xToSvg(activeMu)}, ${yToSvg(0.48)})`}>
+                  <circle cx={0} cy={0} r={5} fill="#10b981" />
+                  <path d="M -6 -14 L 6 -14 L 0 -6 Z" fill="#10b981" />
+                  <text x={0} y={-18} fill="#065f46" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+                    🔒 {t('RL 锁定最优解', 'RL Locked Mode')}
+                  </text>
+                </g>
+              )}
+
+              {mode === 'forward' && (
+                <g className="klv-smear-marker" transform={`translate(320, ${yToSvg(gaussian(0, activeMu, activeSigma))})`}>
+                  <circle cx={0} cy={0} r={5} fill="#f43f5e" />
+                  <text x={0} y={-12} fill="#9f1239" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+                    💥 {t('缝隙平摊质量 (幻觉中心)', 'Wasted Mass in Gap')}
+                  </text>
+                </g>
+              )}
+
+              {/* Dynamic Particle Animation */}
+              {activeParticle && (
+                <g className="klv-active-particle" transform={`translate(${xToSvg(activeParticle.x)}, ${baselineY - 14})`}>
+                  <circle
+                    cx={0}
+                    cy={0}
+                    r={6.5}
+                    fill={
+                      activeParticle.status === 'mode_a' || activeParticle.status === 'mode_b'
+                        ? '#10b981'
+                        : activeParticle.status === 'hallucination'
+                        ? '#ef4444'
+                        : '#64748b'
+                    }
+                    className="klv-particle-dot"
+                  />
+                  <circle
+                    cx={0}
+                    cy={0}
+                    r={14}
+                    fill="none"
+                    stroke={
+                      activeParticle.status === 'mode_a' || activeParticle.status === 'mode_b'
+                        ? '#10b981'
+                        : activeParticle.status === 'hallucination'
+                        ? '#ef4444'
+                        : '#64748b'
+                    }
+                    strokeWidth="1.5"
+                    className="klv-particle-ping"
+                  />
+                </g>
+              )}
+            </svg>
+          </div>
+
+          {/* Interactive Controls Bar */}
+          <div className="klv-controls-strip">
+            <div className="klv-control-group">
+              <label>
+                <span>{t('两峰分离距离 (Separation d)', 'Mode Separation d')}:</span>
+                <strong>{peakDistance.toFixed(1)}</strong>
+              </label>
+              <input
+                type="range"
+                min="2.0"
+                max="4.6"
+                step="0.1"
+                value={peakDistance}
+                onChange={(e) => setPeakDistance(parseFloat(e.target.value))}
+                className="klv-range-slider"
+              />
+            </div>
+
+            {mode === 'reverse' && (
+              <div className="klv-toggle-group">
+                <span className="klv-label-sm">{t('目标锁定解:', 'Lock Target:')}</span>
+                <button
+                  type="button"
+                  className={`klv-mini-btn ${targetPeak === 'left' ? 'active' : ''}`}
+                  onClick={() => setTargetPeak('left')}
+                >
+                  {t('锁定解 A (左峰)', 'Lock Mode A (Left)')}
+                </button>
+                <button
+                  type="button"
+                  className={`klv-mini-btn ${targetPeak === 'right' ? 'active' : ''}`}
+                  onClick={() => setTargetPeak('right')}
+                >
+                  {t('锁定解 B (右峰)', 'Lock Mode B (Right)')}
+                </button>
+              </div>
+            )}
+
+            {mode === 'continuous' && (
+              <div className="klv-control-group">
+                <label>
+                  <span>{t('散度连续旋钮 λ (0: FKL ↔ 1: RKL)', 'Divergence Knob λ')}:</span>
+                  <strong>{lambdaVal.toFixed(2)}</strong>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={lambdaVal}
+                  onChange={(e) => setLambdaVal(parseFloat(e.target.value))}
+                  className="klv-range-slider continuous"
+                />
+              </div>
+            )}
+
+            {/* Rollout Sampling Buttons */}
+            <div className="klv-sampling-buttons">
+              <button
+                type="button"
+                className={`klv-action-btn ${isSampling ? 'active-stop' : 'active-start'}`}
+                onClick={() => setIsSampling(!isSampling)}
+              >
+                {isSampling ? t('⏸ 暂停采样', '⏸ Pause Rollout') : t('▶ 开启策略内生成采样', '▶ Live On-Policy Sampling')}
+              </button>
+              <button type="button" className="klv-action-btn secondary" onClick={resetSampling}>
+                {t('清空统计', 'Reset Stats')}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Metrics & Live Rollout Log */}
+        <div className="klv-metrics-panel">
+          {/* Key Metric 1: Hallucination Rate */}
+          <div className={`klv-metric-card ${grid.gapRatio > 18 ? 'danger' : 'safe'}`}>
+            <div className="klv-card-top">
+              <span className="klv-card-title">{t('低谷虚空产生率 (幻觉率)', 'Void Gap Mass (Hallucination Rate)')}</span>
+              <span className={`klv-pill-score ${grid.gapRatio > 18 ? 'danger' : 'safe'}`}>
+                {grid.gapRatio.toFixed(1)}%
+              </span>
+            </div>
+            <div className="klv-meter-track">
+              <div
+                className={`klv-meter-fill ${grid.gapRatio > 18 ? 'danger' : 'safe'}`}
+                style={{ width: `${grid.gapRatio}%` }}
+              ></div>
+            </div>
+            <p className="klv-card-annotation">
+              {grid.gapRatio > 18
+                ? t('💥 前向 KL 强制覆盖双峰，导致约 40% 的概率质量落入两峰之间的非自然语义缝隙，生成看似通顺实则荒谬的错误中间逻辑。', '💥 Forward KL smears mass into the inter-modal void; ~40% of generated tokens are ungrounded fluent nonsense.')
+                : t('✨ 逆向 KL 模式寻优机制强力阻止概率落在教师为 0 的区域，低谷质量归零，生成逻辑高度严密。', '✨ Reverse KL zero-forcing prevents mass in teacher voids; hallucination drops to near zero.')}
+            </p>
+          </div>
+
+          {/* Key Metric 2: FKL vs RKL Comparison */}
+          <div className="klv-stat-row">
+            <div className="klv-mini-metric">
+              <span className="mini-lbl">D_KL(π_T || π_θ) (Forward KL)</span>
+              <strong className="mini-val">{grid.fkl.toFixed(2)}</strong>
+              <span className="mini-desc">{t('SFT 模式覆盖惩罚', 'Mode-covering penalty')}</span>
+            </div>
+            <div className="klv-mini-metric">
+              <span className="mini-lbl">D_KL(π_θ || π_T) (Reverse KL)</span>
+              <strong className="mini-val">{grid.rkl.toFixed(2)}</strong>
+              <span className="mini-desc">{t('RL 模式寻优惩罚', 'Mode-seeking penalty')}</span>
+            </div>
+          </div>
+
+          {/* Sampling Live Feed */}
+          <div className="klv-rollout-card">
+            <div className="klv-rollout-header">
+              <h6>{t('策略实时生成监测 (Live Sampling Rollout)', 'Live Sampling Rollout Stream')}</h6>
+              <span className="klv-count-badge">
+                {t(`已采样: ${sampleStats.total}`, `Total: ${sampleStats.total}`)}
+              </span>
+            </div>
+
+            <div className="klv-stats-chips">
+              <span className="chip mode-a">{t(`解法 A: ${sampleStats.modeA}`, `Mode A: ${sampleStats.modeA}`)}</span>
+              <span className="chip mode-b">{t(`解法 B: ${sampleStats.modeB}`, `Mode B: ${sampleStats.modeB}`)}</span>
+              <span className="chip hallu">{t(`幻觉错误: ${sampleStats.hallucinated}`, `Hallucinations: ${sampleStats.hallucinated}`)}</span>
+            </div>
+
+            <div className="klv-rollout-tape">
+              {recentSamples.length === 0 ? (
+                <div className="klv-empty-tape">
+                  {t('点击“开启策略内生成采样”观察学生模型输出分布...', 'Click "Live On-Policy Sampling" to inspect outputs...')}
+                </div>
+              ) : (
+                recentSamples.map((s) => (
+                  <div key={s.id} className={`klv-sample-row ${s.status}`}>
+                    <span className={`status-indicator ${s.status}`}></span>
+                    <span className="sample-x">x = {s.x.toFixed(2)}</span>
+                    <span className="sample-text">{s.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Deep-Dive Theory Tabs */}
+      <div className="klv-theory-section">
+        <div className="klv-tab-buttons">
+          <button
+            type="button"
+            className={`klv-tab-btn ${activeTab === 'asymmetry' ? 'active' : ''}`}
+            onClick={() => setActiveTab('asymmetry')}
+          >
+            {t('1. KL 散度非对称性本质', '1. Mathematical Asymmetry')}
+          </button>
+          <button
+            type="button"
+            className={`klv-tab-btn ${activeTab === 'hallucination' ? 'active' : ''}`}
+            onClick={() => setActiveTab('hallucination')}
+          >
+            {t('2. SFT 幻觉 vs RL 确定性', '2. SFT Hallucination vs RL Consistency')}
+          </button>
+          <button
+            type="button"
+            className={`klv-tab-btn ${activeTab === 'dagger' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dagger')}
+          >
+            {t('3. DAgger 误差阻断与自愈', '3. DAgger Compounding Error Prevention')}
+          </button>
+        </div>
+
+        <div className="klv-theory-body">
+          {activeTab === 'asymmetry' && (
+            <div className="klv-theory-content">
+              <h5>{t('KL 散度不对称性：谁在前面，就必须“覆盖”谁', 'The Asymmetry Rule: "Cover Whatever Sits in Front"')}</h5>
+              <p>
+                {t(
+                  'KL 散度公式 D_KL(P || Q) = ∑ P(x) log(P(x) / Q(x)) 的无穷大惩罚只发生在 P(x) > 0 且 Q(x) → 0 时。如果 Q(x) 在 P(x) 为 0 的地方有很大的值，惩罚项仅为 0 log 0 = 0。',
+                  'In D_KL(P || Q) = ∑ P(x) log(P(x) / Q(x)), the penalty blows up toward infinity strictly when P(x) is large but Q(x) approaches 0. When P(x) is 0 and Q(x) is large, the contribution is zero.'
+                )}
+              </p>
+              <ul>
+                <li>
+                  <strong>{t('前向 KL (Forward KL: D_KL(π_T || π_θ))', 'Forward KL (D_KL(π_T || π_θ))')}</strong>：
+                  {t(
+                    '教师在前（P = π_T），学生（Q = π_θ）必须把概率质量铺满教师认可的所有峰值（Zero-Avoiding）。容量不足时，小模型只能把质量摊平到低谷中。',
+                    'Teacher sits in front; student must cover all teacher modes (Zero-Avoiding). Lacking capacity, student smears mass into the gaps.'
+                  )}
+                </li>
+                <li>
+                  <strong>{t('逆向 KL (Reverse KL: D_KL(π_θ || π_T))', 'Reverse KL (D_KL(π_θ || π_T))')}</strong>：
+                  {t(
+                    '学生在前（P = π_θ），一旦学生在教师概率接近 0 的地方分配概率，比值 π_θ / π_T 即刻爆炸（Zero-Forcing）。因此学生主动舍弃无力支撑的峰值，锁定单一高质量峰值。',
+                    'Student sits in front; placing mass where teacher is zero causes explosive penalty (Zero-Forcing). Student drops unrepresentable modes and locks onto one.'
+                  )}
+                </li>
+              </ul>
+            </div>
+          )}
+
+          {activeTab === 'hallucination' && (
+            <div className="klv-theory-content">
+              <h5>{t('为什么监督微调（SFT）频繁胡说，而强化学习（RL）更严谨？', 'Why SFT Hallucinates and RL Stays Coherent')}</h5>
+              <p>
+                {t(
+                  '在经典 SFT 中，同一个算法问题在预训练/微调数据集中通常有多种完全不同但都正确的解法（如回溯解法 vs 动态规划解法）。SFT 强行最小化前向 KL，迫使模型同时兼顾所有人类写法。',
+                  'In SFT, open-ended questions contain multiple valid approaches. SFT minimizes forward KL, forcing small models to mimic all modes simultaneously.'
+                )}
+              </p>
+              <p>
+                {t(
+                  '由于小参数模型容量不足，其注意力概率曲面在中间地带“摊平成粥”，将解法 A 的前几行代码与解法 B 的变量命名错误缝合，产生看似通顺（Fluent）实则荒谬死循环的幻觉代码。而逆向 KL（RL / MiniLLM）允许模型果断舍弃解法 B，从头到尾高保真输出解法 A。',
+                  'Constrained capacity forces the student to smear probability across the void, sewing prefixes of Solution A onto suffixes of Solution B to produce fluent nonsense. Reverse KL allows dropping Solution B and cleanly sticking to Solution A.'
+                )}
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'dagger' && (
+            <div className="klv-theory-content">
+              <h5>{t('从 DAgger 定理看策略内蒸馏（OPD）：阻断 O(T^2) 误差雪崩', 'DAgger Compounding Error Prevention: O(T) vs O(T^2)')}</h5>
+              <p>
+                {t(
+                  '模仿学习（Ross et al., DAgger 定理）证明：在离线教师轨迹（Off-policy）上训练的模型，在部署时一旦在早期产生微小偏差，即刻跌入从未训练过的分布外前缀（OOD）。后续生成步骤完全没有自愈纠错能力，累积误差随序列长度呈二次方爆炸 O(T^2)。',
+                  'Under the DAgger theorem, an off-policy model that drifts at step t lands in an unvisited OOD prefix. Without error recovery skills, trajectory errors compound quadratically: O(T^2).'
+                )}
+              </p>
+              <p>
+                {t(
+                  '策略内知识蒸馏（OPD）让教师直接在学生自主生成的真实前缀上打分，使早期偏差留在训练分布内，模型自主学会回溯（Backtracking）与逻辑自纠，累积误差被严格约束为线性 O(T)。这正是 1000+ Token 长思维链得以稳定执行的理论基石。',
+                  'On-Policy Distillation (OPD) grades the student on its own generated prefixes. Early slips are in-distribution; the model learns recovery and error growth stays linear: O(T).'
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 function BacktrackingPatternAtlas() {
+
   const { isEnglish, t } = useUiCopy();
   const [activePattern, setActivePattern] = useState('subsets');
   const basePattern = BACKTRACKING_PATTERNS.find(({ id }) => id === activePattern)
@@ -30178,7 +30896,7 @@ function MartingaleRandomWalkVisual() {
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|daily-temperatures-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|daily-temperatures-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|kl-divergence-modes-demo|forward-reverse-kl-visual|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
@@ -30302,6 +31020,10 @@ function MarkdownPre({ children, ...props }) {
 
   if (match?.[1] === 'anisotropy-cone-demo') {
     return <AnisotropyConeVisual />;
+  }
+
+  if (match?.[1] === 'kl-divergence-modes-demo' || match?.[1] === 'forward-reverse-kl-visual') {
+    return <KLDivergenceModesVisual />;
   }
 
   if (match?.[1] === 'greedy-patterns') {

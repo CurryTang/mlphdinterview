@@ -238,6 +238,9 @@ Forward KL (Mode-Covering / SFT) vs Reverse KL (Mode-Seeking / RL):
 | **Small Student Capacity** | Forced to cover all modes; lacking parameters, it smears mass across gaps $\to$ **Fluent nonsense and hallucinations**. | Drops unrepresentable secondary modes; focuses on one coherent solution $\to$ **High fidelity and rigorous logic**. |
 | **Training Parallel** | Corresponds to standard Supervised Fine-Tuning (SFT). | Corresponds to Reinforcement Learning (RL) optimization. |
 
+```kl-divergence-modes-demo
+```
+
 ---
 
 ### 3. Why On-Policy Beats Off-Policy: Three Foundational Theoretical Arguments
