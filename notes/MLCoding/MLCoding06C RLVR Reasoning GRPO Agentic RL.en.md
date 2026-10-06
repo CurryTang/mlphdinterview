@@ -152,6 +152,8 @@ DeepSeek-R1 4-Stage Training Pipeline:
 │ • Mechanism: Rule rewards (for math/code) + Preference Model (safety)  │
 │ • Goal: Achieve SOTA reasoning aligned with human values               │
 └────────────────────────────────────────────────────────────────────────┘
+```
+
 ### 2. Knowledge Distillation Paradigms: White-Box Logits vs. Black-Box Sequence SFT (DeepSeek-R1-Distill)
 
 Once a frontier reasoning model (such as DeepSeek-R1 671B) is trained via large-scale RL, how can its reasoning prowess be transferred into lightweight edge models (e.g., 1.5B / 7B / 8B / 14B / 32B)? Two distillation paradigms exist in production:
