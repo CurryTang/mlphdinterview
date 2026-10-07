@@ -52,26 +52,65 @@ $$\mathcal{L}_{\text{RM}}(\psi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \
 
 ## Module 2: PPO 4-Model System Architecture & GAE Advantage
 
-### 1. The 4-Model Concurrent Runtime Topology in PPO
+### 1. The 4-Model Concurrent Runtime Topology and Unified Notation System
+
+In Phase 3 PPO training, the distributed GPU cluster orchestrates **four concurrent models with distinct responsibilities**:
 
 ```text
 PPO 4-Model Concurrency Topology:
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 1. Actor Model (π_θ, Policy):                                          │
-│    • Status: Active Training (Full Backprop & Optimizer Updates)       │
-│    • Role: Receives Prompt x, generates autoregressive response y      │
+│ 1. Actor Model (π_θ, Active Policy):                                   │
+│    • Status: Active Training (Full Backpropagation & Optimizer Updates)│
+│    • Role: Receives prompt x, autoregressively samples response y      │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 2. Critic / Value Model (V_ϕ):                                         │
-│    • Status: Active Training (Full Backprop & Optimizer Updates)       │
-│    • Role: Estimates state baseline V(s_t) to compute GAE advantages   │
+│ 2. Critic / Value Model (V_ϕ, Value Network):                          │
+│    • Status: Active Training (Full Backpropagation & Optimizer Updates)│
+│    • Role: Estimates per-token baseline expected return V_ϕ(s_t)       │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 3. Reward Model (r_ψ):                                                 │
+│ 3. Reward Model (r_ψ, Preference Scorer):                              │
 │    • Status: Frozen (Inference Only)                                   │
 │    • Role: Scores full sequence (x, y) with scalar preference value    │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 4. Reference Model (π_ref, SFT Baseline):                              │
 │    • Status: Frozen (Inference Only)                                   │
 │    • Role: Computes per-token baseline log-probs for KL regularization │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Unified Notation Mapping Table (Classic MDP $\Longleftrightarrow$ GAE Numerical System $\Longleftrightarrow$ LLM RLHF)
+
+To eliminate dissonance between abstract RL notation and autoregressive LLM token sequences, all mathematical derivations adhere strictly to the following dictionary:
+
+| Dimension | Classical MDP (TRPO Foundations) | Generalized Advantage Estimation (GAE) | LLM Post-Training (PPO / RLHF) |
+| :--- | :--- | :--- | :--- |
+| **State $s_t$** | Environmental state $s_t \in \mathcal{S}$ | Evaluation state $s_t$ | Context prefix $s_t = (x, y_{<t})$ (Prompt concatenated with generated tokens) |
+| **Action $a_t$** | Agent action $a_t \in \mathcal{A}$ | Action index $a_t$ | Emitted token $a_t = y_t \in \mathcal{V}$ (Vocabulary) |
+| **Policy $\pi_\theta$** | Action probability distribution $\pi_\theta(a_t \mid s_t)$ | Rollout policy $\pi_{\text{old}}$ | Autoregressive generative distribution $\pi_\theta(y_t \mid x, y_{<t})$ |
+| **Reward $R_t$** | Immediate scalar feedback $r(s_t, a_t)$ | TD error immediate term $R_t$ | Composite reward $R_t$ (Intermediate KL penalty; terminal $r_\psi(x, y)$ bonus) |
+| **Value Function $V(s)$** | True expected return $V^\pi(s)$ | Fitted value network $V_\phi(s_t)$ | Per-token scalar prediction $V_\phi(x, y_{<t})$ |
+| **TD Error $\delta_t^V$** | $\delta_t^V = r_t + \gamma V(s_{t+1}) - V(s_t)$ | Single-step TD residual $\delta_t^V$ | $\delta_t^V = R_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$ |
+| **Advantage $A(s, a)$** | Theoretical advantage $Q^\pi - V^\pi$ | Sample advantage estimator $\hat{A}_t^{\text{GAE}}$ | Per-token advantage scalar $\hat{A}_t^{\text{GAE}}$ |
+| **Probability Ratio $r_t(\theta)$**| Importance weight $\frac{\pi_\theta(a \mid s)}{\pi_{\text{old}}(a \mid s)}$ | - | Token likelihood ratio $r_t(\theta) = \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\text{old}}(y_t \mid x, y_{<t})}$ |
+| **Trajectory $\tau$** | $\tau = (s_0, a_0, r_0, s_1, \dots)$ | Experience batch $[(s_t, a_t, R_t)]_{t=1}^T$ | Complete interaction $(x, y_1, R_1, y_2, R_2, \dots, y_T, R_T)$ |
+
+#### The Tripartite Architecture: TRPO $\to$ GAE $\to$ PPO
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. TRPO (Theoretical Objective & Trust Region):                        │
+│    • Proves Performance Difference Lemma: η(π) - η(π_old) = E[∑ γ^t A] │
+│    • Formulates Surrogate Objective L_π_old(π) & Monotonic MM Theorem  │
+│    • Open challenge: True A^π_old is unknown; 2nd-order FIM is too slow│
+├────────────────────────────────────────────────────────────────────────┤
+│ 2. GAE (Empirical Advantage Estimation):                               │
+│    • Approximates unobservable A^π_old via Critic network V_ϕ          │
+│    • Weights telescoping TD errors δ_t^V exponentially into Â_t^GAE    │
+│    • Modulates bias vs. variance via λ, supplying robust advantages    │
+├────────────────────────────────────────────────────────────────────────┤
+│ 3. PPO (Scalable First-Order Production Optimization):                 │
+│    • Replaces second-order Fisher inversion with first-order clipping  │
+│    • Enforces asymmetric trust regions via pessimistic min bound       │
+│    • Plugs in GAE's Â_t^GAE; enables multi-epoch minibatch SGD with Adam│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,129 +122,168 @@ To prevent the policy $\pi_\theta$ from exploiting blind spots in the reward mod
 
 $$R_t = \begin{cases} -\beta \log \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\text{ref}}(y_t \mid x, y_{<t})}, & t < T \\ r_\psi(x, y) - \beta \log \frac{\pi_\theta(y_T \mid x, y_{<T})}{\pi_{\text{ref}}(y_T \mid x, y_{<T})}, & t = T \text{ (sequence end)} \end{cases}$$
 
+- $\beta$ is the KL penalty coefficient ($\beta \in [0.01, 0.1]$);
+- The external reward model $r_\psi(x, y)$ only fires at the terminal token $T$, while intermediate steps receive purely relative token-level KL penalties.
+
 ---
 
-### 3. Generalized Advantage Estimation (GAE) and the Bias-Variance Tradeoff
+### 3. Trust Region Policy Optimization (TRPO) Foundations & Mathematical Derivation
 
-In policy gradient algorithms, the variance of the gradient estimator directly determines training stability and sample efficiency. GAE (Schulman et al., 2015) introduces exponential decay weighting to construct a smooth interpolation between single-step Temporal Difference (TD) and full-trajectory Monte Carlo returns.
+In Vanilla Policy Gradients, parameters are updated directly along Euclidean gradient directions: $\theta_{\text{new}} = \theta_{\text{old}} + \alpha \nabla_\theta J(\theta)$. This framework suffers from a catastrophic step-size dilemma: minute steps stall convergence, while aggressive steps degrade policy performance, generating corrupt rollouts that trigger irreversible **Policy Collapse**. TRPO (Schulman et al., 2015) provides rigorous monotonic improvement guarantees to resolve this issue.
 
-#### 1. Temporal Difference Error and $k$-Step Advantage Estimators
+#### 1. Rigorous Derivation of the Performance Difference Lemma
 
-Let $V_\phi(s)$ denote the learned value network. The single-step Temporal Difference (TD) error is defined as:
+Let the expected discounted return of policy $\pi$ under discount factor $\gamma \in (0, 1)$ be defined as $\eta(\pi) = \mathbb{E}_{\tau \sim \pi}\left[\sum_{t=0}^\infty \gamma^t r(s_t, a_t)\right]$ with $s_0 \sim \rho_0$.
+The state value function is $V^\pi(s) = \mathbb{E}_{\tau \sim \pi}\left[\sum_{t=0}^\infty \gamma^t r(s_t, a_t) \mid s_0 = s\right]$, yielding $\eta(\pi) = \mathbb{E}_{s_0 \sim \rho_0}[V^\pi(s_0)]$.
+
+For an **arbitrary** baseline function $V(s)$, consider the sum of discounted temporal difference residuals along a trajectory $\tau = (s_0, a_0, s_1, \dots) \sim \pi$:
+$$\sum_{t=0}^\infty \gamma^t \left( r(s_t, a_t) + \gamma V(s_{t+1}) - V(s_t) \right) = \sum_{t=0}^\infty \gamma^t r(s_t, a_t) + \sum_{t=0}^\infty \gamma^{t+1} V(s_{t+1}) - \sum_{t=0}^\infty \gamma^t V(s_t)$$
+
+Expanding the value terms reveals a **Telescoping Sum**:
+$$\sum_{t=0}^\infty \gamma^{t+1} V(s_{t+1}) - \sum_{t=0}^\infty \gamma^t V(s_t) = \lim_{T \to \infty} \gamma^{T+1} V(s_{T+1}) - V(s_0) = -V(s_0)$$
+
+Substituting this identity back and taking the expectation across trajectories sampled from the new policy $\tau \sim \pi$:
+$$\mathbb{E}_{\tau \sim \pi}\left[ \sum_{t=0}^\infty \gamma^t \left( r(s_t, a_t) + \gamma V(s_{t+1}) - V(s_t) \right) \right] = \mathbb{E}_{\tau \sim \pi}\left[ \sum_{t=0}^\infty \gamma^t r(s_t, a_t) \right] - \mathbb{E}_{s_0 \sim \rho_0}[V(s_0)] = \eta(\pi) - \mathbb{E}_{s_0 \sim \rho_0}[V(s_0)]$$
+
+Now, choose the baseline function to be exactly the **value function of the old policy** $V = V^{\pi_{\text{old}}}$:
+- The baseline expectation becomes: $\mathbb{E}_{s_0 \sim \rho_0}[V^{\pi_{\text{old}}}(s_0)] = \eta(\pi_{\text{old}})$;
+- The inner conditional expectation over transition $s_{t+1} \sim P(\cdot \mid s_t, a_t)$ becomes:
+  $$\mathbb{E}_{s_{t+1}}\left[ r(s_t, a_t) + \gamma V^{\pi_{\text{old}}}(s_{t+1}) \right] - V^{\pi_{\text{old}}}(s_t) = Q^{\pi_{\text{old}}}(s_t, a_t) - V^{\pi_{\text{old}}}(s_t) = A^{\pi_{\text{old}}}(s_t, a_t)$$
+
+Rearranging terms proves the exact **Kakade & Langford (2002) Performance Difference Lemma**:
+$$\eta(\pi) - \eta(\pi_{\text{old}}) = \mathbb{E}_{\tau \sim \pi} \left[ \sum_{t=0}^\infty \gamma^t A^{\pi_{\text{old}}}(s_t, a_t) \right]$$
+
+> **Key Intuition**: The performance gap between any two policies is exactly the cumulative old advantage function integrated over trajectories generated by the new policy, because intermediate state values cancel out telescopically.
+
+#### 2. The Distribution Shift Dilemma
+
+Define the unnormalized discounted state visitation distribution under policy $\pi$:
+$$\rho_\pi(s) = \sum_{t=0}^\infty \gamma^t P(s_t = s \mid s_0 \sim \rho_0, \pi)$$
+
+Rewriting trajectory expectations over state-action space yields:
+$$\eta(\pi) = \eta(\pi_{\text{old}}) + \sum_s \rho_\pi(s) \sum_a \pi(a \mid s) A^{\pi_{\text{old}}}(s, a)$$
+
+**The Impasse**: This formulation cannot be optimized directly via numerical gradient ascent. The distribution $\rho_\pi(s)$ depends in a complex, unknown way on the *new candidate policy* $\pi$. Before deploying $\pi$ into the environment, one cannot sample from $\rho_\pi(s)$!
+
+#### 3. Construction of the Surrogate Objective and Local Matching Properties
+
+TRPO resolves this by substituting the unknown distribution $\rho_\pi(s)$ with the known distribution $\rho_{\pi_{\text{old}}}(s)$, constructing the **Surrogate Objective**:
+$$L_{\pi_{\text{old}}}(\pi) = \eta(\pi_{\text{old}}) + \sum_s \rho_{\pi_{\text{old}}}(s) \sum_a \pi(a \mid s) A^{\pi_{\text{old}}}(s, a)$$
+
+Applying importance sampling on actions gives an empirically computable expectation:
+$$L_{\pi_{\text{old}}}(\pi) = \eta(\pi_{\text{old}}) + \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi(a \mid s)}{\pi_{\text{old}}(a \mid s)} A^{\pi_{\text{old}}}(s, a) \right]$$
+
+The surrogate objective exhibits two vital local properties at $\pi = \pi_{\text{old}}$:
+1. **Zero-Order Consistency**:
+   $$L_{\pi_{\text{old}}}(\pi_{\text{old}}) = \eta(\pi_{\text{old}}) + \sum_s \rho_{\pi_{\text{old}}}(s) \sum_a \pi_{\text{old}}(a \mid s) A^{\pi_{\text{old}}}(s, a) = \eta(\pi_{\text{old}})$$
+   (since $\sum_a \pi_{\text{old}}(a \mid s) A^{\pi_{\text{old}}}(s, a) = 0$ for all states);
+2. **First-Order Consistency (Policy Gradient Equivalence)**:
+   $$\nabla_\theta L_{\pi_{\theta_{\text{old}}}}(\pi_\theta)\big|_{\theta = \theta_{\text{old}}} = \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \nabla_\theta \log \pi_\theta(a \mid s)\big|_{\theta = \theta_{\text{old}}} A^{\pi_{\theta_{\text{old}}}}(s, a) \right] = \nabla_\theta \eta(\pi_\theta)\big|_{\theta = \theta_{\text{old}}}$$
+   Matching the Sutton Policy Gradient Theorem exactly.
+
+#### 4. Approximation Bound & Monotonic Improvement Theorem (Minorize-Maximization)
+
+The error between true return $\eta(\pi)$ and surrogate return $L_{\pi_{\text{old}}}(\pi)$ arises purely from state distribution drift:
+$$\eta(\pi) - L_{\pi_{\text{old}}}(\pi) = \sum_s (\rho_\pi(s) - \rho_{\pi_{\text{old}}}(s)) \sum_a \pi(a \mid s) A^{\pi_{\text{old}}}(s, a)$$
+
+Via coupling arguments and Pinsker's inequality, Schulman et al. established a rigorous lower bound:
+$$\eta(\pi) \ge L_{\pi_{\text{old}}}(\pi) - C \cdot D_{\text{KL}}^{\max}(\pi_{\text{old}}, \pi) \equiv M_{\pi_{\text{old}}}(\pi), \quad \text{where } C = \frac{4 \epsilon \gamma}{(1 - \gamma)^2}, \quad \epsilon = \max_{s, a} |A^{\pi_{\text{old}}}(s, a)|$$
+
+Here $M_{\pi_{\text{old}}}(\pi)$ is a valid minorant in the **Minorize-Maximization (MM)** algorithm:
+- At $\pi = \pi_{\text{old}}$: $M_{\pi_{\text{old}}}(\pi_{\text{old}}) = L_{\pi_{\text{old}}}(\pi_{\text{old}}) - 0 = \eta(\pi_{\text{old}})$;
+- For all $\pi$: $\eta(\pi) \ge M_{\pi_{\text{old}}}(\pi)$.
+
+**Monotonic Improvement Guarantee**:
+Selecting $\pi_{\text{new}} = \arg\max_\pi M_{\pi_{\text{old}}}(\pi)$ guarantees:
+$$\eta(\pi_{\text{new}}) \ge M_{\pi_{\text{old}}}(\pi_{\text{new}}) \ge M_{\pi_{\text{old}}}(\pi_{\text{old}}) = \eta(\pi_{\text{old}})$$
+Proving that the true policy performance improves monotonically.
+
+#### 5. Why a KL Trust Region Is Necessary
+
+In practice, the theoretical multiplier $C = \frac{4\epsilon\gamma}{(1-\gamma)^2}$ is prohibitively large, causing near-zero step sizes. Conversely, standard unconstrained gradient ascent in parameter space suffers from severe non-Euclidean curvature distortions:
+- Infinitesimal parameter movements $\|\Delta \theta\|_2 < 10^{-4}$ can cause catastrophic shifts in action probabilities;
+- Suboptimal parameter updates yield degenerate rollouts, precipitating irreversible policy collapse.
+
+Thus, step sizes must be bounded directly on the **probability distribution manifold** via an average KL trust region constraint:
+$$\max_\theta \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi_\theta(a \mid s)}{\pi_{\theta_{\text{old}}}(a \mid s)} A^{\pi_{\theta_{\text{old}}}}(s, a) \right] \quad \text{s.t.} \quad \bar{D}_{\text{KL}}(\pi_{\theta_{\text{old}}} \parallel \pi_\theta) \le \delta$$
+
+#### 6. Scalable Approximation: Taylor Expansion, Fisher Matrix, and Conjugate Gradients (CG)
+
+Expanding around $\theta_{\text{old}}$:
+1. **First-order expansion of objective**: $L(\theta) \approx L(\theta_{\text{old}}) + g^T (\theta - \theta_{\text{old}})$, where $g = \nabla_\theta L\big|_{\theta_{\text{old}}}$;
+2. **Second-order expansion of KL constraint**: $\bar{D}_{\text{KL}} \approx \frac{1}{2} (\theta - \theta_{\text{old}})^T F (\theta - \theta_{\text{old}})$, where $F = \mathbb{E}[\nabla_\theta \log \pi_\theta \nabla_\theta \log \pi_\theta^T]$ is the Fisher Information Matrix (FIM).
+
+Lagrangian duality yields the **Natural Policy Gradient** update direction:
+$$\Delta \theta = \sqrt{\frac{2\delta}{g^T F^{-1} g}} F^{-1} g$$
+
+##### Scalable Approximation Mechanics
+- **Conjugate Gradient (CG) Method**: Avoids explicitly inverting $F \in \mathbb{R}^{d \times d}$ ($O(d^3)$ complexity). CG iteratively solves $F x = g$ using Fisher-vector products $F v = \nabla_\theta \left( (\nabla_\theta \bar{D}_{\text{KL}})^T v \right)$ via two backward passes, converging in 10–20 iterations;
+- **Backtracking Line Search**: Evaluates step sizes $\theta = \theta_{\text{old}} + \alpha^j \Delta \theta$ ($\alpha \in (0, 1)$) to ensure actual objective improvement and strict compliance with the unapproximated KL constraint $\bar{D}_{\text{KL}} \le \delta$.
+
+---
+
+### 4. Generalized Advantage Estimation (GAE) and the Bias-Variance Tradeoff
+
+#### 1. The Core Theoretical Link between GAE and TRPO/PPO
+
+In TRPO's surrogate objective, the term $A^{\pi_{\text{old}}}(s, a) = Q^{\pi_{\text{old}}}(s, a) - V^{\pi_{\text{old}}}(s)$ must be evaluated on empirical samples. However, true values are unobservable from discrete scalar rewards $R_t$.
+
+**GAE's Role**:
+- Employs a Critic network $V_\phi(s)$ to fit $V^{\pi_{\text{old}}}(s)$;
+- Recognizes that the single-step TD error $\delta_t^V = R_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$ is the elemental telescoping unit of the Performance Difference Lemma;
+- Blends multi-step advantage horizons via decay parameter $\lambda \in [0, 1]$, providing low-variance, low-bias advantage estimates $\hat{A}_t^{\text{GAE}}$ for policy optimization.
+
+#### 2. TD Error and $k$-Step Advantage Estimator Cascades
+
 $$\delta_t^V = R_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$$
-
-Expanding across different time horizons yields $k$-step advantage estimators:
-$$\hat{A}_t^{(1)} = \delta_t^V = R_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$$
+$$\hat{A}_t^{(1)} = \delta_t^V$$
 $$\hat{A}_t^{(2)} = \delta_t^V + \gamma \delta_{t+1}^V = R_t + \gamma R_{t+1} + \gamma^2 V_\phi(s_{t+2}) - V_\phi(s_t)$$
 $$\hat{A}_t^{(k)} = \sum_{l=0}^{k-1} \gamma^l \delta_{t+l}^V = \sum_{l=0}^{k-1} \gamma^l R_{t+l} + \gamma^k V_\phi(s_{t+k}) - V_\phi(s_t)$$
 $$\hat{A}_t^{(\infty)} = \sum_{l=0}^\infty \gamma^l \delta_{t+l}^V = \sum_{l=0}^\infty \gamma^l R_{t+l} - V_\phi(s_t)$$
 
-#### 2. GAE Exponential Weighting and Recurrence
+#### 3. GAE Exponential Weighting and $O(T)$ Backward Recurrence
 
-GAE is defined as the exponentially weighted average of all $k$-step advantage estimators parameterized by $\lambda \in [0, 1]$:
 $$\hat{A}_t^{\text{GAE}(\gamma, \lambda)} = (1 - \lambda) \sum_{k=1}^\infty \lambda^{k-1} \hat{A}_t^{(k)} = \sum_{l=0}^\infty (\gamma \lambda)^l \delta_{t+l}^V$$
-
-For a finite trajectory of length $T$, GAE satisfies a backward recursive formulation with $O(T)$ complexity, enabling efficient parallel reverse scans on GPUs:
 $$\hat{A}_t^{\text{GAE}} = \delta_t^V + (\gamma \lambda) \hat{A}_{t+1}^{\text{GAE}}$$
 
-#### 3. The Bias-Variance Tradeoff Governed by $\lambda$
+#### 4. The Bias-Variance Tradeoff Governed by $\lambda$
 
-The hyperparameter $\lambda \in [0, 1]$ directly arbitrates between empirical environment sampling variance and value network modeling bias:
-
-- **$\lambda = 0$ (Single-Step TD Limit / Low Variance, High Bias)**:
+- **$\lambda = 0$ (Single-Step TD(0) Limit / Low Variance, High Bias)**:
   $$\hat{A}_t^{\text{GAE}(\gamma, 0)} = \delta_t^V = R_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$$
-  - **Minimal Variance**: Relies strictly on the immediate reward and a single state transition, accumulating zero future exploration noise;
-  - **High Bias**: Estimates are entirely bounded by the accuracy of the critic network $V_\phi$. If the critic is under-trained or systematically shifted, that estimation error is 100% transmitted into policy gradient updates, inducing persistent drift.
-- **$\lambda = 1$ (Full Monte Carlo Limit / High Variance, Zero Bias)**:
+  - Minimal sampling variance, but 100% reliant on Critic $V_\phi$ accuracy. Approximation errors directly distort policy gradients.
+- **$\lambda = 1$ (Monte Carlo Limit / High Variance, Zero Bias)**:
   $$\hat{A}_t^{\text{GAE}(\gamma, 1)} = \sum_{l=0}^\infty \gamma^l R_{t+l} - V_\phi(s_t)$$
-  - **Zero Theoretical Bias**: Returns reflect actual sampled environment rollouts; subtracting state baseline $V_\phi(s_t)$ does not alter the mathematical expectation of policy gradients ($\mathbb{E}[\nabla_\theta \log \pi_\theta \cdot V(s)] = 0$);
-  - **Severe Variance**: Compounding stochasticity across prolonged actions and transitions causes gradient variance to explode, demanding massive batch sizes to converge stably.
-- **$\lambda \in (0, 1)$ (Production Sweet Spot)**:
-  - The geometric decay factor $(\gamma \lambda)^l$ assigns dominant weights to near-term empirical returns while exponentially suppressing far-future noise;
-  - Accepts modest, bounded critic bias in exchange for orders-of-magnitude variance reduction. Production LLM RLHF commonly sets $\gamma = 1.0, \lambda \in [0.95, 0.98]$.
-
----
-
-### 4. Trust Region Policy Optimization (TRPO) Foundations
-
-In Vanilla Policy Gradients, parameters are updated directly along the Euclidean gradient direction: $\theta_{\text{new}} = \theta_{\text{old}} + \alpha \nabla_\theta J(\theta)$. This framework suffers from a fatal step-size dilemma: minute learning rates cause training stagnation, while excessive step sizes thrust parameters into poor policy regimes, generating corrupt rollout trajectories that cause irreversible **Policy Collapse**. TRPO (Schulman et al., 2015) established rigorous monotonic improvement guarantees to resolve this issue.
-
-#### 1. What TRPO Optimizes: Surrogate Objective and Monotonic Improvement Theorem
-
-Let $\eta(\pi) = \mathbb{E}_{\tau \sim \pi}[\sum_{t=0}^\infty \gamma^t R(s_t, a_t)]$ denote the expected return. By the Kakade & Langford policy improvement identity:
-$$\eta(\pi) = \eta(\pi_{\text{old}}) + \mathbb{E}_{\tau \sim \pi} \left[ \sum_{t=0}^\infty \gamma^t A^{\pi_{\text{old}}}(s_t, a_t) \right] = \eta(\pi_{\text{old}}) + \sum_s \rho_\pi(s) \sum_a \pi(a \mid s) A^{\pi_{\text{old}}}(s, a)$$
-
-Because the state visitation frequency $\rho_\pi(s)$ of the unexecuted new policy is inaccessible prior to rollout, TRPO substitutes it with the old state distribution $\rho_{\pi_{\text{old}}}(s)$, forming the **Surrogate Objective**:
-$$L_{\pi_{\text{old}}}(\pi) = \eta(\pi_{\text{old}}) + \sum_s \rho_{\pi_{\text{old}}}(s) \sum_a \pi(a \mid s) A^{\pi_{\text{old}}}(s, a) = \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi(a \mid s)}{\pi_{\text{old}}(a \mid s)} A^{\pi_{\text{old}}}(s, a) \right]$$
-
-Schulman et al. proved a guaranteed theoretical lower bound:
-$$\eta(\pi) \ge L_{\pi_{\text{old}}}(\pi) - C \cdot D_{\text{KL}}^{\max}(\pi_{\text{old}}, \pi), \quad \text{where } C = \frac{4 \epsilon \gamma}{(1 - \gamma)^2}, \quad \epsilon = \max_{s, a} |A^{\pi_{\text{old}}}(s, a)|$$
-
-**Theoretical Guarantee**: As long as the KL divergence between $\pi_{\text{old}}$ and $\pi$ is strictly bounded, maximizing the surrogate objective $L_{\pi_{\text{old}}}(\pi)$ guarantees that true expected return $\eta(\pi)$ improves monotonically.
-
-#### 2. Why a KL Trust Region Is Necessary: Parameter Space vs. Probability Manifold
-
-Standard gradient updates evaluate step size via Euclidean distance $\|\Delta \theta\|_2$ in parameter space. However, neural network parameter space is highly non-Euclidean with respect to the generated action distribution manifold:
-- In regions of high curvature, infinitesimal parameter shifts $\|\Delta \theta\|_2 < 10^{-4}$ can trigger catastrophic flips in action logits;
-- Once a destructive update damages the policy, the agent samples corrupted rollouts, unable to escape local degradation.
-
-Hence, trust region constraints must be enforced on the **probability distribution manifold**. TRPO formulates this as a hard constrained optimization problem over state-averaged KL divergence:
-$$\max_\theta \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi_\theta(a \mid s)}{\pi_{\theta_{\text{old}}}(a \mid s)} A^{\pi_{\theta_{\text{old}}}}(s, a) \right] \quad \text{s.t.} \quad \bar{D}_{\text{KL}}(\pi_{\theta_{\text{old}}} \parallel \pi_\theta) \le \delta$$
-
-#### 3. How TRPO Is Approximated: Taylor Expansion, Fisher Information Matrix, and Conjugate Gradients (CG)
-
-Because this constrained optimization problem lacks an exact closed form, TRPO computes a local Taylor expansion around $\theta_{\text{old}}$:
-1. **First-order expansion of the objective**:
-   $$L(\theta) \approx L(\theta_{\text{old}}) + g^T (\theta - \theta_{\text{old}}), \quad g = \nabla_\theta L(\theta)\big|_{\theta = \theta_{\text{old}}}$$
-2. **Second-order expansion of the KL constraint**:
-   $$\bar{D}_{\text{KL}}(\pi_{\theta_{\text{old}}} \parallel \pi_\theta) \approx \frac{1}{2} (\theta - \theta_{\text{old}})^T F (\theta - \theta_{\text{old}})$$
-   (Because the KL divergence is zero and minimal at $\theta = \theta_{\text{old}}$, its first derivative vanishes; its Hessian is the Fisher Information Matrix $F$):
-   $$F = \mathbb{E}_{s \sim \rho, a \sim \pi} \left[ \nabla_\theta \log \pi_\theta(a \mid s) \nabla_\theta \log \pi_\theta(a \mid s)^T \right]$$
-
-Applying Lagrangian duality yields the **Natural Policy Gradient** update direction:
-$$\Delta \theta = \theta - \theta_{\text{old}} = \sqrt{\frac{2\delta}{g^T F^{-1} g}} F^{-1} g$$
-
-##### Scalable Approximation Mechanics
-With millions to billions of parameters $d$, explicitly forming $F \in \mathbb{R}^{d \times d}$ and inverting it ($O(d^3)$) is computationally impossible. TRPO utilizes two engineering techniques:
-- **Conjugate Gradient (CG) Algorithm**: Directly solves $F x = g$ without computing $F^{-1}$. CG iterates in Krylov subspaces and only evaluates Fisher-vector products ($F v$). By identity $F v = \nabla_\theta \left( (\nabla_\theta \bar{D}_{\text{KL}})^T v \right)$, each matrix-vector product requires just two backpropagation passes, converging to high accuracy in 10–20 iterations;
-- **Backtracking Line Search**: Due to higher-order Taylor truncation error, TRPO evaluates exponentially decayed steps $\theta = \theta_{\text{old}} + \alpha^j \Delta \theta$ ($\alpha \in (0, 1)$), verifying that the unapproximated objective improves ($L(\theta) \ge L(\theta_{\text{old}})$) and strictly honors the exact unexpanded KL constraint ($\bar{D}_{\text{KL}} \le \delta$).
+  - Zero theoretical modeling bias, but compounding stochasticity across long rollout trajectories induces severe gradient variance.
+- **$\lambda \in (0, 1)$ (Production Practical Optimum)**:
+  - Exponential damping suppresses far-future noise, exchanging slight critic bias for orders-of-magnitude variance reduction. Production LLM RLHF commonly configures $\gamma = 1.0, \lambda \in [0.95, 0.98]$.
 
 ---
 
 ### 5. Proximal Policy Optimization (PPO-Clip) and Lower-Bound Clipping
 
-While TRPO guarantees monotonic improvement, second-order Fisher calculations, conjugate gradients, and line searches resist distributed parallelism and cannot natively leverage first-order adaptive optimizers like Adam/AdamW. PPO (Schulman et al., 2017) resolves this by formulating a purely first-order differentiable clipped surrogate objective.
-
 #### 1. Simplifications Introduced by PPO over TRPO
 
-1. **Second-order to pure first-order optimization**: Eliminates Fisher matrix computations, CG iterations, and line searches, executing standard backpropagation with Adam/AdamW;
-2. **Hard constraints to differentiable clipping**: Replaces constrained Lagrangian optimization with an inline piecewise clipped objective;
-3. **Multi-epoch minibatch reuse**: While TRPO typically updates parameters only once per rollout batch, PPO's clipped ratio protects against policy drift, enabling multi-epoch minibatch SGD updates on the same rollout data and drastically increasing sample efficiency.
+1. **Pure First-Order Optimization**: Eliminates Fisher matrix construction, Conjugate Gradient iterations, and line searches, leveraging standard backprop with Adam/AdamW;
+2. **Hard Constraints to Clipped Differentiable Objective**: Replaces constrained optimization with an unconstrained piecewise objective;
+3. **Multi-Epoch Minibatch Reuse**: PPO's clipped ratio protects against policy drift, allowing the same rollout batch to be safely updated across multiple epochs of minibatch SGD.
 
 #### 2. The PPO-Clip Objective and Pessimistic Lower Bound
 
-Define the importance sampling probability ratio:
+Define the probability ratio:
 $$r_t(\theta) = \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\text{old}}(y_t \mid x, y_{<t})}$$
 
-The PPO-Clip objective is formulated as:
-$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) \right]$$
+Plugging in GAE advantage estimates $\hat{A}_t^{\text{GAE}}$, the PPO-Clip loss is formulated as:
+$$\mathcal{L}_{\text{PPO}}(\theta) = -\hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta) \hat{A}_t^{\text{GAE}}, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t^{\text{GAE}} \right) \right]$$
 
-The outer $\min$ constructs a conservative **Pessimistic Lower Bound**, demonstrating asymmetric gating depending on the sign of $\hat{A}_t$:
+The outer $\min$ enforces a **Pessimistic Lower Bound**:
 
-- **Positive Advantage ($\hat{A}_t > 0$, action outperforms baseline, encourage probability increase)**:
-  $$\min\left( r_t(\theta) \hat{A}_t, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) = \min\left( r_t \hat{A}_t, \, (1+\epsilon)\hat{A}_t \right)$$
-  - When $r_t \le 1+\epsilon$: Objective equals $r_t \hat{A}_t$, pushing $\pi_\theta(a \mid s)$ upwards with positive gradient;
-  - When $r_t > 1+\epsilon$: Objective is plateaued to constant $(1+\epsilon)\hat{A}_t$, dropping gradient to zero;
-  - **Mechanism**: **Prevents excessive reward amplification**. Prohibits the policy from taking overly aggressive steps on favorable rollouts, avoiding policy collapse.
-- **Negative Advantage ($\hat{A}_t < 0$, action underperforms baseline, suppress probability)**:
-  - Because $\hat{A}_t$ is negative, inequalities invert:
-  $$\min\left( r_t(\theta) \hat{A}_t, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) = \min\left( r_t \hat{A}_t, \, (1-\epsilon)\hat{A}_t \right)$$
-  - When $r_t \ge 1-\epsilon$: Objective equals $r_t \hat{A}_t$, delivering negative gradient to suppress poor actions;
-  - When $r_t < 1-\epsilon$: The smaller term is $(1-\epsilon)\hat{A}_t$ due to negative multiplication, freezing gradients to zero;
-  - **Mechanism**: **Prevents excessive penalty collapses**. Avoids driving probabilities to zero abruptly, preserving exploration entropy and numerical stability.
-- **Why taking $\min$ is strictly necessary**:
-  - Without $\min$, relying solely on $\text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t$ would erroneously inflate the objective if an action worsened ($r_t < 1-\epsilon$ when $\hat{A}_t > 0$);
-  - Taking $\min$ ensures that whenever an update underperforms unclipped expectations, the lower (pessimistic) estimate bounds optimization.
+- **Positive Advantage ($\hat{A}_t^{\text{GAE}} > 0$)**:
+  $$\min\left( r_t \hat{A}_t^{\text{GAE}}, \, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t^{\text{GAE}} \right) = \min\left( r_t \hat{A}_t^{\text{GAE}}, \, (1+\epsilon)\hat{A}_t^{\text{GAE}} \right)$$
+  - When $r_t > 1+\epsilon$, objective plateaus to constant $(1+\epsilon)\hat{A}_t^{\text{GAE}}$, freezing gradient to zero. Prevents over-incentivizing favorable actions.
+- **Negative Advantage ($\hat{A}_t^{\text{GAE}} < 0$)**:
+  $$\min\left( r_t \hat{A}_t^{\text{GAE}}, \, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t^{\text{GAE}} \right) = \min\left( r_t \hat{A}_t^{\text{GAE}}, \, (1-\epsilon)\hat{A}_t^{\text{GAE}} \right)$$
+  - When $r_t < 1-\epsilon$, negative multiplication selects $(1-\epsilon)\hat{A}_t^{\text{GAE}}$, freezing gradient to zero. Prevents over-penalizing poor actions and avoids entropy collapse.
+- **Necessity of $\min$**: Guarantees that updates underperforming unclipped expectations default strictly to pessimistic bounds.
 
 ## Module 3: Direct Preference Optimization (DPO) Closed-Form Derivation
 
@@ -344,9 +422,12 @@ LLM-as-a-Judge Biases & Mitigation Protocols:
 
 ### Q3: What is the core optimization objective of TRPO? Why is a KL trust region required, and how is it approximated via Conjugate Gradients?
 > **Answer**:
-> 1. **Optimization Objective**: Optimizes the Surrogate Objective derived from the Kakade-Langford policy improvement identity:
->    $$L_{\pi_{\text{old}}}(\pi) = \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi(a \mid s)}{\pi_{\text{old}}(a \mid s)} A^{\pi_{\text{old}}}(s, a) \right]$$
->    By the theoretical monotonic lower bound $\eta(\pi) \ge L_{\pi_{\text{old}}}(\pi) - C \cdot D_{\text{KL}}^{\max}(\pi_{\text{old}}, \pi)$, keeping the KL divergence between old and new policies small guarantees monotonic improvement in true expected return;
+> 1. **Optimization Objective & Theoretical Foundations**:
+>    - **Theoretical Origin**: Grounded in the **Kakade-Langford Performance Difference Lemma**. By performing a **Telescoping Sum** over discounted temporal difference errors, intermediate state values cancel out completely, proving rigorously that expected return gap equals cumulative old advantage under new policy trajectories: $\eta(\pi) - \eta(\pi_{\text{old}}) = \mathbb{E}_{\tau \sim \pi} \left[ \sum_{t=0}^\infty \gamma^t A^{\pi_{\text{old}}}(s_t, a_t) \right]$;
+>    - **Distribution Shift & Surrogate Objective**: Because sampling from the new state distribution $\rho_\pi(s)$ before policy execution is impossible, TRPO substitutes it with $\rho_{\pi_{\text{old}}}(s)$, constructing the computable **Surrogate Objective**:
+>      $$L_{\pi_{\text{old}}}(\pi) = \eta(\pi_{\text{old}}) + \mathbb{E}_{s \sim \rho_{\pi_{\text{old}}}, a \sim \pi_{\text{old}}} \left[ \frac{\pi(a \mid s)}{\pi_{\text{old}}(a \mid s)} A^{\pi_{\text{old}}}(s, a) \right]$$
+>      This objective satisfies zero-order consistency ($L(\pi_{\text{old}}) = \eta(\pi_{\text{old}})$) and first-order gradient matching ($\nabla_\theta L = \nabla_\theta \eta$, precisely equivalent to the Policy Gradient Theorem);
+>    - **Monotonic Improvement Theorem**: Minorize-Maximization (MM) bounds state distribution drift error via $M_{\pi_{\text{old}}}(\pi) = L_{\pi_{\text{old}}}(\pi) - C \cdot D_{\text{KL}}^{\max}(\pi_{\text{old}}, \pi)$, guaranteeing that maximizing the surrogate under controlled KL divergence ensures monotonic improvement in true performance;
 > 2. **Why a KL Trust Region Is Necessary**:
 >    - Standard policy gradients enforce Euclidean step sizes in parameter space. However, neural network parameter space is highly non-linear with respect to output probability distributions; minuscule parameter steps along steep directions can trigger catastrophic distribution collapses;
 >    - Once a policy collapses, all subsequent rollout samples become degenerate noise, preventing the policy from recovering;
