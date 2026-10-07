@@ -1657,10 +1657,10 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', titleEn: 'Wiki · Flink: Stateful Stream Processing & Geographic Locality', category: 'Wiki', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
-    'Wiki · Transactional Outbox (事务发件箱)',
+    'Wiki · Pub/Sub + Transactional Outbox (事务发件箱与发布订阅模式)',
     'SystemDesignWiki Transactional Outbox.md',
     'SystemDesignWiki Transactional Outbox.en.md',
-    { directory: 'SystemDesign', titleEn: 'Wiki · Transactional Outbox Pattern', category: 'Wiki', difficulty: 'Medium' },
+    { directory: 'SystemDesign', titleEn: 'Wiki · Pub/Sub + Transactional Outbox Pattern', category: 'Wiki', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
     'Wiki · 控制面与数据面解耦 (Control & Data Plane)',

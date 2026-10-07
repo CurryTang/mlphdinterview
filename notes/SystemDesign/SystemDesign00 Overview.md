@@ -106,7 +106,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
                                                        · Message Queue (工作队列、租约与毒丸隔离)
                                                        · NoSQL + Streaming (内建 CDC、流表二象性)
                                                        · Kafka (分布式分区日志、高吞吐与一致性)
-                                                       · Transactional Outbox (解决 DB 与 MQ 双写困境)
+                                                       · Pub/Sub + Outbox (事务发件箱与发布订阅扇出)
                                                        · 控制面与数据面解耦 (K8s/Envoy 生存不变性)
                                                        · Pull vs Push (推拉模型、写扩散与读扩散权衡)
                                                        · Idempotency (幂等性意图键与实现模式)
@@ -173,9 +173,9 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 14. **[[SystemDesignWiki Kafka|Wiki · Kafka 核心机制与实战 (Distributed Commit Log)]]**
     - *核心瓶颈*：高吞吐低延迟分布式日志存储、顺序 I/O 与可靠投递一致性。
     - *主线逻辑*：分区追加写、OS Page Cache 复用与 `sendfile` 零拷贝；ISR 水位线、EOS 幂等事务。
-15. **[[SystemDesignWiki Transactional Outbox|Wiki · Transactional Outbox (事务发件箱)]]**
-    - *核心瓶颈*：本地数据库与外部消息发布（DB + MQ）双写不一致难题。
-    - *主线逻辑*：单机 ACID 事务保证业务表与 Outbox 表原子落盘；异步轮询与 CDC 挖掘。
+15. **[[SystemDesignWiki Transactional Outbox|Wiki · Pub/Sub + Transactional Outbox (发布订阅与事务发件箱)]]**
+    - *核心瓶颈*：跨服务领域事件发布与本地数据库持久化双写不一致难题。
+    - *主线逻辑*：单机 ACID 事务保证业务表与 Outbox 表原子落盘；CDC 事务日志流式挖掘；Pub/Sub 广播扇出与 Topic-to-Queue 拓扑隔离；下游 Transactional Inbox 幂等去重闭环。
 16. **[[SystemDesignWiki Control Data Plane|Wiki · 控制面与数据面解耦 (Control & Data Plane)]]**
     - *核心瓶颈*：控制管理逻辑高开销拖垮高频数据路径，控制面崩溃引发业务全局断流。
     - *主线逻辑*：大脑与躯干切分；生存第一法则（控制面宕机，数据面基于本地缓存 100% 存活运行）。

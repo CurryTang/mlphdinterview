@@ -77,7 +77,7 @@ describe('App', () => {
             : requestUrl.includes('SystemDesignWiki%20Flink') || requestUrl.includes('SystemDesignWiki Flink')
               ? '# Wiki · Apache Flink 核心架构与地理局部性流处理实战'
             : requestUrl.includes('SystemDesignWiki%20Transactional%20Outbox') || requestUrl.includes('SystemDesignWiki Transactional Outbox')
-              ? '# Wiki · Transactional Outbox (事务发件箱模式)'
+              ? '# Wiki · Pub/Sub + Transactional Outbox (发布/订阅与事务发件箱模式)'
             : requestUrl.includes('SystemDesignWiki%20Control%20Data%20Plane') || requestUrl.includes('SystemDesignWiki Control Data Plane')
               ? '# Wiki · 控制面与数据面解耦 (Control & Data Plane)'
             : requestUrl.includes('SystemDesignWiki%20Pull%20vs%20Push') || requestUrl.includes('SystemDesignWiki Pull vs Push')
