@@ -1651,6 +1651,12 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', titleEn: 'Wiki · Kafka: Partitioned Log & Architecture Deep Dive', category: 'Wiki', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
+    'Wiki · Flink (实时有状态流计算与地理局部性聚合)',
+    'SystemDesignWiki Flink.md',
+    'SystemDesignWiki Flink.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Flink: Stateful Stream Processing & Geographic Locality', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
     'Wiki · Transactional Outbox (事务发件箱)',
     'SystemDesignWiki Transactional Outbox.md',
     'SystemDesignWiki Transactional Outbox.en.md',

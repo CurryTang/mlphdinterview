@@ -188,3 +188,6 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 19. **[[SystemDesignWiki NewSQL|Wiki · NewSQL (分布式数据库架构与选型)]]**
     - *核心瓶颈*：传统分库分表跨分片分布式事务性能崩塌、重分片运维沉重与数据倾斜。
     - *主线逻辑*：计算存储分离、Range-based 动态 Region 切片、Multi-Raft 多数派强一致、Percolator 2PC。
+20. **[[SystemDesignWiki Flink|Wiki · Flink (实时有状态流计算与地理局部性聚合)]]**
+    - *核心瓶颈*：高吞吐海量事件实时窗口聚合、跨洋骨干网带宽拥塞与跨集群故障隔离。
+    - *主线逻辑*：$\boxed{\text{Flink = distributed + stateful + event-time stream processing}}$；本地 Keyed State 更新避免分布式事务；Event Time + Watermark 乱序容忍；双层局部性架构（单集群 Key Locality + 跨地域 Geographic Locality）；Local Combine $\to$ Global Reduce 树状聚合。
