@@ -1657,6 +1657,12 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', titleEn: 'Wiki · Flink: Stateful Stream Processing & Geographic Locality', category: 'Wiki', difficulty: 'Hard' },
   ),
   createTutorialDefinition(
+    'Wiki · Stream Processing (大数据流处理演进与架构权衡)',
+    'SystemDesignWiki Stream Processing.md',
+    'SystemDesignWiki Stream Processing.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Stream Processing Evolution: MapReduce to Spark and Flink', category: 'Wiki', difficulty: 'Hard' },
+  ),
+  createTutorialDefinition(
     'Wiki · Pub/Sub + Transactional Outbox (事务发件箱与发布订阅模式)',
     'SystemDesignWiki Transactional Outbox.md',
     'SystemDesignWiki Transactional Outbox.en.md',

@@ -111,6 +111,7 @@ The system design curriculum is structured into two focused pillars: **Practical
                                                        · Pull vs Push (Fan-out on Read vs Write Trade-offs)
                                                        · Idempotency (Intent Keys & Atomic Implementation)
                                                        · NewSQL (Storage-Compute Decoupling & Distributed SQL)
+                                                       · Stream Processing (MapReduce to Spark and Flink)
 ```
 
 ---
@@ -147,3 +148,4 @@ The system design curriculum is structured into two focused pillars: **Practical
 18. **[[SystemDesignWiki Idempotency|Wiki · Idempotency Design Patterns & Implementations]]**: Mathematical & engineering definitions; deep dive into CI/CD `workflow_run` (Run/Tenant/Repo/Commit/Event); 6 core paradigms (DB unique constraints, Idempotency-Key tokens, state machine CAS transitions, deduplication tables, deterministic hash IDs, and natural idempotence); 4 production pitfalls.
 19. **[[SystemDesignWiki NewSQL|Wiki · NewSQL & Distributed SQL Architecture]]**: Compute-storage decoupling, range-based Region splitting, Multi-Raft consensus, Percolator 2PC + HLC/TrueTime distributed transactions, and parallel coprocessor pushdown vs Sharded RDBMS trade-offs.
 20. **[[SystemDesignWiki Flink|Wiki · Flink: Stateful Stream Processing & Geographic Locality]]**: $\boxed{\text{Flink = distributed + stateful + event-time stream processing}}$; in-memory Keyed State eliminating distributed DB transactions; Event Time + Watermark out-of-order toleration; Two-tier locality paradigm (Key Locality within cluster + Geographic Locality across global DCs); Local Combine $\to$ Global Reduce hierarchical streaming topology.
+21. **[[SystemDesignWiki Stream Processing|Wiki · Stream Processing Evolution: MapReduce to Spark and Flink]]**: Physical I/O bottlenecks in MapReduce, Spark micro-batch latency floors and event-time semantic mismatch, Dataflow model (What/Where/When/How), Watermark out-of-order tolerance, batch-as-bounded-streaming paradigm, and Lambda to Kappa to Lakehouse evolution.

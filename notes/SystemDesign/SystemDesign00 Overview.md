@@ -111,6 +111,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
                                                        · Pull vs Push (推拉模型、写扩散与读扩散权衡)
                                                        · Idempotency (幂等性意图键与实现模式)
                                                        · NewSQL (计算存储分离与分布式事务选型)
+                                                       · Stream Processing (从 MapReduce 到 Spark 与 Flink)
 ```
 
 ---
@@ -191,3 +192,6 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 20. **[[SystemDesignWiki Flink|Wiki · Flink (实时有状态流计算与地理局部性聚合)]]**
     - *核心瓶颈*：高吞吐海量事件实时窗口聚合、跨洋骨干网带宽拥塞与跨集群故障隔离。
     - *主线逻辑*：$\boxed{\text{Flink = distributed + stateful + event-time stream processing}}$；本地 Keyed State 更新避免分布式事务；Event Time + Watermark 乱序容忍；双层局部性架构（单集群 Key Locality + 跨地域 Geographic Locality）；Local Combine $\to$ Global Reduce 树状聚合。
+21. **[[SystemDesignWiki Stream Processing|Wiki · 大数据流处理演进与架构权衡 (Stream Processing: MR → Spark → Flink)]]**
+    - *核心瓶颈*：MapReduce 阶段落盘与迭代 I/O 惩罚，Spark 微批物理延迟下限与事件时间语义割裂。
+    - *主线逻辑*：RDD 血缘容错与内存流水线；微批 4 大物理缺陷；Dataflow 模型（What/Where/When/How）、水位线与乱序容忍；批流认知颠覆（批是有界流）；Lambda $\to$ Kappa $\to$ 流批一体 Lakehouse。
