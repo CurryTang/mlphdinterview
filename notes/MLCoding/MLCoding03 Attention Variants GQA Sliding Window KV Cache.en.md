@@ -367,39 +367,107 @@ $$\operatorname{Softmax}\left(\frac{Q K^T}{\sqrt{D_h}}\right) V \quad \Longright
 | **Denominator Normalizer** | Natural row-sum $= 1$ in Softmax | $\text{Den} = \phi(Q) \big(\sum_{t} \phi(K)_t\big)^T \in (B, H, T, 1)$ | Compensates for unnormalized kernel sum, preventing sequence explosion |
 | **Final Output $O$** | $(B, H, T, D_v)$ | $\text{Num} / \text{Den} \in (B, H, T, D_v)$ | Identical shape; drop-in replacement for standard attention |
 
-#### 2. Autoregressive Causal Recurrence & Prefill / Decode Complexity
-- **Training Phase (Parallel Prefix Scan)**:
-  - Form per-step outer products: $\Delta M_t = \phi(K)_t^T V_t \in (B, H, T, D_h, D_v)$;
-  - Accumulate along the temporal axis: $M_t = \operatorname{cumsum}(\Delta M, \dim=-3)$, ensuring position $t$ absorbs only past keys and values ($j \le t$);
-  - Cumulative key normalizer: $z_t = \operatorname{cumsum}(\phi(K), \dim=-2) \in (B, H, T, D_h)$.
-- **Inference Decode Phase (RNN-style Constant Update)**:
-  - Standard Transformer: Appends each new key/value into the KV Cache, incurring linearly growing memory $\mathcal{O}(2 \times B \times H \times T \times D_h)$ and step compute $\mathcal{O}(T)$;
-  - Linear Attention: **Requires zero growing KV Cache**! Each step updates a fixed-size state in-place:
-    $$M_t = M_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
-    $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
-    $$O_t = \frac{\phi(q_t) M_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
-  - **Memory & Latency Complexity**: Step memory is strictly $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$, and step latency is strictly $\mathcal{O}(1)$, shattering the KV cache memory wall.
+#### 2. Autoregressive Causal Recurrence & State-Space Duality
 
-#### 3. Interview Traps & Theoretical Limitations
-1. **Mathematical Constraints on Feature Map $\phi(x)$**:
-   - Why not an Identity mapping? Without non-negativity, $Q K^T$ permits negative dot products, denominators can cancel to 0 causing divergence, and the probabilistic interpretation of non-negative attention weights is lost;
-   - Why not plain ReLU? Negative inputs produce exactly zero gradients (dead zones), and excessive zeros cause degenerate denominator sums;
-   - Industrial standard uses $\phi(x) = \operatorname{ELU}(x) + 1.0$: guarantees $\phi(x) > 0$, smooth and differentiable everywhere, with gentle negative gradients.
-2. **Capacity Saturation & Attention Dilution**:
-   - The state matrix $M \in \mathbb{R}^{D_h \times D_v}$ has a fixed capacity. As sequence length $T \to \infty$, unconstrained accumulation dilutes historical information under continuous new tokens, impairing Needle-in-a-Haystack retrieval compared to Softmax;
-   - This exact limitation motivates modern **RetNet (exponential decay gates)** and **DeltaNet (online error-erasure Delta rules)**.
+In causal autoregressive generation, linear attention admits dual equivalent computational paradigms: **Training Parallel Scan** and **Inference Recurrent Step**:
+
+##### (1) Step-by-Step Recurrence Formulation
+- **Hidden State Definitions**:
+  - Key-Value associative memory state matrix: $S_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$ (initial state $S_0 = \mathbf{0}$);
+  - Cumulative key normalizer vector: $z_t \in \mathbb{R}^{B \times H \times D_h}$ (initial state $z_0 = \mathbf{0}$, for scalar denominator normalization).
+- **State Update Step**:
+  $$S_t = S_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
+  $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
+- **Emission Step**:
+  $$o_t = \frac{\phi(q_t) S_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
+
+##### (2) Unification with Linear State-Space Models (SSM)
+This recurrence is mathematically isomorphic to a continuous/discrete Linear State-Space Model:
+$$S_t = \mathbf{A}_t S_{t-1} + \mathbf{B}_t x_t, \qquad y_t = \mathbf{C}_t S_t$$
+In standard linear attention:
+- State transition matrix $\mathbf{A}_t = \mathbf{I}$ (identity matrix, denoting decay-free accumulative memory);
+- Input projection $\mathbf{B}_t = \phi(k_t)^T, x_t = v_t$ (outer product projection of incoming tokens);
+- Emission readout $\mathbf{C}_t = \frac{\phi(q_t)}{\phi(q_t) z_t^T}$ (normalized query read probe).
+
+##### (3) Dual Computational Graph (Parallel Scan vs Recurrent Step)
+- **Training Phase (Parallel Associative Scan)**:
+  Because outer-product addition obeys associativity $((a + b) + c = a + (b + c))$, full-sequence training reduces to a parallel prefix scan (`torch.cumsum`). A single parallel forward pass computes all time steps simultaneously, saturating GPU Tensor Core matrix multiplication bandwidth.
+- **Inference Phase (Streaming Recurrent Step)**:
+  During autoregressive decoding, evaluation collapses to an $O(1)$ single-step RNN. For each newly generated token, the model simply adds $\phi(k_t)^T v_t$ to the fixed-size state matrix $S_{t-1}$:
+  - **Memory Footprint**: Strictly constant $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$ (completely eliminating the linearly expanding KV Cache!);
+  - **Step Latency**: Strictly constant $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$ (generating token 1 vs token 100,000 incurs identical latency).
+
+---
+
+#### 3. Expressive Capacity Gap: Linear Attention vs Full Softmax Attention
+
+Despite asymptotic $\mathcal{O}(T)$ compute and $\mathcal{O}(1)$ decoding memory advantages, linear attention consistently trails Full Softmax Attention across empirical language modeling perplexity, in-context learning, and long-context retrieval benchmarks. This capacity gap stems from four fundamental theoretical bottlenecks:
+
+##### Gap 1 · Lack of argmax Sharpness and Content Addressing
+- **Exponential Amplification in Softmax**:
+  $$\operatorname{Softmax}(S)_{ij} = \frac{\exp(q_i k_j^T / \sqrt{D_h})}{\sum_{m=1}^T \exp(q_i k_m^T / \sqrt{D_h})}$$
+  The exponential function $\exp(\cdot)$ exerts non-linear sharpness. When a single Key matches a Query slightly better than competitors, Softmax drives that attention weight close to 1 while exponentially suppressing other candidates to 0 (approximating $\operatorname{argmax}$). This hard focusing enables standard Transformers to act as **exact pointer networks and content-addressable memory**.
+- **Diffuse Smoothness in Linear Kernels**:
+  The feature inner product $\operatorname{sim}(q, k) = \phi(q) \phi(k)^T$ lacks non-linear contrast stretching. Weights across positions remain diffuse and flat, preventing the model from isolating an individual discrete token out of thousands of candidates.
+
+##### Gap 2 · Finite State Capacity & Rank Bottleneck
+- **Full Attention's Dynamic Memory Space**:
+  In Softmax Attention, historical KV vectors are stored explicitly in memory, giving an effective representation space of $\mathcal{O}(T \times D_h)$. The $T \times T$ attention matrix $A = \operatorname{softmax}(Q K^T)$ is theoretically **full-rank** or high-rank, capable of preserving $T$ mutually orthogonal context representations.
+- **Rank Collapse in Linear Attention**:
+  Linear recurrence compresses arbitrarily long histories into a fixed matrix $S_t \in \mathbb{R}^{D_h \times D_v}$. By fundamental linear algebra:
+  $$\operatorname{rank}(S_t) \le \min(D_h, D_v)$$
+  When sequence length $T \gg D_h$ (e.g. $T = 100,000, D_h = 128$), superimposing 100,000 outer-product vectors into a subspace of rank at most 128 forces severe geometric overlap and irreversible information collapse by the Pigeonhole Principle.
+
+##### Gap 3 · Attention Dilution & Un-gated Overwriting
+- **Vanishing Signal-to-Noise Ratio (SNR)**:
+  Plain linear attention accumulates states monotonically: $S_t = S_{t-1} + \phi(k_t)^T v_t$. As $t$ advances, the norm $\|S_t\|$ grows linearly with sequence length.
+- **Washing Out Distant Critical Tokens**:
+  If a critical entity is introduced at step $t=10$ (e.g., a cryptographic key or variable binding), by step $t=100,000$, its signal is diluted by 99,990 background tokens. Lacking forget gates or erasure mechanisms, early features drown below the noise floor.
+- **Full Attention Immunity**:
+  Full Attention re-evaluates all historical tokens anew with each Query, remaining immune to temporal accumulation noise.
+
+##### Gap 4 · Algorithmic Benchmark Failure Modes
+| Benchmark Task | Full Softmax Attention | Plain Linear Attention | Root Cause |
+|---|---|---|---|
+| **Needle in a Haystack (NIAH)** | ~100% retrieval accuracy | Accuracy degrades toward random guessing beyond short lengths | Absence of non-linear $\operatorname{argmax}$ sharpness; single facts drown in background noise. |
+| **Induction Heads ($[A][B] \dots [A] \to [B]$)** | Flawless 2-hop associative retrieval driving strong ICL | Severe key collision during multi-query associative recall (MQAR) | Outer-product superposition conflates distinct keys sharing similar subspace components. |
+| **State Tracking & Formal Languages (Dyck Languages)** | High circuit complexity; tracks deep parenthesis nesting | Fails on deep hierarchical language structures | Linear recurrent systems are bounded within low-order circuit complexity classes ($TC^0$), trailing general Turing automata. |
+
+##### Gap 5 · Architectural Evolutionary Fixes
+To bridge this capacity gap, modern architectures have evolved along three dominant trajectories:
+1. **Time/Data-Dependent Decay Gates**:
+   **RetNet** (static exponential decay $\gamma^t$) and **Mamba / RWKV** (data-dependent input gate $g_t$): $S_t = \operatorname{diag}(\alpha_t) S_{t-1} + \phi(k_t)^T v_t$, actively expiring obsolete history to prevent norm divergence;
+2. **Delta Rule Online Error-Erasure**:
+   **DeltaNet** and **Gated DeltaNet** employ associative memory error-correction:
+   $$S_t = S_{t-1} + \beta_t \big(v_t - S_{t-1} \phi(k_t)\big) \phi(k_t)^T$$
+   testing existing memory before writing and orthogonally erasing conflicting traces, elevating state capacity utilization toward theoretical limits;
+3. **Hybrid Architectures**:
+   **Jamba** and **Nemotron-4** stack 80% linear attention / SSM layers for linear throughput with 20% interleaved Full Softmax Attention layers for needle-sharp retrieval and complex reasoning.
+
+---
+
+#### 4. Mathematical Constraints on Feature Map $\phi(x)$
+1. **Why not an Identity mapping?**
+   Permitting negative dot products causes denominator terms to cancel toward zero (triggering numerical divergence) and destroys the probabilistic interpretation of non-negative attention weights;
+2. **Why not plain ReLU?**
+   Negative inputs generate strictly zero gradients (dead zones), permanently extinguishing key features;
+3. **Industrial Standard: $\phi(x) = \operatorname{ELU}(x) + 1.0$**:
+   Guarantees $\phi(x) > 0$ everywhere, continuously differentiable, with gentle non-zero negative gradients.
 
 </details>
 
-#### Quick Coding: `linear_attention`
+#### Quick Coding: `linear_attention` & Streaming Recurrent Step
 
 ```python
 def linear_attention(Q, K, V, causal=False):
     ...
+
+def linear_attention_step(q_t, k_t, v_t, prev_S=None, prev_z=None):
+    ...
 ```
 
 <details open>
-<summary><b>Reference Implementation: Scratch linear_attention (Causal & Non-Causal)</b></summary>
+<summary><b>Reference Implementation: Scratch linear_attention (Parallel Scan & Streaming Recurrence)</b></summary>
 
 ```python
 import torch
@@ -410,9 +478,11 @@ def feature_map(x):
     return F.elu(x) + 1.0
 
 def linear_attention(Q, K, V, causal=False):
-    # Unified tensor dimension representation:
-    # Q, K: (B, H, T, Dh) or (..., T, Dh)
-    # V:    (B, H, T, Dv) or (..., T, Dv), typically Dv = Dh
+    """Batch Mode: Supports parallel associative scan during training
+
+    Q, K: (B, H, T, Dh) or (..., T, Dh)
+    V:    (B, H, T, Dv) or (..., T, Dv), typically Dv = Dh
+    """
     Qp, Kp = feature_map(Q), feature_map(K)
 
     if not causal:
@@ -445,6 +515,41 @@ def linear_attention(Q, K, V, causal=False):
     # 4. Denominator: (..., T, Dh) * (..., T, Dh) -> (..., T, 1)
     den = torch.einsum("... t d, ... t d -> ... t", Qp, z_cum).unsqueeze(-1)
     return num / den  # (..., T, Dv)
+
+
+def linear_attention_step(q_t, k_t, v_t, prev_S=None, prev_z=None):
+    """Streaming Recurrent Step Mode: Used during autoregressive decoding; O(1) step memory and latency
+
+    q_t, k_t: (B, H, Dh) Single-step Query and Key
+    v_t:      (B, H, Dv) Single-step Value
+    prev_S:   (B, H, Dh, Dv) Previous memory state matrix S_{t-1}, pass None on first step
+    prev_z:   (B, H, Dh)     Previous cumulative key vector z_{t-1}, pass None on first step
+    Returns:
+        out_t:  (B, H, Dv) Single-step output
+        curr_S: (B, H, Dh, Dv) Updated memory state S_t
+        curr_z: (B, H, Dh)     Updated key vector z_t
+    """
+    qp_t, kp_t = feature_map(q_t), feature_map(k_t)
+
+    # State initialization (S_0 = 0, z_0 = 0)
+    if prev_S is None:
+        prev_S = torch.zeros(
+            *q_t.shape[:-1], q_t.shape[-1], v_t.shape[-1],
+            device=q_t.device, dtype=q_t.dtype
+        )
+        prev_z = torch.zeros_like(q_t)
+
+    # 1. State update step: S_t = S_{t-1} + kp_t^T @ v_t
+    delta_S = torch.einsum("... d, ... v -> ... d v", kp_t, v_t)
+    curr_S = prev_S + delta_S
+    curr_z = prev_z + kp_t
+
+    # 2. Emission step: o_t = (qp_t @ S_t) / (qp_t @ z_t^T)
+    num = torch.einsum("... d, ... d v -> ... v", qp_t, curr_S)
+    den = torch.einsum("... d, ... d -> ...", qp_t, curr_z).unsqueeze(-1)
+    out_t = num / den
+
+    return out_t, curr_S, curr_z
 ```
 
 </details>

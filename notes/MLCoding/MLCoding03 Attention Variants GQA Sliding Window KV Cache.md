@@ -369,39 +369,107 @@ $$\operatorname{Softmax}\left(\frac{Q K^T}{\sqrt{D_h}}\right) V \quad \Longright
 | **分母归一化项** | Softmax 沿最后一维天然和为 1 | $\text{Den} = \phi(Q) \big(\sum_{t} \phi(K)_t\big)^T \in (B, H, T, 1)$ | 补偿核映射缺少的分母归一化因子，防止长序列发散 |
 | **最终输出 $O$** | $(B, H, T, D_v)$ | $\text{Num} / \text{Den} \in (B, H, T, D_v)$ | 形状完全一致，即插即用替换标准 Attention |
 
-#### 2. 自回归因果递推 (Causal Streaming Recurrence & Prefill/Decode 复杂度)
-- **训练阶段（并行前缀和 Parallel Prefix Scan）**：
-  - 构造每个位置的外积增量：$\Delta M_t = \phi(K)_t^T V_t \in (B, H, T, D_h, D_v)$；
-  - 沿时间维累加：$M_t = \operatorname{cumsum}(\Delta M, \dim=-3)$，使每个时间步 $t$ 仅聚合历史 $j \le t$ 的键值对；
-  - 累积 Key 权重：$z_t = \operatorname{cumsum}(\phi(K), \dim=-2) \in (B, H, T, D_h)$。
-- **推理 Decode 阶段（RNN 式常数更新）**：
-  - 传统 Transformer：每步将新 Key/Value 写入 KV Cache，显存占用随时间线性扩张 $\mathcal{O}(2 \times B \times H \times T \times D_h)$，每步计算量递增至 $\mathcal{O}(T)$；
-  - 线性注意力：**无需任何随序列膨胀的 KV Cache**！每个 step 仅需就地累加常数大小的状态：
-    $$M_t = M_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
-    $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
-    $$O_t = \frac{\phi(q_t) M_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
-  - **显存与计算复杂度**：每步显存占用恒定为 $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$，单步延时恒定 $\mathcal{O}(1)$，彻底粉碎 KV Cache 显存墙。
+#### 2. 自回归因果递推形式与状态空间对偶性 (Recurrent Formulation & State-Space Duality)
 
-#### 3. 面试致命陷阱与理论局限
-1. **特征映射 $\phi(x)$ 的数学约束**：
-   - 为何不用恒等映射（Identity，无激活）？若允许负值，核函数退化为低秩线性分解，分母可能抵消为 0 导致数值发散，且破坏注意力权重的非负测度概率解释；
-   - 为何不用 ReLU？负值区间梯度完全归零（死区），造成大量 Key 向量被抹去；
-   - 业界通用标准采用 $\phi(x) = \operatorname{ELU}(x) + 1.0$：严格满足 $\phi(x) > 0$，处处连续可微，保留微弱负向梯度。
-2. **容量饱和与注意力稀释 (Capacity Saturation & Attention Dilution)**：
-   - 状态矩阵 $M \in \mathbb{R}^{D_h \times D_v}$ 维度固定（常数容量）。当序列极长（$T \to \infty$）时，所有历史 Token 外积被无加权累加，导致历史信息被新 Token 严重稀释冲刷，大海捞针（Needle in a Haystack）精准检索能力显著落后于 Softmax；
-   - 这一理论缺陷正是后续 **RetNet（引入指数衰减门控）** 与 **DeltaNet（引入在线误差擦除更新规则）** 演进的核心动机。
+在因果自回归生成模式下，线性注意力拥有**矩阵并行扫描（Training Parallel Scan）**与**流式递推（Inference Recurrent Step）**的双重等价形式：
+
+##### (1) 逐时间步递推数学形式 (Step-by-Step Recurrence)
+- **隐状态定义**：
+  - 键值联想记忆矩阵：$S_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$（初始状态 $S_0 = \mathbf{0}$）；
+  - 键特征累加向量：$z_t \in \mathbb{R}^{B \times H \times D_h}$（初始状态 $z_0 = \mathbf{0}$，用于标量分母归一化）。
+- **状态转移步 (State Update Step)**：
+  $$S_t = S_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
+  $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
+- **输出发射步 (Emission Step)**：
+  $$o_t = \frac{\phi(q_t) S_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
+
+##### (2) 与线性状态空间模型 (Linear SSM) 的结构统一
+上述递推形式与连续/离散线性状态空间模型（State-Space Model）严格同构：
+$$S_t = \mathbf{A}_t S_{t-1} + \mathbf{B}_t x_t, \qquad y_t = \mathbf{C}_t S_t$$
+在朴素线性注意力中：
+- 状态转移矩阵 $\mathbf{A}_t = \mathbf{I}$（恒等矩阵，表示无衰减的累加记忆）；
+- 写入投影 $\mathbf{B}_t = \phi(k_t)^T, x_t = v_t$（输入信号的外积投影）；
+- 发射矩阵 $\mathbf{C}_t = \frac{\phi(q_t)}{\phi(q_t) z_t^T}$（基于当前 Query 的归一化读取探针）。
+
+##### (3) 双重计算图对偶性 (Parallel Scan vs Recurrent Step)
+- **训练阶段（并行关联扫描 Parallel Scan）**：
+  由于外积加法满足结合律 $((a + b) + c = a + (b + c))$，全序列计算可转化为前缀和（`torch.cumsum`），单次并行 Forward 即可算完全部时间步，打满 GPU Tensor Core 矩阵乘法吞吐。
+- **推理阶段（流式单步递推 Streaming Step）**：
+  自回归 Decode 时退化为单步 RNN。每生成一个 Token，仅需将当前 Key 与 Value 的外积加进固定尺寸的状态矩阵 $S_{t-1}$ 中：
+  - **显存占用**：恒定 $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$（彻底消灭随序列长度线性膨胀的 KV Cache！）；
+  - **单步耗时**：恒定 $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$（生成第 1 个 Token 与生成第 100,000 个 Token 的延迟完全一致）。
+
+---
+
+#### 3. 表达能力差距：线性注意力 vs Full Softmax Attention (Expressive Capacity Gap)
+
+尽管线性注意力在长文本上具备 $\mathcal{O}(T)$ 的渐进复杂度与 $\mathcal{O}(1)$ 的推理显存优势，但在学术与工业实践中，其多项能力指标（语言建模困惑度、少样本 In-Context Learning、长文本检索）始终与标准 Full Softmax Attention 存在显著鸿沟。这种表达能力差距源于四个根本性理论瓶颈：
+
+##### 差距 1 · 锐度与极值聚焦能力缺失 (Lack of argmax Sharpness)
+- **Softmax 的指数放大效应**：
+  $$\operatorname{Softmax}(S)_{ij} = \frac{\exp(q_i k_j^T / \sqrt{D_h})}{\sum_{m=1}^T \exp(q_i k_m^T / \sqrt{D_h})}$$
+  指数函数 $\exp(\cdot)$ 具有极端的非线性放大特性。当某一个 Key 与 Query 的匹配度比其他候选略微高出几个标准差时，Softmax 会将该位置的权重急剧推向 1，而将其余全部候选指数级压制为 0（逼近 $\operatorname{argmax}$）。这种“硬聚焦（Hard Attention）”能力使 Transformer 能够充当精确的**内容寻址指针（Pointer Network / Exact Addressing）**。
+- **线性注意力的平滑弥散缺陷**：
+  线性核 $\operatorname{sim}(q, k) = \phi(q) \phi(k)^T$ 仅为特征空间的普通内积，缺乏非线性极值拉大机制。其注意力权重在序列各位置间表现得平缓而弥散（Flat & Diffuse），无法形成尖锐的概率峰值，导致其难以在大量候选中精准“锁定”单个离散 Token。
+
+##### 差距 2 · 有限状态容量与固定秩上界瓶颈 (Finite Memory Capacity & Rank Bottleneck)
+- **Full Attention 的无限外置记忆**：
+  Softmax Attention 的“记忆载体”是显式保存的历史 KV Cache 矩阵序列，有效表示空间维度随序列长度动态增长为 $\mathcal{O}(T \times D_h)$。其注意力分布图 $A = \operatorname{softmax}(Q K^T) \in \mathbb{R}^{T \times T}$ 理论上是**全秩（Full-Rank）**或极高秩的，能够独立保存并区分序列中所有 $T$ 个历史 Token 的正交语义。
+- **线性注意力的秩坍缩限制**：
+  线性注意力的因果递推将任意长历史强制压缩进单一矩阵 $S_t \in \mathbb{R}^{D_h \times D_v}$。根据线性代数基本定理，该状态矩阵的代数秩受限于维度瓶颈：
+  $$\operatorname{rank}(S_t) \le \min(D_h, D_v)$$
+  当序列长度 $T \gg D_h$（例如长文本 $T = 100,000, D_h = 128$）时，将十万个外积向量叠加在一个秩至多为 128 的有限子空间内，根据鸽巢原理（Pigeonhole Principle），历史特征必然发生剧烈的重叠混叠与信息坍缩。
+
+##### 差距 3 · 注意力稀释与无门控遗忘 (Attention Dilution & SNR Collapse)
+- **恒等累加导致信噪比崩溃**：
+  标准线性注意力的状态转移是无门控累加：$S_t = S_{t-1} + \phi(k_t)^T v_t$。随着序列推进，$S_t$ 的整体范数随着 $t$ 线性膨胀。
+- **早期重要信息的冲刷淹没**：
+  若在 $t=10$ 处输入了关键实体（如密码或人名），在到达 $t=100,000$ 时，该实体的外积特征被后续 99,990 个普通背景 Token 的外积累加完全冲淡。由于缺少“遗忘门（Forget Gate）”与“擦除机制”，系统无法主动丢弃无用噪声，早期信号的信噪比（Signal-to-Noise Ratio, SNR）降至噪声基底以下。
+- **Full Attention 的免疫性**：
+  Full Attention 在每个时间步均由当前 Query 重新对全量历史做一次全景比较，完全不存在累加导致的信噪比稀释。
+
+##### 差距 4 · 算法基准与上下文学习能力失效场景 (Algorithmic Failure Modes)
+| 关键评估任务 | Full Softmax Attention 表现 | 纯线性注意力 (Plain Linear Attention) 表现 | 根本失效原因 |
+|---|---|---|---|
+| **大海捞针 (Needle in a Haystack)** | 接近 100% 检索准确率（绿屏） | 长度超过几千后准确率崩塌至接近随机（红屏） | 缺乏 Softmax 极值放大；有限秩导致单点事实被背景噪声稀释。 |
+| **归纳头联想复制 (Induction Heads: $[A][B] \dots [A] \to [B]$)** | 完美实现高阶二阶寻址复制，支撑强大 ICL 能力 | 易发生严重键混淆（Key Collision），多步联想复制失败 | 键值对在外积空间中混合，无法在多查询联想回忆（MQAR）中精准解耦。 |
+| **计数与形式语言 (Formal Language / Dyck 语言)** | 强电路表达力，精确追踪括号嵌套与状态跳转 | 无法精确识别深层嵌套结构 | 无门控线性循环系统计算复杂性被限制在低阶电路类（$TC^0$），表达能力弱于通用图灵机状态追踪。 |
+
+##### 差距 5 · 现代改进架构演进脉络 (How Modern Models Bridge the Gap)
+为克服线性注意力的上述理论缺陷，近年前沿架构演变出三条主流破局路径：
+1. **引入时间/数据依赖衰减门控 (Decay Gates)**：
+   如 **RetNet**（引入静态衰减 $\gamma^t$）与 **Mamba / RWKV**（引入输入自适应遗忘门 $g_t$）：$S_t = \operatorname{diag}(\alpha_t) S_{t-1} + \phi(k_t)^T v_t$，主动衰减过期历史，消除范数发散与无脑稀释；
+2. **引入 Delta 规则在线擦除机制 (Delta Rule / Fast Weight Programmers)**：
+   如 **DeltaNet** 与 **Gated DeltaNet**：在写入新记忆前先计算预测误差并正交擦除冲突旧记忆：
+   $$S_t = S_{t-1} + \beta_t \big(v_t - S_{t-1} \phi(k_t)\big) \phi(k_t)^T$$
+   使得有限容量的状态矩阵 $S_t$ 始终保持最优正交存储效率，MQAR 与长文本检索能力逼近 Softmax；
+3. **混合架构 (Hybrid Architectures)**：
+   如 **Jamba**、**Nemotron-4**：底层 80% 堆叠线性注意力/SSM 层实现低显存长上下文吞吐，顶层保留 20% 的 Full Softmax Attention 层负责高锐度精确检索与复杂逻辑推理，达成帕累托最优解。
+
+---
+
+#### 4. 特征映射 $\phi(x)$ 的数学约束
+1. **为何不用恒等映射 (Identity，无激活)？**
+   若允许负值，核函数退化为低秩线性分解，分母可能抵消为 0 导致数值发散，且破坏注意力权重的非负测度概率解释；
+2. **为何不用 ReLU？**
+   负值区间梯度完全归零（死区），造成大量 Key 向量被硬性抹去；
+3. **业界通用标准采用 $\phi(x) = \operatorname{ELU}(x) + 1.0$**：
+   严格满足 $\phi(x) > 0$，处处连续可微，保留微弱负向梯度。
 
 </details>
 
-#### Quick Coding：`linear_attention`
+#### Quick Coding：`linear_attention` 与流式单步递推
 
 ```python
 def linear_attention(Q, K, V, causal=False):
     ...
+
+def linear_attention_step(q_t, k_t, v_t, prev_S=None, prev_z=None):
+    ...
 ```
 
 <details open>
-<summary><b>参考代码：从零手写 linear_attention（因果与非因果）</b></summary>
+<summary><b>参考代码：从零手写 linear_attention（批量并行扫描与流式单步递推）</b></summary>
 
 ```python
 import torch
@@ -412,9 +480,11 @@ def feature_map(x):
     return F.elu(x) + 1.0
 
 def linear_attention(Q, K, V, causal=False):
-    # 统一张量维度表示：
-    # Q, K: (B, H, T, Dh) 或 (..., T, Dh)
-    # V:    (B, H, T, Dv) 或 (..., T, Dv)，通常 Dv = Dh
+    """批量模式：支持训练期并行关联扫描 (Parallel Associative Scan)
+
+    Q, K: (B, H, T, Dh) 或 (..., T, Dh)
+    V:    (B, H, T, Dv) 或 (..., T, Dv)，通常 Dv = Dh
+    """
     Qp, Kp = feature_map(Q), feature_map(K)
 
     if not causal:
@@ -447,6 +517,41 @@ def linear_attention(Q, K, V, causal=False):
     # 4. 分母: (..., T, Dh) * (..., T, Dh) -> (..., T, 1)
     den = torch.einsum("... t d, ... t d -> ... t", Qp, z_cum).unsqueeze(-1)
     return num / den  # (..., T, Dv)
+
+
+def linear_attention_step(q_t, k_t, v_t, prev_S=None, prev_z=None):
+    """流式单步递推模式：用于自回归 Decode 阶段，单步显存与时间均为严格 O(1) 常数
+
+    q_t, k_t: (B, H, Dh) 当前步单个 Query 与 Key
+    v_t:      (B, H, Dv) 当前步单个 Value
+    prev_S:   (B, H, Dh, Dv) 上一步的键值记忆状态矩阵 S_{t-1}，首步传 None
+    prev_z:   (B, H, Dh)     上一步的 Key 累加向量 z_{t-1}，首步传 None
+    返回:
+        out_t:  (B, H, Dv) 当前时间步的输出
+        curr_S: (B, H, Dh, Dv) 更新后的记忆状态 S_t
+        curr_z: (B, H, Dh)     更新后的累加向量 z_t
+    """
+    qp_t, kp_t = feature_map(q_t), feature_map(k_t)
+
+    # 状态初始化 (首步 S_0 = 0, z_0 = 0)
+    if prev_S is None:
+        prev_S = torch.zeros(
+            *q_t.shape[:-1], q_t.shape[-1], v_t.shape[-1],
+            device=q_t.device, dtype=q_t.dtype
+        )
+        prev_z = torch.zeros_like(q_t)
+
+    # 1. 状态转移步：S_t = S_{t-1} + kp_t^T @ v_t
+    delta_S = torch.einsum("... d, ... v -> ... d v", kp_t, v_t)
+    curr_S = prev_S + delta_S
+    curr_z = prev_z + kp_t
+
+    # 2. 输出发射步：o_t = (qp_t @ S_t) / (qp_t @ z_t^T)
+    num = torch.einsum("... d, ... d v -> ... v", qp_t, curr_S)
+    den = torch.einsum("... d, ... d -> ...", qp_t, curr_z).unsqueeze(-1)
+    out_t = num / den
+
+    return out_t, curr_S, curr_z
 ```
 
 </details>
