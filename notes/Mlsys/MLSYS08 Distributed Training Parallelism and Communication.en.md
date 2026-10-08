@@ -183,7 +183,7 @@ Let $N$ be the number of participating devices (ranks), and $V$ be the total siz
    $$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W \cdot N_\text{axes}} \right]$$
    Effective bandwidth scales linearly with the number of concurrent axes $N_\text{axes}$.
 
-![AllGather measured bandwidth (TPU v5e 8×16): about 95% peak above 10 MB](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
+![AllGather measured bandwidth (TPU v5e 8×16): about 95% peak above 10 MB](./assets/all_gather_bandwidth.png)
 
 > [!example] Numerical AllGather Estimation Examples
 >
@@ -273,7 +273,7 @@ Device 1: [A1, B1]   →   Device 1: [B0, B1]
 | **AllReduce** | Global reduction replicated everywhere | $[A, B]\{U_X\} \rightarrow [A, B]$ | $\frac{2V}{W_\text{bidir}}$ | DDP gradient sync, Megatron TP output combine |
 | **AllToAll** | Transpose sharding dimensions | $[A, B_X] \rightarrow [A_X, B]$ | $\frac{V}{4W_\text{bidir}}$ | MoE token routing / dispatch, 2D grid transform |
 
-![Comparison of four collective communication primitives](https://jax-ml.github.io/scaling-book/assets/img/all-collectives.png)
+![Comparison of four collective communication primitives](./assets/all_collectives.png)
 
 ---
 
@@ -285,7 +285,7 @@ Device 1: [A1, B1]   →   Device 1: [B0, B1]
 
 We use named-axis notation to describe how tensors are sharded over the device mesh:
 
-![Sharding example: array of global shape (4,128) on 4 devices, per-device local shape (2,64)](https://jax-ml.github.io/scaling-book/assets/img/sharding-example.png)
+![Sharding example: array of global shape (4,128) on 4 devices, per-device local shape (2,64)](./assets/sharding_example.png)
 
 - **Device Mesh**: defines how physical devices are organized
   ```python
@@ -1521,7 +1521,7 @@ local logits: [B, S, V/vp]
 
 The original blog contains several excellent figures; see [Ailing Zhang's blog](https://ailzhang.github.io/posts/distributed-compute-in-transformer/) for the **complete Transformer parallelism panorama**, which shows the communication patterns across all layers:
 
-![Complete Transformer parallel panorama: DP/TP/SP/CP/EP/VP interleaving](https://ailzhang.github.io/posts/distributed-compute-in-transformer/overview.svg)
+![Complete Transformer parallel panorama: DP/TP/SP/CP/EP/VP interleaving](./assets/transformer_parallelism_overview.svg)
 
 ## 9. Picotron Design Analysis
 

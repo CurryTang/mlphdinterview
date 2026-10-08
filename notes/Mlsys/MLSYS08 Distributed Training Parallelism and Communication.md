@@ -183,7 +183,7 @@
    $$T_\text{total} = \max\!\left[ \frac{T_\text{min} \cdot \sum |X_i|}{2},\ \frac{V}{W \cdot N_\text{axes}} \right]$$
    通信耗时随并发网格轴数 $N_\text{axes}$ 成比例缩短。
 
-![AllGather 实测带宽（TPU v5e 8×16）：在 10 MB 以上可达约 95% 峰值](https://jax-ml.github.io/scaling-book/assets/img/all-gather-bandwidth.png)
+![AllGather 实测带宽（TPU v5e 8×16）：在 10 MB 以上可达约 95% 峰值](./assets/all_gather_bandwidth.png)
 
 > [!example] AllGather 时间估算实例
 >
@@ -275,7 +275,7 @@ $$T = \frac{V}{W_\text{bidir}}$$
 | **AllReduce** | 全局规约，全员保留结果 | $[A, B]\{U_X\} \rightarrow [A, B]$ | $\frac{2V}{W_\text{bidir}}$ | DDP 梯度同步、Megatron TP 输出合并 |
 | **AllToAll** | 转置分片维度 | $[A, B_X] \rightarrow [A_X, B]$ | $\frac{V}{4W_\text{bidir}}$ | MoE 专家 Token 路由、2D 并行转换 |
 
-![四种集合通信原语对比示意](https://jax-ml.github.io/scaling-book/assets/img/all-collectives.png)
+![四种集合通信原语对比示意](./assets/all_collectives.png)
 
 ---
 
@@ -287,7 +287,7 @@ $$T = \frac{V}{W_\text{bidir}}$$
 
 我们使用**命名轴符号**来描述张量如何在设备网格上分片：
 
-![分片示例：全局形状 (4,128) 的数组在 4 个设备上，每设备局部形状 (2,64)](https://jax-ml.github.io/scaling-book/assets/img/sharding-example.png)
+![分片示例：全局形状 (4,128) 的数组在 4 个设备上，每设备局部形状 (2,64)](./assets/sharding_example.png)
 
 - **设备网格（Device Mesh）**：定义物理设备的组织方式
   ```python
@@ -1567,7 +1567,7 @@ local logits: [B, S, V/vp]
 
 完整 Transformer 并行全景图可以把 DP/TP/SP/CP/EP/VP 的通信模式放到同一张图里：
 
-![完整 Transformer 并行全景：DP/TP/SP/CP/EP/VP 交织](https://ailzhang.github.io/posts/distributed-compute-in-transformer/overview.svg)
+![完整 Transformer 并行全景：DP/TP/SP/CP/EP/VP 交织](./assets/transformer_parallelism_overview.svg)
 
 ## 九、Picotron 设计解析
 
