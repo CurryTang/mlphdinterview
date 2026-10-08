@@ -345,17 +345,51 @@ def sliding_window_attention(Q, K, V, window):
 
 ### Exercise 5 · Linear Attention
 
-Softmax Attention 的计算瓶颈在于必须物化完整的 $(T, T)$ 分数矩阵。线性注意力采用非负特征映射 $\phi(x)$（如 $\operatorname{ELU}(x) + 1$）替换指数相似度核，借助矩阵乘法的结合律重构计算图：
+标准 Softmax Attention 的核心计算与显存瓶颈在于必须物化完整的 $(B, H, T, T)$ 注意力得分矩阵。线性注意力采用严格非负特征映射 $\phi(x)$（如 $\operatorname{ELU}(x) + 1$）替代指数相似度核，借助矩阵乘法的结合律重构计算图：
 
-$$\operatorname{Softmax}(Q K^T) V \quad \Longrightarrow \quad \phi(Q) \big(\phi(K)^T V\big)$$
+$$\operatorname{Softmax}\left(\frac{Q K^T}{\sqrt{D_h}}\right) V \quad \Longrightarrow \quad \frac{\phi(Q) \big(\phi(K)^T V\big)}{\phi(Q) \big(\sum_{t=1}^T \phi(K)_{t}\big)^T}$$
 
-- 关联顺序改变：从 $(Q K^T) V$ 的 $\mathcal{O}(T^2 d)$ 跃迁为 $Q (K^T V)$ 的 $\mathcal{O}(T d^2)$。当 $T \gg d$ 时，计算与显存开销均降为严格线性。
+- **张量维度与关联顺序改变**：
+  - **标准 Softmax 路径**：$(Q K^T) V \to (B, H, T, T) \times (B, H, T, D_v)$，计算复杂度为 $\mathcal{O}(B \cdot H \cdot T^2 \cdot D_h)$，显存占用为 $\mathcal{O}(B \cdot H \cdot T^2)$；
+  - **线性注意力重构路径**：$\phi(Q) \big(\phi(K)^T V\big) \to (B, H, T, D_h) \times (B, H, D_h, D_v)$，计算复杂度为 $\mathcal{O}(B \cdot H \cdot T \cdot D_h \cdot D_v)$，显存占用为 $\mathcal{O}(B \cdot H \cdot D_h \cdot D_v)$。
+- **长序列计算飞跃**：当序列长度 $T \gg D_h$ 时（例如长文本 $T=128\text{k}, D_h=128$），计算量与显存开销由二次方 $\mathcal{O}(T^2)$ 骤降为严格线性 $\mathcal{O}(T)$，解码推理显存降为 $\mathcal{O}(1)$ 常数。
 
 <details>
-<summary><b>展开深入：核技巧结合律重构与非自回归/因果前缀和推导</b></summary>
+<summary><b>展开深入：张量维度演进全生命周期、因果递推与理论边界</b></summary>
 
-#### 因果版本的流式递推
-在自回归因果模式下，未来时间步不可见。通过对外积项 $S_t = \sum_{j \le t} \phi(K_j) V_j^T$ 做累加求和（`torch.cumsum`），实现无显式注意力图的因果递推。
+#### 1. 张量维度演进全生命周期对照表
+
+| 计算阶段 / 张量 | 标准 Softmax Attention 形状 | 线性注意力 (Linear Attention) 形状 | 物理语义与计算特点 |
+|---|---|---|---|
+| **Query 输入 $Q$** | $(B, H, T, D_h)$ | $(B, H, T, D_h) \xrightarrow{\phi} (B, H, T, D_h)$ | 经特征映射 $\phi(Q) = \operatorname{elu}(Q) + 1$ 保障非负 |
+| **Key 输入 $K$** | $(B, H, T, D_h)$ | $(B, H, T, D_h) \xrightarrow{\phi} (B, H, T, D_h)$ | 经特征映射 $\phi(K) = \operatorname{elu}(K) + 1$ 保障非负 |
+| **Value 输入 $V$** | $(B, H, T, D_v)$ | $(B, H, T, D_v)$ | 内容特征（通常 $D_v = D_h$） |
+| **中间聚合矩阵** | 注意力分数图 $S \in (B, H, T, T)$ | 键值联想记忆 $M = \phi(K)^T V \in (B, H, D_h, D_v)$ | **核心分水岭**：$M$ 与序列长 $T$ 完全无关，尺寸恒定 |
+| **未归一化分子** | $A V \in (B, H, T, D_v)$ | $\text{Num} = \phi(Q) M \in (B, H, T, D_v)$ | 结合律先缩减 $T$ 维，再与 Query 点乘恢复序列长度 |
+| **分母归一化项** | Softmax 沿最后一维天然和为 1 | $\text{Den} = \phi(Q) \big(\sum_{t} \phi(K)_t\big)^T \in (B, H, T, 1)$ | 补偿核映射缺少的分母归一化因子，防止长序列发散 |
+| **最终输出 $O$** | $(B, H, T, D_v)$ | $\text{Num} / \text{Den} \in (B, H, T, D_v)$ | 形状完全一致，即插即用替换标准 Attention |
+
+#### 2. 自回归因果递推 (Causal Streaming Recurrence & Prefill/Decode 复杂度)
+- **训练阶段（并行前缀和 Parallel Prefix Scan）**：
+  - 构造每个位置的外积增量：$\Delta M_t = \phi(K)_t^T V_t \in (B, H, T, D_h, D_v)$；
+  - 沿时间维累加：$M_t = \operatorname{cumsum}(\Delta M, \dim=-3)$，使每个时间步 $t$ 仅聚合历史 $j \le t$ 的键值对；
+  - 累积 Key 权重：$z_t = \operatorname{cumsum}(\phi(K), \dim=-2) \in (B, H, T, D_h)$。
+- **推理 Decode 阶段（RNN 式常数更新）**：
+  - 传统 Transformer：每步将新 Key/Value 写入 KV Cache，显存占用随时间线性扩张 $\mathcal{O}(2 \times B \times H \times T \times D_h)$，每步计算量递增至 $\mathcal{O}(T)$；
+  - 线性注意力：**无需任何随序列膨胀的 KV Cache**！每个 step 仅需就地累加常数大小的状态：
+    $$M_t = M_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
+    $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
+    $$O_t = \frac{\phi(q_t) M_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
+  - **显存与计算复杂度**：每步显存占用恒定为 $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$，单步延时恒定 $\mathcal{O}(1)$，彻底粉碎 KV Cache 显存墙。
+
+#### 3. 面试致命陷阱与理论局限
+1. **特征映射 $\phi(x)$ 的数学约束**：
+   - 为何不用恒等映射（Identity，无激活）？若允许负值，核函数退化为低秩线性分解，分母可能抵消为 0 导致数值发散，且破坏注意力权重的非负测度概率解释；
+   - 为何不用 ReLU？负值区间梯度完全归零（死区），造成大量 Key 向量被抹去；
+   - 业界通用标准采用 $\phi(x) = \operatorname{ELU}(x) + 1.0$：严格满足 $\phi(x) > 0$，处处连续可微，保留微弱负向梯度。
+2. **容量饱和与注意力稀释 (Capacity Saturation & Attention Dilution)**：
+   - 状态矩阵 $M \in \mathbb{R}^{D_h \times D_v}$ 维度固定（常数容量）。当序列极长（$T \to \infty$）时，所有历史 Token 外积被无加权累加，导致历史信息被新 Token 严重稀释冲刷，大海捞针（Needle in a Haystack）精准检索能力显著落后于 Softmax；
+   - 这一理论缺陷正是后续 **RetNet（引入指数衰减门控）** 与 **DeltaNet（引入在线误差擦除更新规则）** 演进的核心动机。
 
 </details>
 
@@ -370,28 +404,49 @@ def linear_attention(Q, K, V, causal=False):
 <summary><b>参考代码：从零手写 linear_attention（因果与非因果）</b></summary>
 
 ```python
+import torch
 import torch.nn.functional as F
 
 def feature_map(x):
-    return F.elu(x) + 1.0  # 保证严格非负，避免 ReLU 零梯度死区
+    # 严格非负特征映射，避免分母为 0 与梯度死区
+    return F.elu(x) + 1.0
 
 def linear_attention(Q, K, V, causal=False):
-    Qp, Kp = feature_map(Q), feature_map(K)  # (..., T, d)
+    # 统一张量维度表示：
+    # Q, K: (B, H, T, Dh) 或 (..., T, Dh)
+    # V:    (B, H, T, Dv) 或 (..., T, Dv)，通常 Dv = Dh
+    Qp, Kp = feature_map(Q), feature_map(K)
 
     if not causal:
-        kv = torch.einsum("...kd,...ke->...de", Kp, V)      # (..., d, dv)
-        k_sum = Kp.sum(dim=-2)                                # (..., d)
-        num = torch.einsum("...qd,...de->...qe", Qp, kv)     # (..., T, dv)
-        den = torch.einsum("...qd,...d->...q", Qp, k_sum).unsqueeze(-1)
-        return num / den
+        # 1. 键值联想记忆状态 M = Kp^T @ V
+        # (..., T, Dh)^T @ (..., T, Dv) -> (..., Dh, Dv)
+        kv_state = torch.einsum("... t d, ... t v -> ... d v", Kp, V)
 
-    # 因果模式：利用累加和 cumsum 替代全量矩阵乘法，单 Token 递推复杂度仅 O(d * dv)
-    outer = torch.einsum("...tk,...tv->...tkv", Kp, V)  # (..., T, d, dv)
+        # 2. Key 特征沿序列维累加和 (用于分母归一化): (..., Dh)
+        k_sum = Kp.sum(dim=-2)
+
+        # 3. 分子: Qp @ M -> (..., T, Dv)
+        num = torch.einsum("... t d, ... d v -> ... t v", Qp, kv_state)
+
+        # 4. 分母: Qp @ k_sum^T -> (..., T, 1)
+        den = torch.einsum("... t d, ... d -> ... t", Qp, k_sum).unsqueeze(-1)
+        return num / den  # (..., T, Dv)
+
+    # 因果模式 (Causal Prefix Scan)：
+    # 1. 每个时间步的外积增量: (..., T, Dh, Dv)
+    outer = torch.einsum("... t d, ... t v -> ... t d v", Kp, V)
+
+    # 2. 沿序列维度的因果前缀累加和 (Prefix Sum)
+    # S_cum: (..., T, Dh, Dv), z_cum: (..., T, Dh)
     S_cum = torch.cumsum(outer, dim=-3)
     z_cum = torch.cumsum(Kp, dim=-2)
-    num = torch.einsum("...td,...tdv->...tv", Qp, S_cum)
-    den = torch.einsum("...td,...td->...t", Qp, z_cum).unsqueeze(-1)
-    return num / den
+
+    # 3. 分子: (..., T, Dh) @ (..., T, Dh, Dv) -> (..., T, Dv)
+    num = torch.einsum("... t d, ... t d v -> ... t v", Qp, S_cum)
+
+    # 4. 分母: (..., T, Dh) * (..., T, Dh) -> (..., T, 1)
+    den = torch.einsum("... t d, ... t d -> ... t", Qp, z_cum).unsqueeze(-1)
+    return num / den  # (..., T, Dv)
 ```
 
 </details>

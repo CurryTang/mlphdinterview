@@ -343,17 +343,51 @@ def sliding_window_attention(Q, K, V, window):
 
 ### Exercise 5 · Linear Attention
 
-Softmax attention is bottlenecked by materializing the full $(T, T)$ score matrix. Linear attention replaces the exponential similarity kernel with a non-negative feature map $\phi(x)$ (such as $\operatorname{ELU}(x) + 1$), reordering the associative product:
+Standard Softmax attention is bottlenecked by the requirement to materialize the full $(B, H, T, T)$ attention score matrix. Linear attention replaces the exponential similarity kernel with a strictly non-negative feature map $\phi(x)$ (such as $\operatorname{ELU}(x) + 1$), leveraging the associativity of matrix multiplication to restructure the computational graph:
 
-$$\operatorname{Softmax}(Q K^T) V \quad \Longrightarrow \quad \phi(Q) \big(\phi(K)^T V\big)$$
+$$\operatorname{Softmax}\left(\frac{Q K^T}{\sqrt{D_h}}\right) V \quad \Longrightarrow \quad \frac{\phi(Q) \big(\phi(K)^T V\big)}{\phi(Q) \big(\sum_{t=1}^T \phi(K)_{t}\big)^T}$$
 
-- Associative reordering: Shifts from $(Q K^T) V$ at $\mathcal{O}(T^2 d)$ to $Q (K^T V)$ at $\mathcal{O}(T d^2)$. When $T \gg d$, compute and memory scale linearly.
+- **Tensor Dimension & Associative Reordering**:
+  - **Standard Softmax Path**: $(Q K^T) V \to (B, H, T, T) \times (B, H, T, D_v)$ with compute complexity $\mathcal{O}(B \cdot H \cdot T^2 \cdot D_h)$ and memory footprint $\mathcal{O}(B \cdot H \cdot T^2)$;
+  - **Linear Attention Restructured Path**: $\phi(Q) \big(\phi(K)^T V\big) \to (B, H, T, D_h) \times (B, H, D_h, D_v)$ with compute complexity $\mathcal{O}(B \cdot H \cdot T \cdot D_h \cdot D_v)$ and memory footprint $\mathcal{O}(B \cdot H \cdot D_h \cdot D_v)$.
+- **Long-Sequence Breakthrough**: When sequence length $T \gg D_h$ (e.g. long contexts $T=128\text{k}, D_h=128$), compute and activation memory drop from quadratic $\mathcal{O}(T^2)$ to strictly linear $\mathcal{O}(T)$, while decoding inference memory collapses to an $\mathcal{O}(1)$ constant.
 
 <details>
-<summary><b>Deep Dive: Associativity & Causal Prefix Sums</b></summary>
+<summary><b>Deep Dive: Tensor Dimension Lifecycle, Causal Recurrence & Theoretical Bounds</b></summary>
 
-#### Streaming Causal Recurrence
-In autoregressive mode, future steps cannot be viewed. Cumulative sums (`torch.cumsum`) over outer products $S_t = \sum_{j \le t} \phi(K_j) V_j^T$ allow token-by-token recurrence in $\mathcal{O}(d \cdot d_v)$ state without ever forming a dense $(T, T)$ matrix.
+#### 1. Tensor Dimension Evolution Lifecycle Matrix
+
+| Computation Phase / Tensor | Standard Softmax Attention Shape | Linear Attention Shape | Semantic & Computational Characteristics |
+|---|---|---|---|
+| **Query Input $Q$** | $(B, H, T, D_h)$ | $(B, H, T, D_h) \xrightarrow{\phi} (B, H, T, D_h)$ | Mapped via $\phi(Q) = \operatorname{elu}(Q) + 1$ ensuring non-negativity |
+| **Key Input $K$** | $(B, H, T, D_h)$ | $(B, H, T, D_h) \xrightarrow{\phi} (B, H, T, D_h)$ | Mapped via $\phi(K) = \operatorname{elu}(K) + 1$ ensuring non-negativity |
+| **Value Input $V$** | $(B, H, T, D_v)$ | $(B, H, T, D_v)$ | Content representation (typically $D_v = D_h$) |
+| **Intermediate State** | Score map $S \in (B, H, T, T)$ | Associative memory $M = \phi(K)^T V \in (B, H, D_h, D_v)$ | **Core Watershed**: $M$ is decoupled from sequence length $T$; fixed size |
+| **Unnormalized Numerator** | $A V \in (B, H, T, D_v)$ | $\text{Num} = \phi(Q) M \in (B, H, T, D_v)$ | Associativity contracts $T$ dimension first, then projects with $Q$ |
+| **Denominator Normalizer** | Natural row-sum $= 1$ in Softmax | $\text{Den} = \phi(Q) \big(\sum_{t} \phi(K)_t\big)^T \in (B, H, T, 1)$ | Compensates for unnormalized kernel sum, preventing sequence explosion |
+| **Final Output $O$** | $(B, H, T, D_v)$ | $\text{Num} / \text{Den} \in (B, H, T, D_v)$ | Identical shape; drop-in replacement for standard attention |
+
+#### 2. Autoregressive Causal Recurrence & Prefill / Decode Complexity
+- **Training Phase (Parallel Prefix Scan)**:
+  - Form per-step outer products: $\Delta M_t = \phi(K)_t^T V_t \in (B, H, T, D_h, D_v)$;
+  - Accumulate along the temporal axis: $M_t = \operatorname{cumsum}(\Delta M, \dim=-3)$, ensuring position $t$ absorbs only past keys and values ($j \le t$);
+  - Cumulative key normalizer: $z_t = \operatorname{cumsum}(\phi(K), \dim=-2) \in (B, H, T, D_h)$.
+- **Inference Decode Phase (RNN-style Constant Update)**:
+  - Standard Transformer: Appends each new key/value into the KV Cache, incurring linearly growing memory $\mathcal{O}(2 \times B \times H \times T \times D_h)$ and step compute $\mathcal{O}(T)$;
+  - Linear Attention: **Requires zero growing KV Cache**! Each step updates a fixed-size state in-place:
+    $$M_t = M_{t-1} + \phi(k_t)^T v_t \in \mathbb{R}^{B \times H \times D_h \times D_v}$$
+    $$z_t = z_{t-1} + \phi(k_t) \in \mathbb{R}^{B \times H \times D_h}$$
+    $$O_t = \frac{\phi(q_t) M_t}{\phi(q_t) z_t^T} \in \mathbb{R}^{B \times H \times 1 \times D_v}$$
+  - **Memory & Latency Complexity**: Step memory is strictly $\mathcal{O}(D_h \cdot D_v) = \mathcal{O}(1)$, and step latency is strictly $\mathcal{O}(1)$, shattering the KV cache memory wall.
+
+#### 3. Interview Traps & Theoretical Limitations
+1. **Mathematical Constraints on Feature Map $\phi(x)$**:
+   - Why not an Identity mapping? Without non-negativity, $Q K^T$ permits negative dot products, denominators can cancel to 0 causing divergence, and the probabilistic interpretation of non-negative attention weights is lost;
+   - Why not plain ReLU? Negative inputs produce exactly zero gradients (dead zones), and excessive zeros cause degenerate denominator sums;
+   - Industrial standard uses $\phi(x) = \operatorname{ELU}(x) + 1.0$: guarantees $\phi(x) > 0$, smooth and differentiable everywhere, with gentle negative gradients.
+2. **Capacity Saturation & Attention Dilution**:
+   - The state matrix $M \in \mathbb{R}^{D_h \times D_v}$ has a fixed capacity. As sequence length $T \to \infty$, unconstrained accumulation dilutes historical information under continuous new tokens, impairing Needle-in-a-Haystack retrieval compared to Softmax;
+   - This exact limitation motivates modern **RetNet (exponential decay gates)** and **DeltaNet (online error-erasure Delta rules)**.
 
 </details>
 
@@ -365,31 +399,52 @@ def linear_attention(Q, K, V, causal=False):
 ```
 
 <details open>
-<summary><b>Reference Implementation: Scratch linear_attention</b></summary>
+<summary><b>Reference Implementation: Scratch linear_attention (Causal & Non-Causal)</b></summary>
 
 ```python
+import torch
 import torch.nn.functional as F
 
 def feature_map(x):
-    return F.elu(x) + 1.0  # Guarantees strictly positive values
+    # Strictly non-negative feature map preventing zero denominators and gradient death
+    return F.elu(x) + 1.0
 
 def linear_attention(Q, K, V, causal=False):
-    Qp, Kp = feature_map(Q), feature_map(K)  # (..., T, d)
+    # Unified tensor dimension representation:
+    # Q, K: (B, H, T, Dh) or (..., T, Dh)
+    # V:    (B, H, T, Dv) or (..., T, Dv), typically Dv = Dh
+    Qp, Kp = feature_map(Q), feature_map(K)
 
     if not causal:
-        kv = torch.einsum("...kd,...ke->...de", Kp, V)      # (..., d, dv)
-        k_sum = Kp.sum(dim=-2)                                # (..., d)
-        num = torch.einsum("...qd,...de->...qe", Qp, kv)     # (..., T, dv)
-        den = torch.einsum("...qd,...d->...q", Qp, k_sum).unsqueeze(-1)
-        return num / den
+        # 1. Associative memory state M = Kp^T @ V
+        # (..., T, Dh)^T @ (..., T, Dv) -> (..., Dh, Dv)
+        kv_state = torch.einsum("... t d, ... t v -> ... d v", Kp, V)
 
-    # Causal mode: replace full matrix product with cumsum for O(d * dv) recurrence
-    outer = torch.einsum("...tk,...tv->...tkv", Kp, V)  # (..., T, d, dv)
+        # 2. Key feature sum along sequence dimension (for denominator normalization): (..., Dh)
+        k_sum = Kp.sum(dim=-2)
+
+        # 3. Numerator: Qp @ M -> (..., T, Dv)
+        num = torch.einsum("... t d, ... d v -> ... t v", Qp, kv_state)
+
+        # 4. Denominator: Qp @ k_sum^T -> (..., T, 1)
+        den = torch.einsum("... t d, ... d -> ... t", Qp, k_sum).unsqueeze(-1)
+        return num / den  # (..., T, Dv)
+
+    # Causal mode (Causal Prefix Scan):
+    # 1. Per-step outer product delta: (..., T, Dh, Dv)
+    outer = torch.einsum("... t d, ... t v -> ... t d v", Kp, V)
+
+    # 2. Causal prefix sum along sequence dimension
+    # S_cum: (..., T, Dh, Dv), z_cum: (..., T, Dh)
     S_cum = torch.cumsum(outer, dim=-3)
     z_cum = torch.cumsum(Kp, dim=-2)
-    num = torch.einsum("...td,...tdv->...tv", Qp, S_cum)
-    den = torch.einsum("...td,...td->...t", Qp, z_cum).unsqueeze(-1)
-    return num / den
+
+    # 3. Numerator: (..., T, Dh) @ (..., T, Dh, Dv) -> (..., T, Dv)
+    num = torch.einsum("... t d, ... t d v -> ... t v", Qp, S_cum)
+
+    # 4. Denominator: (..., T, Dh) * (..., T, Dh) -> (..., T, 1)
+    den = torch.einsum("... t d, ... t d -> ... t", Qp, z_cum).unsqueeze(-1)
+    return num / den  # (..., T, Dv)
 ```
 
 </details>
