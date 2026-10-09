@@ -510,14 +510,13 @@ class Solution:
 
 ## Module 3: Pre-Interview Checklist
 
-3-Step Fill-in Checklist:
-1. **Blank 1 (Search Space)**: Array index `[0, n]` or answer range `[min, max]`?
-2. **Blank 2 (Predicate)**: For "First" write directly; for "Last" find right neighbor and subtract 1; for answer ranges ask "is it viable"?
-3. **Blank 3 (Return)**: Verify `nums[lo] == target` for exact matches; take `lo - 1` for last element.
-
-Finally, remember:
-
-> Binary search does not look for a value, but for a transition boundary; simply fill in Search Space, Predicate, and Return Value.
+3-Step Checklist:
+1. **Interval `[left, right]`**: Index range is `[0, len(nums) - 1]`; answer domain is `[min_val, max_val]`.
+2. **Predicate `check(mid)`**: Directly code "is current mid viable/valid?".
+3. **Move & Record**:
+   - When viable, record `ans = mid`;
+   - To maximize, probe right (`left = mid + 1`); to minimize, probe left (`right = mid - 1`);
+   - Return `ans` directly after exiting loop.
 
 
 ## Module 4: Binary Search High-Frequency Extensions
@@ -541,3 +540,84 @@ def findMajorityElementsSorted(nums: List[int]) -> List[int]:
             res.append(cand)
     return sorted(res)
 ```
+
+---
+
+## Module 5: Python Standard Library bisect Guide
+
+Python provides the built-in `bisect` module implemented in C for high performance. In interviews, when binary search is merely an auxiliary step of a broader problem (e.g., LIS, greedy interval scheduling, timestamp-based key-value lookups), using `bisect` saves time and eliminates edge-case boundary errors.
+
+### 1. Four Classic Array Queries
+
+`bisect_left` finds the first insertion index where elements are $\ge target$; `bisect_right` (alias `bisect`) finds the first insertion index where elements are $> target$:
+
+| Target Query | Code Expression | Note & Boundaries |
+|---|---|---|
+| **First $\ge target$** | `idx = bisect_left(nums, target)` | Returns `len(nums)` if none satisfy |
+| **First $> target$** | `idx = bisect_right(nums, target)` | Returns `len(nums)` if none satisfy |
+| **Last $\le target$** | `idx = bisect_right(nums, target) - 1` | Returns `-1` (i.e. `idx < 0`) if none satisfy |
+| **Last $< target$** | `idx = bisect_left(nums, target) - 1` | Returns `-1` (i.e. `idx < 0`) if none satisfy |
+| **Exact match lookup** | `i = bisect_left(nums, target)`<br>`found = (i < len(nums) and nums[i] == target)` | LC 704 standard exact match verification |
+
+---
+
+### 2. Python 3.10+ `key=` Parameter
+
+Starting with Python 3.10, `bisect` supports a `key=` parameter for projecting elements or compound tuples.
+
+#### Example: LC 981 Time-Based Key-Value Store
+```python
+from bisect import bisect_right
+
+# entries stores sorted records: [(timestamp_1, val_1), (timestamp_2, val_2), ...]
+def get(entries, query_time):
+    # Find the last record with timestamp <= query_time
+    idx = bisect_right(entries, query_time, key=lambda x: x[0]) - 1
+    return entries[idx][1] if idx >= 0 else ""
+```
+
+---
+
+### 3. Binary Search on Answer Range via `range` + `key`
+
+In Python, `range()` is a virtual sequence with $O(1)$ random access that requires $O(1)$ auxiliary space. Combined with `key=`, it can perform binary search directly over an answer range.
+
+Since boolean values in Python satisfy `False < True` ($0 < 1$), if a predicate sequence is monotonically `[False, False, ..., True, True]`, `bisect_left(..., True)` directly locates the first `True`:
+
+#### Example A: Minimization · LC 875 Koko Eating Bananas
+```python
+from bisect import bisect_left
+from typing import List
+
+class Solution:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        # Speeds that are too slow exceed time limit (False); becomes True when valid.
+        # Find first True:
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
+```
+
+#### Example B: Maximization · LC 2226 Maximum Candies Allocated to K Children
+```python
+from bisect import bisect_left
+from typing import List
+
+class Solution:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # Condition becomes True when candy count is too large to distribute k piles (inverted predicate).
+        # Find first invalid point; its 0-based index corresponds to the maximum valid candies (starting from 1).
+        return bisect_left(
+            range(1, max(candies) + 1),
+            True,
+            key=lambda s: sum(c // s for c in candies) < k
+        )
+```
+
+---
+
+### 4. Interview Strategy
+
+- **Binary search is the main focus**: (e.g., the interviewer asks you to write binary search manually or discuss rotated sorted array edge cases): **Write out the manual closed-interval `while left <= right` template** to demonstrate mastery of loop invariants and boundaries.
+- **Binary search is a secondary utility step**: (e.g., part of a Hard problem, LIS subproblem, greedy scheduling): **Prefer `bisect`**, and tell the interviewer: "The array is sorted, so I'm using the standard library `bisect` for $O(\log n)$ lookup to avoid boundary edge cases."
+

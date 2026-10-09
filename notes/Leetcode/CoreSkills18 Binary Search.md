@@ -536,14 +536,13 @@ class Solution:
 
 ## 模块三：面试前最后检查
 
-三步填空检查清单：
-1. **空 1（区间）**：是下标 `[0, n]`，还是答案值域 `[min, max]`？
-2. **空 2（判定）**：找“第一个”直接写；找“最后一个”看右邻居再减一；值域二分直觉问“是否达标”？
-3. **空 3（收尾）**：精确查找需验证 `nums[lo] == target`；找最后一个需取 `lo - 1` 并检查 `lo > 0`。
-
-最后只记一句：
-
-> 二分查找找的不是目标值，而是一个单调分界点；只需填好区间、check、返回值 3 个空。
+三步检查清单：
+1. **区间 `[left, right]`**：下标是 `[0, len(nums) - 1]`；答案值域是 `[min_val, max_val]`。
+2. **判定 `check(mid)`**：直接写“当前 mid 是否达标/可行”。
+3. **移动与记录**：
+   - 达标即存 `ans = mid`；
+   - 求最大值往右探（`left = mid + 1`），求最小值往左探（`right = mid - 1`）；
+   - 退出循环直接返回 `ans`。
 
 
 ## 模块四：二分高频扩展真题
@@ -583,3 +582,82 @@ class SortedMajoritySolution:
 
         return sorted(res)
 ```
+
+---
+
+## 模块五：Python 标准库 bisect 使用指南
+
+Python 标准库提供了内置的 `bisect` 模块（底层的 C 实现速度极快）。在面试中，如果二分本身只是解题的一个辅助环节（例如最长递增子序列 LIS、贪心区间调度、时间戳版本检索等），使用 `bisect` 可以大幅缩短编码时间并规避边界错误。
+
+### 1. 数组四大经典查询
+
+`bisect_left` 查找第一个 $\ge target$ 的插入点；`bisect_right`（别名 `bisect`）查找第一个 $> target$ 的插入点：
+
+| 查找目标 | 对应写法 | 说明与边界 |
+|---|---|---|
+| **第一个 $\ge target$** | `idx = bisect_left(nums, target)` | 若都不满足返回 `len(nums)` |
+| **第一个 $> target$** | `idx = bisect_right(nums, target)` | 若都不满足返回 `len(nums)` |
+| **最后一个 $\le target$** | `idx = bisect_right(nums, target) - 1` | 若都不满足为 `-1`（即 `idx < 0`） |
+| **最后一个 $< target$** | `idx = bisect_left(nums, target) - 1` | 若都不满足为 `-1`（即 `idx < 0`） |
+| **查找是否存在** | `i = bisect_left(nums, target)`<br>`found = (i < len(nums) and nums[i] == target)` | LC 704 标准等值判断 |
+
+---
+
+### 2. Python 3.10+ `key=` 参数支持
+
+从 Python 3.10 起，`bisect` 支持 `key=` 参数，可以直接针对对象属性或复合元组进行投影二分。
+
+#### 示例：LC 981 基于时间戳的键值存储
+```python
+from bisect import bisect_right
+
+# entries 存储有序记录: [(timestamp_1, val_1), (timestamp_2, val_2), ...]
+def get(entries, query_time):
+    # 查找最后一个 timestamp <= query_time 的记录
+    idx = bisect_right(entries, query_time, key=lambda x: x[0]) - 1
+    return entries[idx][1] if idx >= 0 else ""
+```
+
+---
+
+### 3. 用 `range` + `key` 进行答案值域二分
+
+`range()` 在 Python 中是支持 $O(1)$ 随机访问的虚拟序列（不占用实际数组内存），配合 `key` 参数可直接在答案值域上执行 `bisect`。
+
+Python 中布尔值满足 `False < True`（即 $0 < 1$），因此若可行性谓词序列呈现 `[False, False, ..., True, True]`，`bisect_left(..., True)` 会直接定位到首个 `True`：
+
+#### 示例 A：求最小值 · LC 875 爱吃香蕉的珂珂
+```python
+from bisect import bisect_left
+from typing import List
+
+class Solution:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        # 速度过小耗时超时 (False)，达标后为 True；查找首个 True
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
+```
+
+#### 示例 B：求最大值 · LC 2226 每个小孩最多分多少颗糖
+```python
+from bisect import bisect_left
+from typing import List
+
+class Solution:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # 糖数过大导致份数不足时条件为 True (反向判断)，找首个不可行点
+        # 其下标恰好等于最大可满足的糖数（从 1 开始计）
+        return bisect_left(
+            range(1, max(candies) + 1),
+            True,
+            key=lambda s: sum(c // s for c in candies) < k
+        )
+```
+
+---
+
+### 4. 面试中的选择策略
+
+- **二分是题目主要考察点**（如面试官要求“手写二分查找”、“分析旋转数组边界”）：**必须手写**闭区间 `while left <= right` 模板，展示对边界收敛与循环不变量的掌握。
+- **二分只是解题辅助步骤**（如 Hard 题的局部优化、求 LIS、贪心调度）：**优先调用 `bisect`**，并向面试官说明“此处是有序序列，使用标准库 `bisect` 保证 $O(\log n)$ 且避免边界越界”，展示对标准库的熟练运用。
