@@ -621,7 +621,39 @@ def findMajorityElementsSorted(nums: List[int]) -> List[int]:
 
 Python provides the built-in `bisect` module implemented in C for high performance. In interviews, when binary search is merely an auxiliary step of a broader problem (e.g., LIS, greedy interval scheduling, timestamp-based key-value lookups), using `bisect` saves time and eliminates edge-case boundary errors.
 
-### 1. Four Classic Array Queries
+### 1. Function Signatures & Parameter Details
+
+```python
+bisect_left(a, x, lo=0, hi=len(a), *, key=None)
+bisect_right(a, x, lo=0, hi=len(a), *, key=None)  # Alias: bisect
+insort_left(a, x, lo=0, hi=len(a), *, key=None)
+insort_right(a, x, lo=0, hi=len(a), *, key=None)  # Alias: insort
+```
+
+Parameters and considerations:
+
+| Parameter | Type & Default | Description | Key Notes & Edge Cases |
+|---|---|---|---|
+| `a` | Sequence (Required) | Sorted sequence to search | Supports random access (`list`, `tuple`, `range`); must be sorted ascending by key |
+| `x` | Any (Required) | Target value to search / insert | If `key` is specified, `x` is compared directly with `key(element)` |
+| `lo` | `int = 0` | Lower bound of slice (inclusive) | Bounds search to `[lo, hi)`; **avoids costly slice copy `a[lo:hi]`** |
+| `hi` | `int = len(a)` | Upper bound of slice (exclusive) | Half-open interval; returned index is still global index relative to `a` |
+| `key` | 1-arg function (Python 3.10+) | Key extraction function | **Only applied to elements in `a[i]`, NOT to `x`**; used for projections |
+
+#### Parameter Usage Details:
+1. **Advantages of `lo` and `hi` (Avoiding Slice Copies)**:
+   - Slicing `bisect_left(nums[10:50], target)` creates a new 40-element list, incurring $O(k)$ time/memory overhead and requiring manual index offsets.
+   - Passing `lo=10, hi=50` searches in-place with zero memory allocation, and returns the absolute index in `nums`.
+2. **One-Way Application of `key`**:
+   - `key` is only evaluated on elements of `a` (`key(a[mid])` compared to `x`).
+   - Therefore, `x` must match the type of the extracted key. For instance, searching timestamps in `[(1, 'a'), (3, 'b')]` passes integer `3` for `x` with `key=lambda item: item[0]`.
+3. **`insort_left` / `insort_right`**:
+   - Locates insertion point and executes `a.insert(idx, x)` in-place, keeping `a` sorted.
+   - Note: `list.insert` takes $O(n)$ time due to array shifting. For repeated insertions and queries, use `heapq` or a balanced tree.
+
+---
+
+### 2. Four Classic Array Queries
 
 `bisect_left` finds the first insertion index where elements are $\ge target$; `bisect_right` (alias `bisect`) finds the first insertion index where elements are $> target$:
 
@@ -635,7 +667,7 @@ Python provides the built-in `bisect` module implemented in C for high performan
 
 ---
 
-### 2. Python 3.10+ `key=` Parameter
+### 3. Python 3.10+ `key=` Parameter
 
 Starting with Python 3.10, `bisect` supports a `key=` parameter for projecting elements or compound tuples.
 
@@ -652,7 +684,7 @@ def get(entries, query_time):
 
 ---
 
-### 3. Binary Search on Answer Range via `range` + `key`
+### 4. Binary Search on Answer Range via `range` + `key`
 
 In Python, `range()` is a virtual sequence with $O(1)$ random access that requires $O(1)$ auxiliary space. Combined with `key=`, it can perform binary search directly over an answer range.
 
@@ -690,7 +722,7 @@ class Solution:
 
 ---
 
-### 4. Interview Strategy
+### 5. Interview Strategy
 
 - **Binary search is the main focus**: (e.g., the interviewer asks you to write binary search manually or discuss rotated sorted array edge cases): **Write out the manual closed-interval `while left <= right` template** to demonstrate mastery of loop invariants and boundaries.
 - **Binary search is a secondary utility step**: (e.g., part of a Hard problem, LIS subproblem, greedy scheduling): **Prefer `bisect`**, and tell the interviewer: "The array is sorted, so I'm using the standard library `bisect` for $O(\log n)$ lookup to avoid boundary edge cases."
