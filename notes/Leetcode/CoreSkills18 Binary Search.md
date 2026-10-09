@@ -535,6 +535,7 @@ import math
 from typing import List
 
 
+# 解法一：闭区间 ans 记录法（手写模板）
 class Solution:
     def findMedianSortedArrays(
         self,
@@ -567,6 +568,43 @@ class Solution:
 
         i = ans
         j = half - i
+        a_left = A[i - 1] if i > 0 else -math.inf
+        a_right = A[i] if i < m else math.inf
+        b_left = B[j - 1] if j > 0 else -math.inf
+        b_right = B[j] if j < n else math.inf
+
+        max_left = max(a_left, b_left)
+        if (m + n) % 2 == 1:
+            return float(max_left)
+
+        min_right = min(a_right, b_right)
+        return (max_left + min_right) / 2
+
+
+# 解法二：库函数 bisect 一行定位分割点（好记易背）
+from bisect import bisect_left
+
+
+class SolutionBisect:
+    def findMedianSortedArrays(
+        self,
+        nums1: List[int],
+        nums2: List[int],
+    ) -> float:
+        A, B = (nums1, nums2) if len(nums1) <= len(nums2) else (nums2, nums1)
+        m, n = len(A), len(B)
+        half = (m + n + 1) // 2
+
+        def check(i: int) -> bool:
+            j = half - i
+            a_right = A[i] if i < m else math.inf
+            b_left = B[j - 1] if j > 0 else -math.inf
+            return a_right >= b_left
+
+        # 在 [0, m] 中二分查找首个让 check(i) 为 True 的切分位置
+        i = bisect_left(range(m + 1), True, key=check)
+        j = half - i
+
         a_left = A[i - 1] if i > 0 else -math.inf
         a_right = A[i] if i < m else math.inf
         b_left = B[j - 1] if j > 0 else -math.inf
@@ -733,6 +771,40 @@ class Solution:
             True,
             key=lambda s: sum(c // s for c in candies) < k
         )
+```
+
+#### 示例 C：分割点二分 · LC 4 寻找两个正序数组的中位数
+```python
+from bisect import bisect_left
+import math
+from typing import List
+
+class Solution:
+    def findMedianSortedArrays(self, nums1: List[int], nums2: List[int]) -> float:
+        A, B = (nums1, nums2) if len(nums1) <= len(nums2) else (nums2, nums1)
+        m, n = len(A), len(B)
+        half = (m + n + 1) // 2
+
+        # 判定 A 的右部是否 >= B 的左部
+        def check(i: int) -> bool:
+            j = half - i
+            a_right = A[i] if i < m else math.inf
+            b_left = B[j - 1] if j > 0 else -math.inf
+            return a_right >= b_left
+
+        # 在 [0, m] 中二分查找首个让 check(i) 为 True 的切分位置
+        i = bisect_left(range(m + 1), True, key=check)
+        j = half - i
+
+        a_left = A[i - 1] if i > 0 else -math.inf
+        a_right = A[i] if i < m else math.inf
+        b_left = B[j - 1] if j > 0 else -math.inf
+        b_right = B[j] if j < n else math.inf
+
+        max_left = max(a_left, b_left)
+        if (m + n) % 2 == 1:
+            return float(max_left)
+        return (max_left + min(a_right, b_right)) / 2.0
 ```
 
 ---
