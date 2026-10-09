@@ -18,96 +18,117 @@
 | 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | 找“最后一个满足” | 找第一个大于查询值的，返回 `lo - 1` |
 | 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | 双数组中位数 | 在较短数组上二分分割线位置 |
 
-## 模块一：统一模板与极简三步填空法
+## 模块一：全网零心智负担模板（ans 记录贪心探测法）
 
-### 1. 核心模板代码（闭眼默写这 6 行）
+### 1. 为什么“找最后一个看右邻居再减一 (lo - 1)”让人痛苦？
 
-二分查找的本质只有一个：**在一个单调分界线上，找第一个满足条件的点（First True）**。无论题目千变万化，核心代码永远是这 6 行：
+很多二分教程强制使用 `while lo < hi:`，导致求“最小值”和求“最大值”的逻辑不对称：
+- 求**最小值（如 LC 875 吃香蕉）**：找第一个达标的，直接返回 `lo`，很顺。
+- 求**最大值（如 LC 2226 分糖果、切绳子、最大载重）**：
+  - 你想找“最后一个能分够的”，模板却逼你反向写“找第一个分不够的”，然后再 `lo - 1`！
+  - 如果连每人 1 颗都分不够，还要小心 `lo - 1` 越界特判。这违背了人类思考本能。
+
+---
+
+### 2. 终极解法：闭区间 `ans` 记录模板（while left <= right）
+
+**无需任何逻辑反转，无需纠结 `lo` 还是 `lo - 1`，口诀只有一句话：**
+
+> **`check(mid)` 永远正向问“是否达标”；**  
+> **一旦达标立即 `ans = mid` 收下；**  
+> **求最大就贪心往右探（`left = mid + 1`），求最小就贪心往左探（`right = mid - 1`）！**
 
 ```python
-def find_first_true(lo, hi, check):
-    while lo < hi:
-        mid = lo + (hi - lo) // 2
-        if check(mid):
-            hi = mid      # 满足条件，向左收缩找更早的合法点
-        else:
-            lo = mid + 1  # 不满足，向右排除
-    return lo             # 退出时必定 lo == hi，就是第一个满足 check 的位置
+left, right = 最小可能值, 最大可能值
+ans = 兜底默认值  # 如求最大糖果不可能则为 0，数组查不到则为 -1
+
+while left <= right:
+    mid = (left + right) // 2
+    if check(mid):  # 正向直觉：当前 mid 是否达标？
+        ans = mid   # 达标！先稳稳存入答案
+        # 贪心探索更好解：
+        # 若求【最大值】(LC 2226) -> 往更大探：left = mid + 1
+        # 若求【最小值】(LC 875)  -> 往更小探：right = mid - 1
+    else:
+        # 不达标，往反方向收缩：
+        # 若求【最大值】-> 糖太多了分不够，减小：right = mid - 1
+        # 若求【最小值】-> 速度太慢超时了，提速：left = mid + 1
+
+return ans  # 直接返回 ans，绝无任何 +1 / -1 偏移！
 ```
 
-```binary-search-template-demo
+---
+
+### 3. 双绝双生：求最大 (LC 2226) vs 求最小 (LC 875) 对偶代码
+
+这两道题是值域二分的最高频双生典范，代码结构 100% 对称，10 秒闭眼默写：
+
+#### 典范 A：求最大值 · LC 2226. 每个小孩最多分多少颗糖 (Maximum Candies)
+> 规则：每堆糖可拆不可合，分给 $k$ 个孩子，每人分相同正整数颗。求**最大糖数**；分不够返回 0。
+
+```python
+class Solution:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        left, right = 1, max(candies)
+        ans = 0  # 初始兜底：若全部分不够直接返回 0
+
+        while left <= right:
+            mid = (left + right) // 2
+            # 正向问：每人分 mid 颗，能分出至少 k 份吗？
+            if sum(c // mid for c in candies) >= k:
+                ans = mid       # 达标！记下当前最大可行值
+                left = mid + 1  # 贪心：尝试每人分更多
+            else:
+                right = mid - 1 # 分不出 k 份，糖数调小
+
+        return ans
 ```
 
-> **不变定理**：循环退出时必定 `lo == hi`，它永远精准指向**“第一个使 `check(mid)` 为 True 的位置”**。
+#### 典范 B：求最小值 · LC 875. 爱吃香蕉的珂珂 (Koko Eating Bananas)
+> 规则：$h$ 小时内吃完所有堆香蕉，每小时吃某堆至多 $k$ 根。求**最小速度**。
+
+```python
+class Solution:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        left, right = 1, max(piles)
+        ans = right  # 初始兜底：速度取最大堆必定可行
+
+        while left <= right:
+            mid = (left + right) // 2
+            # 正向问：每小时吃 mid 根，能在 h 小时内吃完吗？
+            if sum((p + mid - 1) // mid for p in piles) <= h:
+                ans = mid        # 达标！记下当前最小可行速度
+                right = mid - 1  # 贪心：尝试更慢的速度
+            else:
+                left = mid + 1   # 吃不完，必须提速
+
+        return ans
+```
 
 ---
 
-### 2. 那几个东西怎么填？（极简三步填空心智卡片）
+### 4. 为什么这套模板能终身免疫 Bug？（三大优势）
 
-写二分查找时，脑子里不需要背复杂的镜像表或哨兵分类，**只需要按顺序填好 3 个空**：
-
-#### 第一步：区间 `[lo, hi]` 怎么填？
-
-- **普通数组下标（求位置）**：`lo = 0, hi = len(nums)`
-  - *为什么 `hi` 是 `len(nums)`？* 因为目标可能根本不存在，此时返回 `len(nums)` 充当“未找到 / 越界”的天然哨兵标记。
-- **答案值域（求最小速度、最小容量等）**：`lo = 最小可能值, hi = 最大可能值`
-  - *为什么不需要加 1？* 因为已知最大可能值必定满足条件（恒真上界），区间两端都是闭合有效值。
+| 困扰痛点 | 传统 `while lo < hi` 方案 | `ans` 贪心探测模板 (`left <= right`) |
+|---|---|---|
+| **求最大值的思考过程** | 必须反写 `not check` 找第一个不达标者，然后 `lo - 1` | **零反转**：直接写达标 `check`，达标就存 `ans = mid` |
+| **返回值是否要加减一** | 极易搞混是 `lo` 还是 `lo - 1` 还是 `lo + 1` | **零偏移**：循环结束直接 `return ans` |
+| **无解与越界防御** | 必须特判 `lo == 0` 或 `lo == n` | **零特判**：若一次都没达标，天然返回初始 `ans`（如 0 或 -1） |
+| **死循环风险** | 遇到 `lo = mid` 时若不向上取整就会永久死循环 | **绝对不会死循环**：永远是 `mid + 1` 或 `mid - 1`，区间每次严格收缩 |
 
 ---
 
-#### 第二步：`check(mid)` 怎么填？（4 大边界秒杀口诀）
+### 5. 常见题目统一填空速查表
 
-绝大多数人容易搞混 `>` 还是 `>=`。核心语义永远只有一句话：
-> **“当前 `mid` 是否已经满足（或达到）题目要求？”**
-> - 一旦满足（`True`），说明我们找到了一个可行解，但想看左边有没有更小/更早的，所以往左收：`hi = mid`。
-> - 不满足（`False`），必须往右找：`lo = mid + 1`。
-
-在单调有序数组中找数值时，牢记这套**全网最好记的口诀**：
-
-| 想找的目标 | `check(mid)` 怎么写 | 最终答案 | 秒记口诀 |
-|---|---|---|---|
-| **第一个 $\ge target$** | `nums[mid] >= target` | `lo` | **找“第一个”，直接写条件** |
-| **第一个 $> target$** | `nums[mid] > target` | `lo` | **找“第一个”，直接写条件** |
-| **最后一个 $\le target$** | `nums[mid] > target` | `lo - 1` | **找“最后一个”，找右邻居再减一** |
-| **最后一个 $< target$** | `nums[mid] >= target` | `lo - 1` | **找“最后一个”，找右邻居再减一** |
-
-> 💡 **两句话口诀**：
-> 1. **找“第一个”直接写**：求什么条件 `check` 就写什么条件，答案就是 `lo`。
-> 2. **找“最后一个”看右邻居**：求“最后一个 $\le$”，就找“第一个 $>$”，然后 `lo - 1`；求“最后一个 $<$”，就找“第一个 $\ge$”，然后 `lo - 1`。
-
-**遇到反向问题怎么办？（如 Koko 吃香蕉，速度越大耗时越小）**
-完全不需要记所谓的“镜像规则”！凭人类直觉即可：
-- 问：当前速度 `mid` 耗时是否达标？
-- 写：`hours_needed(mid) <= h`。
-- 达标就 `hi = mid` 继续向左找更小速度；不达标就 `lo = mid + 1`。一气呵成！
-
----
-
-#### 第三步：返回值怎么填？
-
-退出循环时必定 `lo == hi`，根据业务目标做最后一步收尾：
-1. **精确查找目标值（如 LC 704、LC 74）**：
-   - 检查是否越界且命中：`if lo < len(nums) and nums[lo] == target: return lo`，否则返回 `-1`。
-2. **值域二分找极值（如 LC 875 吃香蕉、LC 153 旋转最小值）**：
-   - 直接返回 `lo`（或 `nums[lo]`），它就是满足条件的最小解。
-3. **找最后一个满足的位置（如 LC 981）**：
-   - 返回 `lo - 1`（若 `lo == 0` 说明一个都不存在）。
-
----
-
-### 3. 七道经典题目三步填空速查表
-
-面对任何二分题目，把这 3 个空填进去即可：
-
-| 题目 | 空 1：区间 `[lo, hi]` | 空 2：`check(mid)` 判定条件 | 空 3：返回值处理 |
-|---|---|---|---|
-| **LC 704. Binary Search** | `0, len(nums)` | `nums[mid] >= target` | 验证 `lo < n and nums[lo] == target`，否则 `-1` |
-| **LC 74. Search a 2D Matrix** | `0, m * n`（展平） | `matrix[mid // n][mid % n] >= target` | 验证展平对应元素 `== target`，否则 `False` |
-| **LC 875. Koko Eating Bananas** | `1, max(piles)` | `hours_needed(mid) <= h` | 直接返回 `lo`（最小可行速度） |
-| **LC 153. Find Min in Rotated Array** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | 直接返回 `nums[lo]` |
-| **LC 33. Search in Rotated Array** | `0, len(nums)` | 键值变换 `key(nums[mid]) >= key(target)`<br>*(或常规分段二分)* | 验证 `nums[lo] == target`，否则 `-1` |
-| **LC 981. Time Based KV Store** | `0, len(entries)` | `entry.time > query`（找首个超时的） | 取前一位 `lo - 1`（若 `lo == 0` 返回空） |
-| **LC 4. Median of Two Sorted Arrays** | `0, m`（短数组切分点） | `A[mid] >= B[half - mid - 1]` | 左右边界极值计算中位数 |
+| 题目场景 | 区间 `[left, right]` | 正向 `check(mid)` 条件 | 达标时探测方向 | 默认值 `ans` |
+|---|---|---|---|---|
+| **LC 2226 分糖果 (求最大)** | `1, max(candies)` | `sum(c // mid) >= k` | `left = mid + 1` (求大往右) | `0` |
+| **LC 875 吃香蕉 (求最小)** | `1, max(piles)` | `hours_needed(mid) <= h` | `right = mid - 1` (求小往左) | `max(piles)` |
+| **LC 704 基础等值查找** | `0, len(nums) - 1` | `nums[mid] == target` | 直接命中 `return mid` | `-1` |
+| **有序数组找第一个 $\ge target$** | `0, len(nums) - 1` | `nums[mid] >= target` | `right = mid - 1` (求左往左) | `-1` 或 `n` |
+| **有序数组找最后一个 $\le target$** | `0, len(nums) - 1` | `nums[mid] <= target` | `left = mid + 1` (求右往右) | `-1` |
+| **LC 153 旋转数组求极小** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | `right = mid - 1` (求小往左) | `nums[-1]` |
+| **LC 981 时间戳键值检索** | `0, len(entries) - 1` | `entries[mid].time <= query` | `left = mid + 1` (求右往右) | `""` |
 
 ---
 
