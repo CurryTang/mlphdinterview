@@ -231,6 +231,19 @@ class Solution:
         return False
 ```
 
+```python
+# 库函数 bisect 写法：
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def searchMatrix(self, matrix: List[List[int]], target: int) -> bool:
+        m, n = len(matrix), len(matrix[0])
+        idx = bisect_left(range(m * n), target, key=lambda i: matrix[i // n][i % n])
+        return idx < m * n and matrix[idx // n][idx % n] == target
+```
+
 </details>
 
 ### Koko Eating Bananas：答案值域求最小值
@@ -342,6 +355,18 @@ class Solution:
         return ans
 ```
 
+```python
+# 库函数 bisect 写法：
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def findMin(self, nums: List[int]) -> int:
+        idx = bisect_left(range(len(nums)), True, key=lambda i: nums[i] <= nums[-1])
+        return nums[idx]
+```
+
 </details>
 
 ### Search in Rotated Sorted Array：旋转数组找目标
@@ -416,6 +441,24 @@ class SolutionKeyTransform:
                 right = mid - 1
 
         return -1
+```
+
+```python
+# 解法三：库函数 bisect 写法（基于键值单调化）
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def search(self, nums: List[int], target: int) -> int:
+        if not nums:
+            return -1
+        pivot = nums[-1]
+        def key(x: int):
+            return (x <= pivot, x)
+
+        idx = bisect_left(nums, key(target), key=key)
+        return idx if idx < len(nums) and nums[idx] == target else -1
 ```
 
 </details>
