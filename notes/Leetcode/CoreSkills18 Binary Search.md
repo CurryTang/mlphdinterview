@@ -1,22 +1,22 @@
 # Binary Search 统一模板
 
-二分查找的核心本质只有一个：**在单调序列上找分界点（First True）**。
+二分查找的核心本质只有一个：**在单调序列上按条件收缩区间并记录最优解**。
 
-无论题目千变万化（等值匹配、值域二分、旋转数组、分割点），模板代码永远是 6 行，**解题只需填好 3 个空**，10 秒内就能写完且绝无 bug。
+无论题目千变万化（等值匹配、值域二分、旋转数组、分割点），统一使用闭区间 `while left <= right` 探测，达标时存 `ans = mid` 并向目标方向收缩。解题只需明确**搜索区间**、**判定条件**与**移动方向**，直观且不易出错。
 
 ## 学习顺序
 
 题目来自 [NeetCode 150](https://neetcode.io/practice/practice/neetcode150) 的 Binary Search 模块：
 
-| 顺序 | 原题 | 考察核心 | 三步填空的关键点 |
+| 顺序 | 原题 | 考察核心 | 闭区间模板解题要点 |
 |---:|---|---|---|
-| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | 基础等值查找 | 找第一个 $\ge target$，最后验证相等 |
-| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 二维矩阵二分 | 展平下标 `[0, m*n]`，`(mid // n, mid % n)` 映射 |
-| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | 答案值域二分 | 搜索空间是速度 `[1, max]`，`check` 算耗时是否达标 |
-| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组极值 | 比较对象是末尾元素 `nums[-1]`，直接返回 `nums[lo]` |
-| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组找目标 | 经典分段二分（哪半边有序）/ 键值单调化 |
-| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | 找“最后一个满足” | 找第一个大于查询值的，返回 `lo - 1` |
-| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | 双数组中位数 | 在较短数组上二分分割线位置 |
+| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | 基础等值查找 | 区间 `[0, n-1]`，命中直接返回，未命中左右收缩 |
+| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 二维矩阵二分 | 展平下标 `[0, m*n - 1]`，`(mid // n, mid % n)` 映射 |
+| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | 答案值域求最小值 | 搜索空间 `[1, max]`，达标记 `ans` 并左探（`right = mid - 1`） |
+| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组求极小值 | 比较 `nums[mid] <= nums[-1]`，达标记 `ans` 并左探（`right = mid - 1`） |
+| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组找目标 | 经典分段二分（判断哪半边有序后收缩区间） |
+| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | 找满足条件的最大时间戳 | 时间戳 `<= query` 达标记 `ans` 并右探（`left = mid + 1`） |
+| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | 双数组中位数 | 在较短数组上二分分割点，达标记 `ans` 并左探（`right = mid - 1`） |
 
 ## 模块一：通用二分模板（ans 记录法）
 
@@ -133,16 +133,16 @@ class Solution:
 
 ## 模块二：七道题目的映射
 
-### Binary Search：模板的基本形式
+### Binary Search：基础等值查找
 
-搜索空间是下标 `[0, n]`（`n` 之外一位作为哨兵）。谓词 `check(mid) = nums[mid] >= target`，在有序数组上单调。找到边界 `lo` 后，需要验证 `nums[lo] == target`，否则目标不存在。
+闭区间搜索空间为 `[0, len(nums) - 1]`。通过 `mid` 直接比对目标值，命中直接返回，未命中按大小收缩左右边界。无需任何哨兵。
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 下标 `[0, n]` |
-| `check(mid)` | `nums[mid] >= target` |
-| 哨兵方式 | 越界一位 |
-| 边界处理 | 验证 `nums[lo] == target` |
+| 搜索空间 | 下标闭区间 `[0, len(nums) - 1]` |
+| `check(mid)` | `nums[mid] == target` |
+| 指针移动 | 命中返回 `mid`；偏小 `left = mid + 1`；偏大 `right = mid - 1` |
+| 默认返回值 | 退出循环未找到返回 `-1` |
 
 #### Quick Coding：Binary Search
 
@@ -160,32 +160,44 @@ from typing import List
 
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
-        lo, hi = 0, len(nums)
+        left, right = 0, len(nums) - 1
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if nums[mid] >= target:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
             else:
-                lo = mid + 1
+                right = mid - 1
 
-        if lo < len(nums) and nums[lo] == target:
-            return lo
         return -1
+```
+
+```python
+# 库函数 bisect 写法：
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def search(self, nums: List[int], target: int) -> int:
+        idx = bisect_left(nums, target)
+        return idx if idx < len(nums) and nums[idx] == target else -1
 ```
 
 </details>
 
 ### Search a 2D Matrix：二维下标映射为一维
 
-矩阵满足每行升序、且每行第一个元素大于上一行最后一个元素，因此展平后整体升序。把下标 `k` 映射为 `(k // n, k % n)`，其余与经典二分查找一致。
+矩阵展平后是单调有序序列，总元素个数为 $m \times n$。搜索空间为闭区间 `[0, m * n - 1]`。通过 `(mid // n, mid % n)` 获取对应二维元素，直接套用闭区间二分查找模板。
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 展平下标 `[0, m*n]` |
-| `check(mid)` | `matrix[mid // n][mid % n] >= target` |
-| 哨兵方式 | 越界一位 |
-| 边界处理 | 验证展平后对应位置的值等于 `target` |
+| 搜索空间 | 展平闭区间 `[0, m * n - 1]` |
+| 坐标映射 | `row, col = mid // n, mid % n` |
+| 指针移动 | 命中返回 `True`；偏小 `left = mid + 1`；偏大 `right = mid - 1` |
+| 默认返回值 | 退出循环返回 `False` |
 
 #### Quick Coding：Search a 2D Matrix
 
@@ -204,38 +216,40 @@ from typing import List
 class Solution:
     def searchMatrix(self, matrix: List[List[int]], target: int) -> bool:
         m, n = len(matrix), len(matrix[0])
-        lo, hi = 0, m * n
+        left, right = 0, m * n - 1
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            row, col = divmod(mid, n)
-            if matrix[row][col] >= target:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            val = matrix[mid // n][mid % n]
+            if val == target:
+                return True
+            elif val < target:
+                left = mid + 1
             else:
-                lo = mid + 1
+                right = mid - 1
 
-        if lo < m * n:
-            row, col = divmod(lo, n)
-            return matrix[row][col] == target
         return False
 ```
 
 </details>
 
-### Koko Eating Bananas：搜索空间是答案值域
+### Koko Eating Bananas：答案值域求最小值
 
-题目不要求在数组里定位元素，而是要求在速度的取值范围里找一个边界。速度越高，吃完全部香蕉需要的小时数越少，因此"吃完所需小时数 `<= h`"这个谓词随速度单调，可以直接套用模板。
+题目不要求在数组里定位元素，而是在速度的可能取值范围 `[1, max(piles)]` 内求满足耗时 $\le h$ 的**最小速度**。
+- `check(mid)`：速度为 `mid` 时耗时是否达标（`sum((p + mid - 1) // mid for p in piles) <= h`）。
+- 达标时：记录 `ans = mid`，并往左探寻找更小速度（`right = mid - 1`）。
+- 超时时：速度不够，往右提速（`left = mid + 1`）。
 
 $$
-\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}} \right\rceil
+\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}} \right\rceil = \sum_{\text{pile}} \lfloor \frac{\text{pile} + \text{speed} - 1}{\text{speed}} \rfloor
 $$
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 速度 `[1, max(piles)]` |
+| 搜索空间 | 速度闭区间 `[1, max(piles)]` |
 | `check(mid)` | `hours_needed(mid) <= h` |
-| 哨兵方式 | 恒真边界 |
-| 边界处理 | 直接返回边界 `b` |
+| 移动策略 | 达标记 `ans = mid`，求最小值往左探 `right = mid - 1`；超时往右提 `left = mid + 1` |
+| 默认返回值 | `ans = max(piles)`（最大堆大小必然可行） |
 
 #### Quick Coding：Koko Eating Bananas
 
@@ -248,43 +262,55 @@ def minEatingSpeed(piles, h):
 <summary>参考答案</summary>
 
 ```python
-import math
 from typing import List
 
 
 class Solution:
     def minEatingSpeed(self, piles: List[int], h: int) -> int:
-        def hours_needed(speed: int) -> int:
-            return sum(math.ceil(pile / speed) for pile in piles)
+        left, right = 1, max(piles)
+        ans = right
 
-        lo, hi = 1, max(piles)
-
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if hours_needed(mid) <= h:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            # 向上取整耗时：(p + mid - 1) // mid
+            if sum((p + mid - 1) // mid for p in piles) <= h:
+                ans = mid        # 达标，记录当前速度
+                right = mid - 1  # 求最小值，向左尝试更小速度
             else:
-                lo = mid + 1
+                left = mid + 1   # 超时，向右提速
 
-        return lo
+        return ans
+```
+
+```python
+# 库函数 bisect 一行写法：
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
 ```
 
 </details>
 
-题目约束保证 `h >= len(piles)`，所以速度取 `max(piles)` 时，每堆最多用 1 小时，总小时数不超过 `h`，恒真边界成立，不需要额外判断。
+### Find Minimum in Rotated Sorted Array：旋转数组求极小值
 
-### Find Minimum in Rotated Sorted Array：没有目标值的谓词
-
-这道题没有 `target`，谓词要从数组本身的结构里找。旋转后的数组由两段升序区间拼接而成，第一段的值都大于 `nums[-1]`，第二段的值都小于等于 `nums[-1]`。谓词 `check(mid) = nums[mid] <= nums[-1]` 恰好在两段的交界处从 `False` 变为 `True`，边界就是最小值的下标。
-
-数组未旋转时，`nums[0] <= nums[-1]` 本身成立，边界落在下标 `0`，不需要为"未旋转"单独写分支。
+旋转数组由两段递增区间组成：左半段所有元素均 $> nums[-1]$，右半段所有元素均 $\le nums[-1]$。
+- 判定条件：`nums[mid] <= nums[-1]`。
+- 达标时：说明 `mid` 已落在右半段，当前元素是候选最小值，记录 `ans = nums[mid]`，并向左探寻找更小的分界起点（`right = mid - 1`）。
+- 未达标时：说明 `mid` 还在左半段，极小值必然在右侧，向右收缩（`left = mid + 1`）。
+- 未旋转数组中首个元素就满足 `<= nums[-1]`，逻辑天然兼容。
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 下标 `[0, n-1]` |
+| 搜索空间 | 下标闭区间 `[0, len(nums) - 1]` |
 | `check(mid)` | `nums[mid] <= nums[-1]` |
-| 哨兵方式 | 恒真边界：`nums[n-1] <= nums[n-1]` |
-| 边界处理 | 返回 `nums[b]` |
+| 移动策略 | 达标记 `ans = nums[mid]`，向左探 `right = mid - 1`；未达标向右探 `left = mid + 1` |
+| 默认返回值 | `ans = nums[-1]`（兜底为末尾元素） |
 
 #### Quick Coding：Find Minimum in Rotated Sorted Array
 
@@ -302,36 +328,34 @@ from typing import List
 
 class Solution:
     def findMin(self, nums: List[int]) -> int:
-        lo, hi = 0, len(nums) - 1
+        left, right = 0, len(nums) - 1
+        ans = nums[-1]
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
+        while left <= right:
+            mid = (left + right) // 2
             if nums[mid] <= nums[-1]:
-                hi = mid
+                ans = nums[mid]  # 落在右半段，记录候选最小值
+                right = mid - 1  # 往左探，寻找更小分界点
             else:
-                lo = mid + 1
+                left = mid + 1   # 落在左半段，极小值在右侧
 
-        return nums[lo]
+        return ans
 ```
 
 </details>
 
-### Search in Rotated Sorted Array：用键值变换线性化
+### Search in Rotated Sorted Array：旋转数组找目标
 
-这道题既有旋转结构，又有目标值。直接比较 `nums[mid]` 和 `target` 不再单调，因为数组不是整体有序。做法是给每个值分配一个键：
-
-```text
-key(x) = (x <= nums[-1], x)
-```
-
-第一段（大于 `nums[-1]` 的值）键的第一个分量是 `False`，第二段（小于等于 `nums[-1]` 的值）是 `True`。按元组比较键值，第一段整体排在第二段之前，段内再按数值比较，因此 `key(nums[i])` 随下标 `i` 严格单调递增，和未旋转数组的效果一致。`target` 按同样规则计算 `key(target)`，谓词改成比较键值即可。
+在闭区间 `[0, len(nums) - 1]` 内二分。虽然整体非单调，但以 `mid` 切分后，**左右两半必然至少有一半是严格有序的**：
+- 若 `nums[left] <= nums[mid]`，左半段有序：若 `target` 落在左半段范围内（`nums[left] <= target < nums[mid]`），收缩右界（`right = mid - 1`），否则搜右半段（`left = mid + 1`）。
+- 否则右半段有序：若 `target` 落在右半段范围内（`nums[mid] < target <= nums[right]`），收缩左界（`left = mid + 1`），否则搜左半段（`right = mid - 1`）。
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 下标 `[0, n]` |
-| `check(mid)` | `key(nums[mid]) >= key(target)` |
-| 哨兵方式 | 越界一位 |
-| 边界处理 | 验证 `nums[b] == target` |
+| 搜索空间 | 下标闭区间 `[0, len(nums) - 1]` |
+| 核心逻辑 | 判断有序半段，依据 `target` 是否在其中收缩边界 |
+| 指针移动 | 命中返回 `mid`；否则按有序区间调整 `left` / `right` |
+| 默认返回值 | 退出循环未找到返回 `-1` |
 
 #### Quick Coding：Search in Rotated Sorted Array
 
@@ -347,68 +371,70 @@ def search(nums, target):
 from typing import List
 
 
-# 解法一：统一模板法（键值变换线性化）
+# 解法一：经典分段二分（推荐）
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
-        pivot_value = nums[-1]
+        left, right = 0, len(nums) - 1
 
-        def key(value: int):
-            return (value <= pivot_value, value)
-
-        target_key = key(target)
-        lo, hi = 0, len(nums)
-
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if key(nums[mid]) >= target_key:
-                hi = mid
-            else:
-                lo = mid + 1
-
-        if lo < len(nums) and nums[lo] == target:
-            return lo
-        return -1
-
-
-# 解法二：面试最常用的经典分段二分（直观易写）
-class SolutionClassic:
-    def search(self, nums: List[int], target: int) -> int:
-        lo, hi = 0, len(nums) - 1
-
-        while lo <= hi:
-            mid = lo + (hi - lo) // 2
+        while left <= right:
+            mid = (left + right) // 2
             if nums[mid] == target:
                 return mid
 
-            # 判断哪一半是有序的
-            if nums[lo] <= nums[mid]:  # 左半段有序
-                if nums[lo] <= target < nums[mid]:
-                    hi = mid - 1
+            # 判定左半段是否有序
+            if nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
                 else:
-                    lo = mid + 1
+                    left = mid + 1
             else:  # 右半段有序
-                if nums[mid] < target <= nums[hi]:
-                    lo = mid + 1
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
                 else:
-                    hi = mid - 1
+                    right = mid - 1
+
+        return -1
+
+
+# 解法二：键值变换线性化（闭区间模板）
+class SolutionKeyTransform:
+    def search(self, nums: List[int], target: int) -> int:
+        pivot = nums[-1]
+        def key(x: int): return (x <= pivot, x)
+
+        target_key = key(target)
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            k = key(nums[mid])
+            if k == target_key:
+                return mid
+            elif k < target_key:
+                left = mid + 1
+            else:
+                right = mid - 1
 
         return -1
 ```
 
 </details>
 
-题目保证数组元素互不相同，键值比较不会遇到并列的情况。
+### Time Based Key-Value Store：求满足条件的最大时间戳
 
-### Time Based Key-Value Store：最后一个 False
-
-`set` 按时间戳递增写入，同一个 `key` 对应的记录本身有序。`get` 要找的是"时间戳不超过查询值的最后一条记录"，属于"最后一个 False"读法：谓词 `check(mid) = timestamps[mid] > query` 找到第一个时间戳大于查询值的位置，答案下标是这个位置往前一格。
+`set` 按时间递增存储，因此每个 `key` 对应的 `entries` 天然按时间戳有序。
+`get` 要找时间戳 $\le query$ 的**最新（最大）**一条记录：
+- 判定条件：`entries[mid][0] <= timestamp`。
+- 达标时：说明该时间戳有效，记录 `ans = entries[mid][1]`，并向右探寻找更新的时间戳（`left = mid + 1`）。
+- 未达标时：说明时间戳超出查询时间，向左收缩（`right = mid - 1`）。
+- 默认值：`ans = ""`（若所有记录都大于查询时间，直接返回空字符串，无需任何边界特判）。
 
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 下标 `[0, len(entries)]` |
-| `check(mid)` | `entries[mid].timestamp > query` |
-| 哨兵方式 | 越界一位 |
-| 边界处理 | 取 `b - 1`，`b == 0` 时没有满足条件的记录 |
+| 搜索空间 | 下标闭区间 `[0, len(entries) - 1]` |
+| `check(mid)` | `entries[mid][0] <= timestamp` |
+| 移动策略 | 达标记 `ans = entries[mid][1]`，求最大值向右探 `left = mid + 1`；超时向左收缩 `right = mid - 1` |
+| 默认返回值 | `ans = ""`（未找到时直接返回） |
 
 #### Quick Coding：Time Based Key-Value Store
 
@@ -440,40 +466,59 @@ class TimeMap:
 
     def get(self, key: str, timestamp: int) -> str:
         entries = self.store[key]
-        lo, hi = 0, len(entries)
+        left, right = 0, len(entries) - 1
+        ans = ""
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if entries[mid][0] > timestamp:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            if entries[mid][0] <= timestamp:
+                ans = entries[mid][1]  # 达标，记录当前有效值
+                left = mid + 1         # 求最大时间戳，向右尝试更新的记录
             else:
-                lo = mid + 1
+                right = mid - 1        # 时间戳过大，向左收缩
 
-        if lo == 0:
-            return ""
-        return entries[lo - 1][1]
+        return ans
+```
+
+```python
+# 库函数 bisect 写法：
+from bisect import bisect_right
+from collections import defaultdict
+
+
+class TimeMapBisect:
+    def __init__(self):
+        self.store = defaultdict(list)
+
+    def set(self, key: str, value: str, timestamp: int) -> None:
+        self.store[key].append((timestamp, value))
+
+    def get(self, key: str, timestamp: int) -> str:
+        entries = self.store[key]
+        idx = bisect_right(entries, timestamp, key=lambda x: x[0]) - 1
+        return entries[idx][1] if idx >= 0 else ""
 ```
 
 </details>
 
-### Median of Two Sorted Arrays：搜索空间是分割点
+### Median of Two Sorted Arrays：在较短数组上二分分割点
 
-这道题的搜索空间既不是数组下标，也不是答案值域，而是"在较短数组里切一刀"的位置。把两个数组各切一刀，左半部分共 `half = (m + n + 1) // 2` 个元素。谓词判断这一刀是否让 `A` 的右半部分足够大：
+搜索空间是在较短数组 $A$（长度 $m$）上的分割线位置 $i \in [0, m]$。两数组左半部分共需 `half = (m + n + 1) // 2` 个元素，此时 $B$ 的分割点 $j = \text{half} - i$。
+- 判定条件：当前分割是否满足 $A$ 的右部元素 $\ge B$ 的左部元素（`A[mid] >= B[half - mid - 1]`）。
+- 达标时：记录当前分割点 `ans = mid`，求最小分割点往左探（`right = mid - 1`）。
+- 未达标时：$A$ 的切分过小导致右部不足，往右探（`left = mid + 1`）。
+- 退出循环后直接使用 `ans` 进行中位数计算。
 
 $$
 \text{check}(i) = A[i] \ge B[j-1], \quad j = \text{half} - i
 $$
 
-`i` 越大，`A[i]`（或越界时的 `+inf`）不会变小；`j` 越小，`B[j-1]`（或越界时的 `-inf`）不会变大，谓词随 `i` 单调，可以直接二分。用 `±inf` 表示越界，`i == m` 或 `j == 0` 时不需要单独判断。
-
-找到边界 `i` 之后，左半部分最大值 `max_left` 和右半部分最小值 `min_right` 分别是中位数计算所需的两个量：总长度为奇数时中位数是 `max_left`，为偶数时是 `max_left` 和 `min_right` 的平均值。
-
 | 项目 | 内容 |
 |---|---|
-| 搜索空间 | 分割点 `i ∈ [0, m]`（`m` 为较短数组长度） |
-| `check(mid)` | `A[mid] >= B[half - mid - 1]`（越界用 `±inf`） |
-| 哨兵方式 | 恒真边界：`i == m` 时 `A` 的右半部分为 `+inf` |
-| 边界处理 | 用边界 `i` 处的 `max_left`、`min_right` 计算中位数 |
+| 搜索空间 | 分割点闭区间 `[0, m]`（$m \le n$） |
+| `check(mid)` | `a_right >= b_left`（越界取 $\pm\infty$） |
+| 移动策略 | 达标记 `ans = mid`，求最小切分向左探 `right = mid - 1`；未达标向右探 `left = mid + 1` |
+| 默认返回值 | `ans = m` |
 
 #### Quick Coding：Median of Two Sorted Arrays
 
@@ -509,15 +554,18 @@ class Solution:
             b_left = B[j - 1] if j > 0 else -math.inf
             return a_right >= b_left
 
-        lo, hi = 0, m
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if a_right_big_enough(mid):
-                hi = mid
-            else:
-                lo = mid + 1
+        left, right = 0, m
+        ans = m
 
-        i = lo
+        while left <= right:
+            mid = (left + right) // 2
+            if a_right_big_enough(mid):
+                ans = mid        # 达标，记录分割点
+                right = mid - 1  # 求最小分割点，向左探
+            else:
+                left = mid + 1   # 切分不足，向右提
+
+        i = ans
         j = half - i
         a_left = A[i - 1] if i > 0 else -math.inf
         a_right = A[i] if i < m else math.inf

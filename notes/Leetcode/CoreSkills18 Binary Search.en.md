@@ -1,22 +1,22 @@
 # Binary Search: A Unified Template
 
-The fundamental essence of binary search is simple: **finding a transition boundary on a monotonic predicate (First True)**.
+The fundamental essence of binary search is simple: **narrowing the search interval monotonically and recording the optimal candidate solution**.
 
-Regardless of problem variations (exact match, answer range, rotated array, median partition), the template code is always 6 lines. **You only ever need to fill in 3 blanks**, taking under 10 seconds with zero off-by-one errors.
+Regardless of problem variations (exact match, answer range, rotated array, median partition), we consistently use closed-interval probing (`while left <= right`), recording `ans = mid` when feasible and shifting inward. Problem solving only requires clarifying the **search space**, the **feasibility predicate**, and the **exploration direction**.
 
 ## Learning Order
 
 Problems selected from the Binary Search module of [NeetCode 150](https://neetcode.io/practice/practice/neetcode150):
 
-| Order | Problem | Core Pattern | 3-Step Fill-in Key Point |
+| Order | Problem | Core Pattern | Closed-Interval Key Points |
 |---:|---|---|---|
-| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | Basic Exact Match | First $\ge target$, then verify equality |
-| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 2D Matrix Flattening | Flatten index `[0, m*n]`, map via `(mid // n, mid % n)` |
-| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | Answer Range Binary Search | Search space is speed `[1, max]`, check total hours $\le h$ |
-| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Minimum | Compare with tail `nums[-1]`, return `nums[lo]` |
-| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Search | Classic sorted-half branch / key linearization |
-| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | Find Last True | Find first exceeding timestamp, return `lo - 1` |
-| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | Median of Two Sorted Arrays | Binary search partition point on shorter array |
+| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | Basic Exact Match | Range `[0, n-1]`, return on match, shrink bounds otherwise |
+| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 2D Matrix Flattening | Flatten index `[0, m*n - 1]`, map via `(mid // n, mid % n)` |
+| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | Answer Range Minimum | Range `[1, max]`, record `ans` and probe left (`right = mid - 1`) |
+| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Minimum | Test `nums[mid] <= nums[-1]`, record `ans` and probe left |
+| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Search | Partitioned search (identify sorted half and shrink bounds) |
+| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | Max Feasible Timestamp | Test `time <= query`, record `ans` and probe right (`left = mid + 1`) |
+| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | Median of Two Sorted Arrays | Partition shorter array, record `ans` and probe left |
 
 ## Module 1: General Binary Search Template (`ans`-Recording Method)
 
@@ -133,16 +133,16 @@ class Solution:
 
 ## Module 2: Mapping Each of the Seven Problems
 
-### Binary Search: The Template's Basic Form
+### Binary Search: Basic Exact Match
 
-The search space is index `[0, n]`, with one position past `n` acting as the sentinel. The predicate `check(mid) = nums[mid] >= target` is monotonic on a sorted array. After finding boundary `lo`, verify `nums[lo] == target`; otherwise the target does not exist.
+The search space is the closed interval `[0, len(nums) - 1]`. Directly check `mid` against the target. Return immediately on a match; adjust the left or right bound according to value comparison. No sentinels required.
 
 | Item | Value |
 |---|---|
-| Search space | index `[0, n]` |
-| `check(mid)` | `nums[mid] >= target` |
-| Sentinel setup | One past the end |
-| Boundary handling | Verify `nums[lo] == target` |
+| Search space | Closed index interval `[0, len(nums) - 1]` |
+| `check(mid)` | `nums[mid] == target` |
+| Pointer movement | Return `mid` on hit; if smaller, `left = mid + 1`; if larger, `right = mid - 1` |
+| Default return | Return `-1` if loop terminates without finding target |
 
 #### Quick Coding: Binary Search
 
@@ -160,32 +160,44 @@ from typing import List
 
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
-        lo, hi = 0, len(nums)
+        left, right = 0, len(nums) - 1
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if nums[mid] >= target:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
             else:
-                lo = mid + 1
+                right = mid - 1
 
-        if lo < len(nums) and nums[lo] == target:
-            return lo
         return -1
+```
+
+```python
+# Standard library bisect approach:
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def search(self, nums: List[int], target: int) -> int:
+        idx = bisect_left(nums, target)
+        return idx if idx < len(nums) and nums[idx] == target else -1
 ```
 
 </details>
 
 ### Search a 2D Matrix: Mapping a 2D Index to 1D
 
-Each row is sorted ascending, and the first element of each row is greater than the last element of the previous row, so the flattened matrix is ascending overall. Map index `k` to `(k // n, k % n)`; everything else matches the classic binary search.
+The flattened 2D matrix forms a strictly sorted sequence with $m \times n$ total elements. The search space is the closed interval `[0, m * n - 1]`. Retrieve elements via `(mid // n, mid % n)` and apply standard closed-interval binary search.
 
 | Item | Value |
 |---|---|
-| Search space | flattened index `[0, m*n]` |
-| `check(mid)` | `matrix[mid // n][mid % n] >= target` |
-| Sentinel setup | One past the end |
-| Boundary handling | Verify the value at the flattened position equals `target` |
+| Search space | Closed flattened interval `[0, m * n - 1]` |
+| Coordinate map | `row, col = mid // n, mid % n` |
+| Pointer movement | Return `True` on match; if smaller, `left = mid + 1`; if larger, `right = mid - 1` |
+| Default return | Return `False` after loop termination |
 
 #### Quick Coding: Search a 2D Matrix
 
@@ -204,38 +216,40 @@ from typing import List
 class Solution:
     def searchMatrix(self, matrix: List[List[int]], target: int) -> bool:
         m, n = len(matrix), len(matrix[0])
-        lo, hi = 0, m * n
+        left, right = 0, m * n - 1
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            row, col = divmod(mid, n)
-            if matrix[row][col] >= target:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            val = matrix[mid // n][mid % n]
+            if val == target:
+                return True
+            elif val < target:
+                left = mid + 1
             else:
-                lo = mid + 1
+                right = mid - 1
 
-        if lo < m * n:
-            row, col = divmod(lo, n)
-            return matrix[row][col] == target
         return False
 ```
 
 </details>
 
-### Koko Eating Bananas: The Search Space Is the Answer Range
+### Koko Eating Bananas: Answer Range Minimization
 
-This problem does not ask for a position inside an array. It asks for a boundary in the range of possible eating speeds. As speed increases, the number of hours needed to finish all piles does not increase, so the predicate "hours needed `<= h`" is monotonic in speed and the template applies directly.
+Rather than indexing an array, find the **minimum speed** in the range `[1, max(piles)]` such that total eating time is $\le h$.
+- `check(mid)`: Whether eating at speed `mid` finishes within $h$ hours (`sum((p + mid - 1) // mid for p in piles) <= h`).
+- When viable: Record `ans = mid` and probe left for smaller valid speeds (`right = mid - 1`).
+- When overtime: Speed is insufficient, increase speed (`left = mid + 1`).
 
 $$
-\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}} \right\rceil
+\text{hours\_needed(speed)} = \sum_{\text{pile}} \left\lceil \frac{\text{pile}}{\text{speed}} \right\rceil = \sum_{\text{pile}} \lfloor \frac{\text{pile} + \text{speed} - 1}{\text{speed}} \rfloor
 $$
 
 | Item | Value |
 |---|---|
-| Search space | speed `[1, max(piles)]` |
+| Search space | Speed closed interval `[1, max(piles)]` |
 | `check(mid)` | `hours_needed(mid) <= h` |
-| Sentinel setup | Always-true boundary |
-| Boundary handling | Return boundary `b` directly |
+| Movement rule | Feasible: record `ans = mid`, probe left (`right = mid - 1`); Overtime: probe right (`left = mid + 1`) |
+| Default return | `ans = max(piles)` (maximum pile size is always viable) |
 
 #### Quick Coding: Koko Eating Bananas
 
@@ -248,43 +262,55 @@ def minEatingSpeed(piles, h):
 <summary>Reference answer</summary>
 
 ```python
-import math
 from typing import List
 
 
 class Solution:
     def minEatingSpeed(self, piles: List[int], h: int) -> int:
-        def hours_needed(speed: int) -> int:
-            return sum(math.ceil(pile / speed) for pile in piles)
+        left, right = 1, max(piles)
+        ans = right
 
-        lo, hi = 1, max(piles)
-
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if hours_needed(mid) <= h:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            # Ceiling division: (p + mid - 1) // mid
+            if sum((p + mid - 1) // mid for p in piles) <= h:
+                ans = mid        # Feasible, record speed
+                right = mid - 1  # Probe left for smaller speed
             else:
-                lo = mid + 1
+                left = mid + 1   # Overtime, increase speed
 
-        return lo
+        return ans
+```
+
+```python
+# Standard library bisect one-liner:
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
 ```
 
 </details>
 
-The problem constraints guarantee `h >= len(piles)`. At speed `max(piles)`, each pile takes at most 1 hour, so the total is at most `h`. The always-true boundary holds without an extra case for it.
+### Find Minimum in Rotated Sorted Array: Rotated Array Minimum
 
-### Find Minimum in Rotated Sorted Array: A Predicate Without a Target
-
-This problem has no `target`; the predicate has to come from the structure of the array itself. A rotated array is two ascending runs joined together: every value in the first run is greater than `nums[-1]`, and every value in the second run is less than or equal to `nums[-1]`. The predicate `check(mid) = nums[mid] <= nums[-1]` switches from `False` to `True` exactly at the join, and that boundary is the index of the minimum.
-
-When the array is not rotated, `nums[0] <= nums[-1]` already holds, so the boundary lands at index `0` — no separate branch is needed for the unrotated case.
+The rotated array consists of two ascending segments: every element in the left segment is $> nums[-1]$, and every element in the right segment is $\le nums[-1]$.
+- Condition: `nums[mid] <= nums[-1]`.
+- When satisfied: `mid` is in the right segment and is a valid candidate. Record `ans = nums[mid]` and probe left to find the earlier transition boundary (`right = mid - 1`).
+- When unsatisfied: `mid` is still in the left segment; the minimum must lie strictly to the right (`left = mid + 1`).
+- Naturally handles unrotated arrays because the first element already satisfies `<= nums[-1]`.
 
 | Item | Value |
 |---|---|
-| Search space | index `[0, n-1]` |
+| Search space | Closed index interval `[0, len(nums) - 1]` |
 | `check(mid)` | `nums[mid] <= nums[-1]` |
-| Sentinel setup | Always-true boundary: `nums[n-1] <= nums[n-1]` |
-| Boundary handling | Return `nums[b]` |
+| Movement rule | Feasible: `ans = nums[mid]`, probe left `right = mid - 1`; Infeasible: probe right `left = mid + 1` |
+| Default return | `ans = nums[-1]` (fallback to tail element) |
 
 #### Quick Coding: Find Minimum in Rotated Sorted Array
 
@@ -302,36 +328,34 @@ from typing import List
 
 class Solution:
     def findMin(self, nums: List[int]) -> int:
-        lo, hi = 0, len(nums) - 1
+        left, right = 0, len(nums) - 1
+        ans = nums[-1]
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
+        while left <= right:
+            mid = (left + right) // 2
             if nums[mid] <= nums[-1]:
-                hi = mid
+                ans = nums[mid]  # Right segment candidate
+                right = mid - 1  # Probe left for earlier boundary
             else:
-                lo = mid + 1
+                left = mid + 1   # Left segment, minimum is to the right
 
-        return nums[lo]
+        return ans
 ```
 
 </details>
 
-### Search in Rotated Sorted Array: Linearizing with a Key Transform
+### Search in Rotated Sorted Array: Rotated Array Search
 
-This problem has both a rotation and a target value. Comparing `nums[mid]` directly against `target` is no longer monotonic, because the array is not sorted overall. The fix is to assign every value a key:
-
-```text
-key(x) = (x <= nums[-1], x)
-```
-
-The first run (values greater than `nums[-1]`) gets a key whose first component is `False`; the second run (values less than or equal to `nums[-1]`) gets `True`. Under tuple comparison, the entire first run sorts before the entire second run, and within each run the comparison falls back to the value itself. So `key(nums[i])` is strictly increasing in index `i`, matching the behavior of an unrotated array. `target` is assigned a key with the same rule, and the predicate becomes a key comparison.
+Perform binary search in `[0, len(nums) - 1]`. Although the array as a whole is not monotonically sorted, dividing at `mid` guarantees that **at least one of the two halves is strictly sorted**:
+- If `nums[left] <= nums[mid]`: The left half is sorted. If `nums[left] <= target < nums[mid]`, shrink right bound (`right = mid - 1`); otherwise search right half (`left = mid + 1`).
+- Otherwise: The right half is sorted. If `nums[mid] < target <= nums[right]`, shrink left bound (`left = mid + 1`); otherwise search left half (`right = mid - 1`).
 
 | Item | Value |
 |---|---|
-| Search space | index `[0, n]` |
-| `check(mid)` | `key(nums[mid]) >= key(target)` |
-| Sentinel setup | One past the end |
-| Boundary handling | Verify `nums[b] == target` |
+| Search space | Closed index interval `[0, len(nums) - 1]` |
+| Core logic | Identify sorted half, then test whether `target` falls inside |
+| Pointer movement | Return `mid` on hit; adjust `left` / `right` based on interval |
+| Default return | Return `-1` if loop terminates without finding target |
 
 #### Quick Coding: Search in Rotated Sorted Array
 
@@ -347,42 +371,70 @@ def search(nums, target):
 from typing import List
 
 
+# Approach 1: Classic Partitioned Search (Recommended)
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
-        pivot_value = nums[-1]
+        left, right = 0, len(nums) - 1
 
-        def key(value: int):
-            return (value <= pivot_value, value)
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+
+            # Check if left half is sorted
+            if nums[left] <= nums[mid]:
+                if nums[left] <= target < nums[mid]:
+                    right = mid - 1
+                else:
+                    left = mid + 1
+            else:  # Right half is sorted
+                if nums[mid] < target <= nums[right]:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+
+        return -1
+
+
+# Approach 2: Key Transformation Linearization (Closed Interval)
+class SolutionKeyTransform:
+    def search(self, nums: List[int], target: int) -> int:
+        pivot = nums[-1]
+        def key(x: int): return (x <= pivot, x)
 
         target_key = key(target)
-        lo, hi = 0, len(nums)
+        left, right = 0, len(nums) - 1
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if key(nums[mid]) >= target_key:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            k = key(nums[mid])
+            if k == target_key:
+                return mid
+            elif k < target_key:
+                left = mid + 1
             else:
-                lo = mid + 1
+                right = mid - 1
 
-        if lo < len(nums) and nums[lo] == target:
-            return lo
         return -1
 ```
 
 </details>
 
-The problem guarantees all elements are distinct, so key comparisons never tie.
+### Time Based Key-Value Store: Find Maximum Feasible Timestamp
 
-### Time Based Key-Value Store: The Last-False Reading
-
-`set` writes with strictly increasing timestamps, so the records for a given `key` are already ordered. `get` asks for the last record whose timestamp does not exceed the query — the "last False" reading. The predicate `check(mid) = timestamps[mid] > query` finds the first position whose timestamp exceeds the query; the answer index is one position before that.
+`set` operations append records in strictly ascending timestamps, so records for each `key` are naturally sorted.
+`get` queries the **latest (maximum)** record with timestamp $\le query$:
+- Feasibility condition: `entries[mid][0] <= timestamp`.
+- When feasible: Record `ans = entries[mid][1]` and probe right for newer timestamps (`left = mid + 1`).
+- When infeasible: Timestamp is too new, shrink left (`right = mid - 1`).
+- Default return: `ans = ""` (if all records exceed query time, returns empty string cleanly with no index special cases).
 
 | Item | Value |
 |---|---|
-| Search space | index `[0, len(entries)]` |
-| `check(mid)` | `entries[mid].timestamp > query` |
-| Sentinel setup | One past the end |
-| Boundary handling | Take `b - 1`; if `b == 0`, no record satisfies the condition |
+| Search space | Closed index interval `[0, len(entries) - 1]` |
+| `check(mid)` | `entries[mid][0] <= timestamp` |
+| Movement rule | Feasible: record `ans = entries[mid][1]`, probe right (`left = mid + 1`); Infeasible: probe left (`right = mid - 1`) |
+| Default return | `ans = ""` (returned directly if not found) |
 
 #### Quick Coding: Time Based Key-Value Store
 
@@ -414,40 +466,59 @@ class TimeMap:
 
     def get(self, key: str, timestamp: int) -> str:
         entries = self.store[key]
-        lo, hi = 0, len(entries)
+        left, right = 0, len(entries) - 1
+        ans = ""
 
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if entries[mid][0] > timestamp:
-                hi = mid
+        while left <= right:
+            mid = (left + right) // 2
+            if entries[mid][0] <= timestamp:
+                ans = entries[mid][1]  # Feasible, record value
+                left = mid + 1         # Probe right for newer record
             else:
-                lo = mid + 1
+                right = mid - 1        # Infeasible, shrink left
 
-        if lo == 0:
-            return ""
-        return entries[lo - 1][1]
+        return ans
+```
+
+```python
+# Standard library bisect approach:
+from bisect import bisect_right
+from collections import defaultdict
+
+
+class TimeMapBisect:
+    def __init__(self):
+        self.store = defaultdict(list)
+
+    def set(self, key: str, value: str, timestamp: int) -> None:
+        self.store[key].append((timestamp, value))
+
+    def get(self, key: str, timestamp: int) -> str:
+        entries = self.store[key]
+        idx = bisect_right(entries, timestamp, key=lambda x: x[0]) - 1
+        return entries[idx][1] if idx >= 0 else ""
 ```
 
 </details>
 
-### Median of Two Sorted Arrays: The Search Space Is a Partition Point
+### Median of Two Sorted Arrays: Partitioning the Shorter Array
 
-Here the search space is neither an array index nor an answer range; it is the position of a cut through the shorter array. Cutting both arrays so the left side holds `half = (m + n + 1) // 2` elements total, the predicate checks whether the right side of `A` is large enough:
+The search space is the cut position $i \in [0, m]$ on the shorter array $A$ (length $m$). Both left partitions together must have `half = (m + n + 1) // 2` elements, leaving cut position $j = \text{half} - i$ on $B$.
+- Condition: Whether the cut satisfies $A$'s right element $\ge B$'s left element (`A[mid] >= B[half - mid - 1]`).
+- When feasible: Record `ans = mid` and probe left for the minimum valid partition cut (`right = mid - 1`).
+- When infeasible: Cut on $A$ is too small, probe right (`left = mid + 1`).
+- Compute the median using `ans` upon loop exit.
 
 $$
 \text{check}(i) = A[i] \ge B[j-1], \quad j = \text{half} - i
 $$
 
-As `i` increases, `A[i]` (or `+inf` when out of range) does not decrease; as `j` decreases, `B[j-1]` (or `-inf` when out of range) does not increase. The predicate is monotonic in `i`, so it can be searched directly. Using `±inf` for out-of-range values means `i == m` or `j == 0` need no separate case.
-
-Once boundary `i` is found, the maximum of the left side (`max_left`) and the minimum of the right side (`min_right`) are the two quantities the median is built from: when the total length is odd, the median is `max_left`; when even, it is the average of `max_left` and `min_right`.
-
 | Item | Value |
 |---|---|
-| Search space | partition point `i ∈ [0, m]` (`m` is the length of the shorter array) |
-| `check(mid)` | `A[mid] >= B[half - mid - 1]` (out-of-range values use `±inf`) |
-| Sentinel setup | Always-true boundary: at `i == m`, the right side of `A` is `+inf` |
-| Boundary handling | Compute the median from `max_left` and `min_right` at boundary `i` |
+| Search space | Closed partition interval `[0, m]` ($m \le n$) |
+| `check(mid)` | `a_right >= b_left` (out-of-bounds padded with $\pm\infty$) |
+| Movement rule | Feasible: record `ans = mid`, probe left `right = mid - 1`; Infeasible: probe right `left = mid + 1` |
+| Default return | `ans = m` |
 
 #### Quick Coding: Median of Two Sorted Arrays
 
@@ -483,15 +554,18 @@ class Solution:
             b_left = B[j - 1] if j > 0 else -math.inf
             return a_right >= b_left
 
-        lo, hi = 0, m
-        while lo < hi:
-            mid = lo + (hi - lo) // 2
-            if a_right_big_enough(mid):
-                hi = mid
-            else:
-                lo = mid + 1
+        left, right = 0, m
+        ans = m
 
-        i = lo
+        while left <= right:
+            mid = (left + right) // 2
+            if a_right_big_enough(mid):
+                ans = mid        # Feasible, record cut
+                right = mid - 1  # Probe left for minimum valid cut
+            else:
+                left = mid + 1   # Cut too small, advance right
+
+        i = ans
         j = half - i
         a_left = A[i - 1] if i > 0 else -math.inf
         a_right = A[i] if i < m else math.inf
