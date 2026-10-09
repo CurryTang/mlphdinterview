@@ -18,117 +18,116 @@ Problems selected from the Binary Search module of [NeetCode 150](https://neetco
 | 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | Find Last True | Find first exceeding timestamp, return `lo - 1` |
 | 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | Median of Two Sorted Arrays | Binary search partition point on shorter array |
 
-## Module 1: The Zero-Mental-Burden Template (`ans`-Recording Greedy Probe)
+## Module 1: General Binary Search Template (`ans`-Recording Method)
 
-### 1. Why "Find Last via Right Neighbor Minus 1 (lo - 1)" Is Unnatural
+### 1. The Issue with Traditional Templates: Why Finding Maximum Is Error-Prone
 
-Traditional tutorials force the `while lo < hi:` half-open template, which creates an asymmetric cognitive burden between finding minimums vs. maximums:
-- **Finding Minimum (e.g., LC 875 Koko Bananas)**: Looking for the *first valid value* returns `lo` naturally.
-- **Finding Maximum (e.g., LC 2226 Maximum Candies, rope cutting, truck capacity)**:
-  - You want the *last feasible value*. The template forces you to negate your thinking into "find the first *infeasible* value", then do `lo - 1`!
-  - If no solution is possible, you also have to guard against `lo == 0`. This goes against natural human reasoning.
+When using `while lo < hi:` (half-open interval):
+- **Finding Minimum (e.g., LC 875 Min Speed)**: Conditions matching the target move left (`hi = mid`), returning `lo` at termination.
+- **Finding Maximum (e.g., LC 2226 Max Candies, rope cutting, max capacity)**:
+  - The problem asks for the *last feasible value*, but the template forces finding the *first infeasible value*, followed by `lo - 1`.
+  - When no valid answer exists (e.g., total candies less than $k$), additional edge-case handling is needed for `lo - 1` out-of-bounds.
 
 ---
 
-### 2. The Definitive Solution: Closed-Interval `ans` Probe Template (`while left <= right`)
+### 2. Closed-Interval `ans` Recording Template (`while left <= right`)
 
-**Zero mental inversions. Zero guess-work between `lo` and `lo - 1`. The rule is just one sentence:**
-
-> **`check(mid)` always asks directly: "Is `mid` feasible/valid?"**  
-> **If feasible, record `ans = mid` immediately;**  
-> **To find maximum, greedily probe right (`left = mid + 1`); to find minimum, greedily probe left (`right = mid - 1`)!**
+Maintain a variable `ans` to store the latest valid result, and let `check(mid)` directly assess whether `mid` is feasible:
 
 ```python
 left, right = min_possible, max_possible
-ans = default_fallback  # e.g., 0 if allocating candies is impossible, -1 if array search fails
+ans = default_value  # Fallback if no solution exists, e.g., 0 for LC 2226
 
 while left <= right:
     mid = (left + right) // 2
-    if check(mid):  # Direct intuition: is mid feasible?
-        ans = mid   # Feasible! Safely record current best
-        # Greedily probe for an even better solution:
-        # If finding MAXIMUM (LC 2226) -> try larger: left = mid + 1
-        # If finding MINIMUM (LC 875)  -> try smaller: right = mid - 1
+    if check(mid):  # Current mid is feasible
+        ans = mid   # Record feasible candidate
+        # Finding maximum -> explore larger values: left = mid + 1
+        # Finding minimum -> explore smaller values: right = mid - 1
     else:
-        # Infeasible; shrink in the opposite direction:
-        # If finding MAXIMUM -> too large to satisfy; shrink: right = mid - 1
-        # If finding MINIMUM -> too small / timed out; speed up: left = mid + 1
+        # Current mid is infeasible
+        # Finding maximum -> value too large, shrink: right = mid - 1
+        # Finding minimum -> value too small, increase: left = mid + 1
 
-return ans  # Return ans directly; zero +1 / -1 offsets!
+return ans
 ```
+
+Key points:
+- `check(mid)` tests the direct feasibility condition without negation.
+- Store feasible answers via `ans = mid`.
+- For maximum, advance right (`left = mid + 1`); for minimum, advance left (`right = mid - 1`).
+- Return `ans` directly upon loop termination, without `lo - 1` or index offsets.
 
 ---
 
-### 3. Symmetrical Duality: Maximum (LC 2226) vs. Minimum (LC 875)
+### 3. Implementation Comparison: Finding Maximum (LC 2226) vs. Minimum (LC 875)
 
-These two problems are the canonical dual templates for value-range binary search. Their code structure is 100% symmetrical:
-
-#### Duality A: Find Maximum · LC 2226. Maximum Candies Allocated to K Children
-> Problem: Distribute candies to $k$ children such that each child gets the same number of positive integer candies. Piles can be split but not merged. Find the **maximum candy count per child**; return 0 if impossible.
+#### 1. Finding Maximum Feasible Value: LC 2226. Maximum Candies Allocated to K Children
+> Rule: Each pile can be split but not merged. Allocate equal positive integer candies to $k$ children. Return max candies per child, or 0 if impossible.
 
 ```python
 class Solution:
     def maximumCandies(self, candies: List[int], k: int) -> int:
         left, right = 1, max(candies)
-        ans = 0  # Fallback: if not even 1 candy per child is possible, return 0
+        ans = 0  # Default 0 if cannot allocate even 1 candy each
 
         while left <= right:
             mid = (left + right) // 2
-            # Direct question: can we allocate at least k piles of size mid?
+            # Can we allocate at least k piles of size mid?
             if sum(c // mid for c in candies) >= k:
-                ans = mid       # Feasible! Record current best maximum
-                left = mid + 1  # Greedy probe: try larger candy counts
+                ans = mid       # Feasible, record value
+                left = mid + 1  # Finding max, try larger values
             else:
-                right = mid - 1 # Cannot allocate k piles; reduce candy count
+                right = mid - 1 # Too large, reduce value
 
         return ans
 ```
 
-#### Duality B: Find Minimum · LC 875. Koko Eating Bananas
-> Problem: Finish all piles of bananas within $h$ hours. Find the **minimum eating speed**.
+#### 2. Finding Minimum Feasible Value: LC 875. Koko Eating Bananas
+> Rule: Finish all piles in $h$ hours. Return minimum speed.
 
 ```python
 class Solution:
     def minEatingSpeed(self, piles: List[int], h: int) -> int:
         left, right = 1, max(piles)
-        ans = right  # Fallback: eating at max pile speed is always feasible
+        ans = right  # Default to max pile size, always feasible
 
         while left <= right:
             mid = (left + right) // 2
-            # Direct question: can Koko finish all piles in <= h hours at speed mid?
+            # Can Koko finish in <= h hours at speed mid?
             if sum((p + mid - 1) // mid for p in piles) <= h:
-                ans = mid        # Feasible! Record current best minimum
-                right = mid - 1  # Greedy probe: try smaller eating speed
+                ans = mid        # Feasible, record value
+                right = mid - 1  # Finding min, try smaller values
             else:
-                left = mid + 1   # Too slow; must increase speed
+                left = mid + 1   # Too slow, increase speed
 
         return ans
 ```
 
 ---
 
-### 4. Why This Template Eliminates All Bugs (Three Core Advantages)
+### 4. Comparison of the Two Approaches
 
-| Pain Point | Traditional `while lo < hi` | `ans`-Recording Greedy Probe (`left <= right`) |
+| Aspect | Traditional `while lo < hi` | `ans` Template (`left <= right`) |
 |---|---|---|
-| **Finding Maximum** | Must invert to `not check` to find first failure, then `lo - 1` | **Zero Inversion**: Write positive `check(mid)`; record `ans = mid` |
-| **Return Value Offset** | Prone to confusing `lo` vs. `lo - 1` vs. `lo + 1` | **Zero Offsets**: Always `return ans` |
-| **No-Solution Defense** | Requires manual guards like `lo == 0` or `lo == n` | **Zero Extra Guards**: Naturally returns initialized `ans` (e.g., 0 or -1) |
-| **Infinite Loop Risk** | May loop forever when assigning `lo = mid` without ceil division | **Zero Risk**: Always strictly shrinks by `mid + 1` or `mid - 1` |
+| **Condition for Maximum** | Needs inverted `not check` for first invalid | Directly tests positive `check`, assigns `ans = mid` |
+| **Return Value** | Requires choosing between `lo` and `lo - 1` | Always returns `ans` |
+| **No-Solution Handling** | Needs manual check on `lo == 0` | Naturally returns default `ans` (e.g., 0 or -1) |
+| **Convergence** | Potential infinite loop on `lo = mid` without rounding | Always shifts by `mid + 1` or `mid - 1` |
 
 ---
 
-### 5. Universal Problem Fill-in Cheat Sheet
+### 5. Common Problem Mapping Table
 
-| Problem Scenario | Range `[left, right]` | Positive `check(mid)` | Probe Direction when Feasible | Default `ans` |
+| Problem Scenario | Range `[left, right]` | `check(mid)` Condition | Movement when Feasible | Default `ans` |
 |---|---|---|---|---|
-| **LC 2226 Candies (Find Max)** | `1, max(candies)` | `sum(c // mid) >= k` | `left = mid + 1` (probe larger) | `0` |
-| **LC 875 Bananas (Find Min)** | `1, max(piles)` | `hours_needed(mid) <= h` | `right = mid - 1` (probe smaller) | `max(piles)` |
-| **LC 704 Basic Exact Match** | `0, len(nums) - 1` | `nums[mid] == target` | Direct hit: `return mid` | `-1` |
-| **First $\ge target$ (lower_bound)** | `0, len(nums) - 1` | `nums[mid] >= target` | `right = mid - 1` (probe left) | `-1` or `n` |
-| **Last $\le target$ (upper_bound)** | `0, len(nums) - 1` | `nums[mid] <= target` | `left = mid + 1` (probe right) | `-1` |
-| **LC 153 Min in Rotated Array** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | `right = mid - 1` (probe left) | `nums[-1]` |
-| **LC 981 Time-Based KV Store** | `0, len(entries) - 1` | `entries[mid].time <= query` | `left = mid + 1` (probe right) | `""` |
+| **LC 2226 Candies (Find Max)** | `1, max(candies)` | `sum(c // mid) >= k` | `left = mid + 1` | `0` |
+| **LC 875 Bananas (Find Min)** | `1, max(piles)` | `hours_needed(mid) <= h` | `right = mid - 1` | `max(piles)` |
+| **LC 704 Basic Search** | `0, len(nums) - 1` | `nums[mid] == target` | Return `mid` directly | `-1` |
+| **First $\ge target$** | `0, len(nums) - 1` | `nums[mid] >= target` | `right = mid - 1` | `-1` or `len(nums)` |
+| **Last $\le target$** | `0, len(nums) - 1` | `nums[mid] <= target` | `left = mid + 1` | `-1` |
+| **LC 153 Min in Rotated Array** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | `right = mid - 1` | `nums[-1]` |
+| **LC 981 Time-Based KV Store** | `0, len(entries) - 1` | `entries[mid].time <= query` | `left = mid + 1` | `""` |
 
 ---
 
