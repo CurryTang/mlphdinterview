@@ -11,7 +11,7 @@ Ingest grid topology and dictionary constraints, adaptively route jobs based on 
 ## 1. Functional Requirements
 
 1. **Submit Puzzle Solving Job:**
-   - Clients submit puzzle grid topology ($M 	imes N$ dimensions, blank slot definitions with starting coordinates, directions, and lengths), optional pre-filled fixed letters, and tenant credentials.
+   - Clients submit puzzle grid topology ($M \times N$ dimensions, blank slot definitions with starting coordinates, directions, and lengths), optional pre-filled fixed letters, and tenant credentials.
    - The ingestion tier performs static topology analysis to assess graph complexity; returns a globally unique `job_id`, pinning an immutable `dictionary_version` snapshot and `solver_version`.
 2. **Status & Result Query / Callback:**
    - Clients poll `GET /v1/jobs/{job_id}` to track real-time execution states (queued, local CSP solving, distributed DFS expanding, completed, timed out).
@@ -51,23 +51,23 @@ Ingest grid topology and dictionary constraints, adaptively route jobs based on 
 ### 3.1 Core Workload Metrics
 
 - **Peak Submission Rate ($\lambda$):** 100 jobs/s.
-- **Average Compute Cost ($ar{t}$):** Standard puzzles consume 2 CPU-seconds on average (local bit-parallel solve takes 50ms~500ms, plus queuing margin).
+- **Average Compute Cost ($\bar{t}$):** Standard puzzles consume 2 CPU-seconds on average (local bit-parallel solve takes 50ms~500ms, plus queuing margin).
 - **Sustained Compute Demand:**
-  $$	ext{Sustained vCPU} = 100	ext{ jobs/s} 	imes 2	ext{ CPU-s} = 200	ext{ vCPU}$$
+  $$\text{Sustained vCPU} = 100\text{ jobs/s} \times 2\text{ CPU-s} = 200\text{ vCPU}$$
 - **Headroom Pool (2x Peak Safety Factor):**
-  $$	ext{Baseline Worker Pool} = 200	ext{ vCPU} 	imes 2 = 400	ext{ vCPU}$$
+  $$\text{Baseline Worker Pool} = 200\text{ vCPU} \times 2 = 400\text{ vCPU}$$
 - **Active Concurrent Jobs:**
   Assuming an average 10-second lifecycle window (queuing + solving):
-  $$	ext{In-Flight Active Jobs} = 100	ext{ jobs/s} 	imes 10	ext{ s} = 1,000	ext{ active concurrent jobs}$$
+  $$\text{In-Flight Active Jobs} = 100\text{ jobs/s} \times 10\text{ s} = 1,000\text{ active concurrent jobs}$$
 
 ### 3.2 Dictionary Footprint & Memory Analysis
 
 The solver relies on an extensive candidate vocabulary (e.g., a 1-million-word English dictionary):
-- **Raw Text Size:** 1,000,000 words $	imes$ 10 characters average $pprox 10	ext{ MB}$ plain text.
+- **Raw Text Size:** 1,000,000 words $\times$ 10 characters average $\approx 10\text{ MB}$ plain text.
 - **Dense Positional Bitmap Index:**
   - Partitioned into length buckets (e.g., word lengths from 3 to 21 characters).
-  - For each length bucket $L$, maintain an $L 	imes 26$ bitmap matrix where each bitmap has length equal to the number of candidate words $W_L$.
-  - Total bitmap memory for 1M words: $1,000,000 	imes 10	ext{ positions} 	imes 26	ext{ bits} pprox 260	ext{M bits} pprox 32.5	ext{ MB}$.
+  - For each length bucket $L$, maintain an $L \times 26$ bitmap matrix where each bitmap has length equal to the number of candidate words $W_L$.
+  - Total bitmap memory for 1M words: $1,000,000 \times 10\text{ positions} \times 26\text{ bits} \approx 260\text{M bits} \approx 32.5\text{ MB}$.
 - **Per-Worker Memory Overhead:**
   Including auxiliary indexing, Trie structures, and local backtrack trail stacks, each worker allocates only **50 MB ~ 200 MB** of RAM.
 - **Key Architectural Deduction:**
@@ -76,11 +76,11 @@ The solver relies on an extensive candidate vocabulary (e.g., a 1-million-word E
 ### 3.3 Distributed DFS Scheduling & Network Overhead Analysis
 
 In Distributed DFS, inefficient state serialization will degrade cluster networking:
-- **Naive Full-State Serialization (Anti-pattern):** Serializing the full CSP solver heap and variable domains yields $1	ext{ MB} \sim 5	ext{ MB}$ per branch. Fanout across 1,000 branches generates gigabytes of traffic and tens of milliseconds in serialization overhead.
+- **Naive Full-State Serialization (Anti-pattern):** Serializing the full CSP solver heap and variable domains yields $1\text{ MB} \sim 5\text{ MB}$ per branch. Fanout across 1,000 branches generates gigabytes of traffic and tens of milliseconds in serialization overhead.
 - **Compact Prefix Encoding (Production Pattern):**
   A subtree is uniquely identified by its partial assignment path (e.g., `[(slot_0, "PLANET"), (slot_3, "LASER")]`).
-  $$	ext{Payload Size} = K_{	ext{prefix\_slots}} 	imes (4	ext{ bytes slot\_id} + 16	ext{ bytes word}) pprox 64 \sim 256	ext{ bytes}$$
-- **Near-Zero Transit Latency:** Sub-kilobyte descriptors transit a 10Gbps cluster link in $< 0.1	ext{ ms}$. Receiving workers replay forward checking (AC-3) against the local immutable bitmap index in $< 0.2	ext{ ms}$, reconstructing the full constraint state with zero network friction.
+  $$\text{Payload Size} = K_{\text{prefix\_slots}} \times (4\text{ bytes slot\_id} + 16\text{ bytes word}) \approx 64 \sim 256\text{ bytes}$$
+- **Near-Zero Transit Latency:** Sub-kilobyte descriptors transit a 10Gbps cluster link in $< 0.1\text{ ms}$. Receiving workers replay forward checking (AC-3) against the local immutable bitmap index in $< 0.2\text{ ms}$, reconstructing the full constraint state with zero network friction.
 
 ---
 
@@ -97,7 +97,7 @@ In Distributed DFS, inefficient state serialization will degrade cluster network
 ```
 
 **Why does this fail?**
-1. **Head-of-Line Blocking & System Freezes:** Crossword solving is NP-complete. A single pathological $25 	imes 25$ puzzle can trigger $10^{18}$ search nodes, exhausting all workers in a shared FIFO queue and starving sub-second tasks.
+1. **Head-of-Line Blocking & System Freezes:** Crossword solving is NP-complete. A single pathological $25 \times 25$ puzzle can trigger $10^{18}$ search nodes, exhausting all workers in a shared FIFO queue and starving sub-second tasks.
 2. **Remote Dictionary IO Storms:** Querying remote datastores for matching words per branch multiplies network RTT by millions of iterations, turning 50ms searches into multi-hour outages.
 3. **Indiscriminate Distributed Overhead:** Naively distributing trivial 10ms puzzles forces them through 20ms~50ms queuing, leasing, and consensus overheads, degrading aggregate QPS by 10x.
 4. **False UNSAT Verifications:** Timing out tasks and reporting them as "no solution" violates correctness SLAs.
@@ -290,8 +290,8 @@ CREATE TABLE dictionary_snapshots (
 A common misconception is: *"Since we built a distributed DFS cluster, why not partition every puzzle into 10 subtrees and solve them concurrently?"*
 
 **The answer is strictly no due to the Distributed Coordination Tax:**
-1. **High Single-Node Efficiency:** Over 90% of standard crossword puzzles ($15 	imes 15$ NYT style) complete in **10ms ~ 300ms** on a single core using local bitmap indexing and AC-3/MRV pruning.
-2. **Coordination Overhead Exceeds Solve Time:** Network serialization ($5	ext{ms}$), message queue dispatch ($10	ext{ms}$), lease acquisition ($10	ext{ms}$), and barrier consensus ($10	ext{ms}$) introduce a $25	ext{ms} \sim 50	ext{ms}$ fixed distributed tax.
+1. **High Single-Node Efficiency:** Over 90% of standard crossword puzzles ($15 \times 15$ NYT style) complete in **10ms ~ 300ms** on a single core using local bitmap indexing and AC-3/MRV pruning.
+2. **Coordination Overhead Exceeds Solve Time:** Network serialization ($5\text{ms}$), message queue dispatch ($10\text{ms}$), lease acquisition ($10\text{ms}$), and barrier consensus ($10\text{ms}$) introduce a $25\text{ms} \sim 50\text{ms}$ fixed distributed tax.
 3. **Amdahl's Law Inversion:** Distributing a 10ms job increases its end-to-end latency by 3x~5x while consuming multiple worker nodes, collapsing cluster throughput.
 
 #### Dual-Path Architecture Design
@@ -319,9 +319,9 @@ Distributed DFS is **not merely a fallback after 5 seconds**. It incorporates bo
 ```
 
 1. **Static Complexity Gate (Zero Wait):**
-   - Evaluates **Constraint Graph Density ($ho$)**:
-     $$ho = rac{	ext{Cross Intersections}}{N(N - 1) / 2}$$
-   - If dimensions reach $21 	imes 21$ or $25 	imes 25$, with sparse intersections ($ho < 0.15$) and pre-filled letter ratio $< 2\%$, early pruning is mathematically ineffective.
+   - Evaluates **Constraint Graph Density ($\rho$)**:
+     $$\rho = \frac{\text{Cross Intersections}}{N(N - 1) / 2}$$
+   - If dimensions reach $21 \times 21$ or $25 \times 25$, with sparse intersections ($\rho < 0.15$) and pre-filled letter ratio $< 2\%$, early pruning is mathematically ineffective.
    - The job **immediately bypasses single-worker execution** and routes directly to the Distributed DFS engine.
 2. **Dynamic Watchdog Escalation:**
    - Standard-looking grids with adversarial edge patterns run with a 5-second wall-clock and $10^6$ backtrack budget.
@@ -337,11 +337,10 @@ DFS backtracking inherently relies on call-stack pointers. Distributing this acr
 - **Phase 1: Root BFS Frontier Generation**
   - The splitter selects the top 2~3 highest-degree or MRV slots near the root and executes a shallow breadth-first search.
   - Pauses once $K$ ($8 \sim 32$) disjoint frontier nodes are generated:
-    $$T_{	ext{root}} = T_1 \cup T_2 \cup \dots \cup T_K, \quad orall i 
-e j: T_i \cap T_j = \emptyset$$
+    $$T_{\text{root}} = T_1 \cup T_2 \cup \dots \cup T_K, \quad \forall i \ne j: T_i \cap T_j = \emptyset$$
 - **Phase 2: Compact Prefix Serialization**
-  - Sends only the partial variable assignment path (e.g., `[{"slot":0, "w":"TIGER"}, {"slot":3, "w":"EAGLE"}]`), weighing $< 256	ext{ bytes}$.
-  - The receiving worker replays AC-3 forward checking against its local `mmap` bitmap dictionary in $< 0.2	ext{ ms}$, reconstructing the full constraint domain locally before launching native DFS.
+  - Sends only the partial variable assignment path (e.g., `[{"slot":0, "w":"TIGER"}, {"slot":3, "w":"EAGLE"}]`), weighing $< 256\text{ bytes}$.
+  - The receiving worker replays AC-3 forward checking against its local `mmap` bitmap dictionary in $< 0.2\text{ ms}$, reconstructing the full constraint domain locally before launching native DFS.
 
 ```text
                [Root: Empty Grid]
@@ -368,20 +367,20 @@ Crossword search trees are highly **irregular**: branch 1 may hit a conflict at 
 In SAT problems, first-hit terminates the job. However, strictly proving **UNSAT** requires verifying that 100% of branches were exhausted without loss:
 
 **Credit Conservation Protocol:**
-- Initial root task is issued credit $W_{	ext{total}} = 2^{32}$.
-- When splitting into $K$ branches, weight divides evenly: $W_{	ext{child}} = W_{	ext{parent}} / K$.
-- When a worker exhausts a branch without finding a solution, it returns $W_{	ext{child}}$ to the coordinator for atomic accumulation:
-  $$	ext{recovered\_credit} \leftarrow 	ext{recovered\_credit} + W_{	ext{child}}$$
+- Initial root task is issued credit $W_{\text{total}} = 2^{32}$.
+- When splitting into $K$ branches, weight divides evenly: $W_{\text{child}} = W_{\text{parent}} / K$.
+- When a worker exhausts a branch without finding a solution, it returns $W_{\text{child}}$ to the coordinator for atomic accumulation:
+  $$\text{recovered\_credit} \leftarrow \text{recovered\_credit} + W_{\text{child}}$$
 - **Termination Verdict**:
-  - **UNSAT Proof**: Committed if and only if $	ext{recovered\_credit} == W_{	ext{total}}$ with zero solutions found.
-  - **Zero False UNSAT**: Dropped workers lose their unreturned credit until lease recovery reassigns them. If retries fail and the budget expires, $	ext{recovered\_credit} < W_{	ext{total}}$, enforcing a `TIMED_OUT` verdict rather than false `UNSAT`.
+  - **UNSAT Proof**: Committed if and only if $\text{recovered\_credit} == W_{\text{total}}$ with zero solutions found.
+  - **Zero False UNSAT**: Dropped workers lose their unreturned credit until lease recovery reassigns them. If retries fail and the budget expires, $\text{recovered\_credit} < W_{\text{total}}$, enforcing a `TIMED_OUT` verdict rather than false `UNSAT`.
 
 #### (4) Speculative Solution Broadcast & Nogood Sharing
 1. **Solution Cancellation Broadcast**:
    - Winning worker passes the independent verifier and commits via CAS.
    - Emits `JOB_CANCEL` across Redis Pub/Sub. Active workers check an atomic boolean every 1,000 backtracks and immediately abort DFS loops.
 2. **Cross-Worker Nogood Learning**:
-   - When a worker proves that a short combination ($	ext{Slot}_2=	ext{"CAT"} \land 	ext{Slot}_5=	ext{"DOG"}$) produces an empty domain anywhere, this minimal conflict is published as a **Nogood clause** to an in-memory cluster cache.
+   - When a worker proves that a short combination ($\text{Slot}_2=\text{"CAT"} \land \text{Slot}_5=\text{"DOG"}$) produces an empty domain anywhere, this minimal conflict is published as a **Nogood clause** to an in-memory cluster cache.
    - Sibling workers filter candidate branches against active Nogoods, pruning vast subtrees collaboratively across physical machines.
 
 ---
@@ -435,7 +434,7 @@ Worker A discovers valid candidate:
 
 ### 5.5 Multi-Tenant Isolation & Resource Governance
 
-Puzzles exhibit computational variation spanning $10	ext{ ms}$ to $10	ext{ min}$.
+Puzzles exhibit computational variation spanning $10\text{ ms}$ to $10\text{ min}$.
 
 ```text
 Adaptive Coarse Splitting:

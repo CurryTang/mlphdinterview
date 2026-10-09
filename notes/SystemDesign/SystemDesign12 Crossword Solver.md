@@ -11,7 +11,7 @@
 ## 1. 功能需求 · Functional Requirements
 
 1. **提交题目求解任务 (Submit Puzzle Job)：**
-   - 客户端输入网格拓扑定义（$M 	imes N$ 尺寸、空白槽位 Slots 起始坐标、方向与长度）、预填固定字母（Fixed Letters）以及租户信息；
+   - 客户端输入网格拓扑定义（$M \times N$ 尺寸、空白槽位 Slots 起始坐标、方向与长度）、预填固定字母（Fixed Letters）以及租户信息；
    - 准入层执行静态拓扑分析，识别网格复杂度；返回全局唯一 `job_id`，并固化不可变词典快照（`dictionary_version`）与算法引擎版本（`solver_version`）。
 2. **状态与结果轮询/回调 (Status & Result Retrieval)：**
    - 支持客户端通过 `GET /v1/jobs/{job_id}` 查询任务实时运行阶段（排队中、单机快速求解中、分布式 DFS 展开中、完成、超时）；
@@ -51,23 +51,23 @@
 ### 3.1 核心业务体量指标
 
 - **峰值提交速率 (Peak Submission Rate, $\lambda$)：** 100 jobs/s。
-- **任务平均计算耗时 (Average Compute Cost, $ar{t}$)：** 普通题目平均消耗 2 CPU-seconds（单机位并行求解约 50ms~500ms，含排队损耗）。
+- **任务平均计算耗时 (Average Compute Cost, $\bar{t}$)：** 普通题目平均消耗 2 CPU-seconds（单机位并行求解约 50ms~500ms，含排队损耗）。
 - **基准稳态计算算力需求：**
-  $$	ext{Sustained vCPU} = 100	ext{ jobs/s} 	imes 2	ext{ CPU-s} = 200	ext{ vCPU}$$
+  $$\text{Sustained vCPU} = 100\text{ jobs/s} \times 2\text{ CPU-s} = 200\text{ vCPU}$$
 - **峰值安全裕量 (2x Headroom Pool)：**
-  $$	ext{Baseline Worker Pool} = 200	ext{ vCPU} 	imes 2 = 400	ext{ vCPU}$$
+  $$\text{Baseline Worker Pool} = 200\text{ vCPU} \times 2 = 400\text{ vCPU}$$
 - **在途活跃任务规模 (Active Concurrent Jobs)：**
   假设普通题目平均响应周期目标为 10 秒（含排队与求解）：
-  $$	ext{In-Flight Active Jobs} = 100	ext{ jobs/s} 	imes 10	ext{ s} = 1,000	ext{ active concurrent jobs}$$
+  $$\text{In-Flight Active Jobs} = 100\text{ jobs/s} \times 10\text{ s} = 1,000\text{ active concurrent jobs}$$
 
 ### 3.2 词典存储与内存占用分析 (Dictionary Footprint)
 
 填字求解器依赖大规模候选词库（如百万级英语词典）：
-- **原始文本规模：** 1,000,000 单词 $	imes$ 平均 10 字符 $pprox 10	ext{ MB}$ 纯文本。
+- **原始文本规模：** 1,000,000 单词 $\times$ 平均 10 字符 $\approx 10\text{ MB}$ 纯文本。
 - **位图倒排索引规模 (Dense Positional Bitmap Index)：**
   - 按单词长度分桶（Length Buckets，如 3 到 21 字符）；
-  - 针对每个长度 $L$ 的词库，建立“位置-字母”位图矩阵：$L 	imes 26$ 个 Bitmaps，每个 Bitmap 长度为该长度下的单词总数 $W_L$；
-  - 1M 单词总位图占用：$1,000,000 	imes 10	ext{ positions} 	imes 26	ext{ bits} pprox 260	ext{M bits} pprox 32.5	ext{ MB}$。
+  - 针对每个长度 $L$ 的词库，建立“位置-字母”位图矩阵：$L \times 26$ 个 Bitmaps，每个 Bitmap 长度为该长度下的单词总数 $W_L$；
+  - 1M 单词总位图占用：$1,000,000 \times 10\text{ positions} \times 26\text{ bits} \approx 260\text{M bits} \approx 32.5\text{ MB}$。
 - **单机内存装载评估：**
   加上 Trie 树、前向索引与交点映射结构，每个 Worker 节点仅需占用 **50 MB ~ 200 MB** 内存。
 - **核心系统设计推论：**
@@ -76,11 +76,11 @@
 ### 3.3 分布式 DFS 调度与网络通信开销评估
 
 在分布式 DFS 场景下，若状态序列化设计不当，网络通信将迅速摧毁系统：
-- **Naive 状态序列化开销（反面教材）：** 若将整个 CSP 求解器堆栈、已分配域镜像序列化，单个子任务大小将达 $1	ext{ MB} \sim 5	ext{ MB}$。切分 1,000 个分支需产生数 GB 网络吞吐，序列化耗时达数十毫秒，远超计算本身。
+- **Naive 状态序列化开销（反面教材）：** 若将整个 CSP 求解器堆栈、已分配域镜像序列化，单个子任务大小将达 $1\text{ MB} \sim 5\text{ MB}$。切分 1,000 个分支需产生数 GB 网络吞吐，序列化耗时达数十毫秒，远超计算本身。
 - **紧凑前缀编码开销（推荐生产方案）：**
   每个子树由前缀分配路径唯一定义（例如：`[(slot_0, "PLANET"), (slot_3, "LASER")]`）。
-  $$	ext{Payload Size} = K_{	ext{prefix\_slots}} 	imes (4	ext{ bytes slot\_id} + 16	ext{ bytes word}) pprox 64 \sim 256	ext{ bytes}$$
-- **网络开销微秒化：** 任务派发报文仅数百字节，在 10Gbps 内网中传输延迟 $< 0.1	ext{ ms}$。Worker 接收后利用本地固化词典位图执行一次弧相容回放（$< 0.2	ext{ ms}$）即可完全重建求解状态，通信开销近乎为零。
+  $$\text{Payload Size} = K_{\text{prefix\_slots}} \times (4\text{ bytes slot\_id} + 16\text{ bytes word}) \approx 64 \sim 256\text{ bytes}$$
+- **网络开销微秒化：** 任务派发报文仅数百字节，在 10Gbps 内网中传输延迟 $< 0.1\text{ ms}$。Worker 接收后利用本地固化词典位图执行一次弧相容回放（$< 0.2\text{ ms}$）即可完全重建求解状态，通信开销近乎为零。
 
 ---
 
@@ -97,7 +97,7 @@
 ```
 
 **为什么走不通？**
-1. **队头阻塞与全盘休克：** 填字游戏属于 NP-Complete 问题。单个病态（Pathological）或无解的 $25 	imes 25$ 网格在无高效剪枝下可能展开 $10^{18}$ 种状态树。单一 FIFO 队列会导致长尾任务占满全部 Worker，所有正常 50ms 任务全部堆死超时。
+1. **队头阻塞与全盘休克：** 填字游戏属于 NP-Complete 问题。单个病态（Pathological）或无解的 $25 \times 25$ 网格在无高效剪枝下可能展开 $10^{18}$ 种状态树。单一 FIFO 队列会导致长尾任务占满全部 Worker，所有正常 50ms 任务全部堆死超时。
 2. **远程词典查询引发网络风暴：** Naive 求解器每尝试填一个词就去 Redis/MySQL 做 `SELECT word WHERE w[2]='a' AND len=5`，网络 RTT（0.5ms）放大数百万倍后导致单题耗时数小时。
 3. **盲目全量分布式化引发调度反噬：** 若不加区分地对所有题目执行分布式拆解，大量 10ms 即可解出的普通题目被迫承受 20ms~50ms 的网络入队、租约拉取与分布式仲裁延迟，整体 QPS 下跌一个数量级。
 4. **假无解（False UNSAT）与误判：** 任务超时退出时被直接标记为无解；或者 Worker 崩溃重启导致子分支丢失，调用方得到错误的业务结论。
@@ -290,8 +290,8 @@ CREATE TABLE dictionary_snapshots (
 很多面试者容易陷入一个误区：“既然构建了强大的分布式 DFS 算力集群，为什么不把所有题目都切分成 10 个子任务并发求解？”
 
 **答案是否定的，原因在于分布式系统的固有调度开销（Distributed Coordination Tax）：**
-1. **单机极速消化率极高**：实际业务中，90% 以上的标准填字题目（如经典 $15 	imes 15$ 纽约时报风格）在单机位并行位图索引与 MRV 启发式下，**仅需 10ms ~ 300ms 即可出解**。
-2. **分布式调度的反噬效应**：消息网络入队/出队开销（$5	ext{ms} \sim 15	ext{ms}$）、Worker 租约拉取与原子注册（$10	ext{ms}$）、结果跨网络聚合与广播中断（$5	ext{ms}$），构成了 $20	ext{ms} \sim 50	ext{ms}$ 的固定分布式开销。
+1. **单机极速消化率极高**：实际业务中，90% 以上的标准填字题目（如经典 $15 \times 15$ 纽约时报风格）在单机位并行位图索引与 MRV 启发式下，**仅需 10ms ~ 300ms 即可出解**。
+2. **分布式调度的反噬效应**：消息网络入队/出队开销（$5\text{ms} \sim 15\text{ms}$）、Worker 租约拉取与原子注册（$10\text{ms}$）、结果跨网络聚合与广播中断（$5\text{ms}$），构成了 $20\text{ms} \sim 50\text{ms}$ 的固定分布式开销。
 3. **阿姆达尔定律反向惩罚**：让一个 10ms 即可解出的普通题目走分布式切片，**端到端延迟反而飙升 3~5 倍**，并且集群内多个 Worker 被迫唤醒、占用连接池，导致整体吞吐量（Throughput）暴跌 10 倍以上。
 
 因此，系统绝不能“一刀切”盲目分布式化。
@@ -321,9 +321,9 @@ CREATE TABLE dictionary_snapshots (
 ```
 
 1. **静态预判直通路径 (Static Gate, 零等待)：**
-   - 在 API 准入层执行网格图分析，计算**约束图密度 (Constraint Graph Density, $ho$)**：
-     $$ho = rac{	ext{相交单元格数 (Cross Intersections)}}{	ext{槽位数 } N 	imes (N - 1) / 2}$$
-   - 若网格尺寸达到 $21 	imes 21$ 或 $25 	imes 25$，且 $ho < 0.15$（极度稀疏相交，意味着早期剪枝效果差、极易形成超深无效搜索），同时预填固定字符比例 $< 2\%$；
+   - 在 API 准入层执行网格图分析，计算**约束图密度 (Constraint Graph Density, $\rho$)**：
+     $$\rho = \frac{\text{相交单元格数 (Cross Intersections)}}{\text{槽位数 } N \times (N - 1) / 2}$$
+   - 若网格尺寸达到 $21 \times 21$ 或 $25 \times 25$，且 $\rho < 0.15$（极度稀疏相交，意味着早期剪枝效果差、极易形成超深无效搜索），同时预填固定字符比例 $< 2\%$；
    - 系统判定该题目具备典型的“组合爆炸特征”，**直接绕过单机求解环节，直接在准入层执行顶层切片并推入 Distributed DFS 队列**。
 2. **动态看门狗升级路径 (Dynamic Watchdog Escalation)：**
    - 表面看似规整但内部存在隐式对抗死胡同的题目，单机 Worker 设置壁钟超时（5 秒）与回溯步数计数器（$10^6$ 次）；
@@ -341,12 +341,11 @@ CREATE TABLE dictionary_snapshots (
   - 切片器在根节点选择约束度最高、或候选域受限最强的顶层 2~3 个槽位，执行浅层 BFS 展开。
   - 展开至预设分支数（如 $K = 8 \sim 32$）时暂停，生成 $K$ 个互斥的前沿节点（Frontier Nodes）。
   - 这些前沿节点构成了互斥且完备的子搜索空间：
-    $$T_{	ext{root}} = T_1 \cup T_2 \cup \dots \cup T_K, \quad orall i 
-e j: T_i \cap T_j = \emptyset$$
+    $$T_{\text{root}} = T_1 \cup T_2 \cup \dots \cup T_K, \quad \forall i \ne j: T_i \cap T_j = \emptyset$$
 - **阶段 2：紧凑状态序列化与本地重放 (Compact Prefix Transmission)**
   - 严禁向网络发送整个求解器内存镜像；
-  - 切片器仅将前沿节点的固定赋值路径序列化为短数组（如 `[{"slot":0, "w":"TIGER"}, {"slot":3, "w":"EAGLE"}]`），体积极小（$< 256	ext{ bytes}$）；
-  - 接收到该子任务的 Worker，依赖本地已 `mmap` 的不可变词典位图，**在 $< 0.2	ext{ ms}$ 内对这组前缀执行一次 AC-3 弧相容前向检查**，瞬间在本地堆栈中完整重构出该子树的全部约束位图，随即进入原生的高性能深度优先回溯循环。
+  - 切片器仅将前沿节点的固定赋值路径序列化为短数组（如 `[{"slot":0, "w":"TIGER"}, {"slot":3, "w":"EAGLE"}]`），体积极小（$< 256\text{ bytes}$）；
+  - 接收到该子任务的 Worker，依赖本地已 `mmap` 的不可变词典位图，**在 $< 0.2\text{ ms}$ 内对这组前缀执行一次 AC-3 弧相容前向检查**，瞬间在本地堆栈中完整重构出该子树的全部约束位图，随即进入原生的高性能深度优先回溯循环。
 
 ```text
                [Root: Empty Grid]
@@ -375,14 +374,14 @@ e j: T_i \cap T_j = \emptyset$$
 在异步无锁分布式网络中，必须防止由于网络丢包、Worker 崩溃重试导致“误判全部已完成”。
 
 **信用权重守恒法 (Credit Conservation Protocol)：**
-- 初始时，根任务被赋予总信用值 $W_{	ext{total}} = 2^{32}$；
-- 当切片器将搜索树分裂为 $K$ 个互斥子树时，将权重严格均分：$W_{	ext{child}} = W_{	ext{parent}} / K$；
+- 初始时，根任务被赋予总信用值 $W_{\text{total}} = 2^{32}$；
+- 当切片器将搜索树分裂为 $K$ 个互斥子树时，将权重严格均分：$W_{\text{child}} = W_{\text{parent}} / K$；
 - 若发生二级工作窃取切分，继续均分信用权重；
-- 当 Worker 彻底穷尽某个子树且证明无解时，将该分支的 $W_{	ext{child}}$ 提交给 Coordinator 进行原子累加：
-  $$	ext{recovered\_credit} \leftarrow 	ext{recovered\_credit} + W_{	ext{child}}$$
+- 当 Worker 彻底穷尽某个子树且证明无解时，将该分支的 $W_{\text{child}}$ 提交给 Coordinator 进行原子累加：
+  $$\text{recovered\_credit} \leftarrow \text{recovered\_credit} + W_{\text{child}}$$
 - **终态判定原则**：
-  - **证明 UNSAT**：当且仅当 $	ext{recovered\_credit} == W_{	ext{total}}$ 且未发现任何可行解时，才准许原子翻转任务状态为 `UNSAT`。
-  - **防止假无解**：若某个 Worker 挂掉，其未回收的信用权重随租约超时重新派发给其他节点重算；若重试耗尽导致任务超时，由于 $	ext{recovered\_credit} < W_{	ext{total}}$，系统只能标记为 `TIMED_OUT`，从数学机制上杜绝假无解（False UNSAT）。
+  - **证明 UNSAT**：当且仅当 $\text{recovered\_credit} == W_{\text{total}}$ 且未发现任何可行解时，才准许原子翻转任务状态为 `UNSAT`。
+  - **防止假无解**：若某个 Worker 挂掉，其未回收的信用权重随租约超时重新派发给其他节点重算；若重试耗尽导致任务超时，由于 $\text{recovered\_credit} < W_{\text{total}}$，系统只能标记为 `TIMED_OUT`，从数学机制上杜绝假无解（False UNSAT）。
 
 #### (4) 候选解极速广播剪枝与跨节点 Nogood 冲突共享
 1. **首解广播与投机中断 (First Solution Broadcast & Cancellation)**：
@@ -390,7 +389,7 @@ e j: T_i \cap T_j = \emptyset$$
    - 胜出后立即向分布式消息总线（Redis Pub/Sub / Kafka）发布 `JOB_CANCEL` 广播；
    - 所有 Worker 在 DFS 循环内部定期（例如每 1,000 次回溯）通过非阻塞原子标志位（Atomic Boolean）检查取消信号，收到信号后立即清空私有堆栈并归还 Worker 算力池。
 2. **跨节点冲突子句学习 (Cross-Worker Nogood Learning)**：
-   - 当某个 Worker 在深入分支后，证明某种局部的短赋值组合（如：$	ext{Slot}_2=	ext{"CAT"} \land 	ext{Slot}_5=	ext{"DOG"}$）在当前网格拓扑下必然引发交点不可行（Empty Domain），该局部子集被称为 **Nogood 冲突子句**。
+   - 当某个 Worker 在深入分支后，证明某种局部的短赋值组合（如：$\text{Slot}_2=\text{"CAT"} \land \text{Slot}_5=\text{"DOG"}$）在当前网格拓扑下必然引发交点不可行（Empty Domain），该局部子集被称为 **Nogood 冲突子句**。
    - Worker 将长度较短（$\le 3$ 个槽位）的致命 Nogood 推送至内存缓存（In-Memory Nogood Store）；
    - 其他正在遍历完全不同子分支的 Worker 定期同步新增的高频 Nogood，在本地 DFS 回溯前利用位图进行快速子集过滤。若当前假设包含已知 Nogood，直接就地剪枝，从而实现跨机器的协同剪枝加速。
 
@@ -447,7 +446,7 @@ Worker A 率先找到候选解:
 
 ### 5.5 资源隔离与长尾任务治理 (Resource Isolation & Hard-Job Scaling)
 
-面对海量并发请求，不同题目计算量可能跨越 $10	ext{ ms}$ 到 $10	ext{ min}$（数万倍差异）。
+面对海量并发请求，不同题目计算量可能跨越 $10\text{ ms}$ 到 $10\text{ min}$（数万倍差异）。
 
 ```text
 自适应切片机制 (Adaptive Coarse Splitting):

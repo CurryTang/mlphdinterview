@@ -948,7 +948,7 @@ print("✅ 所有损失函数数值测试均通过验证！")
 
 设真实类别为行（Rows），预测类别为列（Columns）：
 
-$$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
+$$\begin{pmatrix} \text{TN} & \text{FP} \ \text{FN} & \text{TP} \end{pmatrix}$$
 
 - **真正例（TP）**：真实为正，预测为正；
 - **假负例（FN）**：真实为正，预测为负（漏报）；
@@ -957,9 +957,9 @@ $$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
 
 核心评估公式：
 1. **召回率 / 真正率（Recall / Sensitivity / TPR）**：
-   $$\ext{Recall} = \frac{\ext{TP}}{\ext{TP} + \ext{FN}} = \frac{\ext{TP}}{\ext{Actual Positives}} > 0.90$$
+   $$\text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}} = \frac{\text{TP}}{\text{Actual Positives}} > 0.90$$
 2. **假阳率（False Positive Rate / FPR / Fall-out）**：
-   $$\ext{FPR} = \frac{\ext{FP}}{\ext{FP} + \ext{TN}} = \frac{\ext{FP}}{\ext{Actual Negatives}} = 1 - \ext{Specificity} < 0.10$$
+   $$\text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}} = \frac{\text{FP}}{\text{Actual Negatives}} = 1 - \text{Specificity} < 0.10$$
 
 #### (2) 候选矩阵多维对比与判定实例
 
@@ -1044,7 +1044,7 @@ assert [m[0]['name'] for m in passed] == ['A', 'D']
  └──────────────────────────────────────────► 训练轮次 (Epochs)
 ```
 
-- **过拟合识别特征**：训练集损失持续单调下降逼近 0，而验证集损失在越过鞍部拐点后不降反升，泛化鸿沟（Generalization Gap: $\mathcal{L}_{\ext{val}} - \mathcal{L}_{\ext{train}}$）持续发散。此时模型进入“背诵训练样本噪声”的高方差阶段。
+- **过拟合识别特征**：训练集损失持续单调下降逼近 0，而验证集损失在越过鞍部拐点后不降反升，泛化鸿沟（Generalization Gap: $\mathcal{L}_{\text{val}} - \mathcal{L}_{\text{train}}$）持续发散。此时模型进入“背诵训练样本噪声”的高方差阶段。
 
 #### (2) 缓解对策多选有效性判定
 
@@ -1293,10 +1293,9 @@ assert y == [0, 0, 0, 1, 1, 1]
 #### (1) 缩放点积自注意力（Scaled Dot-Product Attention）机制实现
 
 公式原语：
-$$\ext{Attention}(Q, K, V) = \ext{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M
-ight) V$$
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M\right) V$$
 
-- **输入张量维度**：$Q, K, V \in \mathbb{R}^{B \imes L \imes d_k}$（$B$ 为 batch size，$L$ 为序列长度，$d_k$ 为头维度）；
+- **输入张量维度**：$Q, K, V \in \mathbb{R}^{B \times L \times d_k}$（$B$ 为 batch size，$L$ 为序列长度，$d_k$ 为头维度）；
 - **掩码（Mask）语义**：在因果自注意力或填充位处，对于无效位置赋予 $-10^9$ 或 $-\infty$，确保经 softmax 后注意力权重绝对归零；
 - **数值稳定性保证（Log-Sum-Exp Trick）**：在执行 $\exp$ 之前，减去每行的最大值（Row-Max Subtraction），杜绝浮点数上溢（Overflow）。
 
@@ -1353,10 +1352,8 @@ $$P(y \mid z) = p^y (1 - p)^{1 - y}$$
 $$\ell(z, y) = - \big[ y \log(p) + (1 - y) \log(1 - p) \big]$$
 
 **代入 $p = \sigma(z)$ 进行代数化简**：
-$$\log(p) = \log\left(\frac{1}{1 + e^{-z}}
-ight) = -\log(1 + e^{-z})$$
-$$\log(1 - p) = \log\left(\frac{e^{-z}}{1 + e^{-z}}
-ight) = -z - \log(1 + e^{-z})$$
+$$\log(p) = \log\left(\frac{1}{1 + e^{-z}}\right) = -\log(1 + e^{-z})$$
+$$\log(1 - p) = \log\left(\frac{e^{-z}}{1 + e^{-z}}\right) = -z - \log(1 + e^{-z})$$
 
 将上述两式代入 $\ell(z, y)$：
 $$\ell(z, y) = - \big[ -y \log(1 + e^{-z}) + (1 - y)(-z - \log(1 + e^{-z})) \big] = (1 - y)z + \log(1 + e^{-z}) = z - yz + \log(1 + e^{-z})$$
@@ -1390,9 +1387,9 @@ def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> 
    - 假设向量 $Q$ 与 $K$ 的各个分量独立同分布，均值为 0，方差为 1。
    - 点积为 $d_k$ 个独立变量之积的累加：$q \cdot k = \sum_{i=1}^{d_k} q_i k_i$。
    - 由独立随机变量方差的可加性：
-     $$\mathbb{E}[q \cdot k] = 0, \quad \ext{Var}(q \cdot k) = \sum_{i=1}^{d_k} \ext{Var}(q_i k_i) = \sum_{i=1}^{d_k} \ext{Var}(q_i) \ext{Var}(k_i) = d_k$$
+     $$\mathbb{E}[q \cdot k] = 0, \quad \text{Var}(q \cdot k) = \sum_{i=1}^{d_k} \text{Var}(q_i k_i) = \sum_{i=1}^{d_k} \text{Var}(q_i) \text{Var}(k_i) = d_k$$
    - 点积的标准差为 $\sqrt{d_k}$。若不除以 $\sqrt{d_k}$，当维度 $d_k$ 很大时（如 $d_k = 128$），点积结果方差高达 128，绝大多数注意力分数值会被推入 Softmax 函数两端的极端饱和区，导致反向传播梯度极其接近于 0（梯度消失）。除以 $\sqrt{d_k}$ 将方差重新缩放归一至 1，保证 Softmax 工作在灵敏活跃区间。
 2. **前馈神经网络（FFN）子层在 Attention 模块后的核心作用是什么？**
    - Self-Attention 是**跨 Token 的全局线性加权混叠**（Token Mixing），它实现了全序列上下文信息的聚合，但其本身主要提供线性重组；
-   - FFN 是**位置级非线性特征投影**（Channel / Feature Mixing），通常采用两层全连接与激活函数（如 GELU/SwiGLU），中间隐层升维至 $4\imes d_{\ext{model}}$。它为每个 Token 独立提供丰富的非线性函数拟合能力与高维语义记忆存储。
+   - FFN 是**位置级非线性特征投影**（Channel / Feature Mixing），通常采用两层全连接与激活函数（如 GELU/SwiGLU），中间隐层升维至 $4\times d_{\text{model}}$。它为每个 Token 独立提供丰富的非线性函数拟合能力与高维语义记忆存储。
 

@@ -1232,7 +1232,7 @@ LLM 的量化研究从 2022 年开始爆发，核心驱动力是模型规模急�
 
 将浮点张量 $x$ 映射到 $b$-bit 整数：
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ightceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s} \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
 
 反量化：
 
@@ -2041,7 +2041,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 先减去均值（中心化），再取符号。减均值很关键——如果权重分布不对称（均值 ≠ 0），直接 Sign 会让 +1 和 -1 的数量严重不平衡，浪费表达能力。
 
 **激活量化**：激活量化到 $b$-bit（论文中用 8-bit），使用 absmax 对称量化：
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ightceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1) \right\rceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
 
 **完整的 BitLinear 前向**：
 ```
@@ -2409,7 +2409,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # 反量化
 
 **8-bit 对称量化（blockwise）**——对应 §1.1 的对称公式，但按 block（默认 2048 元素）独立计算 scale：
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ightceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}} \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 分 block 的好处：避免全局少数大值拉高 scale，挤压其余正常值的量化精度。
 

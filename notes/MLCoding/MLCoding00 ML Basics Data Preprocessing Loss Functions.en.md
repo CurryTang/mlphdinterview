@@ -911,7 +911,7 @@ In classification system evaluation and risk screening, engineering workflows fr
 
 With ground-truth classes as rows and predictions as columns:
 
-$$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
+$$\begin{pmatrix} \text{TN} & \text{FP} \ \text{FN} & \text{TP} \end{pmatrix}$$
 
 - **True Positive (TP)**: Actual positive correctly predicted as positive;
 - **False Negative (FN)**: Actual positive incorrectly predicted as negative (miss);
@@ -920,9 +920,9 @@ $$\begin{pmatrix} \ext{TN} & \ext{FP} \ \ext{FN} & \ext{TP} \end{pmatrix}$$
 
 Operational criteria:
 1. **Recall (Sensitivity / True Positive Rate)**:
-   $$\ext{Recall} = \frac{\ext{TP}}{\ext{TP} + \ext{FN}} = \frac{\ext{TP}}{\ext{Actual Positives}} > 0.90$$
+   $$\text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}} = \frac{\text{TP}}{\text{Actual Positives}} > 0.90$$
 2. **False Positive Rate (FPR / Fall-out)**:
-   $$\ext{FPR} = \frac{\ext{FP}}{\ext{FP} + \ext{TN}} = \frac{\ext{FP}}{\ext{Actual Negatives}} = 1 - \ext{Specificity} < 0.10$$
+   $$\text{FPR} = \frac{\text{FP}}{\text{FP} + \text{TN}} = \frac{\text{FP}}{\text{Actual Negatives}} = 1 - \text{Specificity} < 0.10$$
 
 #### (2) Candidate Matrices Comparative Analysis
 
@@ -1006,7 +1006,7 @@ Loss
  └──────────────────────────────────────────► Training Epochs
 ```
 
-- **Diagnostic Signature**: Training loss monotonically approaches zero while validation loss rebounds and escalates after reaching its trough. The widening generalization gap ($\mathcal{L}_{\ext{val}} - \mathcal{L}_{\ext{train}}$) signals that the model is memorizing training noise.
+- **Diagnostic Signature**: Training loss monotonically approaches zero while validation loss rebounds and escalates after reaching its trough. The widening generalization gap ($\mathcal{L}_{\text{val}} - \mathcal{L}_{\text{train}}$) signals that the model is memorizing training noise.
 
 #### (2) Mitigation Strategy Multi-Select Assessment
 
@@ -1248,10 +1248,9 @@ In modern machine learning engineering evaluations, implementing core attention 
 #### (1) Numerically Stable Scaled Dot-Product Attention
 
 Mathematical primitive:
-$$\ext{Attention}(Q, K, V) = \ext{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M
-ight) V$$
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M\right) V$$
 
-- **Tensor Dimensions**: $Q, K, V \in \mathbb{R}^{B \imes L \imes d_k}$;
+- **Tensor Dimensions**: $Q, K, V \in \mathbb{R}^{B \times L \times d_k}$;
 - **Masking Semantics**: In causal masking or padding tokens, invalid entries receive $-10^9$ or $-\infty$, ensuring zero attention probability after softmax;
 - **Numerical Stability**: Row-max subtraction before exponentiation prevents floating-point overflow.
 
@@ -1335,8 +1334,8 @@ def binary_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> 
 
 1. **Why scale the dot-product by $\sqrt{d_k}$?**
    - For independent unit-variance components $q_i, k_i \sim \mathcal{N}(0, 1)$, the inner product $\sum_{i=1}^{d_k} q_i k_i$ has mean $0$ and variance $d_k$.
-   - As $d_k$ grows large (e.g. $d_k = 128$), variance expands to 128, pushing softmax inputs into saturation regions where gradients vanish ($\sigma'(z) \o 0$). Scaling by $1/\sqrt{d_k}$ renormalizes variance to $1.0$, keeping softmax activations in high-sensitivity gradient zones.
+   - As $d_k$ grows large (e.g. $d_k = 128$), variance expands to 128, pushing softmax inputs into saturation regions where gradients vanish ($\sigma'(z) \to 0$). Scaling by $1/\sqrt{d_k}$ renormalizes variance to $1.0$, keeping softmax activations in high-sensitivity gradient zones.
 2. **What is the functional role of the Position-wise Feed-Forward Network (FFN)?**
    - Self-attention acts as a global **Token Mixer** (inter-token context aggregation);
-   - The FFN operates as a localized **Channel Mixer** (intra-token non-linear feature transformation), projecting embeddings into a $4\imes$ expanded subspace before non-linear gating, storing persistent associative factual patterns.
+   - The FFN operates as a localized **Channel Mixer** (intra-token non-linear feature transformation), projecting embeddings into a $4\times$ expanded subspace before non-linear gating, storing persistent associative factual patterns.
 

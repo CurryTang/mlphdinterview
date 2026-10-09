@@ -17,7 +17,7 @@ Quantization research for LLMs took off in 2022, driven primarily by the memory 
 
 Map a floating-point tensor $x$ to a $b$-bit integer:
 
-$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s}  ightceil + z,\; 0,\; 2^b - 1\Big)$$
+$$x_q = \text{clamp}\!\Big(\!\left\lfloor \frac{x}{s} \right\rceil + z,\; 0,\; 2^b - 1\Big)$$
 
 Dequantization:
 
@@ -826,7 +826,7 @@ $$\hat{W} = \text{Sign}(W - \mathbb{E}[W])$$
 First subtract the mean (centering), then take the sign. The mean subtraction is crucial — if the weight distribution is asymmetric (mean ≠ 0), applying `Sign` directly leads to a severe imbalance between +1 and -1, wasting representational capacity.
 
 **Activation quantization**: activations are quantized to $b$ bits (8-bit in the paper), using absmax symmetric quantization:
-$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1)  ightceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
+$$\hat{X} = \text{Quant}(X) = \text{Clip}\!\left(\left\lfloor \frac{X}{\max|X|} \cdot (2^{b-1} - 1) \right\rceil, -2^{b-1}+1, 2^{b-1}-1 \right)$$
 
 **Full BitLinear forward pass**:
 ```
@@ -1194,7 +1194,7 @@ x_deq = F.dequantize_blockwise(x_q, state)  # dequantize
 
 **8-bit symmetric quantization (blockwise)** — corresponding to the symmetric formula in §1.1, but computing the scale independently per block (default 2048 elements):
 
-$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}}  ightceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
+$$s_{\text{block}} = \frac{\text{absmax}_{\text{block}}}{127}, \qquad x_q = \left\lfloor \frac{x}{s_{\text{block}}} \right\rceil, \qquad \hat{x} = s_{\text{block}} \cdot x_q$$
 
 The benefit of block-wise quantization is that it prevents a few large global values from inflating the scale and squeezing the precision of the remaining normal values.
 

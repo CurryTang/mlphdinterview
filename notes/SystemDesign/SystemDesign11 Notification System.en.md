@@ -37,7 +37,7 @@ Ingest notification requests, fan out across recipient devices, dispatch reliabl
 
 ### 3.1 Business Scale Assumptions
 
-- **Active User Base:** 100M MAU / DAU $pprox$ 100M (high-engagement mobile platform).
+- **Active User Base:** 100M MAU / DAU $\approx$ 100M (high-engagement mobile platform).
 - **Per-User Notification Volume:** Average 10 notifications/user/day (system updates, transactions, social interactions, recommendations).
 - **Total Daily Notification Ingestion:**
   $$100\text{M Users} \times 10\text{ notifs/day} = 10^9\text{ notifs/day (1 Billion / day)}$$
