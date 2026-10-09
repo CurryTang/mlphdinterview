@@ -66,6 +66,7 @@ return ans
 > 规则：每堆糖可拆不可合，分给 $k$ 个孩子，每人分相同正整数颗。求最大糖数；分不够返回 0。
 
 ```python
+# 解法一：闭区间 ans 记录法（通用手写模板）
 class Solution:
     def maximumCandies(self, candies: List[int], k: int) -> int:
         left, right = 1, max(candies)
@@ -83,10 +84,28 @@ class Solution:
         return ans
 ```
 
+```python
+# 解法二：bisect 库函数写法（显式防呆版，0 解与最大值均自然处理）
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # 1. 糖果总数连每人 1 颗都不够分，直接返回 0
+        if sum(candies) < k:
+            return 0
+        # 2. 否则答案至少为 1。找首个不可行点，前一个即为最大可行解
+        r = range(1, max(candies) + 2)
+        idx = bisect_left(r, True, key=lambda s: sum(c // s for c in candies) < k)
+        return r[idx] - 1
+```
+
 #### 2. 求满足条件的最小值：LC 875. 爱吃香蕉的珂珂
 > 规则：$h$ 小时内吃完所有堆香蕉，求最小吃香蕉速度。
 
 ```python
+# 解法一：闭区间 ans 记录法（通用手写模板）
 class Solution:
     def minEatingSpeed(self, piles: List[int], h: int) -> int:
         left, right = 1, max(piles)
@@ -102,6 +121,19 @@ class Solution:
                 left = mid + 1   # 速度太慢超时，必须提速
 
         return ans
+```
+
+```python
+# 解法二：bisect 库函数一行写法
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
 ```
 
 ---
@@ -801,14 +833,33 @@ class Solution:
 ```
 
 #### 示例 B：求最大值 · LC 2226 每个小孩最多分多少颗糖
+
+求满足分配条件的最大糖数；若连每人 1 颗都分不够，返回 0。
+
+##### 显式防呆写法（推荐，边界逻辑清晰）
 ```python
 from bisect import bisect_left
 from typing import List
 
 class Solution:
     def maximumCandies(self, candies: List[int], k: int) -> int:
-        # 糖数过大导致份数不足时条件为 True (反向判断)，找首个不可行点
-        # 其下标恰好等于最大可满足的糖数（从 1 开始计）
+        # 1. 糖果总数连每人 1 颗都不够分时，直接返回 0
+        if sum(candies) < k:
+            return 0
+
+        # 2. 否则答案至少为 1。在 [1, max + 1] 中二分找首个不可行点，减 1 即为最大可行糖数
+        r = range(1, max(candies) + 2)
+        idx = bisect_left(r, True, key=lambda s: sum(c // s for c in candies) < k)
+        return r[idx] - 1
+```
+
+##### 极简一行写法与“0 解”数理剖析
+```python
+class SolutionCompact:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # 原理：range(1, max + 1) 中数值 s 对应的 0-based 下标恰好为 s - 1
+        # 首个不可行数值为 s_invalid，其下标恰好等于 s_invalid - 1 = 最大可行数值！
+        # 特别地（0 解边界）：当连 1 颗都分不出时，s=1 就是首个不可行点，其下标为 0，自然返回 0！
         return bisect_left(
             range(1, max(candies) + 1),
             True,

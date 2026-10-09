@@ -66,6 +66,7 @@ Key points:
 > Rule: Each pile can be split but not merged. Allocate equal positive integer candies to $k$ children. Return max candies per child, or 0 if impossible.
 
 ```python
+# Approach 1: Closed-Interval ans Recording (Manual Template)
 class Solution:
     def maximumCandies(self, candies: List[int], k: int) -> int:
         left, right = 1, max(candies)
@@ -83,10 +84,28 @@ class Solution:
         return ans
 ```
 
+```python
+# Approach 2: Standard Library bisect (Explicit Defensive Form)
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # 1. If total candies cannot provide even 1 candy each, return 0
+        if sum(candies) < k:
+            return 0
+        # 2. Otherwise answer >= 1. Find first infeasible candy amount, subtract 1
+        r = range(1, max(candies) + 2)
+        idx = bisect_left(r, True, key=lambda s: sum(c // s for c in candies) < k)
+        return r[idx] - 1
+```
+
 #### 2. Finding Minimum Feasible Value: LC 875. Koko Eating Bananas
 > Rule: Finish all piles in $h$ hours. Return minimum speed.
 
 ```python
+# Approach 1: Closed-Interval ans Recording (Manual Template)
 class Solution:
     def minEatingSpeed(self, piles: List[int], h: int) -> int:
         left, right = 1, max(piles)
@@ -102,6 +121,19 @@ class Solution:
                 left = mid + 1   # Too slow, increase speed
 
         return ans
+```
+
+```python
+# Approach 2: Standard Library bisect (One-Liner)
+from bisect import bisect_left
+from typing import List
+
+
+class SolutionBisect:
+    def minEatingSpeed(self, piles: List[int], h: int) -> int:
+        r = range(1, max(piles) + 1)
+        idx = bisect_left(r, True, key=lambda s: sum((p + s - 1) // s for p in piles) <= h)
+        return r[idx]
 ```
 
 ---
@@ -784,14 +816,34 @@ class Solution:
 ```
 
 #### Example B: Maximization · LC 2226 Maximum Candies Allocated to K Children
+
+Find maximum candies per child; return 0 if impossible to allocate even 1 candy each.
+
+##### Explicit Defensive Form (Recommended, Crystal Clear Edge Cases)
 ```python
 from bisect import bisect_left
 from typing import List
 
 class Solution:
     def maximumCandies(self, candies: List[int], k: int) -> int:
-        # Condition becomes True when candy count is too large to distribute k piles (inverted predicate).
-        # Find first invalid point; its 0-based index corresponds to the maximum valid candies (starting from 1).
+        # 1. If total candies cannot provide even 1 candy each, return 0 directly
+        if sum(candies) < k:
+            return 0
+
+        # 2. Otherwise answer >= 1. Search [1, max + 1] for first invalid point, subtract 1
+        r = range(1, max(candies) + 2)
+        idx = bisect_left(r, True, key=lambda s: sum(c // s for c in candies) < k)
+        return r[idx] - 1
+```
+
+##### Compact One-Liner & Mathematical Proof of "0 Solution"
+```python
+class SolutionCompact:
+    def maximumCandies(self, candies: List[int], k: int) -> int:
+        # Rationale: For range(1, max + 1), value s is located at 0-based index s - 1.
+        # The first invalid value is s_invalid, whose index is exactly s_invalid - 1 = max valid value!
+        # Edge Case (0 solution): If even s = 1 is invalid, s = 1 is the first invalid point,
+        # which sits at index 0, so bisect_left naturally returns 0!
         return bisect_left(
             range(1, max(candies) + 1),
             True,
