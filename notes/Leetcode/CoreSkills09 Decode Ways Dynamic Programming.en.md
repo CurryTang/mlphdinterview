@@ -1513,3 +1513,38 @@ When presenting your solution in a whiteboard interview, follow these 6 structur
 5. **Implementation & Dry Run**: "Let's implement the 2D/1D DP and dry-run with a small example."
 6. **Complexity & Space Optimization**: "The time complexity is $O(\dots)$ and space is $O(\dots)$. Observing that dependencies only reach the previous row/two variables, we can compress space to $O(1)$ / $O(m)$."
 
+
+
+## Module 7: DP Extensions & Stock Trading State Machine
+
+### 1. LC 5. Longest Palindromic Substring
+
+#### Core Mental Model (Center Expansion with O(1) Space)
+Every palindrome expands around either a single character (odd length) or a gap between two characters (even length). Expanding around all $2n - 1$ centers takes $O(n^2)$ time and strict $O(1)$ auxiliary space.
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        res = ""
+        def expand(l, r):
+            while l >= 0 and r < len(s) and s[l] == s[r]:
+                l -= 1
+                r += 1
+            return s[l + 1:r]
+
+        for i in range(len(s)):
+            p1 = expand(i, i)
+            p2 = expand(i, i + 1)
+            if len(p1) > len(res): res = p1
+            if len(p2) > len(res): res = p2
+        return res
+```
+
+---
+
+### 2. The Unified Stock Trading State Machine Framework
+
+#### Core Mental Model (Two States: `hold` vs `cash`)
+All 6 stock problems share one state transition:
+- `hold = max(hold, cash - price)`
+- `cash = max(cash, hold + price)`

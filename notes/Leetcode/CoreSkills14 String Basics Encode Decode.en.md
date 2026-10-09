@@ -296,3 +296,42 @@ The core difference:
 | --- | --- |
 | `length = int(s[i])` | Supports only one-digit lengths |
 | `while s[j] != "#": j += 1` | Supports lengths with any number of digits |
+
+
+## Module 3: Advanced String Formatting & Layout Engineering
+
+### 1. Reverse Words with Exact Spacing Preservation & In-Place Semantics
+
+#### Core Mental Model
+- **Preserve Spacing**: Tokenize the string into words and space chunks. Reverse the extracted words, then iterate over tokens—emitting space chunks as-is and filling inverted words into word slots!
+- **Strict $O(1)$ Space (LC 186)**: Reverse the entire character array first, then reverse each word individually using two pointers.
+
+```python
+from typing import List
+
+class ReverseWordsSolution:
+    @staticmethod
+    def reverseWordsPreserveSpacing(s: str) -> str:
+        words, tokens = [], []
+        i, n = 0, len(s)
+        while i < n:
+            j = i
+            if s[i] == ' ':
+                while j < n and s[j] == ' ': j += 1
+                tokens.append(s[i:j])
+            else:
+                while j < n and s[j] != ' ': j += 1
+                tokens.append(s[i:j])
+                words.append(s[i:j])
+            i = j
+        words.reverse()
+        w_idx = 0
+        return "".join(token if token.startswith(' ') else words[(w_idx := w_idx + 1) - 1] for token in tokens)
+```
+
+---
+
+### 2. Two-Direction Justified Newspaper Layout with Asterisk Border
+
+#### Core Mental Model
+Greedily pack words per line up to `width`. Pad remaining space left or right based on alignment, then frame content lines with `*` borders.

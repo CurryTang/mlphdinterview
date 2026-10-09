@@ -649,3 +649,35 @@ class Solution:
 - 凡是遇到“覆盖范围最少步数”问题，优先使用 Jump Game II 的隐式 BFS 窗口模型。
 - 凡是多维 `max`/`min` 目标合并问题，优先考虑超标元素的**一票否决预过滤**。
 - 遇到带有通配符的括号匹配，不要写指数级回溯，追踪未匹配括号的 `[min, max]` 范围是唯一的 $O(n)$ 最优解。
+
+
+## 模块六：贪心高频进阶题型
+
+### 1. LC 435. 无重叠区间 (Non-overlapping Intervals)
+
+#### 核心心智（最早结束优先 Earliest Deadline First）
+要使移除的区间数最少，等价于**选出尽可能多的互不重叠区间**。
+- **贪心策略**：按区间的**右端点（结束时间）升序排序**；
+- 优先选择结束最早的区间，留给后续区间的空间最大！
+- 若下一个区间的起点 $\ge$ 当前区间的终点，说明不冲突，保留并更新终点；否则必须移除该冲突区间。
+
+```python
+from typing import List
+
+class Solution:
+    def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
+        if not intervals:
+            return 0
+        intervals.sort(key=lambda x: x[1])  # 按右端点升序
+
+        removals = 0
+        curr_end = intervals[0][1]
+
+        for i in range(1, len(intervals)):
+            if intervals[i][0] < curr_end:
+                removals += 1  # 冲突，移除当前区间
+            else:
+                curr_end = intervals[i][1]  # 不冲突，前移右边界
+
+        return removals
+```

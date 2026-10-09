@@ -988,3 +988,29 @@ Record longest after loop is done,
 Record shortest before eviction run,
 Record fixed window when size is won!
 ```
+
+
+## Module 3: Sliding Window High-Frequency Extensions
+
+### LC 340. Longest Substring with At Most K Distinct Characters
+
+#### Core Mental Model (Variable Window + Frequency Map)
+Expand right pointer into window and increment frequency. While distinct character count exceeds $k$, shrink left pointer, deleting entries that reach frequency 0. Record maximum length $r - l + 1$. Time: $O(n)$, Space: $O(k)$.
+
+```python
+from collections import defaultdict
+
+class Solution:
+    def lengthOfLongestSubstringKDistinct(self, s: str, k: int) -> int:
+        counts = defaultdict(int)
+        l, ans = 0, 0
+        for r, ch in enumerate(s):
+            counts[ch] += 1
+            while len(counts) > k:
+                counts[s[l]] -= 1
+                if counts[s[l]] == 0:
+                    del counts[s[l]]
+                l += 1
+            ans = max(ans, r - l + 1)
+        return ans
+```

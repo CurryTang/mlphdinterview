@@ -149,3 +149,39 @@ if __name__ == "__main__":
 - **时间复杂度**：严格 $\mathcal{O}(N)$。每个索引 $t \in [0, N-1]$ 入队恰好一次（`append`），在后续的整个执行过程中最多被队首弹出一次或队尾弹出一次（出队总次数 $\le N$）。因此 `while` 循环的总摊还操作次数为 $\mathcal{O}(N)$，平均每个时间步耗时 $\mathcal{O}(1)$。
 - **空间复杂度**：双端队列在任意时刻最多容纳 $\min(n, N)$ 个有效下标，额外空间复杂度严格为 $\mathcal{O}(\min(n, N))$。
 
+
+
+## 实战应用二：基于滑动时间窗口的重复记录检测器
+
+### 题目定义
+流式处理日志中，判定当前事件在最近 `window_sec` 秒内是否已发生过重复记录。
+
+### 核心心智（双端队列维护时间窗 + 哈希表维护频次）
+`deque` 存放 `(timestamp, event_id)`，每次新事件到来时：
+1. 从队头 `popleft()` 弹出所有超出时间窗的过期事件，并在哈希频次表中将其计数减 1（计数降为 0 则删除）；
+2. 检查当前 `event_id` 是否在哈希表中（存在即为重复）；
+3. 将当前事件写入队尾与哈希表。
+
+```python
+from collections import deque, defaultdict
+
+class SlidingWindowDuplicateDetector:
+    def __init__(self, window_sec: int):
+        self.window_sec = window_sec
+        self.queue = deque()  # (timestamp, event_id)
+        self.counts = defaultdict(int)
+
+    def is_duplicate(self, timestamp: int, event_id: str) -> bool:
+        # 1. 淘汰队首过期记录
+        while self.queue and self.queue[0][0] <= timestamp - self.window_sec:
+            _, old_id = self.queue.popleft()
+            self.counts[old_id] -= 1
+            if self.counts[old_id] == 0:
+                del self.counts[old_id]
+
+        # 2. 检查并记录
+        duplicate = event_id in self.counts
+        self.queue.append((timestamp, event_id))
+        self.counts[event_id] += 1
+        return duplicate
+```

@@ -357,3 +357,66 @@ If `n` is the number of strings and `k` is the average string length:
 - Space complexity: `O(n * k)`, because the output itself must store all strings; the extra hash-table key cost is one 26-dimensional tuple per group.
 
 </details>
+
+
+## Module 3: Advanced Hash Problem Patterns
+
+### 1. LC 560. Subarray Sum Equals K
+
+#### Core Mental Model (Prefix Sum + Frequency Hash Map)
+Brute force $O(n^2)$ is eliminated by prefix sums:
+$$prefix[i] - prefix[j] = k \iff prefix[j] = prefix[i] - k$$
+As we maintain running sum `curr_sum`, check how many times `curr_sum - k` occurred in history!
+- Base case: `prefix_map[0] = 1` (covers valid subarrays starting at index 0).
+- Single pass: strict $O(n)$ time, $O(n)$ space.
+
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def subarraySum(self, nums: List[int], k: int) -> int:
+        count = 0
+        curr_sum = 0
+        prefix_map = defaultdict(int)
+        prefix_map[0] = 1
+
+        for num in nums:
+            curr_sum += num
+            count += prefix_map[curr_sum - k]
+            prefix_map[curr_sum] += 1
+
+        return count
+```
+
+---
+
+### 2. LC 36. Valid Sudoku
+
+#### Core Mental Model
+Track rows, columns, and $3 	imes 3$ sub-boxes simultaneously using 3 arrays of hash sets.
+Sub-box index: `(r // 3) * 3 + (c // 3)`. Single $O(1)$ scan across the $9 	imes 9$ matrix.
+
+```python
+from typing import List
+
+class Solution:
+    def isValidSudoku(self, board: List[List[str]]) -> bool:
+        rows = [set() for _ in range(9)]
+        cols = [set() for _ in range(9)]
+        boxes = [set() for _ in range(9)]
+
+        for r in range(9):
+            for c in range(9):
+                val = board[r][c]
+                if val == '.':
+                    continue
+                box_idx = (r // 3) * 3 + (c // 3)
+                if val in rows[r] or val in cols[c] or val in boxes[box_idx]:
+                    return False
+                rows[r].add(val)
+                cols[c].add(val)
+                boxes[box_idx].add(val)
+
+        return True
+```

@@ -369,3 +369,45 @@ class Solution:
    - 当 `start == end` 时，必须确保 `-1`（释放）排在 `+1`（占用）之前。写成 tuple `(time, delta)` 时，`-1 < 1` 天然保证了释放优先。
 4. **离线查询堆的淘汰条件**：
    - 堆顶检查必须写在 `while heap and heap[0][1] < q:` 循环中，而不是 `if` 单次判断，彻底清空所有历史过期区间。
+
+
+## 六、 模式四：双指针区间交集扫描 (Two-Pointer Intersection)
+
+### LC 986. 区间列表的交集 (Interval List Intersections)
+
+#### 核心心智
+两个排好序的区间列表 `firstList` 和 `secondList`：
+- 当前两区间 `[s1, e1]` 和 `[s2, e2]` 的重叠部分为：
+  $$start = \max(s1, s2), \quad end = \min(e1, e2)$$
+- 若 $start \le end$，则存在有效交集 `[start, end]`；
+- **指针移动法则**：谁的终点更小（`e1 < e2` 还是 `e2 < e1`），谁就不可能再与后续区间产生重叠，因此谁就向后移动一步！
+
+```python
+from typing import List
+
+class Solution:
+    def intervalIntersection(
+        self,
+        firstList: List[List[int]],
+        secondList: List[List[int]]
+    ) -> List[List[int]]:
+        i = j = 0
+        ans = []
+
+        while i < len(firstList) and j < len(secondList):
+            s1, e1 = firstList[i]
+            s2, e2 = secondList[j]
+
+            start = max(s1, s2)
+            end = min(e1, e2)
+            if start <= end:
+                ans.append([start, end])
+
+            # 淘汰终点较早者
+            if e1 < e2:
+                i += 1
+            else:
+                j += 1
+
+        return ans
+```

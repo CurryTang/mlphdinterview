@@ -296,3 +296,116 @@ payload 从 j + 1 开始，读 length 个字符
 | --- | --- |
 | `length = int(s[i])` | 只支持一位长度 |
 | `while s[j] != "#": j += 1` | 支持任意位数长度 |
+
+
+## 模块三：字符串高频面试与工程排版进阶
+
+### 1. 单词翻转与空格排版精确保留 (Reverse Words with Exact Spacing Preservation & In-Place)
+
+#### 核心心智
+- **变体 A（空格 100% 精确保留）**：
+  将字符串切分为**单词流**与**连续空格块流**（`tokens`）；将提取出的 `words` 列表就地翻转 `words.reverse()`；遍历 `tokens`，空格块直接原样输出，单词槽位依次填入翻转后的单词！
+- **变体 B（严格 $O(1)$ 原地双翻转，LC 186）**：
+  可变字符数组先全局反转，再通过双指针识别每个单词边界就地局部二次反转（负负得正恢复正序）。
+
+```python
+from typing import List
+
+class ReverseWordsSolution:
+    @staticmethod
+    def reverseWordsPreserveSpacing(s: str) -> str:
+        """单词倒序，但 100% 精确保留原有空格拓扑与间距"""
+        words: List[str] = []
+        tokens: List[str] = []
+        i, n = 0, len(s)
+
+        while i < n:
+            j = i
+            if s[i] == ' ':
+                while j < n and s[j] == ' ':
+                    j += 1
+                tokens.append(s[i:j])
+            else:
+                while j < n and s[j] != ' ':
+                    j += 1
+                word = s[i:j]
+                tokens.append(word)
+                words.append(word)
+            i = j
+
+        words.reverse()
+        word_idx = 0
+        res = []
+        for token in tokens:
+            if token.startswith(' '):
+                res.append(token)
+            else:
+                res.append(words[word_idx])
+                word_idx += 1
+        return "".join(res)
+
+    @staticmethod
+    def reverseWordsInPlace(chars: List[str]) -> None:
+        """可变字符数组严格 O(1) 空间原地翻转"""
+        def rev(l: int, r: int):
+            while l < r:
+                chars[l], chars[r] = chars[r], chars[l]
+                l += 1
+                r -= 1
+
+        n = len(chars)
+        rev(0, n - 1)  # 1. 全局逆序
+        start = 0
+        while start < n:  # 2. 局部单词逆序
+            if chars[start] == ' ':
+                start += 1
+                continue
+            end = start
+            while end < n and chars[end] != ' ':
+                end += 1
+            rev(start, end - 1)
+            start = end
+```
+
+---
+
+### 2. 双向对齐报纸排版与星号边框渲染 (Newspaper Text Layout with Border)
+
+#### 核心心智（贪心装箱 + 左右动态对齐 + 星号装裱）
+- 贪心累加行内单词长度，若加入新词超出 `width` 则输出当前行；
+- 尾部短行根据 `LEFT` 或 `RIGHT` 在对应方向补齐空格；
+- 外层加上宽度为 `width + 2` 的星号边框。
+
+```python
+from typing import List
+
+class NewspaperLayoutSolution:
+    @classmethod
+    def layoutNewspaper(cls, paragraphs: List[List[str]], alignments: List[str], width: int) -> List[str]:
+        content_lines: List[str] = []
+
+        for words, align in zip(paragraphs, alignments):
+            cur_words: List[str] = []
+            cur_len = 0
+            for w in words:
+                needed = len(w) if not cur_words else len(w) + 1
+                if cur_len + needed <= width:
+                    cur_words.append(w)
+                    cur_len += needed
+                else:
+                    text = " ".join(cur_words)
+                    pad = " " * (width - len(text))
+                    line = (text + pad) if align == "LEFT" else (pad + text)
+                    content_lines.append(f"*{line}*")
+                    cur_words = [w]
+                    cur_len = len(w)
+
+            if cur_words:
+                text = " ".join(cur_words)
+                pad = " " * (width - len(text))
+                line = (text + pad) if align == "LEFT" else (pad + text)
+                content_lines.append(f"*{line}*")
+
+        border = "*" * (width + 2)
+        return [border] + content_lines + [border]
+```

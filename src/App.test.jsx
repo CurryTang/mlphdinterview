@@ -1898,31 +1898,29 @@ describe('App', () => {
     expect(within(visual).getByText(/外星文字典偏序抽取两步核心法/i)).toBeInTheDocument();
   });
 
-  it('routes to Review 01 Core Fundamentals flashcards and expands a card', async () => {
+  it('routes to CoreSkills 01 and expands a solution details block', async () => {
     globalThis.fetch.mockImplementation(async (input) => {
       const requestUrl = String(input);
       return {
         ok: true,
-        text: async () => requestUrl.includes('Review01')
-          ? `# 复习卡片：常考基础题\n\n<details class="review-card">\n<summary class="review-card-summary">\n  <span class="review-card-title">归并排序 (Merge Sort)</span>\n</summary>\n<div class="review-card-content">\n\n分治排序：切分、递归、双指针合并。\n\n</div>\n</details>\n\n<details class="review-card">\n<summary class="review-card-summary">\n  <span class="review-card-title">快速排序 (Quick Sort)</span>\n</summary>\n</details>\n\n<details class="review-card">\n<summary class="review-card-summary">\n  <span class="review-card-title">动态数组实现 (Dynamic Array)</span>\n</summary>\n</details>`
+        text: async () => requestUrl.includes('CoreSkills01')
+          ? `# Design Dynamic Array\n\n<details class="solution">\n<summary class="solution-summary">\n  <span>参考答案</span>\n</summary>\n<div class="solution-content">\n\n动态数组实现核心代码。\n\n</div>\n</details>`
           : '# Default Tutorial',
       };
     });
 
-    window.location.hash = '#Review01%20Common%20Fundamentals.md';
+    window.location.hash = '#CoreSkills01%20Design%20Dynamic%20Array.md';
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /复习卡片：常考基础题/i })).toBeInTheDocument();
-    const mergeSortHeader = screen.getByText('归并排序 (Merge Sort)');
-    expect(mergeSortHeader).toBeInTheDocument();
-    expect(screen.getByText('快速排序 (Quick Sort)')).toBeInTheDocument();
-    expect(screen.getByText('动态数组实现 (Dynamic Array)')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Design Dynamic Array/i })).toBeInTheDocument();
+    const solutionSummary = screen.getByText('参考答案');
+    expect(solutionSummary).toBeInTheDocument();
 
-    const detailsElem = mergeSortHeader.closest('details');
+    const detailsElem = solutionSummary.closest('details');
     expect(detailsElem).not.toHaveAttribute('open');
 
-    fireEvent.click(mergeSortHeader);
-    expect(await screen.findByText(/分治排序：切分、递归、双指针合并/i)).toBeInTheDocument();
+    fireEvent.click(solutionSummary);
+    expect(await screen.findByText(/动态数组实现核心代码/i)).toBeInTheDocument();
   });
 
   it('restores scroll position from sessionStorage when loading a note', async () => {

@@ -1249,3 +1249,99 @@ class Codec:
 最后只记一句：
 
 > 树题的核心是明确每个节点的访问时机、向下传递的状态，以及向父节点返回的量。
+
+
+## 模块五：树形高频扩展真题
+
+### 1. LC 236. 二叉树的最近公共祖先 (Lowest Common Ancestor - LCA)
+
+#### 核心心智（后序递归分治）
+与 BST（LC 235，可利用数值大小左右剪枝）不同，普通二叉树无序，必须后序遍历分治：
+1. 若当前节点为空，或当前节点等于 `p` 或 `q`，直接返回当前节点；
+2. 递归在左子树、右子树中寻找；
+3. **分治汇总**：
+   - 若左右两侧均返回非空，说明 `p` 和 `q` 分列当前节点两侧，**当前节点就是 LCA**；
+   - 若仅有一侧非空，返回非空那一侧的结果；
+   - 若两侧均为空，返回 `None`。
+
+```python
+class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        if not root or root == p or root == q:
+            return root
+
+        left = self.lowestCommonAncestor(root.left, p, q)
+        right = self.lowestCommonAncestor(root.right, p, q)
+
+        if left and right:
+            return root
+        return left if left else right
+```
+
+---
+
+### 2. LC 437. 路径总和 III (树上前缀和 + 回溯作用域)
+
+#### 核心心智
+寻找垂直向下的路径和等于 `targetSum` 的路径总数。
+一维数组的区间和用前缀和哈希表可在 $O(N)$ 解决；在树上，**从根到当前节点的路径就是一条一维链**！
+- 递归进入节点：累计当前前缀和 `curr_sum`，查询 `curr_sum - targetSum` 在哈希表中的历史频次累加到答案；
+- 将当前 `curr_sum` 频次加 1；
+- 递归左右子树；
+- **回溯离开节点**：必须将 `curr_sum` 的频次减 1（离开该分支作用域，避免干扰同层兄弟分支）。
+
+```python
+from collections import defaultdict
+
+class Solution:
+    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
+        prefix_count = defaultdict(int)
+        prefix_count[0] = 1  # 初始前缀和为 0 的路径数 1
+        self.ans = 0
+
+        def dfs(node, curr_sum):
+            if not node:
+                return
+            curr_sum += node.val
+            self.ans += prefix_count[curr_sum - targetSum]
+
+            prefix_count[curr_sum] += 1
+            dfs(node.left, curr_sum)
+            dfs(node.right, curr_sum)
+            prefix_count[curr_sum] -= 1  # 回溯撤销
+
+        dfs(root, 0)
+        return self.ans
+```
+
+---
+
+### 3. 扁平化多级评论数据构建树形层级 (字节业务高频)
+
+#### 核心心智（两趟哈希 $O(N)$ 建树）
+输入扁平评论数组 `[{"id": 1, "parent_id": None}, {"id": 2, "parent_id": 1}, ...]`：
+1. **第一趟**：创建所有节点的封装对象，并以 `id -> node` 存入哈希字典；
+2. **第二趟**：遍历每个节点，若有 `parent_id` 则将其追加到父节点的 `children` 列表中；若 `parent_id` 为空，则收集为顶级根节点。
+
+```python
+class CommentNode:
+    def __init__(self, comment_id, content):
+        self.id = comment_id
+        self.content = content
+        self.children = []
+
+def build_comment_tree(flat_comments):
+    nodes = {}
+    for c in flat_comments:
+        nodes[c['id']] = CommentNode(c['id'], c.get('content', ''))
+
+    roots = []
+    for c in flat_comments:
+        node = nodes[c['id']]
+        pid = c.get('parent_id')
+        if pid and pid in nodes:
+            nodes[pid].children.append(node)
+        else:
+            roots.append(node)
+    return roots
+```

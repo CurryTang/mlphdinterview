@@ -422,3 +422,74 @@ Second pass from right to left:
 ```
 
 This is also the version most recommended for interviews: `O(n)` time, no division, and it naturally handles `0`.
+
+
+## Module 4: High-Frequency Design Patterns
+
+### 1. LC 380. Insert Delete GetRandom O(1)
+
+#### Core Mental Model (Swap-with-Last Deletion)
+Hash tables offer $O(1)$ lookup and deletion but cannot sample uniformly in $O(1)$; dynamic arrays offer $O(1)$ random access by index but require $O(n)$ to delete an arbitrary element.
+**The Hybrid Solution**: Array stores values; hash map stores `val -> array_index`. To delete an item, **swap it with the last element in the array**, then `pop()` from the back and update the hash map. All operations run in strict $O(1)$!
+
+```python
+import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.val_to_idx = {}
+        self.vals = []
+
+    def insert(self, val: int) -> bool:
+        if val in self.val_to_idx:
+            return False
+        self.val_to_idx[val] = len(self.vals)
+        self.vals.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.val_to_idx:
+            return False
+        idx = self.val_to_idx[val]
+        last_val = self.vals[-1]
+
+        self.vals[idx] = last_val
+        self.val_to_idx[last_val] = idx
+
+        self.vals.pop()
+        del self.val_to_idx[val]
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(self.vals)
+```
+
+---
+
+### 2. 8-Byte Aligned Memory Allocator Simulation
+
+#### Core Mental Model
+Frequent ByteDance systems problem: simulate a contiguous memory buffer where allocation start addresses must align to 8-byte boundaries (indices must be multiples of 8).
+
+```python
+class MemoryAllocator:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.memory = [0] * capacity  # 0: free, non-zero: allocation_id
+
+    def alloc(self, alloc_id: int, size: int) -> int:
+        for start in range(0, self.capacity - size + 1, 8):
+            if all(self.memory[i] == 0 for i in range(start, start + size)):
+                for i in range(start, start + size):
+                    self.memory[i] = alloc_id
+                return start
+        return -1
+
+    def erase(self, alloc_id: int) -> int:
+        freed = 0
+        for i in range(self.capacity):
+            if self.memory[i] == alloc_id:
+                self.memory[i] = 0
+                freed += 1
+        return freed
+```

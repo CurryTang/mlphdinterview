@@ -472,8 +472,6 @@ class Solution:
 6. **岛屿周长几何解 (Island Perimeter，LC 463)**：利用公式 $\text{周长} = 4 \times \text{陆地数} - 2 \times \text{相邻共享边数}$，单次无状态线性扫描达成严格 $O(1)$ 辅助空间。
 7. **单趟指标双聚合 (Single-Pass Aggregation)**：单次扫描中在 BFS 弹出节点时动态累加连通块大小，单趟同时产出岛屿总数与最大面积。
 
-> 💡 **生产级代码与详细推导**：各变体完整 Python 实现、极端边界防护与复杂度速记表已收录至 [Review 1 · 常考基础题 (Flashcards) · 模块三第 15 题](Review01%20Common%20Fundamentals.md#15-岛屿数量与全景变体全家桶-number-of-islands--master-variant-atlas)。
-
 ---
 
 ### 2. Max Area of Island
@@ -2559,3 +2557,116 @@ class Solution:
 最后只记一句：
 
 > 图论的第一步不是选算法，而是先想清楚图长什么样：节点是什么，边是什么，边有没有权重和方向，起点有几个。想清楚这些，能用的算法基本就剩一两个了。
+
+
+## 模块七：图论高频扩展真题
+
+### 1. LC 1293. 带消除障碍物预算的网格最短路径 (Shortest Path with Obstacles Elimination)
+
+#### 核心心智（状态升维 BFS + 支配性剪枝）
+普通 BFS 的状态只有坐标 `(r, c)`。本题可以消除至多 $k$ 个障碍物，因此**状态升维为三元组 `(r, c, remaining_k)`**：
+- **支配性剪枝（Dominance Pruning）**：如果曾以剩余预算 $k_1$ 到达过 `(r, c)`，现在以 $k_2 \le k_1$ 到达同样坐标，当前路径必然被支配，直接剪枝！
+- `visited[r][c]` 记录到达该格子的**历史最大剩余消除配额**。
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    def shortestPath(self, grid: List[List[int]], k: int) -> int:
+        m, n = len(grid), len(grid[0])
+        # 曼哈顿捷径：若 k >= m + n - 3，直接曼哈顿距离可达
+        if k >= m + n - 3:
+            return m + n - 2
+
+        q = deque([(0, 0, k, 0)])  # (r, c, rem_k, steps)
+        visited = [[-1] * n for _ in range(m)]
+        visited[0][0] = k
+
+        while q:
+            r, c, rem_k, steps = q.popleft()
+            if r == m - 1 and c == n - 1:
+                return steps
+
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n:
+                    nxt_k = rem_k - grid[nr][nc]
+                    if nxt_k > visited[nr][nc]:
+                        visited[nr][nc] = nxt_k
+                        q.append((nr, nc, nxt_k, steps + 1))
+
+        return -1
+```
+
+---
+
+### 2. LC 269. 外星人词典 (Alien Dictionary)
+
+#### 核心心智（相邻字典序建图 + Kahn 拓扑排序）
+1. **建图**：比较相邻两单词 `w1` 和 `w2`，找到第一个不相等的字符，连一条有向边 `w1[k] -> w2[k]`；
+2. **非法前缀防御**：若 `w2` 是 `w1` 的严格前缀且 `len(w1) > len(w2)`（如 `"apple"` 排在 `"app"` 前面），直接判定非法返回 `""`；
+3. **拓扑排序**：用 Kahn 入度队列排序。若最终拓扑序列长度小于图中的去重字符总数，说明有环（字典序冲突），返回 `""`。
+
+```python
+from collections import defaultdict, deque
+from typing import List
+
+class Solution:
+    def alienOrder(self, words: List[str]) -> str:
+        graph = defaultdict(set)
+        in_degree = {c: 0 for w in words for c in w}
+
+        for i in range(len(words) - 1):
+            w1, w2 = words[i], words[i + 1]
+            min_len = min(len(w1), len(w2))
+            if len(w1) > len(w2) and w1.startswith(w2):
+                return ""  # 非法前缀异常
+            for j in range(min_len):
+                if w1[j] != w2[j]:
+                    if w2[j] not in graph[w1[j]]:
+                        graph[w1[j]].add(w2[j])
+                        in_degree[w2[j]] += 1
+                    break
+
+        q = deque([c for c, deg in in_degree.items() if deg == 0])
+        order = []
+        while q:
+            u = q.popleft()
+            order.append(u)
+            for v in graph[u]:
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    q.append(v)
+
+        return "".join(order) if len(order) == len(in_degree) else ""
+```
+
+---
+
+### 3. LC 547. 省份数量 / 并查集 (Number of Provinces)
+
+#### 核心心智（并查集连通分量计数）
+```python
+class Solution:
+    def findCircleNum(self, isConnected: List[List[int]]) -> int:
+        n = len(isConnected)
+        parent = list(range(n))
+
+        def find(x):
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x, y):
+            root_x, root_y = find(x), find(y)
+            if root_x != root_y:
+                parent[root_x] = root_y
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                if isConnected[i][j]:
+                    union(i, j)
+
+        return len({find(i) for i in range(n)})
+```

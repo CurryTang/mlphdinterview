@@ -809,3 +809,22 @@ When a backtracking problem comes up, walking through it in this order scores be
 5. Write the code: Write the `make` / `undo` pair first, then fill in the loop condition.
 6. Give the complexity: Phrase it as node count times work per node, and say how much pruning removes on realistic inputs.
 7. Raise the edge cases yourself: Empty input, all-equal elements, an unreachable target.
+
+
+## Module 3: Backtracking High-Frequency Extensions
+
+### 1. Largest Number Smaller than N from Digits A (Digit Greedy Backtracking)
+
+#### Core Mental Model
+1. Try matching the current digit equal to $N[i]$ and recurse.
+2. If matching fails, select the largest digit strictly smaller than $N[i]$. Once a smaller digit is placed, fill all remaining lower positions with $\max(A)$!
+3. If no same-length number can be formed, degrade to $(L - 1)$ repetitions of $\max(A)$.
+
+---
+
+### 2. LC 93. Restore IP Addresses & Generalized K-Segment Partition
+
+#### Core Mental Model
+Partition string into 4 segments using backtracking:
+- Pigeonhole pruning: remaining characters must be in $[segments\_left, 3 \times segments\_left]$.
+- Validity checks: no leading zeros if length $> 1$, and numerical value $\le 255$.

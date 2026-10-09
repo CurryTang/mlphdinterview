@@ -1003,3 +1003,137 @@ class Solution:
 最后只记一句：
 
 > 链表题通常不是新算法；它更像是在 dummy head、反转、快慢指针、哈希映射这几块稳定模板之间做组合。
+
+
+## 模块五：链表高频拓展全家桶
+
+### 1. LC 146. LRU 缓存机制 (LRU Cache)
+
+#### 核心心智（双向链表 + 哈希表）
+- **哈希表**：`key -> DLinkedNode`，实现 $O(1)$ 定位节点；
+- **双向链表**：带虚拟头尾节点 `head` 和 `tail`，实现 $O(1)$ 节点拔出与头插；
+- **最常使用置于表头，最久未使用从表尾淘汰**。
+
+```python
+class DLinkedNode:
+    def __init__(self, key=0, val=0):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = {}
+        self.head = DLinkedNode()
+        self.tail = DLinkedNode()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node: DLinkedNode):
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _add_to_head(self, node: DLinkedNode):
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._remove(node)
+        self._add_to_head(node)
+        return node.val
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            node = self.cache[key]
+            node.val = value
+            self._remove(node)
+            self._add_to_head(node)
+        else:
+            if len(self.cache) >= self.capacity:
+                lru = self.tail.prev
+                self._remove(lru)
+                del self.cache[lru.key]
+            new_node = DLinkedNode(key, value)
+            self.cache[key] = new_node
+            self._add_to_head(new_node)
+```
+
+---
+
+### 2. LC 234. 回文链表 (Palindrome Linked List)
+
+#### 核心心智（中点 + 反转 + 对比 + 复原）
+1. 快慢指针找中点；
+2. 反转后半段链表；
+3. 双指针从两头比对；
+4. 再次反转后半段恢复原状（工程级良好习惯），时间 $O(n)$，额外空间严格 $O(1)$。
+
+```python
+class Solution:
+    def isPalindrome(self, head: Optional[ListNode]) -> bool:
+        if not head or not head.next:
+            return True
+        # 1. 找中点
+        slow = fast = head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        # 2. 原地反转后半部分
+        prev, curr = None, slow.next
+        while curr:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+
+        # 3. 对比前半部分与后半部分
+        p1, p2 = head, prev
+        is_pal = True
+        while p2:
+            if p1.val != p2.val:
+                is_pal = False
+                break
+            p1 = p1.next
+            p2 = p2.next
+
+        return is_pal
+```
+
+---
+
+### 3. LC 430. 扁平化多级双向链表 (Flatten Multilevel Doubly Linked List)
+
+#### 核心心智
+顺序遍历每个节点，遇到 `child` 节点时，将整个子链表插入当前节点和 `next` 之间，清除 `child` 指针，继续向前推进。
+
+```python
+class Solution:
+    def flatten(self, head: 'Optional[Node]') -> 'Optional[Node]':
+        curr = head
+        while curr:
+            if curr.child:
+                nxt = curr.next
+                # 找到子链表的尾部
+                child_tail = curr.child
+                while child_tail.next:
+                    child_tail = child_tail.next
+
+                # 插入当前节点与 nxt 之间
+                curr.next = curr.child
+                curr.child.prev = curr
+                curr.child = None
+
+                if nxt:
+                    child_tail.next = nxt
+                    nxt.prev = child_tail
+            curr = curr.next
+        return head
+```

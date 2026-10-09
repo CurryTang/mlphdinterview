@@ -734,3 +734,38 @@ Trapping rain water, look for the shorter leftMax / rightMax, settle the shorter
 The essence of two pointers:
   Every step moved, a part of the search space is safely discarded.
 ```
+
+
+## Module 3: Two Pointers Extensions & Mathematical Reductions
+
+### 1. Pythagorean Triplet via Sorted Squares & 2-Pointer Search
+
+#### Core Mental Model
+To determine whether $a^2 + b^2 = c^2$ exists: map elements to squares and sort ascending. Iterate from largest element $c^2$ downward, using two pointers $i, j$ in $[0, k-1]$ to find a pair summing to $c^2$. Time: $O(n^2)$.
+
+```python
+from typing import List
+
+def judgePythagoreanTriplet(nums: List[int]) -> bool:
+    squares = sorted([x * x for x in nums])
+    for k in range(len(squares) - 1, 1, -1):
+        target, i, j = squares[k], 0, k - 1
+        while i < j:
+            s = squares[i] + squares[j]
+            if s == target: return True
+            elif s < target: i += 1
+            else: j -= 1
+    return False
+```
+
+---
+
+### 2. Largest Min+Max in Subarray via Adjacent Pair Reduction
+
+#### Core Mental Model
+For any contiguous subarray of length $\ge 2$ with maximum $M$ and minimum $m$, consider the neighbor adjacent to $M$ inside the subarray. Its value $v$ satisfies $v \ge m$, so $M + v \ge M + m$. Every subarray is dominated by its adjacent pair containing $M$. Thus, the global maximum reduces to finding $\max(nums[i] + nums[i+1])$ in $O(n)$ time!
+
+```python
+def largestMinMaxSum(nums: List[int]) -> int:
+    return max(nums[i] + nums[i + 1] for i in range(len(nums) - 1))
+```

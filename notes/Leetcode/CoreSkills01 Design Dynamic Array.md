@@ -422,3 +422,78 @@ class Solution:
 ```
 
 这也是面试里最推荐写的版本：`O(n)` 时间，不用除法，能自然处理 `0`。
+
+
+## 模块四：高频设计进阶
+
+### 1. LC 380. 常数时间插入、删除和获取随机元素 (Insert Delete GetRandom O(1))
+
+#### 核心心智（尾部交换删除法）
+哈希表能实现 $O(1)$ 查找和删除，但无法 $O(1)$ 等概率随机取样；动态数组能 $O(1)$ 按下标随机访问，但中间删除需要 $O(n)$ 搬移。
+**结合两者的神器**：数组存元素值，哈希表存 `val -> 数组下标`。删除时，**将待删元素与数组末尾元素交换**，然后直接调用数组 `pop()` 弹出末尾，哈希表同步更新下标。时间复杂度为严格 $O(1)$！
+
+```python
+import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.val_to_idx = {}
+        self.vals = []
+
+    def insert(self, val: int) -> bool:
+        if val in self.val_to_idx:
+            return False
+        self.val_to_idx[val] = len(self.vals)
+        self.vals.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.val_to_idx:
+            return False
+        # 1. 找到待删元素和数组末尾元素
+        idx = self.val_to_idx[val]
+        last_val = self.vals[-1]
+
+        # 2. 末尾元素移到待删位置，更新哈希表
+        self.vals[idx] = last_val
+        self.val_to_idx[last_val] = idx
+
+        # 3. 弹出末尾元素并清理待删键
+        self.vals.pop()
+        del self.val_to_idx[val]
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(self.vals)
+```
+
+---
+
+### 2. 8 字节对齐内存分配器仿真 (8-Byte Aligned Memory Allocator)
+
+#### 核心心智
+字节工业界高频手撕：模拟固定容量的底层连续内存分配器，要求起始地址必须按 8 字节严格对齐（即起始下标必须是 8 的倍数）。
+
+```python
+class MemoryAllocator:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.memory = [0] * capacity  # 0 代表空闲，非 0 为 allocation_id
+
+    def alloc(self, alloc_id: int, size: int) -> int:
+        # 起始地址必须是 8 的倍数步进
+        for start in range(0, self.capacity - size + 1, 8):
+            if all(self.memory[i] == 0 for i in range(start, start + size)):
+                for i in range(start, start + size):
+                    self.memory[i] = alloc_id
+                return start
+        return -1  # 无足够连续空闲块
+
+    def erase(self, alloc_id: int) -> int:
+        freed = 0
+        for i in range(self.capacity):
+            if self.memory[i] == alloc_id:
+                self.memory[i] = 0
+                freed += 1
+        return freed
+```

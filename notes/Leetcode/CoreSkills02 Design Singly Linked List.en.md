@@ -1003,3 +1003,132 @@ class Solution:
 Keep one sentence in memory:
 
 > Linked-list problems are usually not new algorithms; they are combinations of a few stable templates: dummy head, reversal, fast-slow pointers, and hash-based node lookup.
+
+
+## Module 5: High-Frequency Linked List Extensions
+
+### 1. LC 146. LRU Cache
+
+#### Core Mental Model (Doubly Linked List + Hash Map)
+- **Hash Map**: `key -> DLinkedNode`, enabling $O(1)$ key lookup;
+- **Doubly Linked List**: sentinel `head` and `tail`, enabling $O(1)$ node removal and head insertion;
+- **Most recently used goes to head; least recently used evicted from tail**.
+
+```python
+class DLinkedNode:
+    def __init__(self, key=0, val=0):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = {}
+        self.head = DLinkedNode()
+        self.tail = DLinkedNode()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node: DLinkedNode):
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _add_to_head(self, node: DLinkedNode):
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._remove(node)
+        self._add_to_head(node)
+        return node.val
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            node = self.cache[key]
+            node.val = value
+            self._remove(node)
+            self._add_to_head(node)
+        else:
+            if len(self.cache) >= self.capacity:
+                lru = self.tail.prev
+                self._remove(lru)
+                del self.cache[lru.key]
+            new_node = DLinkedNode(key, value)
+            self.cache[key] = new_node
+            self._add_to_head(new_node)
+```
+
+---
+
+### 2. LC 234. Palindrome Linked List
+
+#### Core Mental Model (Midpoint + Reverse + Compare + Restore)
+1. Slow/fast pointers locate the midpoint;
+2. Reverse the second half in-place;
+3. Compare both halves from ends;
+4. $O(n)$ time, strictly $O(1)$ auxiliary space.
+
+```python
+class Solution:
+    def isPalindrome(self, head: Optional[ListNode]) -> bool:
+        if not head or not head.next:
+            return True
+        slow = fast = head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+
+        prev, curr = None, slow.next
+        while curr:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+
+        p1, p2 = head, prev
+        is_pal = True
+        while p2:
+            if p1.val != p2.val:
+                is_pal = False
+                break
+            p1 = p1.next
+            p2 = p2.next
+
+        return is_pal
+```
+
+---
+
+### 3. LC 430. Flatten a Multilevel Doubly Linked List
+
+#### Core Mental Model
+Traverse nodes sequentially. When encountering a node with a `child`, locate the child list's tail, splice the child segment between `curr` and `curr.next`, and nullify `curr.child`.
+
+```python
+class Solution:
+    def flatten(self, head: 'Optional[Node]') -> 'Optional[Node]':
+        curr = head
+        while curr:
+            if curr.child:
+                nxt = curr.next
+                child_tail = curr.child
+                while child_tail.next:
+                    child_tail = child_tail.next
+
+                curr.next = curr.child
+                curr.child.prev = curr
+                curr.child = None
+
+                if nxt:
+                    child_tail.next = nxt
+                    nxt.prev = child_tail
+            curr = curr.next
+        return head
+```

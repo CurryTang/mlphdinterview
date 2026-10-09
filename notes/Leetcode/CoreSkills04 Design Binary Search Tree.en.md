@@ -1253,3 +1253,95 @@ This problem and Preorder+Inorder reconstruction are the same broad idea: preord
 Keep one sentence in memory:
 
 > Tree problems reduce to the visit time at each node, the state passed downward, and the value returned to the parent.
+
+
+## Module 5: High-Frequency Tree Extensions
+
+### 1. LC 236. Lowest Common Ancestor of a Binary Tree (LCA)
+
+#### Core Mental Model (Post-Order Divide and Conquer)
+Unlike BSTs (LC 235), an unconstrained binary tree requires post-order DFS:
+1. Base case: If root is `None`, `p`, or `q`, return `root`.
+2. Recursively search left and right subtrees.
+3. Combine results:
+   - If both left and right return non-null, `p` and `q` lie in separate subtrees; **root is the LCA**;
+   - If only one side returns non-null, return that non-null node;
+   - If both return `None`, return `None`.
+
+```python
+class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        if not root or root == p or root == q:
+            return root
+
+        left = self.lowestCommonAncestor(root.left, p, q)
+        right = self.lowestCommonAncestor(root.right, p, q)
+
+        if left and right:
+            return root
+        return left if left else right
+```
+
+---
+
+### 2. LC 437. Path Sum III (Tree Prefix Sum + Backtracking Scope)
+
+#### Core Mental Model
+Find downward paths summing to `targetSum`.
+Any path from root to current node is a 1D sequence!
+- Accumulate `curr_sum += node.val`.
+- Add occurrences of `curr_sum - targetSum` from prefix map to total answer.
+- Recurse into children.
+- **Backtrack on exit**: decrement `prefix_count[curr_sum]` by 1 so this branch does not pollute sibling subtrees.
+
+```python
+from collections import defaultdict
+
+class Solution:
+    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
+        prefix_count = defaultdict(int)
+        prefix_count[0] = 1
+        self.ans = 0
+
+        def dfs(node, curr_sum):
+            if not node:
+                return
+            curr_sum += node.val
+            self.ans += prefix_count[curr_sum - targetSum]
+
+            prefix_count[curr_sum] += 1
+            dfs(node.left, curr_sum)
+            dfs(node.right, curr_sum)
+            prefix_count[curr_sum] -= 1
+
+        dfs(root, 0)
+        return self.ans
+```
+
+---
+
+### 3. Build Nested Hierarchy Tree from Flat Comment Data
+
+#### Core Mental Model (Two-Pass O(N) Hash Map Construction)
+1. **Pass 1**: Instantiate tree nodes and index them in a map `id -> node`.
+2. **Pass 2**: For each item, append `node` to `parent.children` if `parent_id` exists; otherwise add to top-level `roots`.
+
+```python
+class CommentNode:
+    def __init__(self, comment_id, content):
+        self.id = comment_id
+        self.content = content
+        self.children = []
+
+def build_comment_tree(flat_comments):
+    nodes = {c['id']: CommentNode(c['id'], c.get('content', '')) for c in flat_comments}
+    roots = []
+    for c in flat_comments:
+        node = nodes[c['id']]
+        pid = c.get('parent_id')
+        if pid and pid in nodes:
+            nodes[pid].children.append(node)
+        else:
+            roots.append(node)
+    return roots
+```

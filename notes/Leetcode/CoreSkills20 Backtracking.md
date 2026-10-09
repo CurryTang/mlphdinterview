@@ -810,3 +810,104 @@ class Solution:
 5. 写代码：先写 `make` / `undo` 这对，再填循环条件。
 6. 报复杂度：用“节点数 × 每节点工作量”来说，并说明剪枝在实际输入上能砍掉多少。
 7. 主动提边界：空输入、全相同元素、`target` 取不到这些情况怎么走。
+
+
+## 模块三：回溯高频扩展真题
+
+### 1. 字节跳动高频：用候选数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A)
+
+#### 核心心智（数位贪心分支状态机）
+从最高位往低位扫描：
+1. **分支一（尝试相等）**：若 $A$ 中有与 $N[i]$ 相等的数，先贪心尝试选取它并递归后续；若成功则直接返回；
+2. **分支二（前缀降级，后缀全填最大）**：若相等失败，在当前位选取 $A$ 中**严格小于 $N[i]$ 的最大数字**。一旦当前位小于 $N[i]$，**后续所有更低位无脑全填 $A$ 中的最大数字 $\max(A)$**！
+3. **分支三（同长度无解，位数减 1）**：若同长度无法拼出小于 $N$ 的数，退化为构造长度为 $L-1$ 且全为 $\max(A)$ 的数。
+
+```python
+from typing import List
+
+class DigitConstructionSolution:
+    @classmethod
+    def findLargestSmaller(cls, N: int, A: List[int]) -> int:
+        if N <= 0 or not A:
+            return -1
+        digits = sorted(list(set(A)))
+        max_d = digits[-1]
+        s_N = str(N)
+        L = len(s_N)
+        res_digits: List[int] = []
+
+        def backtrack(idx: int, is_less: bool) -> bool:
+            if idx == L:
+                return is_less
+            cur_target = int(s_N[idx])
+            if is_less:
+                res_digits.append(max_d)
+                if backtrack(idx + 1, True):
+                    return True
+                res_digits.pop()
+                return False
+
+            for d in reversed(digits):
+                if d == cur_target:
+                    res_digits.append(d)
+                    if backtrack(idx + 1, False):
+                        return True
+                    res_digits.pop()
+                elif d < cur_target:
+                    res_digits.append(d)
+                    if backtrack(idx + 1, True):
+                        return True
+                    res_digits.pop()
+            return False
+
+        if backtrack(0, False):
+            return int("".join(map(str, res_digits)))
+        if L > 1 and max_d > 0:
+            return int(str(max_d) * (L - 1))
+        return -1
+```
+
+---
+
+### 2. LC 93. 复原 IP 地址与泛化 K 段划分 (Restore IP Addresses & Generalized K-Segment Partition)
+
+#### 核心心智（回溯切分 + 鸽巢长度剪枝 + 前导零校验）
+- **鸽巢剪枝**：当剩余需要划分 $rem$ 段时，剩余字符数必须满足 $rem \le len \le 3 \times rem$；
+- **合法性校验**：长度 $> 1$ 时禁止以 `'0'` 开头；数值必须落在 $[0, 255]$；
+- 递归树深度严格为 4，时间复杂度常数级 $O(1)$！
+
+```python
+from typing import List
+
+class Solution:
+    def restoreIpAddresses(self, s: str) -> List[str]:
+        n = len(s)
+        if n < 4 or n > 12:
+            return []
+        res = []
+        path = []
+
+        def backtrack(start: int, segments_left: int):
+            if segments_left == 0:
+                if start == n:
+                    res.append(".".join(path))
+                return
+            rem_chars = n - start
+            if rem_chars < segments_left or rem_chars > segments_left * 3:
+                return
+
+            for length in range(1, 4):
+                if start + length > n:
+                    break
+                part = s[start:start + length]
+                if length > 1 and part[0] == '0':
+                    break
+                if int(part) > 255:
+                    break
+                path.append(part)
+                backtrack(start + length, segments_left - 1)
+                path.pop()
+
+        backtrack(0, 4)
+        return res
+```

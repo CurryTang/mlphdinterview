@@ -594,3 +594,37 @@ The new value is always pushed into `small` unconditionally first, then `small`'
 One sentence to keep:
 
 > A heap solves problems that repeatedly need an extreme value without needing full ordering; identifying which extreme value the problem wants, and how many, fixes the template to use.
+
+
+## Module 5: Heap & System Design Extensions
+
+### 1. LC 23. Merge k Sorted Lists
+
+#### Core Mental Model (K-Way Merge with Min-Heap)
+Push head nodes of all $k$ linked lists into a min-heap. Pop the smallest node, attach it to output list, and push its `next` node into the heap.
+- Time: $\mathcal{O}(N \log k)$ where $N$ is total node count;
+- Space: $\mathcal{O}(k)$ auxiliary heap space.
+
+```python
+import heapq
+from typing import List, Optional
+
+class Solution:
+    def mergeKLists(self, lists: List[Optional[ListNode]]) -> Optional[ListNode]:
+        heap = []
+        for i, l in enumerate(lists):
+            if l:
+                heapq.heappush(heap, (l.val, i, l))
+
+        dummy = ListNode(0)
+        curr = dummy
+
+        while heap:
+            val, i, node = heapq.heappop(heap)
+            curr.next = node
+            curr = curr.next
+            if node.next:
+                heapq.heappush(heap, (node.next.val, i, node.next))
+
+        return dummy.next
+```

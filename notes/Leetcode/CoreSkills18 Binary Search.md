@@ -1,222 +1,115 @@
 # Binary Search 统一模板
 
-二分查找的标准写法不难，容易出错的是变体：精确匹配、答案值域、旋转数组、区间匹配，四类问题的边界处理各不相同。这份笔记把七道题目统一到同一个模板：在一个单调谓词上找边界，题目之间只替换三处内容。
+二分查找的核心本质只有一个：**在单调序列上找分界点（First True）**。
+
+无论题目千变万化（等值匹配、值域二分、旋转数组、分割点），模板代码永远是 6 行，**解题只需填好 3 个空**，10 秒内就能写完且绝无 bug。
 
 ## 学习顺序
 
-题目同样来自 [NeetCode 150](https://neetcode.io/practice/practice/neetcode150) 的 Binary Search 模块。
+题目来自 [NeetCode 150](https://neetcode.io/practice/practice/neetcode150) 的 Binary Search 模块：
 
-| 顺序 | 原题 | 要掌握的内容 |
-|---:|---|---|
-| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | 模板的最基本形式：精确匹配 |
-| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 二维下标映射为一维 |
-| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | 搜索空间是答案值域，不是数组下标 |
-| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | 没有目标值时如何定义谓词 |
-| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | 用键值变换把旋转数组线性化 |
-| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | "最后一个 False"读法 |
-| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | 搜索空间是分割点，用 `±inf` 做哨兵 |
+| 顺序 | 原题 | 考察核心 | 三步填空的关键点 |
+|---:|---|---|---|
+| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | 基础等值查找 | 找第一个 $\ge target$，最后验证相等 |
+| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 二维矩阵二分 | 展平下标 `[0, m*n]`，`(mid // n, mid % n)` 映射 |
+| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | 答案值域二分 | 搜索空间是速度 `[1, max]`，`check` 算耗时是否达标 |
+| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组极值 | 比较对象是末尾元素 `nums[-1]`，直接返回 `nums[lo]` |
+| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | 旋转数组找目标 | 经典分段二分（哪半边有序）/ 键值单调化 |
+| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | 找“最后一个满足” | 找第一个大于查询值的，返回 `lo - 1` |
+| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | 双数组中位数 | 在较短数组上二分分割线位置 |
 
-## 模块一：统一模板
+## 模块一：统一模板与极简三步填空法
 
-### 搜索空间与谓词
+### 1. 核心模板代码（闭眼默写这 6 行）
 
-二分查找定位的不是数组本身，而是一个区间 `[lo, hi]`，以及定义在这个区间上的布尔谓词 `check(x)`。模板要求 `check` 在这个区间上单调：存在一个边界 `b`，满足 `x < b` 时 `check(x)` 为 `False`，`x >= b` 时为 `True`。模板返回这个边界 `b`。
-
-区间不一定是数组下标，也可以是答案的取值范围，或者分割点的位置。谓词也不一定和"是否等于目标值"有关，只要求单调。
-
-### 模板代码
+二分查找的本质只有一个：**在一个单调分界线上，找第一个满足条件的点（First True）**。无论题目千变万化，核心代码永远是这 6 行：
 
 ```python
 def find_first_true(lo, hi, check):
     while lo < hi:
         mid = lo + (hi - lo) // 2
         if check(mid):
-            hi = mid
+            hi = mid      # 满足条件，向左收缩找更早的合法点
         else:
-            lo = mid + 1
-    return lo
-```
-
-循环不变式：边界 `b` 始终位于 `[lo, hi]` 内。每轮循环后 `hi - lo` 至少减半，`lo == hi` 时循环结束，返回值就是 `b`。
-
-如果 `[lo, hi)` 内没有任何位置满足 `check`，函数返回 `hi`。这不是因为 `check(hi)` 被调用并返回 `True`——`mid` 严格小于 `hi`，`hi` 本身永远不会被传给 `check`。这种情况下 `hi` 起哨兵作用，代表"没有找到"或者"答案落在搜索空间之外"。
-
-七道题目要修改的只有三处：
-
-```text
-lo, hi：搜索空间的两端
-check(mid)：单调谓词的定义
-边界 b 之后的处理：直接使用、验证相等，或者取 b - 1
+            lo = mid + 1  # 不满足，向右排除
+    return lo             # 退出时必定 lo == hi，就是第一个满足 check 的位置
 ```
 
 ```binary-search-template-demo
 ```
 
-### 具体迭代表
+> **不变定理**：循环退出时必定 `lo == hi`，它永远精准指向**“第一个使 `check(mid)` 为 True 的位置”**。
 
-#### 精确匹配：`nums = [1, 3, 5, 7, 9, 11, 13]`
+---
 
-| 示例 | 轮次 | `lo` | `hi` | `mid` | `check(mid)` | 动作 |
-|---|---:|---:|---:|---:|---|---|
-| `target = 9` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 9` → False | `lo = 4` |
-| `target = 9` | 2 | 4 | 7 | 5 | `nums[5] = 11 >= 9` → True | `hi = 5` |
-| `target = 9` | 3 | 4 | 5 | 4 | `nums[4] = 9 >= 9` → True | `hi = 4` |
-| `target = 9` | 结束 | 4 | 4 | - | 边界 `b = 4` | 验证 `nums[4] == 9`，返回 `4` |
-| `target = 6` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 6` → True | `hi = 3` |
-| `target = 6` | 2 | 0 | 3 | 1 | `nums[1] = 3 >= 6` → False | `lo = 2` |
-| `target = 6` | 3 | 2 | 3 | 2 | `nums[2] = 5 >= 6` → False | `lo = 3` |
-| `target = 6` | 结束 | 3 | 3 | - | 边界 `b = 3` | 验证 `nums[3] = 7 != 6`，返回 `-1` |
+### 2. 那几个东西怎么填？（极简三步填空心智卡片）
 
-#### 答案值域：`piles = [3, 6, 7, 11]`，`h = 8`
+写二分查找时，脑子里不需要背复杂的镜像表或哨兵分类，**只需要按顺序填好 3 个空**：
 
-| 轮次 | `lo` | `hi` | `mid` | `check(mid)` | 动作 |
-|---|---:|---:|---:|---|---|
-| 1 | 1 | 11 | 6 | `1 + 1 + 2 + 2 = 6 <= 8` → True | `hi = 6` |
-| 2 | 1 | 6 | 3 | `1 + 2 + 3 + 4 = 10 <= 8` → False | `lo = 4` |
-| 3 | 4 | 6 | 5 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 5` |
-| 4 | 4 | 5 | 4 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 4` |
-| 结束 | 4 | 4 | - | 边界 `b = 4` | 返回最小可行速度 `4` |
+#### 第一步：区间 `[lo, hi]` 怎么填？
 
-#### 最后一个 False：`timestamps = [1, 4, 7, 10]`，`query = 8`
+- **普通数组下标（求位置）**：`lo = 0, hi = len(nums)`
+  - *为什么 `hi` 是 `len(nums)`？* 因为目标可能根本不存在，此时返回 `len(nums)` 充当“未找到 / 越界”的天然哨兵标记。
+- **答案值域（求最小速度、最小容量等）**：`lo = 最小可能值, hi = 最大可能值`
+  - *为什么不需要加 1？* 因为已知最大可能值必定满足条件（恒真上界），区间两端都是闭合有效值。
 
-| 轮次 | `lo` | `hi` | `mid` | `check(mid)` | 动作 |
-|---|---:|---:|---:|---|---|
-| 1 | 0 | 4 | 2 | `timestamps[2] = 7 > 8` → False | `lo = 3` |
-| 2 | 3 | 4 | 3 | `timestamps[3] = 10 > 8` → True | `hi = 3` |
-| 结束 | 3 | 3 | - | 边界 `b = 3` | 返回 `b - 1 = 2`，对应时间戳 `7` |
+---
 
-### 两种读法
+#### 第二步：`check(mid)` 怎么填？（4 大边界秒杀口诀）
 
-| 需要的答案 | 处理方式 |
-|---|---|
-| 第一个满足条件的位置 | 直接返回 `b` |
-| 最后一个不满足条件的位置 | 返回 `b - 1`，并检查 `b > 0` |
+绝大多数人容易搞混 `>` 还是 `>=`。核心语义永远只有一句话：
+> **“当前 `mid` 是否已经满足（或达到）题目要求？”**
+> - 一旦满足（`True`），说明我们找到了一个可行解，但想看左边有没有更小/更早的，所以往左收：`hi = mid`。
+> - 不满足（`False`），必须往右找：`lo = mid + 1`。
 
-### `check(mid)` 的四种标准写法
+在单调有序数组中找数值时，牢记这套**全网最好记的口诀**：
 
-要确定的问题是"第一个满足什么条件的位置"，不是"该写 `>` 还是 `>=`"。把问题改写成这句话，比较符号随之确定。
-
-四种边界对应四种 `check(mid)`：
-
-| 想找的答案 | `check(mid)` | 最终答案 |
-|---|---|---|
-| 第一个 `>= target` | `nums[mid] >= target` | `lo` |
-| 第一个 `> target` | `nums[mid] > target` | `lo` |
-| 最后一个 `<= target` | `nums[mid] > target` | `lo - 1` |
-| 最后一个 `< target` | `nums[mid] >= target` | `lo - 1` |
-
-记忆方式：
-
-> 找"第一个"，条件直接写。
-> 找"最后一个"，找它右边的第一个，再减一。
-
-以 `nums = [1, 3, 3, 3, 5, 7]` 为例：
-
-第一个 `>= 3`：
-
-```text
-check(mid) = nums[mid] >= 3
-F T T T T T
-  ↑ 答案（下标 1）
-```
-
-第一个 `> 3`：
-
-```text
-check(mid) = nums[mid] > 3
-F F F F T T
-        ↑ 答案（下标 4）
-```
-
-最后一个 `<= 3`：先找第一个 `> 3`，再减一。
-
-```text
-check(mid) = nums[mid] > 3
-answer = lo - 1 = 3
-```
-
-最后一个 `< 3`：先找第一个 `>= 3`，再减一。
-
-```text
-check(mid) = nums[mid] >= 3
-answer = lo - 1 = 0
-```
-
-Binary Search 这道题的等值查找，写法是"先找第一个 `>= target`，再验证"：
-
-```python
-check(mid) = nums[mid] >= target
-
-if lo < len(nums) and nums[lo] == target:
-    return lo
-return -1
-```
-
-不能直接用 `nums[mid] == target` 作为 `check`，因为它在数组上不单调：
-
-```text
-False False True False False
-```
-
-模板要求的结构是：
-
-```text
-False False False | True True True
-                  ↑ 边界
-```
-
-记忆方式：`>=` 找左边界，`>` 找跨过重复元素后的右边界；需要"最后一个"就在对应边界上减一。
-
-### 方向不同时，比较符号跟着镜像
-
-上面这张表假定被比较的量 `f(mid)`（比如 `nums[mid]`）随 `mid` 增大而非递减。这对排好序的数组成立，但不是所有题目都满足——Koko Eating Bananas 里 `hours_needed(speed)` 随 `speed` 增大而非递增（速度越快，耗时越少）。方向反过来时，比较符号整体镜像：
-
-| `f(mid)` 方向 | 想找的答案 | `check(mid)` | 最终答案 |
+| 想找的目标 | `check(mid)` 怎么写 | 最终答案 | 秒记口诀 |
 |---|---|---|---|
-| 非递减 | 第一个 `>= target` | `f(mid) >= target` | `lo` |
-| 非递减 | 最后一个 `<= target` | `f(mid) > target` | `lo - 1` |
-| 非递增 | 第一个 `<= target` | `f(mid) <= target` | `lo` |
-| 非递增 | 最后一个 `>= target` | `f(mid) < target` | `lo - 1` |
+| **第一个 $\ge target$** | `nums[mid] >= target` | `lo` | **找“第一个”，直接写条件** |
+| **第一个 $> target$** | `nums[mid] > target` | `lo` | **找“第一个”，直接写条件** |
+| **最后一个 $\le target$** | `nums[mid] > target` | `lo - 1` | **找“最后一个”，找右邻居再减一** |
+| **最后一个 $< target$** | `nums[mid] >= target` | `lo - 1` | **找“最后一个”，找右邻居再减一** |
 
-Koko 属于"非递增，第一个 `<= target`"这一行：`check(mid) = hours_needed(mid) <= h`，直接返回 `lo`，和 Module 2 里 Koko 那节的写法一致。
+> 💡 **两句话口诀**：
+> 1. **找“第一个”直接写**：求什么条件 `check` 就写什么条件，答案就是 `lo`。
+> 2. **找“最后一个”看右邻居**：求“最后一个 $\le$”，就找“第一个 $>$”，然后 `lo - 1`；求“最后一个 $<$”，就找“第一个 $\ge$”，然后 `lo - 1`。
 
-七道题按这张表归类：
+**遇到反向问题怎么办？（如 Koko 吃香蕉，速度越大耗时越小）**
+完全不需要记所谓的“镜像规则”！凭人类直觉即可：
+- 问：当前速度 `mid` 耗时是否达标？
+- 写：`hours_needed(mid) <= h`。
+- 达标就 `hi = mid` 继续向左找更小速度；不达标就 `lo = mid + 1`。一气呵成！
 
-| 归类 | 题目 |
-|---|---|
-| 非递减 + `>=`/`>` | Binary Search、Search a 2D Matrix、Time Based Key-Value Store |
-| 非递增 + `<=`/`<` | Koko Eating Bananas |
-| 结构性例外，不是"数值对阈值"的比较 | Find Minimum in Rotated Sorted Array（比较对象是 `nums[-1]`，不是外部阈值）、Search in Rotated Sorted Array（键值变换）、Median of Two Sorted Arrays（分割点平衡条件） |
+---
 
-最后一类没有固定的比较符号可以套，`check(mid)` 要按 Module 2 里各自的推导单独构造。
+#### 第三步：返回值怎么填？
 
-### 边界哨兵的两种设置方式
+退出循环时必定 `lo == hi`，根据业务目标做最后一步收尾：
+1. **精确查找目标值（如 LC 704、LC 74）**：
+   - 检查是否越界且命中：`if lo < len(nums) and nums[lo] == target: return lo`，否则返回 `-1`。
+2. **值域二分找极值（如 LC 875 吃香蕉、LC 153 旋转最小值）**：
+   - 直接返回 `lo`（或 `nums[lo]`），它就是满足条件的最小解。
+3. **找最后一个满足的位置（如 LC 981）**：
+   - 返回 `lo - 1`（若 `lo == 0` 说明一个都不存在）。
 
-| 设置方式 | 含义 | 使用场景 |
-|---|---|---|
-| 越界一位 | `hi` 设在搜索空间外一格，例如 `len(nums)` | 目标可能不存在，需要一个"未找到"的返回值 |
-| 恒真边界 | `hi` 设在搜索空间内一个已知满足 `check` 的位置 | 谓词在该位置成立可以直接证明，不需要额外判断 |
+---
 
-七道题目对应的设置：
+### 3. 七道经典题目三步填空速查表
 
-| 题目 | 搜索空间 | 哨兵方式 |
-|---|---|---|
-| Binary Search | 下标 `[0, n]` | 越界一位 |
-| Search a 2D Matrix | 展平下标 `[0, m*n]` | 越界一位 |
-| Koko Eating Bananas | 速度 `[1, max(piles)]` | 恒真边界：速度为 `max(piles)` 时每堆最多用 1 小时 |
-| Find Minimum in Rotated Sorted Array | 下标 `[0, n-1]` | 恒真边界：`nums[n-1] <= nums[n-1]` 恒成立 |
-| Search in Rotated Sorted Array | 下标 `[0, n]` | 越界一位 |
-| Time Based Key-Value Store | 下标 `[0, len(timestamps)]` | 越界一位 |
-| Median of Two Sorted Arrays | 分割点 `[0, m]` | 恒真边界：右边界用 `+inf` 代替越界的一侧 |
+面对任何二分题目，把这 3 个空填进去即可：
 
-### 常见错误
+| 题目 | 空 1：区间 `[lo, hi]` | 空 2：`check(mid)` 判定条件 | 空 3：返回值处理 |
+|---|---|---|---|
+| **LC 704. Binary Search** | `0, len(nums)` | `nums[mid] >= target` | 验证 `lo < n and nums[lo] == target`，否则 `-1` |
+| **LC 74. Search a 2D Matrix** | `0, m * n`（展平） | `matrix[mid // n][mid % n] >= target` | 验证展平对应元素 `== target`，否则 `False` |
+| **LC 875. Koko Eating Bananas** | `1, max(piles)` | `hours_needed(mid) <= h` | 直接返回 `lo`（最小可行速度） |
+| **LC 153. Find Min in Rotated Array** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | 直接返回 `nums[lo]` |
+| **LC 33. Search in Rotated Array** | `0, len(nums)` | 键值变换 `key(nums[mid]) >= key(target)`<br>*(或常规分段二分)* | 验证 `nums[lo] == target`，否则 `-1` |
+| **LC 981. Time Based KV Store** | `0, len(entries)` | `entry.time > query`（找首个超时的） | 取前一位 `lo - 1`（若 `lo == 0` 返回空） |
+| **LC 4. Median of Two Sorted Arrays** | `0, m`（短数组切分点） | `A[mid] >= B[half - mid - 1]` | 左右边界极值计算中位数 |
 
-| 问题 | 影响 |
-|---|---|
-| `check` 在搜索空间上不单调 | 二分查找失效，模板的正确性证明不成立 |
-| `mid` 用 `lo + (hi - lo) // 2`，更新 `False` 分支时漏写 `+ 1` | `lo` 不再前进，死循环 |
-| 找到边界后不做等值验证 | 精确匹配类问题把"最接近的位置"当成"确实存在" |
-| 哨兵设置成越界一位，却直接使用返回值 | 返回值等于 `hi`，指向不存在的位置 |
+---
 
 ## 模块二：七道题目的映射
 
@@ -434,6 +327,7 @@ def search(nums, target):
 from typing import List
 
 
+# 解法一：统一模板法（键值变换线性化）
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
         pivot_value = nums[-1]
@@ -453,6 +347,31 @@ class Solution:
 
         if lo < len(nums) and nums[lo] == target:
             return lo
+        return -1
+
+
+# 解法二：面试最常用的经典分段二分（直观易写）
+class SolutionClassic:
+    def search(self, nums: List[int], target: int) -> int:
+        lo, hi = 0, len(nums) - 1
+
+        while lo <= hi:
+            mid = lo + (hi - lo) // 2
+            if nums[mid] == target:
+                return mid
+
+            # 判断哪一半是有序的
+            if nums[lo] <= nums[mid]:  # 左半段有序
+                if nums[lo] <= target < nums[mid]:
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            else:  # 右半段有序
+                if nums[mid] < target <= nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+
         return -1
 ```
 
@@ -589,20 +508,58 @@ class Solution:
         if (m + n) % 2 == 1:
             return float(max_left)
 
-        min_right = min(a_right, b_\right)
-        return (max_left + min_\right) / 2
+        min_right = min(a_right, b_right)
+        return (max_left + min_right) / 2
 ```
 
 </details>
 
 ## 模块三：面试前最后检查
 
-1. 搜索空间是数组下标、答案值域，还是分割点？
-2. `check(mid)` 的定义是什么？随 `mid` 单调吗？
-3. 需要"第一个 True"还是"最后一个 False"？
-4. `hi` 用的是越界一位，还是恒真边界？
-5. 找到边界后要不要验证，还是可以直接使用？
+三步填空检查清单：
+1. **空 1（区间）**：是下标 `[0, n]`，还是答案值域 `[min, max]`？
+2. **空 2（判定）**：找“第一个”直接写；找“最后一个”看右邻居再减一；值域二分直觉问“是否达标”？
+3. **空 3（收尾）**：精确查找需验证 `nums[lo] == target`；找最后一个需取 `lo - 1` 并检查 `lo > 0`。
 
 最后只记一句：
 
-> 二分查找找的不是目标值，而是一个单调谓词的边界。
+> 二分查找找的不是目标值，而是一个单调分界点；只需填好区间、check、返回值 3 个空。
+
+
+## 模块四：二分高频扩展真题
+
+### 有序数组中三分频众数的对数探针检索 (Majority Element in Sorted Array via Sublinear Binary Search Probe)
+
+#### 核心心智（探针采样 + 二分精确验算）
+- **问题**：在已排序数组中找出所有频次严格大于 $\lfloor n/3 \rfloor$ 的元素。
+- **抽屉原理与探针采样**：
+  若元素频次 $> n/3$，该连续段长度至少为 $\lfloor n/3 \rfloor + 1$。它必然会横跨分位点下标 `idx1 = n // 3` 或 `idx2 = 2 * n // 3`。
+  因此，全局符合条件的众数至多有 2 个，且必然来自 `nums[idx1]` 或 `nums[idx2]`！
+- **对数级快速验算**：
+  对提取的去重候选数，使用 `bisect_right(nums, cand) - bisect_left(nums, cand)` 在 $O(\log n)$ 内获知其确切频次。
+  **整体时间复杂度严格为 $O(\log n)$，突破线性瓶颈！**
+
+```python
+from bisect import bisect_left, bisect_right
+from typing import List
+
+class SortedMajoritySolution:
+    @classmethod
+    def findMajorityElementsSorted(cls, nums: List[int]) -> List[int]:
+        n = len(nums)
+        if n == 0:
+            return []
+        threshold = n // 3
+
+        # 探针采样抽取候选人
+        candidates = {nums[n // 3], nums[(2 * n) // 3]}
+        res = []
+
+        for cand in candidates:
+            left = bisect_left(nums, cand)
+            right = bisect_right(nums, cand)
+            if right - left > threshold:
+                res.append(cand)
+
+        return sorted(res)
+```

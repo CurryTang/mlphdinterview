@@ -988,3 +988,37 @@ class Solution:
 最短满足进圈记，
 固定大小满 k 记！
 ```
+
+
+## 模块三：滑窗高频扩展真题
+
+### LC 340. 至多 K 个不同字符的最长子串 (Longest Substring with At Most K Distinct Characters)
+
+#### 核心心智（变长滑动窗口 + 频次哈希）
+- **进窗**：右指针字符频次加 1；
+- **违规缩窗**：当唯一字符数 `len(counts) > k` 时，左指针持续收缩；当某字符计数减至 0 时物理剔除（`del counts[c]`）；
+- **结算**：窗口合法后，更新最大长度 `ans = max(ans, r - l + 1)`。
+
+```python
+from collections import defaultdict
+
+class Solution:
+    def lengthOfLongestSubstringKDistinct(self, s: str, k: int) -> int:
+        if k == 0 or not s:
+            return 0
+        counts = defaultdict(int)
+        l = 0
+        ans = 0
+
+        for r, ch in enumerate(s):
+            counts[ch] += 1
+            while len(counts) > k:
+                left_ch = s[l]
+                counts[left_ch] -= 1
+                if counts[left_ch] == 0:
+                    del counts[left_ch]
+                l += 1
+            ans = max(ans, r - l + 1)
+
+        return ans
+```

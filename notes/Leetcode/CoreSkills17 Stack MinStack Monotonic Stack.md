@@ -7,7 +7,7 @@ MinStack：入栈时保存历史快照，使极值查询无须回溯扫描
 单调栈：维护未解元素的候选单调集，等待右侧元素触发消除并确定边界
 ```
 
-MinStack 是独立的状态快照设计；单调栈则是处理“一维序列最近极值边界”的完整题族。掌握单调栈的关键在于建立**“三问四槽”万能解题模板**，在不同题目中仅需替换比较谓词与结算槽位即可完成映射。
+MinStack 是独立的状态快照设计；单调栈则是处理“一维序列最近极值边界”的高频通用题族。掌握单调栈的关键在于建立**“谁破坏单调性，谁就负责弹栈结算”的极简心智**，无论题目如何变化，核心骨架仅需 5 行代码。
 
 ## 学习顺序
 
@@ -16,9 +16,9 @@ MinStack 是独立的状态快照设计；单调栈则是处理“一维序列�
 | 顺序 | 原题 | 核心模型 | 解决的关键问题 |
 |---:|---|---|---|
 | 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | 状态快照模式 (State-Snapshot) | 每个栈帧绑定 `min_so_far` 实现 $O(1)$ 查询与回滚 |
-| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | 单调栈·右侧边界 (Next Greater) | 槽位 3A：弹栈时根据下标差结算等待距离 |
-| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | 单调栈·循环数组 (Circular Array) | 槽位 1：$2n$ 取模倍增，无缝复用单调栈模板 |
-| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | 单调栈·双侧边界 (Dual Boundaries) | 槽位 1 注入尾部哨兵，槽位 3A 弹栈时同步锁定左右边界 |
+| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | 单调栈·右侧边界 (Next Greater) | 弹栈时根据下标差结算等待天数 |
+| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | 单调栈·循环数组 (Circular Array) | $2n$ 遍历取模倍增，无缝复用单调栈 |
+| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | 单调栈·双侧边界 (Dual Boundaries) | 首尾垫 `0` 哨兵，弹栈时同步锁定左右边界与宽度 |
 | 5 | [42. Trapping Rain Water](https://neetcode.io/problems/trapping-rain-water/question?list=neetcode150) | 单调栈·凹槽横向注水 (Trough Fill) | 弹栈确定底部，新栈顶与当前柱围成横向矩形槽 |
 
 ---
@@ -193,180 +193,34 @@ class MinStack:
 
 ---
 
-### 2.3 · 单调栈万能通用模板：三问五槽模型 (Universal Monotonic Stack Blueprint)
+### 2.3 · 极简核心心智与 5 行通用模板
 
-单调栈所有题型共享同一套解题思维流水线与骨架结构：
+单调栈完全不需要去记复杂的“几问几槽”。在面试中，只要记住**一句话核心心智**：
 
-```text
-                           ┌────────────────────────────┐
-                           │   for i, current in arr:   │
-                           └─────────────┬──────────────┘
-                                         │
-                                         ▼
-                           ┌────────────────────────────┐
-                           │ 槽位 1 [哨兵与初始化]       │
-                           │ arr = nums + [0] (可选)    │
-                           └─────────────┬──────────────┘
-                                         │
-                                         ▼
-                           ┌────────────────────────────┐
-        ┌─────────────────►│ 槽位 2 [弹栈条件断言]       │
-        │                  │ while stack and pop_cond:  │
-        │                  └──────┬──────────────┬──────┘
-        │                         │ 满足         │ 不满足
-        │                         ▼              ▼
-        │             ┌───────────────────────┐  ┌────────────────────────┐
-        │             │ mid = stack.pop()     │  │ 槽位 3B [左侧最近结算]  │
-        │             │                       │  │ ans[i] = stack[-1]  │
-        │             │ 槽位 3A [右/双侧结算] │  └───────────┬────────────┘
-        │             │ ans[mid] = i / 矩形面积│              │
-        │             └───────────┬───────────┘              │
-        │                         │                          │
-        └─────────────────────────┘                          ▼
-                                                 ┌────────────────────────┐
-                                                 │ 槽位 4 [当前下标入栈]  │
-                                                 │ stack.append(i)        │
-                                                 └───────────┬────────────┘
-                                                             │
-                                                             ▼ (循环结束)
-                                                 ┌────────────────────────┐
-                                                 │ 槽位 5 [尾部清场循环]  │
-                                                 │ while stack: (若无哨兵)│
-                                                 │   mid = pop(); R = n   │
-                                                 └────────────────────────┘
-```
+> **“栈内永远存下标；谁破坏了单调性，谁就是右边界，负责把栈顶弹出来结算。”**
 
-#### 1. 三问定型法（Three Clarification Questions）
+#### 1. 核心口诀（10 秒搞懂递增还是递减）
+- **找下一个更大**（Next Greater）$\to$ 维护**单调递减栈**（从底到顶由大到小）：
+  - 遇到更小的数：入栈等待；
+  - 遇到**更大的数**：破坏了递减，栈顶终于等到了比它大的元素！**立即出栈并写答案**。
+- **找下一个更小**（Next Smaller）$\to$ 维护**单调递增栈**（从底到顶由小到大）：
+  - 遇到更大的数：入栈等待；
+  - 遇到**更小的数**：破坏了递增，栈顶终于等到了比它小的元素！**立即出栈并写答案**。
 
-- **Q1：方向与边界归属（Direction & Attribution）**
-  - **右侧最近边界（Next-X）**：当前元素 $i$ 作为“回答者”，当其破坏单调性时，弹出栈顶 $j$，并将当前 $i$ 结算给被弹出元素 $j$（**在 `while` 内部槽位 3A 结算**）。
-  - **左侧最近边界（Prev-X）**：当前元素 $i$ 作为“被查询者”，用 `while` 清除所有无法成为有效答案的无效候选；循环结束后，留在栈顶的元素即为 $i$ 的左侧最近边界（**在 `while` 外部槽位 3B 结算**）。
-  - **双侧全域边界（Dual Boundaries）**：当 $mid = stack.pop()$ 发生时：
-    - 当前扫描元素 $i$ 是其**右侧第一个更小/更大值**（右边界 $R = i$）；
-    - 弹出后此时暴露的新栈顶 $stack[-1]$ 则是其**左侧第一个更小/更大值**（左边界 $L = stack[-1]$）；
-    - 一次弹栈直接获取 $mid$ 的两端极值边界，覆盖有效区间为 $[L + 1, R - 1]$。
-
-- **Q2：大小关系与去重防漏定理（Strictness & Tie-Breaking Theorem）**
-  - **求更大元素**：当前值大于栈顶时弹栈，栈底到栈顶保持单调递减。
-  - **求更小元素**：当前值小于栈顶时弹栈，栈底到栈顶保持单调递增。
-  - **去重防漏定理（Exact Partitioning Theorem）**：
-    - 当原数组存在**重复元素**且题目要求统计所有子数组贡献（如 LC 907、LC 84）时：
-      - 若左右两侧均取严格大小关系（`<` 与 `>`），相等元素之间的区间会被**漏算（Under-counting）**；
-      - 若左右两侧均取非严格大小关系（`<=` 与 `>=`），相等元素之间的区间会被**重算（Over-counting）**；
-      - **黄金原则**：必须且只能设定为**一侧严格（如左侧严格更小 `<`）、另一侧非严格（如右侧小于等于 `<=`）**，从而构成左开右闭或左闭右开的互斥完备子集划分。
-
-- **Q3：存储载体与结算形式（Storage & Answer Form）**
-  - 栈内恒存下标。答案槽位依据题意写入：下标值、距离天数 ($i - j$)、扩展宽度 ($R - L - 1$) 或矩形乘积面积。
-
----
-
-#### 2. 五槽通用代码骨架（Universal Template Code with Residual Flush）
+#### 2. 极简通用模板（闭眼默写这 5 行）
 
 ```python
-from typing import List, Optional
+stack = []  # 存下标
+ans = [0] * n  # 预设默认答案（未被弹出的元素自动保留 0 或 -1）
 
-
-def universal_monotonic_stack(
-    nums: List[int],
-    mode: str = "next_greater",  # "next_greater" | "next_smaller" | "prev_greater" | "prev_smaller" | "dual_smaller"
-    with_sentinel: bool = False,
-    sentinel_val: int = 0,
-) -> List[int]:
-    """单调栈通用解题骨架 (Universal Monotonic Stack Blueprint)
-
-    5 个参数化槽位：
-    [槽位 1] 哨兵与初始化: 初始化答案数组与边界哨兵，若加哨兵则把清场动作无感合入主循环
-    [槽位 2] 弹栈判定谓词: 当前值与栈顶历史值的关系断言
-    [槽位 3] 结算动作:
-             - 槽位 3A: 弹栈时结算 (右侧边界或双侧扩展极值)
-             - 槽位 3B: 弹栈后结算 (左侧最近有效边界)
-    [槽位 4] 入栈等待: 当前下标压入栈中开始等待右侧触发
-    [槽位 5] 尾部清场: 若未启用哨兵，显式清空栈内未决元素，右边界统一闭合到数组尽头 n
-    """
-    n = len(nums)
-
-    # ──────────────────────────────────────────────────────
-    # 槽位 1: 哨兵与容器初始化
-    # ──────────────────────────────────────────────────────
-    # 若加哨兵：在末尾追加全局最弱极值，主循环第 n 步将自动强制清空全栈，免写槽位 5
-    arr = nums + [sentinel_val] if with_sentinel else nums
-    limit = len(arr)
-    ans = [-1] * n  # 默认值初始化（单侧题滞留元素无更优日，自动保留 -1 或 0）
-    stack = []      # 严格保存下标
-
-    # ──────────────────────────────────────────────────────
-    # 槽位 2: 弹栈比较谓词 (当前值是否打破栈顶单调性)
-    # ──────────────────────────────────────────────────────
-    def should_pop(top_val: int, curr_val: int) -> bool:
-        if mode in ("next_greater", "prev_greater"):
-            return curr_val > top_val
-        elif mode in ("next_smaller", "prev_smaller", "dual_smaller"):
-            return curr_val < top_val
-        return False
-
-    for i in range(limit):
-        curr_val = arr[i]
-
-        while stack and should_pop(arr[stack[-1]], curr_val):
-            mid = stack.pop()
-
-            # ──────────────────────────────────────────────────
-            # 槽位 3A: 弹栈时结算 (右侧边界 / 双侧极值边界)
-            # ──────────────────────────────────────────────────
-            if mode.startswith("next") and mid < n:
-                ans[mid] = i  # 或计算跨度: i - mid
-            elif mode == "dual_smaller" and mid < n:
-                left = stack[-1] if stack else -1
-                right = i
-                width = right - left - 1
-                # 执行双侧几何聚合，如 ans = max(ans, arr[mid] * width)
-
-        # ──────────────────────────────────────────────────────
-        # 槽位 3B: 弹栈后结算 (左侧最近有效边界，当前值使用最新栈顶)
-        # ──────────────────────────────────────────────────────
-        if mode.startswith("prev") and i < n:
-            ans[i] = stack[-1] if stack else -1
-
-        # ──────────────────────────────────────────────────────
-        # 槽位 4: 当前下标入栈
-        # ──────────────────────────────────────────────────────
-        stack.append(i)
-
-    # ──────────────────────────────────────────────────────────
-    # 槽位 5: 显式尾部清场（若未启用尾部哨兵，处理仍滞留在栈内的未决元素）
-    # ──────────────────────────────────────────────────────────
-    # 滞留元素意味着右侧直到数组末尾都没有遇到能将其弹出的障碍，右边界统一闭合到 n
-    if not with_sentinel:
-        while stack:
-            mid = stack.pop()
-            if mode == "dual_smaller":
-                left = stack[-1] if stack else -1
-                right = n  # 数组尽头作为右侧有效开区间边界
-                width = right - left - 1
-                # ans = max(ans, arr[mid] * width)
-            elif mode.startswith("next"):
-                # 单侧查询中，滞留元素代表右侧不存在更优解，已在初始化时置为 -1/0，无需重复赋值
-                pass
-
-    return ans
+for i, x in enumerate(nums):
+    # 找下一个更大：来了个更大的 x，栈顶被满足，出栈结算！
+    # （若找下一个更小，只需将 < 改为 >）
+    while stack and nums[stack[-1]] < x:
+        top = stack.pop()
+        ans[top] = i - top  # 或 ans[top] = x，根据题意结算
+    stack.append(i)
 ```
-
----
-
-### 2.4 · 比较符号与状态对照表
-
-记 `top = nums[stack[-1]]` 为栈顶历史值，`current = nums[i]` 为当前扫描值：
-
-| 查找目标 | 弹栈触发条件 (`while`) | 弹栈后栈内值分布（栈底 → 栈顶） | 适用场景 |
-|---|---|---|---|
-| **右侧第一个严格更大** | `top < current` | 单调不增（从大到小） | 每日温度、下一个更大元素 |
-| **右侧第一个大于等于** | `top <= current` | 严格递减 | 消除重复元素的右侧阻挡 |
-| **右侧第一个严格更小** | `top > current` | 单调不减（从小到大） | 柱状图最大矩形、子数组极小值 |
-| **右侧第一个小于等于** | `top >= current` | 严格递增 | 去重防漏半开半闭区间统计 |
-
-> **核心记忆法则**：
-> 不要死记“维护递增还是递减栈”。直接提问：**“当前扫描到的元素，是否已经满足了栈顶元素在等待的目标？”**
-> 一旦满足，立即弹栈并执行结算。
 
 下面的交互演示用同一个数组执行“右侧更大”与“右侧更小”的逐步演算：
 
@@ -375,110 +229,47 @@ def universal_monotonic_stack(
 
 ---
 
-### 2.5 · 经典题目万能模板填装对照表 (Slot-Filling Matrix)
+### 2.4 · 实战仅有的 3 个变形技巧
 
-面对任何题目，直接将业务参数代入“四槽模型”：
+所有的单调栈变体，都只是在上面 5 行模板的基础上做极简微调：
 
-| 经典题目 | 模式分类 | 槽位 1 (哨兵) | 槽位 2 (弹栈谓词) | 槽位 3 (结算时机与计算) | 槽位 4 (入栈) |
-|---|---|---|---|---|---|
-| **LC 739. Daily Temperatures** | Next Greater | 无 | `top < current` | 槽位 3A：`ans[mid] = i - mid` | `stack.append(i)` |
-| **LC 496. Next Greater Element I** | Next Greater | 无 | `top < current` | 槽位 3A：`ans[mid] = current` | `stack.append(i)` |
-| **LC 503. Next Greater Element II** | 循环 Next Greater | $2n$ 遍历取模 | `top < nums[i % n]` | 槽位 3A：`ans[mid] = nums[i % n]`（当 `mid < n`） | `if i < n: stack.append(i)` |
-| **LC 84. Largest Rectangle** | Dual Smaller | 尾部加 `0` | `top > current` | 槽位 3A：`w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
-| **LC 42. Trapping Rain Water** | Dual Greater | 无 | `top < current` | 槽位 3A：凹槽高度差乘以宽度<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
-| **LC 907. Subarray Minimums** | Dual Smaller (去重) | 尾部加 `0` | 左严格 `<`，右侧 `<=` | 槽位 3A：乘法原理计算子数组数<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
-| **LC 1063. Valid Subarrays** | Next Strictly Smaller | 尾部加 `-inf`（或遍历至 $n$） | `top > current` | 槽位 3A：段长累加<br>`ans += i - mid` | `stack.append(i)` |
+1. **变体一：常规单侧边界（如 LC 739 每日温度、LC 496）**
+   - 结果数组预先填好默认值（`-1` 或 `0`）；
+   - 遍历结束后留在栈里的元素，说明右侧没有比它更优的，天然保留默认值，**不需要任何额外清栈操作**。
+
+2. **变体二：循环数组（如 LC 503）**
+   - 数组转两圈：循环写成 `for i in range(2 * n): x = nums[i % n]`；
+   - 弹栈正常进行，只有前一圈入栈：`if i < n: stack.append(i)`。
+
+3. **变体三：双侧边界 / 柱状图矩形（如 LC 84）**
+   - **首尾各垫一个 0（最省心的哨兵）**：`heights = [0] + heights + [0]`；
+   - **左边的 0**：保证栈永远不为空（取左边界 `stack[-1]` 绝不越界，无需 `if stack` 特判）；
+   - **右边的 0**：保证遍历结束时，栈内所有残留高度全部被逼出结算（零漏算）；
+   - 弹栈时一次性拿到左右两边：
+     - 高度：`h = heights[stack.pop()]`
+     - 左边界：新栈顶 `left = stack[-1]`
+     - 右边界：当前元素 `right = i`
+     - 宽度：`w = right - left - 1`，面积：`h * w`。
 
 ---
 
-### 2.6 · 哨兵机制全景拆解：什么时候必须用哨兵？(Sentinel Demystified)
+### 2.5 · 核心题型极简速查表
 
-哨兵（Sentinel）在单调栈中并非可有可无的代码糖衣，而是用来**彻底消除边界特判、阻断非法越界、并强制完成未决计算的数学屏障**。
+| 经典题目 | 查找目标 | 栈内维护状态 | 弹栈条件 (`while`) | 出栈结算内容 | 面试技巧 |
+|---|---|---|---|---|---|
+| **LC 739. 每日温度** | 右侧更大 | 递减（大 $\to$ 小） | `nums[stack[-1]] < x` | `ans[top] = i - top`（等待天数） | 默认数组填 0 |
+| **LC 503. 下一个更大 II** | 循环右侧更大 | 递减（大 $\to$ 小） | `nums[stack[-1]] < x` | `ans[top] = x`（具体数值） | 遍历 $2n$，下标取模 `i % n` |
+| **LC 84. 柱状图最大矩形** | 左右更小（定宽） | 递增（小 $\to$ 大） | `arr[stack[-1]] > x` | `h * (i - stack[-1] - 1)` | 首尾垫 `0`，零越界特判 |
+| **LC 42. 接雨水** | 凹槽左右更高 | 递减（大 $\to$ 小） | `height[stack[-1]] < x` | `(min(左, 右) - 槽底) * (右 - 左 - 1)` | 弹出作槽底，新栈顶作左墙 |
+| **LC 1063. 有效子数组** | 右侧首个更小 | 递增（小 $\to$ 大） | `nums[stack[-1]] > x` | 贡献段长：`ans += i - top` | 末尾垫 `-inf` 逼出全量结算 |
 
-#### 1. 哨兵解决的两大根本病态（Dual Failure Modes）
+---
 
-在不使用哨兵时，单调栈在工程实现上面临两个必然出现的边界病态：
+### 2.6 · 哨兵极简法则：什么时候用？
 
-- **病态一：头部栈空越界（Head Underflow / Left Boundary Fallback）**
-  - **产生时机**：当执行 `mid = stack.pop()` 弹出当前考察元素后，算法需要确定其左侧边界 `left = stack[-1]`。若此时栈已空（说明 $mid$ 左侧没有任何元素比它更小/更大，$mid$ 本身就是左侧全局极值），直接读取 `stack[-1]` 会引发 `IndexError`。
-  - **无哨兵妥协**：被迫到处编写条件防御代码：`left = stack[-1] if stack else -1`。
-- **病态二：尾部滞留漏算（Tail Stranding / Flush Omission）**
-  - **产生时机**：当数组遍历完毕时，若栈内仍有元素残留（例如数组单调递增，或者局部递增序列）。若算法的**核心计算挂载在“弹栈”阶段（槽位 3A）**（如柱状图最大矩形 LC 84、最大矩形 LC 85、子数组最小值累加 LC 907），由于遍历已经结束，后续再无新元素破坏单调性，残留元素将**永远无法被弹出，从而导致严重漏算**！
-  - **无哨兵妥协**：在主循环之后，被迫再复制粘贴一段结构极其相似的 `while stack:` 清栈计算逻辑，不仅代码臃肿，且极易在边界索引处理上引入 Off-by-One 缺陷。
-
-```text
-[无哨兵 vs 哨兵架构对比]
-
-无哨兵:
-遍历原数组 ──────► 栈内遗留未决元素 ──────► 必须外挂 while stack 重复清栈
-                      │
-                      └─► 每次取 left 必须写: stack[-1] if stack else -1
-
-首尾双哨兵:
-[-∞ / 0] + 原始数组 + [-∞ / 0] ──────────► 遍历结束时所有元素已被尾部哨兵自动逼出
-   │                       │
-   │                       └─► 尾部哨兵: 强制 100% 触发槽位 3A 弹栈结算 (Zero-leak)
-   └─────────────────────────► 头部哨兵: 栈永不为空，stack[-1] 恒成立 (No underflow)
-```
-
-#### 2. 哨兵流派与选型矩阵（Sentinel Taxonomy & Decision Matrix）
-
-| 哨兵类型 | 典型形式 | 核心作用 | 适用题型特征 | 典型题目 |
-|---|---|---|---|---|
-| **尾部单哨兵** | `arr = nums + [0]`<br>或 `range(len(nums) + 1)` | 引入**全局破坏者**，强制在最后一步将栈内滞留元素全量弹出结算，消灭循环外重复代码。 | **结算挂载在弹栈阶段（槽位 3A）**，且需要统计全量有效区间的极值。 | **LC 84** (柱状图最大矩形)<br>**LC 907** (子数组最小值之和)<br>**LC 85** (最大矩形) |
-| **头部单哨兵** | 预置 `stack = [-1]`<br>或 `arr = [0] + nums` | 充当**开区间天然左支点**，维持栈永非空的不变量，消灭 `if not stack` 特判。 | 需要确定左边界，但尾部不需要强制结算（或由其他机制兜底）。 | **LC 32** (最长有效括号)<br>**LC 84** (单调递增左边界) |
-| **首尾双哨兵** | `arr = [0] + heights + [0]`<br>或 `[-inf] + nums + [-inf]` | **同时彻底消灭头部与尾部的所有边界特判**。代码最对称精炼，完全杜绝边界分支。 | 几何面积、双侧连续跨度极值等需要同时查询左右闭环区间的题型。 | **LC 84** (柱状图最大矩形最优解)<br>**LC 85** (最大矩形) |
-| **无需哨兵** | 保持原始数组 `nums`<br>结果数组赋默认值 | **天然满足无解定义**，滞留在栈中的元素即代表无答案，无需清栈。 | 1. 结果数组预置 `-1` 或 `0`（如 LC 739，残留元素代表右侧无更大者）；<br>2. 结算挂载在**入栈前的左查询（槽位 3B）**。 | **LC 739** (每日温度)<br>**LC 496** (下一个更大元素 I)<br>**LC 503** (循环数组取模倍增) |
-
-#### 3. 哨兵数值选型法则（Extreme Value Principle）
-
-哨兵的数值绝非随意指定，必须严格服从**空间极值定理**：
-- **递增栈（目标：寻找更小元素，如 LC 84、LC 907）**：
-  - 尾部哨兵必须**严格小于**数组中可能出现的任何合法元素值，才能确保击穿栈顶所有元素，触发完全清栈。
-  - 若数据保证全为非负数（如高度 $heights[i] \ge 0$），取 `0` 即可；
-  - 若数组中可能出现负数或任意整数，必须取负无穷大：`float('-inf')`。
-- **递减栈（目标：寻找更大元素，如接雨水、最大跨度）**：
-  - 尾部哨兵必须**严格大于**数组中可能出现的任何合法元素值，通常取正无穷大：`float('inf')`。
-
-#### 4. 实战代码演进对比（以 LC 84 为例）
-
-```python
-# 方案 A：无哨兵（冗长，需处理栈空与循环外清栈，极易遗漏）
-class SolutionNoSentinel:
-    def largestRectangleArea(self, heights: List[int]) -> int:
-        stack, max_area = [], 0
-        for i, h in enumerate(heights):
-            while stack and heights[stack[-1]] > h:
-                mid = stack.pop()
-                left = stack[-1] if stack else -1
-                max_area = max(max_area, heights[mid] * (i - left - 1))
-            stack.append(i)
-        # 必须外挂第二套清栈逻辑处理残留元素！
-        while stack:
-            mid = stack.pop()
-            left = stack[-1] if stack else -1
-            max_area = max(max_area, heights[mid] * (len(heights) - left - 1))
-        return max_area
-
-
-# 方案 B：首尾双哨兵（极致优雅，零边界特判，天然闭环）
-class SolutionDualSentinels:
-    def largestRectangleArea(self, heights: List[int]) -> int:
-        # 首尾各垫一个高度为 0 的哨兵
-        arr = [0] + heights + [0]
-        stack, max_area = [], 0
-
-        for i, h in enumerate(arr):
-            # 左哨兵保证 stack 永不为空；右哨兵保证最后一步完全出栈
-            while stack and arr[stack[-1]] > h:
-                mid = stack.pop()
-                left = stack[-1]  # 绝对不会越界，无需三元特判
-                width = i - left - 1
-                max_area = max(max_area, arr[mid] * width)
-            stack.append(i)
-
-        return max_area
-```
+哨兵只需要记住**一句话法则**：
+- **单侧查找（如每日温度、下一个更大）**：**完全不用哨兵**。结果数组直接预设默认值 `-1` 或 `0`，留在栈里的自然就是无解，省心省事。
+- **双侧矩形 / 凹槽面积（如柱状图最大矩形 LC 84）**：**首尾垫 0**（`[0] + heights + [0]`）。左 0 防止栈空越界，右 0 强制将残留柱子全逼出结算，免去循环后任何补丁代码。
 
 ---
 
@@ -486,7 +277,7 @@ class SolutionDualSentinels:
 
 #### 实战一：Daily Temperatures（每日温度）
 给定每日气温，求出每一天需要等待多少天才会遇到更高气温。
-- **模板映射**：属于典型 **Next Greater** 模式，答案形式由下标变为跨度差值 $i - mid$。
+- **核心解法**：属于典型 **Next Greater** 模式，找右侧更大温度，遇到更高温度即弹栈，答案记录天数跨度 $i - mid$。
 
 ```daily-temperatures-demo
 ```
@@ -544,18 +335,16 @@ class Solution:
         stack = []  # 保存下标，栈底到栈顶对应气温严格单调递减
 
         for i, temp in enumerate(temperatures):
-            # 槽位 2: 当前温度高于栈顶历史温度，触发破链弹栈
+            # 当前温度高于栈顶温度，说明栈顶找到了升温日，触发弹栈
             while stack and temperatures[stack[-1]] < temp:
                 mid = stack.pop()
-                # 槽位 3A: 弹栈结算，答案取时间跨度差值
-                ans[mid] = i - mid
-            # 槽位 4: 当前天数入栈等待未来升温日
+                ans[mid] = i - mid  # 结算等待天数跨度
             stack.append(i)
 
         return ans
 ```
 
-##### 右视图（逆序入栈即时结算 · Slot 3B）实现
+##### 右视图（逆序入栈即时结算）实现
 
 若采用**逆序遍历（从右向左 $i = n-1 \to 0$）**，当前扫描的元素 $i$ 直接作为**主角**，栈中维护其右侧所有“潜在的 Next Greater 候选人”。任何气温 $\le temperatures[i]$ 的右侧候选人由于在高度和距离上均劣于当前天（被 $i$ 永久遮挡），直接被 `pop()` 淘汰；淘汰结束后，栈顶即为右侧第一个严格更暖的天数，可在入栈前**即时结算（Slot 3B）**自身答案：
 
@@ -566,15 +355,12 @@ class SolutionRightView:
         ans = [0] * n
         stack = []  # 栈底到栈顶气温单调递减，维护右侧候选人索引
 
-        # 槽位 1: 逆序遍历
         for i in range(n - 1, -1, -1):
             temp = temperatures[i]
-            # 槽位 2: 淘汰右侧更低或相等的被遮挡元素
+            # 淘汰右侧更低或相等的被遮挡元素
             while stack and temperatures[stack[-1]] <= temp:
                 stack.pop()
-            # 槽位 3B: 即时结算当前天的答案
-            ans[i] = stack[-1] - i if stack else 0
-            # 槽位 4: 当前天作为左侧日期的候选人入栈
+            ans[i] = stack[-1] - i if stack else 0  # 即时结算当前天答案
             stack.append(i)
 
         return ans
@@ -584,8 +370,8 @@ class SolutionRightView:
 
 | 维度 | 左视图（正向遍历 + 出栈结算 · Slot 3A） | 右视图（逆序遍历 + 入栈结算 · Slot 3B） |
 | :--- | :--- | :--- |
-| **主角视角 (Protagonist)** | 栈内被弹出的元素 `mid` 是主角；当前扫描元素 $i$ 是其右侧终结者 | 当前扫描元素 $i$ 是主角；栈维护其右侧合法候选人骨干链 |
-| **结算时机 (Settlement)** | **异步延迟结算**：入栈挂单，直到未来某天遇到更高值将其弹出时才写入答案 | **即时在线结算**：访问到 $i$ 时立刻清算完毕自身答案并入库 |
+| **主角视角** | 栈内被弹出的元素 `mid` 是主角；当前扫描元素 $i$ 是其右侧终结者 | 当前扫描元素 $i$ 是主角；栈维护其右侧合法候选人骨干链 |
+| **结算时机** | **延迟结算**：入栈等待，直到未来某天遇到更高值将其弹出时才写入答案 | **即时结算**：访问到 $i$ 时立刻清算完毕自身答案 |
 | **栈内滞留元素** | 属于“未决元素”，若最终未被弹出则保留默认值（或需末尾哨兵清栈） | 属于“全局候选骨干链”，循环结束时所有答案均已确定，天然免除哨兵特判 |
 | **何种情况更简单** | 需要同时借助左右两侧边界（如柱状图最大矩形、接雨水） | **流式在线数据**（LC 901）、**连续子数组计数**（LC 1063）、**DP状态转移**（LC 907） |
 
@@ -645,15 +431,14 @@ class Solution:
         ans = [-1] * n
         stack = []
 
-        # 槽位 1: 虚拟倍增循环 2*n
+        # 虚拟倍增遍历 2*n 次
         for i in range(2 * n):
             val = nums[i % n]
-            # 槽位 2: 弹栈比较
+            # 遇到更大值触发弹栈
             while stack and nums[stack[-1]] < val:
                 mid = stack.pop()
-                # 槽位 3A: 弹栈结算实际数值
-                ans[mid] = val
-            # 槽位 4: 仅前 n 个元素需要压栈求解
+                ans[mid] = val  # 结算下一个更大数值
+            # 仅前 n 个元素需要压栈等待解答
             if i < n:
                 stack.append(i)
 
@@ -678,20 +463,16 @@ class Solution:
         max_area = 0
         stack = []
 
-        # 槽位 1: 尾部注入高度为 0 的哨兵
-        for right in range(len(heights) + 1):
-            curr_h = 0 if right == len(heights) else heights[right]
-
-            # 槽位 2: 当前高度更矮，破坏单调递增性
-            while stack and heights[stack[-1]] > curr_h:
+        # 首尾各垫高度为 0 的哨兵：左 0 防栈空，右 0 逼全出栈
+        arr = [0] + heights + [0]
+        for right, curr_h in enumerate(arr):
+            # 当前高度更矮，破坏单调递增性，触发弹栈
+            while stack and arr[stack[-1]] > curr_h:
                 mid = stack.pop()
-                mid_h = heights[mid]
-                # 槽位 3A: 双侧边界同时确立
-                left = stack[-1] if stack else -1
+                mid_h = arr[mid]
+                left = stack[-1]  # 必定非空，无需特判
                 width = right - left - 1
                 max_area = max(max_area, mid_h * width)
-
-            # 槽位 4: 下标入栈
             stack.append(right)
 
         return max_area
@@ -714,19 +495,18 @@ class Solution:
         stack = []
 
         for right, curr_h in enumerate(height):
-            # 槽位 2: 遇到更高柱子，破坏递减形成凹槽
+            # 遇到更高柱子，破坏递减形成凹槽
             while stack and height[stack[-1]] < curr_h:
                 mid = stack.pop()
                 if not stack:
                     break  # 左侧无边界，无法积水
 
                 left = stack[-1]
-                # 槽位 3A: 横向切片注水
+                # 横向切片注水：高度受限于两端较矮者减去槽底
                 h = min(height[left], curr_h) - height[mid]
                 w = right - left - 1
                 water += h * w
 
-            # 槽位 4: 当前柱入栈
             stack.append(right)
 
         return water
@@ -756,13 +536,13 @@ class Solution:
 - **全局总数**：对所有合法左端点的贡献进行求和：
   $$\text{Total} = \sum_{i=0}^{n-1} (R_i - i)$$
 
-##### 3. 单调栈四槽模型装填与实现
+##### 3. 单调栈极简装填与实现
 
 维护一个**单调不减栈（栈底到栈顶 $nums[stack[k]] \le nums[stack[k+1]]$，允许相等元素共存）**：
-- **槽位 1（哨兵）**：在末尾虚拟引入一个负无穷大哨兵（或遍历至 $n$），强制将遍历结束后滞留在栈中的所有元素全部弹出；
-- **槽位 2（谓词）**：`while stack and nums[stack[-1]] > curr_val:`，遇到严格更小值即触发破链弹栈；
-- **槽位 3A（结算）**：当前扫描到的 $i$ 即为被弹出者 $mid$ 的右边界 $R_{mid} = i$，贡献即为 $i - mid$，累加入总答案；
-- **槽位 4（入栈）**：`stack.append(i)`。
+- **边界处理**：在末尾虚拟引入一个负无穷大哨兵（遍历至 $n$），强制将留在栈中的元素全部弹出；
+- **弹栈条件**：`while stack and nums[stack[-1]] > curr_val:`，遇到严格更小值即触发弹栈；
+- **出栈结算**：当前扫描到的 $i$ 即为被弹出者 $mid$ 的右边界，贡献段长为 $i - mid$，累加入总答案；
+- **入栈等待**：`stack.append(i)`。
 
 ```python
 from typing import List
@@ -774,17 +554,16 @@ class Solution:
         ans = 0
         stack = []  # 栈内下标对应数值单调不减 (nums[stack[k]] <= nums[stack[k+1]])
 
-        # 槽位 1: 遍历至 n (虚拟注入全局最小值哨兵，强制清空栈)
+        # 遍历至 n (虚拟注入全局最小值哨兵，强制清空栈)
         for i in range(n + 1):
             curr_val = float("-inf") if i == n else nums[i]
 
-            # 槽位 2: 遇到严格更小值，说明打破了以栈顶为最小值的窗口
+            # 遇到严格更小值，说明打破了以栈顶为最小值的窗口
             while stack and nums[stack[-1]] > curr_val:
                 mid = stack.pop()
-                # 槽位 3A: 当前 i 即为 mid 右侧首个更小者，贡献段长为 i - mid
+                # 当前 i 即为 mid 右侧首个更小者，贡献段长为 i - mid
                 ans += i - mid
 
-            # 槽位 4: 下标入栈
             stack.append(i)
 
         return ans
@@ -817,7 +596,7 @@ class SolutionStackDepth:
 
 两种视角在数学上恒等：
 $$\sum_{i=0}^{n-1} (R_i - i) \equiv \sum_{j=0}^{n-1} \text{StackDepth}(j)$$
-- **视角 A（左端点延展跨度）**：体现的是四槽模板中**槽位 3A 弹栈结算**的经典模式，与柱状图最大矩形、每日温度一脉相承；
+- **视角 A（左端点延展跨度）**：体现的是弹栈结算的经典模式，与柱状图最大矩形、每日温度一脉相承；
 - **视角 B（右端点栈深存活）**：体现了单调栈内部活跃元素的天然拓扑序。
 
 ---
@@ -840,10 +619,108 @@ $$\sum_{i=1}^n (\text{push 次数} + \text{pop 次数}) \le n + n = 2n = O(n)$$
 
 ### 2.9 · 面试结构化应答清单
 
-在白板或线上编码面试中，单调栈的答题推进可严格按以下 5 步展开：
+在白板或线上编码面试中，单调栈的答题推进按以下 3 步清晰展开即可：
 
-1. **定型声明**：“本题需要为每个元素寻找单侧/双侧最近极值边界，暴力为 $O(n^2)$，最优结构为单调栈，时间复杂度降至 $O(n)$。”
-2. **载体确认**：“栈内保存下标而非数值，因为后续计算跨度 $i - j$ 和面积需要物理距离。”
-3. **谓词说明**：“求右侧更大元素，因此栈内维持单调递减；一旦遇到严格更大值即触发弹栈。”
-4. **结算归属**：“答案在弹栈时写给旧元素（槽位 3A），因为当前元素扮演的是‘回答者’角色。”
-5. **边界哨兵**：“对于柱状图或多区间计算，在数组尾部注入哨兵 `0`，确保栈内遗留元素被强制清空，避免冗余的尾部收敛代码。”
+1. **识别模型**：“本题求一维序列中每个元素的单侧/双侧最近极值边界，暴力扫描需 $O(n^2)$，使用单调栈将均摊时间复杂度降至 $O(n)$。”
+2. **栈与状态**：“栈内保存下标以便计算距离和跨度；求下一个更大值维护递减栈，遇到更大值立即出栈结算。”
+3. **边界处理**：“单侧求值直接给结果数组预填默认值（-1 或 0）；双侧边界（如柱状图最大矩形）首尾垫 0 哨兵，彻底避免栈空越界与残留漏算。”
+
+
+## 模块三：栈与单调栈高频扩展真题
+
+### 1. LC 224 / 227 通用表达式计算器 (Universal Basic Calculator via Operator Precedence)
+
+#### 核心心智（双栈模型与运算符优先级）
+- 数字栈 `nums`，运算符栈 `ops`，优先级字典 `prec = {'+': 1, '-': 1, '*': 2, '/': 2, '^': 3}`；
+- 遇到新运算符时，若栈顶符号优先级更高或相等，立即弹栈结算；
+- 遇到 `(` 入栈；遇到 `)` 循环结算直至遇到 `(`；
+- 处理一元负号：若紧跟在开头或 `(` 后面出现负号，向 `nums` 垫入一个 `0`。
+
+```python
+class ExpressionCalculator:
+    PRECEDENCE = {'+': 1, '-': 1, '*': 2, '/': 2}
+
+    @staticmethod
+    def _apply_op(op: str, b: int, a: int) -> int:
+        if op == '+': return a + b
+        if op == '-': return a - b
+        if op == '*': return a * b
+        if op == '/': return int(a / b)  # 向零截断
+        return 0
+
+    @classmethod
+    def calculate(cls, s: str) -> int:
+        nums, ops = [], []
+        i, n, expect_operand = 0, len(s), True
+
+        def evaluate():
+            op = ops.pop()
+            b = nums.pop()
+            a = nums.pop()
+            nums.append(cls._apply_op(op, b, a))
+
+        while i < n:
+            ch = s[i]
+            if ch == ' ':
+                i += 1
+                continue
+            if ch.isdigit():
+                val = 0
+                while i < n and s[i].isdigit():
+                    val = val * 10 + int(s[i])
+                    i += 1
+                nums.append(val)
+                expect_operand = False
+                continue
+            if ch == '(':
+                ops.append('(')
+                expect_operand = True
+                i += 1
+                continue
+            if ch == ')':
+                while ops and ops[-1] != '(':
+                    evaluate()
+                ops.pop()
+                expect_operand = False
+                i += 1
+                continue
+            if ch in cls.PRECEDENCE:
+                if expect_operand and ch in ('+', '-'):
+                    nums.append(0)  # 一元正负号前补 0
+                while ops and ops[-1] != '(' and cls.PRECEDENCE.get(ops[-1], 0) >= cls.PRECEDENCE[ch]:
+                    evaluate()
+                ops.append(ch)
+                expect_operand = True
+                i += 1
+
+        while ops:
+            evaluate()
+        return nums[0] if nums else 0
+```
+
+---
+
+### 2. LC 316 / 1081 单调栈去重与字典序最小子序列 (Remove Duplicate Letters)
+
+#### 核心心智（单调递增栈 + 字符末次出现位置 + 栈内存在性集合）
+- 若字符已在栈中，直接跳过；
+- 若栈顶字符比当前字符大，且栈顶在后面还会再次出现（`last_pos[top] > i`），则贪心弹出栈顶换取更小的字典序；
+- 将当前字符推入栈并记录至 `in_stack`。
+
+```python
+class Solution:
+    def removeDuplicateLetters(self, s: str) -> str:
+        last_pos = {ch: i for i, ch in enumerate(s)}
+        stack = []
+        in_stack = set()
+
+        for i, ch in enumerate(s):
+            if ch in in_stack:
+                continue
+            while stack and stack[-1] > ch and last_pos[stack[-1]] > i:
+                in_stack.remove(stack.pop())
+            stack.append(ch)
+            in_stack.add(ch)
+
+        return "".join(stack)
+```

@@ -643,3 +643,32 @@ class Solution:
 - For step-minimizing jump problems, use the implicit BFS level window model.
 - For multidimensional max-merging problems, disqualify violating candidates upfront.
 - For wildcard bracket matching, never write exponential backtracking when tracking the `[cmin, cmax]` range provides an exact $O(n)$ solution.
+
+
+## Module 6: Advanced Greedy Problems
+
+### 1. LC 435. Non-overlapping Intervals
+
+#### Core Mental Model (Earliest Deadline First)
+Minimizing removals is equivalent to maximizing non-overlapping intervals.
+- **Greedy Rule**: Sort intervals by **end time ascending**.
+- Picking the interval that finishes earliest leaves maximal room for remaining intervals.
+
+```python
+from typing import List
+
+class Solution:
+    def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
+        if not intervals:
+            return 0
+        intervals.sort(key=lambda x: x[1])
+
+        removals = 0
+        curr_end = intervals[0][1]
+        for i in range(1, len(intervals)):
+            if intervals[i][0] < curr_end:
+                removals += 1
+            else:
+                curr_end = intervals[i][1]
+        return removals
+```

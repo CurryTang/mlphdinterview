@@ -147,3 +147,37 @@ if __name__ == "__main__":
 - **Time Complexity**: Strictly $\mathcal{O}(N)$. Each index $t \in [0, N-1]$ is pushed into the deque exactly once and popped at most once from either end. The amortized number of deque operations across the entire stream is at most $2N$.
 - **Space Complexity**: The deque holds at most $\min(n, N)$ indices at any given moment, yielding $\mathcal{O}(\min(n, N))$ auxiliary space.
 
+
+
+## Practical Application 2: Sliding-Window Duplicate Record Detection
+
+### Problem Definition
+Given a streaming event log, determine whether the current event is a duplicate within the past `window_sec` seconds.
+
+### Core Mental Model (Deque Window + Hash Map Frequency)
+Maintain `(timestamp, event_id)` in a `deque`. For each arriving event:
+1. `popleft()` all entries with timestamp $\le t - 	ext{window\_sec}$, decrementing their count in the hash map;
+2. Query hash map: if `event_id` exists, it is a duplicate;
+3. Append current `(timestamp, event_id)` to deque and increment frequency.
+
+```python
+from collections import deque, defaultdict
+
+class SlidingWindowDuplicateDetector:
+    def __init__(self, window_sec: int):
+        self.window_sec = window_sec
+        self.queue = deque()  # (timestamp, event_id)
+        self.counts = defaultdict(int)
+
+    def is_duplicate(self, timestamp: int, event_id: str) -> bool:
+        while self.queue and self.queue[0][0] <= timestamp - self.window_sec:
+            _, old_id = self.queue.popleft()
+            self.counts[old_id] -= 1
+            if self.counts[old_id] == 0:
+                del self.counts[old_id]
+
+        duplicate = event_id in self.counts
+        self.queue.append((timestamp, event_id))
+        self.counts[event_id] += 1
+        return duplicate
+```

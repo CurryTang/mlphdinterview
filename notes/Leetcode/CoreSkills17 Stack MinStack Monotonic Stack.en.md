@@ -7,7 +7,7 @@ MinStack: preserve history snapshots during push so that extreme-value queries n
 Monotonic Stack: maintain an active candidate set of unresolved elements, waiting for right-side elements to trigger eviction and establish boundaries
 ```
 
-MinStack is a standalone state-snapshot design; Monotonic Stack is a unified family of problems resolving "1D nearest local extreme boundaries". Mastering Monotonic Stack requires establishing the **"Three-Question Four-Slot" Universal Blueprint**, mapping any problem to this framework by merely swapping eviction comparators and settlement slots.
+MinStack is a standalone state-snapshot design; Monotonic Stack is a high-frequency interview pattern for resolving "1D nearest extreme boundaries". Mastering it requires only **one core intuition: "Whoever breaks the monotonicity is the right boundary responsible for evicting and settling the stack top"**. Regardless of the problem, the core skeleton is only 5 lines of code.
 
 ## Learning Order
 
@@ -16,9 +16,9 @@ Selected from high-frequency core interview problems to build progressive master
 | Order | Original Problem | Core Pattern | Key Engineering Problem Solved |
 |---:|---|---|---|
 | 1 | [155. Min Stack](https://neetcode.io/problems/minimum-stack/question?list=neetcode150) | State-Snapshot Pattern | Bind `min_so_far` to each stack frame for $O(1)$ query and rollback |
-| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | Monotonic Stack · Right Boundary (Next Greater) | Slot 3A: Settle waiting distance via index delta upon eviction |
-| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | Monotonic Stack · Circular Array | Slot 1: Virtual $2n$ modulo doubling, seamlessly reusing the template |
-| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | Monotonic Stack · Dual Boundaries | Slot 1 sentinel padding; Slot 3A resolves both left and right boundaries simultaneously |
+| 2 | [739. Daily Temperatures](https://neetcode.io/problems/daily-temperatures/question?list=neetcode150) | Monotonic Stack · Right Boundary (Next Greater) | Settle waiting days via index delta upon eviction |
+| 3 | [503. Next Greater Element II](https://leetcode.com/problems/next-greater-element-ii/) | Monotonic Stack · Circular Array | Traverse $2n$ with modulo, seamlessly reusing monotonic stack |
+| 4 | [84. Largest Rectangle in Histogram](https://neetcode.io/problems/largest-rectangle-in-histogram/question?list=neetcode150) | Monotonic Stack · Dual Boundaries | Pad `0` sentinels at both ends, resolving left and right boundaries simultaneously |
 | 5 | [42. Trapping Rain Water](https://neetcode.io/problems/trapping-rain-water/question?list=neetcode150) | Monotonic Stack · Trough Fill | Eviction identifies trough floor; stack top and current bar form horizontal bounding box |
 
 ---
@@ -192,293 +192,83 @@ At the exact microsecond `mid = stack.pop()` executes:
 
 ---
 
-### 2.3 · Universal Monotonic Stack Blueprint: The Three-Question Five-Slot Model
+### 2.3 · The Minimal Mental Model and 5-Line Universal Skeleton
 
-All monotonic stack problems share a unified mental model and code skeleton:
+There is no need to memorize complex "slots" or multi-question frameworks. In an interview, internalize this **single core rule**:
 
-```text
-                           ┌────────────────────────────┐
-                           │   for i, current in arr:   │
-                           └─────────────┬──────────────┘
-                                         │
-                                         ▼
-                           ┌────────────────────────────┐
-                           │ Slot 1 [Sentinel & Init]   │
-                           │ arr = nums + [0] (Optional)│
-                           └─────────────┬──────────────┘
-                                         │
-                                         ▼
-                           ┌────────────────────────────┐
-        ┌─────────────────►│ Slot 2 [Eviction Predicate]│
-        │                  │ while stack and pop_cond:  │
-        │                  └──────┬──────────────┬──────┘
-        │                         │ True         │ False
-        │                         ▼              ▼
-        │             ┌───────────────────────┐  ┌────────────────────────┐
-        │             │ mid = stack.pop()     │  │ Slot 3B [Prev Boundary]│
-        │             │                       │  │ ans[i] = stack[-1]     │
-        │             │ Slot 3A [Next/Dual]   │  └───────────┬────────────┘
-        │             │ ans[mid] = i / Area   │              │
-        │             └───────────┬───────────┘              │
-        │                         │                          │
-        └─────────────────────────┘                          ▼
-                                                 ┌────────────────────────┐
-                                                 │ Slot 4 [Push to Wait]  │
-                                                 │ stack.append(i)        │
-                                                 └───────────┬────────────┘
-                                                             │
-                                                             ▼ (Loop Finished)
-                                                 ┌────────────────────────┐
-                                                 │ Slot 5 [Residual Flush]│
-                                                 │ while stack: (no sent.)│
-                                                 │   mid = pop(); R = n   │
-                                                 └────────────────────────┘
-```
+> **"Always store indices in the stack. Whoever breaks monotonicity is the right boundary, responsible for popping the stack top and settling its answer."**
 
-#### 1. Three Clarification Questions
+#### 1. Core Rule of Thumb (Deciding Increasing vs. Decreasing in 10s)
+- **Find Next Greater** $	o$ Maintain a **monotonically decreasing stack** (top is smallest):
+  - When a smaller element arrives: push to stack and wait;
+  - When a **larger element** arrives: it breaks the decreasing order — the stack top has finally met someone larger! **Pop and record the answer immediately**.
+- **Find Next Smaller** $	o$ Maintain a **monotonically increasing stack** (top is largest):
+  - When a larger element arrives: push to stack and wait;
+  - When a **smaller element** arrives: it breaks the increasing order — the stack top has finally met someone smaller! **Pop and record the answer immediately**.
 
-- **Q1: Direction & Attribution**
-  - **Right-Side Boundary (Next-X)**: The current element $i$ acts as the "resolver". When it violates monotonicity, it evicts top index $j$ and answers $j$ with current position $i$ (**settled inside `while` loop at Slot 3A**).
-  - **Left-Side Boundary (Prev-X)**: The current element $i$ is the "target". The `while` loop cleans away invalid candidates; the surviving stack top is the nearest valid left boundary for $i$ (**settled after `while` loop at Slot 3B**).
-  - **Dual Boundaries**: When $mid = stack.pop()$ occurs:
-    - Current index $i$ is the **first smaller/greater on the right** ($R = i$);
-    - The newly exposed stack top $stack[-1]$ is the **nearest smaller/greater on the left** ($L = stack[-1]$);
-    - A single eviction locks both boundaries, establishing the maximal span interval $[L + 1, R - 1]$.
-
-- **Q2: Strictness & Tie-Breaking Principle**
-  - **Finding Greater Elements**: Pop when current is greater; stack maintains monotonic decreasing order.
-  - **Finding Smaller Elements**: Pop when current is smaller; stack maintains monotonic increasing order.
-  - **Exact Partitioning Theorem**:
-    - When duplicate values exist and the problem counts subarray contributions (e.g., LC 907, LC 84):
-      - Strict inequality on both sides (`<` and `>`) **under-counts** subarrays between duplicates;
-      - Non-strict inequality on both sides (`<=` and `>=`) **over-counts** duplicates;
-      - **Golden Rule**: You MUST set **one side strict (e.g. left strictly smaller `<`) and the other non-strict (e.g. right smaller or equal `<=`)**, establishing mutually disjoint and exhaustive half-open intervals.
-
-- **Q3: Storage Carrier & Answer Form**
-  - Always store indices in the stack. Populate answers as index values, waiting distances ($i - j$), spans ($R - L - 1$), or geometric areas.
-
----
-
-#### 2. Five-Slot Universal Template Code (with Residual Flush)
+#### 2. The 5-Line Universal Skeleton
 
 ```python
-from typing import List, Optional
+stack = []  # Store indices
+ans = [0] * n  # Default values (-1 or 0 for elements with no greater/smaller element)
 
-
-def universal_monotonic_stack(
-    nums: List[int],
-    mode: str = "next_greater",  # "next_greater" | "next_smaller" | "prev_greater" | "prev_smaller" | "dual_smaller"
-    with_sentinel: bool = False,
-    sentinel_val: int = 0,
-) -> List[int]:
-    """Universal Monotonic Stack Blueprint
-
-    5 Parameterized Slots:
-    [Slot 1] Sentinel & Initialization: Initialize answer container; optional sentinel flushes stack automatically
-    [Slot 2] Eviction Predicate: Evaluates whether current value breaks monotonicity
-    [Slot 3] Settlement Actions:
-             - Slot 3A: Settle upon eviction (Next or Dual boundary problems)
-             - Slot 3B: Settle after eviction (Prev boundary problems)
-    [Slot 4] Push to Wait: Enqueue current index to await future resolvers
-    [Slot 5] Residual Flush: If no sentinel used, flush unresolved elements with right boundary R = n
-    """
-    n = len(nums)
-
-    # ──────────────────────────────────────────────────────
-    # Slot 1: Sentinel Padding & Container Init
-    # ──────────────────────────────────────────────────────
-    # If sentinel used: appending extreme value forces a complete flush at step n, eliminating Slot 5
-    arr = nums + [sentinel_val] if with_sentinel else nums
-    limit = len(arr)
-    ans = [-1] * n  # Default init (unresolved items in unilateral queries naturally retain -1 or 0)
-    stack = []      # Strictly stores indices
-
-    # ──────────────────────────────────────────────────────
-    # Slot 2: Eviction Predicate
-    # ──────────────────────────────────────────────────────
-    def should_pop(top_val: int, curr_val: int) -> bool:
-        if mode in ("next_greater", "prev_greater"):
-            return curr_val > top_val
-        elif mode in ("next_smaller", "prev_smaller", "dual_smaller"):
-            return curr_val < top_val
-        return False
-
-    for i in range(limit):
-        curr_val = arr[i]
-
-        while stack and should_pop(arr[stack[-1]], curr_val):
-            mid = stack.pop()
-
-            # ──────────────────────────────────────────────────
-            # Slot 3A: Settle upon Eviction (Next / Dual Boundaries)
-            # ──────────────────────────────────────────────────
-            if mode.startswith("next") and mid < n:
-                ans[mid] = i  # Or distance: i - mid
-            elif mode == "dual_smaller" and mid < n:
-                left = stack[-1] if stack else -1
-                right = i
-                width = right - left - 1
-                # Aggregate geometric area: ans = max(ans, arr[mid] * width)
-
-        # ──────────────────────────────────────────────────────
-        # Slot 3B: Settle after Eviction (Prev Boundary for Current i)
-        # ──────────────────────────────────────────────────────
-        if mode.startswith("prev") and i < n:
-            ans[i] = stack[-1] if stack else -1
-
-        # ──────────────────────────────────────────────────────
-        # Slot 4: Push Current Index to Wait
-        # ──────────────────────────────────────────────────────
-        stack.append(i)
-
-    # ──────────────────────────────────────────────────────────
-    # Slot 5: Explicit Residual Flush (For unsentinelized dual/full-range problems)
-    # ──────────────────────────────────────────────────────────
-    # Stranded elements encountered no right obstacle all the way to array end; R closes at n
-    if not with_sentinel:
-        while stack:
-            mid = stack.pop()
-            if mode == "dual_smaller":
-                left = stack[-1] if stack else -1
-                right = n  # Array boundary acts as open right bound
-                width = right - left - 1
-                # ans = max(ans, arr[mid] * width)
-            elif mode.startswith("next"):
-                # In unilateral queries, stranded items mean no better future element exists
-                # Already populated with default -1 or 0, no-op
-                pass
-
-    return ans
+for i, x in enumerate(nums):
+    # Find next greater: x is greater than stack top, satisfying and evicting it!
+    # (To find next smaller, simply flip < to >)
+    while stack and nums[stack[-1]] < x:
+        top = stack.pop()
+        ans[top] = i - top  # or ans[top] = x, according to problem needs
+    stack.append(i)
 ```
 
----
-
-### 2.4 · Comparator and Monotonicity Reference Table
-
-Let `top = nums[stack[-1]]` be the historical top value, and `current = nums[i]` be the scanning value:
-
-| Target Query | Eviction Condition (`while`) | Stack Order After Eviction (Bottom → Top) | Typical Use Cases |
-|---|---|---|---|
-| **First strictly greater on right** | `top < current` | Monotonic non-increasing | Daily Temperatures, Next Greater Element |
-| **First greater or equal on right** | `top <= current` | Strictly decreasing | Pruning duplicates on the right |
-| **First strictly smaller on right** | `top > current` | Monotonic non-decreasing | Largest Rectangle in Histogram, Subarray Min |
-| **First smaller or equal on right** | `top >= current` | Strictly increasing | Exact partitioning for tie-breaking |
-
-> **Universal Memory Rule**:
-> Never memorize whether to use an increasing or decreasing stack. Simply ask: **"Does the current scanned element satisfy what the stack-top element is waiting for?"**
-> If yes, evict and settle immediately.
-
-The interactive visualizer below steps through "Next Greater" and "Next Smaller" on the same array:
+Interactive demonstration comparing Next Greater and Next Smaller on the same array:
 
 ```monotonic-stack-demo
 ```
 
 ---
 
-### 2.5 · Universal Slot-Filling Matrix
+### 2.4 · The Only 3 Real-World Variations
 
-Every problem maps directly into the 4 slots:
+All variations are tiny tweaks on top of the 5-line skeleton:
 
-| Classic Problem | Mode | Slot 1 (Sentinel) | Slot 2 (Eviction Predicate) | Slot 3 (Settlement Calculation) | Slot 4 (Push) |
-|---|---|---|---|---|---|
-| **LC 739. Daily Temperatures** | Next Greater | None | `top < current` | Slot 3A: `ans[mid] = i - mid` | `stack.append(i)` |
-| **LC 496. Next Greater Element I** | Next Greater | None | `top < current` | Slot 3A: `ans[mid] = current` | `stack.append(i)` |
-| **LC 503. Next Greater Element II** | Circular Next Greater | Virtual $2n$ loop | `top < nums[i % n]` | Slot 3A: `ans[mid] = nums[i % n]` (when `mid < n`) | `if i < n: stack.append(i)` |
-| **LC 84. Largest Rectangle** | Dual Smaller | Append `0` | `top > current` | Slot 3A: `w = i - stack[-1] - 1`<br>`ans = max(ans, heights[mid] * w)` | `stack.append(i)` |
-| **LC 42. Trapping Rain Water** | Dual Greater | None | `top < current` | Slot 3A: Bounded water trough<br>`h = min(top, current) - mid_h` | `stack.append(i)` |
-| **LC 907. Subarray Minimums** | Dual Smaller (Tie-break) | Append `0` | Left `<` strict, Right `<=` non-strict | Slot 3A: Product rule for subarrays<br>`count = (mid - left) * (right - mid)` | `stack.append(i)` |
-| **LC 1063. Valid Subarrays** | Next Strictly Smaller | Append `-inf` (or loop to $n$) | `top > current` | Slot 3A: `ans += i - mid` (Span contribution) | `stack.append(i)` |
+1. **Variation 1: Standard Single-Sided Boundary (e.g., LC 739 Daily Temperatures, LC 496)**
+   - Initialize answer array with default values (`-1` or `0`);
+   - Any index remaining in the stack has no greater/smaller neighbor to its right, naturally retaining the default. **No post-loop cleanup required**.
+
+2. **Variation 2: Circular Array (e.g., LC 503)**
+   - Loop twice: `for i in range(2 * n): x = nums[i % n]`;
+   - Pop and settle as usual, but only push during the first pass: `if i < n: stack.append(i)`.
+
+3. **Variation 3: Dual Boundaries / Histogram Rectangles (e.g., LC 84)**
+   - **Pad `0` at both ends (the cleanest sentinels)**: `heights = [0] + heights + [0]`;
+   - **Left `0`**: ensures stack is never empty (accessing `stack[-1]` never errors);
+   - **Right `0`**: guarantees all remaining bars in the stack are flushed and calculated at the end (zero omission);
+   - Upon popping, both boundaries are captured at once:
+     - Height: `h = heights[stack.pop()]`
+     - Left boundary: new stack top `left = stack[-1]`
+     - Right boundary: current `right = i`
+     - Width: `w = right - left - 1`, Area: `h * w`.
 
 ---
 
-### 2.6 · Sentinel Mechanics Demystified: When and Why Are Sentinels Necessary?
+### 2.5 · Core Problem Lookup Matrix
 
-A sentinel element in a monotonic stack is not merely syntactic sugar; it is a **mathematical and operational barrier designed to eliminate branch checks, prevent illegal index underflows, and force unresolved computations to terminate deterministically**.
+| Problem | Target | Stack Order | Eviction Condition (`while`) | Settled Value | Interview Technique |
+|---|---|---|---|---|---|
+| **LC 739. Daily Temperatures** | Next Greater | Decreasing (Large $	o$ Small) | `nums[stack[-1]] < x` | `ans[top] = i - top` (waiting days) | Default array filled with 0 |
+| **LC 503. Next Greater II** | Circular Next Greater | Decreasing (Large $	o$ Small) | `nums[stack[-1]] < x` | `ans[top] = x` (value) | Loop $2n$, index `i % n` |
+| **LC 84. Largest Rectangle** | Dual Smaller (width) | Increasing (Small $	o$ Large) | `arr[stack[-1]] > x` | `h * (i - stack[-1] - 1)` | Pad `0` at both ends |
+| **LC 42. Trapping Rain Water** | Dual Greater (trough) | Decreasing (Large $	o$ Small) | `height[stack[-1]] < x` | `(min(L, R) - bottom) * (R - L - 1)` | Popped item is floor; stack top is left wall |
+| **LC 1063. Valid Subarrays** | Next Strictly Smaller | Increasing (Small $	o$ Large) | `nums[stack[-1]] > x` | Contribution: `ans += i - top` | Virtual `-inf` flush at end |
 
-#### 1. Dual Failure Modes Solved by Sentinels
+---
 
-Without sentinels, monotonic stack implementations face two chronic boundary pathologies:
+### 2.6 · The Minimal Sentinel Rule: When to Use Sentinels?
 
-- **Pathology 1: Head Stack Underflow & Left Boundary Fallback**
-  - **Manifestation**: After executing `mid = stack.pop()`, the algorithm needs to look at its left boundary `left = stack[-1]`. If the stack is now completely empty (meaning no element to the left of $mid$ is smaller/larger, making $mid$ the global extreme of the prefix), accessing `stack[-1]` raises an `IndexError`.
-  - **Non-Sentinel Workaround**: Developers are forced to clutter code with ternaries: `left = stack[-1] if stack else -1`.
-- **Pathology 2: Tail Stranding & Flush Omission**
-  - **Manifestation**: When array traversal finishes, elements often remain stranded inside the stack (e.g., if the array or its suffix is strictly monotonic). When **business logic is executed upon eviction in Slot 3A** (such as LC 84 Largest Rectangle, LC 85 Maximal Rectangle, or LC 907 Subarray Minimums), no further array elements arrive to disrupt monotonicity. The stranded elements **never get popped, causing severe computation omissions**!
-  - **Non-Sentinel Workaround**: A duplicate, error-prone `while stack:` loop must be appended after the main loop to flush out remaining items.
-
-```text
-[Without Sentinel vs. With Sentinels Architecture]
-
-Without Sentinel:
-Iterate nums ─────► Stranded unevicted elements ─────► Must duplicate while stack flush loop
-                       │
-                       └─► Every left lookup needs: stack[-1] if stack else -1
-
-Dual Sentinels:
-[-∞ / 0] + nums + [-∞ / 0] ───────────────► All elements guaranteed flushed by tail sentinel
-   │                       │
-   │                       └─► Tail Sentinel: 100% evictions triggered in Slot 3A (Zero-leak)
-   └─────────────────────────► Head Sentinel: Stack never empty, stack[-1] always valid (No underflow)
-```
-
-#### 2. Sentinel Taxonomy & Decision Matrix
-
-| Sentinel Strategy | Canonical Form | Primary Purpose | Problem Characteristics | Canonical Problems |
-|---|---|---|---|---|
-| **Tail Sentinel** | `arr = nums + [0]`<br>or `range(len(nums) + 1)` | Injects a **global disrupter** to force-flush all stranded stack elements in the final step. | **Settlement occurs upon eviction (Slot 3A)**, requiring exact full-span aggregation. | **LC 84** (Largest Rectangle)<br>**LC 907** (Subarray Minimums)<br>**LC 85** (Maximal Rectangle) |
-| **Head Sentinel** | Preset `stack = [-1]`<br>or `arr = [0] + nums` | Serves as a **natural open-interval left pivot**, keeping stack non-empty at all times. | Left boundary lookup is required without risk of stack underflow. | **LC 32** (Longest Valid Parentheses)<br>**LC 84** (Monotonic increasing left pivot) |
-| **Dual Sentinels** | `arr = [0] + heights + [0]`<br>or `[-inf] + nums + [-inf]` | **Simultaneously eliminates both head underflows and tail flush loops**. Maximum symmetry and cleanest logic. | Bilateral span queries, geometric rectangle calculations. | **LC 84** (Largest Rectangle optimal)<br>**LC 85** (Maximal Rectangle) |
-| **No Sentinel Needed** | Keep raw `nums`<br>Pre-fill result array | **Natural default semantics**; stranded elements naturally represent "no answer exists". | 1. Pre-filled array (e.g., `-1` or `0` in LC 739);<br>2. Settlement occurs **before push during left queries (Slot 3B)**. | **LC 739** (Daily Temperatures)<br>**LC 496** (Next Greater Element I)<br>**LC 503** (Modulo virtual doubling) |
-
-#### 3. Extreme Value Selection Principle
-
-The sentinel value must strictly adhere to the **domain bound theorem**:
-- **Monotonically Increasing Stack (Finding Smaller Elements, e.g., LC 84, LC 907)**:
-  - Tail sentinel must be **strictly smaller** than any valid input element.
-  - If inputs are non-negative ($heights[i] \ge 0$), use `0`.
-  - If inputs contain arbitrary or negative integers, use negative infinity: `float('-inf')`.
-- **Monotonically Decreasing Stack (Finding Greater Elements, e.g., Trapping Rain Water)**:
-  - Tail sentinel must be **strictly larger** than any valid input element, typically `float('inf')`.
-
-#### 4. Implementation Evolution (LC 84 Case Study)
-
-```python
-# Approach A: No Sentinels (Verbose, requires underflow ternaries and duplicate cleanup loop)
-class SolutionNoSentinel:
-    def largestRectangleArea(self, heights: List[int]) -> int:
-        stack, max_area = [], 0
-        for i, h in enumerate(heights):
-            while stack and heights[stack[-1]] > h:
-                mid = stack.pop()
-                left = stack[-1] if stack else -1
-                max_area = max(max_area, heights[mid] * (i - left - 1))
-            stack.append(i)
-        # Duplicate post-loop flush required!
-        while stack:
-            mid = stack.pop()
-            left = stack[-1] if stack else -1
-            max_area = max(max_area, heights[mid] * (len(heights) - left - 1))
-        return max_area
-
-
-# Approach B: Dual Sentinels (Zero branches, perfectly symmetric, bulletproof)
-class SolutionDualSentinels:
-    def largestRectangleArea(self, heights: List[int]) -> int:
-        # Pad both ends with height 0 sentinels
-        arr = [0] + heights + [0]
-        stack, max_area = [], 0
-
-        for i, h in enumerate(arr):
-            # Left sentinel prevents empty stack; right sentinel guarantees total flush
-            while stack and arr[stack[-1]] > h:
-                mid = stack.pop()
-                left = stack[-1]  # Invariant: stack is never empty here!
-                width = i - left - 1
-                max_area = max(max_area, arr[mid] * width)
-            stack.append(i)
-
-        return max_area
-```
+Remember this single practical rule:
+- **Single-sided queries (Daily Temperatures, Next Greater)**: **No sentinels needed**. Pre-fill default values `-1` or `0`; remaining items naturally represent unresolved elements.
+- **Dual-sided geometric areas (LC 84 Largest Rectangle)**: **Pad 0 at both ends** (`[0] + heights + [0]`). Left 0 avoids underflow; right 0 flushes remaining bars cleanly without duplicate post-loops.
 
 ---
 
@@ -544,20 +334,20 @@ class Solution:
         stack = []  # Stores indices; temperatures strictly decrease from bottom to top
 
         for i, temp in enumerate(temperatures):
-            # Slot 2: Current temperature higher than stack top
+            # Eviction check: Current temperature higher than stack top
             while stack and temperatures[stack[-1]] < temp:
                 mid = stack.pop()
-                # Slot 3A: Settle distance delta upon eviction
+                # Eviction settlement: Settle distance delta upon eviction
                 ans[mid] = i - mid
-            # Slot 4: Enqueue current day
+            # Push to stack: Enqueue current day
             stack.append(i)
 
         return ans
 ```
 
-##### Right View Implementation (Reverse Traversal with Instant Settlement · Slot 3B)
+##### Right View Implementation (Reverse Traversal with Instant Settlement · Immediate settlement)
 
-If we traverse in **reverse order ($i = n-1 \to 0$)**, the current element $i$ acts directly as the **protagonist**. The stack maintains all viable candidates to its right. Any right-hand candidate with $temperatures[\text{top}] \le temp$ is permanently shadowed by Day $i$ (since Day $i$ is both closer to any left-side day and warmer or equal), and is immediately evicted. Once evictions finish, the stack top is guaranteed to be the first strictly warmer day, allowing **instant settlement (Slot 3B)**:
+If we traverse in **reverse order ($i = n-1 \to 0$)**, the current element $i$ acts directly as the **protagonist**. The stack maintains all viable candidates to its right. Any right-hand candidate with $temperatures[\text{top}] \le temp$ is permanently shadowed by Day $i$ (since Day $i$ is both closer to any left-side day and warmer or equal), and is immediately evicted. Once evictions finish, the stack top is guaranteed to be the first strictly warmer day, allowing **instant settlement (Immediate settlement)**:
 
 ```python
 class SolutionRightView:
@@ -566,15 +356,15 @@ class SolutionRightView:
         ans = [0] * n
         stack = []  # Temperatures strictly decrease from bottom to top
 
-        # Slot 1: Reverse traversal
+        # Initialization: Reverse traversal
         for i in range(n - 1, -1, -1):
             temp = temperatures[i]
-            # Slot 2: Evict shadowed right-hand candidates
+            # Eviction check: Evict shadowed right-hand candidates
             while stack and temperatures[stack[-1]] <= temp:
                 stack.pop()
-            # Slot 3B: Instant settlement for Day i
+            # Immediate settlement: Instant settlement for Day i
             ans[i] = stack[-1] - i if stack else 0
-            # Slot 4: Enqueue Day i as candidate for earlier days
+            # Push to stack: Enqueue Day i as candidate for earlier days
             stack.append(i)
 
         return ans
@@ -582,7 +372,7 @@ class SolutionRightView:
 
 ##### Left View vs. Right View: Structural Comparison & Selection Criteria
 
-| Dimension | Left View (Forward + Pop-Driven · Slot 3A) | Right View (Reverse + Push-Driven · Slot 3B) |
+| Dimension | Left View (Forward + Pop-Driven · Eviction settlement) | Right View (Reverse + Push-Driven · Immediate settlement) |
 | :--- | :--- | :--- |
 | **Protagonist** | Evicted element `mid` is the protagonist; scanning element $i$ is the right terminator | Scanning element $i$ is the protagonist; stack stores the candidate skeleton |
 | **Settlement Timing** | **Asynchronous / Delayed**: Element enqueues and waits until a warmer future day pops it | **Instant / Online**: Answer for $i$ is finalized immediately on the spot |
@@ -633,7 +423,7 @@ On this canonical input, both views execute **exactly 10 numeric comparisons** (
 
 #### Practice 2: Next Greater Element II (Circular Array via Modulo)
 Find the next greater element in a circular array.
-- **Mapping**: Extend iteration to $2n$ in **Slot 1** using `i % n`, pushing to stack only during the first cycle ($i < n$).
+- **Mapping**: Extend iteration to $2n$ in **Initialization** using `i % n`, pushing to stack only during the first cycle ($i < n$).
 
 ```python
 from typing import List
@@ -645,15 +435,15 @@ class Solution:
         ans = [-1] * n
         stack = []
 
-        # Slot 1: Virtual doubling via 2*n iteration
+        # Initialization: Virtual doubling via 2*n iteration
         for i in range(2 * n):
             val = nums[i % n]
-            # Slot 2: Eviction comparison
+            # Eviction check: Eviction comparison
             while stack and nums[stack[-1]] < val:
                 mid = stack.pop()
-                # Slot 3A: Record next greater value
+                # Eviction settlement: Record next greater value
                 ans[mid] = val
-            # Slot 4: Only push during first cycle
+            # Push to stack: Only push during first cycle
             if i < n:
                 stack.append(i)
 
@@ -678,20 +468,20 @@ class Solution:
         max_area = 0
         stack = []
 
-        # Slot 1: Inject tail sentinel of height 0
+        # Initialization: Inject tail sentinel of height 0
         for right in range(len(heights) + 1):
             curr_h = 0 if right == len(heights) else heights[right]
 
-            # Slot 2: Shorter bar breaks increasing monotonicity
+            # Eviction check: Shorter bar breaks increasing monotonicity
             while stack and heights[stack[-1]] > curr_h:
                 mid = stack.pop()
                 mid_h = heights[mid]
-                # Slot 3A: Left and right boundaries locked simultaneously
+                # Eviction settlement: Left and right boundaries locked simultaneously
                 left = stack[-1] if stack else -1
                 width = right - left - 1
                 max_area = max(max_area, mid_h * width)
 
-            # Slot 4: Enqueue current index
+            # Push to stack: Enqueue current index
             stack.append(right)
 
         return max_area
@@ -714,19 +504,19 @@ class Solution:
         stack = []
 
         for right, curr_h in enumerate(height):
-            # Slot 2: Taller bar encountered, forming bounding trough
+            # Eviction check: Taller bar encountered, forming bounding trough
             while stack and height[stack[-1]] < curr_h:
                 mid = stack.pop()
                 if not stack:
                     break  # No left boundary to trap water
 
                 left = stack[-1]
-                # Slot 3A: Horizontal trough slice accumulation
+                # Eviction settlement: Horizontal trough slice accumulation
                 h = min(height[left], curr_h) - height[mid]
                 w = right - left - 1
                 water += h * w
 
-            # Slot 4: Enqueue current bar
+            # Push to stack: Enqueue current bar
             stack.append(right)
 
         return water
@@ -759,10 +549,10 @@ Given an integer array `nums`, return the number of non-empty continuous subarra
 ##### 3. Monotonic Stack Blueprint Instantiation
 
 Maintain a **monotonically non-decreasing stack** (from bottom to top $nums[stack[k]] \le nums[stack[k+1]]$, permitting equal values):
-- **Slot 1 (Sentinel)**: Virtual $-\infty$ at index $n$ to guarantee complete flushing;
-- **Slot 2 (Eviction Predicate)**: `while stack and nums[stack[-1]] > curr_val:` (strictly smaller breaks monotonicity);
-- **Slot 3A (Settlement)**: For popped element $mid$, current index $i$ is its first strictly smaller right boundary $R_{mid} = i$. Add $i - mid$ to answer;
-- **Slot 4 (Push)**: `stack.append(i)`.
+- **Initialization (Sentinel)**: Virtual $-\infty$ at index $n$ to guarantee complete flushing;
+- **Eviction check (Eviction Predicate)**: `while stack and nums[stack[-1]] > curr_val:` (strictly smaller breaks monotonicity);
+- **Eviction settlement (Settlement)**: For popped element $mid$, current index $i$ is its first strictly smaller right boundary $R_{mid} = i$. Add $i - mid$ to answer;
+- **Push to stack (Push)**: `stack.append(i)`.
 
 ```python
 from typing import List
@@ -774,17 +564,17 @@ class Solution:
         ans = 0
         stack = []  # Invariant: nums[stack[k]] <= nums[stack[k+1]]
 
-        # Slot 1: Iterate up to n with virtual -inf sentinel
+        # Initialization: Iterate up to n with virtual -inf sentinel
         for i in range(n + 1):
             curr_val = float("-inf") if i == n else nums[i]
 
-            # Slot 2: Evict on strictly smaller element
+            # Eviction check: Evict on strictly smaller element
             while stack and nums[stack[-1]] > curr_val:
                 mid = stack.pop()
-                # Slot 3A: Settle span contribution for mid
+                # Eviction settlement: Settle span contribution for mid
                 ans += i - mid
 
-            # Slot 4: Push current index
+            # Push to stack: Push current index
             stack.append(i)
 
         return ans
@@ -835,12 +625,42 @@ Thus, the monotonic stack algorithm runs in strict $O(n)$ time and $O(n)$ auxili
 
 ---
 
-### 2.9 · Whiteboard Interview Checklist
+### 2.9 · Structured Interview Delivery Checklist
 
-When presenting a monotonic stack solution in technical interviews, structure your explanation across 5 clear milestones:
+Follow this clean 3-step delivery during a coding interview:
 
-1. **Classification**: "This problem requires finding nearest extreme-value boundaries for each position in 1D. Brute force is $O(n^2)$; a monotonic stack optimizes this to linear $O(n)$ time."
-2. **Data Structure**: "The stack stores indices rather than values because calculating spans $i - j$ and rectangle widths requires physical distances."
-3. **Monotonicity**: "We maintain a monotonic decreasing stack because we are seeking the next greater element; any value violating this triggers immediate eviction."
-4. **Attribution**: "Answers are settled upon eviction (Slot 3A) because the current scanned element serves as the active resolver for waiting elements."
-5. **Sentinel**: "For histogram area or multi-interval aggregation, append a `0` sentinel to flush residual frames automatically without duplicate cleanup code."
+1. **State the Pattern**: "This problem searches for the nearest extreme boundary in a 1D sequence. Brute force is $O(n^2)$; a monotonic stack optimizes this to amortized $O(n)$."
+2. **Clarify Stack Invariant**: "Store indices in the stack to compute distances and widths. To find the next greater element, maintain a decreasing stack and evict as soon as a strictly greater element arrives."
+3. **Handle Boundaries**: "For one-sided queries, initialize defaults with -1 or 0. For dual-boundary geometric areas (like histograms), pad 0 sentinels at both ends to eliminate stack underflow and flush omissions."
+
+
+## Module 3: Stack & Monotonic Stack High-Frequency Extensions
+
+### 1. LC 224 / 227 Universal Basic Calculator via Operator Precedence
+
+#### Core Mental Model
+Maintain `nums` and `ops` stacks with a precedence map (`+,-`=1, `*,/`=2). When encountering an operator, pop and evaluate any stack operators with $\ge$ precedence. Handle parentheses by pushing `(` and popping until matching `(`. Insert `0` before unary operators.
+
+---
+
+### 2. LC 316 / 1081 Remove Duplicate Letters via Monotonic Stack
+
+#### Core Mental Model
+Maintain a monotonic increasing stack:
+- If character is already in `in_stack`, skip.
+- While `stack[-1] > ch` and `stack[-1]` occurs again later (`last_pos[stack[-1]] > i`), pop it to achieve a smaller lexicographical order.
+- Push current character and mark in `in_stack`. Time: $O(n)$, Space: $O(|\Sigma|)$.
+
+```python
+class Solution:
+    def removeDuplicateLetters(self, s: str) -> str:
+        last_pos = {ch: i for i, ch in enumerate(s)}
+        stack, in_stack = [], set()
+        for i, ch in enumerate(s):
+            if ch in in_stack: continue
+            while stack and stack[-1] > ch and last_pos[stack[-1]] > i:
+                in_stack.remove(stack.pop())
+            stack.append(ch)
+            in_stack.add(ch)
+        return "".join(stack)
+```

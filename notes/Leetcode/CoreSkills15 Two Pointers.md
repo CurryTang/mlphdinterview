@@ -734,3 +734,88 @@ right -= 1
 双指针的本质：
   每移动一步，都能安全丢掉一部分搜索空间。
 ```
+
+
+## 模块三：双指针高频真题扩展与数学规约
+
+### 1. 勾股数三元组判定 (Pythagorean Triplet)
+
+#### 核心心智（平方映射 + 3Sum 相向双指针夹逼）
+- 判定是否存在 $a^2 + b^2 = c^2$：将数组全量平方并升序排序；
+- 从大到小固定最长边 $target = c^2$，在区间 $[0, k-1]$ 内使用相向双指针 $i, j$ 夹逼求和等于 $target$；
+- 时间复杂度 $O(n^2)$，无值域假设下理论最优。
+
+```python
+from typing import List
+
+class PythagoreanTripletSolution:
+    @staticmethod
+    def judgePythagoreanTriplet(nums: List[int]) -> bool:
+        n = len(nums)
+        if n < 3:
+            return False
+        squares = sorted([x * x for x in nums])
+        for k in range(n - 1, 1, -1):
+            target = squares[k]
+            i, j = 0, k - 1
+            while i < j:
+                cur = squares[i] + squares[j]
+                if cur == target:
+                    return True
+                elif cur < target:
+                    i += 1
+                else:
+                    j -= 1
+        return False
+```
+
+---
+
+### 2. 连续子数组极值和极大化与相邻对偶性规约 (Largest Min+Max in Subarray)
+
+#### 核心心智（数学极值定理：相邻两元素支配性）
+- 题目：求长度 $\ge 2$ 的连续子数组中 $\min + \max$ 的最大值。
+- **数学定理证明**：任意长度 $\ge 2$ 的子数组内部必包含其最大值 $M$。考察该子数组中与 $M$ 相邻的元素 $v$，显然 $v \ge m = \min$。故这对相邻元素的和 $M + v \ge M + m$。
+- **结论**：任意长子数组的 $\min + \max$ 必被包含其最大值的某个相邻对所支配！因此无需复杂数据结构，**单趟求相邻两数之和最大值 $\max(nums[i] + nums[i+1])$ 即可，时间 $O(n)$**！
+
+```python
+from typing import List
+
+def largestMinMaxSum(nums: List[int]) -> int:
+    if len(nums) < 2:
+        raise ValueError("数组长度必须至少为 2")
+    return max(nums[i] + nums[i + 1] for i in range(len(nums) - 1))
+```
+
+---
+
+### 3. 一维数据流局部波峰检出 (Local Maximum on a 1-D Stream)
+
+#### 核心心智（单调向外递减 + 边界自适应退化）
+- 检查点 $i$ 的左右两侧有效邻域内是否从中心向外严格递减；
+- 边界自适应：若左侧不足 $k$ 个元素，只校验实际存在的 $\min(i, k)$ 个邻居；右侧同理。
+
+```python
+from typing import List
+
+def findLocalMaxima(rawData: List[float], localArea: int) -> List[int]:
+    n = len(rawData)
+    res = []
+    for i in range(n):
+        peak = True
+        # 检验左侧（向外递减即向中心递增）
+        for j in range(1, min(i, localArea) + 1):
+            if rawData[i - j + 1] <= rawData[i - j]:
+                peak = False
+                break
+        if not peak:
+            continue
+        # 检验右侧（向外递减）
+        for j in range(1, min(n - 1 - i, localArea) + 1):
+            if rawData[i + j - 1] <= rawData[i + j]:
+                peak = False
+                break
+        if peak:
+            res.append(i)
+    return res
+```

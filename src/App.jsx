@@ -898,30 +898,6 @@ const leetcodeNoteDefinitions = [
     'CoreSkills20 Backtracking.en.md',
     { directory: 'Leetcode', titleEn: 'Core Skills 20 · Backtracking', category: 'Backtracking', difficulty: 'Medium' },
   ),
-  createTutorialDefinition(
-    'Review 1 · 常考基础题 (Flashcards)',
-    'Review01 Common Fundamentals.md',
-    'Review01 Common Fundamentals.en.md',
-    { directory: 'Leetcode', titleEn: 'Review 1 · Core Fundamentals (Flashcards)', category: 'Review Cards', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Review 2 · 链表、栈与堆 (Flashcards)',
-    'Review02 LinkedList Stack Heap.md',
-    'Review02 LinkedList Stack Heap.en.md',
-    { directory: 'Leetcode', titleEn: 'Review 2 · Linked List, Stack & Heap (Flashcards)', category: 'Review Cards', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Review 3 · 区间、滑窗与回溯 (Flashcards)',
-    'Review03 Interval Sliding Window Backtracking.md',
-    'Review03 Interval Sliding Window Backtracking.en.md',
-    { directory: 'Leetcode', titleEn: 'Review 3 · Intervals, Sliding Window & Backtracking (Flashcards)', category: 'Review Cards', difficulty: 'Medium' },
-  ),
-  createTutorialDefinition(
-    'Review 4 · 树、图与动态规划 (Flashcards)',
-    'Review04 Tree Graph DP.md',
-    'Review04 Tree Graph DP.en.md',
-    { directory: 'Leetcode', titleEn: 'Review 4 · Trees, Graphs & Dynamic Programming (Flashcards)', category: 'Review Cards', difficulty: 'Hard' },
-  ),
 ];
 
 const leetcodeNotes = leetcodeNoteDefinitions.map((definition) => ({

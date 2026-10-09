@@ -357,3 +357,96 @@ class Solution:
 - 空间复杂度：`O(n * k)`，输出本身需要保存所有字符串；哈希表 key 额外是每组一个 26 维 tuple。
 
 </details>
+
+
+## 模块三：哈希核心进阶题型
+
+### 1. LC 560. 和为 K 的子数组 (Subarray Sum Equals K)
+
+#### 核心心智（前缀和 + 历史频次哈希）
+求连续子数组和等于 $k$ 的个数。
+如果暴力枚举左右端点需要 $O(n^2)$。利用前缀和：
+$$\sum_{m=j+1}^i nums[m] = prefix[i] - prefix[j] = k \implies prefix[j] = prefix[i] - k$$
+因此，每扫描到一个数并累加当前前缀和 `curr_sum` 时，我们只需查看**历史上有多少个前缀和等于 `curr_sum - k`**！
+- 初始哈希表置 `prefix_map[0] = 1`（代表空前缀，处理从第 0 个元素开始就恰好等于 $k$ 的情况）；
+- 单次线性扫描，时间复杂度严格 $O(n)$，空间复杂度 $O(n)$。
+
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def subarraySum(self, nums: List[int], k: int) -> int:
+        count = 0
+        curr_sum = 0
+        prefix_map = defaultdict(int)
+        prefix_map[0] = 1  # 基础哨兵
+
+        for num in nums:
+            curr_sum += num
+            # 查看前面有多少个前缀和满足差值为 k
+            count += prefix_map[curr_sum - k]
+            prefix_map[curr_sum] += 1
+
+        return count
+```
+
+---
+
+### 2. LC 36. 有效的数独 (Valid Sudoku)
+
+#### 核心心智
+只需验证行、列、九宫格是否有重复数字（`1-9`）：
+- 行索引：`r`
+- 列索引：`c`
+- 九宫格索引：`r // 3 * 3 + c // 3`
+使用 3 组哈希集合（或整型位掩码 `1 << val`）同步查重，遍历一次 $9 	imes 9$ 棋盘即可，严格 $O(1)$ 时间与空间。
+
+```python
+from typing import List
+
+class Solution:
+    def isValidSudoku(self, board: List[List[str]]) -> bool:
+        rows = [set() for _ in range(9)]
+        cols = [set() for _ in range(9)]
+        boxes = [set() for _ in range(9)]
+
+        for r in range(9):
+            for c in range(9):
+                val = board[r][c]
+                if val == '.':
+                    continue
+                box_idx = (r // 3) * 3 + (c // 3)
+                if val in rows[r] or val in cols[c] or val in boxes[box_idx]:
+                    return False
+                rows[r].add(val)
+                cols[c].add(val)
+                boxes[box_idx].add(val)
+
+        return True
+```
+
+---
+
+### 3. 奇偶交替连续子数组极速计数 (Zigzag Alternating-Parity Subarrays)
+
+#### 核心心智（动态增量计数器）
+统计相邻元素奇偶性严格交替的子数组总数。
+- 维护以当前元素结尾的连续交替长度 `streak`；
+- 若 `(nums[i] ^ nums[i-1]) & 1 == 1`（奇偶相异），则 `streak += 1`；否则重置 `streak = 1`；
+- 答案累加当前 `streak` 即可，时间复杂度严格 $O(n)$，空间 $O(1)$。
+
+```python
+def count_alternating_subarrays(nums: List[int]) -> int:
+    if not nums:
+        return 0
+    total = 1
+    streak = 1
+    for i in range(1, len(nums)):
+        if (nums[i] % 2) != (nums[i - 1] % 2):
+            streak += 1
+        else:
+            streak = 1
+        total += streak
+    return total
+```

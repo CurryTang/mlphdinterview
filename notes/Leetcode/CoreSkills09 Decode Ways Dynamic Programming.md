@@ -1527,3 +1527,70 @@ class Solution:
 5. **编码实现与干跑用例（Dry Run）**：“我们先写出清晰的二维/一维完整表代码，并用一个小样例干跑验证。”
 6. **时空复杂度与空间压缩（Optimization）**：“当前时空复杂度为 $O(\dots)$；观察到依赖半径仅为上一行/前两个变量，我们可进一步将空间压缩至 $O(1)$ / $O(m)$。”
 
+
+
+## 模块七：DP 高频扩展与状态机大一统
+
+### 1. LC 5. 最长回文子串 (Longest Palindromic Substring)
+
+#### 核心心智（中心扩散法最优 $O(1)$ 空间）
+回文子串要么以单字符为中心（奇数长，如 `"aba"`），要么以两字符之间为中心（偶数长，如 `"abba"`）。
+遍历所有 $2n - 1$ 个中心点向两翼扩散，时间 $O(n^2)$，额外空间严格 $O(1)$！
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        res = ""
+
+        def expand(l, r):
+            while l >= 0 and r < len(s) and s[l] == s[r]:
+                l -= 1
+                r += 1
+            return s[l + 1:r]
+
+        for i in range(len(s)):
+            # 奇数中心与偶数中心
+            p1 = expand(i, i)
+            p2 = expand(i, i + 1)
+            if len(p1) > len(res):
+                res = p1
+            if len(p2) > len(res):
+                res = p2
+
+        return res
+```
+
+---
+
+### 2. 股票买卖全系列大一统状态机模型 (Best Time to Buy and Sell Stock)
+
+#### 核心心智（两大状态：持股 vs 不持股）
+所有 6 道股票题（LC 121, 122, 123, 188, 309, 714）全是一套状态机：
+在每一天结束时，账户要么**持股（`hold`）**，要么**不持股（`cash`）**：
+- `hold`: 昨天就持股，或者今天买入；
+- `cash`: 昨天就空仓，或者今天卖出。
+
+##### 示例一：LC 122 允许多次交易
+```python
+def maxProfit(prices: List[int]) -> int:
+    hold = -float('inf')
+    cash = 0
+    for p in prices:
+        hold = max(hold, cash - p)
+        cash = max(cash, hold + p)
+    return cash
+```
+
+##### 示例二：LC 309 包含冷冻期（卖出后隔一天才能买）
+```python
+def maxProfitCooldown(prices: List[int]) -> int:
+    hold = -float('inf')
+    cash = 0
+    pre_cash = 0  # 冷冻期前的空仓利润
+    for p in prices:
+        prev = cash
+        cash = max(cash, hold + p)
+        hold = max(hold, pre_cash - p)
+        pre_cash = prev
+    return cash
+```

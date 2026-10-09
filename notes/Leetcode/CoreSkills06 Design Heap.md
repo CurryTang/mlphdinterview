@@ -594,3 +594,49 @@ class MedianFinder:
 最后只记一句：
 
 > 堆解决的是"反复要最值，不需要完整顺序"这一类问题；看清楚题目要哪种最值、要几个，模板就定了。
+
+
+## 模块五：堆与系统架构进阶
+
+### 1. LC 23. 合并 K 个升序链表 (Merge k Sorted Lists)
+
+#### 核心心智（多路归并堆）
+将 $k$ 个链表的首节点存入小顶堆。每次 `heappop` 弹出全局最小值节点接在结果链表后，并把该节点的 `next`（若非空）推入堆中。
+- 时间复杂度：$\mathcal{O}(N \log k)$，其中 $N$ 是总节点数；
+- 空间复杂度：$\mathcal{O}(k)$，堆中至多保留 $k$ 个节点。
+
+```python
+import heapq
+from typing import List, Optional
+
+class Solution:
+    def mergeKLists(self, lists: List[Optional[ListNode]]) -> Optional[ListNode]:
+        heap = []
+        # Python 3 中元组存放 (val, idx, node) 避免 ListNode 无法直接比大小
+        for i, l in enumerate(lists):
+            if l:
+                heapq.heappush(heap, (l.val, i, l))
+
+        dummy = ListNode(0)
+        curr = dummy
+
+        while heap:
+            val, i, node = heapq.heappop(heap)
+            curr.next = node
+            curr = curr.next
+            if node.next:
+                heapq.heappush(heap, (node.next.val, i, node.next))
+
+        return dummy.next
+```
+
+---
+
+### 2. 限价订单簿系统撮合引擎 (Limit Order Book Matcher)
+
+#### 核心心智（买方大顶堆 + 卖方小顶堆）
+高频量化与系统架构经典手撕：
+- 买单（Buy Orders）：按价格从高到低优先撮合（最大堆，存储 `-price`）；
+- 卖单（Sell Orders）：按价格从低到高优先撮合（最小堆，存储 `+price`）；
+- 价格相同时按时间戳先来先服务（Price-Time Priority）；
+- 撮合条件：当 `max_bid >= min_ask` 时触发撮合成交。

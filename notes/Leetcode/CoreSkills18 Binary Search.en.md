@@ -1,222 +1,113 @@
 # Binary Search: A Unified Template
 
-The classic binary search is not the hard part. The variants are: exact match, searching over an answer range, rotated arrays, and interval matching each handle the boundary differently. This note reduces seven problems to one template: find the boundary of a monotonic predicate. Only three pieces change between problems.
+The fundamental essence of binary search is simple: **finding a transition boundary on a monotonic predicate (First True)**.
+
+Regardless of problem variations (exact match, answer range, rotated array, median partition), the template code is always 6 lines. **You only ever need to fill in 3 blanks**, taking under 10 seconds with zero off-by-one errors.
 
 ## Learning Order
 
-Problems are drawn from the Binary Search module of [NeetCode 150](https://neetcode.io/practice/practice/neetcode150).
+Problems selected from the Binary Search module of [NeetCode 150](https://neetcode.io/practice/practice/neetcode150):
 
-| Order | Problem | What to Master |
-|---:|---|---|
-| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | The template's most basic form: exact match |
-| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | Mapping a 2D index to a 1D index |
-| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | The search space is the answer range, not an array index |
-| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | Defining a predicate without a target value |
-| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | Linearizing a rotated array with a key transform |
-| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | The "last False" reading |
-| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | The search space is a partition point, using `±inf` as the sentinel |
+| Order | Problem | Core Pattern | 3-Step Fill-in Key Point |
+|---:|---|---|---|
+| 1 | [704. Binary Search](https://neetcode.io/problems/binary-search/question?list=neetcode150) | Basic Exact Match | First $\ge target$, then verify equality |
+| 2 | [74. Search a 2D Matrix](https://neetcode.io/problems/search-a-2d-matrix/question?list=neetcode150) | 2D Matrix Flattening | Flatten index `[0, m*n]`, map via `(mid // n, mid % n)` |
+| 3 | [875. Koko Eating Bananas](https://neetcode.io/problems/koko-eating-bananas/question?list=neetcode150) | Answer Range Binary Search | Search space is speed `[1, max]`, check total hours $\le h$ |
+| 4 | [153. Find Minimum in Rotated Sorted Array](https://neetcode.io/problems/find-minimum-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Minimum | Compare with tail `nums[-1]`, return `nums[lo]` |
+| 5 | [33. Search in Rotated Sorted Array](https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=neetcode150) | Rotated Array Search | Classic sorted-half branch / key linearization |
+| 6 | [981. Time Based Key-Value Store](https://neetcode.io/problems/time-based-key-value-store/question?list=neetcode150) | Find Last True | Find first exceeding timestamp, return `lo - 1` |
+| 7 | [4. Median of Two Sorted Arrays](https://neetcode.io/problems/median-of-two-sorted-arrays/question?list=neetcode150) | Median of Two Sorted Arrays | Binary search partition point on shorter array |
 
-## Module 1: The Unified Template
+## Module 1: Unified Template & Minimal 3-Step Fill-in Method
 
-### Search Space and Predicate
+### 1. The Core 6-Line Template
 
-Binary search locates a boundary in an interval `[lo, hi]`, together with a boolean predicate `check(x)` defined on that interval, not necessarily an array itself. The template requires `check` to be monotonic on the interval: there exists a boundary `b` such that `check(x)` is `False` for `x < b` and `True` for `x >= b`. The template returns `b`.
-
-The interval does not have to be an array index; it can be a range of candidate answers, or the position of a partition point. The predicate does not have to compare against a target value; it only has to be monotonic.
-
-### Template Code
+Binary search fundamentally searches for **the first point satisfying a predicate (First True)**. The skeleton code is always these 6 lines:
 
 ```python
 def find_first_true(lo, hi, check):
     while lo < hi:
         mid = lo + (hi - lo) // 2
         if check(mid):
-            hi = mid
+            hi = mid      # Predicate satisfied; shrink left to find earlier candidates
         else:
-            lo = mid + 1
-    return lo
-```
-
-Loop invariant: the boundary `b` always lies within `[lo, hi]`. Each iteration shrinks `hi - lo` by at least half. The loop ends when `lo == hi`, and the return value is `b`.
-
-If no position in `[lo, hi)` satisfies `check`, the function returns `hi`. This is not because `check(hi)` was called and returned `True` — `mid` is always strictly less than `hi`, so `hi` itself is never passed to `check`. In this case `hi` acts as a sentinel, standing for "not found" or "the answer lies outside the search space."
-
-Only three things change across the seven problems:
-
-```text
-lo, hi: the two ends of the search space
-check(mid): the definition of the monotonic predicate
-what happens after finding boundary b: use it directly, verify equality, or take b - 1
+            lo = mid + 1  # Not satisfied; eliminate left half
+    return lo             # Loop exits with lo == hi: the exact First True boundary
 ```
 
 ```binary-search-template-demo
 ```
 
-### Concrete Traces
+> **Loop Invariant**: Upon termination, `lo == hi` is strictly guaranteed, pointing precisely to **the first index where `check(mid)` is True**.
 
-#### Exact Match: `nums = [1, 3, 5, 7, 9, 11, 13]`
+---
 
-| Example | Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
-|---|---:|---:|---:|---:|---|---|
-| `target = 9` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 9` → False | `lo = 4` |
-| `target = 9` | 2 | 4 | 7 | 5 | `nums[5] = 11 >= 9` → True | `hi = 5` |
-| `target = 9` | 3 | 4 | 5 | 4 | `nums[4] = 9 >= 9` → True | `hi = 4` |
-| `target = 9` | Finish | 4 | 4 | - | boundary `b = 4` | verify `nums[4] == 9`, return `4` |
-| `target = 6` | 1 | 0 | 7 | 3 | `nums[3] = 7 >= 6` → True | `hi = 3` |
-| `target = 6` | 2 | 0 | 3 | 1 | `nums[1] = 3 >= 6` → False | `lo = 2` |
-| `target = 6` | 3 | 2 | 3 | 2 | `nums[2] = 5 >= 6` → False | `lo = 3` |
-| `target = 6` | Finish | 3 | 3 | - | boundary `b = 3` | verify `nums[3] = 7 != 6`, return `-1` |
+### 2. How to Fill the 3 Blanks (Minimal Mental Model)
 
-#### Answer Range: `piles = [3, 6, 7, 11]`, `h = 8`
+In an interview, forget confusing mirror tables and sentinel categorizations. **Simply fill in 3 blanks in order**:
 
-| Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
-|---|---:|---:|---:|---|---|
-| 1 | 1 | 11 | 6 | `1 + 1 + 2 + 2 = 6 <= 8` → True | `hi = 6` |
-| 2 | 1 | 6 | 3 | `1 + 2 + 3 + 4 = 10 <= 8` → False | `lo = 4` |
-| 3 | 4 | 6 | 5 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 5` |
-| 4 | 4 | 5 | 4 | `1 + 2 + 2 + 3 = 8 <= 8` → True | `hi = 4` |
-| Finish | 4 | 4 | - | boundary `b = 4` | return the minimum feasible speed `4` |
+#### Step 1: Blank 1 — How to fill `[lo, hi]`?
 
-#### Last False: `timestamps = [1, 4, 7, 10]`, `query = 8`
+- **Standard Array Index (finding a position)**: `lo = 0, hi = len(nums)`
+  - *Why `hi = len(nums)`?* Because the target may not exist; `len(nums)` acts as a natural out-of-bounds sentinel meaning "not found".
+- **Answer Value Range (finding min speed, capacity, etc.)**: `lo = min_possible, hi = max_possible`
+  - *Why no +1?* Because the maximum possible value is guaranteed to satisfy the condition (a known True upper bound).
 
-| Iteration | `lo` | `hi` | `mid` | `check(mid)` | Action |
-|---|---:|---:|---:|---|---|
-| 1 | 0 | 4 | 2 | `timestamps[2] = 7 > 8` → False | `lo = 3` |
-| 2 | 3 | 4 | 3 | `timestamps[3] = 10 > 8` → True | `hi = 3` |
-| Finish | 3 | 3 | - | boundary `b = 3` | return `b - 1 = 2`, whose timestamp is `7` |
+---
 
-### Two Readings
+#### Step 2: Blank 2 — How to fill `check(mid)`? (The 4 Boundary Cheat Codes)
 
-| Answer needed | How to obtain it |
-|---|---|
-| First position that satisfies the condition | Return `b` directly |
-| Last position that does not satisfy the condition | Return `b - 1`, and check `b > 0` |
+Candidates often struggle with `>` vs. `>=`. The core question to ask is always:
+> **"Does the current `mid` already satisfy (or reach) the goal?"**
+> - If yes (`True`), we found a valid candidate, but want to check if an even smaller/earlier candidate exists on the left: `hi = mid`.
+> - If no (`False`), we must search to the right: `lo = mid + 1`.
 
-### Four Standard Forms of `check(mid)`
+For searching in a sorted array, remember this **foolproof rule**:
 
-The question to answer is "what is the first position satisfying which condition," not "should this be `>` or `>=`." Rephrasing the problem this way fixes the comparison operator.
-
-Four boundaries map to four forms of `check(mid)`:
-
-| Answer needed | `check(mid)` | Final answer |
-|---|---|---|
-| First `>= target` | `nums[mid] >= target` | `lo` |
-| First `> target` | `nums[mid] > target` | `lo` |
-| Last `<= target` | `nums[mid] > target` | `lo - 1` |
-| Last `< target` | `nums[mid] >= target` | `lo - 1` |
-
-Rule of thumb:
-
-> For "first," write the condition directly.
-> For "last," find the first position on its right, then subtract one.
-
-Example with `nums = [1, 3, 3, 3, 5, 7]`:
-
-First `>= 3`:
-
-```text
-check(mid) = nums[mid] >= 3
-F T T T T T
-  ↑ answer (index 1)
-```
-
-First `> 3`:
-
-```text
-check(mid) = nums[mid] > 3
-F F F F T T
-        ↑ answer (index 4)
-```
-
-Last `<= 3`: find first `> 3`, then subtract one.
-
-```text
-check(mid) = nums[mid] > 3
-answer = lo - 1 = 3
-```
-
-Last `< 3`: find first `>= 3`, then subtract one.
-
-```text
-check(mid) = nums[mid] >= 3
-answer = lo - 1 = 0
-```
-
-Exact-match search, the Binary Search problem itself, reads "find the first `>= target`, then verify":
-
-```python
-check(mid) = nums[mid] >= target
-
-if lo < len(nums) and nums[lo] == target:
-    return lo
-return -1
-```
-
-`nums[mid] == target` cannot be used as `check` directly, because it is not monotonic over the array:
-
-```text
-False False True False False
-```
-
-The structure the template requires is:
-
-```text
-False False False | True True True
-                  ↑ boundary
-```
-
-Rule of thumb: `>=` finds the left boundary, `>` finds the right boundary past any duplicates; subtract one from the corresponding boundary whenever "last" is needed.
-
-### When the Direction Flips, the Comparisons Mirror
-
-The table above assumes the compared quantity `f(mid)` (e.g. `nums[mid]`) is non-decreasing as `mid` grows. That holds for a sorted array, but not every problem satisfies it — in Koko Eating Bananas, `hours_needed(speed)` is non-increasing as `speed` grows (a higher speed takes no more time). When the direction reverses, the comparisons mirror as a whole:
-
-| Direction of `f(mid)` | Answer needed | `check(mid)` | Final answer |
+| Target to Find | How to write `check(mid)` | Final Answer | Rule of Thumb |
 |---|---|---|---|
-| Non-decreasing | First `>= target` | `f(mid) >= target` | `lo` |
-| Non-decreasing | Last `<= target` | `f(mid) > target` | `lo - 1` |
-| Non-increasing | First `<= target` | `f(mid) <= target` | `lo` |
-| Non-increasing | Last `>= target` | `f(mid) < target` | `lo - 1` |
+| **First $\ge target$** | `nums[mid] >= target` | `lo` | **For "First", write condition directly** |
+| **First $> target$** | `nums[mid] > target` | `lo` | **For "First", write condition directly** |
+| **Last $\le target$** | `nums[mid] > target` | `lo - 1` | **For "Last", find its right neighbor (First $>$), then subtract 1** |
+| **Last $< target$** | `nums[mid] >= target` | `lo - 1` | **For "Last", find its right neighbor (First $\ge$), then subtract 1** |
 
-Koko falls in the "non-increasing, first `<= target`" row: `check(mid) = hours_needed(mid) <= h`, returned directly as `lo` — matching the form already used in the Koko subsection of Module 2.
+> 💡 **Golden Rule**:
+> 1. **To find "First"**: write the exact condition desired; return `lo`.
+> 2. **To find "Last"**: find the "First" of the opposing right neighbor, then return `lo - 1`.
 
-The seven problems sorted into this table:
+**What about inverse monotonic relationships (e.g., Koko Bananas, higher speed = less hours)?**
+No mirror rule gymnastics needed! Just follow plain intuition:
+- Ask: "Does speed `mid` finish within allowed hours?"
+- Write: `hours_needed(mid) <= h`.
+- If True, `hi = mid` to try smaller speeds; if False, `lo = mid + 1`. Done!
 
-| Category | Problems |
-|---|---|
-| Non-decreasing + `>=`/`>` | Binary Search, Search a 2D Matrix, Time Based Key-Value Store |
-| Non-increasing + `<=`/`<` | Koko Eating Bananas |
-| Structural exception, not a value-vs-threshold comparison | Find Minimum in Rotated Sorted Array (compares against `nums[-1]`, not an external threshold), Search in Rotated Sorted Array (key transform), Median of Two Sorted Arrays (partition balance condition) |
+---
 
-The last category has no fixed comparison operator to plug in — `check(mid)` has to be constructed individually, following the derivation in each problem's Module 2 subsection.
+#### Step 3: Blank 3 — How to handle the return value?
 
-### Two Ways to Set the Boundary Sentinel
+When loop terminates (`lo == hi`), wrap up based on problem goal:
+1. **Exact match query (LC 704, LC 74)**:
+   - Check in-bounds and equality: `if lo < len(nums) and nums[lo] == target: return lo`, else return `-1`.
+2. **Answer range / extreme value (LC 875, LC 153)**:
+   - Directly return `lo` (or `nums[lo]`), which is the minimal viable solution.
+3. **Last element matching query (LC 981)**:
+   - Return `lo - 1` (if `lo == 0`, no valid record exists).
 
-| Setup | Meaning | When to use |
-|---|---|---|
-| One past the end | `hi` is set one position outside the search space, e.g. `len(nums)` | The target may not exist; a "not found" return value is needed |
-| Always-true boundary | `hi` is set to a position inside the search space that is known to satisfy `check` | The predicate's truth at that position can be shown directly, with no extra case |
+---
 
-Setup for each of the seven problems:
+### 3. Seven Canonical Problems Fill-in Matrix
 
-| Problem | Search space | Sentinel setup |
-|---|---|---|
-| Binary Search | index `[0, n]` | One past the end |
-| Search a 2D Matrix | flattened index `[0, m*n]` | One past the end |
-| Koko Eating Bananas | speed `[1, max(piles)]` | Always-true boundary: at speed `max(piles)`, each pile takes at most 1 hour |
-| Find Minimum in Rotated Sorted Array | index `[0, n-1]` | Always-true boundary: `nums[n-1] <= nums[n-1]` always holds |
-| Search in Rotated Sorted Array | index `[0, n]` | One past the end |
-| Time Based Key-Value Store | index `[0, len(timestamps)]` | One past the end |
-| Median of Two Sorted Arrays | partition point `[0, m]` | Always-true boundary: the out-of-range side is replaced with `+inf` |
+| Problem | Blank 1: `[lo, hi]` | Blank 2: `check(mid)` Predicate | Blank 3: Return Handling |
+|---|---|---|---|
+| **LC 704. Binary Search** | `0, len(nums)` | `nums[mid] >= target` | Verify `lo < n and nums[lo] == target`, else `-1` |
+| **LC 74. Search a 2D Matrix** | `0, m * n` | `matrix[mid // n][mid % n] >= target` | Verify equality, else `False` |
+| **LC 875. Koko Eating Bananas** | `1, max(piles)` | `hours_needed(mid) <= h` | Return `lo` directly |
+| **LC 153. Find Min in Rotated Array** | `0, len(nums) - 1` | `nums[mid] <= nums[-1]` | Return `nums[lo]` directly |
+| **LC 33. Search in Rotated Array** | `0, len(nums)` | Key transform / classic sorted-half | Verify `nums[lo] == target`, else `-1` |
+| **LC 981. Time Based KV Store** | `0, len(entries)` | `entry[0] > timestamp` | Return `entries[lo - 1][1]` (or empty if `lo == 0`) |
+| **LC 4. Median of Two Sorted Arrays** | `0, m` (shorter array) | `A[mid] >= B[half - mid - 1]` | Compute median from partition extremes |
 
-### Common Mistakes
-
-| Issue | Effect |
-|---|---|
-| `check` is not monotonic over the search space | Binary search fails; the template's correctness argument no longer holds |
-| `mid` computed as `lo + (hi - lo) // 2`, but the `False` branch omits `+ 1` | `lo` stops advancing; infinite loop |
-| No equality check after finding the boundary | An exact-match problem treats "nearest position" as "position exists" |
-| Sentinel set to one past the end, but the return value is used without a bounds check | The return value equals `hi`, which points to a position that does not exist |
+---
 
 ## Module 2: Mapping Each of the Seven Problems
 
@@ -589,20 +480,42 @@ class Solution:
         if (m + n) % 2 == 1:
             return float(max_left)
 
-        min_right = min(a_right, b_\right)
-        return (max_left + min_\right) / 2
+        min_right = min(a_right, b_right)
+        return (max_left + min_right) / 2
 ```
 
 </details>
 
-## Module 3: Final Checks Before an Interview
+## Module 3: Pre-Interview Checklist
 
-1. Is the search space an array index, an answer range, or a partition point?
-2. What is `check(mid)`? Is it monotonic in `mid`?
-3. Is the answer "the first True" or "the last False"?
-4. Does `hi` use one-past-the-end, or an always-true boundary?
-5. Does the boundary need verification after it is found, or can it be used directly?
+3-Step Fill-in Checklist:
+1. **Blank 1 (Search Space)**: Array index `[0, n]` or answer range `[min, max]`?
+2. **Blank 2 (Predicate)**: For "First" write directly; for "Last" find right neighbor and subtract 1; for answer ranges ask "is it viable"?
+3. **Blank 3 (Return)**: Verify `nums[lo] == target` for exact matches; take `lo - 1` for last element.
 
-One sentence to keep:
+Finally, remember:
 
-> Binary search does not locate a target value. It locates the boundary of a monotonic predicate.
+> Binary search does not look for a value, but for a transition boundary; simply fill in Search Space, Predicate, and Return Value.
+
+
+## Module 4: Binary Search High-Frequency Extensions
+
+### Majority Element in Sorted Array via Sublinear Binary Search Probe
+
+#### Core Mental Model (Probe Sampling + Binary Search Verification)
+Elements with frequency $> \lfloor n/3 \rfloor$ must span across quantile indices `n // 3` or `2 * n // 3`. Sample at most 2 candidates at these probe points, then count exact frequency via `bisect_right - bisect_left` in $O(\log n)$ time. Total time is strictly $O(\log n)$!
+
+```python
+from bisect import bisect_left, bisect_right
+from typing import List
+
+def findMajorityElementsSorted(nums: List[int]) -> List[int]:
+    n = len(nums)
+    if not nums: return []
+    threshold = n // 3
+    res = []
+    for cand in {nums[n // 3], nums[(2 * n) // 3]}:
+        if bisect_right(nums, cand) - bisect_left(nums, cand) > threshold:
+            res.append(cand)
+    return sorted(res)
+```

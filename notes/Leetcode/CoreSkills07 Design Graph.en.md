@@ -467,8 +467,6 @@ In technical interviews across rounds, interviewers frequently expand this found
 6. **Island Perimeter (LC 463)**: An algebraic shortcut computes $\text{Perimeter} = 4 \times \text{lands} - 2 \times \text{adjacent neighbors}$, achieving strictly $O(1)$ auxiliary space in a single stateless scan.
 7. **Single-Pass Aggregation**: Accumulate individual component sizes during queue extraction, dynamically updating total island count and running maximum area in a single pass.
 
-> 💡 **Production Code & Full Derivations**: Complete Python implementations, edge-case defenses, and complexity tables are documented in [Review 1 · Core Fundamentals (Flashcards) · Module 3 Card 15](Review01%20Common%20Fundamentals.en.md#15-number-of-islands--master-variant-atlas).
-
 ---
 
 ### 2. Max Area of Island
@@ -2496,3 +2494,51 @@ class Solution:
 One sentence to keep in mind:
 
 > The first step in a graph problem is not choosing an algorithm, it is figuring out what the graph actually looks like: what the nodes are, what the edges are, whether the edges are weighted or directed, and how many starting points there are. Once that is settled, the usable algorithms narrow down to one or two.
+
+
+## Module 7: High-Frequency Graph Extensions
+
+### 1. LC 1293. Shortest Path in a Grid with Obstacles Elimination
+
+#### Core Mental Model (State-Augmented BFS + Dominance Pruning)
+Augment BFS state from `(r, c)` to `(r, c, remaining_k)`:
+- `visited[r][c]` tracks the maximum elimination quota with which this coordinate has been reached. If reached again with equal or lower budget, prune immediately!
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    def shortestPath(self, grid: List[List[int]], k: int) -> int:
+        m, n = len(grid), len(grid[0])
+        if k >= m + n - 3:
+            return m + n - 2
+
+        q = deque([(0, 0, k, 0)])
+        visited = [[-1] * n for _ in range(m)]
+        visited[0][0] = k
+
+        while q:
+            r, c, rem_k, steps = q.popleft()
+            if r == m - 1 and c == n - 1:
+                return steps
+
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n:
+                    nxt_k = rem_k - grid[nr][nc]
+                    if nxt_k > visited[nr][nc]:
+                        visited[nr][nc] = nxt_k
+                        q.append((nr, nc, nxt_k, steps + 1))
+
+        return -1
+```
+
+---
+
+### 2. LC 269. Alien Dictionary
+
+#### Core Mental Model (Pairwise Lexicographical Order + Kahn Topological Sort)
+1. Build directed edges `w1[k] -> w2[k]` on the first differing characters of adjacent words.
+2. Prefix invalidity check: if `w1` is longer than `w2` and starts with `w2`, return `""`.
+3. Cycle detection via Kahn BFS: if output length < distinct characters count, a cycle exists.
