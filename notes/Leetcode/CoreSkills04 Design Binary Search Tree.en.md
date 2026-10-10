@@ -1345,3 +1345,68 @@ def build_comment_tree(flat_comments):
             roots.append(node)
     return roots
 ```
+
+---
+
+### 4. LC 968. Binary Tree Cameras · TikTok / ByteDance Frequent
+
+#### Problem Sketch
+Place cameras on nodes so every node is monitored. A camera covers **itself, its parent, and its children**. Return the minimum number of cameras. Node values are irrelevant; only structure matters. Empty tree → `0`.
+
+**Signature**: `Solution.minCameraCover(self, root: Optional[TreeNode]) -> int`
+
+**Examples**
+
+```text
+Input:  root = [0,0,null,0,0]
+Output: 1
+
+Input:  root = [0,0,null,0,null,0,null,null,0]
+Output: 2
+
+[0]        → 1
+[0,0,0]    → 1 (camera on root)
+[] / null  → 0
+```
+
+#### Core Mental Model (Post-Order Three-State Greedy)
+Label nodes bottom-up (null = already covered, no camera):
+
+| State | Meaning |
+|-------|---------|
+| `0 NOT_COVERED` | Subtree root not yet monitored |
+| `1 COVERED` | Covered by a child’s camera; no camera here |
+| `2 HAS_CAMERA` | Camera installed here |
+
+Transitions (children first):
+
+1. Any child `NOT_COVERED` → install here, return `HAS_CAMERA`;
+2. Else any child `HAS_CAMERA` → already covered, return `COVERED`;
+3. Else both covered with no cameras → mark `NOT_COVERED` and hope the parent installs (cheaper).
+
+If the root is still `NOT_COVERED` after DFS, add one camera on the root. $O(n)$ time/space; do not search $2^n$ placements.
+
+```python
+from typing import Optional
+
+class Solution:
+    def minCameraCover(self, root: Optional[TreeNode]) -> int:
+        NOT_COVERED, COVERED, HAS_CAMERA = 0, 1, 2
+        self.ans = 0
+
+        def dfs(node: Optional[TreeNode]) -> int:
+            if not node:
+                return COVERED
+            left = dfs(node.left)
+            right = dfs(node.right)
+            if left == NOT_COVERED or right == NOT_COVERED:
+                self.ans += 1
+                return HAS_CAMERA
+            if left == HAS_CAMERA or right == HAS_CAMERA:
+                return COVERED
+            return NOT_COVERED
+
+        if dfs(root) == NOT_COVERED:
+            self.ans += 1
+        return self.ans
+```

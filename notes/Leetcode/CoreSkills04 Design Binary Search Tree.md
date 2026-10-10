@@ -1345,3 +1345,69 @@ def build_comment_tree(flat_comments):
             roots.append(node)
     return roots
 ```
+
+---
+
+### 4. LC 968. 监控二叉树 (Binary Tree Cameras) · TikTok / ByteDance 高频
+
+#### 题面要点
+在若干节点上放置摄像头；每个摄像头可监控**自己、父节点、左右孩子**。求覆盖整棵树的最少摄像头数。节点值无意义，只关心树形。空树返回 `0`。
+
+**签名**：`Solution.minCameraCover(self, root: Optional[TreeNode]) -> int`
+
+**示例**
+
+```text
+Input:  root = [0,0,null,0,0]
+Output: 1
+# 在左子上放 1 个即可全覆盖
+
+Input:  root = [0,0,null,0,null,0,null,null,0]
+Output: 2
+
+[0]        → 1
+[0,0,0]    → 1（摄像头放根）
+[] / null  → 0
+```
+
+#### 核心心智（后序三状态贪心）
+自底向上给节点标状态（空节点视为「已覆盖、无摄像头」）：
+
+| 状态 | 含义 |
+|------|------|
+| `0 NOT_COVERED` | 该子树根尚未被监控 |
+| `1 COVERED` | 已被孩子上的摄像头覆盖，自身未装 |
+| `2 HAS_CAMERA` | 本节点装了摄像头 |
+
+转移（先左右孩子，再决定自己）：
+
+1. 任一孩子是 `NOT_COVERED` → **必须**在本节点装摄像头，返回 `HAS_CAMERA`；
+2. 否则若任一孩子是 `HAS_CAMERA` → 自己已被覆盖，返回 `COVERED`；
+3. 否则两孩子都已覆盖但都没装摄像头 → 自己先标 `NOT_COVERED`，指望父节点来装（更省）。
+
+整棵树 DFS 结束后若根仍是 `NOT_COVERED`，再给根补一盏。时间 / 空间 $O(n)$；不要枚举 $2^n$ 装或不装。
+
+```python
+from typing import Optional
+
+class Solution:
+    def minCameraCover(self, root: Optional[TreeNode]) -> int:
+        NOT_COVERED, COVERED, HAS_CAMERA = 0, 1, 2
+        self.ans = 0
+
+        def dfs(node: Optional[TreeNode]) -> int:
+            if not node:
+                return COVERED  # 空节点：已覆盖、无摄像头
+            left = dfs(node.left)
+            right = dfs(node.right)
+            if left == NOT_COVERED or right == NOT_COVERED:
+                self.ans += 1
+                return HAS_CAMERA
+            if left == HAS_CAMERA or right == HAS_CAMERA:
+                return COVERED
+            return NOT_COVERED
+
+        if dfs(root) == NOT_COVERED:
+            self.ans += 1
+        return self.ans
+```
