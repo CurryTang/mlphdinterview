@@ -1348,7 +1348,7 @@ def build_comment_tree(flat_comments):
 
 ---
 
-### 4. LC 968. Binary Tree Cameras · TikTok / ByteDance Frequent
+### 4. LC 968. Binary Tree Cameras
 
 #### Problem Sketch
 Place cameras on nodes so every node is monitored. A camera covers **itself, its parent, and its children**. Return the minimum number of cameras. Node values are irrelevant; only structure matters. Empty tree → `0`.

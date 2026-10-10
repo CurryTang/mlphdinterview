@@ -1348,7 +1348,7 @@ def build_comment_tree(flat_comments):
 
 ---
 
-### 4. LC 968. 监控二叉树 (Binary Tree Cameras) · TikTok / ByteDance 高频
+### 4. LC 968. 监控二叉树 (Binary Tree Cameras)
 
 #### 题面要点
 在若干节点上放置摄像头；每个摄像头可监控**自己、父节点、左右孩子**。求覆盖整棵树的最少摄像头数。节点值无意义，只关心树形。空树返回 `0`。
