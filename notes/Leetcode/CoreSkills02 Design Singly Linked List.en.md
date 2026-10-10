@@ -419,6 +419,27 @@ This problem isolates the reversal template itself. The structure is minimal: st
 | Invariant | `prev` is always the head of the already reversed prefix |
 | Time / Space | `O(n) / O(1)` |
 
+#### Problem Statement (LC 206)
+
+Given the `head` of a singly linked list, reverse the list, and return the reversed list.
+
+**Examples**
+
+```text
+Input: head = [1,2,3,4,5]
+Output: [5,4,3,2,1]
+
+Input: head = [1,2]
+Output: [2,1]
+
+Input: head = []
+Output: []
+```
+
+**Constraints**: number of nodes in `[0, 5000]`; `-5000 <= Node.val <= 5000`.
+
+**Follow up**: Can you reverse the list both iteratively and recursively?
+
 #### Quick Coding: Reverse Linked List
 
 ```python
@@ -457,6 +478,27 @@ This combines a dummy head with two-pointer merging. Since both lists are alread
 | Composed idioms | Dummy head + merge |
 | Invariant | The prefix before `tail.next` is always sorted |
 | Time / Space | `O(n + m) / O(1)` |
+
+#### Problem Statement (LC 21)
+
+You are given the heads of two sorted linked lists `list1` and `list2`.
+
+Merge the two lists into one sorted list by splicing together the nodes of the first two lists. Return the head of the merged linked list.
+
+**Examples**
+
+```text
+Input: list1 = [1,2,4], list2 = [1,3,4]
+Output: [1,1,2,3,4,4]
+
+Input: list1 = [], list2 = []
+Output: []
+
+Input: list1 = [], list2 = [0]
+Output: [0]
+```
+
+**Constraints**: each list length in `[0, 50]`; both lists sorted non-decreasing.
 
 #### Quick Coding: Merge Two Sorted Lists
 
@@ -505,6 +547,27 @@ This problem reads the structure without changing `next`. The main concern is th
 | Invariant | If a cycle exists, `fast` eventually catches `slow` inside the cycle |
 | Time / Space | `O(n) / O(1)` |
 
+#### Problem Statement (LC 141)
+
+Given `head`, the head of a linked list, determine if the linked list has a cycle in it.
+
+A cycle exists if some node can be reached again by continuously following `next`. Internally `pos` denotes where the tail connects; it is **not** passed as a parameter. Return `true` if there is a cycle, otherwise `false`.
+
+**Examples**
+
+```text
+Input: head = [3,2,0,-4], pos = 1
+Output: true
+
+Input: head = [1,2], pos = 0
+Output: true
+
+Input: head = [1], pos = -1
+Output: false
+```
+
+**Constraints**: number of nodes in `[0, 10^4]`.
+
 #### Quick Coding: Linked List Cycle
 
 ```python
@@ -543,6 +606,34 @@ This problem combines three idioms: find the middle with fast-slow pointers, rev
 | Composed idioms | Find middle + reverse second half + interleave merge |
 | Invariant | After the split, both halves are independent; merging always saves both successors first |
 | Time / Space | `O(n) / O(1)` |
+
+#### Problem Statement (LC 143)
+
+You are given the head of a singly linked list:
+
+```text
+L0 → L1 → … → Ln-1 → Ln
+```
+
+Reorder it to:
+
+```text
+L0 → Ln → L1 → Ln-1 → L2 → Ln-2 → …
+```
+
+You may not modify node values—only rearrange pointers. The function returns nothing; mutate the list in place.
+
+**Examples**
+
+```text
+Input: head = [1,2,3,4]
+Output: [1,4,2,3]
+
+Input: head = [1,2,3,4,5]
+Output: [1,5,2,4,3]
+```
+
+**Constraints**: number of nodes in `[1, 5·10^4]`.
 
 #### Quick Coding: Reorder List
 
@@ -600,6 +691,25 @@ The fixed-gap two-pointer technique handles the position, and the dummy head han
 | Invariant | `fast` and `slow` remain `n + 1` nodes apart |
 | Time / Space | `O(n) / O(1)` |
 
+#### Problem Statement (LC 19)
+
+Given the `head` of a linked list, remove the `nth` node from the end of the list and return its head.
+
+**Examples**
+
+```text
+Input: head = [1,2,3,4,5], n = 2
+Output: [1,2,3,5]
+
+Input: head = [1], n = 1
+Output: []
+
+Input: head = [1,2], n = 1
+Output: [1]
+```
+
+**Constraints**: list length `sz` satisfies `1 <= n <= sz <= 30`.
+
 #### Quick Coding: Remove Nth Node From End of List
 
 ```python
@@ -645,6 +755,29 @@ The `next` structure is simple; the real information sits in `random`. The clear
 | Composed idioms | `old -> new` hash mapping |
 | Invariant | Every old node creates exactly one copy; all copied pointers are read from the map |
 | Time / Space | `O(n) / O(n)` |
+
+#### Problem Statement (LC 138)
+
+A linked list of length `n` is given where each node has an extra `random` pointer that may point to any node or `null`.
+
+Construct a **deep copy**: exactly `n` new nodes; `next` and `random` of the copy must point only to nodes in the copied list. Return the head of the copied list.
+
+I/O uses pairs `[val, random_index]`; your code only receives `head`.
+
+**Examples**
+
+```text
+Input: head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
+Output: [[7,null],[13,0],[11,4],[10,2],[1,0]]
+
+Input: head = [[1,1],[2,1]]
+Output: [[1,1],[2,1]]
+
+Input: head = [[3,null],[3,0],[3,null]]
+Output: [[3,null],[3,0],[3,null]]
+```
+
+**Constraints**: `0 <= n <= 1000`.
 
 #### Quick Coding: Copy List With Random Pointer
 
@@ -693,6 +826,28 @@ Here the linked lists are just the storage format for digits; the core operation
 | Composed idioms | Dummy head + carry propagation |
 | Invariant | `carry` stores the overflow produced by the previous digit |
 | Time / Space | `O(n) / O(n)`; auxiliary space is `O(1)` if the output list is excluded |
+
+#### Problem Statement (LC 2)
+
+You are given two non-empty linked lists representing two non-negative integers. Digits are stored in **reverse** order; each node holds one digit. Add the two numbers and return the sum as a linked list.
+
+You may assume the two numbers do not contain leading zeros, except the number 0 itself.
+
+**Examples**
+
+```text
+Input: l1 = [2,4,3], l2 = [5,6,4]
+Output: [7,0,8]
+Explanation: 342 + 465 = 807
+
+Input: l1 = [0], l2 = [0]
+Output: [0]
+
+Input: l1 = [9,9,9,9,9,9,9], l2 = [9,9,9,9]
+Output: [8,9,9,9,0,0,0,1]
+```
+
+**Constraints**: each list length in `[1, 100]`; `0 <= Node.val <= 9`.
 
 #### Quick Coding: Add Two Numbers
 
@@ -744,6 +899,31 @@ This is the transfer problem for Floyd's algorithm. Array indices act as node po
 | Invariant | `next(i) = nums[i]` forms a functional graph with a cycle |
 | Time / Space | `O(n) / O(1)` |
 
+#### Problem Statement (LC 287)
+
+Given an array of integers `nums` containing `n + 1` integers where each integer is in `[1, n]` inclusive.
+
+There is only one repeated number in `nums`; return it.
+
+You must solve the problem **without modifying** `nums` and using only constant extra space.
+
+**Examples**
+
+```text
+Input: nums = [1,3,4,2,2]
+Output: 2
+
+Input: nums = [3,1,3,4,2]
+Output: 3
+
+Input: nums = [3,3,3,3,3]
+Output: 3
+```
+
+**Constraints**: `1 <= n <= 10^5`; `nums.length == n + 1`.
+
+**Follow up**: Prove a duplicate must exist; can you do linear time?
+
 #### Quick Coding: Find The Duplicate Number
 
 ```python
@@ -787,6 +967,30 @@ This extends "linked-list problems" into data-structure design. The hash map pro
 | Composed idioms | Doubly linked list + hash map + head/tail sentinels |
 | Invariant | `left.next` is always the LRU node, and `right.prev` is always the MRU node |
 | Time / Space | `O(1)` average time per operation, `O(capacity)` space |
+
+#### Problem Statement (LC 146)
+
+Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
+
+Implement `LRUCache`:
+
+- `LRUCache(capacity)` — initialize with positive capacity
+- `get(key)` — return the value if present, else `-1` (counts as a use)
+- `put(key, value)` — insert or update; if capacity is exceeded, evict the least recently used key
+
+Both `get` and `put` must run in average $O(1)$ time.
+
+**Example**
+
+```text
+Input
+["LRUCache","put","put","get","put","get","put","get","get","get"]
+[[2],[1,1],[2,2],[1],[3,3],[2],[4,4],[1],[3],[4]]
+Output
+[null,null,null,1,null,-1,null,-1,3,4]
+```
+
+**Constraints**: `1 <= capacity <= 3000`; at most `2·10^5` calls to `get`/`put`.
 
 #### Quick Coding: LRU Cache
 
@@ -875,6 +1079,27 @@ This directly reuses two-list merging, but lifts it to multiple lists. The most 
 | Invariant | After each merge round, every intermediate list remains sorted |
 | Time / Space | `O(N log k) / O(1)` extra linked-list space, excluding the temporary list container |
 
+#### Problem Statement (LC 23)
+
+You are given an array of `k` linked lists `lists`, each sorted in ascending order.
+
+Merge all the linked lists into one sorted linked list and return it.
+
+**Examples**
+
+```text
+Input: lists = [[1,4,5],[1,3,4],[2,6]]
+Output: [1,1,2,3,4,4,5,6]
+
+Input: lists = []
+Output: []
+
+Input: lists = [[]]
+Output: []
+```
+
+**Constraints**: `0 <= k <= 10^4`; total nodes across all lists `<= 10^4`.
+
 #### Quick Coding: Merge K Sorted Lists
 
 ```python
@@ -937,6 +1162,28 @@ This is the full reversal template constrained to a window of length `k`, repeat
 | Composed idioms | Dummy head + segment reversal |
 | Invariant | `group_prev.next` always points to the head of the current segment |
 | Time / Space | `O(n) / O(1)` |
+
+#### Problem Statement (LC 25)
+
+Given the `head` of a linked list, reverse the nodes of the list `k` at a time, and return the modified list.
+
+`k` is a positive integer not greater than the list length. If the number of nodes is not a multiple of `k`, the leftover nodes at the end should remain as they are.
+
+You may not alter node values—only pointers.
+
+**Examples**
+
+```text
+Input: head = [1,2,3,4,5], k = 2
+Output: [2,1,4,3,5]
+
+Input: head = [1,2,3,4,5], k = 3
+Output: [3,2,1,4,5]
+```
+
+**Constraints**: `1 <= k <= n <= 5000`.
+
+**Follow-up**: Can you solve it in $O(1)$ extra memory?
 
 #### Quick Coding: Reverse Nodes In K Group
 
@@ -1073,26 +1320,31 @@ class LRUCache:
 1. Slow/fast pointers locate the midpoint;
 2. Reverse the second half in-place;
 3. Compare both halves from ends;
-4. $O(n)$ time, strictly $O(1)$ auxiliary space.
+4. Reverse the second half again and reconnect to restore the list (good engineering habit); $O(n)$ time, strictly $O(1)$ auxiliary space.
 
 ```python
 class Solution:
     def isPalindrome(self, head: Optional[ListNode]) -> bool:
         if not head or not head.next:
             return True
+
+        # 1. Midpoint (slow ends at last node of first half)
         slow = fast = head
         while fast.next and fast.next.next:
             slow = slow.next
             fast = fast.next.next
 
+        # 2. Reverse second half in-place
         prev, curr = None, slow.next
         while curr:
             nxt = curr.next
             curr.next = prev
             prev = curr
             curr = nxt
+        second_head = prev  # new head of reversed second half
 
-        p1, p2 = head, prev
+        # 3. Compare both halves
+        p1, p2 = head, second_head
         is_pal = True
         while p2:
             if p1.val != p2.val:
@@ -1100,6 +1352,15 @@ class Solution:
                 break
             p1 = p1.next
             p2 = p2.next
+
+        # 4. Reverse second half again and reconnect via slow.next
+        prev, curr = None, second_head
+        while curr:
+            nxt = curr.next
+            curr.next = prev
+            prev = curr
+            curr = nxt
+        slow.next = prev
 
         return is_pal
 ```
