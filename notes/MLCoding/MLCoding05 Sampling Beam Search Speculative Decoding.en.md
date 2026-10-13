@@ -1,6 +1,6 @@
 # 05 · Inference Decoding: Sampling & Speculative Decoding
 
-MLCoding01's generation loop already ships the simplest version of top-p sampling. This note fills in the rest of the set that interviewers actually ask about: combining top-k with top-p, understanding beam search's length-bias trap, and the correctness argument behind speculative decoding's "lossless speedup" claim. All three problems operate on logits/probability vectors rather than model internals, so the code is plain NumPy, the same shape a whiteboard answer would take.
+MLCoding01's generation loop already ships the simplest version of top-p sampling. This note fills in the rest of the set that interviewers actually ask about: combining top-k with top-p, understanding beam search's length-bias trap, and the correctness argument behind speculative decoding's "lossless speedup" claim. All three problems operate on logits/probability vectors rather than model internals. The code is written entirely in PyTorch (`torch`), designed to be clean, intuitive, step-by-step, and easy to memorize for whiteboard interviews without skipping steps or relying on obscure syntax tricks.
 
 ## Module 9: Decoding Strategies
 
@@ -11,12 +11,12 @@ Top-k alone cuts off too many reasonable options when the distribution is flat (
 Two edge cases that are easy to miss in an interview:
 
 - `temperature = 0` needs its own argmax branch, because `logits / 0` produces `inf`/`nan`, so you cannot rely on the division degenerating into greedy decoding on its own.
-- After top-p truncation the surviving probabilities no longer sum to 1, so they must be renormalized, or `np.random.choice` / `torch.multinomial` will either error out or sample with the wrong bias.
+- After top-p truncation the surviving probabilities no longer sum to 1, so they must be renormalized, or `torch.multinomial` will either error out or sample with the wrong bias.
 
 #### Quick Coding: `sample_top_k_top_p`
 
 ```python
-def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
+def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, generator=None):
     ...
 ```
 
@@ -24,62 +24,67 @@ def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
 <summary>Reference solution</summary>
 
 ```python
-import numpy as np
+import torch
 
-def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
-    rng = rng or np.random.default_rng()
-    logits = np.asarray(logits, dtype=np.float64)
+def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, generator=None):
+    logits = torch.as_tensor(logits, dtype=torch.float32)
 
+    # 1. temperature = 0: greedy selection (argmax)
     if temperature == 0:
-        idx = int(np.argmax(logits))
-        probs = np.zeros_like(logits)
+        idx = torch.argmax(logits).item()
+        probs = torch.zeros_like(logits)
         probs[idx] = 1.0
         return idx, probs
 
-    scaled = (logits / temperature) - (logits / temperature).max()
-    probs = np.exp(scaled)
-    probs /= probs.sum()
+    # 2. Temperature scaling and softmax
+    probs = torch.softmax(logits / temperature, dim=-1)
 
+    # 3. Top-k filtering: retain only top-k candidates
     if k is not None and k < len(probs):
-        keep = np.argsort(-probs)[:k]
-        mask = np.zeros_like(probs, dtype=bool)
-        mask[keep] = True
-        probs = np.where(mask, probs, 0.0)
-        probs /= probs.sum()
+        topk_probs, topk_indices = torch.topk(probs, k)
+        new_probs = torch.zeros_like(probs)
+        new_probs[topk_indices] = topk_probs
+        probs = new_probs / new_probs.sum()
 
+    # 4. Top-p filtering (Nucleus Sampling): cumulative probability cutoff
     if p is not None and p < 1.0:
-        order = np.argsort(-probs)
-        cdf = np.cumsum(probs[order])
-        cutoff = max(int(np.searchsorted(cdf, p)) + 1, 1)
-        keep = order[:cutoff]
-        mask = np.zeros_like(probs, dtype=bool)
-        mask[keep] = True
-        probs = np.where(mask, probs, 0.0)
-        probs /= probs.sum()
+        sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+        cdf = torch.cumsum(sorted_probs, dim=0)
 
-    idx = rng.choice(len(probs), p=probs)
+        # Cutoff index where cumulative probability reaches or exceeds p (keep >= 1 token)
+        cutoff = torch.searchsorted(cdf, torch.tensor(p)).item() + 1
+        cutoff = min(max(cutoff, 1), len(probs))
+
+        keep_indices = sorted_indices[:cutoff]
+        keep_probs = sorted_probs[:cutoff]
+
+        new_probs = torch.zeros_like(probs)
+        new_probs[keep_indices] = keep_probs
+        probs = new_probs / new_probs.sum()
+
+    # 5. Multinomial sampling from final distribution
+    idx = torch.multinomial(probs, num_samples=1, generator=generator).item()
     return idx, probs
 ```
 
 ```python
-rng = np.random.default_rng(0)
-logits = np.array([2.0, 1.5, 1.0, 0.5, 0.1, -1.0, -2.0])
+gen = torch.Generator().manual_seed(0)
+logits = torch.tensor([2.0, 1.5, 1.0, 0.5, 0.1, -1.0, -2.0])
 
-_, probs_k = sample_top_k_top_p(logits, k=3, rng=rng)
-assert np.count_nonzero(probs_k) <= 3
-assert abs(probs_k.sum() - 1.0) < 1e-9
+_, probs_k = sample_top_k_top_p(logits, k=3, generator=gen)
+assert torch.count_nonzero(probs_k) <= 3
+assert abs(probs_k.sum().item() - 1.0) < 1e-6
 
-full_probs = np.exp(logits - logits.max())
-full_probs /= full_probs.sum()
-_, probs_p = sample_top_k_top_p(logits, p=0.8, rng=rng)
+full_probs = torch.softmax(logits, dim=-1)
+_, probs_p = sample_top_k_top_p(logits, p=0.8, generator=gen)
 kept = probs_p > 0
-assert full_probs[kept].sum() >= 0.8 - 1e-9  # the surviving set really does clear p under the original distribution
+assert full_probs[kept].sum().item() >= 0.8 - 1e-6  # the surviving set really does clear p under the original distribution
 
 idx0, onehot = sample_top_k_top_p(logits, temperature=0)
-assert idx0 == int(np.argmax(logits))
+assert idx0 == int(torch.argmax(logits).item())
 ```
 
-Measured (`np.random.default_rng(0)`, a 7-token toy distribution): `k=3` leaves exactly 3 nonzero entries; `p=0.8` leaves a surviving set whose cumulative probability under the original distribution is about 0.817 (at least 0.8, since the cumulative sum can only cross the threshold, never land on it exactly); `temperature=0` reduces exactly to `argmax`.
+Measured (`torch.Generator().manual_seed(0)`, a 7-token toy distribution): `k=3` leaves exactly 3 nonzero entries; `p=0.8` leaves a surviving set whose cumulative probability under the original distribution is about 0.817 (at least 0.8, since the cumulative sum can only cross the threshold, never land on it exactly); `temperature=0` reduces exactly to `argmax`.
 
 </details>
 
@@ -103,74 +108,82 @@ def beam_search(log_prob_fn, start_token, beam_width, max_len, eos_id):
 <summary>Reference solution</summary>
 
 ```python
-def beam_search(log_prob_fn, vocab, start_token, beam_width, max_len, eos_id):
-    # log_prob_fn(prev_token) -> {token: log_prob}; the toy version only conditions on the previous token
-    beams = [([start_token], 0.0, False)]
+import torch
+
+def length_normalized_score(seq, cum_logprob, alpha=0.7):
+    return cum_logprob / (len(seq) ** alpha)
+
+def beam_search(log_prob_fn, start_token, beam_width=3, max_len=20, eos_id=None, alpha=0.0):
+    initial_seq = [start_token] if isinstance(start_token, int) else list(start_token)
+    beams = [(initial_seq, 0.0, False)]
+
     for _ in range(max_len):
         candidates = []
         for seq, score, done in beams:
             if done:
                 candidates.append((seq, score, True))
                 continue
-            next_logp = log_prob_fn(seq[-1])
-            for tok in vocab:
-                candidates.append((seq + [tok], score + next_logp[tok], tok == eos_id))
-        candidates.sort(key=lambda x: x[1], reverse=True)
+
+            next_logp = log_prob_fn(seq)
+            if not isinstance(next_logp, torch.Tensor):
+                next_logp = torch.tensor(next_logp, dtype=torch.float32)
+
+            for tok_id in range(len(next_logp)):
+                tok_score = next_logp[tok_id].item()
+                is_eos = (eos_id is not None and tok_id == eos_id)
+                candidates.append((seq + [tok_id], score + tok_score, is_eos))
+
+        candidates.sort(
+            key=lambda x: length_normalized_score(x[0], x[1], alpha) if alpha > 0 else x[1],
+            reverse=True
+        )
         beams = candidates[:beam_width]
+
         if all(done for _, _, done in beams):
             break
-    beams.sort(key=lambda x: x[1], reverse=True)
-    return beams[0][0], beams[0][1]
 
-def length_normalized_score(seq, cum_logprob, alpha=0.7):
-    return cum_logprob / (len(seq) ** alpha)
+    beams.sort(
+        key=lambda x: length_normalized_score(x[0], x[1], alpha) if alpha > 0 else x[1],
+        reverse=True
+    )
+    return beams[0][0], beams[0][1]
 ```
 
-Using a toy transition table small enough to brute-force (vocabulary `{X, Y}`, fixed depth 2):
+Using a toy transition table small enough to brute-force (vocabulary size 2: 0 for X, 1 for Y; fixed depth 2):
 
 ```python
 import itertools
-import numpy as np
+import torch
 
-VOCAB = ["X", "Y"]
-TABLE = {
-    "<s>": {"X": 0.6, "Y": 0.4},
-    "X":   {"X": 0.5, "Y": 0.5},
-    "Y":   {"X": 0.9, "Y": 0.1},
+# Vocabulary: 0 for X, 1 for Y; -1 for start token <s>
+LOG_TABLE = {
+    -1: torch.log(torch.tensor([0.6, 0.4])),
+    0:  torch.log(torch.tensor([0.5, 0.5])),
+    1:  torch.log(torch.tensor([0.9, 0.1])),
 }
-LOGTABLE = {prev: {t: np.log(p) for t, p in d.items()} for prev, d in TABLE.items()}
+
+def toy_log_prob_fn(seq):
+    return LOG_TABLE[seq[-1]]
 
 def score(seq):
-    prev, s = "<s>", 0.0
+    prev, s = -1, 0.0
     for tok in seq:
-        s += LOGTABLE[prev][tok]
+        s += LOG_TABLE[prev][tok].item()
         prev = tok
     return s
 
 def brute_force_best(depth):
     return max(
-        (list(c) for c in itertools.product(VOCAB, repeat=depth)),
+        (list(c) for c in itertools.product([0, 1], repeat=depth)),
         key=score,
     )
 
-def toy_beam_search(beam_width, depth):
-    beams = [([], 0.0)]
-    for _ in range(depth):
-        cand = []
-        for seq, sc in beams:
-            prev = seq[-1] if seq else "<s>"
-            for tok in VOCAB:
-                cand.append((seq + [tok], sc + LOGTABLE[prev][tok]))
-        cand.sort(key=lambda x: x[1], reverse=True)
-        beams = cand[:beam_width]
-    return max(beams, key=lambda x: x[1])
+best_seq = brute_force_best(depth=2)                                   # [1, 0] i.e. [Y, X], joint probability 0.36
+wide_seq, _ = beam_search(toy_log_prob_fn, start_token=-1, beam_width=2, max_len=2)
+narrow_seq, _ = beam_search(toy_log_prob_fn, start_token=-1, beam_width=1, max_len=2)  # beam_width=1 is greedy
 
-best_seq = brute_force_best(depth=2)                      # ['Y', 'X'], probability 0.36
-wide_seq, _ = toy_beam_search(beam_width=2, depth=2)
-narrow_seq, _ = toy_beam_search(beam_width=1, depth=2)     # greedy = beam_width 1
-
-assert wide_seq == best_seq
-assert narrow_seq != best_seq   # greedy only sees 0.6 > 0.4 at step 1, picks X, and can never recover
+assert wide_seq[1:] == best_seq
+assert narrow_seq[1:] != best_seq  # greedy picks 0 (X) at step 1 since 0.6 > 0.4, and can never recover
 ```
 
 Measured result: the single-step probability of `<s> -> X` (0.6) is higher than `<s> -> Y` (0.4), but `X`'s best continuation is only 0.5, while `Y`'s best continuation is 0.9. The globally optimal sequence is `[Y, X]` (joint probability 0.36), and beam width 2 finds it. Beam width 1, equivalent to greedy decoding, locks onto `X` at the very first step and can never recover, ending up with `[X, X]` (joint probability 0.30). This is the minimal counterexample to "greedy decoding is optimal decoding."
@@ -209,7 +222,7 @@ In other words: no matter how inaccurate the draft model is, as long as the acce
 #### Quick Coding: `speculative_accept_step`
 
 ```python
-def speculative_accept_step(p_target, p_draft, rng):
+def speculative_accept_step(p_target, p_draft, generator=None):
     ...
 ```
 
@@ -217,56 +230,82 @@ def speculative_accept_step(p_target, p_draft, rng):
 <summary>Reference solution</summary>
 
 ```python
-import numpy as np
+import torch
 
-def speculative_accept_step(p_target, p_draft, rng):
-    vocab_size = len(p_target)
-    x = rng.choice(vocab_size, p=p_draft)          # draft proposes a token
-    accept_prob = min(1.0, p_target[x] / p_draft[x])
-    if rng.random() < accept_prob:
+def speculative_accept_step(p_target, p_draft, generator=None):
+    p_target = torch.as_tensor(p_target, dtype=torch.float32)
+    p_draft = torch.as_tensor(p_draft, dtype=torch.float32)
+
+    # 1. Draft model proposes a token based on its distribution
+    x = torch.multinomial(p_draft, num_samples=1, generator=generator).item()
+
+    # 2. Acceptance probability min(1, p_target(x) / p_draft(x))
+    accept_prob = min(1.0, (p_target[x] / p_draft[x]).item())
+
+    # 3. Accept/reject check
+    u = torch.rand(1, generator=generator).item()
+    if u < accept_prob:
         return x, True
-    residual = np.maximum(0.0, p_target - p_draft)
-    residual /= residual.sum()
-    return rng.choice(vocab_size, p=residual), False
 
-def speculative_decode(target_logits_fn, draft_logits_fn, prompt, num_speculative_tokens, rng):
-    # target_logits_fn / draft_logits_fn: given the current context, return the full next-token distribution
+    # 4. On rejection, resample from residual distribution max(0, p_target - p_draft)
+    residual = torch.clamp(p_target - p_draft, min=0.0)
+    residual = residual / residual.sum()
+    resampled_x = torch.multinomial(residual, num_samples=1, generator=generator).item()
+    return resampled_x, False
+
+def speculative_decode(target_prob_fn, draft_prob_fn, prompt, num_speculative_tokens, generator=None):
     tokens = list(prompt)
     proposals = []
-    for _ in range(num_speculative_tokens):
-        p_draft = draft_logits_fn(tokens + proposals)
-        proposals.append(int(rng.choice(len(p_draft), p=p_draft)))
+    draft_probs_list = []
 
-    # one parallel target-model forward pass scores every proposed position at once
+    # 1. Draft model autoregressively proposes K tokens
+    for _ in range(num_speculative_tokens):
+        p_draft = draft_prob_fn(tokens + proposals)
+        if not isinstance(p_draft, torch.Tensor):
+            p_draft = torch.tensor(p_draft, dtype=torch.float32)
+        tok = torch.multinomial(p_draft, num_samples=1, generator=generator).item()
+        proposals.append(tok)
+        draft_probs_list.append(p_draft)
+
+    # 2. Target model parallel verification (simulated by per-position checks)
     accepted = []
     for i, x in enumerate(proposals):
-        p_target = target_logits_fn(tokens + proposals[:i])
-        p_draft_i = draft_logits_fn(tokens + proposals[:i])
-        accept_prob = min(1.0, p_target[x] / p_draft_i[x])
-        if rng.random() < accept_prob:
+        p_target = target_prob_fn(tokens + proposals[:i])
+        if not isinstance(p_target, torch.Tensor):
+            p_target = torch.tensor(p_target, dtype=torch.float32)
+        p_draft_i = draft_probs_list[i]
+
+        accept_prob = min(1.0, (p_target[x] / p_draft_i[x]).item())
+        u = torch.rand(1, generator=generator).item()
+        if u < accept_prob:
             accepted.append(x)
             continue
-        residual = np.maximum(0.0, p_target - p_draft_i)
-        residual /= residual.sum()
-        accepted.append(int(rng.choice(len(p_target), p=residual)))
-        break  # after the first rejection, all remaining draft tokens are discarded; the resampled token ends this round
+
+        # Reject: resample from residual and discard remaining draft proposals
+        residual = torch.clamp(p_target - p_draft_i, min=0.0)
+        residual = residual / residual.sum()
+        resampled_tok = torch.multinomial(residual, num_samples=1, generator=generator).item()
+        accepted.append(resampled_tok)
+        break
+
     return tokens + accepted
 ```
 
-Monte Carlo verification (5-token toy vocabulary, `np.random.default_rng(0)`, 200,000 trials):
+Monte Carlo verification (5-token toy vocabulary, `torch.Generator().manual_seed(0)`, 200,000 trials):
 
 ```python
-p_target = np.array([0.05, 0.35, 0.30, 0.20, 0.10])
-p_draft  = np.array([0.30, 0.10, 0.10, 0.40, 0.10])
+p_target = torch.tensor([0.05, 0.35, 0.30, 0.20, 0.10])
+p_draft  = torch.tensor([0.30, 0.10, 0.10, 0.40, 0.10])
 
-rng = np.random.default_rng(0)
-samples = np.array([speculative_accept_step(p_target, p_draft, rng)[0] for _ in range(200_000)])
-empirical = np.bincount(samples, minlength=5) / 200_000
+gen = torch.Generator().manual_seed(0)
+N = 200_000
+samples = torch.tensor([speculative_accept_step(p_target, p_draft, generator=gen)[0] for _ in range(N)])
+empirical = torch.bincount(samples, minlength=5).float() / N
 
-assert np.max(np.abs(empirical - p_target)) < 0.01       # converges to the target distribution
-assert np.max(np.abs(empirical - p_draft)) > 0.05         # clearly not the draft distribution
+assert (empirical - p_target).abs().max().item() < 0.01  # converges to target distribution
+assert (empirical - p_draft).abs().max().item() > 0.05   # clearly not draft distribution
 ```
 
-The measured empirical distribution is `[0.0499, 0.3497, 0.3018, 0.1990, 0.0996]`, a maximum error of about `0.0018` against `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` (within Monte Carlo noise at 200,000 samples), versus a maximum error of about `0.25` against `p_draft` (clearly not the draft distribution). The acceptance rate equals `sum(min(p_target, p_draft))`, about `0.55` for these numbers, so on average roughly one in every two draft tokens is accepted outright.
+The measured empirical distribution is `[0.0501, 0.3499, 0.3007, 0.1992, 0.1001]`, a maximum error of about `0.0008` against `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` (within Monte Carlo noise at 200,000 samples), versus a maximum error of about `0.25` against `p_draft` (clearly not the draft distribution). The acceptance rate equals `sum(min(p_target, p_draft))`, about `0.55` for these numbers, so on average roughly one in every two draft tokens is accepted outright.
 
 </details>

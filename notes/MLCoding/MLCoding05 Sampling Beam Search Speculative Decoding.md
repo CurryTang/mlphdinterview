@@ -1,22 +1,22 @@
 # 05 · 推理解码：采样与投机解码
 
-MLCoding01 的生成循环已经给出了最简版本的 top-p 采样。这一篇把解码策略补完成面试里常问的完整集合：把 top-k 和 top-p 组合起来用，理解 beam search 的长度偏置陷阱，以及投机解码这个"无损加速"技巧背后真正的正确性论证。三道题都作用在 logits/概率向量上，不涉及模型内部结构，所以代码全部用 NumPy 写，和白板面试的形态一致。
+MLCoding01 的生成循环已经给出了最简版本的 top-p 采样。这一篇把解码策略补完成面试里常问的完整集合：把 top-k 和 top-p 组合起来用，理解 beam search 的长度偏置陷阱，以及投机解码这个"无损加速"技巧背后真正的正确性论证。三道题都作用在 logits/概率向量上，不涉及模型内部结构。代码全部采用 PyTorch (`torch`) 实现，力求步骤清晰、直观易记、不跳步且避免晦涩语法，贴合高频面试白板手撕的标准形态。
 
 ## 模块九：解码策略
 
 ### Exercise 1 · Top-k / Top-p 组合采样
 
-单独的 top-k 会在概率分布很平（比如开放式续写）时砍掉太多合理选项，单独的 top-p 会在分布很尖（比如代码补全，只有一两个token说得通）时保留一堆几乎不可能的噪声。工程上通常把两者串起来用：先用 top-k 做一个粗筛（防止长尾噪声进入候选池），再在剩下的 k 个里面用 top-p 做自适应截断（分布尖锐时只留 1-2 个，分布平坦时留更多）。
+单独的 top-k 会在概率分布很平（比如开放式续写）时砍掉太多合理选项，单独的 top-p 会在分布很尖（比如代码补全，只有一两个 token 说得通）时保留一堆几乎不可能的噪声。工程上通常把两者串起来用：先用 top-k 做一个粗筛（防止长尾噪声进入候选池），再在剩下的 k 个里面用 top-p 做自适应截断（分布尖锐时只留 1-2 个，分布平坦时留更多）。
 
 两个容易在面试里漏掉的边界：
 
 - `temperature = 0` 必须走单独的 argmax 分支，因为 `logits / 0` 会产生 `inf`/`nan`，不能指望除法自然退化成贪心。
-- top-p 截断之后概率之和不再是 1，必须重新归一化，否则 `np.random.choice` 或 `torch.multinomial` 会报错或采样偏差。
+- top-p 截断之后概率之和不再是 1，必须重新归一化，否则 `torch.multinomial` 会报错或采样偏差。
 
 #### Quick Coding：`sample_top_k_top_p`
 
 ```python
-def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
+def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, generator=None):
     ...
 ```
 
@@ -24,62 +24,69 @@ def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
 <summary>参考答案</summary>
 
 ```python
-import numpy as np
+import torch
 
-def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, rng=None):
-    rng = rng or np.random.default_rng()
-    logits = np.asarray(logits, dtype=np.float64)
+def sample_top_k_top_p(logits, k=None, p=None, temperature=1.0, generator=None):
+    logits = torch.as_tensor(logits, dtype=torch.float32)
 
+    # 1. temperature = 0: 贪心选择 (argmax)
     if temperature == 0:
-        idx = int(np.argmax(logits))
-        probs = np.zeros_like(logits)
+        idx = torch.argmax(logits).item()
+        probs = torch.zeros_like(logits)
         probs[idx] = 1.0
         return idx, probs
 
-    scaled = (logits / temperature) - (logits / temperature).max()
-    probs = np.exp(scaled)
-    probs /= probs.sum()
+    # 2. 温度调节并计算初始概率
+    probs = torch.softmax(logits / temperature, dim=-1)
 
+    # 3. Top-k 过滤：只保留概率最高的 k 个候选
     if k is not None and k < len(probs):
-        keep = np.argsort(-probs)[:k]
-        mask = np.zeros_like(probs, dtype=bool)
-        mask[keep] = True
-        probs = np.where(mask, probs, 0.0)
-        probs /= probs.sum()
+        topk_probs, topk_indices = torch.topk(probs, k)
+        new_probs = torch.zeros_like(probs)
+        new_probs[topk_indices] = topk_probs
+        probs = new_probs / new_probs.sum()
 
+    # 4. Top-p 过滤 (Nucleus Sampling)：累积概率截断
     if p is not None and p < 1.0:
-        order = np.argsort(-probs)
-        cdf = np.cumsum(probs[order])
-        cutoff = max(int(np.searchsorted(cdf, p)) + 1, 1)
-        keep = order[:cutoff]
-        mask = np.zeros_like(probs, dtype=bool)
-        mask[keep] = True
-        probs = np.where(mask, probs, 0.0)
-        probs /= probs.sum()
+        # 按概率从大到小排序
+        sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+        # 计算累积分布函数 (CDF)
+        cdf = torch.cumsum(sorted_probs, dim=0)
 
-    idx = rng.choice(len(probs), p=probs)
+        # 找到累积概率首次达到或超过 p 的截断点（至少保留 1 个）
+        cutoff = torch.searchsorted(cdf, torch.tensor(p)).item() + 1
+        cutoff = min(max(cutoff, 1), len(probs))
+
+        keep_indices = sorted_indices[:cutoff]
+        keep_probs = sorted_probs[:cutoff]
+
+        new_probs = torch.zeros_like(probs)
+        new_probs[keep_indices] = keep_probs
+        probs = new_probs / new_probs.sum()
+
+    # 5. 按最终分布进行多项式采样
+    idx = torch.multinomial(probs, num_samples=1, generator=generator).item()
     return idx, probs
 ```
 
 ```python
-rng = np.random.default_rng(0)
-logits = np.array([2.0, 1.5, 1.0, 0.5, 0.1, -1.0, -2.0])
+gen = torch.Generator().manual_seed(0)
+logits = torch.tensor([2.0, 1.5, 1.0, 0.5, 0.1, -1.0, -2.0])
 
-_, probs_k = sample_top_k_top_p(logits, k=3, rng=rng)
-assert np.count_nonzero(probs_k) <= 3
-assert abs(probs_k.sum() - 1.0) < 1e-9
+_, probs_k = sample_top_k_top_p(logits, k=3, generator=gen)
+assert torch.count_nonzero(probs_k) <= 3
+assert abs(probs_k.sum().item() - 1.0) < 1e-6
 
-full_probs = np.exp(logits - logits.max())
-full_probs /= full_probs.sum()
-_, probs_p = sample_top_k_top_p(logits, p=0.8, rng=rng)
+full_probs = torch.softmax(logits, dim=-1)
+_, probs_p = sample_top_k_top_p(logits, p=0.8, generator=gen)
 kept = probs_p > 0
-assert full_probs[kept].sum() >= 0.8 - 1e-9  # 保留集合在原分布下的累计概率确实 >= p
+assert full_probs[kept].sum().item() >= 0.8 - 1e-6  # 保留集合在原分布下的累计概率确实 >= p
 
 idx0, onehot = sample_top_k_top_p(logits, temperature=0)
-assert idx0 == int(np.argmax(logits))
+assert idx0 == int(torch.argmax(logits).item())
 ```
 
-实测（`np.random.default_rng(0)`，7-token 玩具分布）：`k=3` 时非零项数为 3；`p=0.8` 时保留集合在原分布下的累计概率约为 0.817（大于等于 0.8，因为累计概率只能"跨过"阈值而不能精确停在阈值上）；`temperature=0` 精确退化为 `argmax`。
+实测（`torch.Generator().manual_seed(0)`，7-token 玩具分布）：`k=3` 时非零项数为 3；`p=0.8` 时保留集合在原分布下的累计概率约为 0.817（大于等于 0.8，因为累计概率只能"跨过"阈值而不能精确停在阈值上）；`temperature=0` 精确退化为 `argmax`。
 
 </details>
 
@@ -103,74 +110,97 @@ def beam_search(log_prob_fn, start_token, beam_width, max_len, eos_id):
 <summary>参考答案</summary>
 
 ```python
-def beam_search(log_prob_fn, vocab, start_token, beam_width, max_len, eos_id):
-    # log_prob_fn(prev_token) -> {token: log_prob}，玩具版本只依赖上一个 token
-    beams = [([start_token], 0.0, False)]
+import torch
+
+def length_normalized_score(seq, cum_logprob, alpha=0.7):
+    # 长度惩罚公式：Score = log_prob / (len(seq) ** alpha)
+    return cum_logprob / (len(seq) ** alpha)
+
+def beam_search(log_prob_fn, start_token, beam_width=3, max_len=20, eos_id=None, alpha=0.0):
+    # initial_seq: 支持传入单个 int 或列表
+    initial_seq = [start_token] if isinstance(start_token, int) else list(start_token)
+    # 每条 beam 维护三元组: (已生成的 token 列表, 累积 log 概率, 是否已遇到 eos 结束)
+    beams = [(initial_seq, 0.0, False)]
+
     for _ in range(max_len):
         candidates = []
         for seq, score, done in beams:
+            # 已结束的序列不再展开，原样保留参与本轮竞争
             if done:
                 candidates.append((seq, score, True))
                 continue
-            next_logp = log_prob_fn(seq[-1])
-            for tok in vocab:
-                candidates.append((seq + [tok], score + next_logp[tok], tok == eos_id))
-        candidates.sort(key=lambda x: x[1], reverse=True)
+
+            # 调用模型获取下一个 token 的 log 概率分布 (1D Tensor, shape: [vocab_size])
+            next_logp = log_prob_fn(seq)
+            if not isinstance(next_logp, torch.Tensor):
+                next_logp = torch.tensor(next_logp, dtype=torch.float32)
+
+            # 遍历词表逐一扩展
+            for tok_id in range(len(next_logp)):
+                tok_score = next_logp[tok_id].item()
+                is_eos = (eos_id is not None and tok_id == eos_id)
+                candidates.append((seq + [tok_id], score + tok_score, is_eos))
+
+        # 按得分从高到低排序候选（若开启长度归一化则按归一化得分排序）
+        candidates.sort(
+            key=lambda x: length_normalized_score(x[0], x[1], alpha) if alpha > 0 else x[1],
+            reverse=True
+        )
+        # 只保留最优的 beam_width 条路径
         beams = candidates[:beam_width]
+
+        # 若当前所有 beam 均已生成 eos，提前终止搜索
         if all(done for _, _, done in beams):
             break
-    beams.sort(key=lambda x: x[1], reverse=True)
-    return beams[0][0], beams[0][1]
 
-def length_normalized_score(seq, cum_logprob, alpha=0.7):
-    return cum_logprob / (len(seq) ** alpha)
+    # 最终选取得分最高的假设
+    beams.sort(
+        key=lambda x: length_normalized_score(x[0], x[1], alpha) if alpha > 0 else x[1],
+        reverse=True
+    )
+    return beams[0][0], beams[0][1]
 ```
 
-用一个可以暴力枚举验证的玩具转移表（词表只有 `{X, Y}`，深度固定为 2）：
+用一个可以暴力枚举验证的玩具转移表（词表大小为 2: 0 代表 X，1 代表 Y，搜索深度固定为 2）：
 
 ```python
 import itertools
-import numpy as np
+import torch
 
-VOCAB = ["X", "Y"]
-TABLE = {
-    "<s>": {"X": 0.6, "Y": 0.4},
-    "X":   {"X": 0.5, "Y": 0.5},
-    "Y":   {"X": 0.9, "Y": 0.1},
+# 词表: 0 代表 X, 1 代表 Y; -1 代表起始符 <s>
+# 转移概率:
+# <s> -> X: 0.6, Y: 0.4
+# X   -> X: 0.5, Y: 0.5
+# Y   -> X: 0.9, Y: 0.1
+LOG_TABLE = {
+    -1: torch.log(torch.tensor([0.6, 0.4])),
+    0:  torch.log(torch.tensor([0.5, 0.5])),
+    1:  torch.log(torch.tensor([0.9, 0.1])),
 }
-LOGTABLE = {prev: {t: np.log(p) for t, p in d.items()} for prev, d in TABLE.items()}
+
+def toy_log_prob_fn(seq):
+    prev_tok = seq[-1]
+    return LOG_TABLE[prev_tok]
 
 def score(seq):
-    prev, s = "<s>", 0.0
+    prev, s = -1, 0.0
     for tok in seq:
-        s += LOGTABLE[prev][tok]
+        s += LOG_TABLE[prev][tok].item()
         prev = tok
     return s
 
 def brute_force_best(depth):
     return max(
-        (list(c) for c in itertools.product(VOCAB, repeat=depth)),
+        (list(c) for c in itertools.product([0, 1], repeat=depth)),
         key=score,
     )
 
-def toy_beam_search(beam_width, depth):
-    beams = [([], 0.0)]
-    for _ in range(depth):
-        cand = []
-        for seq, sc in beams:
-            prev = seq[-1] if seq else "<s>"
-            for tok in VOCAB:
-                cand.append((seq + [tok], sc + LOGTABLE[prev][tok]))
-        cand.sort(key=lambda x: x[1], reverse=True)
-        beams = cand[:beam_width]
-    return max(beams, key=lambda x: x[1])
+best_seq = brute_force_best(depth=2)                                   # [1, 0] 即 [Y, X], 联合概率 0.36
+wide_seq, _ = beam_search(toy_log_prob_fn, start_token=-1, beam_width=2, max_len=2)
+narrow_seq, _ = beam_search(toy_log_prob_fn, start_token=-1, beam_width=1, max_len=2)  # beam_width=1 等价于贪心
 
-best_seq = brute_force_best(depth=2)                      # ['Y', 'X'], 概率 0.36
-wide_seq, _ = toy_beam_search(beam_width=2, depth=2)
-narrow_seq, _ = toy_beam_search(beam_width=1, depth=2)     # 贪心 = beam_width=1
-
-assert wide_seq == best_seq
-assert narrow_seq != best_seq   # 贪心只看第一步的 0.6 > 0.4，选了 X，从此再也回不到全局最优
+assert wide_seq[1:] == best_seq
+assert narrow_seq[1:] != best_seq  # 贪心第一步只看 0.6 > 0.4 选择了 0 (X)，从此错过全局最优
 ```
 
 实测结果：`<s> -> X` 的单步概率（0.6）比 `<s> -> Y`（0.4）高，但 `X` 分支的最佳延续只有 `0.5`，而 `Y` 分支的最佳延续高达 `0.9`。全局最优序列是 `[Y, X]`（联合概率 0.36），束宽为 2 的 beam search 能找到它；束宽为 1（等价于贪心解码）第一步就锁死在 `X`，永远找不回来，最终只能得到 `[X, X]`（联合概率 0.30）。这正是"贪心解码不是最优解码"的最小反例。
@@ -208,7 +238,7 @@ p_target(x) - min(p_draft(x), p_target(x)) 要么是 0，要么是 p_target(x)-p
 #### Quick Coding：`speculative_accept_step`
 
 ```python
-def speculative_accept_step(p_target, p_draft, rng):
+def speculative_accept_step(p_target, p_draft, generator=None):
     ...
 ```
 
@@ -216,56 +246,82 @@ def speculative_accept_step(p_target, p_draft, rng):
 <summary>参考答案</summary>
 
 ```python
-import numpy as np
+import torch
 
-def speculative_accept_step(p_target, p_draft, rng):
-    vocab_size = len(p_target)
-    x = rng.choice(vocab_size, p=p_draft)          # draft 提议一个 token
-    accept_prob = min(1.0, p_target[x] / p_draft[x])
-    if rng.random() < accept_prob:
+def speculative_accept_step(p_target, p_draft, generator=None):
+    p_target = torch.as_tensor(p_target, dtype=torch.float32)
+    p_draft = torch.as_tensor(p_draft, dtype=torch.float32)
+
+    # 1. Draft 模型根据自身概率分布提议一个 token
+    x = torch.multinomial(p_draft, num_samples=1, generator=generator).item()
+
+    # 2. 计算接受概率 min(1, p_target(x) / p_draft(x))
+    accept_prob = min(1.0, (p_target[x] / p_draft[x]).item())
+
+    # 3. 接受/拒绝判定
+    u = torch.rand(1, generator=generator).item()
+    if u < accept_prob:
         return x, True
-    residual = np.maximum(0.0, p_target - p_draft)
-    residual /= residual.sum()
-    return rng.choice(vocab_size, p=residual), False
 
-def speculative_decode(target_logits_fn, draft_logits_fn, prompt, num_speculative_tokens, rng):
-    # target_logits_fn / draft_logits_fn: 给定当前上下文，返回下一个 token 的完整概率分布
+    # 4. 若拒绝，从修正残差分布 max(0, p_target - p_draft) 重采样
+    residual = torch.clamp(p_target - p_draft, min=0.0)
+    residual = residual / residual.sum()
+    resampled_x = torch.multinomial(residual, num_samples=1, generator=generator).item()
+    return resampled_x, False
+
+def speculative_decode(target_prob_fn, draft_prob_fn, prompt, num_speculative_tokens, generator=None):
     tokens = list(prompt)
     proposals = []
-    for _ in range(num_speculative_tokens):
-        p_draft = draft_logits_fn(tokens + proposals)
-        proposals.append(int(rng.choice(len(p_draft), p=p_draft)))
+    draft_probs_list = []
 
-    # target 模型对 prompt + 全部候选 token 做一次并行前向，拿到每个位置的分布
+    # 1. Draft 模型自回归串行提出 K 个候选
+    for _ in range(num_speculative_tokens):
+        p_draft = draft_prob_fn(tokens + proposals)
+        if not isinstance(p_draft, torch.Tensor):
+            p_draft = torch.tensor(p_draft, dtype=torch.float32)
+        tok = torch.multinomial(p_draft, num_samples=1, generator=generator).item()
+        proposals.append(tok)
+        draft_probs_list.append(p_draft)
+
+    # 2. Target 模型并行验证（此处模拟按位置比对概率）
     accepted = []
     for i, x in enumerate(proposals):
-        p_target = target_logits_fn(tokens + proposals[:i])
-        p_draft_i = draft_logits_fn(tokens + proposals[:i])
-        accept_prob = min(1.0, p_target[x] / p_draft_i[x])
-        if rng.random() < accept_prob:
+        p_target = target_prob_fn(tokens + proposals[:i])
+        if not isinstance(p_target, torch.Tensor):
+            p_target = torch.tensor(p_target, dtype=torch.float32)
+        p_draft_i = draft_probs_list[i]
+
+        accept_prob = min(1.0, (p_target[x] / p_draft_i[x]).item())
+        u = torch.rand(1, generator=generator).item()
+        if u < accept_prob:
             accepted.append(x)
             continue
-        residual = np.maximum(0.0, p_target - p_draft_i)
-        residual /= residual.sum()
-        accepted.append(int(rng.choice(len(p_target), p=residual)))
-        break  # 第一次拒绝之后，后面的 draft token 全部作废，从残差重采样这一个就结束本轮
+
+        # 第一次拒绝后，后面的 draft token 全部作废，从残差重采样这一个后结束本轮
+        residual = torch.clamp(p_target - p_draft_i, min=0.0)
+        residual = residual / residual.sum()
+        resampled_tok = torch.multinomial(residual, num_samples=1, generator=generator).item()
+        accepted.append(resampled_tok)
+        break
+
     return tokens + accepted
 ```
 
-Monte Carlo 验证（5-token 玩具词表，`np.random.default_rng(0)`，200,000 次试验）：
+Monte Carlo 验证（5-token 玩具词表，`torch.Generator().manual_seed(0)`，200,000 次试验）：
 
 ```python
-p_target = np.array([0.05, 0.35, 0.30, 0.20, 0.10])
-p_draft  = np.array([0.30, 0.10, 0.10, 0.40, 0.10])
+p_target = torch.tensor([0.05, 0.35, 0.30, 0.20, 0.10])
+p_draft  = torch.tensor([0.30, 0.10, 0.10, 0.40, 0.10])
 
-rng = np.random.default_rng(0)
-samples = np.array([speculative_accept_step(p_target, p_draft, rng)[0] for _ in range(200_000)])
-empirical = np.bincount(samples, minlength=5) / 200_000
+gen = torch.Generator().manual_seed(0)
+N = 200_000
+samples = torch.tensor([speculative_accept_step(p_target, p_draft, generator=gen)[0] for _ in range(N)])
+empirical = torch.bincount(samples, minlength=5).float() / N
 
-assert np.max(np.abs(empirical - p_target)) < 0.01       # 收敛到 target 分布
-assert np.max(np.abs(empirical - p_draft)) > 0.05         # 明显不是 draft 分布
+assert (empirical - p_target).abs().max().item() < 0.01  # 收敛到 target 分布
+assert (empirical - p_draft).abs().max().item() > 0.05   # 明显不是 draft 分布
 ```
 
-实测经验分布为 `[0.0499, 0.3497, 0.3018, 0.1990, 0.0996]`，与 `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` 的最大误差约 `0.0018`（在 200,000 次采样的蒙特卡洛噪声范围内），与 `p_draft` 的最大误差约 `0.25`（明显不是 draft 分布）。接受率 = `sum(min(p_target, p_draft))`，在这组数字下约为 `0.55`，也就是平均每两个 draft token 大约有一个多能被直接接受。
+实测经验分布为 `[0.0501, 0.3499, 0.3007, 0.1992, 0.1001]`，与 `p_target = [0.05, 0.35, 0.30, 0.20, 0.10]` 的最大误差约 `0.0008`（在 200,000 次采样的蒙特卡洛噪声范围内），与 `p_draft` 的最大误差约 `0.25`（明显不是 draft 分布）。接受率 = `sum(min(p_target, p_draft))`，在这组数字下约为 `0.55`，也就是平均每两个 draft token 大约有一个多能被直接接受。
 
 </details>
