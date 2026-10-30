@@ -2,14 +2,14 @@
 
 大模型前沿已全面进入“预训练物理系统协同设计”与“大规模强化学习长期攀爬”的深度整合阶段。2026 年 6 月，微软人工智能团队（Microsoft AI, MAI）发布了长达 109 页的技术报告 **《MAI-Thinking-1: Building a Hill-Climbing Machine》**。该报告全面披露了一个万亿级稀疏专家混合模型（MoE）从 29.2T 纯人类原创语料预训练、Mid-Training 配比倾斜，到由 4,096 张推理卡与 768 张训练卡驱动的千步异步强化学习（RL）集群的完整工程实现细节。
 
-本章系统解构这份经典技术报告及其配套 80 页精读 Slides，涵盖：
+本章系统解构这份经典技术报告及其配套 90 页精读 Slides，涵盖：
 1. **模型架构与物理互联协同设计**：Dense/MoE 交替层级、LatentMoE 压缩投射与 $23\%$ 全互联通信量压缩。
 2. **预训练消融与跨 Scale 迁移法则**：The Ladder 阶梯架构、能效增益标尺（Efficiency Gain, EG）与度量反转陷阱。
 3. **真实生产训练法则**：为何真实系统 $TPP \gg 20$、消融实验中的数据重复率对齐与 Muennighoff 4 轮重复价值衰减律。
 4. **数据工程与混合律理论**：29.2T 纯人类原创语料治理、Mixing Laws 混合律解析与狭窄数据饱和效应。
 5. **Mid-Training 与训练 Recipe**：基座采样阈值理论、Attention 零初始化破除路由塌陷、AdamW 与 Muon 谱球几何权衡。
-6. **YOLO 训练基础设施**：8,192 张 GB200 集群下 $90.0\%$ Goodput、位精确（Bit-Exact）确定性故障重放。
-7. **强化学习关键技术**：Token-level GRPO 目标函数完全推导、宽剪切区间防陈旧性漂移、动态熵调控与自蒸馏崩溃自愈。
+6. **YOLO 训练基础设施与机架拓扑**：8,192 张 GB200 集群下 $90.0\%$ Goodput、位精确（Bit-Exact）确定性故障重放、单机架 64 GPU 承载 512 专家 NVLink 全互联与重写 PyTorch DCP。
+7. **强化学习关键技术与 2026 报告横向对比**：Token-level GRPO 目标函数完全推导、宽剪切区间防陈旧性漂移、采样漂移（IcePop / Log-Ratio Mask / 原生 FP4 采样）、Agentic RL 上下文 Compaction 与 Critic 回归、专家合并新范式 OPD（On-Policy Distillation）。
 8. **分布式强化学习引擎 Rocket**：4,096 推理 + 768 训练异构池解耦、采样-训练严格数值重放、编译式 RDMA 权重下发。
 
 ---
@@ -19,7 +19,7 @@
 ```slide-viewer
 file: slides/mai_thinking_1_v2.pdf
 slidesDir: slides/mai-thinking-1
-totalSlides: 80
+totalSlides: 90
 title: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)
 ```
 
@@ -310,13 +310,22 @@ $$\Delta W = \arg\min_{\Delta} \left\langle G, \Delta \right\rangle + \frac{\lam
 - **集群状态切分兼容性**：YOLO 训练架构深度依赖 ZeRO-2/ZeRO-3 对优化器状态进行分片（Sharding）。AdamW 的逐元素状态天生支持任意粒度分片；而 Muon 依赖全量梯度的全局 SVD / Newton-Schulz 迭代，跨节点收集与重构全矩阵会引入沉重的通信开销。
 - **阶段平滑演进**：后续异步 RL 阶段采用 AdamW，避免了切换优化器引发的表征震荡。
 
+### 三、混合精度与数值稳定性设计（FP8 / BF16 / FP32 协同）
+
+在万亿参数规模下，全量 BF16 会带来巨大的显存与通信压力。MAI 实施了分层精度策略：
+- **大矩阵乘法（GEMM）全面采用 FP8**：
+  - 前向传播（Forward）：采用 **E4M3**（1位符号，4位指数，3位尾数），提供适中的动态范围与更高的有效精度。
+  - 激活值反向传播（Activation Gradients）：采用 **E5M2**（1位符号，5位指数，2位尾数），提供更宽广的动态范围以承载剧烈波动的反向梯度。
+  - **Scale 因子持久化机制**：与 DeepSeek-V3 的实时按块缩放不同，MAI 统计并滑动跟踪过去 1024 步的最大激活值历史。这 1024 步的 Scale 因子历史全部保存在 Checkpoint 中，这是保障故障恢复后能够执行“位精确（Bit-Exact）重放”的关键前提。
+- **敏感累加路径坚守 FP32**：残差连接流（Residual Stream）、Attention 归一化分母与 Logits、梯度累加以及 AdamW 内部一阶/二阶动量状态全部常驻 FP32，防止灾难性精度下溢。
+
 ---
 
 ## 第七部分：YOLO 训练基础设施与高 Goodput 体系
 
 在 8,192 块 GB200 规模下连续运行数月，硬件单点故障（XID 错误、网络降速、静默内存位翻转）不可避免。MAI 打造了名为 YOLO 的训练底座，在整个 30T 预训练中实现了高达 **$90.0\%$** 的工业级有效训练时间（Goodput = 理想训练时间 / 实际壁钟时间）。
 
-![Reliability and Goodput](/slides/mai-thinking-1/slide-45.png)
+![Reliability and Goodput](/slides/mai-thinking-1/slide-46.png)
 
 ### 一、位精确（Bit-Exact）确定性训练
 
@@ -330,12 +339,17 @@ MAI 反其道而行之，在底层彻底关闭了非确定性原子操作与交�
 
 从初代到第 5 代架构，模型能效增益（EG）从 $1.0\times$ 提升至 $1.69\times$，系统瓶颈随之不断迁移：
 
-![Architecture System Co-Design](/slides/mai-thinking-1/slide-46.png)
+![Architecture System Co-Design](/slides/mai-thinking-1/slide-49.png)
 
 1. **v2（首次 GB200 运行）**：启用 GPU-Direct RDMA、优化 Attention 内核与 ZeRO-2，MFU 从 $18\%$ 提升至 $22\%$。
 2. **v3（引入 Dropless 动态路由，EG $1.40\times$）**：Token 在各专家的分布在运行时动态漂移。通过重叠（Overlap）通信调度，成功维持了 $22\%$ MFU。
 3. **v4（512 专家，Top-8，LatentMoE，8K GPU 规模，EG $1.69\times$）**：专家细粒度化导致单个专家的 GEMM 计算块过小，GPU 计算时间过短，CPU 发射调度严重滞后，MFU 跌至 $16\%$。团队通过适配 FlashAttention-4 并优化 CPU 发射队列，将 MFU 拉回至 $20\%$。
 4. **v5（35B 激活，1T 总参数）**：ZeRO-3 在反向传播中密集的权重 Gather 操作造成总线拥塞，MFU 再次降至 $18\%$。团队通过激活值卸载（Activation Offload）回退并常驻 ZeRO-2，将 MFU 稳定在 $20\%$。
+
+### 三、机架内物理拓扑协同与分布式检查点重构
+
+- **单机架 64 GPU 承载 512 专家**：每个机架容纳 64 块 GPU（每卡分配 8 个专家），MoE 的 All-to-All 局部全互联通信被完全物理隔离并收敛在机架内的高速 **NVLink 域**；跨机架仅通过 InfiniBand 进行模型副本与数据并行同步，杜绝了跨机架高延迟 All-to-All 阻塞。
+- **重构 PyTorch 分布式检查点（DCP）**：原生 PyTorch DCP 在万亿规模下保存极慢。团队重写了 DCP 底层，将 Checkpoint 写盘速度提升了 **10× 以上**，大幅缩短单次保存导致的集群停顿。
 
 ---
 
@@ -347,7 +361,7 @@ MAI 反其道而行之，在底层彻底关闭了非确定性原子操作与交�
 
 模型采用 Token 级别的 Group Relative Policy Optimization (GRPO)，其训练目标函数为：
 
-![The RL Objective](/slides/mai-thinking-1/slide-48.png)
+![The RL Objective](/slides/mai-thinking-1/slide-51.png)
 
 $$\mathcal{J}(\theta) = \frac{1}{\sum_{i=1}^G |y_i|} \sum_{i=1}^G \sum_{t=1}^{|y_i|} \min \left( \hat{r}_{i,t} A_i, \; \text{clip}\left(\hat{r}_{i,t}, \, 1 - \epsilon, \, (1 - \epsilon)^{-1} + k\right) A_i \right)$$
 
@@ -367,7 +381,7 @@ $$\mathcal{J}(\theta) = \frac{1}{\sum_{i=1}^G |y_i|} \sum_{i=1}^G \sum_{t=1}^{|y
 
 在 4,096 推理卡与 768 训练卡并行的异步架构下，采样器（Sampler）生成样本时所依据的权重版本必然落后于当前训练器（Learner）的最新参数：
 
-![Staleness](/slides/mai-thinking-1/slide-49.png)
+![Staleness](/slides/mai-thinking-1/slide-53.png)
 
 - 推理卡生成的长思考链样本耗时较长，送达训练器时可能已经落后 5~8 个权重版本。
 - 设定权重版本落后超过 8 步的轨迹直接丢弃；落后 1~8 步的样本则通过宽区间重要性加权 $r_{i,t}$ 充分利用。
@@ -376,23 +390,50 @@ $$\mathcal{J}(\theta) = \frac{1}{\sum_{i=1}^G |y_i|} \sum_{i=1}^G \sum_{t=1}^{|y
 
 在强化学习多轮迭代中，高奖励往往倾向于赋予那些高置信度、相对保守的解题路径。策略网络会自发缩小探索分布，导致策略熵 $H(\pi_\theta)$ 指数级下跌，最终退化为单一的模态坍塌（Entropy Collapse）。
 
-![Entropy Dynamics](/slides/mai-thinking-1/slide-50.png)
+![Entropy Dynamics](/slides/mai-thinking-1/slide-54.png)
 
 MAI 引入了不对称剪切上限调节参数 $k \in [0, 2.5]$：
 - 当观测到策略熵跌幅过快时，增大 $k$ 值，拔高剪切上界 $(1 - \epsilon)^{-1} + k$，允许概率激增的新探索动作获得更大的正向梯度更新幅度；
 - 当策略熵企稳后，收拢 $k$ 值恢复常规约束。
 
-![Entropy Control via k](/slides/mai-thinking-1/slide-51.png)
+![Entropy Control via k](/slides/mai-thinking-1/slide-55.png)
 
 ### 四、崩溃后的自蒸馏重启（Self-Distillation）
 
 若在漫长的训练中不可避免地遭遇了局部的探索塌陷或严重遗忘，传统做法往往是耗费巨大代价回滚至数天前的历史 Checkpoint。MAI 提出了自蒸馏（Self-Distillation）恢复技术：
 
-![Self-Distillation](/slides/mai-thinking-1/slide-53.png)
+![Self-Distillation](/slides/mai-thinking-1/slide-57.png)
 
 - 从历史训练池中筛选出塌陷前生成的高质量正向轨迹，重新构建包含代码、数学与长思考的多任务混合集；
 - 以塌陷前的健康权重为教师，开启带有 $p=0.15$ 残差 Dropout 的自蒸馏监督微调；
 - 经过短暂的自蒸馏，模型的策略熵与表征多样性迅速复苏，重构基石后继续攀爬，避免了昂贵的训练中断。
+
+### 五、2026 年前沿技术报告横向对比（Kimi K2.5, GLM-5, DeepSeek-V4, MAI, GLM-5.2）
+
+MAI-Thinking-1 与同时期（2026 上半年）其他万亿稀疏大模型在强化学习架构与专家融合上形成了鲜明对照：
+
+| 维度 | Kimi K2.5 (2026.02) | GLM-5 / GLM-5.2 (2026.02/06) | DeepSeek-V4 (2026.04) | MAI-Thinking-1 (2026.06) |
+| :--- | :--- | :--- | :--- | :--- |
+| **RL 算法核心** | 免 Critic，Log-Ratio 掩码 | GRPO + IcePop (GLM-5)；长任务引入 Critic PPO (GLM-5.2) | 专长领域独立 GRPO | Token-level GRPO，宽剪切 $[0.4, 2.5+k]$ |
+| **采样漂移应对** | 按对数比率掩码 + $\tau(\log r)^2$ 惩罚项 | 双 Ratio 监控：$\rho=\pi_{\text{train}}/\pi_{\text{infer}}$ 超出范围直接丢弃 | 部署级原生 FP4 采样，权重与部署对齐 | 纯 BF16 内核 + SGLang 概率严格数值重放 |
+| **专家合并范式** | 未公开 | On-Policy Distillation (OPD)，逆向 KL | OPD 全词表分布匹配替代混合 RL | SFT 教师轨迹 + 短周期 RL 混合爬坡 |
+
+#### 1. 推理-训练采样漂移（Sampler Drift）的工业解法演进
+在大规模异步强化学习中，Sampler（推理卡）与 Learner（训练卡）由于核函数精度、量化等级或参数版本微滞后，其计算出的 Token 概率必然存在偏移：
+- **GLM-5（双 Ratio 监控）**：保留常规 PPO 比率 $r = \pi_\theta / \pi_{\text{old}}$ 的同时，引入第二比率 $\rho = \pi_{\text{train}} / \pi_{\text{infer}}$ 量化核函数差异。若 $\rho \notin [1/\beta, \beta]$ 则直接将该 Token 剔除（IcePop 机制）。
+- **Kimi K2.5（Log-Ratio 惩罚）**：不论优势函数符号正负，凡是对数比率 $|\log r|$ 过大的 Token 均施加掩码，并追加 $\tau (\log r)^2$ 刚性惩罚项，强行拉回采样分布。
+- **DeepSeek-V4（部署一致性采样）**：Rollout 阶段直接加载与实际线上服务完全相同的原生 FP4 权重进行采样，抹平部署量化与后训练环境差异。
+- **MAI-Thinking-1（宽剪切 + 严格数值重放）**：坚持标准 PPO 符号定向剪切逻辑，不粗暴丢弃漂移 Token，而是依靠 $[0.4, 2.5+k]$ 宽接受区间容纳滞后，并在工程上通过 SGLang 严格数值重放消除核函数偏差。
+
+#### 2. Agentic RL 任务中为何迫使 Critic 重新回归（GLM-5.2 的启示）
+在超长视程智能体任务（多轮终端交互、代码排错）中，Rollout 往往因超过上下文上限而触发“上下文压缩（Compaction）”，一条完整的轨迹被切分为 2~4 段子轨迹。由于各回答切分后的片段数与长度各不相同，同组内无法再构建公平的 Group-Mean 优势基线，导致 GRPO 优势估计失真。GLM-5.2 被迫在长视程任务中重新引入带参数的 Critic 价值模型，由 Critic 针对单个切片评估单步优势。代价是增加了价值网络训练不稳定与“价值拍扁（Value Flattening）”的调优难题。
+
+#### 3. 专家合并新范式：On-Policy Distillation (OPD)
+当各专长领域（STEM、Agent、通用对话）的 Specialist 独立爬坡完成后，如何合并成为全能模型？
+- **传统 SFT 缺陷**：直接将专家的高分回答用作 SFT 训练集，会导致模型被动模仿自身原本不会吐出的非自然表达，引发分布偏移。
+- **OPD 机制**：让学生模型自主根据 Prompt 生成当前策略回答，由多个领域专家（Teachers）对生成的全词表分布打分，优化逆向 KL 散度：
+  $$\mathcal{L}_{\text{OPD}} = \sum_{i} w_i \mathcal{D}_{\text{KL}}\left(\pi_\theta \parallel \pi_{E_i}\right)$$
+  DeepSeek-V4 与 GLM-5 均采用 OPD 替代传统的混合多任务 RL，快速将 10+ 专家的能力注入基模，且彻底避免了灾难性遗忘。
 
 ---
 
@@ -400,7 +441,7 @@ MAI 引入了不对称剪切上限调节参数 $k \in [0, 2.5]$：
 
 MAI 将后训练拆解为三大独立演进的专家领域分支，各分支在独立的强化学习环境中并行攀爬，最终通过蒸馏统一：
 
-![Three Climbs Pipeline](/slides/mai-thinking-1/slide-55.png)
+![Three Climbs Pipeline](/slides/mai-thinking-1/slide-64.png)
 
 1. **STEM Climb（理科推理攀爬）**：
    - 核心原则：奖励信号的质量取决于答案真值校验器（Answer Key Verifier）的刚性。拒绝使用大模型自我评判（LLM-as-a-Judge），全面采用符号计算、单元测试断言与等价形式验证。
@@ -415,7 +456,7 @@ MAI 将后训练拆解为三大独立演进的专家领域分支，各分支在�
 
 在大规模强化学习集群中，推理吞吐与显存利用率的瓶颈往往卡在推理服务与训练更新之间的异构调度上。MAI 开发了定制化的强化学习引擎 **Rocket**。
 
-![Rocket Architecture](/slides/mai-thinking-1/slide-60.png)
+![Rocket Architecture](/slides/mai-thinking-1/slide-69.png)
 
 ### 一、推理与训练物理计算池解耦
 
@@ -427,7 +468,7 @@ MAI 将后训练拆解为三大独立演进的专家领域分支，各分支在�
 
 在绝大多数开源强化学习框架（如 verl、slime、SkyRL）中，Learner 在执行更新时，通常在本地重新计算一遍旧策略概率 $\pi_{\text{old}}$。然而，由于推理引擎（如 vLLM/SGLang）与训练框架（如 Megatron-LM）采用不同的底层 CUDA 核函数、KV Cache 精度或 Softmax 归约顺序，两者的概率输出存在微小的浮点偏差。在动辄数万步的自回归长序列中，该微弱偏差会被累积放大，导致重要性比率 $\pi_\theta / \pi_{\text{old}}$ 严重失真，诱发训练发散。
 
-![Numerics Replay](/slides/mai-thinking-1/slide-61.png)
+![Numerics Replay](/slides/mai-thinking-1/slide-70.png)
 
 Rocket 采取了极致的“对齐重放，而非校正”原则：
 1. **直接沿用采样概率**：Learner 计算重要性比率时，分母直接采用 Sampler 在前向生成时记录的原始对数概率。
@@ -439,7 +480,7 @@ Rocket 采取了极致的“对齐重放，而非校正”原则：
 
 每隔 5 个训练步骤，Learner 必须将数百 GB 的最新权重同步至 4,096 张推理卡。
 
-![Weight Transfer Plan](/slides/mai-thinking-1/slide-62.png)
+![Weight Transfer Plan](/slides/mai-thinking-1/slide-71.png)
 
 - **传统开源方案**：先在训练端执行 All-Gather 拼接成完整张量，再通过 NCCL 全量广播（Broadcast）至所有推理节点。该方案数据冗余极其严重，全网带宽被瞬间打爆。
 - **Rocket 编译式分发方案**：
@@ -464,7 +505,7 @@ Rocket 采取了极致的“对齐重放，而非校正”原则：
 
 MAI-Thinking-1 展现了工业界在万亿 MoE 与 RL 领域的卓越工程实力，但技术报告也存在着若干未充分消融的叙事与开放疑问：
 
-![Open Questions](/slides/mai-thinking-1/slide-64.png)
+![Open Questions](/slides/mai-thinking-1/slide-73.png)
 
 1. **强化学习超参数的消融透明度**：在预训练阶段，团队提供了详尽的 Ladder 与 EG 能效数据；但在后训练强化学习部分，诸多关键决策（如 $\epsilon=0.6$、截断上界 50、不对称参数 $k$ 的动态调度）更多依赖于经验叙述（“We found”），缺乏严格的对照消融实验。
 2. **自蒸馏重启的真实代价**：报告多次提到在策略塌陷后启用自蒸馏，但未披露十次自蒸馏所消耗的 SFT 训练算力以及恢复正常 RL 攀爬所需的追加步数。
@@ -473,20 +514,21 @@ MAI-Thinking-1 展现了工业界在万亿 MoE 与 RL 领域的卓越工程实�
 
 ---
 
-## 附录：80 张 Slide 核心技术索引速查
+## 附录：90 张 Slide 核心技术索引速查
 
 | Slide 编号 | 主题分类 | 核心技术要点与系统结论 |
 | :--- | :--- | :--- |
 | **01 - 05** | Overview & Thesis | 962B/34.7B MoE 规格、评测对比、Learned-not-inherited 哲学、三大核心命题 |
-| **06 - 11** | Part 1: Architecture | Dense/MoE 39 组交替堆叠、EP All-to-All 瓶颈、LatentMoE 6656→3072 投影、$23\%$ 通信压减、舍弃 Shared Expert |
-| **12 - 20** | Part 2: Ablations | The Ladder 8 档测试阵列、held-out loss 平滑信号、EG 能效标尺、全局批平衡与 Dropless 路由、数据排序反转 |
-| **21 - 25** | Part 3: Real Run | $TPP \gg 20$ 工业考量、小模型数据重复率对齐策略、Muennighoff $e^{-R/15}$ 4 轮重复衰减律 |
+| **06 - 12** | Part 1: Architecture | Dense/MoE 39 组交替堆叠、EP All-to-All 瓶颈、LatentMoE 6656→3072 投影、$23\%$ 通信压减、舍弃 Shared Expert |
+| **13 - 21** | Part 2: Ablations | The Ladder 8 档测试阵列、held-out loss 平滑信号、EG 能效标尺、全局批平衡与 Dropless 路由、数据排序反转 |
+| **22 - 25** | Part 3: Real Run | $TPP \gg 20$ 工业考量、小模型数据重复率对齐策略、Muennighoff $e^{-R/15}$ 4 轮重复衰减律 |
 | **26 - 32** | Part 4: Pre-training Data | 29.2T 纯人类语料、MinHash/聚类去重、55% 代码加权、Mixing Laws 混合律公式与狭窄数据饱和 |
 | **33 - 38** | Part 5: Mid-Training | 不加新数据、仅倾斜配比、RL 只能强化基座有概率采出的解空间、16K 到 256K 序列拉伸 |
-| **39 - 43** | Part 6: Recipe & Optim | AdamW 0.1x LR Floor、Attention 零初始化破除路由塌陷、SGD/Adam/Muon 谱球几何对照与生产权衡 |
-| **44 - 46** | Part 7: YOLO Infra | 90.0% Goodput、Bit-Exact 位精确确定性训练、8K GB200 集群 MFU 瓶颈迁移协同演进 |
-| **47 - 54** | Part 8: RL Tech | Token-level GRPO 目标函数、$\epsilon=0.6$ 宽剪切应对异步陈旧性、非对称参数 $k$ 控熵、自蒸馏恢复 |
-| **55 - 58** | Part 9: Three Climbs | STEM 刚性验题器、Agentic 容器环境工程、Safety 作为独立硬门控、多专长蒸馏融合 |
-| **59 - 63** | Part 10: Rocket RL | 4096 推理 + 768 训练异构分池、采样概率与路由/Top-P 掩码严格数值重放、编译式 RDMA 权重传输 |
-| **64 - 65** | Closing & Takeaways | 批判性开放问题审视、三大系统工程师必借核心方法论总结 |
-| **66 - 80** | Backup Slides | 并行范式对比、优化器谱范数几何补充推导、Muon 工业界落地阻碍、FP8 矩阵计算与 FP32 敏感边界 |
+| **39 - 44** | Part 6: Recipe & Optim | AdamW 0.1x LR Floor、Attention 零初始化破除路由塌陷、SGD/Adam/Muon 谱球几何对照、FP8/BF16 混合精度 |
+| **45 - 49** | Part 7: YOLO Infra | 90.0% Goodput、Bit-Exact 位精确确定性训练、8K GB200 集群 MFU 瓶颈迁移协同演进、单机架 64 GPU 承载 512 专家 |
+| **50 - 58** | Part 8: RL Tech | Token-level GRPO 目标函数、$\epsilon=0.6$ 宽剪切应对异步陈旧性、非对称参数 $k$ 控熵、自蒸馏恢复 |
+| **59 - 62** | 2026 Reports & Trends | 2026 技术报告横向对比、采样漂移 4 种应对范式（IcePop/Log-Ratio/原生FP4）、Agentic RL 上下文压缩与 Critic 回归、OPD 专家合并 |
+| **63 - 67** | Part 9: Three Climbs | STEM 刚性验题器、Agentic 容器沙箱与工具工程、Safety 作为独立硬门控、多专长蒸馏融合 |
+| **68 - 72** | Part 10: Rocket RL | 4,096 推理 + 768 训练异构分池、采样概率与路由/Top-P 掩码严格数值重放、编译式 RDMA 权重传输 |
+| **73 - 74** | Closing & Takeaways | 批判性开放问题审视、三大系统工程师必借核心方法论总结 |
+| **75 - 90** | Backup Slides | 并行范式对比、优化器谱范数几何补充推导、Muon 工业界落地阻碍、FP8 矩阵计算与 1024 步 Scale 历史、YOLO 物理机架拓扑与 DCP 重构 |

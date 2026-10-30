@@ -2,14 +2,14 @@
 
 The frontier of foundation models has entered an era of deep co-design between physical systems hardware and multi-thousand-step reinforcement learning (RL). In June 2026, the Microsoft AI (MAI) team released their landmark 109-page technical report: **"MAI-Thinking-1: Building a Hill-Climbing Machine"**. The report offers an end-to-end disclosure of a trillion-parameter Mixture-of-Experts (MoE) system trained from 29.2T unique human-written tokens, tilted through mid-training, and pushed through thousands of asynchronous RL steps powered by 4,096 inference GPUs and 768 learner GPUs.
 
-This chapter systematically dissects this classic technical report alongside its accompanying 80-slide deep-dive presentation deck, covering:
+This chapter systematically dissects this classic technical report alongside its accompanying 90-slide deep-dive presentation deck, covering:
 1. **Model Architecture & Interconnect Co-Design**: Dense/MoE alternation, LatentMoE projection, and a $23\%$ reduction in All-to-All communication traffic.
 2. **Pre-training Ablations & Scaling Laws**: The Ladder matrix, Efficiency Gain (EG) metric, and ranking inversion pitfalls across compute scales.
 3. **Real-World Production Regimes**: Why production $TPP \gg 20$, data repetition alignment in small ablations, and Muennighoff's 4-epoch exponential value decay law.
 4. **Data Engineering & Mixing Laws**: Governance over 29.2T human-only tokens, convex Mixing Laws formulation, and narrow domain saturation dynamics.
 5. **Mid-Training & Training Recipes**: Sampling threshold theory for RL, zero-initialized attention to prevent router collapse, and the geometric trade-offs between AdamW and Muon on spectral balls.
-6. **YOLO Training Infrastructure**: $90.0\%$ production Goodput across 8,192 GB200 GPUs, bit-exact deterministic restarts, and MFU bottleneck migration.
-7. **Key RL Technologies**: Fully expanded token-level GRPO objective, wide clipping bands ($\epsilon=0.6$) for asynchronous staleness, dynamic entropy steering, and self-distillation after collapse.
+6. **YOLO Training Infrastructure & Rack Topology**: $90.0\%$ production Goodput across 8,192 GB200 GPUs, bit-exact deterministic restarts, 64-GPU rack NVLink domain hosting 512 experts, and rewritten PyTorch DCP.
+7. **Key RL Technologies & 2026 Peer Comparisons**: Fully expanded token-level GRPO objective, wide clipping bands ($\epsilon=0.6$) for asynchronous staleness, sampler drift mitigation (IcePop / Log-ratio mask / native FP4), Agentic RL compaction dynamics forcing critic return, and On-Policy Distillation (OPD).
 8. **Distributed RL Engine Rocket**: Decoupled physical pools (4,096 samplers + 768 learners), exact numerics replay (routing & Top-P mask replay), and compiled point-to-point RDMA weight transfer plans.
 
 ---
@@ -19,7 +19,7 @@ This chapter systematically dissects this classic technical report alongside its
 ```slide-viewer
 file: slides/mai_thinking_1_v2.pdf
 slidesDir: slides/mai-thinking-1
-totalSlides: 80
+totalSlides: 90
 title: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)
 ```
 
@@ -309,13 +309,22 @@ Different optimizers emerge from selecting different geometric norm balls:
 - **ZeRO Optimizer Sharding**: MAI's YOLO infrastructure shards optimizer states across nodes. AdamW's per-element state shards trivially; Muon requires full-matrix Newton-Schulz orthogonalization iterations, introducing heavy inter-node communication overheads.
 - **Stage Continuity**: Retaining AdamW into the RL phase avoided optimizer transition shocks.
 
+### 3. Mixed Precision & Numerical Stability Design (FP8 / BF16 / FP32 Parity)
+
+At trillion-parameter scales, full BF16 training imposes severe memory and communication pressure. MAI executed a tiered precision strategy:
+- **FP8 for Matrix Multiplications (GEMMs)**:
+  - **Forward Pass**: Uses **E4M3** (1 sign bit, 4 exponent bits, 3 mantissa bits) for superior representation precision.
+  - **Activation Gradients**: Uses **E5M2** (1 sign bit, 5 exponent bits, 2 mantissa bits) for wider dynamic range to absorb gradient spikes.
+  - **Scale Factor History Tracking**: Rather than computing instantaneous block-level scales on the fly (DeepSeek-V3), MAI tracks scale factor maximums across a rolling **1024-step history**. This scale history is serialized inside every checkpoint, serving as an absolute prerequisite for Bit-Exact deterministic restarts.
+- **FP32 for Sensitive Reductions**: Residual stream additions, attention softmax logits, gradient accumulation, and AdamW first/second-order moment states remain strictly in FP32.
+
 ---
 
 ## Part 7: YOLO Training Infrastructure & High Goodput Systems
 
 Sustaining continuous training across 8,192 GB200 GPUs requires robust fault-tolerance. MAI engineered the YOLO infrastructure stack, securing a production-grade **$90.0\%$ Goodput** (Effective Compute Time / Total Wall-Clock Time).
 
-![Reliability and Goodput](/slides/mai-thinking-1/slide-45.png)
+![Reliability and Goodput](/slides/mai-thinking-1/slide-46.png)
 
 ### 1. Bit-Exact Deterministic Restarts
 
@@ -329,12 +338,17 @@ MAI disabled non-deterministic atomic operations and in-switch aggregation, enfo
 
 Across iterations v2 through v5, architectural Efficiency Gain (EG) expanded from $1.0\times$ to $1.69\times$, driving continuous system refactoring:
 
-![Architecture System Co-Design](/slides/mai-thinking-1/slide-46.png)
+![Architecture System Co-Design](/slides/mai-thinking-1/slide-49.png)
 
 1. **v2 (Initial GB200 Launch)**: Enabled GPU-Direct RDMA, optimized attention kernels, and tuned ZeRO-2, lifting MFU from $18\%$ to $22\%$.
 2. **v3 (Dropless Routing, EG $1.40\times$)**: Dynamic token distributions induced run-time skew. Overlapping communication with compute preserved $22\%$ MFU.
 3. **v4 (512 Experts, Top-8, LatentMoE, 8K GPUs, EG $1.69\times$)**: Finer expert granularity reduced individual expert GEMM matrix dimensions, leaving GPUs idle waiting on CPU driver dispatch (MFU dropped to $16\%$). Upgrading to FlashAttention-4 and optimizing CPU kernel queues restored MFU to $20\%$.
 4. **v5 (35B Active, 1T Total Params)**: ZeRO-3 weight gather collectives saturated interconnect bandwidth in backward passes, dropping MFU to $18\%$. Offloading activations allowed the cluster to revert to ZeRO-2, stabilizing long-run MFU at $20\%$.
+
+### 3. Intra-Rack NVLink Topology & Distributed Checkpoint Overhaul
+
+- **Single Rack Hosting 512 Experts on 64 GPUs**: Each physical rack hosts 64 GPUs with 8 experts assigned per GPU. The high-volume MoE All-to-All token exchange is strictly contained within the ultra-high-bandwidth **NVLink domain**; inter-rack communication is limited to InfiniBand (IB) for model replication and data-parallel gradients.
+- **Rewritten PyTorch Distributed Checkpoint (DCP)**: Standard PyTorch DCP exhibits unacceptable write latency on 1T models. MAI rewrote the underlying DCP I/O layer, achieving a **$>10\times$ speedup** in checkpoint save operations.
 
 ---
 
@@ -346,7 +360,7 @@ MAI-Thinking-1 executed asynchronous RL directly from a human-data-only base mod
 
 The training objective is formulated as token-level Group Relative Policy Optimization (GRPO):
 
-![The RL Objective](/slides/mai-thinking-1/slide-48.png)
+![The RL Objective](/slides/mai-thinking-1/slide-51.png)
 
 $$\mathcal{J}(\theta) = \frac{1}{\sum_{i=1}^G |y_i|} \sum_{i=1}^G \sum_{t=1}^{|y_i|} \min \left( \hat{r}_{i,t} A_i, \; \text{clip}\left(\hat{r}_{i,t}, \, 1 - \epsilon, \, (1 - \epsilon)^{-1} + k\right) A_i \right)$$
 
@@ -366,7 +380,7 @@ Components:
 
 Across 4,096 inference and 768 training GPUs, generation and training overlap asynchronously:
 
-![Staleness](/slides/mai-thinking-1/slide-49.png)
+![Staleness](/slides/mai-thinking-1/slide-53.png)
 
 - Complex rollouts requiring extended reasoning chains take longer to generate, arriving at the learner 5~8 weight versions behind the current parameters.
 - Rollouts exceeding an 8-version lag are dropped; rollouts within 1~8 versions are incorporated via wide-band importance weights.
@@ -375,23 +389,50 @@ Across 4,096 inference and 768 training GPUs, generation and training overlap as
 
 During iterative RL, policies naturally collapse toward safe, low-entropy sequences. The policy entropy $H(\pi_\theta)$ can decay exponentially, resulting in severe mode collapse.
 
-![Entropy Dynamics](/slides/mai-thinking-1/slide-50.png)
+![Entropy Dynamics](/slides/mai-thinking-1/slide-54.png)
 
 MAI modulated exploration dynamically via the asymmetric clipping parameter $k \in [0, 2.5]$:
 - When entropy decay accelerates, expanding $k$ elevates the upper clipping ceiling $(1 - \epsilon)^{-1} + k$, permitting larger gradient rewards for high-probability novel exploration actions;
 - Once policy entropy stabilizes, $k$ is contracted back toward zero.
 
-![Entropy Control via k](/slides/mai-thinking-1/slide-51.png)
+![Entropy Control via k](/slides/mai-thinking-1/slide-55.png)
 
 ### 4. Self-Distillation for Policy Recovery
 
 When localized policy collapse occurs, rolling back to days-old checkpoints incurs massive compute loss. MAI adopted **Self-Distillation**:
 
-![Self-Distillation](/slides/mai-thinking-1/slide-53.png)
+![Self-Distillation](/slides/mai-thinking-1/slide-57.png)
 
 - High-advantage trajectories generated prior to the collapse are harvested into a multi-task dataset spanning code, mathematics, and agentic traces;
 - The pre-collapse checkpoint acts as a teacher model, performing supervised fine-tuning with $p = 0.15$ residual dropout;
 - This resets policy entropy and restores representational diversity, allowing the model to resume RL hill-climbing without restarting the run.
+
+### 5. Cross-Report Analysis: 2026 Frontier RL Systems (Kimi K2.5, GLM-5, DeepSeek-V4, MAI, GLM-5.2)
+
+Comparing MAI-Thinking-1 to contemporaneous 2026 frontier technical reports illuminates crucial divergence across RL engineering:
+
+| Dimension | Kimi K2.5 (2026.02) | GLM-5 / GLM-5.2 (2026.02/06) | DeepSeek-V4 (2026.04) | MAI-Thinking-1 (2026.06) |
+| :--- | :--- | :--- | :--- | :--- |
+| **RL Algorithm** | Critic-free, Log-Ratio masking | GRPO + IcePop (GLM-5); Critic-based PPO for long agents (GLM-5.2) | Independent GRPO per specialist | Token-level GRPO, wide band $[0.4, 2.5+k]$ |
+| **Sampler Drift Mitigation** | Log-Ratio mask + $\tau(\log r)^2$ penalty | Two ratios: $\rho = \pi_{\text{train}} / \pi_{\text{infer}}$ dropped outside $[1/\beta, \beta]$ | Native FP4 serving weights used directly during rollout | End-to-end BF16 + SGLang exact numerical replay |
+| **Specialist Merging** | Undisclosed | On-Policy Distillation (OPD), reverse KL | Full-vocabulary OPD replaces mixed RL | SFT on teacher traces + short-horizon RL |
+
+#### A. Four Industrial Paradigms for Handling Sampler Drift
+In large-scale asynchronous RL, discrepancies between sampler and learner logits arise inevitably from kernel optimizations, precision, and version lag:
+- **GLM-5 (Dual-Ratio Filter)**: Maintains the PPO ratio $r = \pi_\theta / \pi_{\text{old}}$ alongside a second ratio $\rho = \pi_{\text{train}} / \pi_{\text{infer}}$ monitoring kernel divergence; tokens where $\rho \notin [1/\beta, \beta]$ are dropped (IcePop).
+- **Kimi K2.5 (Log-Ratio Masking & Penalty)**: Masks tokens with extreme $|\log r|$ irrespective of advantage sign, adding a quadratic $\tau (\log r)^2$ penalty to pull probabilities inward.
+- **DeepSeek-V4 (Serving-Parity Rollouts)**: Executes rollouts using the identical native FP4 quantized weights intended for online production, eliminating post-training quantization drift.
+- **MAI-Thinking-1 (Wide Clipping & Exact Replay)**: Adheres strictly to PPO directional clipping, absorbing lag via $[0.4, 2.5+k]$ while enforcing bit-level SGLang numerics replay to close kernel divergence at the root.
+
+#### B. Why Long-Horizon Agentic RL Brought Critics Back (GLM-5.2)
+For complex coding and terminal exploration, rollouts exceeding maximum context lengths require context compaction, chopping single runs into 2~4 sub-traces. Because compacted rollouts produce mismatched fragment counts and varying token lengths, fair group-mean baseline calculation collapses. GLM-5.2 was forced to restore a parametric value critic for long-horizon agentic tasks, calculating token-level advantages per sub-trace at the cost of managing value network instability and value flattening.
+
+#### C. The Emergence of On-Policy Distillation (OPD) for Specialist Merging
+When specialized RL models (STEM, Agentic, Conversational) finish climbing, how are they merged?
+- **SFT Limitations**: Supervised fine-tuning on specialist answers forces the base student model to mimic outputs outside its natural sampling distribution, triggering distribution collapse and catastrophic forgetting.
+- **On-Policy Distillation (OPD)**: The student generates its own completions under the current policy, and multiple specialist teachers score the full next-token probability distribution, minimizing reverse KL divergence:
+  $$\mathcal{L}_{\text{OPD}} = \sum_{i} w_i \mathcal{D}_{\text{KL}}\left(\pi_\theta \parallel \pi_{E_i}\right)$$
+  DeepSeek-V4 and GLM-5 utilize OPD to merge 10+ specialist teachers without retraining multi-task RL, preserving both foundational reasoning and specialist skills.
 
 ---
 
@@ -399,7 +440,7 @@ When localized policy collapse occurs, rolling back to days-old checkpoints incu
 
 MAI decoupled post-training into three parallel specialist pipelines that climb independently before being distilled into the unified foundation:
 
-![Three Climbs Pipeline](/slides/mai-thinking-1/slide-55.png)
+![Three Climbs Pipeline](/slides/mai-thinking-1/slide-64.png)
 
 1. **STEM Climb**:
    - Relies exclusively on rigid, programmatic ground-truth verifiers (Answer Key Verifiers), discarding error-prone LLM-as-a-Judge evaluations.
@@ -414,7 +455,7 @@ MAI decoupled post-training into three parallel specialist pipelines that climb 
 
 To eliminate serving-training bottlenecks, MAI developed the **Rocket** distributed RL engine.
 
-![Rocket Architecture](/slides/mai-thinking-1/slide-60.png)
+![Rocket Architecture](/slides/mai-thinking-1/slide-69.png)
 
 ### 1. Decoupled Physical Compute Pools
 
@@ -426,7 +467,7 @@ To eliminate serving-training bottlenecks, MAI developed the **Rocket** distribu
 
 Open-source RL stacks (verl, slime, SkyRL) typically recompute $\pi_{\text{old}}$ on learner GPUs. However, divergence in CUDA kernels, KV-cache precision, or reduction orders between inference engines (vLLM/SGLang) and training engines (Megatron-LM) causes subtle logit shifts that compound across long sequences, destabilizing policy ratios.
 
-![Numerics Replay](/slides/mai-thinking-1/slide-61.png)
+![Numerics Replay](/slides/mai-thinking-1/slide-70.png)
 
 Rocket adheres to a strict "replay, don't correct" paradigm:
 1. **Direct Sampling Probability Reuse**: Learners reuse the exact token probabilities logged by samplers during rollout generation.
@@ -438,7 +479,7 @@ Rocket adheres to a strict "replay, don't correct" paradigm:
 
 Synchronizing hundreds of gigabytes of weights to 4,096 inference GPUs every 5 steps requires optimized networking:
 
-![Weight Transfer Plan](/slides/mai-thinking-1/slide-62.png)
+![Weight Transfer Plan](/slides/mai-thinking-1/slide-71.png)
 
 - **The Naive Approach**: Gathering weights on learners and broadcasting via NCCL causes massive network congestion.
 - **Rocket's Compiled Schedule**:
@@ -463,7 +504,7 @@ Synchronizing hundreds of gigabytes of weights to 4,096 inference GPUs every 5 s
 
 While MAI-Thinking-1 establishes impressive engineering milestones, several methodological questions remain open:
 
-![Open Questions](/slides/mai-thinking-1/slide-64.png)
+![Open Questions](/slides/mai-thinking-1/slide-73.png)
 
 1. **Ablation Transparency in RL**: While pre-training choices are backed by rigorous Efficiency Gain curves, RL decisions (such as $\epsilon=0.6$, ratio clamp 50, and dynamic $k$) are largely justified narratively ("we found") rather than via systematic ablations.
 2. **The True Cost of Self-Distillation**: The report notes ten self-distillation interventions during RL collapses, but omits the SFT compute and lost training steps required to re-establish the RL climb.
@@ -472,20 +513,21 @@ While MAI-Thinking-1 establishes impressive engineering milestones, several meth
 
 ---
 
-## Appendix: 80-Slide Core Content Index
+## Appendix: 90-Slide Core Content Index
 
 | Slide Range | Section | Key Concepts & Engineering Takeaways |
 | :--- | :--- | :--- |
 | **01 - 05** | Overview & Thesis | 962B/34.7B MoE specifications, benchmark scorecard, "Learned-not-inherited" philosophy, Three core claims |
-| **06 - 11** | Part 1: Architecture | Alternating Dense/MoE layers, EP All-to-All bottleneck, LatentMoE 6656→3072 compression, $23\%$ traffic reduction, Shared expert ablation |
-| **12 - 20** | Part 2: Ablations | The Ladder (8 sizes), held-out loss metric, Efficiency Gain (EG) formulation, Global batch balancing, Dropless routing, Metric inversion |
-| **21 - 25** | Part 3: Real Run | Production $TPP \gg 20$, repetition alignment in small ablations, Muennighoff exponential decay $e^{-R/15}$, 8-epoch cap |
+| **06 - 12** | Part 1: Architecture | Alternating Dense/MoE layers, EP All-to-All bottleneck, LatentMoE 6656→3072 compression, $23\%$ traffic reduction, Shared expert ablation |
+| **13 - 21** | Part 2: Ablations | The Ladder (8 sizes), held-out loss metric, Efficiency Gain (EG) formulation, Global batch balancing, Dropless routing, Metric inversion |
+| **22 - 25** | Part 3: Real Run | Production $TPP \gg 20$, repetition alignment in small ablations, Muennighoff exponential decay $e^{-R/15}$, 8-epoch cap |
 | **26 - 32** | Part 4: Pre-training Data | 29.2T human-only tokens, MinHash/clustering dedup, 55% code mix, Mixing Laws equation, Narrow domain saturation |
 | **33 - 38** | Part 5: Mid-Training | Mix tilting without novel data, RL sampling feasibility hypothesis, 16K to 256K context extension |
-| **39 - 43** | Part 6: Recipe & Optim | AdamW 0.1x LR floor, Zero-initialized attention to prevent router collapse, Geometric comparison of SGD/Adam/Muon on spectral balls |
-| **44 - 46** | Part 7: YOLO Infra | 90.0% Goodput, Bit-exact deterministic training, MFU bottleneck migration across 8K GB200 GPUs |
-| **47 - 54** | Part 8: RL Tech | Token-level GRPO objective, Wide clip ($\epsilon=0.6$) for staleness, Asymmetric $k$ entropy steering, Self-distillation recovery |
-| **55 - 58** | Part 9: Three Climbs | STEM programmatic verifiers, Agentic sandbox execution feedback, Safety as an independent gate, Multi-specialist distillation |
-| **59 - 63** | Part 10: Rocket RL | 4,096 inference + 768 learner split pool, Numerics replay (exact routing & Top-P mask replay), Compiled RDMA weight transfer plan |
-| **64 - 65** | Closing & Takeaways | Open questions and critique, Summary of highest-ROI systems engineering paradigms |
-| **66 - 80** | Backup Slides | Parallelism taxonomy, Spectral norm mathematical derivations, Industrial hurdles for Muon, FP8 GEMM vs FP32 precision boundaries |
+| **39 - 44** | Part 6: Recipe & Optim | AdamW 0.1x LR floor, Zero-initialized attention to prevent router collapse, Geometric comparison of SGD/Adam/Muon on spectral balls, FP8 mixed precision |
+| **45 - 49** | Part 7: YOLO Infra | 90.0% Goodput, Bit-exact deterministic training, MFU bottleneck migration across 8K GB200 GPUs, 64-GPU rack NVLink isolation |
+| **50 - 58** | Part 8: RL Tech | Token-level GRPO objective, Wide clip ($\epsilon=0.6$) for staleness, Asymmetric $k$ entropy steering, Self-distillation recovery |
+| **59 - 62** | 2026 Reports & Trends | 2026 tech report comparisons, sampler drift mitigation (IcePop/Log-Ratio/native FP4), Agentic compaction with critic return, OPD specialist merging |
+| **63 - 67** | Part 9: Three Climbs | STEM programmatic verifiers, Agentic sandbox execution feedback, Safety as an independent gate, Multi-specialist distillation |
+| **68 - 72** | Part 10: Rocket RL | 4,096 inference + 768 learner split pool, Numerics replay (exact routing & Top-P mask replay), Compiled RDMA weight transfer plan |
+| **73 - 74** | Closing & Takeaways | Open questions and critique, Summary of highest-ROI systems engineering paradigms |
+| **75 - 90** | Backup Slides | Parallelism taxonomy, Spectral norm mathematical derivations, Industrial hurdles for Muon, FP8 E4M3/E5M2 precision, YOLO rack topology & DCP |

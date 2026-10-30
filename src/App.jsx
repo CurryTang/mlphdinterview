@@ -30901,21 +30901,24 @@ function MartingaleRandomWalkVisual() {
 }
 
 const MAI_SLIDE_SECTIONS = [
-  { slide: 1, titleZh: '01 · 封面与核心指标', titleEn: '01 · Title & Benchmark Results' },
+  { slide: 1, titleZh: '01 · 封面与核心命题', titleEn: '01 · Title & Core Thesis' },
   { slide: 2, titleZh: '02 · 报告总览与模型对比', titleEn: '02 · Overview & Model Comparison' },
-  { slide: 4, titleZh: '04 · 爬坡机器与三大命题', titleEn: '04 · Hill-Climbing & Three Claims' },
-  { slide: 6, titleZh: '06 · Part 1: 模型架构与互联协同', titleEn: '06 · Part 1: Architecture & Interconnect' },
-  { slide: 12, titleZh: '12 · Part 2: 预训练消融与阶梯标尺', titleEn: '12 · Part 2: Pre-training Ablations' },
-  { slide: 21, titleZh: '21 · Part 3: 从 Ladder 到真实生产', titleEn: '21 · Part 3: From Ladder to Real Run' },
+  { slide: 4, titleZh: '04 · 爬坡机器与三大工程结论', titleEn: '04 · Hill-Climbing Machine & 3 Claims' },
+  { slide: 6, titleZh: '06 · Part 1: 模型架构与通信减量', titleEn: '06 · Part 1: Architecture & Interconnect' },
+  { slide: 13, titleZh: '13 · Part 2: 预训练消融与阶梯标尺', titleEn: '13 · Part 2: Pre-training Ablations' },
+  { slide: 22, titleZh: '22 · Part 3: 从 Ladder 到真实生产', titleEn: '22 · Part 3: From Ladder to Real Run' },
   { slide: 26, titleZh: '26 · Part 4: 预训练数据工程与混合律', titleEn: '26 · Part 4: Pre-training Data & Mixing' },
-  { slide: 33, titleZh: '33 · Part 5: Mid-Training 承前启后', titleEn: '33 · Part 5: Mid-Training Philosophy' },
+  { slide: 33, titleZh: '33 · Part 5: Mid-Training 承前启后', titleEn: '33 · Part 5: Mid-Training Bridge' },
   { slide: 39, titleZh: '39 · Part 6: 优化器与训练 Recipe', titleEn: '39 · Part 6: Optimizer & Training Recipe' },
-  { slide: 44, titleZh: '44 · Part 7: YOLO 训练基础设施', titleEn: '44 · Part 7: YOLO Infrastructure & Goodput' },
-  { slide: 47, titleZh: '47 · Part 8: 强化学习关键技术', titleEn: '47 · Part 8: RL Key Technologies' },
-  { slide: 55, titleZh: '55 · Part 9: 三大 Specialist 攀爬流水线', titleEn: '55 · Part 9: Three Specialist Climbs' },
-  { slide: 59, titleZh: '59 · Part 10: 分布式 RL 引擎 Rocket', titleEn: '59 · Part 10: Distributed RL: Rocket' },
-  { slide: 64, titleZh: '64 · 结语、总结与开放问题', titleEn: '64 · Closing & Open Questions' },
-  { slide: 66, titleZh: '66 · Backup: 备用深度幻灯片', titleEn: '66 · Backup Slides & Deep Dives' },
+  { slide: 45, titleZh: '45 · Part 7: YOLO 训练基础设施', titleEn: '45 · Part 7: YOLO Infrastructure & Goodput' },
+  { slide: 50, titleZh: '50 · Part 8: 强化学习关键技术 (Token-GRPO)', titleEn: '50 · Part 8: RL Technologies (Token-GRPO)' },
+  { slide: 59, titleZh: '59 · 2026 技术报告对比 (OPD/Agentic)', titleEn: '59 · 2026 Tech Reports: OPD & Agentic' },
+  { slide: 63, titleZh: '63 · Part 9: 三大 Specialist 攀爬流水线', titleEn: '63 · Part 9: Three Specialist Climbs' },
+  { slide: 68, titleZh: '68 · Part 10: 分布式 RL 引擎 Rocket', titleEn: '68 · Part 10: Distributed RL: Rocket' },
+  { slide: 73, titleZh: '73 · 结语与开放问题 (Closing)', titleEn: '73 · Closing & Open Questions' },
+  { slide: 75, titleZh: '75 · Backup: 深入微架构与数学推导', titleEn: '75 · Backup: Mathematical & System Deep Dives' },
+  { slide: 85, titleZh: '85 · Backup: Muon 谱空间几何与精度', titleEn: '85 · Backup: Muon Geometry & Precision' },
+  { slide: 89, titleZh: '89 · Backup: FP8 数值精度与 YOLO 栈', titleEn: '89 · Backup: FP8 Precision & YOLO Stack' },
 ];
 
 function resolvePublicAsset(assetPath) {
@@ -30931,7 +30934,7 @@ function parsePdfViewerConfig(rawText) {
   const config = {
     file: 'slides/mai_thinking_1_v2.pdf',
     slidesDir: 'slides/mai-thinking-1',
-    totalSlides: 80,
+    totalSlides: 90,
     title: 'MAI-Thinking-1: Building a Hill-Climbing Machine',
   };
   if (!rawText) return config;
@@ -30943,7 +30946,7 @@ function parsePdfViewerConfig(rawText) {
       const val = line.slice(colonIdx + 1).trim();
       if (key === 'file') config.file = val;
       if (key === 'slidesDir') config.slidesDir = val;
-      if (key === 'totalSlides') config.totalSlides = parseInt(val, 10) || 80;
+      if (key === 'totalSlides') config.totalSlides = parseInt(val, 10) || 90;
       if (key === 'title') config.title = val;
     }
   }
@@ -30953,7 +30956,7 @@ function parsePdfViewerConfig(rawText) {
 function PdfSlideViewer({ rawConfig }) {
   const { isEnglish, t } = useUiCopy();
   const config = useMemo(() => parsePdfViewerConfig(rawConfig), [rawConfig]);
-  const totalSlides = config.totalSlides || 80;
+  const totalSlides = config.totalSlides || 90;
 
   const [currentSlide, setCurrentSlide] = useState(1);
   const [mode, setMode] = useState('slides'); // 'slides' | 'pdf'
@@ -32355,7 +32358,8 @@ function ImageLightboxModal({ src, alt, onClose }) {
 
 function MarkdownImage({ src, alt, ...props }) {
   const cleanSrc = src?.trim() ?? '';
-  const resolvedSrc = (cleanSrc && resolveMediaUrl(cleanSrc)) || cleanSrc;
+  const resolvedMedia = cleanSrc ? resolveMediaUrl(cleanSrc) : null;
+  const resolvedSrc = resolvedMedia || (cleanSrc ? resolvePublicAsset(cleanSrc) : '');
   const { t } = useUiCopy();
 
   const [hasError, setHasError] = useState(false);
