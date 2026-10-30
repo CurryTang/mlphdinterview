@@ -770,11 +770,11 @@ const mlsysNoteDefinitions = [
 
   // --- Module 5: 经典 Tech Report 深度精读 ---
   createTutorialDefinition(
-    '10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记',
+    '10 · 经典 Tech Report 精读：MAI-Thinking-1 Slides',
     'MLSYS10 Classic Tech Report MAI-Thinking-1.md',
     'MLSYS10 Classic Tech Report MAI-Thinking-1.en.md',
     {
-      titleEn: '10 · Classic Tech Report Reading: MAI-Thinking-1 Architecture & Slide Notes',
+      titleEn: '10 · Classic Tech Report: MAI-Thinking-1 Slides',
       category: '经典 Tech Report 精读',
       categoryEn: 'Tech Report Deep Dives',
       difficulty: 'Hard',
@@ -31048,6 +31048,13 @@ function PdfSlideViewer({ rawConfig }) {
           </button>
           <button
             type="button"
+            className={`pdf-tab-btn ${mode === 'continuous' ? 'active' : ''}`}
+            onClick={() => setMode('continuous')}
+          >
+            📜 {t('连续长图', 'Continuous')}
+          </button>
+          <button
+            type="button"
             className={`pdf-tab-btn ${mode === 'pdf' ? 'active' : ''}`}
             onClick={() => setMode('pdf')}
           >
@@ -31059,7 +31066,7 @@ function PdfSlideViewer({ rawConfig }) {
             className="pdf-btn"
             target="_blank"
             rel="noopener noreferrer"
-            title={t('下载 PDF 文件 (1.78 MB)', 'Download PDF (1.78 MB)')}
+            title={t('下载 PDF 文件 (1.81 MB)', 'Download PDF (1.81 MB)')}
           >
             ⬇️ {t('下载', 'Download')}
           </a>
@@ -31074,7 +31081,7 @@ function PdfSlideViewer({ rawConfig }) {
         </div>
       </div>
 
-      {mode === 'slides' ? (
+      {mode === 'slides' && (
         <>
           <div className="pdf-slide-stage">
             <button
@@ -31188,7 +31195,34 @@ function PdfSlideViewer({ rawConfig }) {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {mode === 'continuous' && (
+        <div className="pdf-continuous-container">
+          <div className="pdf-continuous-toolbar">
+            <span>
+              {t(`共 ${totalSlides} 张幻灯片 · 纵向长图连续浏览（按需懒加载）`, `Total ${totalSlides} slides · Continuous vertical view (lazy-loaded)`)}
+            </span>
+          </div>
+          <div className="pdf-continuous-list">
+            {Array.from({ length: totalSlides }, (_, i) => i + 1).map((num) => (
+              <div key={num} className="pdf-continuous-item">
+                <div className="pdf-continuous-header">
+                  <span>Slide {num} / {totalSlides}</span>
+                </div>
+                <img
+                  src={getSlideUrl(num)}
+                  alt={`Slide ${num}`}
+                  className="pdf-continuous-img"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode === 'pdf' && (
         <div className="pdf-tab-content">
           {!pdfLoaded ? (
             <div className="pdf-lazy-card">
@@ -31198,8 +31232,8 @@ function PdfSlideViewer({ rawConfig }) {
               </div>
               <div className="pdf-lazy-desc">
                 {t(
-                  '本技术报告 Slides 共 80 页（约 1.78 MB）。为节省网络带宽并防止页面初始卡顿，原生 PDF 采用延迟加载机制。您可以点击下方按钮即刻渲染，或直接使用极速流畅的画板模式浏览。',
-                  'This slide deck contains 80 pages (~1.78 MB). To eliminate initial page load lag and conserve bandwidth, the native PDF is lazy-loaded on demand. Click below to load or switch back to the instant Slide Deck view.'
+                  `本技术报告 Slides 共 ${totalSlides} 页（约 1.81 MB）。为节省网络带宽并防止页面初始卡顿，原生 PDF 采用延迟加载机制。您可以点击下方按钮即刻渲染，或直接使用极速流畅的画板模式浏览。`,
+                  `This slide deck contains ${totalSlides} pages (~1.81 MB). To eliminate initial page load lag and conserve bandwidth, the native PDF is lazy-loaded on demand. Click below to load or switch back to the instant Slide Deck view.`
                 )}
               </div>
               <div className="pdf-lazy-actions">
@@ -31217,7 +31251,7 @@ function PdfSlideViewer({ rawConfig }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  ⬇️ {t('直接下载 PDF 文件 (1.78 MB)', 'Download PDF File (1.78 MB)')}
+                  ⬇️ {t('直接下载 PDF 文件 (1.81 MB)', 'Download PDF File (1.81 MB)')}
                 </a>
                 <button
                   type="button"

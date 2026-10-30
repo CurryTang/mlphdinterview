@@ -93,7 +93,7 @@ describe('App', () => {
             : requestUrl.includes('SystemDesign02')
               ? '# System Design 02 · 数据库'
             : requestUrl.includes('MLSYS10')
-              ? '# 10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记\n\n```slide-viewer\nfile: slides/mai_thinking_1_v2.pdf\nslidesDir: slides/mai-thinking-1\ntotalSlides: 90\ntitle: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)\n```'
+              ? '# 10 · 经典 Tech Report 精读：MAI-Thinking-1 Slides\n\n```slide-viewer\nfile: slides/mai_thinking_1_v2.pdf\nslidesDir: slides/mai-thinking-1\ntotalSlides: 90\ntitle: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)\n```'
             : requestUrl.includes('CoreSkills09')
               ? '## 双源推进可行性：Interleaving String\n\n$$dp[i][j] = (dp[i-1][j] \\land s_1[i-1] == s_3[i+j-1]) \\lor (dp[i][j-1] \\land s_2[j-1] == s_3[i+j-1])$$\n'
             : chineseContent,
@@ -278,6 +278,11 @@ describe('App', () => {
     const nextBtn = screen.getByRole('button', { name: 'Next Slide' });
     fireEvent.click(nextBtn);
     expect(screen.getByAltText('Slide 2')).toBeInTheDocument();
+
+    // Test switching to Continuous mode
+    const continuousTabBtn = screen.getByRole('button', { name: /连续长图/i });
+    fireEvent.click(continuousTabBtn);
+    expect(screen.getByText(/纵向长图连续浏览/i)).toBeInTheDocument();
 
     // Test switching to Native PDF mode with lazy loading
     const pdfTabBtn = screen.getByRole('button', { name: /原生 PDF/i });

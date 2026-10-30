@@ -24,7 +24,7 @@ MLSYS 板块从 GPU 底层硬件与 CUDA 算子工程出发，贯穿高性能 At
 - [[MLSYS09 MoE Systems and Post-Training Cluster Infra|09 · MoE 稀疏系统与后训练强化学习集群架构]]：DeepSeekMoE 细粒度专家、All-to-All 通信加速、SonicMoE，以及后训练强化学习（TRL 到 Forge/Ray、PPO/GRPO 系统解耦）。
 
 ### 模块 5：经典 Tech Report 深度精读
-- [[MLSYS10 Classic Tech Report MAI-Thinking-1|10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记]]：全景解构微软万亿 MoE 与异步 RL 系统技术报告与 80 页精读 Slides，涵盖 Dense/MoE 4倍通信减量交替架构、Ladder 阶梯跨 Scale 评估、Chinchilla TPP>>20 与重复数据边界、Mixing Laws 混合律、Token-level GRPO 宽剪切防崩、Rocket 4,096+768 异构 RL 集群与精细数值对齐。
+- [[MLSYS10 Classic Tech Report MAI-Thinking-1|10 · 经典 Tech Report 精读：MAI-Thinking-1 Slides]]：微软万亿 MoE 与异步 RL 系统技术报告 90 页精读 Slides 在线画板与原件阅读。
 
 ---
 

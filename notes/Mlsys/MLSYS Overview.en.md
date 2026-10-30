@@ -24,7 +24,7 @@ The MLSYS track spans the full spectrum of machine learning systems: starting fr
 - [[MLSYS09 MoE Systems and Post-Training Cluster Infra|09 · MoE Systems & Post-Training RL Cluster Infrastructure]]: DeepSeekMoE fine-grained experts, All-to-All communication, SonicMoE, and Post-Training RL systems (TRL to Forge/Ray, PPO/GRPO decoupling).
 
 ### Module 5: Classic Tech Report Deep Dives
-- [[MLSYS10 Classic Tech Report MAI-Thinking-1|10 · Classic Tech Report Reading: MAI-Thinking-1 Architecture & Slide Notes]]: End-to-end deconstruction of Microsoft AI's 109-page technical report and 80-slide deck on trillion-parameter MoE and asynchronous RL systems: Dense/MoE 4x communication reduction, Ladder scaling methodology, Chinchilla TPP>>20 and data repetition boundaries, Mixing Laws, Token-level GRPO wide clipping, Rocket 4,096+768 split RL engine, and exact numerics replay.
+- [[MLSYS10 Classic Tech Report MAI-Thinking-1|10 · Classic Tech Report: MAI-Thinking-1 Slides]]: 90-slide deck for Microsoft AI's technical report on trillion-parameter MoE and asynchronous RL systems.
 
 ---
 
