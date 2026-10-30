@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mlphdinterview": {
+      "command": "node",
+      "args": ["mcp/index.js"]
+    }
+  }
+}

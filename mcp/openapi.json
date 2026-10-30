@@ -1,0 +1,273 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ML PhD & Quant Interview Knowledge Engine (CurryTang/mlphdinterview)",
+    "description": "API for ChatGPT Custom GPTs to access 290+ technical interview notes, 65 ByteDance high-frequency interview problems, interactive quizzes, and system design case studies across ML Systems, System Design, Quant, and LeetCode.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3333",
+      "description": "Local MCP/HTTP server instance (replace with public ngrok / Cloudflare Tunnel URL when connecting ChatGPT Custom GPT)"
+    }
+  ],
+  "paths": {
+    "/api/search": {
+      "get": {
+        "summary": "Search technical knowledge base",
+        "description": "Search across 290+ technical notes covering MLSys, System Design, Quant, LeetCode, and Business Algorithms.",
+        "operationId": "searchKnowledgeBase",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query or concept (e.g. KV Cache, PagedAttention, Kafka, Martingale)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Domain filter (Mlsys, SystemDesign, quant, Leetcode, MLCoding, BusinessAlgorithm, Jobs)",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "Mlsys", "SystemDesign", "quant", "Leetcode", "MLCoding", "BusinessAlgorithm", "Jobs"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of results (default 5)",
+            "schema": {
+              "type": "integer",
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked search results with snippets and headings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/note": {
+      "get": {
+        "summary": "Get full or sectional note content",
+        "description": "Retrieve markdown notes from the knowledge base by path or title.",
+        "operationId": "getNoteContent",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "description": "Note file path (e.g. notes/Mlsys/MLSYS06 LLM Inference Engine Architecture nano-vllm.md) or note title",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": false,
+            "description": "Specific heading section to extract",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Language version (zh or en)",
+            "schema": {
+              "type": "string",
+              "enum": ["zh", "en"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note content and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/random": {
+      "get": {
+        "summary": "Get a random interview problem for mock interview",
+        "description": "Fetch a random question from the ByteDance 65 high-frequency questions or System Design case studies.",
+        "operationId": "getRandomQuestion",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Filter by category (Leetcode, MLCoding, SystemDesign, Mlsys, quant)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_solution",
+            "in": "query",
+            "required": false,
+            "description": "Whether to include reference solution (set false to test candidate first)",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question details and constraints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{id}": {
+      "get": {
+        "summary": "Get specific interview problem by ID",
+        "description": "Retrieve specific ByteDance or System Design question details by ID.",
+        "operationId": "getQuestionById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Question ID (e.g. 01, bytedance-18, case-chatgpt-sse)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_solution",
+            "in": "query",
+            "required": false,
+            "description": "Whether to include full solution",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question specification and rubric",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/quiz": {
+      "get": {
+        "summary": "Get practice quizzes / flashcards",
+        "description": "Fetch multiple-choice technical flashcards with optional answer reveal.",
+        "operationId": "getPracticeQuizzes",
+        "parameters": [
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "description": "Filter by keyword (e.g. sse, attention, kafka)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Category filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "description": "Number of questions (default 3)",
+            "schema": {
+              "type": "integer",
+              "default": 3
+            }
+          },
+          {
+            "name": "reveal",
+            "in": "query",
+            "required": false,
+            "description": "Reveal correct answer and explanation",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of practice quizzes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "summary": "Get question bank and knowledge base statistics",
+        "description": "Summary counts of all indexed notes, categories, ByteDance questions, and quizzes.",
+        "operationId": "getStats",
+        "responses": {
+          "200": {
+            "description": "Statistical summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

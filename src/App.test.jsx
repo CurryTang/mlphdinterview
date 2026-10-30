@@ -84,12 +84,16 @@ describe('App', () => {
               ? '# Wiki · 控制面与数据面解耦 (Control & Data Plane)'
             : requestUrl.includes('SystemDesignWiki%20Pull%20vs%20Push') || requestUrl.includes('SystemDesignWiki Pull vs Push')
               ? '# Wiki · Pull vs Push (推拉模型与读写扩散)'
+            : requestUrl.includes('SystemDesignWiki%20SSE') || requestUrl.includes('SystemDesignWiki SSE')
+              ? '# Wiki · Server-Sent Events (SSE 与大模型流式传输架构)'
             : requestUrl.includes('SystemDesign01D')
               ? '# System Design 01D · Redis'
             : requestUrl.includes('SystemDesign99')
               ? '# System Design 99 · 高频术语整合'
             : requestUrl.includes('SystemDesign02')
               ? '# System Design 02 · 数据库'
+            : requestUrl.includes('MLSYS10')
+              ? '# 10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记\n\nMAI-Thinking-1: Building a Hill-Climbing Machine\n\n<iframe src="/slides/mai_thinking_1_v2.pdf" title="MAI-Thinking-1 Slides PDF Viewer"></iframe>'
             : requestUrl.includes('CoreSkills09')
               ? '## 双源推进可行性：Interleaving String\n\n$$dp[i][j] = (dp[i-1][j] \\land s_1[i-1] == s_3[i+j-1]) \\lor (dp[i][j-1] \\land s_2[j-1] == s_3[i+j-1])$$\n'
             : chineseContent,
@@ -256,6 +260,18 @@ describe('App', () => {
     expect(within(sidebar).getByRole('button', { name: /01 · GPU 硬件体系/i })).toBeInTheDocument();
     expect(within(sidebar).queryByText('LLM八股')).not.toBeInTheDocument();
     expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
+  });
+
+  it('opens MLSYS 10 Classic Tech Report MAI-Thinking-1 note with slides PDF preview', async () => {
+    window.location.hash = '#MLSYS10 Classic Tech Report MAI-Thinking-1.md';
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /10 · 经典 Tech Report 精读/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/MAI-Thinking-1: Building a Hill-Climbing Machine/i).length).toBeGreaterThan(0);
+
+    const pdfViewer = document.querySelector('iframe[title="MAI-Thinking-1 Slides PDF Viewer"]');
+    expect(pdfViewer).not.toBeNull();
+    expect(pdfViewer).toHaveAttribute('src', '/slides/mai_thinking_1_v2.pdf');
   });
 
   it('opens the LeetCode section from the top navigation', async () => {
@@ -729,7 +745,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Event Bus/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /控制面与数据面解耦/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(21\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(22\)/i }));
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Flink/i })).toBeInTheDocument();
@@ -740,7 +756,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /控制面与数据面解耦/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /全部 \(26\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /全部 \(27\)/i }));
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();

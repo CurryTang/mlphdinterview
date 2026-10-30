@@ -4,7 +4,7 @@ MLSYS 板块从 GPU 底层硬件与 CUDA 算子工程出发，贯穿高性能 At
 
 ---
 
-## 4 大核心模块与 9 篇深度教程
+## 5 大核心模块与 10 篇深度教程
 
 ### 模块 1：GPU 硬件架构与 CUDA 算子工程
 - [[MLSYS01 GPU Architecture and CUDA Programming Model|01 · GPU 硬件体系、CUDA 编程模型与 Roofline 性能分析基石]]：从 SM 微架构、流水线仿真、CUDA 线程层级映射，到 Roofline 理论上下界与调优五原则。
@@ -23,6 +23,9 @@ MLSYS 板块从 GPU 底层硬件与 CUDA 算子工程出发，贯穿高性能 At
 - [[MLSYS08 Distributed Training Parallelism and Communication|08 · 分布式训练并行范式全景与 NCCL 通信]]：3D/4D 并行体系（DP/DDP、ZeRO-1/2/3、FSDP、Megatron TP/PP/SP、Ulysses）与 NCCL 环形通信数学模型。
 - [[MLSYS09 MoE Systems and Post-Training Cluster Infra|09 · MoE 稀疏系统与后训练强化学习集群架构]]：DeepSeekMoE 细粒度专家、All-to-All 通信加速、SonicMoE，以及后训练强化学习（TRL 到 Forge/Ray、PPO/GRPO 系统解耦）。
 
+### 模块 5：经典 Tech Report 深度精读
+- [[MLSYS10 Classic Tech Report MAI-Thinking-1|10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记]]：全景解构微软万亿 MoE 与异步 RL 系统技术报告与 80 页精读 Slides，涵盖 Dense/MoE 4倍通信减量交替架构、Ladder 阶梯跨 Scale 评估、Chinchilla TPP>>20 与重复数据边界、Mixing Laws 混合律、Token-level GRPO 宽剪切防崩、Rocket 4,096+768 异构 RL 集群与精细数值对齐。
+
 ---
 
 ## 推荐学习主线
@@ -40,4 +43,5 @@ MLSYS 板块从 GPU 底层硬件与 CUDA 算子工程出发，贯穿高性能 At
   │
   └──► 08 (分布式训练并行与 NCCL 通信)
          └──► 09 (MoE 稀疏系统与后训练强化学习 Infra)
+                └──► 10 (经典 Tech Report 论文精读：MAI-Thinking-1 万亿 MoE 与 RL 生产系统)
 ```

@@ -767,6 +767,19 @@ const mlsysNoteDefinitions = [
       difficulty: 'Hard',
     },
   ),
+
+  // --- Module 5: 经典 Tech Report 深度精读 ---
+  createTutorialDefinition(
+    '10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记',
+    'MLSYS10 Classic Tech Report MAI-Thinking-1.md',
+    'MLSYS10 Classic Tech Report MAI-Thinking-1.en.md',
+    {
+      titleEn: '10 · Classic Tech Report Reading: MAI-Thinking-1 Architecture & Slide Notes',
+      category: '经典 Tech Report 精读',
+      categoryEn: 'Tech Report Deep Dives',
+      difficulty: 'Hard',
+    },
+  ),
 ];
 
 const mlsysNotes = mlsysNoteDefinitions.map((definition) => ({
@@ -1657,6 +1670,12 @@ const systemDesignNoteDefinitions = [
     { directory: 'SystemDesign', titleEn: 'Wiki · Pull vs Push Models', category: 'Wiki', difficulty: 'Medium' },
   ),
   createTutorialDefinition(
+    'Wiki · Server-Sent Events (SSE 与大模型流式传输架构)',
+    'SystemDesignWiki SSE.md',
+    'SystemDesignWiki SSE.en.md',
+    { directory: 'SystemDesign', titleEn: 'Wiki · Server-Sent Events (SSE) & LLM Streaming Architecture', category: 'Wiki', difficulty: 'Medium' },
+  ),
+  createTutorialDefinition(
     'Wiki · Idempotency (幂等性设计与实现模式)',
     'SystemDesignWiki Idempotency.md',
     'SystemDesignWiki Idempotency.en.md',
@@ -1929,7 +1948,7 @@ const noteSections = [
   {
     id: 'mlsys',
     title: 'MLSYS',
-    description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, and distributed training infra',
+    description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, distributed training, and tech report deep dives',
     notes: mlsysNotes,
   },
   {
@@ -2066,7 +2085,7 @@ const homeSectionCopy = {
   zh: {
     mlsys: {
       title: 'MLSYS',
-      description: 'GPU 硬件体系、CUDA 算子工程、高性能 Attention、推理引擎与集群并行 Infra',
+      description: 'GPU 硬件体系、CUDA 算子工程、高性能 Attention、推理引擎、分布式训练与经典 Tech Report 论文精读',
     },
     quant: {
       title: 'Quant',
@@ -2096,7 +2115,7 @@ const homeSectionCopy = {
   en: {
     mlsys: {
       title: 'MLSYS',
-      description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, and distributed training infra',
+      description: 'GPU hardware architecture, CUDA operators, Attention, inference serving, distributed training, and tech report deep dives',
     },
     quant: {
       title: 'Quant',
