@@ -93,7 +93,7 @@ describe('App', () => {
             : requestUrl.includes('SystemDesign02')
               ? '# System Design 02 · 数据库'
             : requestUrl.includes('MLSYS10')
-              ? '# 10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记\n\nMAI-Thinking-1: Building a Hill-Climbing Machine\n\n<iframe src="/slides/mai_thinking_1_v2.pdf" title="MAI-Thinking-1 Slides PDF Viewer"></iframe>'
+              ? '# 10 · 经典 Tech Report 精读：MAI-Thinking-1 体系解构与 Slides 笔记\n\n```slide-viewer\nfile: slides/mai_thinking_1_v2.pdf\nslidesDir: slides/mai-thinking-1\ntotalSlides: 80\ntitle: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)\n```'
             : requestUrl.includes('CoreSkills09')
               ? '## 双源推进可行性：Interleaving String\n\n$$dp[i][j] = (dp[i-1][j] \\land s_1[i-1] == s_3[i+j-1]) \\lor (dp[i][j-1] \\land s_2[j-1] == s_3[i+j-1])$$\n'
             : chineseContent,
@@ -262,16 +262,37 @@ describe('App', () => {
     expect(within(sidebar).queryByText('LeetCode')).not.toBeInTheDocument();
   });
 
-  it('opens MLSYS 10 Classic Tech Report MAI-Thinking-1 note with slides PDF preview', async () => {
+  it('opens MLSYS 10 Classic Tech Report MAI-Thinking-1 note with interactive slides and lazy PDF preview', async () => {
     window.location.hash = '#MLSYS10 Classic Tech Report MAI-Thinking-1.md';
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /10 · 经典 Tech Report 精读/i })).toBeInTheDocument();
     expect(screen.getAllByText(/MAI-Thinking-1: Building a Hill-Climbing Machine/i).length).toBeGreaterThan(0);
 
-    const pdfViewer = document.querySelector('iframe[title="MAI-Thinking-1 Slides PDF Viewer"]');
-    expect(pdfViewer).not.toBeNull();
-    expect(pdfViewer).toHaveAttribute('src', '/slides/mai_thinking_1_v2.pdf');
+    // Default to Slides mode with slide 1
+    const slideImg = screen.getByAltText('Slide 1');
+    expect(slideImg).toBeInTheDocument();
+    expect(slideImg).toHaveAttribute('src', expect.stringContaining('slide-01.png'));
+
+    // Test next slide navigation
+    const nextBtn = screen.getByRole('button', { name: 'Next Slide' });
+    fireEvent.click(nextBtn);
+    expect(screen.getByAltText('Slide 2')).toBeInTheDocument();
+
+    // Test switching to Native PDF mode with lazy loading
+    const pdfTabBtn = screen.getByRole('button', { name: /原生 PDF/i });
+    fireEvent.click(pdfTabBtn);
+
+    // Initially iframe is not loaded, lazy trigger placeholder button is shown
+    expect(document.querySelector('iframe[title="MAI-Thinking-1 Slides PDF Viewer"]')).toBeNull();
+    const loadPdfBtn = screen.getByRole('button', { name: /点击加载原生 PDF/i });
+    expect(loadPdfBtn).toBeInTheDocument();
+
+    // Click to load native PDF iframe
+    fireEvent.click(loadPdfBtn);
+    const pdfIframe = document.querySelector('iframe[title="MAI-Thinking-1 Slides PDF Viewer"]');
+    expect(pdfIframe).not.toBeNull();
+    expect(pdfIframe).toHaveAttribute('src', expect.stringContaining('slides/mai_thinking_1_v2.pdf'));
   });
 
   it('opens the LeetCode section from the top navigation', async () => {

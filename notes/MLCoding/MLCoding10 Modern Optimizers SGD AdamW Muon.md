@@ -572,6 +572,143 @@ Adam 的二阶矩滑动衰减因子 $\beta_2=0.999$ 隐式假设了数据分布�
 
 ---
 
+## 03B. 批量大小扩展动力学：Gradient Noise Scale、临界 Batch Size 与动态 Ramp-Up 调度
+
+在超大规模基础语言模型（LLM）预训练中，优化器面临的核心工程抉择不仅是“学习率定多少”，更是**“每个优化步（Step）消费多少 Token”**。该问题构成了随机优化（Stochastic Optimization）与大规模分布式系统工程的核心交汇点。
+
+### 1. 核心权衡：Token 效率（Token Efficiency）与优化步数效率（Step Efficiency）
+
+考虑优化器单次参数更新方程：
+
+$$\theta_{t+1} = \theta_t - \eta \hat{g}_B$$
+
+其中批次随机梯度（Batch Gradient）为：
+
+$$\hat{g}_B = \frac{1}{B} \sum_{i=1}^B g_i$$
+
+假设每个数据样本独立同分布采样，样本梯度期望为真实全域梯度 $g = \mathbb{E}[g_i]$，样本间梯度协方差矩阵为 $\Sigma = \operatorname{Cov}(g_i)$，则批次梯度的统计性质满足：
+
+$$\mathbb{E}[\hat{g}_B] = g, \qquad \operatorname{Cov}(\hat{g}_B) = \frac{\Sigma}{B}$$
+
+由此可见，批量大小 $B$ 越大，梯度估计越精确，随机估计噪声的标准差按 $1/\sqrt{B}$ 递减。
+
+#### 为什么小 Batch 在训练前期更具备 Token 效率？
+
+更精确的梯度估计并不等价于“每个 Token 能换取等比例的学习进展”：
+1. **方向共线性高（Coherent Direction）**：在预训练初始阶段，模型权重处于随机或半随机状态，连基础词法、语法与常见语义模式均未掌握。此时不同语料样本所计算出的梯度具有强烈的同向共线性，主导下降方向极其显著。
+2. **极小样本即可捕获有效方向**：若使用 $1{,}024$ 个 Token 即可估计出足够可靠的下降方向，将其盲目扩大至 $16{,}384$ 个 Token，仅仅是在相同的粗粒度方向上消耗 $16\times$ 算力来换取过剩的精度。
+3. **参数空间演进频率**：在固定总训练 Token 预算的前提下，较小的 Batch Size 允许执行更多次的参数迭代更新（$\theta$ 连续移动）。后续 Token 的梯度直接在更新后的新参数位置上计算，从而实现更快的“累积位移”。
+
+因此，在训练前期，小 Batch 展现出显著的 **Token 效率优势（Token Efficiency）**，尽管在固定 Step 数量下大 Batch 的单步下降量更大。
+
+---
+
+### 2. 训练后期的退化机理与梯度噪声尺度（Gradient Noise Scale, OpenAI 2018）
+
+随着训练推进，小 Batch 的相对优势逐渐丧失。OpenAI (McCandlish et al., 2018, *An Empirical Model of Large-Batch Training*) 形式化定义了量化这一现象的核心统计物理量——**梯度噪声尺度（Gradient Noise Scale）**：
+
+$$\boxed{B_{\text{noise}} = \frac{\operatorname{tr}(\Sigma)}{\|g\|^2}}$$
+
+- **分子 $\operatorname{tr}(\Sigma)$**：样本间梯度的方差矩阵之迹，衡量不同数据样本之间梯度的固有离散程度与差异性。
+- **分母 $\|g\|^2$**：真实期望梯度的二范数平方，衡量平均梯度信号的信噪强度。
+
+#### 批次相对均方误差推导
+
+对于批量大小为 $B$ 的随机梯度估计，其相对于真实梯度的相对均方误差（Relative Mean Squared Error）满足严格代数恒等关系：
+
+$$\frac{\mathbb{E}[\|\hat{g}_B - g\|^2]}{\|g\|^2} = \frac{\operatorname{tr}(\operatorname{Cov}(\hat{g}_B))}{\|g\|^2} = \frac{\operatorname{tr}(\Sigma) / B}{\|g\|^2} = \frac{B_{\text{noise}}}{B}$$
+
+该公式清晰揭示了噪声演进机制：
+- **训练前期**：模型处于参数陡坡区，期望梯度模长 $\|g\|$ 极大，因此 $B_{\text{noise}}$ 较小。相对误差在较小的 $B$ 下即可被压制在安全范围内。
+- **训练后期**：模型逼近低 Loss 平坦区域或局部极小值，期望梯度 $\|g\| \to 0$ 显著衰减；然而，由于自然语言数据多样性是固有的，样本间梯度离散度 $\operatorname{tr}(\Sigma)$ 维持相对稳定的底噪水平。分母剧烈萎缩直接导致 **$B_{\text{noise}}$ 急剧膨胀数个数量级**。
+
+| 训练阶段 | 期望梯度模长 $\|g\|$ | 梯度方差迹 $\operatorname{tr}(\Sigma)$ | 噪声尺度 $B_{\text{noise}}$ | 固定 $B=1{,}000$ 时的相对误差 $\frac{B_{\text{noise}}}{B}$ |
+| :--- | :--- | :--- | :--- | :--- |
+| **训练前期** | $10$ ($\|g\|^2 = 100$) | $10{,}000$ | **$100$** | $0.1$（信号主导，信噪比极佳） |
+| **训练后期** | $1$ ($\|g\|^2 = 1$) | $10{,}000$ | **$10{,}000$** | **$10.0$**（噪声严重淹没信号） |
+
+在训练后期，若维持小 Batch 且不缩小学习率，参数更新将被严重的相对噪声主导而在最优解附近剧烈震荡。此时有两种对偶方案：**充分衰减学习率 $\eta$**，或者**同比例扩大批量大小 $B$**。
+
+---
+
+### 3. 为什么不能从 Step 0 使用超大 Batch？（收益递减与临界批量 Critical Batch Size）
+
+在局部二次损失函数与最佳学习率调优的假设下，OpenAI 论文给出了批量大小 $B$ 与预期每步 Loss 改善量 $\Delta L(B)$ 的定量近似模型：
+
+$$\boxed{\Delta L(B) \approx \Delta L_{\max} \frac{B}{B + B_{\text{noise}}}}$$
+
+该公式展示了边际收益递减（Diminishing Returns）：
+1. **单步更新收益饱和**：当 $B \ll B_{\text{noise}}$ 时，$\Delta L(B) \propto B$，单步下降量与 Batch 成正比；但当 $B \gg B_{\text{noise}}$ 时，$\Delta L(B) \to \Delta L_{\max}$，单步增益逼近物理渐近线。
+2. **每 Token 收益严格单调衰减**：
+   $$\frac{\Delta L(B)}{B} \approx \frac{\Delta L_{\max}}{B + B_{\text{noise}}}$$
+   当批量大小超越 $B_{\text{noise}}$ 时，每消耗一个 Token 所换取的 Loss 下降量急剧跌落。
+
+**数值量化示例**（设当前状态下 $B_{\text{noise}} = 1{,}024$）：
+- 选取 $B = 1{,}024$：单步获得最大理论收益的 $\frac{1024}{1024 + 1024} = 50\%$；
+- 选取 $B = 4{,}096$（批次扩大 $4\times$）：单步获得 $\frac{4096}{4096 + 1024} \approx 80\%$；
+- 批次膨胀了 $400\%$，但单步收益仅扩大至原来的 $1.6\times$（$80\% / 50\%$）。为了达到相同的绝对 Loss 下降，整体需多消耗 $2.5\times$ 的训练 Token 总量。
+
+这一步数效率与 Token 效率的转折拐点，被称为**临界批量大小（Critical Batch Size, $B_{\text{crit}}$）**。在数量级上，它由 $B_{\text{noise}}$ 所决定。
+
+---
+
+### 4. 工业前沿落地：MiniMax-01（2025）的动态 Loss-Dependent Batch Ramp-Up 调度
+
+在早期工业实践中，许多团队依据固定的优化 Step（如每 10k 步翻倍一次）调整 Batch Size。然而，2025 年开源的 **MiniMax-01** (*Scaling Foundation Models with Lightning Attention*, Section 4.2 & Figure 13) 确立了更为严谨的**状态自适应调度（State-Dependent Scheduling）**：
+
+#### 临界 Batch 与训练 Loss 的函数拟合
+
+MiniMax 团队先在激活参数规模为 50M ~ 600M 的小模型上进行跨尺度离线实验，实证拟合出临界 Batch Size 与当前训练 Loss 之间的确定性映射函数：
+
+$$\boxed{B_{\text{crit}} = f(\text{Training Loss})}$$
+
+实验证实，随着 Loss 持续降低，参数空间平坦化，预测的临界 Batch Size 呈单调上升趋势。MiniMax-01 据此制定了跨越数万亿 Token 的 Global Batch 阶段翻倍调度表：
+
+| 累计已训练 Token 数 | Global Batch Size (Tokens / Step) | 优化物理状态与调度目标 |
+| :--- | :--- | :--- |
+| **初始阶段** | **16M tokens** | 初始高梯度模长，保障最高 Token 效率与快速拓扑对齐 |
+| **69B tokens** | **32M tokens** | 基础语言模式已收敛，初次跨越 Loss 阈值，扩充并行度 |
+| **790B tokens** | **64M tokens** | 知识学习阶段，平坦峡谷区噪声主导，提升每步更新有效性 |
+| **4.7T tokens** | **128M tokens** | 后期精细微调，最大化集群 GPU 吞吐并行与 MFU 利用率 |
+
+> [!NOTE] 工业概念边界辨析
+> 上述数值为**每次优化器更新所消费的全局 Token 总量（Global Token Batch Size）**，数学关系为：
+> $$\text{Global Token Batch} = \text{Micro-Batch Size} \times \text{Data Parallelism (DP/FSDP)} \times \text{Gradient Accumulation (GA)} \times \text{Sequence Length}$$
+> 它绝非单卡显存中的 Micro-Batch，亦非单条样本的上下文窗口长度（Context Length）。
+
+---
+
+### 5. 理论边界与深度审视（两点反直觉澄清）
+
+在落地大模型 Batch Size 调度时，必须警惕以下两点理论误区：
+
+1. **小 Batch 在后期并非“必然无法收敛”**：
+   - 噪声不会无端毁掉模型。若在训练后期将学习率 $\eta$ 按照标准预热-余弦退火（Cosine Decay）平滑压低至极小值（如 $0.05 \eta_{\max}$），小 Batch 引起的参数抖动半径将随步长同比收缩，依然能够精确收敛至极小值盆地。
+   - 核心本质在于：**Batch Size 决定了梯度估计的内在方差，而 Learning Rate 决定了如何沿带噪向量迈进**，二者必须联合调优，不可割裂孤立归因。
+2. **$B_{\text{crit}}$ 并非数学绝对最优值，而是 Token 效率与 Wall-Clock 时间的工程折中**：
+   - 若实验环境仅有一台 GPU 且计算单元已被充分打满，选择小 Batch 更加节省计算量（以最少 Token 达到目标 Loss）；
+   - 但在拥有数千张至上万张 GPU 的超大规模集群中，通信拓扑与硬件扩展率要求巨大的数据并行度（DP）。较大的 Global Batch 能最大化降低通信开销占总时长的比例，大幅缩短物理挂钟时间（Wall-Clock Time）。
+   - 此外，OpenAI 的近似模型基于局部二次展开（Local Quadratic Approximation），主要描述训练集 Loss 的单步推进，不能作为泛化性能（Generalization Gap）的唯一充要指标。
+
+---
+
+### 6. 面向实验研究的严谨验证协议（NanoGPT Empirical Protocol）
+
+若在较小规模模型（如 NanoGPT）中研究该现象，应避免盲目调参，而应建立具备理论对照的实验协议：
+
+- **核心研究命题**：
+  > *"Why does the critical batch size grow during pre-training, and when does batch-size ramp-up actually save compute?"*
+- **实验对照矩阵设计**：
+  1. **固定基线组**：保持恒定的 Model Size（如 124M）与总 Token 预算（如 10B Tokens），测试多个固定 Global Batch Size（如 $64\text{k}, 256\text{k}, 1\text{M}$ Tokens），并为每个 Batch 单独扫描搜索最优峰值学习率 $\eta$；
+  2. **动态对比组**：实施状态依赖的 Ramp-Up 调度（如 $64\text{k} \to 256\text{k} \to 1\text{M}$）；
+  3. **双轴效果评估**：
+     - **轴一（Token Efficiency）**：绘制 Validation Loss vs. Total Processed Tokens 曲线，观察前期小 Batch 是否具有更陡峭的下降斜率；
+     - **轴二（Hardware Efficiency）**：绘制 Validation Loss vs. Wall-Clock Time 曲线，测算在特定 GPU 拓扑下何时扩大 Batch 能够有效转化为真实的端到端训练提速。
+
+---
+
+---
+
 ## 04. 理论跃迁：从标量、对角预条件到 Muon 谱正交优化器
 
 优化器的演进历史本质上是**如何设计参数更新的预条件变换（Preconditioning）的历史**：
@@ -806,3 +943,12 @@ def setup_hybrid_optimizers(model: nn.Module, lr_muon: float = 0.02, lr_adam: fl
   1. **SGD 的条件数瓶颈**：二次型更新 $\theta_{t+1} = (I - \eta H)\theta_t$。最优步长 $\eta = \frac{2}{L+\mu}$ 决定单步收缩因子 $\rho = \frac{\kappa-1}{\kappa+1} \approx 1 - \frac{2}{\kappa}$，步数复杂度为 $O(\kappa \log(1/\epsilon))$。
   2. **动量的共轭复根神迹**：增广状态转移矩阵的特征方程为 $\rho^2 - (1+\beta-\eta\lambda)\rho + \beta = 0$。当判别式 $\Delta \le 0$ 时，两根为共轭复根，模长恒等于常数 $|\rho| = \sqrt{\beta}$（与具体曲率 $\lambda$ 完全解耦）。令区间端点重合解得最优 $\beta^* = (\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^2$，收缩率提升为 $1 - \frac{2}{\sqrt{\kappa}}$，复杂度降为 $O(\sqrt{\kappa} \log(1/\epsilon))$。
   3. **Adam 的对角旋转缺陷**：Adam 仅用对角阵 $\text{diag}(\sqrt{v})$ 预条件化，本质是沿直角坐标系缩放。当 Hessian 存在旋转耦合（非对角非零）时，对角矩阵无法旋转坐标基底，更新轨迹在交叉方向产生锯齿超调；而 Muon 的极分解 $\mathcal{O}(M) = U V^\top$ 具备严格的酉旋转不变性，全谱奇异值归一化为 1.0，彻底消除矩阵空间的病态旋转干扰。
+
+---
+
+### Q10：什么是 Gradient Noise Scale $B_{\text{noise}}$？为什么大模型预训练后期临界 Batch Size 会增大？如何基于训练状态设计 Batch Ramp-Up？
+- **答题核心**：
+  1. **定义与物理含义**：OpenAI (2018) 将梯度噪声尺度定义为样本间梯度方差之迹与真实期望梯度模长平方之比 $B_{\text{noise}} = \frac{\operatorname{tr}(\Sigma)}{\|g\|^2}$，它精确决定了当前状态下小批次梯度的相对估计误差 $\frac{\mathbb{E}[\|\hat{g}_B - g\|^2]}{\|g\|^2} = \frac{B_{\text{noise}}}{B}$。
+  2. **后期膨胀机理**：训练初期模型远离最优解，梯度信号 $\|g\|$ 极大，$B_{\text{noise}}$ 很小（小 Batch 即可提供可靠下降方向，Token 效率极高）；训练后期逼近极值点，梯度模长 $\|g\| \to 0$，而样本固有差异导致方差 $\operatorname{tr}(\Sigma)$ 维持恒定底噪，分母收缩促使 $B_{\text{noise}}$ 急剧暴增数个数量级。
+  3. **临界批量与收益递减**：单步期望 Loss 下降量遵循双曲线饱和模型 $\Delta L(B) \approx \Delta L_{\max} \frac{B}{B + B_{\text{noise}}}$。当 $B > B_{\text{noise}}$ 时单步增益迅速放缓，而每 Token 收益持续衰减。临界批量 $B_{\text{crit}}$ 即为此折中拐点。
+  4. **MiniMax 动态状态调度**：不采用机械的 Step 计数，而是先在小型代理模型拟合 $B_{\text{crit}} = f(\text{Training Loss})$，在真实大模型预训练中随着 Loss 跨过指定阈值阶段性将 Global Batch 从 16M 翻倍至 32M、64M、128M Tokens，兼顾前期 Token 效率与后期的集群硬件并行吞吐。

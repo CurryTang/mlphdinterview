@@ -107,7 +107,7 @@ t4 退款或留存窗口结束
 - **稠密 MLP 侧 (Compute-Bound)**：前向多层全连接与注意力参数量仅数 MB 至数百 MB，矩阵乘法密集，极度契合 GPU 计算。
 
 #### 1. 混合并行：参数服务器 (PS) 与 GPU Table Sharding
-为了支撑 TB 级稀疏模型，工业推荐系统（如 Meta DLRM、字节 Monolith、阿里 WDL）采用**模型并行 + 数据并行**的混合并行架构：
+为了支撑 TB 级稀疏模型，工业推荐系统（如 Meta DLRM、ByteDance Monolith、Alibaba WDL）采用**模型并行 + 数据并行**的混合并行架构：
 - **模型并行 (Table Sharding)**：超大 Embedding 表按特征 ID 分片（Hash Sharding 或按特征域划分）离散存储在跨节点的 CPU 内存池（Parameter Server）或大显存 GPU 集群中；
 - **数据并行 (Data Parallelism)**：所有计算节点各自复制一份相同的 Dense MLP 网络，接收不同的 Data Batch 进行并行梯度反向传播；
 - **All-to-All 集合通信瓶颈**：各个 GPU 节点先从本地或远程分片拉取各自样本所需的 Embedding 向量，随后必须通过跨节点的 `All-to-All` 全局集合通信算子（基于 NVLink / RoCE），将散落在不同机器上的 Embedding 特征重排并汇聚到对应的 Dense Worker。

@@ -1,7 +1,7 @@
 # Wiki · Pull vs Push (推拉模型与读写扩散)
 
 所属类别：Wiki 模式库 · 知识点
-关联模式：[[SystemDesign07 Photo Sharing Feed|Feed 流实战]] · [[SystemDesign11 Notification System|通知推送实战]] · [[SystemDesign06 Async Messaging Systems|消息队列]]
+关联模式：[[SystemDesignWiki SSE|Server-Sent Events (SSE)]] · [[SystemDesign07 Photo Sharing Feed|Feed 流实战]] · [[SystemDesign11 Notification System|通知推送实战]] · [[SystemDesign06 Async Messaging Systems|消息队列]]
 
 ---
 
@@ -48,7 +48,7 @@ Feed 流系统在处理“用户发帖”与“关注者拉流”时，推拉模
 | **短轮询 (Short Polling)** | Pull | 客户端每隔固定时间（如 5s）发送一次标准 HTTP 请求。 | **实现极简、无状态、天然适配 CDN 缓存**；但绝大多数请求为空轮询，无效吞吐高，产生大量连接开销与网络带宽浪费。 |
 | **长轮询 (Long Polling)** | Pull | 客户端发送 HTTP 请求，若无新数据，服务端将连接挂起直到超时（如 30s）或有新事件到达才返回。 | 实时性显著优于短轮询，连接仍保持无状态特性；但在事件高频到达时仍存在持续重连与 HTTP 头传输冗余。 |
 | **WebSocket** | Push | 基于单个 TCP 连接建立全双工双向长连接通道。 | **极高实时性、超低协议报头开销、双向交互**；但网关层必须维护百万级长连接 Session 状态，需精心设计心跳保活、断线重连退避与重连风暴防御。 |
-| **Server-Sent Events (SSE)** | Push | 基于标准单向 HTTP 长文本流（`text/event-stream`），由服务端持续推送文本事件。 | **轻量、天然穿透防火墙与代理、浏览器原生断线重连**；天然契合 **LLM Token 逐字流式返回** 与单向推送通知，比 WebSocket 更简单健壮。 |
+| **Server-Sent Events (SSE)** | Push | 基于标准单向 HTTP 长文本流（`text/event-stream`），由服务端持续推送文本事件。 | **轻量、天然穿透防火墙与代理、浏览器原生断线重连**；天然契合 **LLM Token 逐字流式返回** 与单向推送通知，比 WebSocket 更简单健壮。详见 [[SystemDesignWiki SSE|Wiki · Server-Sent Events (SSE 与大模型流式传输架构)]]。 |
 | **Webhook** | Push | 事件发生时，服务端主动发起 HTTP POST 回调调用接收方注册的外部 URL。 | **服务间（B2B / 异步平台）解耦标准**；需保证调用超时重试机制与调用方签名鉴权。 |
 
 ---

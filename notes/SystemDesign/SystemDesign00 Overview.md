@@ -195,3 +195,7 @@ $$\text{QPS} \approx N_{\text{cores}} \times \frac{1000}{t_{\text{cpu}}} \times 
 21. **[[SystemDesignWiki Stream Processing|Wiki · 大数据流处理演进与架构权衡 (Stream Processing: MR → Spark → Flink)]]**
     - *核心瓶颈*：MapReduce 阶段落盘与迭代 I/O 惩罚，Spark 微批物理延迟下限与事件时间语义割裂。
     - *主线逻辑*：RDD 血缘容错与内存流水线；微批 4 大物理缺陷；Dataflow 模型（What/Where/When/How）、水位线与乱序容忍；批流认知颠覆（批是有界流）；Lambda $\to$ Kappa $\to$ 流批一体 Lakehouse。
+22. **[[SystemDesignWiki SSE|Wiki · Server-Sent Events (SSE 与大模型流式传输架构)]]**
+    - *核心瓶颈*：大语言模型（LLM）Token 自回归流式输出的流量不对称性、全双工协议冗余与反向代理缓冲卡顿。
+    - *主线逻辑*：W3C EventSource 规范与 `text/event-stream` 格式；SSE vs WebSocket vs gRPC 多维选型对比；ChatGPT 架构实战（L7 穿透、HTTP/2 多路复用、鉴权继承）；四大工业级陷阱（Nginx 缓冲穿透 `X-Accel-Buffering: no`、心跳保活防静默断开、客户端中止防 GPU 僵尸算力泄漏、`Last-Event-ID` 断点续传）。
+

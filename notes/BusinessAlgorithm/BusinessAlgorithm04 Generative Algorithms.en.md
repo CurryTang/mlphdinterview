@@ -687,7 +687,7 @@ Recent advances across foundation models and generative recommender architecture
 - **Advantages**: Guarantees **0% Codebook Collapse** with zero codebook parameters, emerging as a lightweight replacement for RQ-VAE in multimodal and generative recommendation.
 
 ##### 4. Alignment Priors and Semantic-CF Co-Regularization (2025+)
-- **Industrial Systems (Kuaishou / ByteDance / Google Letter)**: Pure content quantization, even when uniform, risks generating discrete tokens detached from collaborative user behavior.
+- **Industrial Large-Scale Systems**: Pure content quantization, even when uniform, risks generating discrete tokens detached from collaborative user behavior.
 - **Solution**: Integrate collaborative filtering (CF) contrastive objectives into RQ-VAE training:
   $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \mathcal{L}_{\text{commit}} + \lambda \mathcal{L}_{\text{CF-contrastive}}$$
   Items frequently co-engaged by users are regularized to share hierarchical prefix codes. This prevents physical dead codes while eliminating downstream **Semantic Misalignment Collapse**.

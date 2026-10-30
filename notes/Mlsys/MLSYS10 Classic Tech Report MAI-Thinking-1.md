@@ -16,18 +16,12 @@
 
 ## 幻灯片原件在线阅读与资源索引
 
-<div style="margin: 20px 0; padding: 18px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; background: var(--bg-subtle, #f8fafc);">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-    <div>
-      <strong style="font-size: 16px;">📄 幻灯片完整版 PDF（80 Slides）· MAI-Thinking-1: Building a Hill-Climbing Machine</strong>
-      <div style="font-size: 13px; color: var(--text-muted, #64748b); margin-top: 4px;">作者：Zhikai Chen · 对应微软技术报告深度精读演讲</div>
-    </div>
-    <a href="/slides/mai_thinking_1_v2.pdf" target="_blank" rel="noopener noreferrer" download="mai_thinking_1_v2.pdf" style="padding: 8px 16px; background: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; display: inline-flex; align-items: center; gap: 6px;">
-      ⬇️ 下载 / 打开全屏 PDF
-    </a>
-  </div>
-  <iframe src="/slides/mai_thinking_1_v2.pdf" width="100%" height="560px" style="border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff;" title="MAI-Thinking-1 Slides PDF Viewer"></iframe>
-</div>
+```slide-viewer
+file: slides/mai_thinking_1_v2.pdf
+slidesDir: slides/mai-thinking-1
+totalSlides: 80
+title: MAI-Thinking-1: Building a Hill-Climbing Machine (Microsoft AI Technical Report · June 2026)
+```
 
 ---
 

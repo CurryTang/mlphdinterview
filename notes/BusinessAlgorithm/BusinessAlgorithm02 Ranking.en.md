@@ -96,7 +96,7 @@ In production recommendation systems (RecSys) and search engines, offline evalua
 | | **Global ROC-AUC** | Coarse baseline measuring global discrimination across pooled pairs. | 0.5 is random; 1.0 is perfect. Used as a baseline defense guardrail. | **False Prosperity Trap**: Easily inflated by power users or viral items; Simpson's paradox. |
 | | **PR-AUC (AP)** | **Mandatory gold standard for extremely sparse events (CVR, fraud detection)**. | Area under PR curve. **Must benchmark against positive prevalence $\pi = P(Y=1)$**. | Immune to vast True Negatives diluting FPR; absolute values not comparable across priors. |
 | | **LogLoss** | Evaluates absolute probability calibration; heavily penalizes confident errors. | Lower is better. Compared as relative reduction over baseline models. | Sensitive to seasonal swings in baseline CTR; requires importance weighting under sampling. |
-| | **NE / RIG** | Industrial CTR benchmark (Meta, TikTok). Measures entropy reduction over baseline CTR. | Lower NE is better; higher RIG is better (a 1% RIG lift is a major breakthrough). | **Robust against background CTR shifts**: unaffected by promotional campaigns or seasonality. |
+| | **NE / RIG** | Industrial CTR benchmark (popularized by Meta). Measures entropy reduction over baseline CTR. | Lower NE is better; higher RIG is better (a 1% RIG lift is a major breakthrough). | **Robust against background CTR shifts**: unaffected by promotional campaigns or seasonality. |
 | **④ Re-ranking**<br>(Whole-Slate / Presentation) | **NDCG@K** | Multi-grade relevance and top-heavy list quality with **logarithmic discounting**. | $0 \sim 1$. $K$ must strictly match physical device viewport (e.g., $K=4 \sim 6$). | Insensitive to tail misrankings; assumes independent utilities without substitutability. |
 | | **ILD (Intra-List Diversity)** | Semantic and topical diversity across items within the same recommended slate. | Mean pairwise embedding or category distance. | Diversity trades off with immediate CTR; excessive diversity disrupts immersion. |
 | | **Novelty / Serendipity** | Self-information of recommendations: penalizes trivial popularity bias. | Higher self-information indicates greater novelty. | Must be bounded by user relevance; recommending bizarre niche items damages retention. |
@@ -267,7 +267,7 @@ In production recommendation systems (RecSys) and search engines, offline evalua
   - The random baseline for ROC-AUC is unconditionally **0.5**.
   - The random baseline for PR-AUC is positive prevalence $\pi = P(Y=1)$. For a $0.1\%$ conversion rate, the random PR-AUC is **0.001**. A model reaching PR-AUC = 0.15 delivers a 150x signal-to-noise amplification over random guessing.
 
-##### 3. Why Do Meta and TikTok Prioritize NE (Normalized Cross Entropy / RIG) over Raw LogLoss?
+##### 3. Why Do Major Recommendation & Ads Platforms Prioritize NE (Normalized Cross Entropy / RIG) over Raw LogLoss?
 - **Formula**:
   $$
   \text{NE} = \frac{\operatorname{LogLoss}(p, y)}{- \bar{p}\log\bar{p} - (1-\bar{p})\log(1-\bar{p})}, \quad \text{RIG} = 1 - \text{NE}

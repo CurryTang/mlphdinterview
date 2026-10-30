@@ -3,14 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "mlphd-mcp": "./mcp/index.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mcp": "node mcp/index.js",
+    "mcp:http": "node mcp/index.js --http 3333"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "katex": "^0.16.22",
     "mermaid": "^11.16.0",
     "react": "^19.2.0",

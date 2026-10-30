@@ -249,7 +249,7 @@ End-to-End Generative Reranking Pipeline:
 - **Brier Score**: $\frac{1}{N}\sum (\hat{p}_i - y_i)^2$, decomposing orthogonally into Reliability, Resolution, and Uncertainty.
 - **Odds Ratio Inversion under Negative Subsampling**: When training with negative subsampling rate $w \in (0, 1)$, recover physical probabilities via:
   $$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$$
-- **Normalized Entropy (NE / RIG)**: Meta / TikTok industry standard CTR metric:
+- **Normalized Entropy (NE / RIG)**: Industry standard CTR metric:
   $$\text{NE} = \frac{\text{LogLoss}(p, y)}{H(y_{\text{base}})}, \quad \text{RIG} = 1 - \text{NE}$$
   Eliminating background traffic conversion drift from raw LogLoss.
 

@@ -469,7 +469,7 @@ class RandomizedSet:
 ### 2. 8-Byte Aligned Memory Allocator Simulation
 
 #### Core Mental Model
-Frequent ByteDance systems problem: simulate a contiguous memory buffer where allocation start addresses must align to 8-byte boundaries (indices must be multiples of 8).
+Industrial systems design problem: simulate a contiguous memory buffer where allocation start addresses must align to 8-byte boundaries (indices must be multiples of 8).
 
 ```python
 class MemoryAllocator:

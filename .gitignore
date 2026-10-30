@@ -26,6 +26,7 @@ dist-ssr
 # Local planning artifacts
 docs/plans/
 scratch/
+/*.py
 
 # LLMTrainLab local simulator state / venv
 project/**/.venv/

@@ -1,7 +1,7 @@
 # Wiki · Pull vs Push (Fan-out Models & Data Synchronization)
 
 Category: Wiki Pattern Library · Knowledge Point
-Related Patterns: [[SystemDesign07 Photo Sharing Feed|Feed Systems Deep Dive]] · [[SystemDesign11 Notification System|Notification System Deep Dive]] · [[SystemDesign06 Async Messaging Systems|Message Queue]]
+Related Patterns: [[SystemDesignWiki SSE|Server-Sent Events (SSE)]] · [[SystemDesign07 Photo Sharing Feed|Feed Systems Deep Dive]] · [[SystemDesign11 Notification System|Notification System Deep Dive]] · [[SystemDesign06 Async Messaging Systems|Message Queue]]
 
 ---
 
@@ -48,7 +48,7 @@ When delivering real-time state or events to client devices, push vs pull govern
 | **Short Polling** | Pull | Client repeatedly sends regular HTTP requests at fixed intervals (e.g. 5s). | **Trivial to implement, completely stateless, CDN-cacheable**; but high percentage of empty responses wastes connection overhead and bandwidth. |
 | **Long Polling** | Pull | Client issues an HTTP request; server holds the connection open until new data arrives or timeout (e.g. 30s) triggers. | Drastically improves freshness over short polling while preserving HTTP stateless semantics; repetitive TCP handshakes and header overhead remain under high frequencies. |
 | **WebSocket** | Push | Establishes a persistent, bi-directional, full-duplex TCP stream via HTTP upgrade handshake. | **Ultra-low latency, bi-directional, minimal framing overhead**; requires dedicated stateful gateway tiers managing millions of open connections, heartbeat monitoring, and reconnection storm mitigations. |
-| **Server-Sent Events (SSE)** | Push | Unidirectional persistent HTTP text stream (`text/event-stream`) streaming text chunks from server to client. | **Lightweight, transparently traverses HTTP proxies/firewalls, native browser auto-reconnect**; ideal for **LLM Token Streaming** and server-to-client notifications with lower operational burden than WebSockets. |
+| **Server-Sent Events (SSE)** | Push | Unidirectional persistent HTTP text stream (`text/event-stream`) streaming text chunks from server to client. | **Lightweight, transparently traverses HTTP proxies/firewalls, native browser auto-reconnect**; ideal for **LLM Token Streaming** and server-to-client notifications with lower operational burden than WebSockets. See [[SystemDesignWiki SSE|Wiki · Server-Sent Events (SSE & LLM Streaming Architecture)]]. |
 | **Webhook** | Push | Server issues an HTTP POST callback directly to an endpoint registered by the recipient system. | **De facto standard for asynchronous B2B platform integration and event callbacks**; requires outbound retry backoffs and signature verification. |
 
 ---

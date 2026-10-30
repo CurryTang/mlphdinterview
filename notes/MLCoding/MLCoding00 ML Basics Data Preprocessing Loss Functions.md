@@ -1185,7 +1185,7 @@ assert find_local_maxima([2, 4, 4, 1], 1) == []
 
 ### 6. Quick Coding：`kmeans`
 
-手写 **Lloyd K-Means**（Meta / Microsoft / LinkedIn / 字节高频）。不要调用 sklearn。
+手写 **Lloyd K-Means**。不要调用 sklearn。
 
 ```python
 from typing import List, Optional, Tuple

@@ -814,7 +814,7 @@ class Solution:
 
 ## 模块三：回溯高频扩展真题
 
-### 1. 字节跳动高频：用候选数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A)
+### 1. 用候选数字集拼出严格小于 N 的最大数 (Largest Number Smaller than N from Digits A)
 
 #### 核心心智（数位贪心分支状态机）
 从最高位往低位扫描：

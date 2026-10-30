@@ -1140,7 +1140,7 @@ assert find_local_maxima([2, 4, 4, 1], 1) == []
 
 ### 6. Quick Coding: `kmeans`
 
-Implement **Lloyd K-Means** from scratch (Meta / Microsoft / LinkedIn / ByteDance favorite). Do not call sklearn.
+Implement **Lloyd K-Means** from scratch. Do not call sklearn.
 
 ```python
 from typing import List, Optional, Tuple

@@ -690,7 +690,7 @@ $$\mathbf{e}_k^{(t)} = \frac{M_k^{(t)}}{N_k^{(t)}}$$
 - **优势**：没有参数可供退化，**理论上实现 0% Codebook Collapse**，代码极其精简，直接取代传统 VQ/RQ-VAE 成为多模态与生成式推荐领域最受青睐的新基建之一。
 
 ##### 4. 对齐先验与语义-行为协同正则化（Semantic-CF Co-regularization, 2025+）
-- **工业场景（如快手/字节/Google Letter 实践）**：单纯的内容量化即使避免了死码，也可能生成与用户交互行为无关的“虚假均匀码本”。
+- **工业大规模推荐实践**：单纯的内容量化即使避免了死码，也可能生成与用户交互行为无关的“虚假均匀码本”。
 - **方案**：在 RQ-VAE 训练阶段引入长程协同过滤（CF）对比目标作为辅助正则项：
   $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{recon}} + \beta \mathcal{L}_{\text{commit}} + \lambda \mathcal{L}_{\text{CF-contrastive}}$$
   强迫被同一用户频繁连续点击的物品，其量化后的各级离散 Code 具有相似的前缀路径。这不仅避免了物理层面的死码，还避免了推荐系统下游任务中的“语义失谐塌缩”（Semantic Misalignment）。

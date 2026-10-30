@@ -1379,5 +1379,3 @@ Routing Replay 是系统侧解法：rollout 记录 old policy 的 expert ids，t
 - [Qwen3-Next-80B-A3B-Instruct Model Card](https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct)
 - [Qwen3-Next-80B-A3B-Thinking Model Card](https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Thinking)
 - [Qwen: GSPO: Towards Scalable Reinforcement Learning for Language Models](https://qwenlm.github.io/blog/gspo/)
-- [牛客：腾讯算法实习大模型面经（一面）](https://www.nowcoder.com/feed/main/detail/3b01b0ab798f430391771d06d048e21b)
-- [PracHub: Meta ML System Design Questions](https://prachub.com/companies/meta/positions/machine-learning-engineer/categories/ml-system-design)

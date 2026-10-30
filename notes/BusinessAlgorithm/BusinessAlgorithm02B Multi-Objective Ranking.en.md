@@ -174,7 +174,7 @@ Since logistic regression predicts $p = \sigma(z) = \frac{1}{1 + e^{-z}}$, the o
 - **Inference Stage**: **Directly compute the exponential of the final linear activation $\hat{T} = e^z$ as the unbiased estimate of expected watch time!** No negative sample filtering, no log-transform distortion—seamlessly bridging binary classification and continuous duration prediction.
 
 #### 2. The Duration Bias Paradox in Short-Video Feeds
-In short-video feeds (TikTok, Reels, Kuaishou), directly optimizing completion rate or raw duration causes pathological ecosystem distortion:
+In short-video recommendation feeds, directly optimizing completion rate or raw duration causes pathological ecosystem distortion:
 - **Completion Rate Trap**: A 15s video watched for 12s has an 80% completion rate (VCR); a 180s deep-dive video watched for 45s has only a 25% VCR. Optimizing purely for completion collapses the feed into homogeneous 5s trivial clips.
 - **Duration Trap**: Optimizing raw duration heavily favors 45s over 12s, driving the algorithm to promote bloated, slow-paced videos, spiking immediate swipe-away rates and destroying retention.
 

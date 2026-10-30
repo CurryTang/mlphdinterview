@@ -548,6 +548,141 @@ In real-time streaming recommendation (CTR/CVR prediction), user preferences and
 
 ---
 
+## 03B. Batch Size Scaling Dynamics: Gradient Noise Scale, Critical Batch Size, and Dynamic Ramp-Up Schedules
+
+In massive foundation language model (LLM) pre-training, the optimizer design space is not merely governed by learning rate tuning, but by **how many tokens are consumed per optimization step**. This question marks the foundational intersection between stochastic optimization theory and large-scale distributed hardware efficiency.
+
+### 1. The Core Trade-off: Token Efficiency vs. Step Efficiency
+
+Consider a single optimizer parameter update step:
+
+$$\theta_{t+1} = \theta_t - \eta \hat{g}_B$$
+
+where the mini-batch stochastic gradient is:
+
+$$\hat{g}_B = \frac{1}{B} \sum_{i=1}^B g_i$$
+
+Assuming data samples are drawn independently with true expectation $g = \mathbb{E}[g_i]$ and sample covariance $\Sigma = \operatorname{Cov}(g_i)$, the mini-batch gradient satisfies:
+
+$$\mathbb{E}[\hat{g}_B] = g, \qquad \operatorname{Cov}(\hat{g}_B) = \frac{\Sigma}{B}$$
+
+As batch size $B$ grows, estimation variance decreases as $1/B$, and the standard deviation of gradient noise drops as $1/\sqrt{B}$.
+
+#### Why Small Batches Excel in Token Efficiency During Early Training
+
+A more precise gradient vector does not automatically translate into proportionally greater learning progress per token:
+1. **Coherent Gradient Alignment**: Early in pre-training, the model is initialized far from any basin of attraction, having not yet internalized basic syntax or high-frequency semantic patterns. Individual tokens produce gradients with strong positive directional alignment.
+2. **Diminishing Returns on Directional Estimation**: If a batch of $1{,}024$ tokens already resolves a reliable descent direction, scaling to $16{,}384$ tokens merely burns $16\times$ more tokens to calculate an almost identical vector with marginal extra precision.
+3. **Parameter Evolution Frequency**: Under a fixed token budget, smaller batches execute far more parameter updates. Subsequent tokens evaluate gradients at newly updated locations in parameter space rather than at a stale origin point, yielding faster cumulative progress.
+
+This explains why small batches deliver superior **token efficiency** early on, even though larger batches achieve greater descent per optimizer step.
+
+---
+
+### 2. Late-Stage Noise Degradation & Gradient Noise Scale (OpenAI, 2018)
+
+As training progresses, the advantage of small batches erodes. McCandlish et al. (OpenAI, 2018, *An Empirical Model of Large-Batch Training*) formalized the governing metric for this transition: the **Gradient Noise Scale ($B_{\text{noise}}$)**:
+
+$$\boxed{B_{\text{noise}} = \frac{\operatorname{tr}(\Sigma)}{\|g\|^2}}$$
+
+- **Numerator $\operatorname{tr}(\Sigma)$**: The trace of the gradient covariance matrix across data samples, quantifying intrinsic sample-to-sample dispersion.
+- **Denominator $\|g\|^2$**: The squared Euclidean norm of the true expected gradient vector, quantifying the coherent signal strength.
+
+#### Relative Mean Squared Error Derivation
+
+For a batch of size $B$, the relative mean squared error (MSE) of the mini-batch gradient relative to true signal strength satisfies an exact identity:
+
+$$\frac{\mathbb{E}[\|\hat{g}_B - g\|^2]}{\|g\|^2} = \frac{\operatorname{tr}(\operatorname{Cov}(\hat{g}_B))}{\|g\|^2} = \frac{\operatorname{tr}(\Sigma) / B}{\|g\|^2} = \frac{B_{\text{noise}}}{B}$$
+
+This identity highlights the core physical dynamic across training stages:
+- **Early Stage**: When the model is on steep loss slopes, $\|g\|$ is large $\implies B_{\text{noise}}$ is small. Relative error is well-contained even with a modest batch size $B$.
+- **Late Stage**: As the model nears a flat minimum, $\|g\| \to 0$ shrinks toward zero. However, due to natural data diversity, token-level variance $\operatorname{tr}(\Sigma)$ persists at a substantial non-zero baseline. The denominator collapses, driving **$B_{\text{noise}}$ upward by multiple orders of magnitude**.
+
+| Training Stage | Expected Gradient Norm $\|g\|$ | Variance Trace $\operatorname{tr}(\Sigma)$ | Noise Scale $B_{\text{noise}}$ | Relative Error $\frac{B_{\text{noise}}}{B}$ at Fixed $B=1{,}000$ |
+| :--- | :--- | :--- | :--- | :--- |
+| **Early Training** | $10$ ($\|g\|^2 = 100$) | $10{,}000$ | **$100$** | $0.1$ (Signal dominant; highly clean) |
+| **Late Training** | $1$ ($\|g\|^2 = 1$) | $10{,}000$ | **$10{,}000$** | **$10.0$** (Noise overwhelms signal) |
+
+In late-stage training, keeping batch size small without heavily decaying learning rate leaves the model dominated by relative gradient noise, oscillating erratically around the optimum. Stabilizing convergence requires either **decaying learning rate $\eta$**, **scaling up batch size $B$**, or a joint schedule.
+
+---
+
+### 3. Diminishing Returns and the Critical Batch Size ($B_{\text{crit}}$)
+
+Under a local quadratic approximation with optimal learning rate tuning for each batch size, OpenAI (2018, Section 2.2) established the expected loss improvement per optimization step:
+
+$$\boxed{\Delta L(B) \approx \Delta L_{\max} \frac{B}{B + B_{\text{noise}}}}$$
+
+This equation formalizes diminishing marginal returns:
+1. **Per-Step Saturation**: When $B \ll B_{\text{noise}}$, $\Delta L(B) \propto B$ scales linearly with batch size. When $B \gg B_{\text{noise}}$, step improvement approaches the asymptotic limit $\Delta L_{\max}$.
+2. **Per-Token Efficiency Decay**:
+   $$\frac{\Delta L(B)}{B} \approx \frac{\Delta L_{\max}}{B + B_{\text{noise}}}$$
+   Progress per token decays monotonically with larger batches.
+
+**Numerical Example** ($B_{\text{noise}} = 1{,}024$):
+- At $B = 1{,}024$: step gain reaches $\frac{1024}{1024 + 1024} = 50\%$ of maximum potential.
+- At $B = 4{,}096$ ($4\times$ larger batch): step gain reaches $\frac{4096}{4096 + 1024} \approx 80\%$.
+- While batch size quadrupled, single-step gain only increased $1.6\times$ ($80\% / 50\%$). Reaching identical loss improvement consumes $2.5\times$ more total tokens.
+
+The elbow where step gains flatten and token waste accelerates is defined as the **Critical Batch Size ($B_{\text{crit}}$)**, predicted to first order by $B_{\text{noise}}$.
+
+---
+
+### 4. Production Paradigm: MiniMax-01 Loss-Dependent Batch Ramp-Up (2025)
+
+Rather than scaling batch size arbitrarily by calendar steps, **MiniMax-01** (*Scaling Foundation Models with Lightning Attention*, 2025, Section 4.2 & Figure 13) implemented a **State-Dependent Scheduling** framework:
+
+#### Fitting Critical Batch Size to Training Loss
+
+Using small proxy models (50M–600M active parameters), MiniMax fitted the functional relationship between empirical training loss and critical batch size:
+
+$$\boxed{B_{\text{crit}} = f(\text{Training Loss})}$$
+
+As loss drops and the optimization landscape flattens, the predicted critical batch size systematically doubles. The production pre-training run scaled global batch size across trillions of tokens according to loss checkpoints:
+
+| Processed Tokens | Global Batch Size (Tokens / Step) | Optimization Regime |
+| :--- | :--- | :--- |
+| **Initial Stage** | **16M tokens** | Maximum token efficiency on high-gradient early terrain |
+| **69B tokens** | **32M tokens** | Basic syntactic patterns converged; initial $B_{\text{crit}}$ doubling |
+| **790B tokens** | **64M tokens** | Knowledge accumulation phase; flatter landscape requires larger batch |
+| **4.7T tokens** | **128M tokens** | Late-stage refinement; maximizes cluster-wide GPU parallelism & MFU |
+
+> [!NOTE] Architectural Distinction
+> These numbers represent the **Global Token Batch Size per optimizer step**:
+> $$\text{Global Token Batch} = \text{Micro-Batch Size} \times \text{Data Parallelism (DP/FSDP)} \times \text{Gradient Accumulation (GA)} \times \text{Sequence Length}$$
+> This is distinct from per-device micro-batch size or sequence context length.
+
+---
+
+### 5. Theoretical Caveats and Counterintuitive Insights
+
+1. **Small Batches Do Not Invariably Fail to Converge in Late Stages**:
+   - Noise does not automatically prevent convergence. If learning rate $\eta$ is decayed (e.g., via cosine schedule to $0.05 \eta_{\max}$), the perturbation radius shrinks proportionally. Small-batch training can still reach deep loss valleys.
+   - Batch size dictates the inherent noise scale; learning rate dictates step scale under noise. They are dual controls and must be co-tuned.
+2. **$B_{\text{crit}}$ Is an Efficiency Frontier, Not an Absolute Mathematical Optimum**:
+   - On a single GPU with compute saturated, smaller batches are compute-optimal (reaching target loss with fewer total tokens).
+   - On a 10,000-GPU cluster, communication latency dominates. Large global batches unlock massive data parallelism, dramatically compressing wall-clock training time.
+   - Additionally, OpenAI's model assumes local quadratic curvature of training loss; local step optimization does not formally guarantee generalization parity on out-of-distribution validation sets.
+
+---
+
+### 6. Empirical Verification Protocol for NanoGPT
+
+For controlled pre-training research (e.g., on NanoGPT architectures), avoid ad-hoc batch tuning in favor of a hypothesis-driven protocol:
+
+- **Research Question**:
+  > *"Why does the critical batch size grow during pre-training, and when does batch-size ramp-up actually save compute?"*
+- **Experimental Protocol**:
+  1. **Constant Baselines**: Keep model size (e.g., 124M) and token budget (e.g., 10B) fixed. Evaluate multiple constant global batch sizes (e.g., $64\text{k}, 256\text{k}, 1\text{M}$ tokens), with learning rate individually optimized for each batch.
+  2. **Dynamic Ramp-Up**: Execute a state-dependent schedule transitioning from $64\text{k} \to 256\text{k} \to 1\text{M}$ tokens.
+  3. **Dual-Axis Evaluation**:
+     - **Axis 1 (Token Efficiency)**: Plot Validation Loss vs. Tokens to observe early small-batch slope advantages.
+     - **Axis 2 (Hardware Efficiency)**: Plot Validation Loss vs. Wall-Clock Time across target GPU topologies to identify the inflection point where batch expansion yields genuine end-to-end speedups.
+
+---
+
+---
+
 ## 04. Theoretical Leap: From Coordinate Rescaling to Muon Spectral Orthogonalization
 
 The evolution of optimization algorithms reflects a progression in **preconditioner geometry**:
@@ -758,3 +893,12 @@ def setup_hybrid_optimizers(model: nn.Module, lr_muon: float = 0.02, lr_adam: fl
   1. **SGD Condition Number Trap**: Quadratic updates $\theta_{t+1} = (I - \eta H)\theta_t$ yield contraction factor $\rho = \frac{\kappa-1}{\kappa+1} \approx 1 - \frac{2}{\kappa}$, needing $O(\kappa \log(1/\epsilon))$ steps.
   2. **Momentum Complex Conjugate Roots**: Augmented state matrix characteristic roots satisfy $\rho^2 - (1+\beta-\eta\lambda)\rho + \beta = 0$. When $\Delta \le 0$, roots are complex conjugates with constant magnitude $|\rho| = \sqrt{\beta}$, decoupling contraction from curvature $\lambda$. Optimal tuning yields $\beta^* = (\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^2$ and contraction $1 - \frac{2}{\sqrt{\kappa}}$, achieving $O(\sqrt{\kappa} \log(1/\epsilon))$ complexity.
   3. **Adam's Diagonal Defect**: Adam scales coordinates independently via $\text{diag}(\sqrt{v})^{-1}$. On rotated ravines ($H = R_\phi \Lambda R_\phi^\top$), diagonal matrices cannot rotate axes, causing stair-step overshooting. Muon computes polar decomposition $\mathcal{O}(M) = U V^\top$, which is unitarily invariant and normalizes all singular values to 1.0, preserving peak convergence regardless of rotation.
+
+---
+
+### Q10: What is Gradient Noise Scale $B_{\text{noise}}$? Why does the critical batch size expand in late-stage pre-training, and how are loss-dependent batch ramp-up schedules designed?
+- **Core Takeaway**:
+  1. **Definition & Physical Intuition**: OpenAI (2018) defines the Gradient Noise Scale as the ratio of gradient trace covariance across samples to the squared norm of the true expected gradient: $B_{\text{noise}} = \frac{\operatorname{tr}(\Sigma)}{\|g\|^2}$. It directly dictates the relative estimation MSE of mini-batch gradients: $\frac{\mathbb{E}[\|\hat{g}_B - g\|^2]}{\|g\|^2} = \frac{B_{\text{noise}}}{B}$.
+  2. **Late-Stage Expansion Mechanism**: Early in training, far from the optimum, the gradient signal $\|g\|$ is large and $B_{\text{noise}}$ is small (small batches yield clear descending directions with high token efficiency). Later, as the model approaches an extremum, $\|g\| \to 0$ while individual sample variance $\operatorname{tr}(\Sigma)$ remains persistent noise floor. The shrinking denominator causes $B_{\text{noise}}$ to explode by several orders of magnitude.
+  3. **Critical Batch Size & Diminishing Returns**: Expected per-step loss reduction follows a hyperbolic saturation curve $\Delta L(B) \approx \Delta L_{\max} \frac{B}{B + B_{\text{noise}}}$. When $B > B_{\text{noise}}$, per-step returns diminish while per-token returns drop continuously. The critical batch size $B_{\text{crit}}$ marks this token-efficiency vs. step-efficiency transition point.
+  4. **MiniMax Dynamic State Scheduling**: Rather than using arbitrary step counters, fit $B_{\text{crit}} = f(\text{Training Loss})$ on proxy models (50M–600M). In production LLM pre-training, double the global token batch size ($16\text{M} \to 32\text{M} \to 64\text{M} \to 128\text{M}$ tokens/step) whenever the empirical training loss drops below calibrated thresholds, harmonizing early-stage token efficiency with late-stage hardware cluster parallel throughput.

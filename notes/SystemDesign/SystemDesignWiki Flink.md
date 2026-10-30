@@ -101,7 +101,7 @@ Worker A 在本地持续维护状态：
 
 ## 3 · 架构深度考点：“Flink Write Locally on Geography Data Center”
 
-在超大规模全球系统设计（如 Twitter/TikTok Trending Hashtag、全球电商实时风控、跨国用户行为看板）中，架构设计图通常特别强调：
+在超大规模全球系统设计（如 Twitter Trending Hashtag、全球电商实时风控、跨国用户行为看板）中，架构设计图通常特别强调：
 
 > **“Flink write locally on geography data center”**
 

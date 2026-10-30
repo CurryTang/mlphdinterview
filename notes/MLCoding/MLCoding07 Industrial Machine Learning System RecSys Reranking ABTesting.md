@@ -420,7 +420,7 @@ class SIMRetrievalAugmentedModel(nn.Module):
 - **LogLoss 与绝对校准**：依赖物理分布先验，采样率 $w \in (0, 1)$ 下必须做先验纠偏：
   - 训练时：对保留的负样本赋予 $\frac{1}{w}$ 重要性加权损失；
   - 推理出价时：通过几率比公式反解真实概率：$p_{\text{real}} = \frac{p_{\text{sampled}}}{p_{\text{sampled}} + \frac{1 - p_{\text{sampled}}}{w}}$。
-- **NE (Normalized Cross Entropy / RIG)**：大厂（Meta/TikTok）工业标准 CTR 评价指标：
+- **NE (Normalized Cross Entropy / RIG)**：工业界核心 CTR 评价指标：
   $$\text{NE} = \frac{\text{LogLoss}(p, y)}{H(y_{\text{base}})}, \quad \text{RIG} = 1 - \text{NE}$$
   消除了节假日或大促背景 CTR 波动对绝对 LogLoss 的干扰。
 

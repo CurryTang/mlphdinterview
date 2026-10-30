@@ -30900,10 +30900,352 @@ function MartingaleRandomWalkVisual() {
   );
 }
 
+const MAI_SLIDE_SECTIONS = [
+  { slide: 1, titleZh: '01 · 封面与核心指标', titleEn: '01 · Title & Benchmark Results' },
+  { slide: 2, titleZh: '02 · 报告总览与模型对比', titleEn: '02 · Overview & Model Comparison' },
+  { slide: 4, titleZh: '04 · 爬坡机器与三大命题', titleEn: '04 · Hill-Climbing & Three Claims' },
+  { slide: 6, titleZh: '06 · Part 1: 模型架构与互联协同', titleEn: '06 · Part 1: Architecture & Interconnect' },
+  { slide: 12, titleZh: '12 · Part 2: 预训练消融与阶梯标尺', titleEn: '12 · Part 2: Pre-training Ablations' },
+  { slide: 21, titleZh: '21 · Part 3: 从 Ladder 到真实生产', titleEn: '21 · Part 3: From Ladder to Real Run' },
+  { slide: 26, titleZh: '26 · Part 4: 预训练数据工程与混合律', titleEn: '26 · Part 4: Pre-training Data & Mixing' },
+  { slide: 33, titleZh: '33 · Part 5: Mid-Training 承前启后', titleEn: '33 · Part 5: Mid-Training Philosophy' },
+  { slide: 39, titleZh: '39 · Part 6: 优化器与训练 Recipe', titleEn: '39 · Part 6: Optimizer & Training Recipe' },
+  { slide: 44, titleZh: '44 · Part 7: YOLO 训练基础设施', titleEn: '44 · Part 7: YOLO Infrastructure & Goodput' },
+  { slide: 47, titleZh: '47 · Part 8: 强化学习关键技术', titleEn: '47 · Part 8: RL Key Technologies' },
+  { slide: 55, titleZh: '55 · Part 9: 三大 Specialist 攀爬流水线', titleEn: '55 · Part 9: Three Specialist Climbs' },
+  { slide: 59, titleZh: '59 · Part 10: 分布式 RL 引擎 Rocket', titleEn: '59 · Part 10: Distributed RL: Rocket' },
+  { slide: 64, titleZh: '64 · 结语、总结与开放问题', titleEn: '64 · Closing & Open Questions' },
+  { slide: 66, titleZh: '66 · Backup: 备用深度幻灯片', titleEn: '66 · Backup Slides & Deep Dives' },
+];
+
+function resolvePublicAsset(assetPath) {
+  if (!assetPath) return '';
+  if (/^(?:https?:|\/\/|data:)/i.test(assetPath)) return assetPath;
+  const basePath = import.meta.env.BASE_URL || '/';
+  const cleanBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
+  const cleanAsset = String(assetPath).replace(/^\/+/, '');
+  return `${cleanBase}${cleanAsset}`;
+}
+
+function parsePdfViewerConfig(rawText) {
+  const config = {
+    file: 'slides/mai_thinking_1_v2.pdf',
+    slidesDir: 'slides/mai-thinking-1',
+    totalSlides: 80,
+    title: 'MAI-Thinking-1: Building a Hill-Climbing Machine',
+  };
+  if (!rawText) return config;
+  const lines = rawText.split('\n');
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0) {
+      const key = line.slice(0, colonIdx).trim();
+      const val = line.slice(colonIdx + 1).trim();
+      if (key === 'file') config.file = val;
+      if (key === 'slidesDir') config.slidesDir = val;
+      if (key === 'totalSlides') config.totalSlides = parseInt(val, 10) || 80;
+      if (key === 'title') config.title = val;
+    }
+  }
+  return config;
+}
+
+function PdfSlideViewer({ rawConfig }) {
+  const { isEnglish, t } = useUiCopy();
+  const config = useMemo(() => parsePdfViewerConfig(rawConfig), [rawConfig]);
+  const totalSlides = config.totalSlides || 80;
+
+  const [currentSlide, setCurrentSlide] = useState(1);
+  const [mode, setMode] = useState('slides'); // 'slides' | 'pdf'
+  const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [showThumbnails, setShowThumbnails] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+  const thumbStripRef = useRef(null);
+
+  const getSlideUrl = (slideNum) => {
+    const padded = String(slideNum).padStart(2, '0');
+    return resolvePublicAsset(`${config.slidesDir}/slide-${padded}.png`);
+  };
+
+  const pdfUrl = useMemo(() => resolvePublicAsset(config.file), [config.file]);
+
+  // Pre-fetch adjacent next slide
+  useEffect(() => {
+    if (currentSlide < totalSlides) {
+      const img = new Image();
+      img.src = getSlideUrl(currentSlide + 1);
+    }
+  }, [currentSlide, totalSlides, config.slidesDir]);
+
+  // Fullscreen event listener
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
+
+  // Keyboard navigation when hovered
+  useEffect(() => {
+    if (!isHovered || mode !== 'slides') return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setCurrentSlide((prev) => Math.max(1, prev - 1));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setCurrentSlide((prev) => Math.min(totalSlides, prev + 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isHovered, mode, totalSlides]);
+
+  // Auto-scroll active thumbnail into view
+  useEffect(() => {
+    if (showThumbnails && thumbStripRef.current) {
+      const activeThumb = thumbStripRef.current.querySelector(`.pdf-thumb-card[data-slide="${currentSlide}"]`);
+      if (activeThumb && typeof activeThumb.scrollIntoView === 'function') {
+        activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [currentSlide, showThumbnails]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`pdf-slide-viewer ${isFullscreen ? 'fullscreen' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="pdf-viewer-header">
+        <div className="pdf-viewer-title-box">
+          <span className="pdf-viewer-badge">{t('精读 Slides', 'Slides Deck')}</span>
+          <span className="pdf-viewer-title">{config.title}</span>
+        </div>
+        <div className="pdf-viewer-actions">
+          <button
+            type="button"
+            className={`pdf-tab-btn ${mode === 'slides' ? 'active' : ''}`}
+            onClick={() => setMode('slides')}
+          >
+            🖼️ {t('画板模式', 'Slides')}
+          </button>
+          <button
+            type="button"
+            className={`pdf-tab-btn ${mode === 'pdf' ? 'active' : ''}`}
+            onClick={() => setMode('pdf')}
+          >
+            📑 {t('原生 PDF', 'Native PDF')}
+          </button>
+          <a
+            href={pdfUrl}
+            download="mai_thinking_1_v2.pdf"
+            className="pdf-btn"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t('下载 PDF 文件 (1.78 MB)', 'Download PDF (1.78 MB)')}
+          >
+            ⬇️ {t('下载', 'Download')}
+          </a>
+          <button
+            type="button"
+            className="pdf-btn"
+            onClick={toggleFullscreen}
+            title={t('全屏切换', 'Toggle Fullscreen')}
+          >
+            {isFullscreen ? t('⛶ 退出', '⛶ Exit') : t('⛶ 全屏', '⛶ Fullscreen')}
+          </button>
+        </div>
+      </div>
+
+      {mode === 'slides' ? (
+        <>
+          <div className="pdf-slide-stage">
+            <button
+              type="button"
+              className="pdf-nav-arrow pdf-nav-prev"
+              onClick={() => setCurrentSlide((prev) => Math.max(1, prev - 1))}
+              disabled={currentSlide <= 1}
+              aria-label="Previous Slide"
+            >
+              ‹
+            </button>
+            <img
+              key={currentSlide}
+              src={getSlideUrl(currentSlide)}
+              alt={`Slide ${currentSlide}`}
+              className="pdf-slide-img"
+              loading="eager"
+            />
+            <button
+              type="button"
+              className="pdf-nav-arrow pdf-nav-next"
+              onClick={() => setCurrentSlide((prev) => Math.min(totalSlides, prev + 1))}
+              disabled={currentSlide >= totalSlides}
+              aria-label="Next Slide"
+            >
+              ›
+            </button>
+            <div className="pdf-stage-overlay-info">
+              {t(`第 ${currentSlide} / ${totalSlides} 页 · 支持键盘左右方向键切换`, `Slide ${currentSlide} of ${totalSlides} · Use Arrow Keys`)}
+            </div>
+          </div>
+
+          <div className="pdf-controls-bar">
+            <div className="pdf-controls-left">
+              <button
+                type="button"
+                className="pdf-btn"
+                onClick={() => setCurrentSlide((prev) => Math.max(1, prev - 1))}
+                disabled={currentSlide <= 1}
+              >
+                ◀ {t('上一张', 'Prev')}
+              </button>
+              <button
+                type="button"
+                className="pdf-btn"
+                onClick={() => setCurrentSlide((prev) => Math.min(totalSlides, prev + 1))}
+                disabled={currentSlide >= totalSlides}
+              >
+                {t('下一张', 'Next')} ▶
+              </button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', minWidth: '70px', textAlign: 'center' }}>
+                {currentSlide} / {totalSlides}
+              </span>
+            </div>
+
+            <div className="pdf-controls-center">
+              <input
+                type="range"
+                min={1}
+                max={totalSlides}
+                value={currentSlide}
+                onChange={(e) => setCurrentSlide(parseInt(e.target.value, 10))}
+                className="pdf-page-slider"
+                aria-label="Slide scrubber"
+              />
+              <select
+                className="pdf-select"
+                value={MAI_SLIDE_SECTIONS.find((s, idx) => {
+                  const nextS = MAI_SLIDE_SECTIONS[idx + 1];
+                  return currentSlide >= s.slide && (!nextS || currentSlide < nextS.slide);
+                })?.slide || 1}
+                onChange={(e) => setCurrentSlide(parseInt(e.target.value, 10))}
+              >
+                {MAI_SLIDE_SECTIONS.map((sec) => (
+                  <option key={sec.slide} value={sec.slide}>
+                    {isEnglish ? sec.titleEn : sec.titleZh}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pdf-controls-right">
+              <button
+                type="button"
+                className="pdf-btn"
+                onClick={() => setShowThumbnails((prev) => !prev)}
+              >
+                {showThumbnails ? t('隐藏缩略图', 'Hide Thumbs') : t('展开缩略图', 'Show Thumbs')}
+              </button>
+            </div>
+          </div>
+
+          {showThumbnails && (
+            <div ref={thumbStripRef} className="pdf-thumbnail-strip">
+              {Array.from({ length: totalSlides }, (_, i) => i + 1).map((num) => (
+                <div
+                  key={num}
+                  data-slide={num}
+                  className={`pdf-thumb-card ${currentSlide === num ? 'active' : ''}`}
+                  onClick={() => setCurrentSlide(num)}
+                >
+                  <img
+                    src={getSlideUrl(num)}
+                    alt={`Thumb ${num}`}
+                    className="pdf-thumb-img"
+                    loading="lazy"
+                  />
+                  <div className="pdf-thumb-label">{num}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="pdf-tab-content">
+          {!pdfLoaded ? (
+            <div className="pdf-lazy-card">
+              <div className="pdf-lazy-icon">📑</div>
+              <div className="pdf-lazy-title">
+                {t('原生 PDF 在线预览（按需延迟加载）', 'Native PDF Online Preview (Lazy Loaded)')}
+              </div>
+              <div className="pdf-lazy-desc">
+                {t(
+                  '本技术报告 Slides 共 80 页（约 1.78 MB）。为节省网络带宽并防止页面初始卡顿，原生 PDF 采用延迟加载机制。您可以点击下方按钮即刻渲染，或直接使用极速流畅的画板模式浏览。',
+                  'This slide deck contains 80 pages (~1.78 MB). To eliminate initial page load lag and conserve bandwidth, the native PDF is lazy-loaded on demand. Click below to load or switch back to the instant Slide Deck view.'
+                )}
+              </div>
+              <div className="pdf-lazy-actions">
+                <button
+                  type="button"
+                  className="pdf-btn pdf-btn-primary"
+                  onClick={() => setPdfLoaded(true)}
+                >
+                  📥 {t('点击加载原生 PDF 视图', 'Click to Load Native PDF')}
+                </button>
+                <a
+                  href={pdfUrl}
+                  download="mai_thinking_1_v2.pdf"
+                  className="pdf-btn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ⬇️ {t('直接下载 PDF 文件 (1.78 MB)', 'Download PDF File (1.78 MB)')}
+                </a>
+                <button
+                  type="button"
+                  className="pdf-btn"
+                  onClick={() => setMode('slides')}
+                >
+                  🖼️ {t('切回极速画板模式', 'Back to Slides View')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <iframe
+              src={pdfUrl}
+              className="pdf-iframe-container"
+              title="MAI-Thinking-1 Slides PDF Viewer"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MarkdownPre({ children, ...props }) {
   const child = Array.isArray(children) ? children[0] : children;
   const className = child?.props?.className ?? '';
-  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|daily-temperatures-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|kl-divergence-modes-demo|forward-reverse-kl-visual|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo)/.exec(className);
+  const match = /language-(quiz|mcq|mermaid|topo-demo|bellman-demo|segment-tree-demo|interval-merge-demo|interval-insert-demo|interval-rooms-demo|interval-query-demo|pow-demo|sliding-window-demo|sliding-window-max-demo|longest-substring-demo|sliding-window-patterns|monotonic-stack-demo|daily-temperatures-demo|largest-rectangle-demo|binary-search-template-demo|linked-list-reversal-demo|fast-slow-pointer-demo|array-duplicate-demo|lru-cache-demo|tree-traversal-demo|avl-rotation-demo|build-tree-demo|median-two-heaps-demo|three-sum-demo|rain-water-demo|simple-sort-race-demo|efficient-sort-race-demo|high-dimensional-integral-demo|record-minimum-demo|message-queue-demo|business-algorithm-map|system-design-overview-visual|photo-sharing-architecture-visual|flash-sale-architecture-visual|async-messaging-architecture-visual|queue-vs-stream-visual|newsql-architecture-visual|virtualization-container-visual|k8s-hierarchy-visual|k8s-lifecycle-visual|k8s-gang-visual|k8s-layered-arch-visual|grid-multi-source-bfs-demo|union-find-demo|quickselect-partition-demo|trie-core-demo|trie-wildcard-demo|palindrome-dp-demo|coin-change-demo|subset-sum-demo|anisotropy-cone-demo|kl-divergence-modes-demo|forward-reverse-kl-visual|backtracking-patterns|backtracking-tree-demo|permutations-demo|combination-sum-demo|backtracking-dedup-demo|n-queens-demo|greedy-patterns|kadane-demo|jump-game-demo|gas-station-demo|partition-labels-demo|vtable-dispatch-demo|false-sharing-demo|fork-cow-demo|epoll-vs-select-demo|shared-ptr-cycle-demo|martingale-rw-demo|random-walk-ruin-demo|brownian-motion-demo|two-d-walk-demo|ito-geometry-demo|reflection-principle-demo|delta-hedging-demo|game-theory-interactive-demo|fwl-geometry-demo|anova-variance-demo|nadaraya-watson-demo|local-linear-carpentry-demo|ml-metrics-demo|cart-partition-demo|database-scaling-visual|optimizer-trajectory-demo|pdf-viewer|slide-viewer)/.exec(className);
+
+  if (match?.[1] === 'pdf-viewer' || match?.[1] === 'slide-viewer') {
+    return <PdfSlideViewer rawConfig={extractPlainText(child.props.children)} />;
+  }
 
   if (match?.[1] === 'mermaid') {
     return <MermaidDiagram chart={extractPlainText(child.props.children).replace(/\n$/, '')} />;
