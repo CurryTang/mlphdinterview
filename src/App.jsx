@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import 'katex/dist/katex.min.css';
 import './App.css';
+import McpSetup from './McpSetup';
 
 const UiLanguageContext = createContext('zh');
 
@@ -33019,6 +33020,9 @@ function App() {
               </div>
               <h1 className="hero-gradient-title">{localizedHome.heroTitle}</h1>
               <p className="hero-subtitle">{localizedHome.heroSubtitle}</p>
+              <a className="hero-mcp-link" href="#mcp">
+                {language === 'en' ? 'Connect to ChatGPT / MCP →' : '接入 ChatGPT / MCP →'}
+              </a>
             </div>
 
             <div className="home-hero-panel" aria-label={localizedHome.siteSummary}>
@@ -33030,6 +33034,8 @@ function App() {
               ))}
             </div>
           </section>
+
+          <McpSetup language={language} />
 
           <section className="home-sections" aria-label={localizedHome.sectionsAria}>
             <div className="section-heading">

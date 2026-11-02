@@ -185,20 +185,15 @@ export function startHttpServer(port = 3333) {
 
   <h2>接入方式指引</h2>
 
-  <h3>1. ChatGPT 桌面版 (Desktop MCP)</h3>
-  <p>在 ChatGPT Desktop 的 MCP 设置文件 (<code>chatgpt_desktop_config.json</code>) 中添加：</p>
-  <pre><code>{
-  "mcpServers": {
-    "mlphdinterview": {
-      "command": "node",
-      "args": ["${path.resolve(__dirname, 'index.js')}"]
-    }
-  }
-}</code></pre>
+  <h3>1. ChatGPT 远程 MCP (SSE)</h3>
+  <p>将此 Node 服务部署或通过隧道提供 ChatGPT 可访问的 HTTPS 地址。GitHub Pages 静态网站本身不运行 MCP 服务。</p>
+  <p>在 ChatGPT 网页版 Plugins → Add custom MCP server 中，名称填 <code>mlphdinterview</code>，Server URL 填你的 HTTPS 地址加 <code>/sse</code>，鉴权选择 <code>No authentication</code>。创建并安装插件后，在对话中输入 @ 选择它。入口受账号与工作区权限限制。</p>
+  <pre><code>https://your-mcp-host.example/sse</code></pre>
+  <p>上方为示例域名，需替换。参见 <a href="https://developers.openai.com/api/docs/guides/custom-mcp-server" target="_blank" rel="noreferrer">OpenAI 官方接入说明</a>。</p>
 
   <h3>2. ChatGPT 网页版 (Custom GPT Action)</h3>
   <p>若将当前服务暴露至公网 (通过 ngrok 或 Cloudflare Tunnel)，在 Custom GPT 中直接导入 OpenAPI 架构：</p>
-  <p>Schema 地址：<a href="/openapi.json" target="_blank"><code>/openapi.json</code></a></p>
+  <p>Schema 地址：<a href="/openapi.json" target="_blank"><code>/openapi.json</code></a>。将 schema 的 <code>servers[0].url</code> 改为你的 HTTPS 服务根地址。Actions 使用 REST / OpenAPI，与上面的 MCP 接入独立。</p>
 
   <h3>3. Claude Desktop / Cursor / Windsurf</h3>
   <pre><code>{

@@ -221,6 +221,108 @@
   }
 }
 
+.hero-mcp-link {
+  display: inline-block;
+  margin-top: 1.2rem;
+  color: #0d6d8f;
+  font-weight: 700;
+  text-underline-offset: 0.25em;
+}
+
+.home-mcp {
+  width: 100%;
+  max-width: 1180px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(1rem, 2.5vw, 1.8rem);
+  border: 1px solid rgba(24, 49, 63, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  scroll-margin-top: calc(var(--top-nav-height) + 1rem);
+  line-height: 1.75;
+}
+
+.home-mcp p {
+  margin: 0.75rem 0;
+}
+
+.home-mcp .mcp-status {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.mcp-hosting {
+  padding: 0.75rem 1rem;
+  background: #f0f5f7;
+  border-radius: 8px;
+  color: #334e68;
+}
+
+.mcp-setup {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(24, 49, 63, 0.16);
+  padding-top: 1rem;
+}
+
+.mcp-setup summary {
+  cursor: pointer;
+  color: #0d6d8f;
+  font-weight: 700;
+}
+
+.mcp-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.mcp-setup-grid > div {
+  min-width: 0;
+}
+
+.home-mcp pre {
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #18313f;
+  color: #f7fbfb;
+  font: 0.85rem/1.8 "IBM Plex Mono", monospace;
+}
+
+.home-mcp ol {
+  padding-left: 1.5rem;
+}
+
+.home-mcp li + li {
+  margin-top: 0.65rem;
+}
+
+.home-mcp blockquote {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid #0f766e;
+  background: #edf5f4;
+}
+
+.mcp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.mcp-links a {
+  color: #0d6d8f;
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 768px) {
+  .mcp-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
 .home-sections {
   max-width: 1180px;
   width: 100%;

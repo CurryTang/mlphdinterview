@@ -54,22 +54,22 @@ Corrections, issue reports, and contributions are welcome. If something is wrong
 
 ## MCP & Skill 接口接入 (ChatGPT / Claude / Cursor / Antigravity)
 
-本项目内置完整的 **MCP (Model Context Protocol)** 服务与 **Agent Skill 规范**，可将全库 290+ 篇高质量技术笔记与字节跳动 65 道高频真题库直接接入主流大模型客户端，作为自动化技术复习导师或模拟面试官：
+本项目提供 **MCP (Model Context Protocol)** 服务与 **Agent Skill 规范**，可将技术笔记与题库接入大模型客户端，作为技术复习导师或模拟面试官。**GitHub Pages 仅托管静态网站，没有在线 MCP 服务；ChatGPT 接入需要自行部署 Node 服务并提供可访问的 HTTPS 地址。** 主页已提供配置说明。
 
 ### 1. 启动方式
 ```bash
-# Stdio 模式 (用于 Claude Desktop、ChatGPT Desktop、Cursor、Windsurf)
+# Stdio 模式 (用于 Claude Desktop、Cursor 等支持 stdio 的客户端)
 node mcp/index.js
 
-# HTTP / SSE 模式 (默认端口 3333，支持 ChatGPT Custom GPT Action 与 REST API)
+# HTTP / SSE 模式 (默认端口 3333，提供远程 MCP 与 REST / OpenAPI)
 npm run mcp:http
 ```
 
 ### 2. 客户端接入
 - **Claude Code**: 仓库已预置 `.claude/mcp.json` 与 `.claude/skills/mlphdinterview/SKILL.md`，在项目目录下运行 `claude` 即可自动识别。
 - **Claude Desktop**: 在 `claude_desktop_config.json` 中配置 `mlphdinterview` 指向 `mcp/index.js`。
-- **ChatGPT Desktop**: 在客户端设置的 Model Context Protocol 中添加该命令。
-- **ChatGPT Web (Custom GPTs)**: 运行 `npm run mcp:http` 并通过 ngrok 暴露，在 GPT Editor Action 中导入 `mcp/openapi.json`。
+- **ChatGPT MCP**: 运行 `npm run mcp:http`，部署或通过隧道提供 HTTPS 地址。在 ChatGPT 网页版 Plugins → Add custom MCP server 中填写 `https://你的域名/sse`，鉴权选 No authentication，再创建并安装插件。入口受账号与工作区权限限制，详见 [OpenAI 官方说明](https://developers.openai.com/api/docs/guides/custom-mcp-server)。
+- **Custom GPT Actions（独立于 MCP）**: 在 GPT Editor Action 中导入 `mcp/openapi.json`，将 `servers[0].url` 改为你的 HTTPS 服务根地址。
 - **Cursor / Windsurf**: 仓库已预置 `.cursor/mcp.json`，打开工作区自动挂载。
 - **详细接入文档与 6 个工具清单**: 详见 [mcp/README.md](mcp/README.md) 与 [skills/mlphdinterview/SKILL.md](skills/mlphdinterview/SKILL.md)。
 

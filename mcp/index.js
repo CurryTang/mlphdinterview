@@ -22,7 +22,7 @@ if (isHttpMode) {
 
   startHttpServer(port);
 } else {
-  // Stdio Mode (Default: for ChatGPT Desktop, Claude Desktop, Cursor, Windsurf, Antigravity)
+  // Stdio mode for clients such as Claude Desktop and Cursor.
   const server = createServer();
   const transport = new StdioServerTransport();
 
