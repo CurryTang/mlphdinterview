@@ -1617,6 +1617,12 @@ const systemDesignNoteDefinitions = [
   // 板块二：Wiki 模式库 (Atomic Design Patterns & Wiki)
   // ==========================================
   createTutorialDefinition(
+    'Wiki · ML System Design · 通用解题流程',
+    'MLSystemDesign01 Framework.md',
+    null,
+    { directory: 'SystemDesign', titleEn: 'Wiki · ML System Design · Interview Framework', category: 'Wiki', difficulty: 'Start Here' },
+  ),
+  createTutorialDefinition(
     'Wiki · Event Bus (事件总线与事件驱动)',
     'SystemDesignWiki Event Bus.md',
     'SystemDesignWiki Event Bus.en.md',

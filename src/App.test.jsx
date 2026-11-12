@@ -771,7 +771,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Event Bus/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /控制面与数据面解耦/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(22\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Wiki 模式 \(23\)/i }));
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Flink/i })).toBeInTheDocument();
@@ -782,7 +782,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /控制面与数据面解耦/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /全部 \(27\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /全部 \(28\)/i }));
     expect(screen.getByRole('button', { name: /System Design 07 · 图片分享与 Feed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Transactional Outbox/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wiki · Kafka/i })).toBeInTheDocument();
