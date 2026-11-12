@@ -101,6 +101,33 @@ describe('App', () => {
     });
   });
 
+  it('keeps the deployment base exactly once in Markdown image URLs', async () => {
+    vi.stubEnv('BASE_URL', '/mlphdinterview/');
+    try {
+      window.history.replaceState(null, '', '/#MLSystemDesign01%20Framework.md');
+      globalThis.fetch.mockResolvedValue({
+        ok: true,
+        text: async () => [
+          '# Image paths',
+          '![Built diagram](/mlphdinterview/assets/regression-built-abc123.svg)',
+          '![Public diagram](diagrams/regression-public.svg)',
+          '![External diagram](https://example.com/regression-external.svg)',
+        ].join('\n\n'),
+      });
+
+      render(<App />);
+
+      expect(await screen.findByRole('img', { name: 'Built diagram' }))
+        .toHaveAttribute('src', '/mlphdinterview/assets/regression-built-abc123.svg');
+      expect(screen.getByRole('img', { name: 'Public diagram' }))
+        .toHaveAttribute('src', '/mlphdinterview/diagrams/regression-public.svg');
+      expect(screen.getByRole('img', { name: 'External diagram' }))
+        .toHaveAttribute('src', 'https://example.com/regression-external.svg');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('starts on a prominent home page with MLSYS navigation', () => {
     render(<App />);
 

@@ -30933,6 +30933,7 @@ function resolvePublicAsset(assetPath) {
   if (/^(?:https?:|\/\/|data:)/i.test(assetPath)) return assetPath;
   const basePath = import.meta.env.BASE_URL || '/';
   const cleanBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
+  if (String(assetPath).startsWith(cleanBase)) return assetPath;
   const cleanAsset = String(assetPath).replace(/^\/+/, '');
   return `${cleanBase}${cleanAsset}`;
 }
