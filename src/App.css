@@ -489,6 +489,22 @@
   display: none;
 }
 
+.course-sidebar-link {
+  display: block;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(79, 70, 229, 0.22);
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.course-sidebar-link:hover,
+.course-sidebar-link:focus-visible {
+  background: #e0e7ff;
+}
+
 .search {
   display: grid;
   gap: 0.35rem;

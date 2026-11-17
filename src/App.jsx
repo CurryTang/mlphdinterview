@@ -1945,8 +1945,34 @@ const jobsNotes = jobsNoteDefinitions.map((definition) => ({
   },
 }));
 
+const deepLearningAlchemyNotes = [
+  ['课程导读与资料', 'Course guide and materials', 'cs312-guide.md'],
+  ['01 · 用实验预测建立训练直觉', '01 · Predicting training outcomes', '01-introduction.md'],
+  ['02 · LLM 预训练基础', '02 · LLM pre-training foundations', '02-llms-101.md'],
+  ['03 · 调参与缩放规律', '03 · Tuning and scaling laws', '03-training-basics.md'],
+  ['04 · 优化器动力学与权重衰减', '04 · Optimizer dynamics and weight decay', '04-optimizer-dynamics.md'],
+  ['05 · 宽度缩放、μP 与 Muon', '05 · Width scaling, μP, and Muon', '05-width-and-muon.md'],
+  ['06 · 损失景观与训练轨迹', '06 · Loss landscapes and training trajectories', '06-loss-landscapes.md'],
+  ['07 · 稳定性边缘与平坦性', '07 · Edge of stability and flatness', '07-edge-of-stability.md'],
+  ['08 · 深度方向的信号传播', '08 · Signal propagation across depth', '08-depth-stability.md'],
+  ['09 · 序列混合与长程依赖', '09 · Sequence mixing and long-range dependencies', '09-sequence-mixing.md'],
+  ['10 · 模型容量与表达能力', '10 · Model capacity and expressivity', '10-model-capacity.md'],
+  ['11 · 数据有限时的泛化与迁移', '11 · Generalization and transfer with limited data', '11-generalization.md'],
+].map(([title, titleEn, fileName]) => createTutorialDefinition(title, fileName, '', {
+  directory: 'DeepLearningAlchemy',
+  titleEn,
+  category: 'Stanford CS 312 · Deep Learning Alchemy',
+})).map((definition) => ({
+  ...definition,
+  variants: {
+    zh: createVariant(definition.zhFileName, definition.directory),
+    en: createVariant(definition.enFileName, definition.directory),
+  },
+}));
+
 const mlCodingNotes = [
   ...llmNotes,
+  ...deepLearningAlchemyNotes,
   ...traditionalMlNotes,
   ...businessAlgorithmNotes,
 ];
@@ -32686,6 +32712,7 @@ function App() {
   const selectedTutorial =
     tutorials.find((tutorial) => tutorial.id === selectedTutorialId) ?? filteredTutorials[0] ?? tutorials[0] ?? null;
 
+  const isAlchemyNote = selectedTutorial?.directory === 'DeepLearningAlchemy';
   const activeLanguage =
     variantHasContent(selectedTutorial?.variants[language]) ? language : 'zh';
   const localizedSelectedSection = (
@@ -33102,6 +33129,11 @@ function App() {
       ) : (
         <div className="app-shell">
       <aside className="notes-panel">
+        {selectedSection?.id === 'mlcoding' && (
+          <a className="course-sidebar-link" href="#cs312-guide.md" lang="en">
+            Stanford CS 312 · Deep Learning Alchemy
+          </a>
+        )}
         <label className="search">
           <span>{language === 'en' ? 'Search' : '搜索'} {localizedSelectedSection.title}</span>
           <input
@@ -33186,7 +33218,11 @@ function App() {
             <header className="reader-header">
               <div className="reader-header-top">
                 <div>
-                  <p className="reader-label">{localizedSelectedSection.title} / {language === 'en' ? 'Interview Notes' : '面试笔记'}</p>
+                  <p className="reader-label">
+                    {localizedSelectedSection.title} / {isAlchemyNote
+                      ? (language === 'en' ? 'CS 312 Course Notes' : 'CS 312 课程笔记')
+                      : (language === 'en' ? 'Interview Notes' : '面试笔记')}
+                  </p>
                   <h2>
                     {language === 'en'
                       ? (selectedTutorial.titleEn ?? selectedTutorial.title)
@@ -33214,7 +33250,7 @@ function App() {
             </header>
 
             <div className="reader-content-grid">
-              <article className="markdown-body">
+              <article className="markdown-body" lang={isAlchemyNote ? 'zh-CN' : undefined}>
                 {selectedError && <p className="empty-note">{activeLanguage === 'en' ? 'Load failed' : '加载失败'}: {selectedError}</p>}
                 {selectedIsLoading && !selectedError && <p className="empty-note">{activeLanguage === 'en' ? 'Loading markdown...' : '正在加载 Markdown…'}</p>}
                 {!selectedIsLoading && !selectedError && normalizedSelectedContent?.trim() && (
@@ -33277,6 +33313,13 @@ function App() {
                       h2: ({ children }) => <HeadingWithAnchor level={2}>{children}</HeadingWithAnchor>,
                       h3: ({ children }) => <HeadingWithAnchor level={3}>{children}</HeadingWithAnchor>,
                       h4: ({ children }) => <HeadingWithAnchor level={4}>{children}</HeadingWithAnchor>,
+                      p: ({ node, children, ...props }) => {
+                        // Full-width Markdown images render as figures, outside paragraphs.
+                        const imageOnly = node?.children.length && node.children.every((child) => (
+                          child.tagName === 'img' || (child.type === 'text' && !child.value.trim())
+                        ));
+                        return imageOnly ? children : <p {...props}>{children}</p>;
+                      },
                       pre: MarkdownPre,
                       code: ({ className, children, ...props }) => (
                         <code className={className} {...props}>
